@@ -1,6 +1,7 @@
 import ctypes
 import logging
 import sys
+from typing import Any
 
 from nuiitivet.common.logging_once import exception_once
 
@@ -8,6 +9,7 @@ from nuiitivet.common.logging_once import exception_once
 _logger = logging.getLogger(__name__)
 
 if sys.platform == "linux":
+    xlib: ctypes.CDLL | None
     try:
         xlib = ctypes.cdll.LoadLibrary("libX11.so.6")
     except OSError:
@@ -112,7 +114,7 @@ if sys.platform == "linux":
 
         # Global references
         _callbacks = []
-        _ic_map = {}  # XIC -> Window
+        _ic_map: dict[Any, Any] = {}  # XIC -> Window
         _composition_state = {}  # Window -> {text: str, cursor: int}
 
         def _preedit_start(ic, client_data, call_data):
