@@ -1,0 +1,990 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.1.0/design/OBSERVABLE/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Observable & Reactive Programming - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#observable-reactive-programming" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Observable &amp; Reactive Programming
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-design-ownerless-observables-with-unified-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core design: Ownerless observables with unified batching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-method-chained-reactive-operators-phase-1-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Method-chained reactive operators (Phase 1 complete)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-thread-safety-explicit-ui-dispatch-via-method-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Thread safety: Explicit UI dispatch via method chaining
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-timing-control-debounce-and-throttle-phase-2-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Timing control: Debounce and throttle (Phase 2 complete)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="observable-reactive-programming">Observable &amp; Reactive Programming</h1>
+<p>本ドキュメントは <code>nuiitivet</code> の Observable とリアクティブ機構の内部設計をまとめます。
+使い方のガイドは <a href="../../guide/observable/">docs/guide/observable.md</a> を参照してください。</p>
+<p>See also:</p>
+<ul>
+<li><a href="../CONCURRENCY_MODEL/">CONCURRENCY_MODEL.md</a></li>
+<li><a href="../THREADING_MODEL/">THREADING_MODEL.md</a></li>
+<li><a href="../PROGRAMMING_PARADIMS/">PROGRAMMING_PARADIMS.md</a></li>
+</ul>
+<h2 id="1-core-design-ownerless-observables-with-unified-batching">1. Core design: Ownerless observables with unified batching</h2>
+<ul>
+<li>Observable descriptors are now <strong>ownerless</strong>: they emit immediate notifications in any layer (domain models, services, widgets) without relying on framework mixins or hidden hooks.</li>
+<li>A global <code>batch()</code> context (backed by <code>contextvars</code>) unifies batching semantics. It supports nesting, records dirty <code>_ObservableValue</code> instances, and queues ComputedObservables so they recompute exactly once when the outermost batch exits. This delivers glitch-free updates even when multiple observables change within a single handler.</li>
+<li>The UI layer automatically wraps pointer/key/focus dispatch in <code>batch()</code>, so widget authors simply mutate state inside event handlers. Business logic stays explicit: <code>with batch():</code> clusters related updates only when needed, keeping the learning cost low.</li>
+<li>Binding updates continue to flow through <code>_queue_binding_invalidation()</code> and flush alongside scope recompositions before paint. The binding queue and the batching context complement each other: batch reduces redundant recompute work, while the queue ensures widget invalidations happen once per frame.</li>
+</ul>
+<h2 id="2-method-chained-reactive-operators-phase-1-complete">2. Method-chained reactive operators (Phase 1 complete)</h2>
+<p>The framework provides a minimal, unified API for reactive transformations inspired by ReactiveProperty (WPF) and Signals (Solid.js).</p>
+<p><strong>Design principles:</strong></p>
+<ul>
+<li><strong>Unified syntax</strong>: All reactive operations use method chaining for consistency</li>
+<li><strong>Explicit over implicit</strong>: Dependencies are clear in simple cases (<code>.map()</code>, <code>.combine()</code>), automatic tracking handles complex cases (<code>.compute()</code>)</li>
+<li><strong>Minimal API surface</strong>: Only essential operators to reduce learning cost and API confusion</li>
+<li><strong>Gradual learning curve</strong>: Beginners start with <code>.map()</code>, advance to <code>.combine()</code>, master <code>.compute()</code> for complex scenarios</li>
+</ul>
+<p><strong>Implemented operators:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Use case</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>.map(fn)</code></td>
+<td style="text-align: left;">1:1 transformation</td>
+<td style="text-align: left;"><code>age.map(lambda x: x &gt;= 18)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>.combine(other)</code></td>
+<td style="text-align: left;">Explicit multi-source composition (method form)</td>
+<td style="text-align: left;"><code>price.combine(qty).compute(lambda p, q: p * q)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>combine(a, b, ...)</code></td>
+<td style="text-align: left;">Explicit multi-source composition (function form, 3+ sources)</td>
+<td style="text-align: left;"><code>combine(price, qty, discount).compute(lambda p, q, d: ...)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Observable.compute(fn)</code></td>
+<td style="text-align: left;">Automatic dependency tracking for complex logic</td>
+<td style="text-align: left;"><code>Observable.compute(lambda: self.a.value if self.flag.value else self.b.value)</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why this API over Rx-style operators:</strong></p>
+<ul>
+<li><strong>No <code>combine_latest</code></strong>: Redundant with <code>.combine().compute()</code></li>
+<li><strong>No <code>select</code> / <code>where</code></strong>: Aliases cause confusion</li>
+<li><strong>No <code>zip</code> / <code>merge</code></strong>: Low usage frequency in UI frameworks</li>
+<li><strong>No <code>filter</code></strong>: Initial value semantics are problematic for UI binding</li>
+</ul>
+<p><strong>Implementation strategy:</strong></p>
+<ul>
+<li><code>.map()</code> and <code>.combine()</code> internally use <code>Observable.compute()</code> for automatic dependency tracking</li>
+<li>Signals pattern with global <code>_tracking_context</code> (via <code>contextvars</code>) captures <code>.value</code> access during compute functions</li>
+<li>Dynamic dependency re-collection on every recompute handles conditional logic correctly</li>
+<li>Full integration with <code>batch()</code> system prevents redundant computations</li>
+</ul>
+<h2 id="3-thread-safety-explicit-ui-dispatch-via-method-chaining">3. Thread safety: Explicit UI dispatch via method chaining</h2>
+<p><strong>Problem:</strong> Worker threads updating observables can trigger UI updates from non-UI threads, causing crashes.</p>
+<p><strong>Design decision:</strong> <strong>Default to fast (no dispatch), opt-in to safety via <code>.dispatch_to_ui()</code></strong></p>
+<pre><code class="language-python"># UI layer (ViewModel) - explicit dispatch required
+class ViewModel:
+    items = Observable([])
+
+    def __init__(self):
+        self.items.dispatch_to_ui()  # Thread-safe for UI binding
+
+    def load_async(self):
+        def worker():
+            result = fetch_data()
+            self.items.value = result  # notify happens on UI thread
+        threading.Thread(target=worker).start()
+
+# Logic layer - default fast path
+class DataProcessor:
+    raw_data = Observable([])  # No dispatch = zero overhead
+
+    def __init__(self):
+        self.filtered = self.raw_data.map(lambda x: [i for i in x if i &gt; 0])  # Fast by default
+</code></pre>
+<p><strong>Rationale for default-off:</strong></p>
+<ol>
+<li><strong>Zero overhead for single-threaded apps</strong> (most beginner use cases)</li>
+<li><strong>Gradual learning curve</strong>: Beginners ignore threading, intermediates learn <code>.dispatch_to_ui()</code> when needed</li>
+<li><strong>Performance</strong>: Logic-layer observable chains stay fast without UI thread hops</li>
+<li><strong>Explicit intent</strong>: UI-bound observables are clearly marked in code</li>
+</ol>
+<p><strong>Implementation:</strong></p>
+<ul>
+<li><code>.dispatch_to_ui()</code> is chainable on observable values and computed observables</li>
+<li><code>_ObservableValue.__set__()</code> checks thread and uses <code>pyglet.clock.schedule_once()</code> to marshal notifications to UI thread when dispatch is enabled</li>
+<li><code>batch()</code> automatically dispatches flush to UI thread if any observable in the batch has dispatch enabled</li>
+<li>Computed observables inherit dispatch setting via <code>CombineBuilder.dispatch_to_ui()</code> in method chains</li>
+</ul>
+<p><strong>Constraints:</strong></p>
+<ul>
+<li>Compute functions execute on the triggering thread (may be worker thread)</li>
+<li>Only notifications are marshalled to UI thread</li>
+<li>Compute functions must NOT access UI-thread-only objects (widgets, UI state) - only observable values</li>
+</ul>
+<h2 id="4-timing-control-debounce-and-throttle-phase-2-complete">4. Timing control: Debounce and throttle (Phase 2 complete)</h2>
+<p><strong>Problem:</strong> High-frequency events (typing, mouse moves, API responses) can trigger excessive UI updates and expensive computations.</p>
+<p><strong>Solution:</strong> Observable timing operators that integrate with the UI event loop:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Operator</th>
+<th style="text-align: left;">Behavior</th>
+<th style="text-align: left;">Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>.debounce(seconds)</code></td>
+<td style="text-align: left;">Emits only after <code>seconds</code> of silence</td>
+<td style="text-align: left;">Search input, form validation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>.throttle(seconds)</code></td>
+<td style="text-align: left;">Emits first value immediately, then throttles to max 1 per <code>seconds</code></td>
+<td style="text-align: left;">Mouse tracking, scroll position</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Design principles:</strong></p>
+<ol>
+<li><strong>UI thread integration</strong>: Use <code>pyglet.clock.schedule_once()</code> for timing to ensure thread safety</li>
+<li><strong>Chainable operators</strong>: Work seamlessly with <code>.map()</code>, <code>.combine()</code>, <code>.compute()</code>, <code>.dispatch_to_ui()</code></li>
+<li><strong>Cancellation semantics</strong>:</li>
+<li>Debounce: Each new value cancels pending timer and starts fresh delay</li>
+<li>Throttle: First value emits immediately, subsequent values sampled at intervals</li>
+<li><strong>Memory efficiency</strong>: Only hold reference to latest value, cancel timers on unsubscribe</li>
+</ol>
+<p><strong>Implementation:</strong></p>
+<pre><code class="language-python"># Debounce example: Search input
+class SearchBox:
+    query = Observable(&quot;&quot;)
+
+    def __init__(self):
+        # Delay search until user stops typing for 0.5s
+        self.query.debounce(0.5).subscribe(lambda q: perform_search(q))
+
+# Throttle example: Mouse tracking
+class MouseTracker:
+    position = Observable((0, 0))
+
+    def __init__(self):
+        # Update UI at most once per 0.1s
+        self.position.throttle(0.1).subscribe(lambda pos: update_tooltip(pos))
+</code></pre>
+<p><strong>Integration with other operators:</strong></p>
+<pre><code class="language-python"># Debounce + map + dispatch
+query.debounce(0.5).map(str.lower).dispatch_to_ui()
+
+# Throttle + combine + compute
+mouse_pos.throttle(0.1).combine(viewport).compute(lambda pos, vp: is_inside(pos, vp))
+</code></pre>
+<p><strong>Rationale:</strong></p>
+<ol>
+<li><strong>Debounce default</strong>: Most UI event filtering needs debounce (typing, window resize)</li>
+<li><strong>Throttle for sampling</strong>: Mouse moves and scroll need periodic sampling, not trailing edge</li>
+<li><strong>Explicit timing</strong>: Seconds parameter makes performance impact visible in code</li>
+<li><strong>Framework integration</strong>: <code>pyglet.clock</code> ensures timers run on correct thread and integrate with event loop</li>
+</ol>
+<p><strong>Implementation details:</strong></p>
+<ul>
+<li><code>DebouncedObservable</code> and <code>ThrottledObservable</code> classes wrap upstream observable</li>
+<li>Both support full observable protocol: <code>.map()</code>, <code>.subscribe()</code>, chaining</li>
+<li>Timer cancellation happens in <code>__set__()</code> to prevent memory leaks</li>
+<li>Testing uses <code>MockClock</code> with epsilon tolerance for deterministic timing assertions</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
