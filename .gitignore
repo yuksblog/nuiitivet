@@ -21,3 +21,5 @@ wheels/
 .github/instructions/
 .github/prompts/
 .github/skills/
+
+.DS_Store
