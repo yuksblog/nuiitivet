@@ -8,6 +8,7 @@ Verifies that:
 """
 
 from unittest.mock import MagicMock
+import unittest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
@@ -15,6 +16,12 @@ from nuiitivet.layout.row import Row
 from nuiitivet.widgets import TextBase as Text
 from nuiitivet.rendering import Sizing
 from nuiitivet.modifiers import clip
+from nuiitivet.rendering.skia import skia_module
+
+
+def _skip_if_no_skia(test_case):
+    if skia_module.get_skia(raise_if_missing=False) is None:
+        test_case.skipTest("skia-python is required for clipping tests")
 
 
 def test_column_default_no_clip():
@@ -34,6 +41,7 @@ def test_column_default_no_clip():
 
 def test_column_with_clip_modifier():
     """Column with .clip() modifier applies clipping."""
+    _skip_if_no_skia(unittest.TestCase())
     col_inner = Column(width=Sizing.fixed(100), height=Sizing.fixed(50))
     col = col_inner.modifier(clip())
     t1 = Text("Large", width=Sizing.fixed(80), height=Sizing.fixed(60))
@@ -68,6 +76,7 @@ def test_row_default_no_clip():
 
 def test_row_with_clip_modifier():
     """Row with .clip() modifier applies clipping."""
+    _skip_if_no_skia(unittest.TestCase())
     row_inner = Row(width=Sizing.fixed(100), height=Sizing.fixed(50))
     row = row_inner.modifier(clip())
     t1 = Text("Wide", width=Sizing.fixed(120), height=Sizing.fixed(40))
@@ -103,6 +112,7 @@ def test_container_default_no_clip():
 
 def test_container_with_clip_modifier():
     """FilledCard with .clip() modifier applies clipping."""
+    _skip_if_no_skia(unittest.TestCase())
     t = Text("Large", width=Sizing.fixed(120), height=Sizing.fixed(60))
     c_inner = FilledCard(
         child=t,
