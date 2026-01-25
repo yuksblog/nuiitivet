@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import sys
 from nuiitivet.material.selection_controls import Checkbox
 from nuiitivet.material.icon import Icon
+from nuiitivet.rendering.skia import skia_module
 
 
 class TestCheckboxIconScaling(unittest.TestCase):
@@ -12,7 +13,13 @@ class TestCheckboxIconScaling(unittest.TestCase):
 
         manager.set_theme(MaterialTheme.light("#6750A4"))
 
+    def tearDown(self):
+        skia_module._reset_skia_import_state_for_tests()
+
     def test_checkbox_scaling(self):
+        if skia_module.get_skia(raise_if_missing=False) is None:
+            self.skipTest("skia-python is required for this test")
+
         # Checkbox with flex width (simulated by passing large rect to paint)
         c = Checkbox(size="100%")
 

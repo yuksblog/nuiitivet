@@ -1,6 +1,7 @@
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
+from nuiitivet.rendering.skia import skia_module
 
 
 def test_text_field_click_to_cursor():
@@ -23,9 +24,7 @@ def test_text_field_click_to_cursor():
     # So selection will always be 0.
     # This test assumes skia is present or mocked.
     # Since we can't easily mock skia here without complex setup, let's skip the "far right" check if skia is missing.
-    from importlib.util import find_spec
-
-    has_skia = find_spec("skia") is not None
+    has_skia = skia_module.get_skia(raise_if_missing=False) is not None
 
     event = PointerEvent(id=1, type=PointerEventType.PRESS, x=250, y=125)
     tf._editable._handle_press(event)

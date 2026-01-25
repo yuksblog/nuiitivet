@@ -509,10 +509,12 @@ def typeface_from_file(path: str) -> Optional[object]:
 def make_font(typeface: Optional[object], size: float) -> Optional[object]:
     """Create a skia.Font.
 
-    Raises RuntimeError when skia is not installed.
+    Returns None when skia is not installed.
     """
 
-    skia = get_skia(raise_if_missing=True)
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        return None
 
     if typeface is None:
         try:
