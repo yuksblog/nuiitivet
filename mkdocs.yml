@@ -1,0 +1,49 @@
+# Preview server: uv run --group docs mkdocs serve
+# Deploy (versioned): uv run --group docs mike deploy <version> latest --push
+
+site_name: Nuiitivet Documentation
+site_url: https://yuksblog.github.io/nuiitivet/
+repo_url: https://github.com/yuksblog/nuiitivet
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette: 
+    - scheme: default
+      primary: teal
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+
+nav:
+  - Home: index.md
+  - Guide:
+      - Introduction: guide/index.md
+  - API Reference:
+      - Core: api/nuiitivet.md
+      - Material Components: api/material.md
+      - Modifiers: api/modifiers.md
+      - Primitives: api/widgets.md
+  - Changelog: https://github.com/yuksblog/nuiitivet/releases

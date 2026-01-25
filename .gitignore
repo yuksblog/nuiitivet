@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# VS Code Counter
+.VSCodeCounter
+
+# Testing caches
+.mypy_cache/
+.pytest_cache/
+
+# GitHub configuration files
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/skills/

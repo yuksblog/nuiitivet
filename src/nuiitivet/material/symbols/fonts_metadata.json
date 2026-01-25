@@ -1,0 +1,46 @@
+{
+  "fonts": [
+    {
+      "filename": "MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.ttf",
+      "sha256": "fb0d00bfa03507fe6712348604aea33741b41f97643e109ad4e582b1a15865b9",
+      "size": 10178540,
+      "downloaded_at": "2025-11-29T07:23:37.515785+00:00"
+    },
+    {
+      "filename": "MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].codepoints",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.codepoints",
+      "sha256": "3e5293b71c38cb0487ab5fc5de293956aab4f96f445ae482849cce3df345aec9",
+      "size": 75378,
+      "downloaded_at": "2025-11-29T07:23:38.553345+00:00"
+    },
+    {
+      "filename": "MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.ttf",
+      "sha256": "d719f22fdee27e344b07e46e6fa8b50b1fce3cfcb03d4a84f03fafbf0812fc22",
+      "size": 14586584,
+      "downloaded_at": "2025-11-29T07:23:42.745270+00:00"
+    },
+    {
+      "filename": "MaterialSymbolsRounded[FILL,GRAD,opsz,wght].codepoints",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.codepoints",
+      "sha256": "3e5293b71c38cb0487ab5fc5de293956aab4f96f445ae482849cce3df345aec9",
+      "size": 75378,
+      "downloaded_at": "2025-11-29T07:23:43.368645+00:00"
+    },
+    {
+      "filename": "MaterialSymbolsSharp[FILL,GRAD,opsz,wght].ttf",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsSharp%5BFILL,GRAD,opsz,wght%5D.ttf",
+      "sha256": "e76edbb72b8cbca2380c507cd17ea5cb4023cf3e01a9dcfeddd670da8c495f37",
+      "size": 8434940,
+      "downloaded_at": "2025-11-29T07:23:48.359200+00:00"
+    },
+    {
+      "filename": "MaterialSymbolsSharp[FILL,GRAD,opsz,wght].codepoints",
+      "url": "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsSharp%5BFILL,GRAD,opsz,wght%5D.codepoints",
+      "sha256": "3e5293b71c38cb0487ab5fc5de293956aab4f96f445ae482849cce3df345aec9",
+      "size": 75378,
+      "downloaded_at": "2025-11-29T07:23:48.936877+00:00"
+    }
+  ]
+}

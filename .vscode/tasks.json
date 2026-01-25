@@ -1,0 +1,36 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "pytest",
+			"type": "shell",
+			"command": "uv run pytest",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "mypy",
+			"type": "shell",
+			"command": "uv run mypy",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "flake8",
+			"type": "shell",
+			"command": "uv run flake8 src tests --max-line-length=120 --extend-ignore=E203",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "docs: serve",
+			"type": "shell",
+			"command": "uv run --group docs mkdocs serve",
+			"isBackground": true,
+			"group": "none"
+		}
+	]
+}

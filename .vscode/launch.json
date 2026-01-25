@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "src/__main__.py",
+            "program": "${file}",
+            // Ensure the package in `src/` is importable when running a single file.
+            // This mirrors pytest's `pythonpath = src` used in the project config.
+            // Use envFile for shared settings; do not duplicate PYTHONPATH in `env`.
+            "envFile": "${workspaceFolder}/.vscode/.env",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        }
+    ]
+}
