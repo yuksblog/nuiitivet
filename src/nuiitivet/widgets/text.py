@@ -203,10 +203,10 @@ class TextBase(Widget):
                 txt = (txt[:left] + ellipsis) if left > 0 else ellipsis
 
         tp = make_text_blob(txt, font)
-        # skia may return None for an empty or unrenderable blob; guard
+        # skia may return None for an empty or unrenderable blob (or missing backend); guard
         # against that to avoid calling .bounds() on None.
         if tp is None:
-            # Nothing to draw for empty/unrenderable text.
+            # Nothing to draw for empty/unrenderable text or missing backend
             return
 
         ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, self.style.font_size, txt)

@@ -540,10 +540,13 @@ def make_font(typeface: Optional[object], size: float) -> Optional[object]:
 def make_text_blob(text: str, font) -> Optional[object]:
     """Create a skia.TextBlob from string and font.
 
-    Raises RuntimeError when skia is not installed.
+    Returns None when skia is not installed.
     """
 
-    skia = get_skia(raise_if_missing=True)
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        return None
+
     tb_cls = getattr(skia, "TextBlob", None)
     maker = getattr(tb_cls, "MakeFromString", None) if tb_cls is not None else None
     if not callable(maker):
