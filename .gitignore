@@ -22,4 +22,8 @@ wheels/
 .github/prompts/
 .github/skills/
 
+# Documentation build files
+site/
+
+# macOS system files
 .DS_Store
