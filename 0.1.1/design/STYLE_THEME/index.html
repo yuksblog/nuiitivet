@@ -1,0 +1,1768 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.1.1/design/STYLE_THEME/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Style & Theme System Proposal - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#style-theme-system-proposal" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Style &amp; Theme System Proposal
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Philosophy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Philosophy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-base-style-protocol-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Base Style Protocol (Optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-widget-style-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Widget Style Classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-theme-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Theme Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-widget-usage-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Widget Usage Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migration Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-create-style-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Create style classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-integrate-into-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Integrate into Theme
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-update-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Update widgets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-public-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Public API
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-other-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Other Frameworks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Comparison with Other Frameworks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flutter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flutter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#swiftui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SwiftUI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#material-design-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Material Design 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-complete-button-styles-in-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Complete Button Styles in Theme
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="style-theme-system-proposal">Style &amp; Theme System Proposal</h1>
+<h2 id="design-philosophy">Design Philosophy</h2>
+<h3 id="core-principles">Core Principles</h3>
+<ol>
+<li><strong>Widget-specific Styles</strong>: Each widget has its own style class (e.g., <code>ButtonStyle</code>, <code>CheckboxStyle</code>, <code>IconStyle</code>)</li>
+<li><strong>Theme holds defaults</strong>: <code>Theme</code> contains default style instances for all widgets</li>
+<li><strong>Immutable with override</strong>: Styles are frozen dataclasses, use <code>dataclasses.replace()</code> for customization</li>
+<li><strong>ColorRole-first</strong>: Colors default to <code>ColorRole</code> for theme reactivity; concrete values allowed</li>
+<li><strong>No inheritance hierarchy</strong>: Flat style classes, no complex inheritance</li>
+</ol>
+<h2 id="architecture">Architecture</h2>
+<pre><code class="language-text">Theme
+├── color roles (ColorRole → hex)
+├── text_theme: TextTheme
+├── button_style: ButtonStyle
+├── checkbox_style: CheckboxStyle
+├── icon_style: IconStyle
+└── ...other widget styles
+
+Widget(style: Optional[WidgetStyle])
+├── If style=None → use Theme.current.widget_style
+├── If style provided → merge with Theme defaults
+└── Resolve colors at paint time via ColorRole
+</code></pre>
+<h2 id="implementation-structure">Implementation Structure</h2>
+<h3 id="1-base-style-protocol-optional">1. Base Style Protocol (Optional)</h3>
+<pre><code class="language-python"># src/nuiitivet/ui/styles/protocol.py
+from typing import Protocol, TypeVar, Dict, Any
+
+T = TypeVar('T')
+
+class Style(Protocol):
+    &quot;&quot;&quot;Base protocol for widget styles (no runtime overhead).&quot;&quot;&quot;
+
+    def resolve(self) -&gt; Dict[str, Any]:
+        &quot;&quot;&quot;Resolve ColorRole and dynamic values to concrete paint values.&quot;&quot;&quot;
+        ...
+</code></pre>
+<h3 id="2-widget-style-classes">2. Widget Style Classes</h3>
+<pre><code class="language-python"># src/nuiitivet/ui/styles/button.py
+from dataclasses import dataclass, replace
+from typing import Optional, Tuple
+from ...theme import ColorRole
+
+@dataclass(frozen=True)
+class ButtonStyle:
+    &quot;&quot;&quot;Immutable style for Button widgets.&quot;&quot;&quot;
+
+    background: Optional[str | ColorRole] = None
+    foreground: Optional[str | ColorRole] = None
+    elevation: float = 0.0
+    border_color: Optional[str | ColorRole] = None
+    border_width: float = 0.0
+    corner_radius: int = 12
+    padding: int = 16
+    min_size: Tuple[int, int] = (160, 48)
+    overlay: Optional[Tuple[str, float]] = None
+
+    def copy_with(self, **changes) -&gt; &quot;ButtonStyle&quot;:
+        &quot;&quot;&quot;Create a new instance with specified fields changed.&quot;&quot;&quot;
+        return replace(self, **changes)
+
+    def resolve(self) -&gt; dict:
+        &quot;&quot;&quot;Resolve ColorRole to concrete values.&quot;&quot;&quot;
+        from ...rendering.skia import resolve_color
+        return {
+            &quot;background&quot;: resolve_color(self.background),
+            &quot;foreground&quot;: resolve_color(self.foreground),
+            &quot;border_color&quot;: resolve_color(self.border_color),
+            &quot;corner_radius&quot;: self.corner_radius,
+            &quot;padding&quot;: self.padding,
+            &quot;min_size&quot;: self.min_size,
+            &quot;overlay&quot;: self.overlay,
+        }
+
+# src/nuiitivet/ui/styles/checkbox.py
+@dataclass(frozen=True)
+class CheckboxStyle:
+    &quot;&quot;&quot;Immutable style for Checkbox widgets.&quot;&quot;&quot;
+
+    size: int = 40
+    icon_size_ratio: float = 18.0 / 48.0  # Icon size relative to touch target
+    corner_radius_ratio: float = 0.111    # Corner radius relative to icon size
+    stroke_width_ratio: float = 0.11      # Stroke width relative to icon size
+
+    # Colors
+    stroke_color: Optional[str | ColorRole] = ColorRole.ON_SURFACE
+    stroke_alpha: float = 0.54
+    checked_background: Optional[str | ColorRole] = ColorRole.PRIMARY
+    checked_foreground: Optional[str | ColorRole] = ColorRole.ON_PRIMARY
+
+    # State layer
+    state_layer_ratio: float = 40.0 / 48.0
+    hover_alpha: float = 0.08
+    pressed_alpha: float = 0.12
+
+    # Focus indicator
+    focus_stroke: float = 3.0
+    focus_offset: float = 2.0
+    focus_alpha: float = 0.12
+    focus_color: Optional[str | ColorRole] = ColorRole.PRIMARY
+
+    def copy_with(self, **changes) -&gt; &quot;CheckboxStyle&quot;:
+        return replace(self, **changes)
+
+    def resolve(self) -&gt; dict:
+        from ...rendering.skia import resolve_color
+        return {
+            &quot;size&quot;: self.size,
+            &quot;icon_size_ratio&quot;: self.icon_size_ratio,
+            &quot;corner_radius_ratio&quot;: self.corner_radius_ratio,
+            &quot;stroke_width_ratio&quot;: self.stroke_width_ratio,
+            &quot;stroke_color&quot;: resolve_color(self.stroke_color),
+            &quot;stroke_alpha&quot;: self.stroke_alpha,
+            &quot;checked_background&quot;: resolve_color(self.checked_background),
+            &quot;checked_foreground&quot;: resolve_color(self.checked_foreground),
+            &quot;state_layer_ratio&quot;: self.state_layer_ratio,
+            &quot;hover_alpha&quot;: self.hover_alpha,
+            &quot;pressed_alpha&quot;: self.pressed_alpha,
+            &quot;focus_stroke&quot;: self.focus_stroke,
+            &quot;focus_offset&quot;: self.focus_offset,
+            &quot;focus_alpha&quot;: self.focus_alpha,
+            &quot;focus_color&quot;: resolve_color(self.focus_color),
+        }
+
+# src/nuiitivet/ui/styles/icon.py
+@dataclass(frozen=True)
+class IconStyle:
+    &quot;&quot;&quot;Immutable style for Icon widgets.&quot;&quot;&quot;
+
+    default_size: int = 24
+    default_color: Optional[str | ColorRole] = ColorRole.ON_SURFACE
+    font_family_priority: Tuple[str, ...] = (
+        &quot;Material Symbols Outlined&quot;,
+        &quot;Material Icons&quot;,
+    )
+
+    def copy_with(self, **changes) -&gt; &quot;IconStyle&quot;:
+        return replace(self, **changes)
+
+    def resolve(self) -&gt; dict:
+        from ...rendering.skia import resolve_color
+        return {
+            &quot;default_size&quot;: self.default_size,
+            &quot;default_color&quot;: resolve_color(self.default_color),
+            &quot;font_family_priority&quot;: self.font_family_priority,
+        }
+</code></pre>
+<h3 id="3-theme-integration">3. Theme Integration</h3>
+<pre><code class="language-python"># src/nuiitivet/theme/theme.py
+from dataclasses import dataclass, field
+from typing import Mapping
+from .color_role import ColorRole
+from ..ui.styles import ButtonStyle, CheckboxStyle, IconStyle, TextTheme
+
+@dataclass(frozen=True)
+class Theme:
+    &quot;&quot;&quot;Theme holds color roles and default widget styles.&quot;&quot;&quot;
+
+    mode: str  # 'light' | 'dark'
+    roles: Mapping[ColorRole, str]
+    name: str = &quot;&quot;
+
+    # Widget styles
+    text_theme: TextTheme = field(default_factory=lambda: TextTheme())
+    button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
+        background=ColorRole.PRIMARY,
+        foreground=ColorRole.ON_PRIMARY,
+        elevation=0.0,
+        corner_radius=12,
+        padding=16,
+        min_size=(160, 48),
+        overlay=(ColorRole.ON_PRIMARY, 0.12),
+    ))
+    checkbox_style: CheckboxStyle = field(default_factory=lambda: CheckboxStyle())
+    icon_style: IconStyle = field(default_factory=lambda: IconStyle())
+
+    # ... other styles
+
+    def get(self, role: ColorRole) -&gt; str:
+        &quot;&quot;&quot;Return color hex for role.&quot;&quot;&quot;
+        return self.roles[role]
+
+    @classmethod
+    def from_seed(cls, seed_hex: str, name: str = &quot;&quot;) -&gt; Tuple[&quot;Theme&quot;, &quot;Theme&quot;]:
+        &quot;&quot;&quot;Create light/dark themes from seed.&quot;&quot;&quot;
+        from .palette import from_seed as palette_from_seed
+        light_roles, dark_roles = palette_from_seed(seed_hex)
+
+        # Create Material 3 button variants
+        filled_btn = ButtonStyle(
+            background=ColorRole.PRIMARY,
+            foreground=ColorRole.ON_PRIMARY,
+            elevation=0.0,
+            corner_radius=12,
+            padding=16,
+            min_size=(160, 48),
+            overlay=(ColorRole.ON_PRIMARY, 0.12),
+        )
+
+        light = cls(
+            name=name,
+            mode=&quot;light&quot;,
+            roles=light_roles,
+            button_style=filled_btn,
+            checkbox_style=CheckboxStyle(),
+            icon_style=IconStyle(),
+        )
+
+        dark = cls(
+            name=name,
+            mode=&quot;dark&quot;,
+            roles=dark_roles,
+            button_style=filled_btn,
+            checkbox_style=CheckboxStyle(),
+            icon_style=IconStyle(),
+        )
+
+        return light, dark
+</code></pre>
+<h3 id="4-widget-usage-pattern">4. Widget Usage Pattern</h3>
+<pre><code class="language-python"># User code - use theme defaults
+button = FilledButton(&quot;Click&quot;, on_click=handler)
+
+# User code - customize specific properties
+button = FilledButton(
+    &quot;Click&quot;,
+    style=manager.current.button_style.copy_with(
+        corner_radius=20,
+        padding=20,
+    ),
+)
+
+# User code - completely custom style
+custom_style = ButtonStyle(
+    background=&quot;#FF5722&quot;,
+    foreground=&quot;#FFFFFF&quot;,
+    corner_radius=24,
+    elevation=4.0,
+)
+button = FilledButton(&quot;Custom&quot;, style=custom_style)
+
+# Widget implementation
+class FilledButton(BaseButton):
+    def __init__(
+        self,
+        text: str,
+        on_click: Optional[Callable[[], None]] = None,
+        style: Optional[ButtonStyle] = None,
+        **kwargs
+    ):
+        # Merge: user style &gt; theme default
+        if style is None:
+            style = manager.current.button_style
+
+        # Create child with style properties
+        super().__init__(
+            child=Text(text, color=style.foreground),
+            on_click=on_click,
+            style=style,
+            **kwargs,
+        )
+</code></pre>
+<h3 id="5-directory-structure">5. Directory Structure</h3>
+<pre><code class="language-text">src/nuiitivet/
+├── theme/
+│   ├── __init__.py
+│   ├── color_role.py
+│   ├── theme.py          # Theme with style fields
+│   ├── manager.py
+│   └── palette.py
+├── ui/
+│   ├── styles/
+│   │   ├── __init__.py
+│   │   ├── button.py     # ButtonStyle
+│   │   ├── checkbox.py   # CheckboxStyle
+│   │   ├── icon.py       # IconStyle
+│   │   ├── text.py       # TextTheme (existing)
+│   │   └── ...
+│   └── widgets/
+│       ├── buttons/
+│       │   ├── base.py
+│       │   ├── filled.py
+│       │   └── ...
+│       ├── checkbox.py
+│       ├── icon.py
+│       └── ...
+</code></pre>
+<h2 id="migration-strategy">Migration Strategy</h2>
+<h3 id="phase-1-create-style-classes">Phase 1: Create style classes</h3>
+<ul>
+<li>Extract hardcoded values from <code>Checkbox</code> → <code>CheckboxStyle</code></li>
+<li>Extract hardcoded values from <code>Icon</code> → <code>IconStyle</code></li>
+<li>Move existing <code>ButtonStyle</code> to <code>ui/styles/</code></li>
+</ul>
+<h3 id="phase-2-integrate-into-theme">Phase 2: Integrate into Theme</h3>
+<ul>
+<li>Add style fields to <code>Theme</code> dataclass</li>
+<li>Update <code>Theme.from_seed()</code> to create default styles</li>
+<li>Add M3 variant factories (filled, outlined, text, etc.)</li>
+</ul>
+<h3 id="phase-3-update-widgets">Phase 3: Update widgets</h3>
+<ul>
+<li>Remove hardcoded values from widget constructors</li>
+<li>Accept optional <code>style</code> parameter</li>
+<li>Fall back to <code>manager.current.{widget}_style</code></li>
+</ul>
+<h3 id="phase-4-public-api">Phase 4: Public API</h3>
+<ul>
+<li>Export all styles from <code>nuiitivet.ui.styles</code></li>
+<li>Document style customization patterns</li>
+<li>Provide examples in samples/</li>
+</ul>
+<h2 id="benefits">Benefits</h2>
+<p>✅ <strong>Consistency</strong>: All widgets follow the same style pattern
+✅ <strong>Themeable</strong>: Styles live in Theme, hot-swappable
+✅ <strong>Type-safe</strong>: Dataclasses with explicit types
+✅ <strong>Flexible</strong>: Easy to override individual properties
+✅ <strong>Discoverable</strong>: IDE autocomplete for all style options
+✅ <strong>Testable</strong>: Pure data objects, easy to test
+✅ <strong>No breaking changes</strong>: Widgets remain backward compatible</p>
+<h2 id="comparison-with-other-frameworks">Comparison with Other Frameworks</h2>
+<h3 id="flutter">Flutter</h3>
+<ul>
+<li>Uses immutable <code>ThemeData</code> with widget-specific sub-themes (<code>ButtonThemeData</code>, etc.)</li>
+<li>Our approach mirrors Flutter's structure</li>
+</ul>
+<h3 id="swiftui">SwiftUI</h3>
+<ul>
+<li>Uses environment values + <code>.buttonStyle()</code> modifiers</li>
+<li>We use direct style parameters (more explicit, less magic)</li>
+</ul>
+<h3 id="material-design-3">Material Design 3</h3>
+<ul>
+<li>Defines component tokens (container, label, etc.)</li>
+<li>Our <code>Style</code> classes map directly to M3 component tokens</li>
+</ul>
+<h2 id="example-complete-button-styles-in-theme">Example: Complete Button Styles in Theme</h2>
+<pre><code class="language-python">@dataclass(frozen=True)
+class Theme:
+    # ...existing fields...
+
+    # Button style variants (M3)
+    filled_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
+        background=ColorRole.PRIMARY,
+        foreground=ColorRole.ON_PRIMARY,
+    ))
+
+    text_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
+        background=None,
+        foreground=ColorRole.PRIMARY,
+        padding=10,
+        min_size=(64, 40),
+    ))
+
+    outlined_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
+        background=None,
+        foreground=ColorRole.PRIMARY,
+        border_color=ColorRole.OUTLINE,
+        border_width=1.5,
+    ))
+
+    # Helper method
+    def button_style_for(self, variant: str) -&gt; ButtonStyle:
+        &quot;&quot;&quot;Get button style for variant name.&quot;&quot;&quot;
+        return getattr(self, f&quot;{variant}_button_style&quot;, self.filled_button_style)
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
