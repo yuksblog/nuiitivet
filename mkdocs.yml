@@ -41,6 +41,19 @@ nav:
   - Home: index.md
   - Guide:
       - Introduction: guide/index.md
+      - Layout:
+          - Overview: guide/layout.md
+          - Basics: guide/layout_basics.md
+          - Alignment: guide/layout_alignment.md
+          - Sizing: guide/layout_sizing.md
+          - Spacing: guide/layout_spacing.md
+          - Grid: guide/layout_grid.md
+          - Overflow: guide/layout_overflow.md
+          - Extras: guide/layout_extras.md
+      - State Management: guide/observable.md
+      - Async & Threading: guide/threading.md
+      - Interaction: guide/interaction_region.md
+      - Packaging: guide/packaging.md
   - API Reference:
       - Core: api/nuiitivet.md
       - Material Components: api/material.md
