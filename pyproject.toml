@@ -34,6 +34,9 @@ Homepage = "https://github.com/yuksblog/nuiitivet"
 Issues = "https://github.com/yuksblog/nuiitivet/issues"
 Repository = "https://github.com/yuksblog/nuiitivet"
 
+[project.entry-points."pyinstaller40"]
+hook-dirs = "nuiitivet._pyinstaller:get_hook_dirs"
+
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
