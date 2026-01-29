@@ -8,9 +8,11 @@ from __future__ import annotations
 import io
 import logging
 import os
+import sys
 import time
 from typing import Any, Optional
 
+import ctypes
 import pyglet
 
 from nuiitivet.platform import IMEManager
@@ -77,6 +79,18 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     # for raster-frame helpers without needing `pyglet.app.EventLoop`.
     from .event_loop import ResponsiveEventLoop
 
+    if sys.platform == "win32":
+        try:
+            # Windows 8.1+ : PROCESS_PER_MONITOR_DPI_AWARE
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except Exception:
+            try:
+                # Vista+ : PROCESS_DPI_UNAWARE (fallback if SetProcessDpiAwareness fails?)
+                # Actually try SetProcessDPIAware for older Windows
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
+
     try:
         set_clock(pyglet.clock)
     except Exception:
@@ -120,6 +134,23 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         style=style,
         vsync=False,
     )
+
+    # Check scale immediately and resize if needed
+    try:
+        scale = float(window.get_pixel_ratio())
+        if scale > 1.0:
+            log_w = getattr(app, "width", 800)
+            log_h = getattr(app, "height", 600)
+            phys_w = int(log_w * scale)
+            phys_h = int(log_h * scale)
+
+            if phys_w > window.width:
+                window.set_size(phys_w, phys_h)
+
+            setattr(app, "_scale", max(1.0, scale))
+    except Exception:
+        exception_once(logger, "pyglet_initial_resize_exc", "Failed to adjust initial window size for HiDPI")
+
     setattr(app, "_window", window)
 
     # Initial window positioning.
@@ -290,16 +321,25 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     @window.event
     def on_resize(width, height):
         try:
-            app.width = int(width)
-            app.height = int(height)
+            # width/height from pyglet are physical pixels (if DPI aware)
+            # app.width/app.height should be logical pixels.
+
+            # Get latest scale
+            current_scale = 1.0
+            try:
+                current_scale = float(window.get_pixel_ratio())
+            except Exception:
+                pass
+
+            scale = max(1.0, current_scale)
+
+            # Update app state
+            app.width = int(width / scale)
+            app.height = int(height / scale)
+            setattr(app, "_scale", scale)
+
         except Exception:
             exception_once(logger, "pyglet_on_resize_set_size_exc", "Failed to set app.width/app.height")
-
-        try:
-            scale = float(window.get_pixel_ratio())
-            setattr(app, "_scale", max(1.0, scale))
-        except Exception:
-            exception_once(logger, "pyglet_on_resize_scale_exc", "Failed to refresh app._scale")
 
         try:
             app.invalidate(immediate=True)
@@ -308,41 +348,56 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
 
     @window.event
     def on_mouse_press(x, y, button, modifiers):
-        y_conv = int(getattr(app, "height", 0)) - y
+        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        x_log = int(x / scale)
+        y_log = int(y / scale)
+        y_conv = int(getattr(app, "height", 0)) - y_log
         try:
-            app._dispatch_mouse_press(x, y_conv)
+            app._dispatch_mouse_press(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
 
     @window.event
     def on_mouse_release(x, y, button, modifiers):
-        y_conv = int(getattr(app, "height", 0)) - y
+        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        x_log = int(x / scale)
+        y_log = int(y / scale)
+        y_conv = int(getattr(app, "height", 0)) - y_log
         try:
-            app._dispatch_mouse_release(x, y_conv)
+            app._dispatch_mouse_release(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_release_dispatch_exc", "Mouse release dispatch raised")
 
     @window.event
     def on_mouse_motion(x, y, dx, dy):
-        y_conv = int(getattr(app, "height", 0)) - y
+        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        x_log = int(x / scale)
+        y_log = int(y / scale)
+        y_conv = int(getattr(app, "height", 0)) - y_log
         try:
-            app._dispatch_mouse_motion(x, y_conv)
+            app._dispatch_mouse_motion(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_motion_dispatch_exc", "Mouse motion dispatch raised")
 
     @window.event
     def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-        y_conv = int(getattr(app, "height", 0)) - y
+        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        x_log = int(x / scale)
+        y_log = int(y / scale)
+        y_conv = int(getattr(app, "height", 0)) - y_log
         try:
-            app._dispatch_mouse_motion(x, y_conv)
+            app._dispatch_mouse_motion(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_drag_dispatch_exc", "Mouse drag dispatch raised")
 
     @window.event
     def on_mouse_scroll(x, y, scroll_x, scroll_y):
-        y_conv = int(getattr(app, "height", 0)) - y
+        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        x_log = int(x / scale)
+        y_log = int(y / scale)
+        y_conv = int(getattr(app, "height", 0)) - y_log
         try:
-            app._dispatch_mouse_scroll(x, y_conv, scroll_x, scroll_y)
+            app._dispatch_mouse_scroll(x_log, y_conv, scroll_x, scroll_y)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_scroll_dispatch_exc", "Mouse scroll dispatch raised")
 
