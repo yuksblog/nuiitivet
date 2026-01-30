@@ -6,11 +6,10 @@ import argparse
 
 
 class MultiCounterApp(nv.ComposableWidget):
-    count_a = nv.Observable(0)
-    count_b = nv.Observable(0)
-
     def __init__(self) -> None:
         super().__init__()
+        self.count_a = nv.Observable(0)
+        self.count_b = nv.Observable(0)
         self.total = self.count_a.combine(self.count_b).compute(lambda a, b: a + b)
 
     def increment_a(self) -> None:

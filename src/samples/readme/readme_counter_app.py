@@ -6,7 +6,9 @@ import argparse
 
 
 class CounterApp(nv.ComposableWidget):
-    count = nv.Observable(0)
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = nv.Observable(0)
 
     def increment(self) -> None:
         self.count.value += 1

@@ -84,7 +84,9 @@ In Nuiitivet, when you set a value to an Observable, the UI is automatically upd
 
 ```python
 class CounterApp(ComposableWidget):
-    count = Observable(0)
+    def __init__(self):
+        super().__init__()
+        self.count = Observable(0)
 
     def increment(self):
         self.count.value += 1
@@ -110,11 +112,10 @@ Let's look at an example where we increase counters and display the total.
 
 ```python
 class MultiCounterApp(ComposableWidget):
-    count_a = Observable(0)
-    count_b = Observable(0)
-
     def __init__(self):
         super().__init__()
+        self.count_a = Observable(0)
+        self.count_b = Observable(0)
 
         self.total = self.count_a.combine(self.count_b).compute(lambda a, b: a + b)
 
@@ -241,7 +242,9 @@ from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget
 
 class CounterApp(ComposableWidget):
-    count = Observable(0)
+    def __init__(self):
+        super().__init__()
+        self.count = Observable(0)
 
     def handle_increment(self):
         # 1. Output log
@@ -407,12 +410,12 @@ total = combine(price, quantity, tax_rate).compute(
 
 # Complex calculation and automatic dependency tracking with Observable.compute()
 class CartViewModel:
-    price = Observable(1000)
-    quantity = Observable(2)
-    discount = Observable(0.1)
-    tax_rate = Observable(0.1)
-
     def __init__(self):
+        self.price = Observable(1000)
+        self.quantity = Observable(2)
+        self.discount = Observable(0.1)
+        self.tax_rate = Observable(0.1)
+
         # Automatically track dependent Observables
         self.total = Observable.compute(
             lambda: int(

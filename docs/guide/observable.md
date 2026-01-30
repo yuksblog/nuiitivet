@@ -10,21 +10,26 @@ Observables in the nuiitivet framework are a core feature for realizing reactive
 
 ### Basic Usage
 
+The most intuitive way to define Observables is inside `__init__`, just like standard instance variables.
+
 ```python
 import nuiitivet as nv
 
 class Counter:
-    count = nv.Observable(0)
+    def __init__(self):
+        # 1. Define as instance attribute
+        self.count = nv.Observable(0)
+        
+        # You can define computed observables here too
+        self.double_count = self.count.map(lambda c: c * 2)
 
-# Create instance
 counter = Counter()
 
-# Subscribe to value changes
+# 2. Subscribe to value changes
 counter.count.subscribe(lambda value: print(f"Count: {value}"))
 
-# Update value
+# 3. Update value
 counter.count.value = 1  # -> "Count: 1" is printed
-counter.count.value = 2  # -> "Count: 2" is printed
 ```
 
 ### Integration with UI
@@ -34,7 +39,8 @@ import nuiitivet as nv
 from nuiitivet import material
 
 class CounterApp:
-    count = nv.Observable(0)
+    def __init__(self):
+        self.count = nv.Observable(0)
     
     def build(self):
         return nv.Column(
@@ -60,28 +66,38 @@ An Observable represents a "value that can be observed". When the value changes,
 
 **Features:**
 
-- ✅ Per-instance state management via Descriptor pattern
+- ✅ Intuitive usage (just like normal variables)
 - ✅ Automatic change notifications
 - ✅ Automatic cleanup to prevent memory leaks
 - ✅ Efficient updates using batch()
 
-### Descriptor Pattern
+### Advanced Usage: Class Attributes
 
-Observables are defined as class attributes, but each instance holds an independent value:
+While defining observables in `__init__` is standard, you can also define them as **class attributes** (Descriptor pattern).
 
 ```python
 class Model:
+    # Defined on class, but independent for each instance
     value = Observable(0)
 
 a = Model()
 b = Model()
 
 a.value.value = 10
-b.value.value = 20
-
-print(a.value.value)  # -> 10
-print(b.value.value)  # -> 20 (Independent)
+b.value.value = 20  # Independent from 'a'
 ```
+
+**Benefits:**
+
+- **Better Debugging**: Class attributes automatically know their own name (e.g., "Model.value"), providing better error messages.
+- **Memory Efficiency**: The underlying storage is created only when accessed, which can be efficient for objects with many optional signals.
+
+**Limitations:**
+
+- **No Computed Observables**: You generally cannot define computed observables (like `.map()`) as class attributes because they require access to the instance (`self`), which isn't available at class definition time.
+- **Split Definitions**: If you mix class attributes (for simple values) and `__init__` (for computed values), your state definitions may become scattered.
+
+For these reasons, starting with **instance attributes** in `__init__` is recommended for most cases.
 
 ## API Reference
 
@@ -179,11 +195,11 @@ Automatic dependency tracking is useful for cases involving complex calculations
 
 ```python
 class Cart:
-    show_detail = Observable(True)
-    price = Observable(100)
-    quantity = Observable(2)
-    
     def __init__(self):
+        self.show_detail = Observable(True)
+        self.price = Observable(100)
+        self.quantity = Observable(2)
+        
         # Calculation with conditional branching - dependencies are tracked automatically
         self.display = Observable.compute(lambda: (
             f"¥{self.price.value * self.quantity.value:,}"

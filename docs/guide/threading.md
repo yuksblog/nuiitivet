@@ -33,12 +33,9 @@ import time
 import nuiitivet as nv
 
 class MyState:
-    # Define an observable
-    progress = nv.Observable(0.0)
-
     def __init__(self):
-        # Enable UI dispatching for this observable
-        self.progress.dispatch_to_ui()
+        # Define an observable and enable UI dispatching
+        self.progress = nv.Observable(0.0).dispatch_to_ui()
 
     def start_work(self):
         threading.Thread(target=self._worker).start()
@@ -48,7 +45,7 @@ class MyState:
             time.sleep(0.1)
             # Safe to update from background thread
             # The framework will coalesce updates and dispatch to UI thread
-            self.progress = i / 100.0
+            self.progress.value = i / 100.0
 
 ```
 
