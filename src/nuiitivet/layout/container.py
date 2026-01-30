@@ -28,6 +28,17 @@ class Container(Widget):
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         alignment: Union[str, Tuple[str, str]] = "start",
     ):
+        """Initialize the Container.
+
+        Args:
+            child: The child widget to be placed inside the container.
+            width: The preferred width of the container. Defaults to None (shrinkwrap).
+            height: The preferred height of the container. Defaults to None (shrinkwrap).
+            padding: Padding to apply around the child. Can be a single integer,
+                a 2-tuple (horizontal, vertical), or a 4-tuple (left, top, right, bottom).
+            alignment: How to align the child within the container. Defaults to "start".
+                Can be a string (e.g., "center") or a tuple (horizontal, vertical).
+        """
         super().__init__(
             width=width,
             height=height,
@@ -66,11 +77,11 @@ class Container(Widget):
 
         if child_max_w is not None or child_max_h is not None:
             pad = self.padding
-            border_w = int(getattr(self, "border_width", 0) or 0)
+            # Container is lightweight and has no border; use Box if borders are needed.
             if child_max_w is not None:
-                child_max_w = max(0, int(child_max_w) - int(pad[0]) - int(pad[2]) - border_w * 2)
+                child_max_w = max(0, int(child_max_w) - int(pad[0]) - int(pad[2]))
             if child_max_h is not None:
-                child_max_h = max(0, int(child_max_h) - int(pad[1]) - int(pad[3]) - border_w * 2)
+                child_max_h = max(0, int(child_max_h) - int(pad[1]) - int(pad[3]))
 
         if len(self.children) == 0:
             inner_w, inner_h = 0, 0
