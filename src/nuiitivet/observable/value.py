@@ -152,15 +152,17 @@ class _ObservableValue(Generic[T]):
         return self
 
 
-class Observable(Generic[T]):
-    """Descriptor for a per-instance observable."""
+class Observable(_ObservableValue[T]):
+    """Descriptor for a per-instance observable that can also be used standalone."""
 
     def __init__(self, default: T, *, compare: Optional[CompareFunc[T]] = None):
+        super().__init__(initial=default, owner=None, name=None, compare=compare)
         self.default = default
         self.name: Optional[str] = None
         self.compare = compare
 
     def __set_name__(self, owner, name):
+        self._name = name
         self.name = name
 
     def _ensure(self, instance) -> _ObservableValue[T]:
