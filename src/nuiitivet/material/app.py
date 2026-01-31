@@ -27,18 +27,33 @@ class MaterialApp(App):
     @classmethod
     def navigation(  # type: ignore[override]
         cls,
-        *,
         routes: Mapping[type[Any], Callable[[Any], Route | Widget]],
         initial_route: Any,
+        *,
         overlay_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
-        title_bar: Optional[TitleBar] = None,
         background: ColorSpec = ColorRole.SURFACE,
         theme: Optional[Any] = None,
+        title_bar: Optional[TitleBar] = None,
         window_position: WindowPosition | None = None,
     ) -> "MaterialApp":
-        """Create a MaterialApp with a root Navigator and Overlay."""
+        """Create a MaterialApp with a root Navigator and Overlay.
+
+        Args:
+            routes: A mapping of Intent types to route builder functions.
+            initial_route: The initial Intent to launch.
+            overlay_routes: Optional mapping of Intent types to overlay builder functions.
+            width: Window width specification ("auto", fixed integer, etc.).
+            height: Window height specification.
+            background: Background color of the window. Defaults to Material Surface color.
+            theme: The MaterialTheme to use. Defaults to Light theme.
+            title_bar: Custom window title bar.
+            window_position: Initial window position.
+
+        Returns:
+            Configured MaterialApp instance.
+        """
         if theme is None:
             theme = MaterialTheme.light("#6750A4")
 
@@ -63,15 +78,27 @@ class MaterialApp(App):
     def __init__(
         self,
         content: Widget,
+        *,
+        overlay_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
-        *,
-        title_bar: Optional[TitleBar] = None,
         background: ColorSpec = ColorRole.SURFACE,
-        overlay_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
         theme: Optional[Any] = None,
+        title_bar: Optional[TitleBar] = None,
         window_position: WindowPosition | None = None,
     ) -> None:
+        """Initialize a MaterialApp with a single root widget.
+
+        Args:
+            content: The root widget of the application.
+            overlay_routes: Optional mapping of Intent types to overlay builder functions.
+            width: Window width specification ("auto", fixed integer, etc.).
+            height: Window height specification.
+            background: Background color of the window. Defaults to Material Surface color.
+            theme: The MaterialTheme to use. Defaults to Light theme.
+            title_bar: Custom window title bar.
+            window_position: Initial window position.
+        """
         if theme is None:
             theme = MaterialTheme.light("#6750A4")
 
