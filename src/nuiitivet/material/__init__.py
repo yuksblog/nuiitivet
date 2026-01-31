@@ -14,7 +14,7 @@ if TYPE_CHECKING:
         TextButton,
     )
     from .card import Card, ElevatedCard, FilledCard, OutlinedCard
-    from .dialogs import AlertDialog, LoadingDialog
+    from .dialogs import AlertDialog
     from .loading_indicator import LoadingIndicator
     from .intents import LoadingIntent
     from .icon import Icon
@@ -49,7 +49,6 @@ __all__ = [
     "RailItem",
     "MaterialOverlay",
     "AlertDialog",
-    "LoadingDialog",
     "LoadingIndicator",
     "LoadingIntent",
 ]
@@ -79,7 +78,6 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RailItem": ("navigation_rail", "RailItem"),
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "AlertDialog": ("dialogs", "AlertDialog"),
-    "LoadingDialog": ("dialogs", "LoadingDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
     "LoadingIntent": ("intents", "LoadingIntent"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
