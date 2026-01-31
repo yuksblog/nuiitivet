@@ -136,8 +136,8 @@ def main() -> None:
             MaterialOverlay.root().snackbar("OK clicked")
 
         return AlertDialog(
-            title=Text("Hello"),
-            content=Text("This dialog is rendered via Overlay (Intent)."),
+            title="Hello",
+            message="This dialog is rendered via Overlay (Intent).",
             actions=[_filled("OK", on_click=on_ok)],
         )
 
@@ -151,8 +151,8 @@ def main() -> None:
             MaterialOverlay.root().snackbar("Reset done")
 
         return AlertDialog(
-            title=Text("Confirm"),
-            content=Text("Reset settings?"),
+            title="Confirm",
+            message="Reset settings?",
             actions=[
                 TextButton("Cancel", on_click=on_cancel),
                 _filled("Reset", on_click=on_reset),

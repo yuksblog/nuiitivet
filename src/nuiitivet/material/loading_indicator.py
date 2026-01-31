@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from math import cos, pi, sin
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, make_paint, make_path, rgba_to_skia_color
@@ -92,16 +92,23 @@ class LoadingIndicator(Widget):
         self,
         *,
         size: int = 48,
-        padding: Union[int, Tuple[int, int, int, int]] = 0,
+        padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = 0,
         style: Optional[LoadingIndicatorStyle] = None,
     ) -> None:
+        """Initialize the LoadingIndicator.
+
+        Args:
+            size: Outer size of the indicator (default 48).
+            padding: Padding around the indicator.
+            style: Style configuration for appearance and animation.
+        """
         super().__init__(width=int(size), height=int(size), padding=padding)
         self._size = int(size)
         self._user_style = style
 
         self._phase = 0.0
         self._loop_anim: AnimationHandleLike | None = None
-        self._path = None
+        self._path: Any = None
 
     @property
     def style(self) -> LoadingIndicatorStyle:
@@ -168,7 +175,7 @@ class LoadingIndicator(Widget):
             exception_once(logger, "loading_indicator_start_anim_exc", "LoadingIndicator animation start raised")
             self._loop_anim = None
 
-    def _resolve_indicator_color(self):
+    def _resolve_indicator_color(self) -> int | Any:
         """Resolve indicator foreground color to skia color or RGBA tuple."""
         try:
             theme = theme_manager.current
@@ -181,7 +188,7 @@ class LoadingIndicator(Widget):
             exception_once(logger, "loading_indicator_resolve_color_exc", "LoadingIndicator color resolution failed")
             return rgba_to_skia_color((0, 0, 0, 255))
 
-    def _reset_path(self):
+    def _reset_path(self) -> Any | None:
         if self._path is None:
             self._path = make_path()
         path = self._path
@@ -198,7 +205,7 @@ class LoadingIndicator(Widget):
             self._path = make_path()
         return self._path
 
-    def paint(self, canvas, x: int, y: int, width: int, height: int):
+    def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:
             return

@@ -26,11 +26,21 @@ class Text(TextBase):
     def __init__(
         self,
         label: Union[str, Observable],
-        style: Optional["TextStyle"] = None,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        style: Optional["TextStyle"] = None,
     ):
+        """Initialize Material Text widget.
+
+        Args:
+            label: The text content to display. Can be a string or an Observable.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the text.
+            style: Custom Material TextStyle.
+        """
         from nuiitivet.material.styles.text_style import TextStyle
 
         if style is not None and not isinstance(style, TextStyle):

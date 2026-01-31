@@ -29,7 +29,7 @@ class _ConfirmIntent:
 def test_overlay_dialog_intent_resolves_to_widget() -> None:
     overlay = MaterialOverlay(
         intents={
-            _ConfirmIntent: lambda i: AlertDialog(title=Text("Confirm"), content=Text(i.message)),
+            _ConfirmIntent: lambda i: AlertDialog(title="Confirm", message=i.message),
         }
     )
 
@@ -43,7 +43,7 @@ def test_overlay_dialog_intent_resolves_to_route() -> None:
 
     overlay = MaterialOverlay(
         intents={
-            _ConfirmIntent: lambda i: Route(builder=lambda: AlertDialog(title=Text(i.message))),
+            _ConfirmIntent: lambda i: Route(builder=lambda: AlertDialog(title=i.message)),
         }
     )
 

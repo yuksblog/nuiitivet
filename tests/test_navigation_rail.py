@@ -214,3 +214,43 @@ def test_navigation_rail_dispose_cleanup():
     rail.dispose()
     assert rail._index_subscription is None
     assert rail._expanded_subscription is None
+
+
+def test_navigation_rail_with_style():
+    """NavigationRail should accept style parameter."""
+    from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
+    from nuiitivet.material.theme.color_role import ColorRole
+    from nuiitivet.widgets.box import Box
+
+    style = NavigationRailStyle(
+        background=ColorRole.PRIMARY,
+        indicator_color=ColorRole.SECONDARY,
+        selected_icon_color=ColorRole.ON_SECONDARY,
+    )
+
+    items = [RailItem(icon="home", label="Home")]
+    rail = NavigationRail(children=items, style=style)
+
+    assert rail.style == style
+    # Verify internal structure reflected the style (indirectly)
+    # The first child should be a Box with background_color=ColorRole.PRIMARY
+    assert len(rail.children) == 1
+    box = rail.children[0]
+    assert isinstance(box, Box)
+    # Note: background_color usually stored as _background_color or similar, check Box implementation
+    # or just trust the logic if prop check is hard.
+    # Box typically exposes background_color as property or argument to constructor.
+    assert box.bgcolor == ColorRole.PRIMARY
+
+
+def test_rail_item_with_style():
+    """RailItem should accept style parameter."""
+    from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
+    from nuiitivet.material.theme.color_role import ColorRole
+
+    style = NavigationRailStyle(
+        icon_color=ColorRole.ERROR,
+    )
+
+    item = RailItem(icon="settings", label="Settings", style=style)
+    assert item.style == style

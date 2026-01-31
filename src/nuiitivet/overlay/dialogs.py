@@ -10,7 +10,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.modifiers.clickable import clickable
-from nuiitivet.overlay.intents import AlertDialogIntent, LoadingDialogIntent
+from nuiitivet.overlay.intents import PlainDialogIntent, LoadingDialogIntent
 from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.theme.plain_theme import PlainColorRole
 from nuiitivet.widgets.box import Box
@@ -19,10 +19,10 @@ from nuiitivet.widgets.text_style import TextStyle
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
-class PlainAlertDialog(ComposableWidget):
+class PlainDialog(ComposableWidget):
     """Plain implementation of an alert dialog."""
 
-    def __init__(self, intent: AlertDialogIntent) -> None:
+    def __init__(self, intent: PlainDialogIntent) -> None:
         super().__init__()
         self.intent = intent
 

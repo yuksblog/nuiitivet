@@ -284,17 +284,32 @@ class MaterialButtonBase(ButtonBase):
     def __init__(
         self,
         child: Widget,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int, int, int]] = 0,
-        disabled: bool | ObservableProtocol[bool] = False,
         # Overlay / Feedback configuration
         overlay_color: ColorSpec = None,
         hover_opacity: float = 0.08,
         pressed_opacity: float = 0.12,
         **kwargs,
     ):
+        """Initialize MaterialButtonBase.
+
+        Args:
+            child: The child widget to display inside the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            overlay_color: Color of the overlay state layer.
+            hover_opacity: Opacity of the overlay when hovered.
+            pressed_opacity: Opacity of the overlay when pressed.
+            **kwargs: Additional arguments passed to the base class.
+        """
         super().__init__(
             child=child,
             on_click=on_click,
@@ -443,13 +458,26 @@ class FilledButton(MaterialButtonBase):
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize FilledButton.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            style: Custom ButtonStyle.
+        """
         self._variant = "filled"
         self._user_style = style
         self._user_padding = padding
@@ -518,13 +546,26 @@ class OutlinedButton(MaterialButtonBase):
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize OutlinedButton.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            style: Custom ButtonStyle.
+        """
         self._variant = "outlined"
         self._user_style = style
         self._user_padding = padding
@@ -600,14 +641,28 @@ class TextButton(MaterialButtonBase):
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         alignment: Union[str, Tuple[str, str]] = "center",
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize TextButton.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            alignment: Content alignment.
+            style: Custom ButtonStyle.
+        """
         self._variant = "text"
         self._user_style = style
         self._user_padding = padding
@@ -679,13 +734,26 @@ class ElevatedButton(MaterialButtonBase):
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize ElevatedButton.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            style: Custom ButtonStyle.
+        """
         self._variant = "elevated"
         self._user_style = style
         self._user_padding = padding
@@ -755,13 +823,26 @@ class FilledTonalButton(MaterialButtonBase):
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize FilledTonalButton.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            style: Custom ButtonStyle.
+        """
         self._variant = "tonal"
         self._user_style = style
         self._user_padding = padding
@@ -830,12 +911,23 @@ class FloatingActionButton(MaterialButtonBase):
     def __init__(
         self,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        *,
         on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         size: int = 56,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
     ):
+        """Initialize FloatingActionButton.
+
+        Args:
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            size: Size of the FAB (width and height).
+            padding: Padding specification.
+            style: Custom ButtonStyle.
+        """
         self._variant = "fab"
         self._user_style = style
         self._user_padding = padding

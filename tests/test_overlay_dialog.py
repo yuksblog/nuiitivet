@@ -28,7 +28,7 @@ def material_theme():
 
 def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:
     overlay = Overlay()
-    dialog = AlertDialog(title=Text("Title"), content=Text("Body"))
+    dialog = AlertDialog(title="Title", message="Body")
 
     overlay.show(dialog, dismiss_on_outside_tap=False)
 
@@ -47,7 +47,7 @@ def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:
 
 def test_overlay_show_dismiss_on_outside_tap_false_does_not_close_on_barrier_click() -> None:
     overlay = Overlay()
-    dialog = AlertDialog(title=Text("Title"))
+    dialog = AlertDialog(title="Title")
 
     overlay.show(dialog, dismiss_on_outside_tap=False)
 
@@ -69,7 +69,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
 
     overlay = Overlay()
     ok_button = FilledButton("OK", on_click=on_ok)
-    dialog = AlertDialog(title=Text("Title"), content=Text("Body"), actions=[ok_button])
+    dialog = AlertDialog(title="Title", message="Body", actions=[ok_button])
 
     overlay.show(dialog, dismiss_on_outside_tap=False)
 
@@ -92,7 +92,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
 
 def test_overlay_dialog_dialogroute_barrier_dismissible_true_closes_on_barrier_click() -> None:
     overlay = Overlay()
-    overlay.show(AlertDialog(title=Text("Title")), dismiss_on_outside_tap=True)
+    overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=True)
 
     root = Stack(children=[overlay], alignment="center")
     root.mount(None)
@@ -112,7 +112,7 @@ def test_overlay_show_passthrough_allows_background_click() -> None:
 
     bg = Container(width="100%", height="100%").modifier(clickable(on_click=on_bg))
     overlay = Overlay()
-    overlay.show(AlertDialog(title=Text("Title")), passthrough=True)
+    overlay.show(AlertDialog(title="Title"), passthrough=True)
 
     bg.width_sizing = Sizing.flex(100)
     bg.height_sizing = Sizing.flex(100)
@@ -132,7 +132,7 @@ def test_overlay_show_passthrough_allows_background_click() -> None:
 def test_overlay_dialog_route_is_disposed_on_close_topmost() -> None:
     overlay = Overlay()
 
-    route = Route(builder=lambda: AlertDialog(title=Text("Title")))
+    route = Route(builder=lambda: AlertDialog(title="Title"))
     overlay.show(route, dismiss_on_outside_tap=False)
 
     # Route widget is created eagerly by Overlay.dialog().
@@ -146,7 +146,7 @@ def test_overlay_dialog_async_resolves_with_close_result() -> None:
     overlay = Overlay()
 
     async def run() -> OverlayResult[bool]:
-        handle = overlay.show(AlertDialog(title=Text("Title")), dismiss_on_outside_tap=False)
+        handle = overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
         await asyncio.sleep(0)
         handle.close(True)
         return await handle
@@ -160,7 +160,7 @@ def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
     overlay = Overlay()
 
     async def run() -> OverlayResult[None]:
-        handle = overlay.show(AlertDialog(title=Text("Title")), dismiss_on_outside_tap=False)
+        handle = overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
         await asyncio.sleep(0)
         handle.close()
         return await handle

@@ -67,6 +67,7 @@ class Icon(IconBase):
     def __init__(
         self,
         name: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str],
+        *,
         size: SizingLike = 24,
         padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = None,
         style: Optional["IconStyle"] = None,
@@ -162,6 +163,7 @@ class Icon(IconBase):
         cls,
         name: Symbol | str,
         file: str,
+        *,
         size: SizingLike = 24,
         padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = None,
         style: Optional["IconStyle"] = None,

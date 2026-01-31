@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.styles.card_style import CardStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+    from nuiitivet.material.styles.dialog_style import DialogStyle
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
     from nuiitivet.material.styles.text_style import TextStyle
@@ -46,6 +47,7 @@ class MaterialThemeData(ThemeExtension):
 
     # Other styles
     _checkbox_style: "CheckboxStyle | None" = None
+    _alert_dialog_style: "DialogStyle | None" = None
     _icon_style: "IconStyle | None" = None
     _text_style: "TextStyle | None" = None
 
@@ -160,6 +162,15 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.checkbox_style import CheckboxStyle
 
         return CheckboxStyle()
+
+    @property
+    def alert_dialog_style(self) -> "DialogStyle":
+        """Get DialogStyle for this theme."""
+        if self._alert_dialog_style is not None:
+            return self._alert_dialog_style
+        from nuiitivet.material.styles.dialog_style import DialogStyle
+
+        return DialogStyle.basic()
 
     @property
     def icon_style(self) -> "IconStyle":

@@ -36,13 +36,24 @@ class Card(ComposableWidget, Box):
 
     def __init__(
         self,
-        child: Widget,
+        child: ChildSpec,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingLike = 0,
         alignment: AlignmentLike = "start",
         style: Optional[CardStyle] = None,
     ) -> None:
+        """Initialize Card.
+
+        Args:
+            child: The child widget or factory.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the content.
+            alignment: Alignment of the content.
+            style: Optional CardStyle override.
+        """
         self._child_spec: ChildSpec = child
         self._user_style = style
 
@@ -162,22 +173,100 @@ class Card(ComposableWidget, Box):
 class ElevatedCard(Card):
     """Elevated Card implementation."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        child: ChildSpec,
+        *,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: PaddingLike = 0,
+        alignment: AlignmentLike = "start",
+        style: Optional[CardStyle] = None,
+    ) -> None:
+        """Initialize ElevatedCard.
+
+        Args:
+            child: The child widget or factory.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the content.
+            alignment: Alignment of the content.
+            style: Optional CardStyle override.
+        """
         self._variant = "elevated"
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            child=child,
+            width=width,
+            height=height,
+            padding=padding,
+            alignment=alignment,
+            style=style,
+        )
 
 
 class FilledCard(Card):
     """Filled Card implementation."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        child: ChildSpec,
+        *,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: PaddingLike = 0,
+        alignment: AlignmentLike = "start",
+        style: Optional[CardStyle] = None,
+    ) -> None:
+        """Initialize FilledCard.
+
+        Args:
+            child: The child widget or factory.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the content.
+            alignment: Alignment of the content.
+            style: Optional CardStyle override.
+        """
         self._variant = "filled"
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            child=child,
+            width=width,
+            height=height,
+            padding=padding,
+            alignment=alignment,
+            style=style,
+        )
 
 
 class OutlinedCard(Card):
     """Outlined Card implementation."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        child: ChildSpec,
+        *,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: PaddingLike = 0,
+        alignment: AlignmentLike = "start",
+        style: Optional[CardStyle] = None,
+    ) -> None:
+        """Initialize OutlinedCard.
+
+        Args:
+            child: The child widget or factory.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the content.
+            alignment: Alignment of the content.
+            style: Optional CardStyle override.
+        """
         self._variant = "outlined"
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            child=child,
+            width=width,
+            height=height,
+            padding=padding,
+            alignment=alignment,
+            style=style,
+        )

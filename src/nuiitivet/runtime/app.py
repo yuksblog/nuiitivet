@@ -122,11 +122,11 @@ class App:
         user_dialogs: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
     ) -> dict[type[Any], Callable[[Any], "Route | Widget"]]:
         from nuiitivet.overlay import DialogRoute
-        from nuiitivet.overlay.intents import AlertDialogIntent, LoadingDialogIntent
-        from nuiitivet.overlay.dialogs import PlainAlertDialog, PlainLoadingDialog
+        from nuiitivet.overlay.intents import PlainDialogIntent, LoadingDialogIntent
+        from nuiitivet.overlay.dialogs import PlainDialog, PlainLoadingDialog
 
         defaults: dict[type[Any], Callable[[Any], "Route | Widget"]] = {
-            AlertDialogIntent: lambda i: PlainAlertDialog(i),
+            PlainDialogIntent: lambda i: PlainDialog(i),
             LoadingDialogIntent: lambda i: DialogRoute(
                 builder=lambda: PlainLoadingDialog(i),
                 barrier_dismissible=False,

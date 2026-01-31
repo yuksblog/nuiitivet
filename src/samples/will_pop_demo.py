@@ -122,8 +122,8 @@ class EditScreen(ComposableWidget):
 
         handle = MaterialOverlay.root().dialog(
             AlertDialog(
-                title=Text("Discard changes?"),
-                content=Text("You have unsaved changes."),
+                title="Discard changes?",
+                message="You have unsaved changes.",
                 actions=[
                     TextButton("Cancel", on_click=_cancel),
                     FilledButton("Discard", on_click=_discard),

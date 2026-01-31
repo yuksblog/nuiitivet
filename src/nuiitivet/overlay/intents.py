@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class AlertDialogIntent:
+class PlainDialogIntent:
     title: str
     message: str
 
@@ -19,4 +19,4 @@ class LoadingDialogIntent:
     message: str = "Loading..."
 
 
-__all__ = ["AlertDialogIntent", "LoadingDialogIntent"]
+__all__ = ["PlainDialogIntent", "LoadingDialogIntent"]

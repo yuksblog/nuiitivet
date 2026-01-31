@@ -9,10 +9,10 @@ from .overlay_position import OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
 from .toast import PlainToast
 
-from .intents import AlertDialogIntent, LoadingDialogIntent
+from .intents import PlainDialogIntent, LoadingDialogIntent
 
 __all__ = [
-    "AlertDialogIntent",
+    "PlainDialogIntent",
     "DialogRoute",
     "IntentResolver",
     "LoadingDialogIntent",

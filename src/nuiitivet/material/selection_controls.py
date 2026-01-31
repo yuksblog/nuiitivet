@@ -37,16 +37,13 @@ class Checkbox(Toggleable):
 
     def __init__(
         self,
-        checked: Union[
-            bool,
-            ObservableProtocol[bool],
-            ObservableProtocol[Optional[bool]],
-        ] = False,
+        checked: bool | ObservableProtocol[bool] | ObservableProtocol[Optional[bool]] = False,
+        *,
         on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
-        size: SizingLike = 48,
-        padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         indeterminate: bool | ObservableProtocol[bool] = False,
         disabled: bool | ObservableProtocol[bool] = False,
+        size: SizingLike = 48,
+        padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
     ):
         self._checked_external_tri: ObservableProtocol[Optional[bool]] | None = None

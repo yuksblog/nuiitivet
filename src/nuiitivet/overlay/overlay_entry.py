@@ -24,8 +24,8 @@ class OverlayEntry:
     Example:
         def build_dialog():
             return AlertDialog(
-                title=Text("Confirm"),
-                content=Text("Are you sure?"),
+                title="Confirm",
+                content="Are you sure?",
                 actions=[
                     TextButton("Cancel", on_click=lambda: overlay.close(False)),
                     TextButton("OK", on_click=lambda: overlay.close(True)),

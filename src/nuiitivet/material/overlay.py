@@ -13,12 +13,11 @@ from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.navigation.route import Route
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver
-from nuiitivet.overlay.intents import AlertDialogIntent
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.widgeting.widget import Widget
 
-from .intents import LoadingIntent
+from .intents import AlertDialogIntent, LoadingIntent
 
 
 class _MappingIntentResolver(IntentResolver):
@@ -49,8 +48,9 @@ class MaterialOverlay(Overlay):
         if intent_resolver is None:
             defaults: dict[type[Any], Callable[[Any], Widget | Route]] = {
                 AlertDialogIntent: lambda i: AlertDialog(
-                    title=Text(i.title) if i.title else None,
-                    content=Text(i.message),
+                    title=i.title,
+                    message=i.message,
+                    icon=i.icon,
                     actions=[TextButton("OK", on_click=lambda: Overlay.root().close(None), width=80)],
                 ),
                 LoadingIntent: lambda _: LoadingIndicator(),

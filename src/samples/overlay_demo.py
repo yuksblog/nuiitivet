@@ -43,8 +43,8 @@ class OverlayDemo(ComposableWidget):
 
         MaterialOverlay.root().dialog(
             AlertDialog(
-                title=Text("Information"),
-                content=Text("This is an information dialog."),
+                title="Information",
+                message="This is an information dialog.",
                 actions=[
                     FilledButton("OK", on_click=on_ok),
                 ],
@@ -64,8 +64,8 @@ class OverlayDemo(ComposableWidget):
 
         MaterialOverlay.root().dialog(
             AlertDialog(
-                title=Text("Confirm Action"),
-                content=Text("Are you sure you want to proceed?"),
+                title="Confirm Action",
+                message="Are you sure you want to proceed?",
                 actions=[
                     TextButton("Cancel", on_click=on_cancel),
                     FilledButton("Confirm", on_click=on_confirm),
@@ -80,24 +80,21 @@ class OverlayDemo(ComposableWidget):
             self.dialog_result.value = "Custom dialog: Closed"
             MaterialOverlay.root().close_topmost()
 
+        from nuiitivet.material.styles.dialog_style import DialogStyle
+
         MaterialOverlay.root().dialog(
             AlertDialog(
-                title=Text("Custom Dialog"),
-                content=Column(
-                    children=[
-                        Text("This dialog has custom content."),
-                        Text("Multiple lines are supported."),
-                        Text("You can add any widget here."),
-                    ],
-                    gap=8,
-                ),
+                title="Custom Dialog",
+                message="This dialog has custom content.\nMultiple lines are supported.",
                 actions=[
                     FilledButton("Close", on_click=on_close),
                 ],
-                width=400.0,
-                padding=32,
-                corner_radius=16.0,
-                background_color=(240, 248, 255, 255),  # Alice blue
+                style=DialogStyle(
+                    min_width=400.0,
+                    padding=32,
+                    corner_radius=16.0,
+                    background=(240, 248, 255, 255),  # Alice blue
+                ),
             )
         )
 

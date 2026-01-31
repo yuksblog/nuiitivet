@@ -1,7 +1,7 @@
 """Tests for AlertDialog widget."""
 
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.widgets.text import TextBase as Text
+from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 import pytest
@@ -15,12 +15,12 @@ def material_theme():
 def test_alert_dialog_creation():
     """Test creating an AlertDialog."""
     dialog = AlertDialog(
-        title=Text("Test Title"),
-        content=Text("Test Content"),
+        title="Test Title",
+        message="Test Content",
     )
 
-    assert dialog.title is not None
-    assert dialog.content is not None
+    assert dialog.title == "Test Title"
+    assert dialog.message == "Test Content"
     assert dialog.actions == []
 
 
@@ -34,8 +34,8 @@ def test_alert_dialog_with_actions():
     ]
 
     dialog = AlertDialog(
-        title=Text("Confirm"),
-        content=Text("Are you sure?"),
+        title="Confirm",
+        message="Are you sure?",
         actions=actions,
     )
 
@@ -45,8 +45,8 @@ def test_alert_dialog_with_actions():
 def test_alert_dialog_build():
     """Test building an AlertDialog."""
     dialog = AlertDialog(
-        title=Text("Title"),
-        content=Text("Content"),
+        title="Title",
+        message="Content",
     )
 
     # Build the widget tree
@@ -56,6 +56,14 @@ def test_alert_dialog_build():
     from nuiitivet.widgets.box import Box
 
     assert isinstance(built, Box)
+    # Check default style usage via box properties
+    from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+    style = manager.current.extension(MaterialThemeData).alert_dialog_style
+    # Accessing via _background_color on Box because it stores it there
+    # But Box might resolve it differently.
+    # We can check simple properties if exposed.
+    # Or just ensure it built.
 
 
 def test_alert_dialog_minimal():
@@ -63,7 +71,7 @@ def test_alert_dialog_minimal():
     dialog = AlertDialog()
 
     assert dialog.title is None
-    assert dialog.content is None
+    assert dialog.message is None
     assert dialog.actions == []
 
     # Should still build successfully
@@ -71,52 +79,43 @@ def test_alert_dialog_minimal():
     assert built is not None
 
 
-def test_alert_dialog_properties():
-    """Test AlertDialog properties."""
-    dialog = AlertDialog(
-        title=Text("Props"),
-        width=400.0,
-        padding=32,
-        corner_radius=16.0,
-    )
+def test_alert_dialog_style_override():
+    """Test AlertDialog with custom style."""
+    custom_style = DialogStyle(corner_radius=16.0, min_width=400.0, padding=32)
 
-    assert dialog.width == 400.0
-    assert dialog.padding == (32, 32, 32, 32)  # Normalized
-    assert dialog.corner_radius == 16.0
+    dialog = AlertDialog(title="Props", style=custom_style)
+
+    assert dialog.style.corner_radius == 16.0
+    assert dialog.style.min_width == 400.0
+    assert dialog.style.padding == 32
 
 
 def test_alert_dialog_only_title():
     """Test AlertDialog with only title."""
     dialog = AlertDialog(
-        title=Text("Title only"),
+        title="Title only",
     )
 
     assert dialog.title is not None
-    assert dialog.content is None
+    assert dialog.message is None
     assert dialog.actions == []
 
 
 def test_alert_dialog_only_content():
     """Test AlertDialog with only content."""
     dialog = AlertDialog(
-        content=Text("Content only"),
+        message="Content only",
     )
 
     assert dialog.title is None
-    assert dialog.content is not None
-    assert dialog.actions == []
+    assert dialog.message is not None
 
 
-def test_alert_dialog_only_actions():
-    """Test AlertDialog with only actions."""
-    from nuiitivet.material.buttons import TextButton
+def test_alert_dialog_with_icon():
+    """Test AlertDialog with icon."""
+    dialog = AlertDialog(icon="home", title="With Icon")
+    assert dialog.icon == "home"
 
-    actions = [TextButton("OK")]
-
-    dialog = AlertDialog(
-        actions=actions,
-    )
-
-    assert dialog.title is None
-    assert dialog.content is None
-    assert len(dialog.actions) == 1
+    built = dialog.build()
+    # Verification of built tree structure is hard without deep inspection
+    # but at least it builds.

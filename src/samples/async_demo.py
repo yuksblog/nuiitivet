@@ -42,8 +42,8 @@ class AsyncDemoApp(nv.ComposableWidget):
         # 2. Show confirmation dialog and await result
         result = await md.MaterialOverlay.root().dialog(
             md.AlertDialog(
-                title=md.Text("Task Finished"),
-                content=md.Text(f"Count reached {self.counter.value}. Reset?"),
+                title="Task Finished",
+                message=f"Count reached {self.counter.value}. Reset?",
                 actions=[
                     md.TextButton("No", on_click=lambda: md.MaterialOverlay.root().close(False)),
                     md.TextButton("Yes", on_click=lambda: md.MaterialOverlay.root().close(True)),

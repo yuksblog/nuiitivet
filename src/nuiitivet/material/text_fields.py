@@ -69,6 +69,13 @@ def _build_text_field_icon(
 class TextField(InteractionHostMixin, ComposableWidget):
     """A text input widget base class.
 
+    Note:
+        The constructor `TextField(value=observable)` establishes a **one-way binding**.
+        Changes in the observable will update the text field, but user input will NOT
+        update the observable automatically.
+
+        For **two-way binding**, use the `TextField.two_way(observable)` factory method.
+
     Parameters:
     - value: Initial text value (str or TextEditingValue) OR External observable
     - on_change: Callback when value changes
@@ -93,7 +100,16 @@ class TextField(InteractionHostMixin, ComposableWidget):
         on_change: Optional[Callable[[str], None]] = None,
         **kwargs,
     ) -> TTextField:
-        """Create a two-way bound TextField."""
+        """Create a two-way bound TextField.
+
+        Args:
+            value: The observable value to bind to.
+            on_change: Optional callback when value changes (in addition to updating the observable).
+            **kwargs: Additional arguments passed to the constructor.
+
+        Returns:
+            Review instance of the TextField class.
+        """
 
         def _bound_on_change(new_text: str) -> None:
             try:
@@ -112,18 +128,34 @@ class TextField(InteractionHostMixin, ComposableWidget):
         self,
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[Callable[[str], None]] = None,
+        *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        style: Optional[TextFieldStyle] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        disabled: bool | ObservableProtocol[bool] = False,
+        style: Optional[TextFieldStyle] = None,
     ):
+        """Initialize TextField.
+
+        Args:
+            value: Initial text value or observable.
+            on_change: Callback when value changes.
+            label: Floating label text.
+            leading_icon: Icon displayed before the text.
+            trailing_icon: Icon displayed after the text.
+            error_text: Error message to display.
+            disabled: Whether the text field is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the text field.
+            style: Custom style configuration.
+        """
         super().__init__(width=width, height=height, padding=padding)
 
         self._label_source: ReadOnlyObservableProtocol[str] | None = None
@@ -563,24 +595,48 @@ class TextField(InteractionHostMixin, ComposableWidget):
 
 
 class FilledTextField(TextField):
-    """M3 Filled TextField."""
+    """M3 Filled TextField.
+
+    Note:
+        The constructor `FilledTextField(value=observable)` establishes a **one-way binding**.
+        Changes in the observable will update the text field, but user input will NOT
+        update the observable automatically.
+
+        For **two-way binding**, use the `FilledTextField.two_way(observable)` factory method.
+    """
 
     def __init__(
         self,
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[Callable[[str], None]] = None,
+        *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        style: Optional[TextFieldStyle] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        disabled: bool | ObservableProtocol[bool] = False,
+        style: Optional[TextFieldStyle] = None,
     ):
+        """Initialize FilledTextField.
+
+        Args:
+            value: Initial text value or observable.
+            on_change: Callback when value changes.
+            label: Floating label text.
+            leading_icon: Icon displayed before the text.
+            trailing_icon: Icon displayed after the text.
+            error_text: Error message to display.
+            disabled: Whether the text field is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the text field.
+            style: Custom style configuration.
+        """
         self._variant = "filled"
         super().__init__(
             value=value,
@@ -589,11 +645,11 @@ class FilledTextField(TextField):
             leading_icon=leading_icon,
             trailing_icon=trailing_icon,
             error_text=error_text,
-            style=style,
+            disabled=disabled,
             width=width,
             height=height,
             padding=padding,
-            disabled=disabled,
+            style=style,
         )
 
     def _draw_container(self, canvas, cx, cy, cw, ch):
@@ -621,24 +677,48 @@ class FilledTextField(TextField):
 
 
 class OutlinedTextField(TextField):
-    """M3 Outlined TextField."""
+    """M3 Outlined TextField.
+
+    Note:
+        The constructor `OutlinedTextField(value=observable)` establishes a **one-way binding**.
+        Changes in the observable will update the text field, but user input will NOT
+        update the observable automatically.
+
+        For **two-way binding**, use the `OutlinedTextField.two_way(observable)` factory method.
+    """
 
     def __init__(
         self,
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[Callable[[str], None]] = None,
+        *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        style: Optional[TextFieldStyle] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        disabled: bool | ObservableProtocol[bool] = False,
+        style: Optional[TextFieldStyle] = None,
     ):
+        """Initialize OutlinedTextField.
+
+        Args:
+            value: Initial text value or observable.
+            on_change: Callback when value changes.
+            label: Floating label text.
+            leading_icon: Icon displayed before the text.
+            trailing_icon: Icon displayed after the text.
+            error_text: Error message to display.
+            disabled: Whether the text field is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding around the text field.
+            style: Custom style configuration.
+        """
         self._variant = "outlined"
         super().__init__(
             value=value,
@@ -647,11 +727,11 @@ class OutlinedTextField(TextField):
             leading_icon=leading_icon,
             trailing_icon=trailing_icon,
             error_text=error_text,
-            style=style,
+            disabled=disabled,
             width=width,
             height=height,
             padding=padding,
-            disabled=disabled,
+            style=style,
         )
 
     def _draw_container(self, canvas, cx, cy, cw, ch):
