@@ -11,7 +11,6 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.observable import Observable
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -128,42 +127,3 @@ class _SpinnerText(ComposableWidget):
     def on_unmount(self) -> None:
         self._tick_scheduled = False
         super().on_unmount()
-
-
-class LoadingDialog(ComposableWidget):
-    """Material Loading dialog widget.
-
-    Provides a simple loading UI (spinner + message).
-    """
-
-    def __init__(
-        self,
-        message: str = "Loading...",
-        *,
-        background_color: ColorSpec = ColorRole.SURFACE,
-        padding: int = 24,
-        corner_radius: float = 28.0,
-        width: Optional[float] = 280.0,
-    ):
-        super().__init__()
-        self.message = message
-        self.background_color = background_color
-        self.padding = padding
-        self.corner_radius = corner_radius
-        self.width = width
-
-    def build(self) -> Widget:
-        return Box(
-            background_color=self.background_color,
-            corner_radius=self.corner_radius,
-            padding=self.padding,
-            width=self.width,
-            child=Row(
-                gap=16,
-                cross_alignment="center",
-                children=[
-                    LoadingIndicator(size=48),
-                    Text(self.message, style=TextStyle(color=ColorRole.ON_SURFACE)),
-                ],
-            ),
-        )

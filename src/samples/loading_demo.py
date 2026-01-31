@@ -19,7 +19,7 @@ from nuiitivet.overlay import OverlayHandle
 _logger = logging.getLogger(__name__)
 
 
-class LoadingDialogDemo(nv.ComposableWidget):
+class LoadingDemo(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self._active_handle: OverlayHandle[Any] | None = None
@@ -77,7 +77,7 @@ class LoadingDialogDemo(nv.ComposableWidget):
 
 
 def main() -> None:
-    md.MaterialApp(content=LoadingDialogDemo()).run()
+    md.MaterialApp(content=LoadingDemo()).run()
 
 
 if __name__ == "__main__":
