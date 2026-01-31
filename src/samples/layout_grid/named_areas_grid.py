@@ -28,12 +28,12 @@ def main(png: str = ""):
         column_gap=12,
         padding=12,
         children=[
-            nv.GridItem.named_area("header", _card("Header")),
+            nv.GridItem.named_area(_card("Header"), "header"),
             # Sidebar: width is auto (content based)
-            nv.GridItem.named_area("sidebar", _card("Sidebar", width=None)),
-            nv.GridItem.named_area("content", _card("Main content")),
+            nv.GridItem.named_area(_card("Sidebar", width=None), "sidebar"),
+            nv.GridItem.named_area(_card("Main content"), "content"),
             # Footer: height is auto (content based)
-            nv.GridItem.named_area("footer", _card("Footer", height=None)),
+            nv.GridItem.named_area(_card("Footer", height=None), "footer"),
         ],
     )
 

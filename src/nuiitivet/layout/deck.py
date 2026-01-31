@@ -30,10 +30,21 @@ class Deck(Widget):
         self,
         children: Optional[Sequence[Widget]] = None,
         index: Union[int, _ObservableValue[int]] = 0,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
     ) -> None:
+        """Initialize the Deck layout.
+
+        Args:
+            children: A list of child widgets. All are mounted, but only one is visible.
+            index: The index of the child to display. Can be an integer or an Observable[int].
+                Defaults to 0.
+            width: The preferred width of the container. Defaults to None.
+            height: The preferred height of the container. Defaults to None.
+            padding: Padding to apply around the visible child. Defaults to 0.
+        """
         super().__init__(width=width, height=height, padding=padding)
 
         # Add all children

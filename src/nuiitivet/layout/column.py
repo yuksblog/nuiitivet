@@ -31,20 +31,34 @@ class Column(Widget):
     def __init__(
         self,
         children: Optional[Sequence[Widget]] = None,
-        gap: int = 0,
-        cross_alignment: str = "start",
-        main_alignment: str = "start",
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        gap: int = 0,
+        main_alignment: str = "start",
+        cross_alignment: str = "start",
     ):
+        """Initialize Column and configure layout.
+
+        Args:
+            children: List of child widgets to arrange vertically.
+            width: Column width.
+            height: Column height.
+            padding: Padding around the content.
+            gap: Space between children in pixels.
+            main_alignment: Vertical alignment of children.
+                'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
+            cross_alignment: Horizontal alignment of children.
+                'start', 'center', 'end', 'stretch'.
+        """
         super().__init__(width=width, height=height, padding=padding)
         if children:
             for c in children:
                 self.add_child(c)
         self.gap = normalize_gap(gap)
-        self.cross_alignment = cross_alignment
         self.main_alignment = main_alignment
+        self.cross_alignment = cross_alignment
 
     @classmethod
     def builder(
@@ -52,24 +66,34 @@ class Column(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
-        gap: int = 0,
-        cross_alignment: str = "start",
-        main_alignment: str = "start",
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        gap: int = 0,
+        main_alignment: str = "start",
+        cross_alignment: str = "start",
     ) -> "Column":
-        """Create a Column that expands ForEach items automatically."""
+        """Create a Column that materializes children from items via ForEach.
 
+        Args:
+            items: Source data collection.
+            builder: Function to create a widget for each item.
+            width: Column width.
+            height: Column height.
+            padding: Padding around the content.
+            gap: Space between children.
+            main_alignment: Vertical alignment of children.
+            cross_alignment: Horizontal alignment of children.
+        """
         provider = ForEach(items, builder)
         return cls(
             children=[provider],
-            gap=gap,
-            cross_alignment=cross_alignment,
-            main_alignment=main_alignment,
             width=width,
             height=height,
             padding=padding,
+            gap=gap,
+            main_alignment=main_alignment,
+            cross_alignment=cross_alignment,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

@@ -23,7 +23,7 @@ def _card(label: str) -> FilledCard:
 class GridDemo(ComposableWidget):
 
     def build(self) -> Widget:
-        return Grid(
+        return Grid.named_areas(
             rows=[60, Sizing.flex(1), "auto"],
             columns=[240, Sizing.flex(1)],
             areas=[
@@ -35,10 +35,10 @@ class GridDemo(ComposableWidget):
             column_gap=12,
             padding=12,
             children=[
-                GridItem(_card("Header"), area="header"),
-                GridItem(_card("Sidebar"), area="sidebar"),
-                GridItem(_card("Main content"), area="content"),
-                GridItem(_card("Footer"), area="footer"),
+                GridItem.named_area(_card("Header"), name="header"),
+                GridItem.named_area(_card("Sidebar"), name="sidebar"),
+                GridItem.named_area(_card("Main content"), name="content"),
+                GridItem.named_area(_card("Footer"), name="footer"),
             ],
         )
 

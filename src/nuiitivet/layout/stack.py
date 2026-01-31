@@ -23,11 +23,22 @@ class Stack(Widget):
     def __init__(
         self,
         children: Sequence[Widget],
-        alignment: AlignmentLike = "top-left",
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        alignment: AlignmentLike = "top-left",
     ) -> None:
+        """Initialize the Stack layout.
+
+        Args:
+            children: List of widgets to stack on top of each other.
+            width: Stack width.
+            height: Stack height.
+            padding: Padding around the content.
+            alignment: Default alignment for children.
+                (horizontal, vertical) tuple or string like "top-left", "center".
+        """
         super().__init__(width=width, height=height, padding=padding)
         for c in children:
             self.add_child(c)
@@ -39,20 +50,28 @@ class Stack(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
-        alignment: AlignmentLike = "center",
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        alignment: AlignmentLike = "center",
     ) -> "Stack":
-        """Create a Stack that materializes children from items via ForEach."""
+        """Create a Stack that materializes children from items via ForEach.
 
+        Args:
+            items: Source data collection.
+            builder: Function to create a widget for each item.
+            width: Stack width.
+            height: Stack height.
+            padding: Padding around the content.
+            alignment: Default alignment for children.
+        """
         provider = ForEach(items, builder)
         return cls(
             children=[provider],
-            alignment=alignment,
             width=width,
             height=height,
             padding=padding,
+            alignment=alignment,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

@@ -51,46 +51,69 @@ class GridItem(Container):
     def __init__(
         self,
         child: Widget,
-        *,
         row: Optional[GridIndex] = None,
         column: Optional[GridIndex] = None,
-        area: Optional[str] = None,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        align: Union[str, Tuple[str, str]] = "start",
+        alignment: Union[str, Tuple[str, str]] = "start",
     ):
+        """Initialize the GridItem wrapper.
+
+        Args:
+            child: The widget to place in the grid.
+            row: Row index or (start, end) tuple. 0-based.
+            column: Column index or (start, end) tuple. 0-based.
+            width: Override width.
+            height: Override height.
+            padding: Padding around the child within the grid cell.
+            alignment: Alignment within the grid cell. Defaults to "start".
+        """
         super().__init__(
             child=child,
             width=width,
             height=height,
             padding=padding,
-            alignment=align,
+            alignment=alignment,
         )
         self._row_spec = row
         self._column_spec = column
-        self.area = area
+        self.area: Optional[str] = None
 
     @classmethod
     def named_area(
         cls,
-        name: str,
         child: Widget,
+        name: str,
         *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        align: Union[str, Tuple[str, str]] = "start",
+        alignment: Union[str, Tuple[str, str]] = "start",
     ) -> GridItem:
-        """Create a GridItem placed in a named template area."""
-        return cls(
+        """Create a GridItem placed in a named template area.
+
+        Args:
+            child: The child widget to place.
+            name: The area name matching a name in Grid.named_areas().
+            width: Override width.
+            height: Override height.
+            padding: Padding around the child within the grid cell.
+            alignment: Alignment within the grid cell. Defaults to "start".
+
+        Returns:
+            GridItem: The wrapped widget with area information.
+        """
+        item = cls(
             child=child,
-            area=name,
             width=width,
             height=height,
             padding=padding,
-            align=align,
+            alignment=alignment,
         )
+        item.area = name
+        return item
 
     def resolve_row(self) -> Tuple[Optional[int], int]:
         return _normalize_index(self._row_spec)
@@ -104,22 +127,33 @@ class Grid(Widget):
 
     def __init__(
         self,
+        children: Optional[Sequence[Widget]],
+        rows: Optional[Sequence[SizingLike]],
+        columns: Optional[Sequence[SizingLike]],
         *,
-        children: Optional[Sequence[Widget]] = None,
-        areas: Optional[Sequence[Sequence[str]]] = None,
-        rows: Optional[Sequence[SizingLike]] = None,
-        columns: Optional[Sequence[SizingLike]] = None,
-        row_gap: int = 0,
-        column_gap: int = 0,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        row_gap: int = 0,
+        column_gap: int = 0,
     ):
+        """Initialize the Grid layout.
+
+        Args:
+            children: List of GridItems to display.
+            rows: List of row sizes (e.g. [100, "1fr", "auto"]).
+            columns: List of column sizes.
+            width: Grid container width.
+            height: Grid container height.
+            padding: Padding around the grid content.
+            row_gap: Vertical gap between rows.
+            column_gap: Horizontal gap between columns.
+        """
         super().__init__(width=width, height=height, padding=padding)
 
         self._rows: List[Sizing] = [parse_sizing(d) for d in rows] if rows else []
         self._columns: List[Sizing] = [parse_sizing(d) for d in columns] if columns else []
-        self.areas = self._normalize_areas(areas)
+        self.areas: Optional[List[List[str]]] = None
         self.row_gap = normalize_gap(row_gap)
         self.column_gap = normalize_gap(column_gap)
 
@@ -130,29 +164,45 @@ class Grid(Widget):
     @classmethod
     def named_areas(
         cls,
-        *,
+        children: Sequence[Widget],
         areas: Sequence[Sequence[str]],
-        children: Optional[Sequence[Widget]] = None,
-        rows: Optional[Sequence[SizingLike]] = None,
-        columns: Optional[Sequence[SizingLike]] = None,
-        row_gap: int = 0,
-        column_gap: int = 0,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        row_gap: int = 0,
+        column_gap: int = 0,
+        rows: Optional[Sequence[SizingLike]] = None,
+        columns: Optional[Sequence[SizingLike]] = None,
     ) -> Grid:
-        """Create a Grid using named template areas."""
-        return cls(
+        """Create a Grid using named template areas.
+
+        Args:
+            children: List of child widgets (usually GridItem.named_area).
+            areas: 2D list of area names (e.g. [["header", "header"], ["sidebar", "content"]]).
+            width: Grid width.
+            height: Grid height.
+            padding: Grid padding.
+            row_gap: Gap between rows.
+            column_gap: Gap between columns.
+            rows: Explicit row sizing overrides.
+            columns: Explicit column sizing overrides.
+
+        Returns:
+            Grid: A configured Grid instance.
+        """
+        grid = cls(
             children=children,
-            areas=areas,
-            rows=rows,
-            columns=columns,
-            row_gap=row_gap,
-            column_gap=column_gap,
             width=width,
             height=height,
             padding=padding,
+            row_gap=row_gap,
+            column_gap=column_gap,
+            rows=rows,
+            columns=columns,
         )
+        grid.areas = grid._normalize_areas(areas)
+        return grid
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         l, t, r, b = self.padding

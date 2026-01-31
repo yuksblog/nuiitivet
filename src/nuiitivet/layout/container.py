@@ -23,6 +23,7 @@ class Container(Widget):
     def __init__(
         self,
         child: Optional[Widget] = None,
+        *,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,

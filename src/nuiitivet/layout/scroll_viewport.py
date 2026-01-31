@@ -25,11 +25,21 @@ class ScrollViewport(Widget):
         child: Widget,
         controller: ScrollController,
         *,
-        direction: ScrollDirection = ScrollDirection.VERTICAL,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         width: SizingLike = None,
         height: SizingLike = None,
+        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        direction: ScrollDirection = ScrollDirection.VERTICAL,
     ) -> None:
+        """Initialize the ScrollViewport.
+
+        Args:
+            child: The scrollable content widget.
+            controller: The ScrollController managing offset and events.
+            width: Viewport width.
+            height: Viewport height.
+            padding: Padding applied *inside* the viewport (scrolled area).
+            direction: The axis along which scrolling is permitted.
+        """
         super().__init__(width=width, height=height)
         if child is None:
             raise ValueError("ScrollViewport requires a child widget")

@@ -19,7 +19,8 @@ class DummyWidget(Widget):
 
 
 def test_grid_requires_explicit_coordinates():
-    grid = Grid(children=[GridItem(DummyWidget(10, 10), row=0)])
+    # Provide dummy rows/cols to satisfy __init__, but GridItem is missing column
+    grid = Grid(children=[GridItem(DummyWidget(10, 10), row=0)], rows=[], columns=[])
     with pytest.raises(ValueError):
         grid.preferred_size()
 
@@ -40,7 +41,12 @@ def test_grid_area_mapping_creates_spans():
     header = DummyWidget(100, 30)
     sidebar = DummyWidget(80, 60)
     content = DummyWidget(150, 120)
-    grid = Grid(
+    grid = Grid.named_areas(
+        children=[
+            GridItem.named_area(header, name="header"),
+            GridItem.named_area(sidebar, name="sidebar"),
+            GridItem.named_area(content, name="content"),
+        ],
         areas=[
             ["header", "header"],
             ["sidebar", "content"],
@@ -50,11 +56,6 @@ def test_grid_area_mapping_creates_spans():
         columns=["auto", "auto"],
         row_gap=5,
         column_gap=5,
-        children=[
-            GridItem(header, area="header"),
-            GridItem(sidebar, area="sidebar"),
-            GridItem(content, area="content"),
-        ],
     )
     w, h = grid.preferred_size()
     assert w > 0 and h > 0

@@ -17,7 +17,13 @@ AlignValue = Union[str, Tuple[str, str]]
 
 
 class Flow(Widget):
-    """Layout children in rows that wrap or in a uniform grid."""
+    """Layout children in rows that wrap or in a uniform grid.
+
+    Warning:
+        This API is **provisional** and subject to change.
+        The `uniform` mode and its related parameters (`columns`, `aspect_ratio`, etc.)
+        may be moved to a separate `UniformFlow` or `Grid` widget in future versions.
+    """
 
     def __init__(
         self,

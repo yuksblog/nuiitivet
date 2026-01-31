@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 class Scroller(Widget):
     """(Advanced) Low-level scroll container.
 
+    Warning:
+        This API is **provisional** and subject to change in future versions.
+        Specifically, parameters related to scrollbars may be consolidated or moved.
+
     Note:
         Prefer using the `.scroll()` modifier. This widget is exposed for
         advanced customization.

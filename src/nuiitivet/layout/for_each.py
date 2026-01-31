@@ -16,7 +16,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, 
 
 from ..widgeting.widget import ComposableWidget, Widget
 from nuiitivet.observable import ObservableProtocol
-from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
 from .spacer import Spacer
 
@@ -77,10 +76,18 @@ class ForEach(ComposableWidget):
         builder: BuilderFn,
         *,
         key: Optional[Callable[[Any, int], Any]] = None,
-        width: SizingLike = None,
-        height: SizingLike = None,
     ):
-        super().__init__(width=width, height=height)
+        """Initialize the ForEach data provider.
+
+        Args:
+            items: The source data collection. Can be an Iterable, an Observable,
+                or an object with a .value attribute (checking value first).
+            builder: A function that takes (item, index) and returns a Widget.
+            key: An optional function `(item, index) -> Any` to identify items
+                uniquely. Using keys improves performance by recycling widgets
+                when items are reordered. If None, the index is used as the key.
+        """
+        super().__init__()
         self.items = items
         self._items_handle = self._capture_items_handle(items)
         self.builder = builder
@@ -107,49 +114,8 @@ class ForEach(ComposableWidget):
 
     # ---- Passive widget surface --------------------------------------
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        from .measure import preferred_size as measure_preferred_size
-
-        children = self.provide_layout_children()
-        child_max_w: Optional[int] = None
-        child_max_h: Optional[int] = None
-        if max_width is not None:
-            child_max_w = int(max_width)
-        elif self.width_sizing.kind == "fixed":
-            child_max_w = int(self.width_sizing.value)
-        if max_height is not None:
-            child_max_h = int(max_height)
-        elif self.height_sizing.kind == "fixed":
-            child_max_h = int(self.height_sizing.value)
-        if not children:
-            default_w, default_h = 0, 0
-        else:
-            widths: List[int] = []
-            heights: List[int] = []
-            for child in children:
-                w, h = measure_preferred_size(child, max_width=child_max_w, max_height=child_max_h)
-                widths.append(max(0, int(w)))
-                heights.append(max(0, int(h)))
-            default_w = max(widths, default=0)
-            default_h = max(heights, default=0)
-
-        w_dim = self.width_sizing
-        h_dim = self.height_sizing
-
-        if w_dim.kind == "fixed":
-            width = int(w_dim.value)
-        else:
-            width = default_w
-            if max_width is not None:
-                width = min(width, int(max_width))
-
-        if h_dim.kind == "fixed":
-            height = int(h_dim.value)
-        else:
-            height = default_h
-            if max_height is not None:
-                height = min(height, int(max_height))
-
-        return (width, height)
+        # ForEach itself is not rendered; its children are lifted into the parent.
+        return (0, 0)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # ForEach is a provider; actual painting happens in parent layouts.
@@ -262,14 +228,14 @@ class ForEach(ComposableWidget):
             built = self.builder(entry.value, entry.index)
         except Exception:
             logger.exception("ForEach builder failed for item index %s", entry.index)
-            return Spacer(0, 0)
+            return Spacer(width=0, height=0)
         if not isinstance(built, Widget):
             logger.error(
                 "ForEach builder must return a Widget; received %s at index %s",
                 type(built).__name__,
                 entry.index,
             )
-            return Spacer(0, 0)
+            return Spacer(width=0, height=0)
         return built
 
     def _replace_children(self, children: List[Widget]) -> None:
