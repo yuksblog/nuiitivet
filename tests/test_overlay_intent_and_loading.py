@@ -11,7 +11,6 @@ from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
-from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 

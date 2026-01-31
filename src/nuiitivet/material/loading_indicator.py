@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from math import cos, pi, sin
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, make_paint, make_path, rgba_to_skia_color

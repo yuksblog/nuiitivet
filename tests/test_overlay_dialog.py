@@ -13,7 +13,6 @@ from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.material.buttons import FilledButton
 from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 import pytest

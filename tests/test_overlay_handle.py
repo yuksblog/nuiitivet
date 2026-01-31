@@ -10,7 +10,6 @@ from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayResult
 from nuiitivet.overlay.result import OverlayDismissReason
-from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Callable, Literal, Mapping
 
-from nuiitivet.material import Text
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.buttons import TextButton
 from nuiitivet.material.dialogs import AlertDialog

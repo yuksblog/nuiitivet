@@ -57,10 +57,8 @@ def test_alert_dialog_build():
 
     assert isinstance(built, Box)
     # Check default style usage via box properties
-    from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    style = manager.current.extension(MaterialThemeData).alert_dialog_style
-    # Accessing via _background_color on Box because it stores it there
+    # accessing via _background_color on Box because it stores it there
     # But Box might resolve it differently.
     # We can check simple properties if exposed.
     # Or just ensure it built.
@@ -116,6 +114,6 @@ def test_alert_dialog_with_icon():
     dialog = AlertDialog(icon="home", title="With Icon")
     assert dialog.icon == "home"
 
-    built = dialog.build()
+    dialog.build()
     # Verification of built tree structure is hard without deep inspection
     # but at least it builds.

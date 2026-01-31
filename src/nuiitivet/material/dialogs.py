@@ -22,7 +22,6 @@ from nuiitivet.widgets.box import Box
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
-    from nuiitivet.theme.types import ColorSpec
 
 _logger = logging.getLogger(__name__)
 
