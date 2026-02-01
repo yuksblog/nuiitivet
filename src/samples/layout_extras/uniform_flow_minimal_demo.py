@@ -19,7 +19,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="UniformFlow (Grid)"))
+    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="nv.UniformFlow Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
