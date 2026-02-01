@@ -147,7 +147,7 @@ class Row(Widget):
         cw = max(0, width - l - r)
         ch = max(0, height - t - b)
 
-        sizes = [c.preferred_size() for c in children]
+        sizes = [measure_preferred_size(c, max_height=ch) for c in children]
         n = len(children)
 
         spacing = max(0, int(self.gap))

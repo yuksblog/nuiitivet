@@ -64,3 +64,67 @@ def test_column_allocation_and_alignment():
     pref_w, pref_h = col.preferred_size()
     assert pref_w >= 60
     assert pref_h == 20 + 20 + 5
+
+
+def test_column_measures_child_with_constraint_for_wrapping():
+    """Test that Column passes its width constraint to children during layout (Height-for-Width)."""
+    from typing import Tuple, Optional
+
+    class WrappingWidget(Widget):
+        def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+            # behaves like text wrapping: if width constrained, height increases
+            if max_width is not None and max_width <= 100:
+                return (100, 200)
+            return (200, 100)
+
+        def layout(self, width: int, height: int) -> None:
+            self._test_rect = (0, 0, width, height)
+            super().layout(width, height)
+
+    child = WrappingWidget(width="100%", height="auto")
+    col = Column([child], width=100, height="auto", padding=0)
+
+    # Simulate layout
+    # Column width 100.
+    col.layout(100, 500)
+
+    # Child should have received the constraint max_width=100 during measure
+    # So it should have returned (100, 200) preferred size
+    # And Column should have allocated 200 height.
+
+    assert hasattr(child, "_test_rect")
+    _, _, w, h = child._test_rect
+    assert w == 100
+    assert h == 200
+
+
+def test_row_measures_child_with_constraint_for_wrapping():
+    """Test that Row passes its height constraint to children during layout (Width-for-Height)."""
+    from typing import Tuple, Optional
+
+    class HeightWrappingWidget(Widget):
+        def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+            # if height constrained, width increases
+            if max_height is not None and max_height <= 100:
+                return (200, 100)
+            return (100, 200)
+
+        def layout(self, width: int, height: int) -> None:
+            self._test_rect = (0, 0, width, height)
+            super().layout(width, height)
+
+    child = HeightWrappingWidget(width="auto", height="100%")
+    # Row with height constraint
+    row = Row([child], width="auto", height=100, padding=0)
+
+    # Simulate layout
+    row.layout(500, 100)
+
+    # Child should have received the constraint max_height=100
+    # So it should have returned (200, 100) preferred size
+    # And Row should have allocated 200 width.
+
+    assert hasattr(child, "_test_rect")
+    _, _, w, h = child._test_rect
+    assert w == 200
+    assert h == 100

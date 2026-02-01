@@ -1,5 +1,5 @@
 from nuiitivet.layout.column import Column
-from nuiitivet.layout.flow import Flow
+from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.layout.row import Row
 from nuiitivet.widgeting import Widget
 
@@ -38,13 +38,13 @@ def test_row_builder_spreads_children():
     assert xs == [0, 12, 34]
 
 
-def test_flow_builder_wraps_children():
+def test_uniform_flow_builder_wraps_children():
     items = list(range(5))
 
     def builder(item, idx):
         return DummyWidget(20, 10)
 
-    grid = Flow.builder(items, builder, uniform=True, columns=2, cross_gap=4)
+    grid = UniformFlow.builder(items, builder, columns=2, cross_gap=4)
     fe = grid.children[0]
     fe.evaluate_build()
     grid.paint(None, 0, 0, 200, 200)

@@ -6,6 +6,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from ..observable.value import _ObservableValue
 from .measure import preferred_size as measure_preferred_size
+from .layout_utils import expand_layout_children
 
 
 class Deck(Widget):
@@ -76,7 +77,7 @@ class Deck(Widget):
 
     def _validate_index(self) -> None:
         """Ensure index is within valid range."""
-        children = self.children_snapshot()
+        children = expand_layout_children(self.children_snapshot())
         if not children:
             self._current_index = 0
             return
@@ -101,7 +102,7 @@ class Deck(Widget):
             self.mark_needs_layout()
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        children = self.children_snapshot()
+        children = expand_layout_children(self.children_snapshot())
         if not children or self._current_index >= len(children):
             # No children or invalid index
             pad_left, pad_top, pad_right, pad_bottom = self.padding
@@ -148,7 +149,7 @@ class Deck(Widget):
     def layout(self, width: int, height: int) -> None:
         """Layout all children (to preserve state), position selected child."""
         super().layout(width, height)
-        children = self.children_snapshot()
+        children = expand_layout_children(self.children_snapshot())
         if not children:
             return
 
@@ -167,11 +168,11 @@ class Deck(Widget):
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint only the selected child."""
-        children = self.children_snapshot()
+        children = expand_layout_children(self.children_snapshot())
         if not children or self._current_index >= len(children):
             return
 
-        # Auto-layout fallback for tests or direct paint calls
+        # Auto-layout fallback for Tests or direct paint calls
         if any(c.layout_rect is None for c in children):
             self.layout(width, height)
 
@@ -190,7 +191,7 @@ class Deck(Widget):
 
     def hit_test(self, x: int, y: int) -> bool:
         """Only allow hit testing on the selected child."""
-        children = self.children_snapshot()
+        children = expand_layout_children(self.children_snapshot())
         if not children or self._current_index >= len(children):
             return False
 

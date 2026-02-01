@@ -17,6 +17,7 @@ from nuiitivet.observable import Observable
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
+from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
@@ -256,10 +257,9 @@ class MyWidget(ComposableWidget):
                 Column(
                     [
                         Text("Grid demo:"),
-                        Flow.builder(
+                        UniformFlow.builder(
                             self.model.grid_items,
                             lambda item, idx: Text(item),
-                            uniform=True,
                             columns=3,
                             main_gap=8,
                             cross_gap=8,

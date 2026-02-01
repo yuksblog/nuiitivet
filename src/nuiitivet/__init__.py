@@ -9,6 +9,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.flow import Flow
+from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.layout.cross_aligned import CrossAligned
@@ -32,6 +33,7 @@ __all__: list[str] = [
     "Stack",
     "Container",
     "Flow",
+    "UniformFlow",
     "Grid",
     "GridItem",
     "Spacer",

@@ -66,7 +66,14 @@ class ScrollViewport(Widget):
         if max_height is not None:
             inner_max_h = max(0, int(max_height) - int(self._pad[1]) - int(self._pad[3]))
 
-        cw, ch = measure_preferred_size(self._content, max_width=inner_max_w, max_height=inner_max_h)
+        # Don't constrain in scroll direction
+        if self.direction == ScrollDirection.VERTICAL:
+            cw, ch = measure_preferred_size(self._content, max_width=inner_max_w, max_height=None)
+        elif self.direction == ScrollDirection.HORIZONTAL:
+            cw, ch = measure_preferred_size(self._content, max_width=None, max_height=inner_max_h)
+        else:
+            cw, ch = measure_preferred_size(self._content, max_width=inner_max_w, max_height=inner_max_h)
+
         default_w = cw + self._pad[0] + self._pad[2]
         default_h = ch + self._pad[1] + self._pad[3]
 

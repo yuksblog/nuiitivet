@@ -1,4 +1,4 @@
-"""Flow uniform grid demo showing tile layout with add/remove controls."""
+"""Flow layout demo showing wrapping behavior with variable-width items."""
 
 from __future__ import annotations
 
@@ -10,109 +10,108 @@ from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
-from nuiitivet.material.card import FilledCard, OutlinedCard
-from nuiitivet.material.styles.card_style import CardStyle
+from nuiitivet.material.card import OutlinedCard
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import FilledTonalButton, OutlinedButton
+from nuiitivet.material.styles import TextStyle
+from nuiitivet.runtime.title_bar import DefaultTitleBar
 
 
-class FlowUniformDemoModel:
-    """ViewModel for the uniform Flow demo."""
+class FlowDemoModel:
+    """ViewModel for the Flow demo."""
 
-    tiles: Observable[List[str]] = Observable([])
+    tags: Observable[List[str]] = Observable([])
 
     def __init__(self) -> None:
-        self.tiles.value = [
-            "Task",
-            "Idea",
-            "Note",
-            "Sketch",
-            "Todo",
-            "Review",
-            "Plan",
-            "Bug",
-            "Demo",
+        self.tags.value = [
+            "Python",
+            "UI",
+            "Nuiitivet",
+            "Layout",
+            "Flow",
+            "Wrap",
+            "Responsive",
+            "Desktop",
+            "Framework",
+            "Widget",
+            "Material Design",
+            "Composition",
+            "Declarative",
         ]
-        self._counter = len(self.tiles.value)
 
-    def add_tile(self) -> None:
-        tiles = list(self.tiles.value)
-        self._counter += 1
-        tiles.append(f"Tile {self._counter}")
-        self.tiles.value = tiles
+    def add_tag(self) -> None:
+        tags = list(self.tags.value)
+        tags.append(f"Tag {len(tags) + 1}")
+        self.tags.value = tags
 
-    def remove_tile(self) -> None:
-        tiles = list(self.tiles.value)
-        if not tiles:
+    def remove_tag(self) -> None:
+        tags = list(self.tags.value)
+        if not tags:
             return
-        tiles.pop()
-        self.tiles.value = tiles
+        tags.pop()
+        self.tags.value = tags
 
 
-class FlowUniformDemo(ComposableWidget):
-    """Widget tree for the uniform Flow demo."""
+class FlowDemo(ComposableWidget):
+    """Widget tree for the Flow demo."""
 
-    def __init__(self, model: FlowUniformDemoModel | None = None) -> None:
+    def __init__(self, model: FlowDemoModel | None = None) -> None:
         super().__init__()
-        self.model = model or FlowUniformDemoModel()
+        self.model = model or FlowDemoModel()
 
-    def _build_tile(self, label: str, idx: int) -> Widget:
-        del idx
-        return FilledCard(
-            Column([Text(label), Text("Tap to edit")], gap=4, cross_alignment="start"),
-            padding=12,
-            style=CardStyle.filled().copy_with(border_radius=12),
-            alignment="start",
+    def _build_tag(self, label: str, idx: int) -> Widget:
+        # Variable width implied by text content
+        return OutlinedCard(
+            Text(label),
+            padding=(16, 8, 16, 8),
+            alignment="center",
         )
 
     def build(self) -> Widget:
         controls = Row(
             [
-                FilledTonalButton("Add", on_click=self.model.add_tile),
-                OutlinedButton("Remove", on_click=self.model.remove_tile),
+                FilledTonalButton("Add Tag", on_click=self.model.add_tag),
+                OutlinedButton("Remove Tag", on_click=self.model.remove_tag),
             ],
             gap=8,
-            cross_alignment="start",
+            cross_alignment="center",
         )
 
+        # Flow using builder for Observable list
         flow = Flow.builder(
-            self.model.tiles,
-            self._build_tile,
-            uniform=True,
-            columns=3,
-            main_gap=12,
-            cross_gap=12,
-            padding=12,
-            align="start",
-            run_align="start",
-            cell_align=("stretch", "stretch"),
-            aspect_ratio=1.0,
+            self.model.tags,
+            self._build_tag,
+            main_gap=8,
+            cross_gap=8,
+            padding=16,
+            main_alignment="start",
+            cross_alignment="center",
         )
 
         body = Column(
             [
-                Text(
-                    "Flow layout demo (uniform tiles)",
-                ),
+                Text("Flow Layout (Wrapping)", style=TextStyle(font_size=24)),
+                Text("Resize window to see wrapping behavior."),
                 controls,
-                OutlinedCard(flow, padding=12, alignment="start"),
+                OutlinedCard(flow, padding=0, width="100%", height="auto"),
             ],
-            gap=12,
-            padding=12,
-            cross_alignment="start",
+            gap=16,
+            padding=24,
+            height="auto",
         )
 
         return body
 
 
 if __name__ == "__main__":
-    demo = FlowUniformDemo()
-    app = MaterialApp(content=demo, width=720, height=520)
+    demo = FlowDemo()
+    app = MaterialApp(
+        content=demo,
+        width=600,
+        height=500,
+        title_bar=DefaultTitleBar(title="Flow Demo"),
+    )
     try:
         app.run()
     except Exception:
-        try:
-            app.render_to_png("flow_demo_uniform.png")
-            print("Rendered flow_demo_uniform.png")
-        except Exception:
-            print("Flow uniform demo requires pyglet/skia to display or render output.")
+        pass
