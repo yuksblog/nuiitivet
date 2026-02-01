@@ -16,7 +16,8 @@ from nuiitivet.material.styles import IconStyle
 from nuiitivet.observable import Observable
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.layout.column import Column
-from nuiitivet.layout.flow import Flow
+
+# flow removed
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle

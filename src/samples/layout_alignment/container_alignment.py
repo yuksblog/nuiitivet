@@ -24,8 +24,7 @@ def main(png: str = ""):
         )
 
     # Render all variants so differences are easy to compare.
-    grid = nv.Flow(
-        uniform=True,
+    grid = nv.UniformFlow(
         columns=3,
         main_gap=8,
         cross_gap=8,
