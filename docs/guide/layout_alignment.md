@@ -41,8 +41,7 @@ def _tile(alignment: str) -> md.FilledCard:
         alignment=alignment,
     )
 
-nv.Flow(
-    uniform=True,
+nv.UniformFlow(
     columns=3,
     main_gap=8,
     cross_gap=8,
