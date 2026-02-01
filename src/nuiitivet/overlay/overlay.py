@@ -360,7 +360,50 @@ class Overlay(ComposableWidget):
     def close_topmost(self) -> None:
         self.close(None)
 
-    def close(self, value: Any = None) -> None:
+    def close(self, value: Any = None, target: Widget | Route | None = None) -> None:
+        if target is not None:
+            # 1. If target is a Route, look for exact match
+            if isinstance(target, Route):
+                for entry, route in list(self._entry_to_route.items()):
+                    if route is target:
+                        self._complete_entry_future(
+                            entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED)
+                        )
+                        self.remove_entry(entry)
+                        return
+                logger.warning("Overlay.close called with route target=%r, but it was not found.", target)
+                return
+
+            # 2. If target is a Widget, find the entry that contains it
+            # Map route widgets to their entries for quick lookup
+            route_widget_to_entry = {
+                route._widget: entry
+                for entry, route in self._entry_to_route.items()
+                if getattr(route, "_widget", None) is not None
+            }
+
+            # Walk up the widget tree from target to find the owning route widget
+            current: Widget | None = target  # type: ignore
+            visited = set()
+
+            while current is not None:
+                if id(current) in visited:
+                    break
+                visited.add(id(current))
+
+                if current in route_widget_to_entry:
+                    entry = route_widget_to_entry[current]
+                    self._complete_entry_future(entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED))
+                    self.remove_entry(entry)
+                    return
+
+                current = getattr(current, "parent", None)
+
+            logger.warning(
+                "Overlay.close called with widget target=%r, but no active overlay entry contains it.", target
+            )
+            return
+
         routes = getattr(self._modal_navigator, "_routes", None)
         if not isinstance(routes, list) or len(routes) <= 1:
             return

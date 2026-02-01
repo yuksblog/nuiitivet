@@ -60,8 +60,12 @@ def _filled(label: str, *, on_click) -> FilledButton:
 
 class HomePage(ComposableWidget):
     def build(self) -> Widget:
-        def open_dialog() -> None:
-            MaterialOverlay.root().dialog(HelloDialogIntent())
+        async def open_dialog() -> None:
+            result = await MaterialOverlay.root().dialog(HelloDialogIntent())
+            if result.value == "OK":
+                MaterialOverlay.root().snackbar("Dialog confirmed (OK)")
+            else:
+                MaterialOverlay.root().snackbar("Dialog dismissed")
 
         def go_next() -> None:
             Navigator.of(self).push(DetailsIntent())
@@ -112,8 +116,12 @@ class SettingsPage(ComposableWidget):
         def pop_to_details() -> None:
             Navigator.of(self).pop()
 
-        def confirm_reset() -> None:
-            MaterialOverlay.root().dialog(ConfirmResetDialogIntent())
+        async def confirm_reset() -> None:
+            result = await MaterialOverlay.root().dialog(ConfirmResetDialogIntent())
+            if result.value is True:
+                MaterialOverlay.root().snackbar("Reset done")
+            else:
+                MaterialOverlay.root().snackbar("Cancelled")
 
         return Container(
             padding=24,
@@ -131,26 +139,28 @@ class SettingsPage(ComposableWidget):
 
 def main() -> None:
     def _build_hello_dialog(_intent: HelloDialogIntent) -> Widget:
-        def on_ok() -> None:
-            MaterialOverlay.root().close_topmost()
-            MaterialOverlay.root().snackbar("OK clicked")
+        dialog: Widget
 
-        return AlertDialog(
+        def on_ok() -> None:
+            MaterialOverlay.root().close("OK", target=dialog)
+
+        dialog = AlertDialog(
             title="Hello",
             message="This dialog is rendered via Overlay (Intent).",
             actions=[_filled("OK", on_click=on_ok)],
         )
+        return dialog
 
     def _build_confirm_reset_dialog(_intent: ConfirmResetDialogIntent) -> Widget:
+        dialog: Widget
+
         def on_cancel() -> None:
-            MaterialOverlay.root().close_topmost()
-            MaterialOverlay.root().snackbar("Cancelled")
+            MaterialOverlay.root().close(False, target=dialog)
 
         def on_reset() -> None:
-            MaterialOverlay.root().close_topmost()
-            MaterialOverlay.root().snackbar("Reset done")
+            MaterialOverlay.root().close(True, target=dialog)
 
-        return AlertDialog(
+        dialog = AlertDialog(
             title="Confirm",
             message="Reset settings?",
             actions=[
@@ -158,6 +168,7 @@ def main() -> None:
                 _filled("Reset", on_click=on_reset),
             ],
         )
+        return dialog
 
     MaterialApp.navigation(
         routes={
