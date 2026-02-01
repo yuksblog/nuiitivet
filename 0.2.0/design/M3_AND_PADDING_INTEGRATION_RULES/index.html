@@ -1,0 +1,2139 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.2.0/design/M3_AND_PADDING_INTEGRATION_RULES/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>M3仕様とFramework Paddingの結合ルール設計 - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#m3framework-padding" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              M3仕様とFramework Paddingの結合ルール設計
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        問題の本質
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#m3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3の実際の表現
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="M3の実際の表現">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-button-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        例1: Button (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-checkbox-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        例2: Checkbox (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-list-item-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        例3: List Item (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#m3_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3の暗黙のルール
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#padding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        フレームワークの padding の意味
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="フレームワークの padding の意味">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        解釈A: 内部パディング（Container的）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        解釈B: 「外側余白」に見える（よくある誤解）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        提案：2層モデル
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="提案：2層モデル">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-m3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ルール1: M3コンポーネント = 自己完結的な内部構造
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-widgetpadding-allocatedcontent-insets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ルール2: Widget.padding = allocated→content の insets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-m3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ルール3: M3内部構造は自動計算
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        統一ルール定義
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="統一ルール定義">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ 採用するルール
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        実装パターン
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="実装パターン">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-widgetcheckbox-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        パターン1: 固定サイズWidget（Checkbox, Icon）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-widgetbutton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        パターン2: 可変サイズWidget（Button）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-widgetcolumn-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        パターン3: レイアウトWidget（Column, Row）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用語の整理
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="用語の整理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m3-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3用語 → Framework用語マッピング
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        重要な区別
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checkbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        具体例：Checkbox
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="具体例：Checkbox">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m3_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3仕様
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework実装
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        レイアウト調整が必要な場合
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        まとめ：統一ルール
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="まとめ：統一ルール">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ 決定事項
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 一貫性の保証
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        次回に向けた準備チェックリスト
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="次回に向けた準備チェックリスト">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) 対象Widgetの確定
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-md3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) MD3仕様データ（数値）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) 状態ごとの差分（見た目と入力）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-box_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) ルール接続（BOX_MODELへのマッピング）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) テーマ/スタイル設計
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) 受け入れ条件（テスト観点）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        仕様→実装の記入テンプレート
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="仕様→実装の記入テンプレート">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Widget:
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Widget:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#md3-spec-per-variant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MD3 Spec (per variant)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State differences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styletheme-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style/Theme tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests / Demo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="m3framework-padding">M3仕様とFramework Paddingの結合ルール設計</h1>
+<p>See <a href="../BOX_MODEL/">BOX_MODEL.md</a> for the single source of truth on <code>padding</code>, hit testing, and visual overflow (<code>outsets</code>).</p>
+<h2 id="_1">問題の本質</h2>
+<p><strong>M3には <code>padding</code>/<code>margin</code> という概念が存在しない</strong></p>
+<p>M3の仕様では、各コンポーネントのサイズは以下で定義される：</p>
+<ul>
+<li>Touch Target（インタラクション領域）</li>
+<li>Container Size（視覚的なコンテナ）</li>
+<li>Content Size（内部コンテンツ）</li>
+<li>State Layer（フィードバック領域）</li>
+</ul>
+<p>しかし、<strong>「padding」や「margin」という用語は使われていない</strong>。</p>
+<h2 id="m3">M3の実際の表現</h2>
+<h3 id="1-button-m3-specs">例1: Button (M3 Specs)</h3>
+<pre><code class="language-text">Container height: 40dp
+Horizontal padding: 24dp (内部テキストとコンテナ端の距離)
+Minimum width: 48dp (touch target)
+</code></pre>
+<p>→ M3では "padding" と呼んでいるが、これは<strong>コンテナ内のコンテンツ配置</strong>を指す</p>
+<h3 id="2-checkbox-m3-specs">例2: Checkbox (M3 Specs)</h3>
+<pre><code class="language-text">Container: 18×18dp (アイコン)
+State layer: 40×40dp (円形)
+Minimum touch target: 48×48dp
+</code></pre>
+<p>→ padding という言葉は使われず、<strong>各層のサイズが独立して定義</strong>される</p>
+<h3 id="3-list-item-m3-specs">例3: List Item (M3 Specs)</h3>
+<pre><code class="language-text">Container height: 56dp
+Leading element: 24×24dp icon
+Content padding: 16dp (from leading/trailing edge)
+Spacing between icon and text: 16dp
+</code></pre>
+<p>→ "padding" は<strong>コンテナ内部の配置ルール</strong>として使われる</p>
+<h2 id="m3_1">M3の暗黙のルール</h2>
+<p>M3では以下の階層構造が暗黙的に存在する：</p>
+<pre><code class="language-text">Component (コンポーネント全体)
+├─ Touch Target (最小48×48dp, インタラクション領域)
+├─ Container (視覚的な境界)
+├─ State Layer (ホバー/プレスフィードバック)
+└─ Content (内部コンテンツ)
+    └─ Internal Spacing/Padding (コンテンツ配置)
+</code></pre>
+<p><strong>重要</strong>: これらは全て<strong>コンポーネント内部の構造</strong>であり、<strong>外部レイアウトとは無関係</strong>。</p>
+<h2 id="padding">フレームワークの <code>padding</code> の意味</h2>
+<p>我々のフレームワークでは：</p>
+<pre><code class="language-python">Widget(padding=...)
+</code></pre>
+<p>これは<strong>Widget基底クラスの機能</strong>で、以下の2つの解釈がある：</p>
+<h3 id="a-container">解釈A: 内部パディング（Container的）</h3>
+<pre><code class="language-text">┌─────────────────────────────┐
+│ Widget Boundary             │
+│  ┌─────────────────────┐    │
+│  │ padding (内側余白)   │    │
+│  │  ┌───────────────┐  │    │
+│  │  │   Content     │  │    │
+│  │  └───────────────┘  │    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+</code></pre>
+<p>→ M3の「Container内のcontent配置」に相当</p>
+<h3 id="b">解釈B: 「外側余白」に見える（よくある誤解）</h3>
+<pre><code class="language-text">┌─────────────────────────────┐
+│ Parent Layout               │
+│  ┌─────────────────────┐    │
+│  │ padding (insets)    │    │
+│  │  ┌───────────────┐  │    │
+│  │  │   Widget      │  │    │
+│  │  │   Boundary    │  │    │
+│  │  └───────────────┘  │    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+</code></pre>
+<p>→ M3には対応概念なし（ただし Framework の <code>padding</code> は margin ではない）
+    - <code>padding</code> 自体は allocated→content の insets
+    - leaf widget の描画や hit test のルール次第で「外側余白っぽく」見えたり振る舞ったりする</p>
+<h2 id="2">提案：2層モデル</h2>
+<h3 id="1-m3">ルール1: M3コンポーネント = 自己完結的な内部構造</h3>
+<p>M3の各コンポーネント（Button, Checkbox, etc）は<strong>内部構造を持つ閉じた単位</strong>。</p>
+<pre><code class="language-python"># M3コンポーネントは「M3仕様のサイズ」を持つ
+Checkbox(size=48)  # M3の「48dp touch target」
+Button(height=40)  # M3の「40dp container height」
+</code></pre>
+<p>→ これらは<strong>M3仕様のパラメータ</strong>であり、padding とは無関係。</p>
+<h3 id="2-widgetpadding-allocatedcontent-insets">ルール2: Widget.padding = allocated→content の insets</h3>
+<p><code>Widget.padding</code> は<strong>allocated rect から content rect を切り出すための insets（内側余白）</strong>。</p>
+<p>補足: leaf widget では「外側余白」に見えることがある</p>
+<ul>
+<li>見た目の描画（背景なし等）が content rect に寄っていると、padding 部分は視覚的に空白になりやすい。</li>
+<li>それでも hit test は（原則）allocated rect を基準にするため、padding 部分がタッチターゲットに含まれることがある。</li>
+</ul>
+<pre><code class="language-python"># M3コンポーネント + フレームワークのレイアウト調整
+Checkbox(size=48, padding=10)
+#        ↑         ↑
+#        M3仕様    insets (padding)
+</code></pre>
+<p><strong>図解</strong>:</p>
+<pre><code class="language-text">┌─────────────────────────────────────┐
+│ Widget (preferred_size に含まれる)    │
+│  ┌─────────────────────────────┐    │
+│  │ padding=10 (insets)         │    │
+│  │  ┌───────────────────────┐  │    │
+│  │  │ M3 Component          │  │    │
+│  │  │ (size=48)             │  │    │
+│  │  │  - Touch Target       │  │    │
+│  │  │  - State Layer        │  │    │
+│  │  │  - Icon               │  │    │
+│  │  └───────────────────────┘  │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+preferred_size = 48 + 10*2 = 68dp
+</code></pre>
+<h3 id="3-m3">ルール3: M3内部構造は自動計算</h3>
+<p>M3コンポーネントの内部構造（Icon/State Layer/Touch Target）は<strong>M3仕様に従って自動計算</strong>。</p>
+<pre><code class="language-python">class Checkbox(Widget):
+    def __init__(self, size=48, padding=0, ...):
+        super().__init__(width=size, height=size, padding=padding)
+
+        # M3仕様の内部構造（ユーザーは触らない）
+        self._touch_target = size              # 48dp
+        self._state_layer = size * (40/48)     # 40dp (M3比率)
+        self._icon_size = size * (18/48)       # 18dp (M3比率)
+
+    def preferred_size(self):
+        # M3サイズ + padding
+        l, t, r, b = self.padding
+        return (self._touch_target + l + r,
+                self._touch_target + t + b)
+
+    def paint(self, canvas, x, y, width, height):
+        # paddingを適用してcontent領域取得
+        cx, cy, cw, ch = self.content_rect(x, y, width, height)
+
+        # content領域内にM3コンポーネントを配置
+        # （M3内部構造はここで描画）
+        self._paint_m3_component(canvas, cx, cy, cw, ch)
+</code></pre>
+<h2 id="_2">統一ルール定義</h2>
+<h3 id="_3">✅ 採用するルール</h3>
+<p><strong><code>Widget.padding</code> = allocated→content の insets（全Widget共通）</strong></p>
+<ol>
+<li><strong>M3仕様パラメータ</strong>: <code>size</code>, <code>height</code>, <code>width</code> 等</li>
+<li>M3の公式仕様に従う</li>
+<li>
+<p>コンポーネント内部構造を定義</p>
+</li>
+<li>
+<p><strong>Framework padding</strong>: <code>padding</code> パラメータ</p>
+<ul>
+<li>allocated→content の insets</li>
+<li><code>preferred_size()</code> に含まれる（結果としてレイアウト上は「周囲に余白がある」ように振る舞うことがある）</li>
+</ul>
+</li>
+<li>
+<p><strong>M3内部構造</strong>: 自動計算</p>
+</li>
+<li>Touch Target, State Layer, Icon等</li>
+<li>M3比率で自動計算</li>
+<li>ユーザーは通常意識しない</li>
+</ol>
+<h3 id="_4">実装パターン</h3>
+<h4 id="1-widgetcheckbox-icon">パターン1: 固定サイズWidget（Checkbox, Icon）</h4>
+<pre><code class="language-python">class Checkbox(Widget):
+    def __init__(self, size=48, padding=0, ...):
+        # M3: size = Touch Target
+        # Framework: padding = allocated→content insets
+        super().__init__(width=size, height=size, padding=padding)
+        self._m3_size = size
+
+    def preferred_size(self):
+        l, t, r, b = self.padding
+        return (self._m3_size + l + r, self._m3_size + t + b)
+</code></pre>
+<h4 id="2-widgetbutton">パターン2: 可変サイズWidget（Button）</h4>
+<pre><code class="language-python">class Button(Widget):
+    def __init__(self, label, padding=0, ...):
+        # M3: 内部padding (24dp horizontal) は別パラメータ
+        # Framework: padding = allocated→content insets
+        super().__init__(padding=padding)
+        self._m3_horizontal_padding = 24  # M3内部
+        self._m3_height = 40              # M3仕様
+
+    def preferred_size(self):
+        # M3: text width + M3内部padding
+        text_w = self._measure_text()
+        m3_width = text_w + self._m3_horizontal_padding * 2
+        m3_height = self._m3_height
+
+        # Framework: M3サイズ + padding
+        l, t, r, b = self.padding
+        return (m3_width + l + r, m3_height + t + b)
+</code></pre>
+<h4 id="3-widgetcolumn-row">パターン3: レイアウトWidget（Column, Row）</h4>
+<pre><code class="language-python">class Column(Widget):
+    def __init__(self, children, spacing=0, padding=0, ...):
+        # M3: 該当なし（レイアウトはフレームワーク機能）
+        # Framework: padding = 子の配置前の内側余白
+        super().__init__(padding=padding)
+        self._spacing = spacing  # 子間のスペース
+
+    def preferred_size(self):
+        # 子のサイズ + spacing
+        children_size = self._calculate_children_size()
+
+        # Framework: children + padding
+        l, t, r, b = self.padding
+        return (children_size.w + l + r, children_size.h + t + b)
+</code></pre>
+<h2 id="_5">用語の整理</h2>
+<h3 id="m3-framework">M3用語 → Framework用語マッピング</h3>
+<table>
+<thead>
+<tr>
+<th>M3用語</th>
+<th>Framework用語</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Container size</td>
+<td><code>size</code>, <code>width</code>, <code>height</code></td>
+<td>M3コンポーネントのサイズ</td>
+</tr>
+<tr>
+<td>Content padding (内部)</td>
+<td>M3パラメータ or 自動計算</td>
+<td>コンポーネント内部の配置</td>
+</tr>
+<tr>
+<td>Touch target</td>
+<td>M3パラメータ（通常は<code>size</code>）</td>
+<td>インタラクション領域</td>
+</tr>
+<tr>
+<td>State layer</td>
+<td>自動計算</td>
+<td>M3比率で決定</td>
+</tr>
+<tr>
+<td>Spacing (between items)</td>
+<td><code>spacing</code></td>
+<td>子要素間の距離</td>
+</tr>
+<tr>
+<td><strong>(該当なし)</strong></td>
+<td><code>padding</code></td>
+<td>allocated→content の insets（結果として周囲の空白に見えることがある）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">重要な区別</h3>
+<pre><code class="language-python"># ❌ M3には存在しない概念
+m3_component.margin = ...  # M3にmarginはない
+
+# ✅ Frameworkで追加する概念
+widget.padding = ...  # allocated→content insets
+
+# ✅ M3の概念
+m3_component.size = 48           # Touch target (M3仕様)
+m3_component.container_height = 40  # Container (M3仕様)
+</code></pre>
+<h2 id="checkbox">具体例：Checkbox</h2>
+<h3 id="m3_2">M3仕様</h3>
+<pre><code class="language-text">Touch target: 48×48dp (minimum)
+State layer: 40dp diameter
+Icon: 18×18dp
+</code></pre>
+<h3 id="framework">Framework実装</h3>
+<pre><code class="language-python">Checkbox(
+    size=48,      # M3: Touch target
+    padding=0,    # Framework: insets（default）
+)
+
+# preferred_size() = 48×48 (M3サイズ)
+# 内部構造:
+#   touch_target = 48dp (size)
+#   state_layer = 40dp (自動計算: 48 * 40/48)
+#   icon = 18dp (自動計算: 48 * 18/48)
+</code></pre>
+<h3 id="_7">レイアウト調整が必要な場合</h3>
+<pre><code class="language-python">Checkbox(
+    size=48,       # M3: Touch target
+    padding=10,    # Framework: insets
+)
+
+# preferred_size() = 68×68 (48 + 10*2)
+# M3内部構造は変わらず48dp領域内に描画
+# insets は content rect を狭め、結果として周囲に空白が見えることがある
+</code></pre>
+<h2 id="_8">まとめ：統一ルール</h2>
+<h3 id="_9">✅ 決定事項</h3>
+<ol>
+<li><strong>M3仕様パラメータ（<code>size</code>, <code>width</code>, <code>height</code> 等）</strong></li>
+<li>M3コンポーネントの<strong>内部構造</strong>を定義</li>
+<li>M3公式仕様に従う</li>
+<li>
+<p>padding とは独立</p>
+</li>
+<li>
+<p><strong>Framework padding</strong></p>
+<ul>
+<li>allocated→content の insets（M3仕様には存在しない概念）</li>
+<li><code>preferred_size()</code> に含まれる</li>
+<li>デフォルト値は <code>0</code></li>
+</ul>
+</li>
+<li>
+<p><strong>用語の使い分け</strong></p>
+</li>
+<li>
+<p>"M3 internal padding" → M3仕様パラメータまたは自動計算</p>
+<ul>
+<li>"Widget padding" → allocated→content の insets</li>
+</ul>
+</li>
+<li>
+<p><strong>実装方針</strong></p>
+</li>
+<li>M3コンポーネントは自己完結的<ul>
+<li>padding は全Widget共通の allocated→content insets</li>
+</ul>
+</li>
+<li>レイアウトWidget（Column/Row）は padding を内側余白として使用</li>
+</ol>
+<h3 id="_10">🎯 一貫性の保証</h3>
+<pre><code class="language-python"># 全てのWidgetで統一
+Column(padding=10)      # 子の配置前の内側余白
+Row(padding=10)         # 子の配置前の内側余白
+Text(padding=10)        # テキストの周囲余白
+Checkbox(padding=10)    # allocated→content insets（leafでは周囲余白に見えることがある）
+Icon(padding=10)        # allocated→content insets（leafでは周囲余白に見えることがある）
+Button(padding=10)      # allocated→content insets
+</code></pre>
+<p><strong>意味</strong>: 全て「preferred_size に含まれる余白」で統一。</p>
+<p><strong>M3内部構造</strong>: 各Widgetが独自に管理（padding とは独立）。</p>
+<h2 id="_11">次回に向けた準備チェックリスト</h2>
+<p>MD3準拠対応をスムーズに行うため、実装着手前に以下を用意する。</p>
+<h3 id="1-widget">1) 対象Widgetの確定</h3>
+<ul>
+<li>Widget名（例: Switch / Radio / Slider / ListItem 等）</li>
+<li>Variant（例: Filled/Outlined、Small/Medium/Large など）</li>
+<li>対象プラットフォーム差（Android/iOS/Webで差があるか）</li>
+</ul>
+<h3 id="2-md3">2) MD3仕様データ（数値）</h3>
+<p>最低限、以下の数値をVariantごとに揃える。</p>
+<ul>
+<li>Touch target（最小サイズ）</li>
+<li>Container size（高さ/幅、形状）</li>
+<li>Content insets（leading/trailing/top/bottom）</li>
+<li>Icon/indicator サイズ</li>
+<li>Gap/spacing（要素間）</li>
+<li>State layer（サイズ、形、表示条件）</li>
+<li>Typography（font size, line height, weight など）</li>
+</ul>
+<p>補足:</p>
+<ul>
+<li>M3の「padding」は原則として <strong>Container内のcontent配置</strong> を意味する。</li>
+<li>Frameworkの <code>Widget.padding</code> は allocated→content の insets として扱う（BOX_MODELのルール）。</li>
+</ul>
+<h3 id="3">3) 状態ごとの差分（見た目と入力）</h3>
+<ul>
+<li>enabled / disabled</li>
+<li>hovered / pressed</li>
+<li>focused（Focus ring/outline の有無、outsetsか）</li>
+<li>selected / checked / indeterminate</li>
+</ul>
+<p>状態ごとに「サイズが変わるか」「描画だけ変わるか」を明記する。</p>
+<h3 id="4-box_model">4) ルール接続（BOX_MODELへのマッピング）</h3>
+<ul>
+<li>Preferred size: touch target を満たすか（例: min 48）</li>
+<li>Paint: container をどこに描くか（例: 48内で40を中央配置）</li>
+<li>Hit test: allocated rect を基準にするか（例外: viewport/clip）</li>
+<li>Outsets: shadow/focus/overlay を outsets として扱うか（layout/hit testに入れない）</li>
+</ul>
+<h3 id="5">5) テーマ/スタイル設計</h3>
+<ul>
+<li><code>*Style</code> に入れるべき token（例: container_height, content_insets, spacing, min_height）</li>
+<li>ThemeData 経由で参照するか、Widgetの引数で上書き可能にするか</li>
+<li>既存Style/APIを破壊してよい変更点（後方互換は考慮しない）</li>
+</ul>
+<h3 id="6">6) 受け入れ条件（テスト観点）</h3>
+<ul>
+<li>preferred_size の期待値（固定値 or 範囲）</li>
+<li>padding が preferred_size に含まれること</li>
+<li>hit test が allocated rect に従うこと</li>
+<li>clip/viewport の visible region 制約が壊れないこと</li>
+</ul>
+<p>可能なら、目視確認用の <code>src/samples/*_demo.py</code> を同時に用意する。</p>
+<h2 id="_12">仕様→実装の記入テンプレート</h2>
+<p>次回以降は、以下のテンプレを埋めるだけで実装タスク化できる。</p>
+<h3 id="widget">Widget: <NAME></h3>
+<h4 id="md3-spec-per-variant">MD3 Spec (per variant)</h4>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Touch target</th>
+<th>Container</th>
+<th>Insets (L/T/R/B)</th>
+<th>Icon</th>
+<th>Gap</th>
+<th>Font</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>default</td>
+<td>48x48</td>
+<td>40h</td>
+<td>16/0/16/0</td>
+<td>20</td>
+<td>8</td>
+<td>14</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="state-differences">State differences</h4>
+<ul>
+<li>disabled:</li>
+<li>hovered:</li>
+<li>pressed:</li>
+<li>focused:</li>
+<li>selected:</li>
+</ul>
+<h4 id="framework-mapping">Framework mapping</h4>
+<ul>
+<li><code>Widget.padding</code>:</li>
+<li>preferred_size:</li>
+<li>paint (container placement):</li>
+<li>hit test:</li>
+<li>outsets:</li>
+</ul>
+<h4 id="styletheme-tokens">Style/Theme tokens</h4>
+<ul>
+<li>Style fields to add/update:</li>
+<li>ThemeData wiring:</li>
+</ul>
+<h4 id="tests-demo">Tests / Demo</h4>
+<ul>
+<li>Tests to add/update:</li>
+<li>Demo to add/update:</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
