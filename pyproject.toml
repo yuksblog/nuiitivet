@@ -25,7 +25,7 @@ license-files = ["LICENSE", "LICENSES/*"]
 name = "nuiitivet"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.1.2"
+version = "0.2.0"
 
 [project.urls]
 Changelog = "https://github.com/yuksblog/nuiitivet/releases"
