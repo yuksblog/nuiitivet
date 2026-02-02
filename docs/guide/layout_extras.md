@@ -130,6 +130,37 @@ nv.Flow(
 
 ![Flow example](../assets/layout_extras_flow.png)
 
+## UniformFlow (Uniform Grid)
+
+Arranges elements into a grid with **uniform column widths**.
+Use this for tile layouts where each cell should align and size consistently.
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+
+tiles = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+
+nv.UniformFlow(
+    columns=3,
+    main_gap=8,
+    cross_gap=8,
+    padding=8,
+    aspect_ratio=1.0,
+    children=[
+        md.FilledCard(md.Text(t), alignment="center", padding=12)
+        for t in tiles
+    ],
+)
+```
+
+![UniformFlow example](../assets/layout_extras_uniform_flow.png)
+
+### Flow vs UniformFlow
+
+- Use **Flow** for wrapping rows with variable-width items (tags, chips, variable text).
+- Use **UniformFlow** for grid-like layouts with uniform columns (tiles, cards, image grids).
+
 ## Container (Decoration/Size Control)
 
 A wrapper with a single child element.
