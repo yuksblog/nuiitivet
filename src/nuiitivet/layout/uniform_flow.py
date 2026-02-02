@@ -152,6 +152,12 @@ class UniformFlow(Widget):
             pref_w, pref_h = measure_preferred_size(child, max_width=col_limit)
             max_w = max(max_w, max(0, pref_w))
             max_h = max(max_h, max(0, pref_h))
+
+        # If we have a constrained column width, use it for aspect ratio and size calculation
+        # This matches layout() logic where columns expand to fill available width
+        if col_limit is not None and col_limit > 0:
+            max_w = max(max_w, col_limit)
+
         if self.aspect_ratio and max_w > 0:
             max_h = max(max_h, self._height_from_aspect(max_w))
 
