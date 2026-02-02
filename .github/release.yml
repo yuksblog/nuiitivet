@@ -1,6 +1,6 @@
 changelog:
   exclude:
-    - labels:
+    labels:
       - ignore-for-release
   categories:
     - title: '🚀 Features'
