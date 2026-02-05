@@ -1,85 +1,85 @@
-# M3仕様とFramework Paddingの結合ルール設計
+# Integration Rules for M3 Specs and Framework Padding
 
 See [BOX_MODEL.md](BOX_MODEL.md) for the single source of truth on `padding`, hit testing, and visual overflow (`outsets`).
 
-## 問題の本質
+## Essence of the Problem
 
-**M3には `padding`/`margin` という概念が存在しない**
+**M3 does not have the concept of `padding` or `margin` in the CSS sense.**
 
-M3の仕様では、各コンポーネントのサイズは以下で定義される：
+In the M3 specification, the sizes of each component are defined as:
 
-- Touch Target（インタラクション領域）
-- Container Size（視覚的なコンテナ）
-- Content Size（内部コンテンツ）
-- State Layer（フィードバック領域）
+- **Touch Target** (Interaction area)
+- **Container Size** (Visual container)
+- **Content Size** (Internal content)
+- **State Layer** (Feedback area)
 
-しかし、**「padding」や「margin」という用語は使われていない**。
+However, the terms **"padding" or "margin" are not used**.
 
-## M3の実際の表現
+## Actual Representation in M3
 
-### 例1: Button (M3 Specs)
+### Example 1: Button (M3 Specs)
 
 ```text
 Container height: 40dp
-Horizontal padding: 24dp (内部テキストとコンテナ端の距離)
-Minimum width: 48dp (touch target)
+Horizontal padding: 24dp (Distance between internal text and container edge)
+Minimum width: 48dp (Touch target)
 ```
 
-→ M3では "padding" と呼んでいるが、これは**コンテナ内のコンテンツ配置**を指す
+→ M3 calls it "padding," but this refers to the **content layout within the container**.
 
-### 例2: Checkbox (M3 Specs)
+### Example 2: Checkbox (M3 Specs)
 
 ```text
-Container: 18×18dp (アイコン)
-State layer: 40×40dp (円形)
+Container: 18×18dp (Icon)
+State layer: 40×40dp (Circular)
 Minimum touch target: 48×48dp
 ```
 
-→ padding という言葉は使われず、**各層のサイズが独立して定義**される
+→ The word "padding" is not used; **the sizes for each layer are defined independently**.
 
-### 例3: List Item (M3 Specs)
+### Example 3: List Item (M3 Specs)
 
 ```text
 Container height: 56dp
 Leading element: 24×24dp icon
-Content padding: 16dp (from leading/trailing edge)
+Content padding: 16dp (From leading/trailing edge)
 Spacing between icon and text: 16dp
 ```
 
-→ "padding" は**コンテナ内部の配置ルール**として使われる
+→ "Padding" is used as an **internal sequence rule for placing content**.
 
-## M3の暗黙のルール
+## Implicit Rules of M3
 
-M3では以下の階層構造が暗黙的に存在する：
+An implicit hierarchical structure exists in M3:
 
 ```text
-Component (コンポーネント全体)
-├─ Touch Target (最小48×48dp, インタラクション領域)
-├─ Container (視覚的な境界)
-├─ State Layer (ホバー/プレスフィードバック)
-└─ Content (内部コンテンツ)
-    └─ Internal Spacing/Padding (コンテンツ配置)
+Component (Total component area)
+├─ Touch Target (Minimum 48×48dp, Interaction area)
+├─ Container (Visual boundary)
+├─ State Layer (Hover/Press feedback)
+└─ Content (Internal content)
+    └─ Internal Spacing/Padding (Content placement)
 ```
 
-**重要**: これらは全て**コンポーネント内部の構造**であり、**外部レイアウトとは無関係**。
+**Important**: These are all part of the **internal structure of the component** and are **independent of external layout**.
 
-## フレームワークの `padding` の意味
+## Meaning of `padding` in the Framework
 
-我々のフレームワークでは：
+In our framework:
 
 ```python
 Widget(padding=...)
 ```
 
-これは**Widget基底クラスの機能**で、以下の2つの解釈がある：
+This is a **feature of the Widget base class**, having two interpretations:
 
-### 解釈A: 内部パディング（Container的）
+### Interpretation A: Internal Padding (Container-like)
 
 ```text
 ┌─────────────────────────────┐
 │ Widget Boundary             │
 │  ┌─────────────────────┐    │
-│  │ padding (内側余白)   │    │
+│  │ padding (Inner space) │    │
 │  │  ┌───────────────┐  │    │
 │  │  │   Content     │  │    │
 │  │  └───────────────┘  │    │
@@ -87,9 +87,9 @@ Widget(padding=...)
 └─────────────────────────────┘
 ```
 
-→ M3の「Container内のcontent配置」に相当
+→ Corresponds to M3's "content placement within a Container."
 
-### 解釈B: 「外側余白」に見える（よくある誤解）
+### Interpretation B: Appears as "Outer Margin" (Common Misconception)
 
 ```text
 ┌─────────────────────────────┐
@@ -104,45 +104,46 @@ Widget(padding=...)
 └─────────────────────────────┘
 ```
 
-→ M3には対応概念なし（ただし Framework の `padding` は margin ではない）
-    - `padding` 自体は allocated→content の insets
-    - leaf widget の描画や hit test のルール次第で「外側余白っぽく」見えたり振る舞ったりする
+→ M3 has no corresponding concept (however, Framework `padding` is not margin).
 
-## 提案：2層モデル
+- `padding` itself is the `allocated` → `content` insets.
+- Depending on the painting/hit testing rules of a leaf widget, it may look or behave like "outer margin."
 
-### ルール1: M3コンポーネント = 自己完結的な内部構造
+## Proposal: 2-Layer Model
 
-M3の各コンポーネント（Button, Checkbox, etc）は**内部構造を持つ閉じた単位**。
+### Rule 1: M3 Component = Self-contained Internal Structure
+
+Each M3 component (Button, Checkbox, etc.) is a **closed unit with an internal structure**.
 
 ```python
-# M3コンポーネントは「M3仕様のサイズ」を持つ
-Checkbox(size=48)  # M3の「48dp touch target」
-Button(height=40)  # M3の「40dp container height」
+# M3 components have "M3-spec sizes"
+Checkbox(size=48)  # M3's "48dp touch target"
+Button(height=40)  # M3's "40dp container height"
 ```
 
-→ これらは**M3仕様のパラメータ**であり、padding とは無関係。
+→ These are **M3-spec parameters** and are unrelated to `padding`.
 
-### ルール2: Widget.padding = allocated→content の insets
+### Rule 2: Widget.padding = allocated → content insets
 
-`Widget.padding` は**allocated rect から content rect を切り出すための insets（内側余白）**。
+`Widget.padding` represents the **insets used to derive the content rect from the allocated rect**.
 
-補足: leaf widget では「外側余白」に見えることがある
+Note: In leaf widgets, this can appear as "outer margin."
 
-- 見た目の描画（背景なし等）が content rect に寄っていると、padding 部分は視覚的に空白になりやすい。
-- それでも hit test は（原則）allocated rect を基準にするため、padding 部分がタッチターゲットに含まれることがある。
+- If the visual painting (e.g., no background) is aligned with the content rect, the padding area often appears visually blank.
+- However, since hit testing is (generally) based on the `allocated rect`, the padding area may still be part of the touch target.
 
 ```python
-# M3コンポーネント + フレームワークのレイアウト調整
+# M3 component + Framework layout adjustment
 Checkbox(size=48, padding=10)
-#        ↑         ↑
-#        M3仕様    insets (padding)
+#        ^         ^
+#        M3 spec   insets (padding)
 ```
 
-**図解**:
+**Illustration**:
 
 ```text
 ┌─────────────────────────────────────┐
-│ Widget (preferred_size に含まれる)    │
+│ Widget (Included in preferred_size)   │
 │  ┌─────────────────────────────┐    │
 │  │ padding=10 (insets)         │    │
 │  │  ┌───────────────────────┐  │    │
@@ -157,57 +158,57 @@ Checkbox(size=48, padding=10)
 preferred_size = 48 + 10*2 = 68dp
 ```
 
-### ルール3: M3内部構造は自動計算
+### Rule 3: M3 Internal Structure is Auto-calculated
 
-M3コンポーネントの内部構造（Icon/State Layer/Touch Target）は**M3仕様に従って自動計算**。
+The internal structure of M3 components (Icon/State Layer/Touch Target) is **calculated automatically according to M3 specs**.
 
 ```python
 class Checkbox(Widget):
     def __init__(self, size=48, padding=0, ...):
         super().__init__(width=size, height=size, padding=padding)
         
-        # M3仕様の内部構造（ユーザーは触らない）
+        # Internal structure per M3 spec (not touched by user)
         self._touch_target = size              # 48dp
-        self._state_layer = size * (40/48)     # 40dp (M3比率)
-        self._icon_size = size * (18/48)       # 18dp (M3比率)
+        self._state_layer = size * (40/48)     # 40dp (M3 ratio)
+        self._icon_size = size * (18/48)       # 18dp (M3 ratio)
     
     def preferred_size(self):
-        # M3サイズ + padding
+        # M3 size + padding
         l, t, r, b = self.padding
         return (self._touch_target + l + r,
                 self._touch_target + t + b)
     
     def paint(self, canvas, x, y, width, height):
-        # paddingを適用してcontent領域取得
+        # Apply padding to get content area
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
         
-        # content領域内にM3コンポーネントを配置
-        # （M3内部構造はここで描画）
+        # Place M3 component within content area
+        # (Draw M3 internal structure here)
         self._paint_m3_component(canvas, cx, cy, cw, ch)
 ```
 
-## 統一ルール定義
+## Unified Rule Definition
 
-### ✅ 採用するルール
+### ✅ Adopted Rules
 
-**`Widget.padding` = allocated→content の insets（全Widget共通）**
+**`Widget.padding` = `allocated` → `content` insets (Common to all Widgets)**
 
-1. **M3仕様パラメータ**: `size`, `height`, `width` 等
-   - M3の公式仕様に従う
-   - コンポーネント内部構造を定義
+1. **M3-spec parameters**: `size`, `height`, `width`, etc.
+    - Follows official M3 specifications.
+    - Defines internal component structure.
 
-2. **Framework padding**: `padding` パラメータ
-    - allocated→content の insets
-    - `preferred_size()` に含まれる（結果としてレイアウト上は「周囲に余白がある」ように振る舞うことがある）
+2. **Framework padding**: `padding` parameter.
+    - `allocated` → `content` insets.
+    - Included in `preferred_size()` (as a result, may behave as "surrounding space" in the layout).
 
-3. **M3内部構造**: 自動計算
-   - Touch Target, State Layer, Icon等
-   - M3比率で自動計算
-   - ユーザーは通常意識しない
+3. **M3 internal structure**: Auto-calculated.
+    - Touch Target, State Layer, Icon, etc.
+    - Calculated automatically using M3 ratios.
+    - Usually not something users need to worry about.
 
-### 実装パターン
+### Implementation Patterns
 
-#### パターン1: 固定サイズWidget（Checkbox, Icon）
+#### Pattern 1: Fixed-size Widget (Checkbox, Icon)
 
 ```python
 class Checkbox(Widget):
@@ -222,40 +223,40 @@ class Checkbox(Widget):
         return (self._m3_size + l + r, self._m3_size + t + b)
 ```
 
-#### パターン2: 可変サイズWidget（Button）
+#### Pattern 2: Variable-size Widget (Button)
 
 ```python
 class Button(Widget):
     def __init__(self, label, padding=0, ...):
-        # M3: 内部padding (24dp horizontal) は別パラメータ
+        # M3: Internal padding (24dp horizontal) is a separate parameter
         # Framework: padding = allocated→content insets
         super().__init__(padding=padding)
-        self._m3_horizontal_padding = 24  # M3内部
-        self._m3_height = 40              # M3仕様
+        self._m3_horizontal_padding = 24  # M3 Internal
+        self._m3_height = 40              # M3 Spec
     
     def preferred_size(self):
-        # M3: text width + M3内部padding
+        # M3: text width + M3 internal padding
         text_w = self._measure_text()
         m3_width = text_w + self._m3_horizontal_padding * 2
         m3_height = self._m3_height
         
-        # Framework: M3サイズ + padding
+        # Framework: M3 size + padding
         l, t, r, b = self.padding
         return (m3_width + l + r, m3_height + t + b)
 ```
 
-#### パターン3: レイアウトWidget（Column, Row）
+#### Pattern 3: Layout Widget (Column, Row)
 
 ```python
 class Column(Widget):
     def __init__(self, children, spacing=0, padding=0, ...):
-        # M3: 該当なし（レイアウトはフレームワーク機能）
-        # Framework: padding = 子の配置前の内側余白
+        # M3: Not applicable (Layout is a framework feature)
+        # Framework: padding = Inner padding before placing children
         super().__init__(padding=padding)
-        self._spacing = spacing  # 子間のスペース
+        self._spacing = spacing  # Spacing between children
     
     def preferred_size(self):
-        # 子のサイズ + spacing
+        # Size of children + spacing
         children_size = self._calculate_children_size()
         
         # Framework: children + padding
@@ -263,36 +264,36 @@ class Column(Widget):
         return (children_size.w + l + r, children_size.h + t + b)
 ```
 
-## 用語の整理
+## Terminology Cleanup
 
-### M3用語 → Framework用語マッピング
+### M3 Term → Framework Term Mapping
 
-| M3用語 | Framework用語 | 説明 |
+| M3 Term | Framework Term | Description |
 | -------- | --------------- | ------ |
-| Container size | `size`, `width`, `height` | M3コンポーネントのサイズ |
-| Content padding (内部) | M3パラメータ or 自動計算 | コンポーネント内部の配置 |
-| Touch target | M3パラメータ（通常は`size`） | インタラクション領域 |
-| State layer | 自動計算 | M3比率で決定 |
-| Spacing (between items) | `spacing` | 子要素間の距離 |
-| **(該当なし)** | `padding` | allocated→content の insets（結果として周囲の空白に見えることがある） |
+| Container size | `size`, `width`, `height` | Size of the M3 component |
+| Content padding (Internal) | M3 Parameter or Auto-calculated | Internal layout within the component |
+| Touch target | M3 Parameter (usually `size`) | Interaction area |
+| State layer | Auto-calculated | Determined using M3 ratios |
+| Spacing (between items) | `spacing` | Distance between child elements |
+| **(N/A)** | `padding` | `allocated` → `content` insets (may appear as visual surrounding space) |
 
-### 重要な区別
+### Important Distinction
 
 ```python
-# ❌ M3には存在しない概念
-m3_component.margin = ...  # M3にmarginはない
+# ❌ Concept that does not exist in M3
+m3_component.margin = ...  # No margin in M3
 
-# ✅ Frameworkで追加する概念
+# ✅ Concept added in the Framework
 widget.padding = ...  # allocated→content insets
 
-# ✅ M3の概念
-m3_component.size = 48           # Touch target (M3仕様)
-m3_component.container_height = 40  # Container (M3仕様)
+# ✅ M3 Concepts
+m3_component.size = 48           # Touch target (M3 spec)
+m3_component.container_height = 40  # Container (M3 spec)
 ```
 
-## 具体例：Checkbox
+## Specific Example: Checkbox
 
-### M3仕様
+### M3 Specification
 
 ```text
 Touch target: 48×48dp (minimum)
@@ -300,22 +301,22 @@ State layer: 40dp diameter
 Icon: 18×18dp
 ```
 
-### Framework実装
+### Framework Implementation
 
 ```python
 Checkbox(
     size=48,      # M3: Touch target
-    padding=0,    # Framework: insets（default）
+    padding=0,    # Framework: insets (default)
 )
 
-# preferred_size() = 48×48 (M3サイズ)
-# 内部構造:
+# preferred_size() = 48×48 (M3 size)
+# Internal structure:
 #   touch_target = 48dp (size)
-#   state_layer = 40dp (自動計算: 48 * 40/48)
-#   icon = 18dp (自動計算: 48 * 18/48)
+#   state_layer = 40dp (Auto-calculated: 48 * 40/48)
+#   icon = 18dp (Auto-calculated: 48 * 18/48)
 ```
 
-### レイアウト調整が必要な場合
+### When Layout Adjustments are Needed
 
 ```python
 Checkbox(
@@ -324,110 +325,110 @@ Checkbox(
 )
 
 # preferred_size() = 68×68 (48 + 10*2)
-# M3内部構造は変わらず48dp領域内に描画
-# insets は content rect を狭め、結果として周囲に空白が見えることがある
+# M3 internal structure remains drawn within a 48dp region.
+# Insets shrink the content rect, which may result in visual surrounding blank space.
 ```
 
-## まとめ：統一ルール
+## Summary: Unified Rules
 
-### ✅ 決定事項
+### ✅ Decisions
 
-1. **M3仕様パラメータ（`size`, `width`, `height` 等）**
-   - M3コンポーネントの**内部構造**を定義
-   - M3公式仕様に従う
-   - padding とは独立
+1. **M3-spec parameters (`size`, `width`, `height`, etc.)**
+    - Defines the **internal structure** of the M3 component.
+    - Follows official M3 specifications.
+    - Independent of `padding`.
 
 2. **Framework padding**
-    - allocated→content の insets（M3仕様には存在しない概念）
-    - `preferred_size()` に含まれる
-    - デフォルト値は `0`
+    - `allocated` → `content` insets (a concept that does not exist in M3).
+    - Included in `preferred_size()`.
+    - Default value is `0`.
 
-3. **用語の使い分け**
-   - "M3 internal padding" → M3仕様パラメータまたは自動計算
-     - "Widget padding" → allocated→content の insets
+3. **Terminology usage**
+    - "M3 internal padding" → M3-spec parameter or auto-calculated.
+    - "Widget padding" → `allocated` → `content` insets.
 
-4. **実装方針**
-   - M3コンポーネントは自己完結的
-     - padding は全Widget共通の allocated→content insets
-   - レイアウトWidget（Column/Row）は padding を内側余白として使用
+4. **Implementation Policy**
+    - M3 components are self-contained.
+    - `padding` is common to all Widgets as `allocated` → `content` insets.
+    - Layout Widgets (Column/Row) use `padding` as internal spacing.
 
-### 🎯 一貫性の保証
+### 🎯 Guaranteeing Consistency
 
 ```python
-# 全てのWidgetで統一
-Column(padding=10)      # 子の配置前の内側余白
-Row(padding=10)         # 子の配置前の内側余白
-Text(padding=10)        # テキストの周囲余白
-Checkbox(padding=10)    # allocated→content insets（leafでは周囲余白に見えることがある）
-Icon(padding=10)        # allocated→content insets（leafでは周囲余白に見えることがある）
+# Unified across all Widgets
+Column(padding=10)      # Inner spacing before child placement
+Row(padding=10)         # Inner spacing before child placement
+Text(padding=10)        # Surrounding space for text
+Checkbox(padding=10)    # allocated→content insets (appears as surrounding space in leaf)
+Icon(padding=10)        # allocated→content insets (appears as surrounding space in leaf)
 Button(padding=10)      # allocated→content insets
 ```
 
-**意味**: 全て「preferred_size に含まれる余白」で統一。
+**Meaning**: Unified under "spacing included in `preferred_size`."
 
-**M3内部構造**: 各Widgetが独自に管理（padding とは独立）。
+**M3 internal structure**: Managed independently by each Widget (independent of `padding`).
 
-## 次回に向けた準備チェックリスト
+## Prep Checklist for the Future
 
-MD3準拠対応をスムーズに行うため、実装着手前に以下を用意する。
+To ensure smooth MD3 compliance, prepare the following before starting implementation.
 
-### 1) 対象Widgetの確定
+### 1) Define Target Widgets
 
-- Widget名（例: Switch / Radio / Slider / ListItem 等）
-- Variant（例: Filled/Outlined、Small/Medium/Large など）
-- 対象プラットフォーム差（Android/iOS/Webで差があるか）
+- Widget name (e.g., Switch / Radio / Slider / ListItem, etc.)
+- Variant (e.g., Filled/Outlined, Small/Medium/Large, etc.)
+- Platform differences (Differences between Android/iOS/Web, if any)
 
-### 2) MD3仕様データ（数値）
+### 2) MD3 Specification Data (Numbers)
 
-最低限、以下の数値をVariantごとに揃える。
+At a minimum, collect the following numbers for each variant:
 
-- Touch target（最小サイズ）
-- Container size（高さ/幅、形状）
-- Content insets（leading/trailing/top/bottom）
-- Icon/indicator サイズ
-- Gap/spacing（要素間）
-- State layer（サイズ、形、表示条件）
-- Typography（font size, line height, weight など）
+- Touch target (Minimum size)
+- Container size (Height/Width, Shape)
+- Content insets (leading/trailing/top/bottom)
+- Icon/indicator size
+- Gap/spacing (Between elements)
+- State layer (Size, shape, display conditions)
+- Typography (Font size, line height, weight, etc.)
 
-補足:
+Note:
 
-- M3の「padding」は原則として **Container内のcontent配置** を意味する。
-- Frameworkの `Widget.padding` は allocated→content の insets として扱う（BOX_MODELのルール）。
+- M3's "padding" generally refers to the **layout of content within a Container**.
+- Framework `Widget.padding` is treated as `allocated` → `content` insets (per BOX_MODEL rules).
 
-### 3) 状態ごとの差分（見た目と入力）
+### 3) State-specific Differences (Visuals and Input)
 
 - enabled / disabled
 - hovered / pressed
-- focused（Focus ring/outline の有無、outsetsか）
+- focused (Presence of focus ring/outline, whether it's an outset)
 - selected / checked / indeterminate
 
-状態ごとに「サイズが変わるか」「描画だけ変わるか」を明記する。
+Specify whether "the size changes" or "only the rendering changes" for each state.
 
-### 4) ルール接続（BOX_MODELへのマッピング）
+### 4) Rule Integration (Mapping to BOX_MODEL)
 
-- Preferred size: touch target を満たすか（例: min 48）
-- Paint: container をどこに描くか（例: 48内で40を中央配置）
-- Hit test: allocated rect を基準にするか（例外: viewport/clip）
-- Outsets: shadow/focus/overlay を outsets として扱うか（layout/hit testに入れない）
+- Preferred size: Does it meet the touch target? (e.g., min 48)
+- Paint: Where is the container drawn? (e.g., centered as 40 within 48)
+- Hit test: Is it based on the allocated rect? (Exception: viewport/clip)
+- Outsets: Are shadows/focus/overlays treated as outsets? (Not included in layout/hit test)
 
-### 5) テーマ/スタイル設計
+### 5) Theme / Style Design
 
-- `*Style` に入れるべき token（例: container_height, content_insets, spacing, min_height）
-- ThemeData 経由で参照するか、Widgetの引数で上書き可能にするか
-- 既存Style/APIを破壊してよい変更点（後方互換は考慮しない）
+- Tokens to include in `*Style` (e.g., `container_height`, `content_insets`, `spacing`, `min_height`)
+- Whether to reference via `ThemeData` or allow overrides via Widget arguments.
+- Changes where breaking existing Styles/APIs is acceptable (do not consider backward compatibility).
 
-### 6) 受け入れ条件（テスト観点）
+### 6) Acceptance Criteria (Testing Perspective)
 
-- preferred_size の期待値（固定値 or 範囲）
-- padding が preferred_size に含まれること
-- hit test が allocated rect に従うこと
-- clip/viewport の visible region 制約が壊れないこと
+- Expected `preferred_size` (Fixed value or range)
+- Ensure `padding` is included in `preferred_size`.
+- Ensure `hit_test` follows the `allocated rect`.
+- Ensure visible region constraints of clip/viewport are not broken.
 
-可能なら、目視確認用の `src/samples/*_demo.py` を同時に用意する。
+If possible, prepare visual verification samples in `src/samples/*_demo.py` simultaneously.
 
-## 仕様→実装の記入テンプレート
+## Template: From Specification to Implementation
 
-次回以降は、以下のテンプレを埋めるだけで実装タスク化できる。
+In the future, fill out this template to turn a task into an implementation task.
 
 ### Widget: <NAME>
 
@@ -448,10 +449,10 @@ MD3準拠対応をスムーズに行うため、実装着手前に以下を用�
 #### Framework mapping
 
 - `Widget.padding`:
-- preferred_size:
-- paint (container placement):
-- hit test:
-- outsets:
+- `preferred_size`:
+- `paint` (container placement):
+- `hit_test`:
+- `outsets`:
 
 #### Style/Theme tokens
 

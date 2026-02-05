@@ -1,31 +1,25 @@
-# Navigation システム設計
+# Navigation System Design
 
-このドキュメントは、[docs/design/DECLARATIVE_VS_IMPERATIVE.md](DECLARATIVE_VS_IMPERATIVE.md) の実現に向けた Navigator（画面遷移）の設計書です。
+## 1. Core Architectural Structure
 
-議論の経緯やタスクメモは以下
+### 1.1 Relationship Between Overlay and Navigator
 
-- [docs/design/archive/DESIGN_OVERLAY_NAVIGATION.md](archive/DESIGN_OVERLAY_NAVIGATION.md)
+#### Policy: Physical Separation + Shared Internal Implementation
 
-## 1. アーキテクチャの基本構造
+The user-facing API should be intuitive and reflect the physical structure, while internal route/stack management is shared.
 
-### 1.1 Overlay と Navigator の関係性
+- `Navigator.push()` to "transition screens"
+- `Overlay.show()` to "display on the topmost layer"
 
-#### 方針: 物理構造に基づく分離 + 内部実装の共通化
-
-ユーザー API は物理構造を反映した直感的なものにし、内部は Route/スタック管理を共通化します。
-
-- `Navigator.push()` は「画面を遷移」
-- `Overlay.show()` は「最前面レイヤーに表示」
-
-内部実装は、Navigator は `PageRoute` を扱うスタックとして振る舞い、Overlay は内部専用の `_modal_navigator` を持って Dialog/Snackbar を Route として扱います。
+Internally, the `Navigator` acts as a stack managing `PageRoute` objects, while the `Overlay` maintains an internal `_modal_navigator` that treats Dialogs and Snackbars as routes.
 
 ```text
 ┌─────────────────────────────────────┐
 │ App                                  │
 │                                      │
 │  ┌───────────────────────────────┐  │
-│  │ Overlay (物理レイヤー)        │  │ ← 常に最前面
-│  │  内部: _modal_navigator       │  │
+│  │ Overlay (Physical Layer)       │  │ ← Always on top
+│  │  Internal: _modal_navigator   │  │
 │  │    ├─ DialogRoute             │  │
 │  │    └─ SnackbarRoute           │  │
 │  └───────────────────────────────┘  │
@@ -33,7 +27,7 @@
 │  ┌───────────────────────────────┐  │
 │  │ Content                       │  │
 │  │  ┌──────────────────┐         │  │
-│  │  │ Navigator (部品) │         │  │ ← ユーザーが配置
+│  │  │ Navigator (Part) │         │  │ ← Placed by user
 │  │  │  ├─ PageRoute    │         │  │
 │  │  │  └─ PageRoute    │         │  │
 │  │  └──────────────────┘         │  │
@@ -41,26 +35,25 @@
 └─────────────────────────────────────┘
 ```
 
-### 1.2 ルート Navigator の設計
+### 1.2 Root Navigator Design
 
-フルスクリーン遷移は一般的なパターンであり、ルート Navigator は実質的に必須と考えます。
-App がデフォルトでルート Navigator を提供し、グローバルアクセス API を提供します。
+Fullscreen transitions are a common pattern, making a root Navigator essentially mandatory. `App` provides a root Navigator by default along with a global access API.
 
 ```python
-# グローバルアクセス（簡潔、推奨）
+# Global access (concise, recommended)
 Navigator.root().push(...)
 
-# Context ベース（将来の拡張、詳細制御）
-Navigator.of(context).push(...)              # 最寄りの Navigator
-Navigator.of(context, root=True).push(...)   # ルート Navigator
+# Context-based (for future extensibility, detailed control)
+Navigator.of(context).push(...)              # Nearest Navigator
+Navigator.of(context, root=True).push(...)   # Root Navigator
 ```
 
-### 1.3 Context Lookup パターン
+### 1.3 Context Lookup Pattern
 
-タブごとに独立した Navigator（タブごとの遷移履歴）を実現するため、`Navigator.of(context)` を実装します。
+To support independent Navigators (transition histories) per tab, we implement `Navigator.of(context)`.
 
-- 実装は親を辿るだけ
-- ルート Navigator は `Navigator.root()` により O(1) で取得でき、頻出ケースを簡潔・高速にします
+- Implementation simply traverses up the parent chain.
+- The root Navigator can be retrieved in O(1) via `Navigator.root()`, ensuring common cases are concise and fast.
 
 ```python
 class Widget:
@@ -100,9 +93,9 @@ class Navigator(Widget):
         return navigator
 ```
 
-### 1.4 ViewModel 向け Interface（Protocol）
+### 1.4 Interface for ViewModels (Protocol)
 
-ViewModel が `Navigator` の実装詳細に依存しなくて済むように、`INavigator` を提供します。
+To ensure ViewModels do not depend on the implementation details of `Navigator`, we provide `INavigator`.
 
 ```python
 from __future__ import annotations
@@ -118,24 +111,24 @@ class INavigator(Protocol):
         ...
 ```
 
-## 2. Intent System の設計（Navigation 観点）
+## 2. Intent System Design (Navigation Perspective)
 
-### 2.0 Intent System とは
+### 2.0 What is the Intent System?
 
-Intent System は、画面遷移を「Widget/Route を直接渡す」だけでなく、Intent（意図）を表すデータとして宣言し、フレームワーク側で Route に解決して実行するための仕組みです。
+The Intent System is a mechanism for declaring screen transitions not just by passing Widgets/Routes directly, but as data representing an "intent," which the framework resolves to a Route for execution.
 
 ```python
-# 呼び出し側（意図）
+# Caller side (Intent)
 Navigator.root().push(ProductDetailIntent(product_id=123))
 
-# フレームワーク側（解決）
-# - type(intent) をキーに routes から factory を引く
-# - factory(intent) により Route を生成する
+# Framework side (Resolution)
+# - Look up the factory from routes using type(intent) as the key
+# - Generate a Route using factory(intent)
 ```
 
-### 2.1 Intent の型システム
+### 2.1 Intent Type System
 
-Intent は任意の dataclass として定義し、基底クラスや Protocol は不要とします。
+Intents are defined as arbitrary dataclasses, requiring no base class or Protocol.
 
 ```python
 from dataclasses import dataclass
@@ -151,9 +144,9 @@ class ProductDetailIntent:
     product_id: int
 ```
 
-### 2.2 Route マッピング（routes）
+### 2.2 Route Mapping (routes)
 
-`routes` は「Intent instance -> Route」を生成する辞書として扱います。
+`routes` is treated as a dictionary that maps `Intent instance -> Route`.
 
 ```python
 routes: dict[type, callable[[object], "Route"]] = {
@@ -166,40 +159,40 @@ routes: dict[type, callable[[object], "Route"]] = {
 Navigator.root().push(ProductDetailIntent(product_id=123))
 ```
 
-### 2.3 オーバーロード設計（push）
+### 2.3 `push` Overload Design
 
-`Navigator.push()` は次の 3 パターンを受け付けます。
+`Navigator.push()` accepts the following three patterns:
 
 - Widget
 - Route
 - Intent
 
 ```python
-# パターン1: Widget
+# Pattern 1: Widget
 Navigator.root().push(SettingsScreen())
 
-# パターン2: Route
+# Pattern 2: Route
 Navigator.root().push(PageRoute(builder=lambda: SettingsScreen()))
 
-# パターン3: Intent
+# Pattern 3: Intent
 Navigator.root().push(SettingsIntent())
 ```
 
-### 2.4 Intent 不明時の処理
+### 2.4 Handling Missing Intents
 
-登録されていない Intent を使った場合は RuntimeError を投げ、設定ミスを早期に検知します。
+If an unregistered Intent is used, a `RuntimeError` is thrown to catch configuration errors early.
 
 ```python
 Navigator.root().push(UnknownIntent())
 # → RuntimeError: Intent 'UnknownIntent' not found in routes
 ```
 
-### 2.5 App.navigation(...) 初期化パターン
+### 2.5 `App.navigation(...)` Initialization Pattern
 
-ViewModel が View（Widget）に依存せずに画面遷移できるようにするため、通常の `App(...)` とは別に `App.navigation(...)` を提供します。これで ViewModel は Intent ベースで遷移を要求できます。
+To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, `App.navigation(...)` is provided as an alternative initialization pattern.
 
 ```python
-# ナビゲーション付きアプリ
+# App with navigation
 App.navigation(
     routes={
         HomeIntent: lambda intent: PageRoute(builder=...),
@@ -211,15 +204,15 @@ App.navigation(
 )
 ```
 
-## 3. 戻るボタン（Back Button）のハンドリング
+## 3. Back Button Handling
 
-### 3.1 イベント伝播の優先順位
+### 3.1 Event Propagation Priority
 
-Esc / Back 相当のイベントの既定挙動は次の順序で処理します。
+The default behavior for events equivalent to `Esc` / `Back` is processed in the following order:
 
-1. 最前面の Overlay を閉じる
-2. 最前面の Navigator を pop
-3. Root route では何もしない
+1. Close the topmost Overlay entry.
+2. `pop()` the topmost Navigator.
+3. Do nothing if at the root route.
 
 ```python
 class App:
@@ -236,26 +229,26 @@ class App:
             return False
 ```
 
-### 3.2 Back 連打（連続入力）の扱い
+### 3.2 Handling Rapid Back Button Presses (Multiple Inputs)
 
-Esc / Back が連続して入力されるケース（キーリピート、連打、OS 側の多重イベント）では、実装側で「戻る要求」を安全に処理できる必要があります。
+In cases where `Esc` / `Back` are input in rapid succession (key repeat, hammering, multiple OS-level events), the implementation must safely handle "back requests."
 
-#### 方針
+#### Policy
 
-- `App.handle_back_event()` は 1 回の入力につき 1 回だけ処理を進める
-- Overlay が空なら `Navigator.request_back()` のみ
-- `Navigator.request_back()` は「ユーザー入力用 API」として、遷移中の re-entrancy を吸収する
+- `App.handle_back_event()` processes exactly one request per input.
+- If the Overlay is empty, it calls `Navigator.request_back()`.
+- `Navigator.request_back()` acts as the user input API, absorbing re-entrancy during transitions.
 
-#### 工夫（Navigator 側）
+#### Navigator Strategy
 
-- Pop アニメーション中に back が来た場合は、要求をキュー（`pending_pop_requests`）へ積み、現在の pop 遷移を即座に完了させる
-- キューを消費する際は、途中の pop はアニメーションを省略し、最後の pop だけ通常の挙動にする
-- Push アニメーション中に back が来た場合は、push を即座に完了させたうえで pop を 1 回行う
-- `handle_back_event()`（will-pop 相当）がキャンセルを返した場合は、キューを破棄してこれ以上の pop を発生させない
+- If a back occurs during a **Pop** animation: add the request to a queue (`pending_pop_requests`) and immediately complete the current pop transition.
+- When consuming the queue: skip animations for intermediate pops and treat only the final pop with normal behavior.
+- If a back occurs during a **Push** animation: immediately complete the push and then perform a single pop.
+- If `handle_back_event()` (equivalent to will-pop) returns a cancellation, discard the queue and stop further pops.
 
-### 3.3 will_pop() Modifier
+### 3.3 `will_pop()` Modifier
 
-戻る前の確認などのカスタムハンドリングは Modifier として実装します。
+Custom handling, such as confirmation before a back transition, is implemented as a Modifier.
 
 ```python
 from nuiitivet.modifiers import will_pop
@@ -268,11 +261,11 @@ async def _on_will_pop(self) -> bool:
     if self.has_unsaved_changes.value:
         confirmed = await Overlay.root().dialog(
             AlertDialog(
-                title=Text("確認"),
-                content=Text("保存せずに戻りますか？"),
+                title=Text("Confirmation"),
+                content=Text("Go back without saving?"),
                 actions=[
-                    TextButton("キャンセル", on_pressed=lambda: False),
-                    TextButton("戻る", on_pressed=lambda: True),
+                    TextButton("Cancel", on_pressed=lambda: False),
+                    TextButton("Back", on_pressed=lambda: True),
                 ],
             )
         )
@@ -280,9 +273,9 @@ async def _on_will_pop(self) -> bool:
     return True
 ```
 
-### 3.4 Navigator との統合
+### 3.4 Integration with Navigator
 
-`Navigator.pop()` の直前で will-pop chain を確認し、キャンセル可能にします。
+Check the `will_pop` chain immediately before `Navigator.pop()` to allow for cancellation.
 
 ```python
 class Navigator(Widget):

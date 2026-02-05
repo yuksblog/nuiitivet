@@ -1,7 +1,7 @@
 # Observable & Reactive Programming
 
-本ドキュメントは `nuiitivet` の Observable とリアクティブ機構の内部設計をまとめます。
-使い方のガイドは [docs/guide/observable.md](../guide/observable.md) を参照してください。
+This document summarizes the internal design of the Observable and reactive system in `nuiitivet`.
+For a usage guide, see [docs/guide/observable.md](../guide/observable.md).
 
 See also:
 

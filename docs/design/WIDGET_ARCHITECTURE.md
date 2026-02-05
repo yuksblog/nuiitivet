@@ -1,7 +1,6 @@
 # Widget Architecture & Mixin Design
 
-`nuiitivet` の `Widget` クラスは、複数の Mixin を組み合わせた **協調的継承 (Cooperative Multiple Inheritance)** パターンを採用しています。
-各 Mixin は単一責任の原則に基づき、特定の機能（ライフサイクル、レイアウト、入力など）を担当します。
+The `Widget` class in `nuiitivet` adopts a **Cooperative Multiple Inheritance** pattern, combining multiple Mixins. Each Mixin is responsible for a specific functionality (lifecycle, layout, input, etc.) following the Single Responsibility Principle.
 
 See also: [WIDGET_INTERNAL_STATE_ACCESS.md](WIDGET_INTERNAL_STATE_ACCESS.md)
 
@@ -12,146 +11,144 @@ Across module boundaries, use the public accessors documented in [WIDGET_INTERNA
 
 ## Widget vs ComposableWidget
 
-通常、アプリケーション開発者は `ComposableWidget` を使ってビルドツリーを構築します。
-一方、上級者などが低レベルの leaf ウィジェットを作成する場合は `Widget` を使います。
+Generally, application developers use `ComposableWidget` to construct the build tree. On the other hand, advanced users creating low-level leaf widgets use `Widget`.
 
 - `Widget`
-  - `build()` に依存せず、`layout()` / `paint()` / `hit_test()` を中心に振る舞う leaf を作りたい
-  - 子の管理は `children`（や専用ストア）で行い、build で subtree を返さない
-  - 例: 低レベル描画ウィジェット、入力/レイアウトのプリミティブ
+  - Used for creating leaf widgets that focus on `layout()`, `paint()`, and `hit_test()` without depending on `build()`.
+  - Child management is handled by `children` (or a specialized store), and it does not return a subtree from build.
+  - Examples: Low-level drawing widgets, input/layout primitives.
 
 - `ComposableWidget`
-  - `build()` を実装して子ツリーを組み立てたい（`build()` は必須、`None` は返さない）
-  - `rebuild()` を呼びたい/呼ばれたい
-  - `scope()` / `render_scope()` / `invalidate_scope_id()` を使って部分再構築したい
-  - `ComposableWidget.build()` は必須で、戻り値は常に `Widget`（`None` は禁止）
-  - 例: Page/Route、Overlay、状態に応じて subtree を差し替えるコンポーネント
+  - Used for modular composition by implementing `build()` to assemble a child tree (`build()` is mandatory and must not return `None`).
+  - Supports `rebuild()` calls.
+  - Utilizes `scope()`, `render_scope()`, or `invalidate_scope_id()` for partial recomposition.
+  - `ComposableWidget.build()` is mandatory and must return a `Widget` (never `None`).
+  - Examples: Pages, Routes, Overlays, and components that swap subtrees based on state.
 
-## 継承構造 (MRO)
+## Inheritance Structure (MRO)
 
-`Widget` は leaf-friendly な基底クラスで、`build()` を前提にしません。
-`build()` / `rebuild()` / `scope()` を使うウィジェットは `ComposableWidget` を継承します。
+`Widget` is a leaf-friendly base class and does not assume `build()` exists. Widgets that use `build()`, `rebuild()`, or `scope()` must inherit from `ComposableWidget`.
 
-Python の MRO (Method Resolution Order) に従い、メソッド呼び出しは上から下へと連鎖します。
+Following Python's MRO (Method Resolution Order), method calls chain from top to bottom.
 
 ```python
 class Widget(
-    AnimationHostMixin,   # アニメーション
-    BindingHostMixin,     # データバインディング (Observable)
-    LifecycleHostMixin,   # ライフサイクル (mount/unmount)
-    InputHubMixin,        # 入力イベント
-    ChildContainerMixin,  # 子要素管理 (children)
-    WidgetKernel,         # 基本レイアウト・描画
+    AnimationHostMixin,   # Animation
+    BindingHostMixin,     # Data binding (Observable)
+    LifecycleHostMixin,   # Lifecycle (mount/unmount)
+    InputHubMixin,        # Input events
+    ChildContainerMixin,  # Child element management (children)
+    WidgetKernel,         # Basic layout and rendering
 ):
     ...
 
 class ComposableWidget(
-  BuilderHostMixin,     # コンポジション (build/scope/rebuild)
+  BuilderHostMixin,     # Composition (build/scope/rebuild)
   Widget,
 ):
   ...
 ```
 
-## 各 Mixin の役割
+## Role of Each Mixin
 
 ### 1. Widget (Leaf-Friendly Base)
 
-- **役割**: 各 Mixin を統合する leaf-friendly な基底。
-- **責務**:
-  - レイアウト/描画/入力/ライフサイクルの土台。
-  - `build()` を実行しない（コンポジションは `ComposableWidget` に限定）。
+- **Role**: A leaf-friendly base that integrates all mixins.
+- **Responsibilities**:
+  - Serves as the foundation for layout, rendering, input, and lifecycle.
+  - Does not execute `build()` (composition is limited to `ComposableWidget`).
 
 ### 2. ComposableWidget (Composition Root)
 
-- **役割**: `BuilderHostMixin` を組み込むための明示的な基底。
-- **責務**:
-  - `build()` を持つウィジェットを明確に区別する。
-  - `build()` は必須で、戻り値は常に `Widget`（`None` は禁止）。
-  - `scope()` / `render_scope()` による部分再構築を利用可能にする。
+- **Role**: An explicit base class for incorporating `BuilderHostMixin`.
+- **Responsibilities**:
+  - Distinguishes widgets that possess a `build()` method.
+  - `build()` is mandatory and must return a `Widget` (never `None`).
+  - Enables partial recomposition using `scope()` or `render_scope()`.
 
 ### 3. BuilderHostMixin (Composition)
 
-- **役割**: `build()` メソッドによるウィジェットの構成（コンポジション）を管理する。
-- **責務**:
-  - `build()` の実行と、生成されたサブツリー (`_built`) の保持。
-  - `layout`, `paint`, `hit_test` をオーバーライドし、`_built` が存在する場合はそちらに処理を委譲する。
-    - `layout`: `super().layout()` の後に `_built.layout()` を実行。
-    - `hit_test`: まず `_built.hit_test()` を試し、ヒットしなければ `super().hit_test()` へ。
-    - Higher-level events that target the composed subtree are delegated to `_built` when present (e.g. back navigation via `handle_back_event`).
-  - `on_mount` / `on_unmount` で `_built` のライフサイクルを同期させる。
+- **Role**: Manages widget composition via the `build()` method.
+- **Responsibilities**:
+  - Executes `build()` and maintains the generated subtree (`_built`).
+  - Overrides `layout`, `paint`, and `hit_test` to delegate processing to `_built` when it exists.
+    - `layout`: Executes `_built.layout()` after `super().layout()`.
+    - `hit_test`: Attempts `_built.hit_test()` first; if it doesn't hit, falls back to `super().hit_test()`.
+    - Delegates higher-level events targeting the composed subtree to `_built` when present (e.g., back navigation via `handle_back_event`).
+  - Synchronizes the lifecycle of `_built` during `on_mount` and `on_unmount`.
 
 ### 4. LifecycleHostMixin (Lifecycle)
 
-- **役割**: アプリケーションとの接続とライフサイクルイベントを管理する。
-- **責務**:
-  - `mount(app)` / `unmount()` のドライバ実装（再帰呼び出しの起点）。
-  - `on_mount` / `on_unmount` フックの提供。
-  - `on_dispose` コールバックの管理。
+- **Role**: Manages application connection and lifecycle events.
+- **Responsibilities**:
+  - Implements the driver for `mount(app)` and `unmount()` (the entry point for recursive calls).
+  - Provides `on_mount` and `on_unmount` hooks.
+  - Manages `on_dispose` callbacks.
 
 ### 5. BindingHostMixin (Reactivity)
 
-- **役割**: データバインディング（Observable）の購読管理。
-- **責務**:
-  - `bind` / `bind_to` による購読の登録。
-  - `on_unmount` での自動的な購読解除（Dispose）。
+- **Role**: Manages subscriptions for data binding (Observables).
+- **Responsibilities**:
+  - Registers subscriptions via `bind` or `bind_to`.
+  - Automatically unsubscribes (Disposes) during `on_unmount`.
 
 ### 6. AnimationHostMixin (Animation)
 
-- **役割**: アニメーションの管理とフレーム更新要求。
-- **責務**:
-  - `animate` / `animate_value` メソッドの提供。
-  - `invalidate` メソッドによる再描画リクエストの委譲。
+- **Role**: Manages animations and frame update requests.
+- **Responsibilities**:
+  - Provides `animate` and `animate_value` methods.
+  - Delegates redrawing requests via the `invalidate` method.
 
 ### 7. InputHubMixin (Input)
 
-- **役割**: 入力イベントのルーティングとハンドリング。
-- **責務**:
-  - ポインター、キーボード、フォーカス、スクロールイベントのディスパッチ。
-  - `on_click` 等のイベントハンドラ登録。
+- **Role**: Handles routing and handling of input events.
+- **Responsibilities**:
+  - Dispatches pointer, keyboard, focus, and scroll events.
+  - Registers event handlers like `on_click`.
 
 ### 8. ChildContainerMixin (Children)
 
-- **役割**: 直接の子要素リスト（`children`）を管理する。
-- **責務**:
-  - `children` プロパティの提供。
-  - `add_child`, `remove_child` などの操作 API。
-  - `ChildrenStore` による子要素の保持。
+- **Role**: Manages the direct list of child elements (`children`).
+- **Responsibilities**:
+  - Provides the `children` property.
+  - Provides operational APIs like `add_child` and `remove_child`.
+  - Maintains child elements using `ChildrenStore`.
 
 ### 9. WidgetKernel (Base Element)
 
-- **役割**: ウィジェットの物理的な実体と基本動作を提供する基底クラス。
-- **責務**:
-  - `width`, `height`, `padding` プロパティの管理。
-  - `_layout_rect`（レイアウト計算結果）と `_last_rect`（描画結果）の保持。
-  - 基本的な `layout`（`_layout_rect` の更新と子要素へのサイズ伝播）。
-  - 基本的な `paint`（子要素の描画）。
-  - 基本的な `hit_test`（子要素の判定と自身へのヒット判定）。
-    - `_built` の存在は知らず、`children` と自身の矩形のみを対象とする。
+- **Role**: A base class providing the physical entity and basic behavior of a widget.
+- **Responsibilities**:
+  - Manages `width`, `height`, and `padding` properties.
+  - Stores `_layout_rect` (layout calculation result) and `_last_rect` (rendered result).
+  - Handles basic `layout` (updating `_layout_rect` and propagating size to children).
+  - Handles basic `paint` (rendering child elements).
+  - Handles basic `hit_test` (checking child elements and self for hits).
+    - Remains unaware of `_built`, focusing only on `children` and its own rectangle.
 
-## 連携フローの例
+## Example Interaction Flows
 
-### mount() の実行フロー
+### Execution flow for mount()
 
 ```python
 widget.mount(app)
   ↓
-LifecycleHostMixin.mount()  # 1. ドライバ起動。app を保持し、on_mount を呼ぶ。
+LifecycleHostMixin.mount()  # 1. Driver starts. Retains app and calls on_mount.
   ↓ self.on_mount()
-ComposableWidget (BuilderHostMixin).on_mount() # 2. (Composableのみ) ビルド実行。_built を生成し、マウントする。
+ComposableWidget (BuilderHostMixin).on_mount() # 2. (Composable only) Executes build, generates _built, and mounts it.
   ↓ super().on_mount()
-LifecycleHostMixin.on_mount() # 3. ユーザー定義のフック (デフォルトは何もしない)。
+LifecycleHostMixin.on_mount() # 3. User-defined hook (does nothing by default).
   ↓
-(LifecycleHostMixin.mount に戻り、children の mount を再帰的に実行)
+(Return to LifecycleHostMixin.mount and recursively execute mount for children)
 ```
 
-### layout() の実行フロー
+### Execution flow for layout()
 
 ```python
 widget.layout(width, height)
   ↓
-ComposableWidget (BuilderHostMixin).layout()   # 1. (Composableのみ) _built があれば、そちらの layout も呼ぶ。
+ComposableWidget (BuilderHostMixin).layout()   # 1. (Composable only) Calls layout for _built if it exists.
   ↓ super().layout()
-WidgetKernel.layout()                        # 2. 基本実装。children の layout を呼ぶ。
+WidgetKernel.layout()                        # 2. Basic implementation. Calls layout for children.
 ```
 
 ## Widget Optimization
