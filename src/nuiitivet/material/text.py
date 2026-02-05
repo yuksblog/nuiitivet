@@ -5,11 +5,11 @@ Provides a Material-decorated Text that defaults to the current Material theme.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.manager import manager
-from nuiitivet.observable import Observable
+from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.widgets.text import TextBase
 from nuiitivet.widgets.text_style import TextStyleProtocol
 
@@ -25,7 +25,7 @@ class Text(TextBase):
 
     def __init__(
         self,
-        label: Union[str, Observable],
+        label: Union[str, ReadOnlyObservableProtocol[Any]],
         *,
         width: SizingLike = None,
         height: SizingLike = None,

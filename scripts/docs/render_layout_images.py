@@ -55,6 +55,12 @@ SAMPLES = [
     ("src/samples/layout_extras/deck_demo.py", "layout_extras_deck.png"),
     ("src/samples/layout_extras/spacer_flex_demo.py", "layout_extras_spacer.png"),
     ("src/samples/layout_extras/container_demo.py", "layout_extras_container.png"),
+    # Dialogs
+    ("src/samples/dialogs/basic_usage.py", "dialogs_basic_usage.png"),
+    ("src/samples/dialogs/custom_dialog.py", "dialogs_custom_dialog.png"),
+    ("src/samples/dialogs/view_model_direct.py", "dialogs_view_model_direct.png"),
+    ("src/samples/dialogs/view_model_intent.py", "dialogs_view_model_intent.png"),
+    ("src/samples/dialogs/custom_intent.py", "dialogs_custom_intent.png"),
 ]
 
 

@@ -50,6 +50,7 @@ nav:
           - Grid: guide/layout_grid.md
           - Overflow: guide/layout_overflow.md
           - Extras: guide/layout_extras.md
+      - Dialogs: guide/dialogs.md
       - State Management: guide/observable.md
       - Async & Threading: guide/threading.md
       - Interaction: guide/interaction_region.md
