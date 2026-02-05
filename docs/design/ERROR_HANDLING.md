@@ -2,113 +2,113 @@
 
 ## Error handling policy
 
-フレームワーク全体で発生する例外が `try/except: pass` で握りつぶされ、原因追跡が困難になる状態を避ける。
+Avoid states where exceptions occurring throughout the framework are silenced by `try/except: pass`, making root cause tracking difficult.
 
-- "黙って消える失敗" を減らす
-- 例外の扱いを一貫した方針で運用できるようにする
-- ログ爆発を防ぎつつ、スタックトレースを残す
+- Reduce "silent failures"
+- Enable consistent handling of exceptions
+- Preserve stack traces while preventing log flooding
 
-### Boundary vs internal (境界/内部)
+### Boundary vs internal
 
-本書は例外の扱いを「境界/内部」の 2 役割に分ける。
+This document divides exception handling into two roles: "Boundary" and "Internal".
 
-- 境界（外周）
-  - OS/バックエンドからフレームワーク内部へ入る入口
-  - 例外の扱いを確定させる
-    - log + 継続に変換 / fail fast
+- **Boundary** (Perimeter)
+  - Entry points from the OS/backend into the framework interior.
+  - Finalizes the treatment of exceptions.
+    - Convert to log + continue / fail fast
     - raise
-- 内部（実装詳細）
-  - 境界から呼ばれる、描画/レイアウト/ツリー操作/購読などの処理本体
-  - 例外を握りつぶさず境界へ伝播させる
+- **Internal** (Implementation details)
+  - Core processing called from boundaries, such as rendering, layout, tree operations, and subscriptions.
+  - Propagates exceptions to boundaries without silencing them.
 
-## Processing categories (処理種別)
+## Processing categories
 
-### Startup / initialization (起動・初期化)
+### Startup / initialization
 
-アプリ起動、バックエンド初期化、必須リソース解決など「開始に失敗したら継続不能」な区間。
+Sections where "failure to start means inability to continue," such as app startup, backend initialization, and essential resource resolution.
 
-- 原則: raise（fail fast）
-- 例外: 補助的機能の初期化で、失敗しても継続可能な場合は log + フォールバック
+- Principle: raise (fail fast)
+- Exception: If an auxiliary feature fails to initialize but the app can still continue, log and fallback.
 
-### Event input (イベント入力)
+### Event input
 
-OS/バックエンドから届く入力（クリック、キー、ナビゲーション、フォーカス等）をアプリへ配送する区間。
+The section that delivers inputs arriving from the OS/backend (clicks, keys, navigation, focus, etc.) to the application.
 
-- 原則: 境界（入力配送の外周）で捕捉し、log して次のイベントへ継続
+- Principle: Catch at the boundary (outer perimeter of input delivery), log it, and continue to the next event.
 
-### Rebuild (状態更新・合成)
+### Rebuild (State update / Composition)
 
-イベント/タイマー等を受けて状態を更新し、UI ツリーを再構築・差分反映する区間。
+The section that updates state in response to events/timers and rebuilds or reflects differences in the UI tree.
 
-- 原則: 境界で捕捉し log、可能なら当該 subtree/処理単位をスキップして継続
+- Principle: Catch at the boundary and log; if possible, skip the affected subtree or unit of work and continue.
 
-### Rendering / frame update hot path (描画・フレーム更新)
+### Rendering / frame update hot path
 
-フレーム単位で反復し、描画やレイアウト、アニメーション更新を行う区間。
+The section that repeats on a per-frame basis to perform drawing, layout, and animation updates.
 
-- 原則: フレーム境界で捕捉し log（同一事象は 1 回だけ）
-- 当該フレームは安全に落として次フレームへ
+- Principle: Catch at the frame boundary and log (only once for the same occurrence).
+- Safely drop the current frame and proceed to the next frame.
 
-### Subscriptions / callbacks (購読・コールバック)
+### Subscriptions / callbacks
 
-利用者提供のコールバック、購読通知、非同期タスク完了通知など「外部コードを呼ぶ」区間。
+Sections that "call external code," such as user-provided callbacks, subscription notifications, and async task completion notifications.
 
-- 原則: 呼び出し元（購読通知/コールバック実行の外周）で捕捉し log、購読を止めない
-- 例外: 明示的なキャンセル/終了（CancelledError 相当）は ignore または DEBUG
+- Principle: Catch at the caller (outer perimeter of subscription notification/callback execution) and log; do not stop the subscription.
+- Exception: Explicit cancellation/termination (equivalent to `CancelledError`) should be ignored or logged as DEBUG.
 
-### Repository mapping examples (本リポジトリでの対応付け例)
+### Repository mapping examples
 
-境界（外周）の例。
+Examples of **boundaries** (perimeters):
 
-- エントリポイント: `src/__main__.py`
-- App 実行境界: `nuiitivet.runtime.app.App.run` と、その周辺のフレーム駆動（例: `_render_frame`）
-- バックエンド境界: `nuiitivet.backends.pyglet.runner.run_app` の `@window.event` ハンドラ（`on_draw` / `on_mouse_*` / `on_key_*` 等）
-- イベントループ境界: `nuiitivet.backends.pyglet.event_loop.ResponsiveEventLoop.run` / `_perform_draw`
-- 入力配送の外周: `nuiitivet.runtime.app_events.dispatch_*`
+- Entry point: `src/__main__.py`
+- App execution boundary: `nuiitivet.runtime.app.App.run` and its frame driving surroundings (e.g., `_render_frame`)
+- Backend boundary: `@window.event` handlers in `nuiitivet.backends.pyglet.runner.run_app` (`on_draw`, `on_mouse_*`, `on_key_*`, etc.)
+- Event loop boundary: `nuiitivet.backends.pyglet.event_loop.ResponsiveEventLoop.run` / `_perform_draw`
+- Input delivery perimeter: `nuiitivet.runtime.app_events.dispatch_*`
 
-内部（実装詳細）の例。
+Examples of **internal** implementation details:
 
-- ツリー/合成: `nuiitivet.widgeting.*`
-- レイアウト/スクロール: `nuiitivet.layout.*` / `nuiitivet.scrolling.*`
-- 描画: `nuiitivet.rendering.*`
-- アニメーション: `nuiitivet.animation.*`
-- テーマ/色: `nuiitivet.theme.*` / `nuiitivet.colors.*`
-- 観測/購読: `nuiitivet.observable.*`
-- ウィジェット実装: `nuiitivet.widgets.*`（利用者提供コールバックを呼ぶ箇所は「購読・コールバック」に該当）
+- Tree / Composition: `nuiitivet.widgeting.*`
+- Layout / Scrolling: `nuiitivet.layout.*` / `nuiitivet.scrolling.*`
+- Rendering: `nuiitivet.rendering.*`
+- Animation: `nuiitivet.animation.*`
+- Theme / Colors: `nuiitivet.theme.*` / `nuiitivet.colors.*`
+- Observation / Subscription: `nuiitivet.observable.*`
+- Widget implementation: `nuiitivet.widgets.*` (places calling user-provided callbacks fall under "Subscriptions / callbacks")
 
 ## Logging policy
 
 ### Exception logging
 
-- 例外は `logger.exception(...)` を使用してスタックトレースを残す
-- `logger.exception(...)` は、例外を捕捉して継続に変換する「境界」でのみ行う
+- Use `logger.exception(...)` to preserve stack traces.
+- `logger.exception(...)` should only be called at "boundaries" where exceptions are caught and converted to continuations.
 
 ### Avoid duplicate stack traces
 
-- 内部は原則として `logger.exception(...)` を呼ばない
-- 内部で捕捉が必要な場合は、コンテキスト付与（メッセージ整形、例外のラップ等）をして再送出する
+- Internally, avoid calling `logger.exception(...)`.
+- if an internal catch is necessary, provide context (message formatting, exception wrapping, etc.) and re-raise.
 
 ### debug_once / exception_once
 
-ログ爆発を防ぐため、同一事象は 1 回だけ出す仕組みを導入する。
+To prevent log flooding, introduce a mechanism to emit the same event only once.
 
-- Key design
-  - `category`（例: render/event/subscription） + `site`（例: 関数名 or 論理的な発火点名） + 例外型名
-  - メッセージ全文をキーに入れない
-- Capacity
-  - 既定で最大 N 件（例: 1024）
-  - 超過時は古いキーから破棄（LRU 等）
-- Thread-safety
-  - UI スレッド以外から呼ばれ得る場合、内部状態更新はスレッドセーフにする
+- **Key design**
+    - `category` (e.g., render/event/subscription) + `site` (e.g., function name or logical trigger point) + Exception type name.
+    - Do not include the full message in the key.
+- **Capacity**
+    - Default to N items (e.g., 1024).
+    - Use LRU or similar to discard old keys when capacity is exceeded.
+- **Thread-safety**
+    - Ensure internal state updates are thread-safe if called from outside the UI thread.
 
 ### Default logger behavior
 
-- フレームワークは `logging.getLogger("nuiitivet")`（または配下）を使用する
-- logging 設定は利用者に委ね、ドキュメントで推奨設定を提示する
-  - フレームワークは logging の設定（`basicConfig` やハンドラ追加）を行わない
-  - `nuiitivet` ロガーのレベルの推奨設定は WARNING とする
+- The framework uses `logging.getLogger("nuiitivet")` (or sub-loggers).
+- Logging configuration is left to the user, with recommended settings provided in the documentation.
+    - The framework does not perform logging configuration (no `basicConfig` or handler additions).
+    - The recommended level for the `nuiitivet` logger is `WARNING`.
 
-例: `logging.yaml`
+Example: `logging.yaml`
 
 ```yaml
 version: 1

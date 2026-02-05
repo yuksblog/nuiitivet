@@ -1,86 +1,85 @@
 # Rendering Pipeline Architecture
 
-本フレームワークの描画パイプラインは、**Build**, **Layout**, **Paint** の3つの主要フェーズで構成されています。
-各フェーズは明確に責務が分離されており、特に **Layout-first Architecture** を採用することで、描画前に幾何情報が確定することを保証しています。
+The rendering pipeline of this framework is composed of three primary phases: **Build**, **Layout**, and **Paint**. Each phase has clearly separated responsibilities, and by adopting a **Layout-first Architecture**, the framework guarantees that all geometric information is finalized before rendering occurs.
 
 ## 1. Build Phase
 
 *Status: Implemented (WidgetBuilder, ScopedFragment)*
 
-Widget ツリーの構築と状態変更に伴う差分更新を行うフェーズです。
+The phase where the Widget tree is constructed and incremental updates are performed in response to state changes.
 
-* **責務**:
-  * 宣言的な Widget 定義から、実際の Widget インスタンスツリーを生成する。
-  * `Observable` の変更を検知し、影響を受けるスコープ（`ScopedFragment`）のみを再構築（Recomposition）する。
-  * この段階では、Widget の親子関係とプロパティは決定されますが、具体的なサイズや位置は未定です。
+* **Responsibilities**:
+  * Generate the actual Widget instance tree from declarative Widget definitions.
+  * Detect changes in `Observable`s and perform "Recomposition" only for the affected scopes (`ScopedFragment`).
+  * At this stage, parent-child relationships and Widget properties are determined, but specific sizes and positions remain undecided.
 
 ### Scoped Rendering Optimization
 
-* **Fine-grained Updates**: `render_scope` ブロックを使用して動的な子要素をラップすることで、親の再構築時に高コストな Widget の再生成を防ぎます。
-* **Dedicated Scopes**: `ForEach` や `MaterialContainer` などのコア Widget は、リスト項目や装飾コンテンツを分離するために専用のスコープを持っています。
-* **Dependency Tracking**: スコープメタデータは各子要素の `_layout_dependencies` / `_paint_dependencies` を記録し、バインディングの無効化を適切にルーティングします。
-* **Batching**: バインディングキューとスコープ再構築キューは一緒にフラッシュされ、アンマウントされた Widget は即座に再構築されます。
+* **Fine-grained Updates**: Dynamic child elements are wrapped using `render_scope` blocks to prevent the regeneration of high-cost Widgets when a parent is rebuilt.
+* **Dedicated Scopes**: Core Widgets like `ForEach` and `MaterialContainer` have dedicated scopes to isolate list items or decorative content.
+* **Dependency Tracking**: Scope metadata records `_layout_dependencies` and `_paint_dependencies` for each child, ensuring proper routing of binding invalidations.
+* **Batching**: Binding and scope recomposition queues are flushed together, and unmounted Widgets are rebuilt immediately.
 
 ## 2. Layout Phase
 
 *Status: Implemented (Layout-first Architecture)*
 
-Widget のサイズと位置を決定するフェーズです。Paint の前に必ず実行されます。
+The phase where the size and position of each Widget are determined. This phase is guaranteed to execute before the Paint phase.
 
 ### The Layout Protocol
 
-すべての `Widget` は以下のプロトコルに従います。
+All `Widget`s adhere to the following protocol:
 
-1. **`layout(width, height)` メソッド**
-    * 親 Widget から呼び出され、利用可能なサイズ（制約）を受け取ります。
-    * **責務**:
-        1. 自身のサイズを決定する（`preferred_size` や `Sizing` 設定に基づく）。
-        2. 子 Widget がある場合、それらの `layout()` を呼び出し、サイズと位置を決定する。
-        3. 計算結果（自身のサイズ、子要素の相対位置）を `_layout_rect` に保存する。
-        4. `_needs_layout` フラグをクリアする。
-    * **禁止事項**: 描画コマンドの発行、副作用のある状態変更（レイアウト結果の保存を除く）。
+1. **`layout(width, height)` Method**
+    * Called by the parent Widget, passing the available size (constraints).
+    * **Responsibilities**:
+        1. Determine its own size (based on `preferred_size` and `Sizing` settings).
+        2. If child Widgets exist, call their `layout()` to determine their sizes and positions.
+        3. Store calculation results (own size, child relative positions) in `_layout_rect`.
+        4. Clear the `_needs_layout` flag.
+    * **Forbidden**: Issuing draw commands or state changes with side effects (except for storing layout results).
 
-2. **`_layout_rect` プロパティ**
-    * `layout()` の計算結果として、親 Widget から見た相対位置とサイズ `(x, y, w, h)` を保持します。
-    * `paint()` メソッドはこの値を読み取って描画を行います。
+2. **`_layout_rect` Property**
+    * Holds the relative position and size `(x, y, w, h)` as seen from the parent Widget, calculated during `layout()`.
+    * The `paint()` method reads this value to perform rendering.
 
-3. **`mark_needs_layout()` メソッド**
-    * レイアウトに影響するプロパティ（`width`, `padding`, 子の追加削除など）が変更された場合に呼び出します。
-    * 自身の `_needs_layout` フラグを立て、親 Widget へ再帰的に伝播させます。
-    * これにより、次回のフレームで必要な部分のみ再レイアウトが行われます。
+3. **`mark_needs_layout()` Method**
+    * Called when a property affecting layout (e.g., `width`, `padding`, addition/removal of children) is changed.
+    * Sets its own `_needs_layout` flag and propagates it recursively to the parent Widget.
+    * This ensures that only necessary parts of the tree are re-laid out in the next frame.
 
 ### Layout Cache & Profiling
 
-* **Sizing Cache**: `parse_sizing()` はメモ化されており、繰り返される width/height リテラルは追加の割り当てなしに `Sizing` オブジェクトに変換されます。
-* **Layout Engine Cache**: `LayoutEngine` は、推奨サイズ、内部矩形、子要素の配置結果をキャッシュします。キャッシュキーには、パディング、ボーダー幅、コンテナの `_layout_cache_token`、子トークンなどが含まれます。
-* **Invalidation**: パディングやボーダー幅を変更する Widget は `_layout_cache_token` をインクリメントしてキャッシュを無効化します。
-* **Profiling**: `enable_layout_cache_profiling()` により、開発者はヒット率を検査して複雑なツリーを最適化できます。
+* **Sizing Cache**: `parse_sizing()` is memoized, so repeated width/height literals are converted to `Sizing` objects without additional allocations.
+* **Layout Engine Cache**: `LayoutEngine` caches preferred sizes, internal rects, and child placement results. Cache keys include padding, border width, container `_layout_cache_token`, child tokens, etc.
+* **Invalidation**: Widgets that change padding or border width increment their `_layout_cache_token` to invalidate the cache.
+* **Profiling**: Using `enable_layout_cache_profiling()`, developers can inspect hit rates to optimize complex trees.
 
 ### Lifecycle Integration
 
-`App` のメインループは以下の順序で処理を行います。
+The `App` main loop processes tasks in the following order:
 
-1. **Layout Pass**: ルート Widget の `layout()` を呼び出します（`_needs_layout` が True の場合のみ）。
-    * この段階で、全 Widget のサイズ、位置、スクロール領域（Metrics）が確定します。
-    * スクロールバーの表示判定やヒットテストの正確性が保証されます。
+1. **Layout Pass**: Calls `layout()` on the root Widget (only if `_needs_layout` is True).
+    * At this stage, sizes, positions, and scroll metrics for all Widgets are finalized.
+    * This guarantees the accuracy of scrollbar visibility and hit-testing.
 
 ## 3. Paint Phase
 
 *Status: Implemented (Skia integration)*
 
-確定したレイアウト情報に基づいて、実際に画面への描画を行うフェーズです。
+The phase where actual drawing to the screen is performed based on the finalized layout information.
 
-* **責務**:
-  * `layout()` で計算された `_layout_rect` を使用して、自身と子 Widget を描画する。
-  * Skia キャンバスへの描画コマンド発行。
-  * クリッピングや座標変換（`save`, `translate`, `restore`）の適用。
-* **制約**:
-  * この段階でのサイズ計算や配置変更は禁止されています。
-  * `paint()` は純粋なコンシューマーであり、レイアウト結果を変更してはいけません。
+* **Responsibilities**:
+  * Render itself and its child Widgets using the `_layout_rect` calculated during `layout()`.
+  * Issue drawing commands to the Skia canvas.
+  * Apply clipping and coordinate transformations (`save`, `translate`, `restore`).
+* **Constraints**:
+  * Calculating sizes or changing placements is forbidden at this stage.
+  * `paint()` is a pure consumer and must not modify layout results.
 
 ### Paint Cache Reuse
 
-* **CachedPaintMixin**: 重い描画を行う Widget は `CachedPaintMixin` を使用して、背景レイヤーをオフスクリーン Skia サーフェスにレンダリングします。
-* **Cache Invalidation**: `_paint_dependencies` が変更された場合、またはプロパティセッターや Modifier が `invalidate_paint_cache()` を呼び出した場合にキャッシュは破棄されます。
-* **Hit Testing**: キャッシュされたレイヤーはヒットテストに影響を与えません。`_last_rect` が唯一の真実のソースであり続けます。
-* **Theme Awareness**: ColorRole を参照する Widget は `ThemeManager` を購読し、テーマ変更時にキャッシュを無効化する責務を持ちます。
+* **CachedPaintMixin**: Widgets performing heavy rendering use `CachedPaintMixin` to render background layers to an off-screen Skia surface.
+* **Cache Invalidation**: Caches are discarded if `_paint_dependencies` change, or if property setters or Modifiers call `invalidate_paint_cache()`.
+* **Hit Testing**: Cached layers do not affect hit-testing; `_last_rect` remains the single source of truth.
+* **Theme Awareness**: Widgets referencing ColorRoles are responsible for subscribing to the `ThemeManager` and invalidating the cache upon theme changes.

@@ -4,60 +4,60 @@
 
 See [BOX_MODEL.md](BOX_MODEL.md) for the single source of truth on rect terminology (allocated/content), hit testing rules, and visual overflow (outsets).
 
-本フレームワークのレイアウトシステムは、Widget ツリー構造そのものによって表現されます。
-CSS のような外部スタイルシートや複雑な制約システム（Auto Layout 等）ではなく、プロパティとコンポジションによる直感的な制御を目指しています。
+The layout system of this framework is expressed by the Widget tree structure itself.
+It aims for intuitive control through properties and composition, rather than external stylesheets or complex constraint systems.
 
 ## Core Principles
 
 ### 1. Spacing: Padding & Gap (No Margin)
 
-Widget 間の余白制御は `padding` と `gap` のみに統一します。`margin`（外側余白）は使用しません。
+Spacing control between Widgets is unified under `padding` and `gap`. `margin` (outer spacing) is not used.
 
-* **Padding (内側余白)**
-  * すべての Widget は `padding` プロパティを持ちます。
-  * 自身のコンテンツと境界線（Border/Background）との間のスペースを制御します。
+* **Padding (Inner Spacing)**
+    * All Widgets have a `padding` property.
+    * It controls the space between the content and the boundary (Border/Background).
 
-* **Gap (子要素間の間隔)**
-  * 複数の子を持つコンテナ（`Row`, `Column` 等）は `gap` プロパティを持ちます。
-  * 子 Widget 同士の間に一定の間隔を挿入します。
+* **Gap (Spacing Between Children)**
+    * Containers with multiple children (`Row`, `Column`, etc.) have a `gap` property.
+    * It inserts a consistent interval between child Widgets.
 
-* **Flow の 2軸 Gap**
-  * 折り返しレイアウト（`Flow`）は、将来的な `direction` 追加を見据えて `main_gap` / `cross_gap` を持ちます。
-    * `main_gap`: run 内（主方向）の間隔
-    * `cross_gap`: run 同士（交差方向）の間隔
-  * 対応関係の目安: CSS の `gap` / `row-gap` / `column-gap`、Flutter の `Wrap(spacing, runSpacing)`。
+* **Flow 2-axis Gap**
+    * Multi-run layouts (`Flow`) have `main_gap` and `cross_gap` in anticipation of future `direction` additions.
+        - `main_gap`: Interval within a run (main direction).
+        - `cross_gap`: Interval between runs (cross direction).
+    * Equivalent to CSS `gap` / `row-gap` / `column-gap` or Flutter's `Wrap(spacing, runSpacing)`.
 
-* **Grid の row/column Gap**
-  * 2次元レイアウト（`Grid`）は軸が固定なので、`row_gap` / `column_gap` を持ちます。
-    * `row_gap`: 行（Y方向）間の間隔
-    * `column_gap`: 列（X方向）間の間隔
-  * CSS の `row-gap` / `column-gap` と同じ意図です。
+* **Grid row/column Gap**
+    * 2D layouts (`Grid`) have fixed axes, so they use `row_gap` and `column_gap`.
+        - `row_gap`: Interval between rows (Y direction).
+        - `column_gap`: Interval between columns (X direction).
+    * Shares the same intent as CSS `row-gap` / `column-gap`.
 
 * **Why No Margin?**
-  * `margin`と`padding` の両方があると、どちらを使えば良いか混乱します。
-  * コンポーネント自身が「外側の余白」を持つことは、コンポーネントの再利用性を損なう原因となります（配置される文脈によって必要な外側余白は変わるため）。
-  * 余白が必要な場合は、親コンテナの `gap`、親の `padding`、あるいは透明な `Spacer` Widget を使用して制御します。
+    * Having both `margin` and `padding` causes confusion about which to use.
+    * Allowing components to have "outer spacing" compromises reusability (the required outer spacing changes depending on the context).
+    * If spacing is needed, use the parent container's `gap`, the parent's `padding`, or a transparent `Spacer` Widget.
 
 ### 2. Sizing System
 
-Widget のサイズは `Sizing` 型によって抽象化され、`width` / `height` プロパティで指定します。
+Widget sizes are abstracted by the `Sizing` type and specified via `width` and `height` properties.
 
 #### Sizing Types
 
-* **`fixed(value)`**: 固定ピクセル値。
-* **`auto`**: コンテンツの内容に合わせてサイズを決定（Intrinsic size）。
-* **`flex(weight=1.0)`**: 親の利用可能な領域（残りのスペース）を埋めます。
-  * Flexbox の `flex-grow` に相当します。
-  * 複数の `flex` 要素がある場合、`weight` の比率でスペースを分配します。
-  * 文字列で `"50%"` のように指定した場合、`flex(50.0)` として解釈されます。
-    * 注意: これは「親の50%」という絶対的なサイズではなく、「重み50」として扱われます。兄弟要素がすべて `%` 指定であれば比率通りになりますが、固定サイズの要素が混在する場合は「残りスペース」に対する配分となる点に注意してください。
+* **`fixed(value)`**: Fixed pixel value.
+* **`auto`**: Size determined by content (Intrinsic size).
+* **`flex(weight=1.0)`**: Fills available space (remaining space) of the parent.
+    - Equivalent to Flexbox's `flex-grow`.
+    - If multiple `flex` elements exist, space is distributed according to the `weight` ratio.
+    - Specifying a string like `"50%"` is interpreted as `flex(50.0)`.
+        - Note: This is treated as "weight 50", not an absolute size of "50% of parent." If all siblings use `%`, they will be proportional, but if fixed-size elements are mixed in, the allocation is relative to the "remaining space."
 
 #### Grid: Room Allocation and Fill
 
-補足: `Grid` の責務は「部屋割り（行/列/エリアと、各セルの allocated rect を決める）」です。
-与えられた部屋をどう使うか（intrinsic で置くか、いっぱいに埋めるか）は子 Widget の `width` / `height`（`Sizing`）で決めます。
+Note: The responsibility of `Grid` is "room allocation" (determining rows, columns, areas, and the allocated rect for each cell).
+How the allocated room is used (intrinsic or full fill) is decided by the child Widget's `width` / `height` (`Sizing`).
 
-例: セルを埋めたい場合は `Sizing.flex(1)` を明示します。
+Example: To fill a cell, explicitly specify `Sizing.flex(1)`.
 
 ```python
 cell = MaterialContainer(
@@ -69,81 +69,78 @@ cell = MaterialContainer(
 
 #### The `size` Parameter (Specific Widgets)
 
-`Icon` や `Checkbox` など、正方形であることが本質的な Widget では、初期化パラメータとして `size` を提供します。
+Widgets where being square is essential (like `Icon` or `Checkbox`) provide `size` as an initialization parameter.
 
-* **Purpose**: アスペクト比（1:1）を強制し、`width` と `height` の不整合を防ぐために使用します。
+* **Purpose**: Enforces an aspect ratio (1:1) and prevents inconsistency between `width` and `height`.
 * **Behavior**:
-  * 初期化時に `size` を受け取り、内部的に `width` と `height` の両方に同じ値を設定します。
-  * これらの Widget は通常、コンストラクタで個別の `width` / `height` 引数を受け付けません。
+    - Takes `size` at initialization and internally sets both `width` and `height` to the same value.
+    - These Widgets typically do not accept separate `width` / `height` arguments in their constructors.
 
 ### 3. Alignment: Parent's Responsibility
 
-配置（Alignment）は、子 Widget 自身ではなく「親 Widget」の責務です。
+Alignment follows the principle that it is the "parent Widget's" responsibility, not the child Widget's.
 
 #### Single Child Container
 
-単一の子を持つ Widget（`Container` 等）は `alignment` プロパティを使用します。
+Widgets with a single child (`Container`, etc.) use the `alignment` property.
 
 * **Values**
-  * 9点配置
-    * `top-left`, `top-center`, `top-right`
-    * `center-left`, `center`, `center-right`
-    * `bottom-left`, `bottom-center`, `bottom-right`
+    - 9-point alignment:
+        - `top-left`, `top-center`, `top-right`
+        - `center-left`, `center`, `center-right`
+        - `bottom-left`, `bottom-center`, `bottom-right`
 
-補足: alignment は「配置位置」だけを決めます。サイズを埋めたい場合は `width` / `height`（例: `Sizing.flex(...)`）で指定します。
+Note: Alignment only determines the positioning. To fill the space, specify `width` / `height` (e.g., `Sizing.flex(...)`).
 
-Note: `alignment` という用語は文脈によって意味が異なります。
-CSS 系（Web）の `align-*` / `justify-*` には “stretch（余剰スペースをサイズで吸収する）” の概念が含まれることがありますが、
-本フレームワークでは GUI 系の考え方を採用し、alignment は一貫して「配置のみ」です。
+Note: The term `alignment` can mean different things. CSS-related (`align-*` / `justify-*`) sometimes includes the concept of "stretch" (absorbing excess space), but this framework adopts a GUI-centric approach where alignment consistently means "positioning only."
 
 #### Multi Child Container
 
-複数の子を持つ Widget（`Row`, `Column` 等）は Flexbox ライクな配置制御を使用します。
+Widgets with multiple children (`Row`, `Column`, etc.) use Flexbox-like alignment control.
 
-* **`main-alignment` (主軸方向)**
-  * `start`, `center`, `end`
-  * `space-between`, `space-around`, `space-evenly`
-* **`cross-alignment` (交差軸方向)**
-  * `start`, `center`, `end`
+* **`main-alignment` (Main axis)**
+    - `start`, `center`, `end`
+    - `space-between`, `space-around`, `space-evenly`
+* **`cross-alignment` (Cross axis)**
+    - `start`, `center`, `end`
 
 ### 4. Overflow Strategy
 
-**Overflow** とは、子 Widget の描画内容やレイアウトサイズが、親から割り当てられた領域（Bounds）を超える状態を指します。
-一般的に Overflow の制御には Visible / Clip / Scroll がありますが、本フレームワークでは以下の設計思想に基づき **Visible** をデフォルトとしています。
+**Overflow** occurs when a child Widget's painted content or layout size exceeds the area (bounds) allocated by its parent.
+While overflow control generally includes Visible, Clip, or Scroll, this framework defaults to **Visible** based on the following design philosophy.
 
 * **Default: Visible**
-  * デフォルトでは、コンテンツが領域をはみ出した場合でもそのまま描画されます（クリッピングされません）。
-  * **Design Rationale**:
-    * **Web Standard Alignment**: CSSのデフォルト値と同様 `overflow: visible`
-    * **Fail Loudly**: Sizingシステムにより、基本的にはみ出すことはありません。もしそうなった場合は、レイアウト設計のバグであり、勝手に切り取られるよりも、はみ出して表示される方がバグに気づきやすく、修正が容易です。
-    * **Design Freedom**: シャドウやフォーカスリングなどの視覚効果は、親の境界をはみ出す方が自然です。
-    * **Role of Modifiers**: `Clip`（視覚効果）や `Scroll`（機能追加）は Modifier の責務であり、デフォルトの Widget は素直に描画すべきです。
-    * **Performance First**: クリッピング処理（`saveLayer` / `clipRect`）は高コストです。デフォルトを Visible にすることで、フレームワークの基本性能を最大化します。
+    - By default, content is rendered as-is even if it overflows the bounds (not clipped).
+    - **Design Rationale**:
+        - **Web Standard Alignment**: Matches the CSS default `overflow: visible`.
+        - **Fail Loudly**: With the Sizing system, content shouldn't overflow under normal circumstances. Overflow indicates a layout design bug; keeping it visible makes bugs easier to notice and fix than silent clipping.
+        - **Design Freedom**: Visual effects like shadows or focus rings often naturally overflow parent boundaries.
+        - **Role of Modifiers**: `Clip` (visual effect) and `Scroll` (functional addition) are the responsibilities of Modifiers; default Widgets should render plainly.
+        - **Performance First**: Clipping operations (`saveLayer` / `clipRect`) are expensive. Defaulting to Visible maximizes framework performance.
 
 * **Handling Overflow**
-  * **Clipping**: 視覚的に切り抜く必要がある場合は、`Clip` Modifier を使用します。
-  * **Scrolling**: 領域内でスクロールさせる場合は、`Scroll` Modifier を使用します。
+    - **Clipping**: Use the `Clip` Modifier when visual truncation is required.
+    - **Scrolling**: Use the `Scroll` Modifier when scrolling within a region is needed.
 
 ### 5. Role of Modifiers in Layout
 
-**Modifier** は、既存の Widget をラップして、機能（Capabilities）や視覚効果（Effects）を付加する仕組みです。
-詳細な設計については [MODIFIER.md](MODIFIER.md) を参照してください。
+**Modifiers** wrap existing Widgets to add capabilities or visual effects. See [MODIFIER.md](MODIFIER.md) for detailed design.
 
 * **Principle: Layout is Property-driven**
-  * レイアウト（サイズ、余白、配置）は、Widget 自身のプロパティ（`width`, `height`, `padding`, `alignment`）で制御します。
-  * Modifier でレイアウトサイズや配置を直接変更することは避けます。
+    - Layout (size, spacing, alignment) is controlled via Widget-own properties (`width`, `height`, `padding`, `alignment`).
+    - Avoid directly changing layout size or alignment via Modifiers.
 
 ## Window (App) Sizing / Positioning
 
-`App`（OS ウィンドウ）の `width` / `height` は Widget の `Sizing` とは別物です。
+The `width` / `height` of the `App` (OS window) is distinct from Widget `Sizing`.
 
-* Window の `width` / `height` は `WindowSizing`（または `WindowSizingLike`）として扱います。
-  * **px** の固定値、または `"auto"`（preferred size）を受け取ります。
-* `"50%"` のような指定は **サポートしません**（Widget の `Sizing.flex(...)` と意味が衝突するため）。
+* Window `width` / `height` is treated as `WindowSizing` (or `WindowSizingLike`).
+    - Accepts fixed **px** values or `"auto"` (preferred size).
+* `"50%"`-style specification is **not supported** (as it conflicts with the meaning of Widget `Sizing.flex(...)`).
 
-ウィンドウの表示位置は 9点 Alignment 語彙で指定します。
+Window positions are specified using 9-point Alignment vocabulary.
 
-* `WindowPosition.alignment("bottom-center", offset=(0, -24))` のように指定します。
-* `offset` は alignment の後に適用します。
-  * 単位は px。
-  * 座標系は UI と同様に $+x$ は右、$+y$ は下。
+* Specified like `WindowPosition.alignment("bottom-center", offset=(0, -24))`.
+* `offset` is applied after alignment.
+    - Units in px.
+    - Coordinate system matches the UI: $+x$ is right, $+y$ is down.

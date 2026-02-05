@@ -1,39 +1,39 @@
-# Programming paradims
+# Programming Paradigms
 
 ## 1. Basic Philosophy
 
-nuiitivetの目的は、開発者にとって **「直感的であること (Intuitive)」** であることを重視している。
-UI開発における「直感」とは、メンタルモデルとコードが一致している状態を指します。
+The primary objective of `nuiitivet` is to be **"Intuitive"** for developers.
+In UI development, "intuition" refers to a state where the developer's mental model aligns perfectly with the code.
 
-この目的を達成するために、nuiitivetは単一のパラダイムに固執せず、バランスよく組み合わせるアプローチを採用します。
+To achieve this, `nuiitivet` does not cling to a single paradigm but adopts a balanced multi-paradigm approach:
 
-1. **宣言的UI**
-    * WidgetツリーやModifierの構築は、宣言的に記述します。
-    * *Why*: 「画面に何が表示されているか」という静的な構造は、宣言的な記述が最も直感的で可読性が高いため。
+1. **Declarative UI**
+    * Construction of Widget trees and Modifiers is described declaratively.
+    * *Why*: The static structure of "what is displayed on the screen" is most intuitive and readable when described declaratively.
 
 2. **Data Binding**
-    * 状態と表示の同期は、Observableによるデータバインディングで、宣言的に記述します。
-    * *Why*: 「データが変われば表示も変わる」という因果関係は、リアクティブな仕組みに任せるのが最も自然で、整合性を保ちやすいため。
+    * Synchronization between state and display is described declaratively through data binding with Observables.
+    * *Why*: The causal relationship of "if data changes, the display changes" is most natural when left to a reactive mechanism, making it easier to maintain consistency.
 
-3. **Event Handler**
-    * ボタンクリック時などのイベント時の処理は、イベントハンドラ内で命令的に記述します。
-    * *Why*: 「ユーザーが操作したら、次に何が起きるか」という時間の流れ（フロー）は、手続き的に記述するのが最も直感的で、デバッグも容易なため。
+3. **Event Handlers**
+    * Processing for events (e.g., button clicks) is described imperatively within event handlers.
+    * *Why*: The flow of time ("what happens next after a user action") is most intuitive and easier to debug when described procedurally.
 
-## 2. UIコンポーネントの制御 (UI Component Control)
+## 2. UI Component Control
 
-UIコンポーネントの中には、宣言的（構造）と命令的（フロー）の境界線が曖昧なものが存在します。それぞれのケースに対する推奨アプローチを以下に示します。
+Some UI components sit on the boundary between declarative (structure) and imperative (flow). The following sections detail recommended approaches for these cases.
 
-### 2.1 ダイアログ (Dialog)
+### 2.1 Dialogs
 
-* **課題**: UI構造の一部だが、ユーザーとの「会話（フロー）」という時系列の性質を持つ。
-* **解決策**: **宣言的定義 + 命令的表示 (Declarative Definition + Imperative Display)**
-  * 定義はWidgetとして宣言的に行う。
-  * 表示は `await` を用いて命令的に行い、結果を受け取る。
+* **Challenge**: While part of the UI structure, dialogs have a chronological nature as a "conversation (flow)" with the user.
+* **Solution**: **Declarative Definition + Imperative Display**
+  * Define the content as a Widget declaratively.
+  * Display with `await` imperatively and receive the result.
 
-#### Dialog: 基本的な使い方 (View Only)
+#### Dialog: Basic Usage (View only)
 
 ```python
-# イベントハンドラ内で await を使用して結果を待つ
+# Use await within an event handler to wait for result
 result = await Overlay.dialog(
     child=AlertDialog(
         title=Text("Confirm"),
@@ -48,17 +48,17 @@ if result:
     do_something()
 ```
 
-#### Dialog: ViewModelで実施する場合
+#### Dialog: ViewModel Implementation
 
-ViewModelは具体的なWidgetを知るべきではないため、IntentやServiceインターフェースを使用します。
-`Overlay` はアプリのルートコンテンツとは独立したレイヤーとして定義し、`App` 初期化時に渡します。
+Since ViewModels should not know about specific Widgets, use Intents or Service interfaces.
+The `Overlay` is defined as a layer independent of the root content and is passed during `App` initialization.
 
-##### 1. 標準のダイアログを使用する場合
+##### 1. Using Standard Dialogs
 
-フレームワークは標準的な Dialog Widget（`AlertDialog` 等）を提供し、標準 Dialog Intent をデフォルトで利用可能にする。
+The framework provides standard dialog Widgets (e.g., `AlertDialog`) and makes standard Dialog Intents available by default.
 
-ViewModel は Widget を直接生成せず、`IOverlay` のような抽象インターフェースに対して Intent を発行する。
-具体的な Widget の生成は View 層（`dialogs` の設定）に委譲されるため、利用側は標準的な見た目のダイアログを再利用できる。
+A ViewModel does not create Widgets directly but issues Intents to an abstract interface like `IOverlay`.
+The actual Widget creation is delegated to the View layer (via `dialogs` configuration), allowing for the reuse of dialogs with a standard look and feel.
 
 ```python
 class MyViewModel:
@@ -66,15 +66,15 @@ class MyViewModel:
         self.overlay = overlay
 
     async def on_error(self, error_msg):
-        await self.overlay.dialog(AlertDialogIntent(title="エラー", message=error_msg))
+        await self.overlay.dialog(AlertDialogIntent(title="Error", message=error_msg))
 ```
 
-##### 2. カスタムダイアログを使用する場合
+##### 2. Using Custom Dialogs
 
-独自のレイアウトを持つダイアログを表示したい場合は、カスタムIntentを定義し、`Overlay` に登録します。
+To display a dialog with a unique layout, define a custom Intent and register it with the `Overlay`.
 
 ```python
-# 1. Custom Intent (Data Class)
+# 1. Custom Intent (Data class)
 @dataclass
 class ConfirmIntent:
     title: str
@@ -82,9 +82,9 @@ class ConfirmIntent:
 
 # 2. App Initialization (Overlay Setup)
 if __name__ == "__main__":
-    # Overlayレイヤーの定義
+    # Define Overlay layer
     overlay = Overlay(
-        # Intent を登録（標準 Intent はデフォルトで利用可能）
+        # Register Intent (standard intents available by default)
         dialogs={
             ConfirmIntent: lambda intent: DialogRoute(
                 builder=lambda: AlertDialog(
@@ -100,34 +100,34 @@ if __name__ == "__main__":
             )
         }
     )
-    # ... Appの起動処理 ...
+    # ... App startup logic ...
 
 # 3. ViewModel Usage
 class MyViewModel:
     # ...
     async def on_delete(self):
-        # カスタムIntentの使用
-        if await self.overlay.dialog(ConfirmIntent("確認", "本当に削除しますか？")):
+        # Use custom intent
+        if await self.overlay.dialog(ConfirmIntent("Confirmation", "Are you sure you want to delete this?")):
             self.delete_item()
 ```
 
-このパターンにより、`Navigator` と `Overlay` の使い方が統一され、ViewModel の実装が一貫性のあるものになります。
+This pattern unifies the usage of `Navigator` and `Overlay`, ensuring consistent ViewModel implementations.
 
-### 2.2 スナックバー (Snackbar/Toast)
+### 2.2 Snackbars (Snackbar/Toast)
 
-* **課題**: 一時的なフィードバックであり、UI構造というよりは「通知」。
-* **解決策**: **命令的 Fire & Forget**
-  * 結果を待つ必要がないため、単純なメソッド呼び出しとして扱う。
+* **Challenge**: Temporary feedback that is more of a "notification" than a UI structure.
+* **Solution**: **Imperative Fire & Forget**
+  * Treated as a simple method call since there is no need to wait for a result.
 
-#### Snackbar: 基本的な使い方 (Material)
+#### Snackbar: Basic Usage (Material)
 
 ```python
 MaterialOverlay.root().snackbar("Saved successfully!")
 ```
 
-#### Snackbar: ViewModelで実施する場合
+#### Snackbar: ViewModel Implementation
 
-Material を前提とする場合、ViewModel は `MaterialOverlay`（もしくはそれに準ずる抽象）を受け取り、snackbar を発火できます。
+When Material Design is assumed, the ViewModel can receive a `MaterialOverlay` (or its abstraction) and trigger a snackbar.
 
 ```python
 # ViewModel
@@ -139,13 +139,13 @@ class MyViewModel:
         self.overlay.snackbar("Saved successfully!")
 ```
 
-### 2.3 ツールチップ (Tooltip)
+### 2.3 Tooltips
 
-* **課題**: 一時的な表示だが、特定のUI要素に強く紐づく属性。
-* **解決策**: **完全宣言的 (Fully Declarative)**
-  * Widgetのラッパーとして記述する。
+* **Challenge**: Temporary displays strongly tied to specific UI elements as attributes.
+* **Solution**: **Fully Declarative**
+  * Described as a wrapper for a Widget.
 
-#### Tooltip: 基本的な使い方 (View Only)
+#### Tooltip: Basic Usage (View only)
 
 ```python
 Tooltip(
@@ -154,21 +154,20 @@ Tooltip(
 )
 ```
 
-## 3. 画面遷移のパターン (Navigation Patterns)
+## 3. Navigation Patterns
 
-画面遷移は「状態の変化（宣言的）」とも「ユーザーの移動（命令的）」とも捉えられるため、宣言的／命令的の境界線が特に曖昧になりやすい領域です。
-nuiitivetでは、要件の複雑さに応じて以下のパターンを使い分けることを推奨します。
+Navigation often blurs the lines between "change of state (declarative)" and "user movement (imperative)." In `nuiitivet`, we recommend the following patterns based on requirements.
 
-### 3.1 シングルページ・ウィザード (Single Page Wizard)
+### 3.1 Single Page Wizard
 
-* **概要**: 1つの画面内で、状態に応じて表示内容を切り替えるパターン。
-* **実装**: `Navigator` を使用せず、条件分岐 (`if/else`) や `map` を使用する。
-* **用途**: 戻るボタンの履歴に残したくない、密結合なステップ遷移（ウィザード形式など）。
+* **Overview**: Switching content within a single screen based on state.
+* **Implementation**: Conditional branching (`if/else`) or `map` instead of `Navigator`.
+* **Use Case**: Closely coupled step transitions (like wizards) that should not appear in the back history.
 
 ```python
 class WizardScreen(Widget):
     def build(self):
-        # current_step (Observable) の値に応じて表示するWidgetを切り替える
+        # Switch Widget based on current_step (Observable)
         return self.vm.current_step.map(lambda step: 
             Step1() if step == 1 else
             Step2() if step == 2 else
@@ -177,11 +176,11 @@ class WizardScreen(Widget):
         )
 ```
 
-### 3.2 並列遷移 (Parallel Navigation)
+### 3.2 Parallel Navigation
 
-* **概要**: タブバーやドロワーのように、互いに独立した画面を切り替えるパターン。
-* **実装**: `IndexedStack` や `BottomNavigationBar` を使用する。
-* **特徴**: 画面の状態（スクロール位置など）は維持されるが、遷移履歴（戻るスタック）は持たない。
+* **Overview**: Switching between independent screens, common in tab bars or drawers.
+* **Implementation**: Using `IndexedStack` or `BottomNavigationBar`.
+* **Features**: Screen state (like scroll position) is preserved, but no back history is maintained.
 
 ```python
 class MainScreen(Widget):
@@ -195,53 +194,53 @@ class MainScreen(Widget):
         )
 ```
 
-### 3.3 標準的な遷移 (Standard Navigation)
+### 3.3 Standard Navigation
 
-* **概要**: 一般的な「一覧→詳細」や「ショッピングカート」のような、戻る履歴を持つ遷移パターン。
-* **実装**: `Navigator.push()` を使用して命令的に遷移する。
-* **特徴**: データ（カートの中身など）はリアクティブに管理しつつ、遷移のタイミング（次へ、戻る）はイベントハンドラで命令的に制御する（Hybridアプローチ）。
+* **Overview**: Transitions with back history, common in "list to detail" or shopping cart flows.
+* **Implementation**: Imperative transitions using `Navigator.push()`.
+* **Features**: Data (e.g., cart contents) is managed reactively, while transition timing (next, back) is controlled imperatively via event handlers (Hybrid approach).
 
 ```python
-# 例: 商品一覧 -> カート -> 注文完了 というフロー
+# Example: List -> Cart -> Order Complete flow
 
-# 1. データは Observable で管理 (Global/Scoped Service)
+# 1. Manage data with Observables (Global/Scoped Service)
 class CartService:
     items = Observable([])
 
 class ProductListScreen(Widget):
     def on_add_cart(self, product):
-        # データ操作はリアクティブに (Serviceの状態を更新)
+        # Reactive data manipulation (Update Service state)
         cart_service.items.value.append(product)
         
     def on_cart_click(self):
-        # 画面遷移は命令的に
+        # Imperative transition
         Navigator.push(CartScreen())
 
 class CartScreen(Widget):
     def build(self):
-        # 画面内の表示はリアクティブに (Serviceの状態をバインド)
+        # Reactive display within the screen (Bind to Service state)
         return ForEach(cart_service.items, ...)
 
     def on_checkout_click(self):
-        # 2. 注文処理を実行 (非同期)
+        # 2. Execute order processing (Asynchronous)
         await self.vm.checkout()
-        # 3. 完了画面へ遷移 (現在のカート画面を破棄して入れ替え)
+        # 3. Transition to completion screen (Replace current cart screen)
         Navigator.push_replacement(OrderCompleteScreen())
 
 class OrderCompleteScreen(Widget):
     def on_back_to_home_click(self):
-        # 4. 最初の商品一覧まで戻る
+        # 4. Return to the initial list
         Navigator.pop_until(ProductListScreen)
 ```
 
-### 3.4 Intent駆動の遷移 (Intent-based Navigation)
+### 3.4 Intent-based Navigation
 
-* **概要**: Standard Navigation を ViewModel から行う場合のベストプラクティス。
-* **実装**: ViewModel は「遷移の意図 (Intent)」のみを発行し、具体的な Widget の生成は View 層（Navigatorの設定）に委譲する。
-* **メリット**: ViewModel と View の疎結合化、型安全なルーティング、テスト容易性の向上。
+* **Overview**: Recommended pattern for standard navigation from a ViewModel.
+* **Implementation**: The ViewModel issues only an "Intent" for the transition, delegating specific Widget creation to the View layer (via Navigator configuration).
+* **Benefits**: Decouples ViewModel and View, provides type-safe routing, and improves testability.
 
 ```python
-# 1. Intent (遷移の意図) を定義
+# 1. Define Intent
 @dataclass
 class ProductListIntent: pass
 
@@ -251,17 +250,17 @@ class CartIntent: pass
 @dataclass
 class OrderCompleteIntent: pass
 
-# 2. ViewModel (具体的なWidgetを知らない)
+# 2. ViewModel (No knowledge of specific Widgets)
 class CartViewModel:
     def __init__(self, navigator: INavigator):
         self.navigator = navigator
 
     async def checkout(self):
         await self.service.submit_order()
-        # "注文完了画面へ行きたい" という意図だけを伝える
+        # Communicate intent: "Navigate to order completion"
         self.navigator.push_replacement(OrderCompleteIntent())
 
-# 3. View (Navigatorの設定でIntentとWidgetを紐付ける)
+# 3. View (Bind Intent to Widget via Navigator configuration)
 Navigator(
     initial_routes=[PageRoute(builder=lambda: ProductListScreen())],
     routes={
@@ -272,22 +271,22 @@ Navigator(
 )
 ```
 
-### 3.5 ネストされた遷移 (Nested Navigation)
+### 3.5 Nested Navigation
 
-* **概要**: Parallel Navigation と Standard Navigation を組み合わせた、アプリ構造の標準的なパターン。
-* **実装**: 各タブ (`Parallel`) の中に、独立した `Navigator` (`Standard`) を配置する。
-* **用途**: InstagramやTwitterのように、タブごとに独立した遷移履歴を持ちたい場合。
+* **Overview**: Standard pattern combining Parallel and Standard navigation.
+* **Implementation**: Host an independent `Navigator` (`Standard`) within each tab (`Parallel`).
+* **Use Case**: Applications like Instagram or Twitter where each tab maintains its own navigation history.
 
 ```python
 class MainScreen(Widget):
     def build(self):
         return Scaffold(
-            # Parallel Navigation (タブ切り替え)
+            # Parallel Navigation (Tab switching)
             body=IndexedStack(
                 index=self.vm.current_tab_index,
                 children=[
                     # Tab 1: Home (Standard Navigation)
-                    # このタブ内での遷移は、このNavigatorが管理する
+                    # This Navigator manages transitions within this tab
                     Navigator(
                         key="home_nav",
                         initial_routes=[PageRoute(builder=lambda: ProductListScreen())],
@@ -298,6 +297,7 @@ class MainScreen(Widget):
                         }
                     ),
                     # Tab 2: Search (Standard Navigation)
+```
                     Navigator(
                         key="search_nav",
                         initial_routes=[PageRoute(builder=lambda: SearchScreen())]
@@ -313,29 +313,29 @@ class MainScreen(Widget):
         )
 ```
 
-### 3.6 宣言的ルーティング (Declarative Routing) - Future Work
+### 3.6 Declarative Routing - Future Work
 
-* **概要**: URLやディープリンクに基づいて、アプリ全体のナビゲーション状態を決定するパターン。
-* **実装**: `Router` が URL を解析し、宣言的に定義されたマッピングに従って `Navigator` を操作する。
-* **用途**: Web対応、外部連携、複雑な状態復元。
+* **Overview**: A pattern where the navigation state of the entire app is determined based on the URL or deep links.
+* **Implementation**: A `Router` parses the URL and operates the `Navigator` according to declaratively defined mapping rules.
+* **Use Cases**: Web support, external integration, complex state restoration.
 
 ```python
-# アプリ起動時やURL変更時に、URLに基づいてNavigatorのスタックを再構築する
+# Reconstruct Navigator stack based on URL on app startup or URL changes
 Router(
     routes={
         "/": HomeIntent(),
         "/product/:id": lambda id: ProductDetailIntent(id),
         "/cart": CartIntent(),
     },
-    # URL "/product/123" が開かれた場合:
+    # If URL "/product/123" is opened:
     # 1. HomeIntent -> HomeScreen
     # 2. ProductDetailIntent(123) -> DetailScreen
-    # というスタックを自動的に構築し、戻るボタンでHomeに戻れるようにする
+    # Automatically build this stack so that the back button returns to Home
     on_intent=lambda stack: Navigator.reset(stack)
 )
 ```
 
-## 4. 関連資料
+## 4. Related Documents
 
 * [Concurrency & Execution Model](../design/CONCURRENCY_MODEL.md)
 * [Navigation](../design/NAVIGATION.md)

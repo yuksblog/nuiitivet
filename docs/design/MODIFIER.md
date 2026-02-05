@@ -2,33 +2,29 @@
 
 ## Overview
 
-Modifier は、既存の Widget をラップして、機能（Capabilities）や視覚効果（Effects）を付加する仕組みです。
-Widget の継承や過剰なネスト（Wrapper Widget）を避け、宣言的かつフラットに機能を合成することを目的としています。
+A **Modifier** is a mechanism for wrapping an existing Widget to add capabilities or visual effects. It aims to compose functionality declaratively and flatly, avoiding the downsides of deep Widget nesting or complex inheritance hierarchies.
 
 ## Core Concepts
 
 ### 1. Modifier as a Wrapper
 
-Modifier は本質的に「Widget を受け取り、新しい Widget を返す関数」です。
-適用された Modifier は、元の Widget を `ModifierBox` などのラッパー Widget で包み込み、そのラッパーが機能や描画を担当します。
+Essentially, a Modifier is a "function that takes a Widget and returns a new Widget." When a Modifier is applied, it wraps the original Widget in a wrapper Widget, such as a `ModifierBox`, which then handles the added functionality or rendering.
 
 ### 2. The `modifier()` Method
 
-すべての Widget は `modifier()` メソッドを持ちます。これを使用して Modifier を適用します。
-以前は `apply()` という名前でしたが、より宣言的で名詞的な `modifier()` に変更されました。
+Every Widget has a `modifier()` method used to apply Modifiers. Previously named `apply()`, it was renamed to `modifier()` to be more declarative and noun-like.
 
 ```python
-# 基本的な使用法
+# Basic usage
 widget.modifier(background("red"))
 ```
 
 ### 3. Chaining
 
-Modifier は `|` 演算子を使用してチェーン（連結）することができます。
-チェーンされた Modifier は左から右へ順番に適用されます。
+Modifiers can be chained using the `|` operator. Chained Modifiers are applied in order from left to right.
 
 ```python
-# チェーンの例
+# Chaining example
 widget.modifier(
     background("white") | border("black", 2) | padding(10)
 )
@@ -36,43 +32,39 @@ widget.modifier(
 
 ### 4. Immutability
 
-Widget および Modifier はイミュータブル（不変）として扱われます。
-`modifier()` メソッドは元の Widget を変更せず、新しい Widget インスタンス（ラッパー）を返します。
+Both Widgets and Modifiers are treated as immutable. The `modifier()` method does not modify the original Widget; it returns a new Widget instance (the wrapper).
 
 ## Available Modifiers
 
 ### Visual Effects
 
-* **`background(color)`**: 背景色を設定します。
-* **`border(color, width)`**: 枠線を描画します。
-* **`shadow(color, blur, offset_x, offset_y)`**: ドロップシャドウを描画します。
-* **`corner_radius(radius)`**: 角丸を適用します（背景やボーダーに影響）。
-* **`clip()`**: 子要素が領域をはみ出した場合にクリッピングします。
+* **`background(color)`**: Sets the background color.
+* **`border(color, width)`**: Draws a border.
+* **`shadow(color, blur, offset_x, offset_y)`**: Draws a drop shadow.
+* **`corner_radius(radius)`**: Applies rounded corners (affects background and borders).
+* **`clip()`**: Clips child elements if they overflow the boundaries.
 
 ### Layout
 
-Modifier ではレイアウトを扱いません。
+Modifiers do not handle layout in `nuiitivet`.
 
-nuiitivet では、レイアウト Widget とそのパラメータだけでレイアウトを制御します。
-このおかげで、利用者は Widget とそのパラメータだけを見ればレイアウトを理解し、定義することができます。
-Modifier でレイアウトを扱ってしまうと、このシンプルさが失われてしまいます。
+Layout is controlled exclusively through layout Widgets and their parameters. This ensures that users can understand and define the layout simply by looking at the Widgets and their properties. Allowing Modifiers to handle layout would compromise this simplicity.
 
 ### Interaction & Behavior
 
-* **`clickable(on_click)`**: クリックイベントを処理します。
-* **`hoverable(on_hover_change)`**: ホバー状態の変化を検知します。
-* **`scrollable(axis)`**: スクロール機能を追加します。
+* **`clickable(on_click)`**: Processes click events.
+* **`hoverable(on_hover_change)`**: Detects changes in hover state.
+* **`scrollable(axis)`**: Adds scroll functionality.
 
 ## Implementation Details
 
 ### `ModifierElement` vs `Modifier`
 
-* **`ModifierElement`**: 単一の機能を持つ Modifier の最小単位（例: `BackgroundModifier`）。
-* **`Modifier`**: 複数の `ModifierElement` がチェーンされたリスト。
+* **`ModifierElement`**: The smallest unit of a Modifier with a single function (e.g., `BackgroundModifier`).
+* **`Modifier`**: A list or chain of multiple `ModifierElement`s.
 
 ### `ModifierBox`
 
-多くの視覚的 Modifier（background, border, padding 等）は、内部的に `ModifierBox` という単一の Widget に集約されます。
-これにより、複数の Modifier を適用しても Widget ツリーが無駄に深くならず、描画パフォーマンスが最適化されます。
+Many visual Modifiers (such as background, border, padding, etc.) are internally aggregated into a single Widget called `ModifierBox`. This optimization prevents the Widget tree from becoming needlessly deep when multiple Modifiers are applied, improving rendering performance.
 
-`ModifierBox` は `Widget` のサブクラスであり、適用された Modifier の情報を保持し、描画時にそれらを反映します。
+`ModifierBox` is a subclass of `Widget` that holds the information from applied Modifiers and reflects them during the paint phase.
