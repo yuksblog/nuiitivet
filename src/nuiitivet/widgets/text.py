@@ -4,11 +4,11 @@ Displays a string or State-like value and invalidates when the value changes.
 """
 
 import logging
-from typing import Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.observable import Disposable, Observable
+from nuiitivet.observable import Disposable, ReadOnlyObservableProtocol
 from nuiitivet.rendering.skia import (
     get_typeface,
     get_default_font_fallbacks,
@@ -51,7 +51,7 @@ class TextBase(Widget):
 
     def __init__(
         self,
-        label: Union[str, Observable],
+        label: Union[str, ReadOnlyObservableProtocol[Any]],
         style: Optional[TextStyleProtocol] = None,
         width: SizingLike = None,
         height: SizingLike = None,
