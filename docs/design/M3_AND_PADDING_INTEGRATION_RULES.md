@@ -105,6 +105,7 @@ This is a **feature of the Widget base class**, having two interpretations:
 ```
 
 → M3 has no corresponding concept (however, Framework `padding` is not margin).
+
 - `padding` itself is the `allocated` → `content` insets.
 - Depending on the painting/hit testing rules of a leaf widget, it may look or behave like "outer margin."
 
@@ -390,6 +391,7 @@ At a minimum, collect the following numbers for each variant:
 - Typography (Font size, line height, weight, etc.)
 
 Note:
+
 - M3's "padding" generally refers to the **layout of content within a Container**.
 - Framework `Widget.padding` is treated as `allocated` → `content` insets (per BOX_MODEL rules).
 

@@ -93,20 +93,20 @@ Examples of **internal** implementation details:
 To prevent log flooding, introduce a mechanism to emit the same event only once.
 
 - **Key design**
-    - `category` (e.g., render/event/subscription) + `site` (e.g., function name or logical trigger point) + Exception type name.
-    - Do not include the full message in the key.
+  - `category` (e.g., render/event/subscription) + `site` (e.g., function name or logical trigger point) + Exception type name.
+  - Do not include the full message in the key.
 - **Capacity**
-    - Default to N items (e.g., 1024).
-    - Use LRU or similar to discard old keys when capacity is exceeded.
+  - Default to N items (e.g., 1024).
+  - Use LRU or similar to discard old keys when capacity is exceeded.
 - **Thread-safety**
-    - Ensure internal state updates are thread-safe if called from outside the UI thread.
+  - Ensure internal state updates are thread-safe if called from outside the UI thread.
 
 ### Default logger behavior
 
 - The framework uses `logging.getLogger("nuiitivet")` (or sub-loggers).
 - Logging configuration is left to the user, with recommended settings provided in the documentation.
-    - The framework does not perform logging configuration (no `basicConfig` or handler additions).
-    - The recommended level for the `nuiitivet` logger is `WARNING`.
+  - The framework does not perform logging configuration (no `basicConfig` or handler additions).
+  - The recommended level for the `nuiitivet` logger is `WARNING`.
 
 Example: `logging.yaml`
 

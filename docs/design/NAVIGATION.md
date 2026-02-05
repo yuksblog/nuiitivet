@@ -1,11 +1,5 @@
 # Navigation System Design
 
-This document describes the design of the Navigator (screen transitions) aimed at realizing the principles discussed in [docs/design/DECLARATIVE_VS_IMPERATIVE.md](DECLARATIVE_VS_IMPERATIVE.md).
-
-For discussion history and task notes, see:
-
-- [docs/design/archive/DESIGN_OVERLAY_NAVIGATION.md](archive/DESIGN_OVERLAY_NAVIGATION.md)
-
 ## 1. Core Architectural Structure
 
 ### 1.1 Relationship Between Overlay and Navigator

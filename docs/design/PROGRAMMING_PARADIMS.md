@@ -297,7 +297,6 @@ class MainScreen(Widget):
                         }
                     ),
                     # Tab 2: Search (Standard Navigation)
-```
                     Navigator(
                         key="search_nav",
                         initial_routes=[PageRoute(builder=lambda: SearchScreen())]
@@ -311,6 +310,7 @@ class MainScreen(Widget):
             ),
             bottom_navigation_bar=BottomNavigationBar(...)
         )
+
 ```
 
 ### 3.6 Declarative Routing - Future Work

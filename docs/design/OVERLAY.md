@@ -1,14 +1,5 @@
 # Overlay System Design
 
-This document details the design of the Overlay system, aimed at realizing the principles discussed in [docs/design/DECLARATIVE_VS_IMPERATIVE.md](DECLARATIVE_VS_IMPERATIVE.md).
-
-Navigation topics (Navigator / Intent / Back) have been moved to [docs/design/NAVIGATION.md](NAVIGATION.md).
-
-For discussion history and task notes, see:
-
-- [docs/design/archive/DESIGN_OVERLAY_NAVIGATION.md](archive/DESIGN_OVERLAY_NAVIGATION.md)
-- [docs/design/archive/OVERLAY_SHOW_API.md](archive/OVERLAY_SHOW_API.md)
-
 ## 1. Core Architectural Structure
 
 ### 1.1 Relationship Between Overlay and Navigator
