@@ -411,7 +411,7 @@ class Checkbox(Toggleable, InteractiveWidget):
             # Determine State Layer opacity manually to handle Focus Ring exclusion
             state = self.state
             overlay_alpha = 0.0
-            
+
             if state.dragging or state.pressed:
                 # Always show pressed/drag states
                 overlay_alpha = self._DRAG_OPACITY if state.dragging else self._PRESS_OPACITY
@@ -424,17 +424,17 @@ class Checkbox(Toggleable, InteractiveWidget):
                 # If we show the Ring, we usually DONT show the Focus State Layer (12%) to avoid clutter.
                 if not is_keyboard_focus:
                     overlay_alpha = self._FOCUS_OPACITY
-            
+
             if overlay_alpha and overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
                 cy_center = float(cy + touch_sz / 2.0)
                 r = float(state_diam / 2.0)
-                
+
                 # State Layer color (Checked=Primary, Unchecked=OnSurface)
                 is_checked = self.value is True or self.value is None
                 base_color_role = ColorRole.PRIMARY if is_checked else ColorRole.ON_SURFACE
                 base_color = roles.get(base_color_role, "#000000")
-                
+
                 ov = skcolor(base_color, overlay_alpha)
                 p_ov = make_paint(color=ov, style="fill", aa=True)
                 try:

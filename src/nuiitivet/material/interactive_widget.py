@@ -25,17 +25,17 @@ logger = logging.getLogger(__name__)
 class InteractiveWidget(Clickable):
     """
     Base class for interactive Material Design 3 widgets.
-    
+
     Implements the MD3 State Layer visual effects for:
     - Hover state
     - Focus state
     - Press state
     - Drag state
-    
+
     The State Layer is an overlay drawn on top of the container (background)
     but behind the content (children).
     """
-    
+
     # MD3 State Layer Opacity Standard
     _HOVER_OPACITY = 0.08
     _FOCUS_OPACITY = 0.12
@@ -67,17 +67,17 @@ class InteractiveWidget(Clickable):
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Override paint to inject draw_state_layer."""
         self.set_last_rect(x, y, width, height)
-        
+
         # 1. Background (from Box)
         self.draw_background(canvas, x, y, width, height)
-        
+
         # 2. State Layer (New)
         if not self.disabled:
             self.draw_state_layer(canvas, x, y, width, height)
-            
+
         # 3. Children (from Box)
         self.draw_children(canvas, x, y, width, height)
-        
+
         # 4. Border (from Box)
         self.draw_border(canvas, x, y, width, height)
 
@@ -97,7 +97,7 @@ class InteractiveWidget(Clickable):
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
         """Draws the MD3 State Layer based on current interaction state."""
         opacity = self._get_active_state_layer_opacity()
-            
+
         if opacity <= 0:
             return
 
@@ -107,27 +107,27 @@ class InteractiveWidget(Clickable):
             color = resolve_color_to_rgba(self.state_layer_color, self)
             if color is None:
                 return
-            
+
             # Apply opacity to the color or use a layer
             # Since we just want a flat fill, we can modify the alpha of the paint
             r, g, b, a = color
-            
+
             # Combine alpha
             final_alpha = a * opacity
-            
+
             # Draw
             from nuiitivet.rendering.skia import make_paint
+
             paint = make_paint(color=(r, g, b, final_alpha), style="fill")
-            
+
             rect = make_rect(x, y, width, height)
             radii = list(self.corner_radii_pixels(width, height))
-            
+
             # We need to respect corner radius
             # Reuse Box's clip mechanism if possible, but here we can just draw rounded rect
             # matching the container shape.
-            
+
             draw_round_rect(canvas, rect, radii, paint)
-            
+
         except Exception:
             exception_once(logger, "interactive_widget_state_layer_exc", "Failed to draw state layer")
-
