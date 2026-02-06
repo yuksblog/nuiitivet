@@ -14,6 +14,8 @@ from nuiitivet.observable import Disposable, ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.material.theme.color_role import ColorRole
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-class Checkbox(Toggleable):
+class Checkbox(Toggleable, InteractiveWidget):
     """A minimal Material-like Checkbox widget (M3準拠).
 
     Parameters:
@@ -403,18 +405,19 @@ class Checkbox(Toggleable):
             stroke_p = make_paint(color=stroke_color, style="stroke", stroke_width=stroke_w, aa=True)
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
-            overlay_alpha = (
-                self.style.pressed_alpha
-                if self.state.pressed
-                else (self.style.hover_alpha if self.state.hovered else 0.0)
-            )
+            overlay_alpha = self._get_active_state_layer_opacity()
 
             if overlay_alpha and overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
                 cy_center = float(cy + touch_sz / 2.0)
                 r = float(state_diam / 2.0)
-                on_surf = roles.get(ColorRole.ON_SURFACE, "#000000")
-                ov = skcolor(on_surf, overlay_alpha)
+                
+                # State Layer color (Checked=Primary, Unchecked=OnSurface)
+                is_checked = self.value is True or self.value is None
+                base_color_role = ColorRole.PRIMARY if is_checked else ColorRole.ON_SURFACE
+                base_color = roles.get(base_color_role, "#000000")
+                
+                ov = skcolor(base_color, overlay_alpha)
                 p_ov = make_paint(color=ov, style="fill", aa=True)
                 try:
                     canvas.drawCircle(cx_center, cy_center, r, p_ov)
@@ -451,15 +454,13 @@ class Checkbox(Toggleable):
                 if rect is not None and fill_p is not None:
                     draw_round_rect(canvas, rect, corner, fill_p)
 
-            overlay_alpha = (
-                self.style.pressed_alpha
-                if self.state.pressed
-                else (self.style.hover_alpha if self.state.hovered else 0.0)
-            )
+            # Secondary overlay check (legacy or box-specific?)
+            # We use the same opacity logic
+            overlay_alpha_box = self._get_active_state_layer_opacity()
 
-            if overlay_alpha and overlay_alpha > 0.0:
+            if overlay_alpha_box and overlay_alpha_box > 0.0:
                 base = "#000000" if self.state.pressed else "#FFFFFF"
-                ov = skcolor(base, overlay_alpha)
+                ov = skcolor(base, overlay_alpha_box)
                 p_ov = make_paint(color=ov, style="fill", aa=True)
                 if rect is not None and p_ov is not None:
                     draw_round_rect(canvas, rect, corner, p_ov)

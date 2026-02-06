@@ -225,6 +225,7 @@ def resolve_button_style_params(
     overlay_color = None
     hover_opacity = 0.08
     pressed_opacity = 0.12
+    focus_opacity = 0.12
 
     if style:
         ov_entry = getattr(style, "overlay", None)
@@ -233,6 +234,7 @@ def resolve_button_style_params(
             overlay_color = base_token
             hover_opacity = float(base_alpha) * 0.5
             pressed_opacity = float(base_alpha)
+            focus_opacity = float(base_alpha)
         else:
             # Try direct attributes (ButtonStyle dataclass)
             oc = getattr(style, "overlay_color", None)
@@ -243,6 +245,7 @@ def resolve_button_style_params(
                     base_alpha = float(oa)
                     hover_opacity = base_alpha * 0.5
                     pressed_opacity = base_alpha
+                    focus_opacity = base_alpha
 
     return {
         "height": h,
@@ -257,6 +260,8 @@ def resolve_button_style_params(
         "overlay_color": overlay_color,
         "hover_opacity": hover_opacity,
         "pressed_opacity": pressed_opacity,
+        "focus_opacity": focus_opacity,
+        "drag_opacity": 0.16,
     }
 
 
@@ -294,6 +299,8 @@ class MaterialButtonBase(ButtonBase):
         overlay_color: ColorSpec = None,
         hover_opacity: float = 0.08,
         pressed_opacity: float = 0.12,
+        focus_opacity: float = 0.12,
+        drag_opacity: float = 0.16,
         **kwargs,
     ):
         """Initialize MaterialButtonBase.
@@ -308,6 +315,8 @@ class MaterialButtonBase(ButtonBase):
             overlay_color: Color of the overlay state layer.
             hover_opacity: Opacity of the overlay when hovered.
             pressed_opacity: Opacity of the overlay when pressed.
+            focus_opacity: Opacity of the overlay when focused.
+            drag_opacity: Opacity of the overlay when dragged.
             **kwargs: Additional arguments passed to the base class.
         """
         super().__init__(
@@ -323,6 +332,8 @@ class MaterialButtonBase(ButtonBase):
         self.overlay_color = overlay_color
         self.hover_opacity = hover_opacity
         self.pressed_opacity = pressed_opacity
+        self.focus_opacity = focus_opacity
+        self.drag_opacity = drag_opacity
 
     def _container_height_pixels(self, allocated_height: int) -> int:
         try:
@@ -405,8 +416,12 @@ class MaterialButtonBase(ButtonBase):
             return
 
         opacity = 0.0
-        if self.state.pressed:
+        if self.state.dragging:
+            opacity = self.drag_opacity
+        elif self.state.pressed:
             opacity = self.pressed_opacity
+        elif self.state.focused:
+            opacity = self.focus_opacity
         elif self.state.hovered:
             opacity = self.hover_opacity
 
