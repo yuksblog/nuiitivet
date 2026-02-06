@@ -405,7 +405,14 @@ class Checkbox(Toggleable, InteractiveWidget):
             stroke_p = make_paint(color=stroke_color, style="stroke", stroke_width=stroke_w, aa=True)
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
+            # Check for keyboard focus (Ring visible) to potentially suppress State Layer
+            is_keyboard_focus = getattr(self, "_focused", False) and not getattr(self, "_focus_from_pointer", False)
+
             overlay_alpha = self._get_active_state_layer_opacity()
+            
+            # If showing Focus Ring, suppress the State Layer fill to avoid "hover-like" confusion
+            if self.state.focused and is_keyboard_focus and not self.state.pressed and not self.state.dragging:
+                overlay_alpha = 0.0
 
             if overlay_alpha and overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
@@ -457,6 +464,10 @@ class Checkbox(Toggleable, InteractiveWidget):
             # Secondary overlay check (legacy or box-specific?)
             # We use the same opacity logic
             overlay_alpha_box = self._get_active_state_layer_opacity()
+            
+            # Also suppress for keyboard focus
+            if self.state.focused and is_keyboard_focus and not self.state.pressed and not self.state.dragging:
+                overlay_alpha_box = 0.0
 
             if overlay_alpha_box and overlay_alpha_box > 0.0:
                 base = "#000000" if self.state.pressed else "#FFFFFF"
