@@ -405,15 +405,26 @@ class Checkbox(Toggleable, InteractiveWidget):
             stroke_p = make_paint(color=stroke_color, style="stroke", stroke_width=stroke_w, aa=True)
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
-            # Check for keyboard focus (Ring visible) to potentially suppress State Layer
+            # Check for keyboard focus (Ring visible)
             is_keyboard_focus = getattr(self, "_focused", False) and not getattr(self, "_focus_from_pointer", False)
 
-            overlay_alpha = self._get_active_state_layer_opacity()
+            # Determine State Layer opacity manually to handle Focus Ring exclusion
+            state = self.state
+            overlay_alpha = 0.0
             
-            # If showing Focus Ring, suppress the State Layer fill to avoid "hover-like" confusion
-            if self.state.focused and is_keyboard_focus and not self.state.pressed and not self.state.dragging:
-                overlay_alpha = 0.0
-
+            if state.dragging or state.pressed:
+                # Always show pressed/drag states
+                overlay_alpha = self._DRAG_OPACITY if state.dragging else self._PRESS_OPACITY
+            elif state.hovered:
+                # Always show hover state
+                overlay_alpha = self._HOVER_OPACITY
+            elif state.focused:
+                # Only show focus state layer if NOT using keyboard focus (meaning pointer focus, or fallback)
+                # But actually, if we have keyboard focus, we show the Ring.
+                # If we show the Ring, we usually DONT show the Focus State Layer (12%) to avoid clutter.
+                if not is_keyboard_focus:
+                    overlay_alpha = self._FOCUS_OPACITY
+            
             if overlay_alpha and overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
                 cy_center = float(cy + touch_sz / 2.0)
@@ -463,11 +474,7 @@ class Checkbox(Toggleable, InteractiveWidget):
 
             # Secondary overlay check (legacy or box-specific?)
             # We use the same opacity logic
-            overlay_alpha_box = self._get_active_state_layer_opacity()
-            
-            # Also suppress for keyboard focus
-            if self.state.focused and is_keyboard_focus and not self.state.pressed and not self.state.dragging:
-                overlay_alpha_box = 0.0
+            overlay_alpha_box = overlay_alpha
 
             if overlay_alpha_box and overlay_alpha_box > 0.0:
                 base = "#000000" if self.state.pressed else "#FFFFFF"
