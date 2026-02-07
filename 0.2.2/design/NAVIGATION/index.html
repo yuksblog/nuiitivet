@@ -1,0 +1,1683 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.2.2/design/NAVIGATION/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Navigation System Design - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#navigation-system-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Navigation System Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-architectural-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core Architectural Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Core Architectural Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-relationship-between-overlay-and-navigator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Relationship Between Overlay and Navigator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.1 Relationship Between Overlay and Navigator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#policy-physical-separation-shared-internal-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy: Physical Separation + Shared Internal Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-root-navigator-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Root Navigator Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-context-lookup-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Context Lookup Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-interface-for-viewmodels-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 Interface for ViewModels (Protocol)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-intent-system-design-navigation-perspective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Intent System Design (Navigation Perspective)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Intent System Design (Navigation Perspective)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#20-what-is-the-intent-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.0 What is the Intent System?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21-intent-type-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Intent Type System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-route-mapping-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Route Mapping (routes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-push-overload-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 push Overload Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-handling-missing-intents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Handling Missing Intents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-appnavigation-initialization-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 App.navigation(...) Initialization Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-back-button-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Back Button Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Back Button Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-event-propagation-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Event Propagation Priority
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-handling-rapid-back-button-presses-multiple-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Handling Rapid Back Button Presses (Multiple Inputs)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.2 Handling Rapid Back Button Presses (Multiple Inputs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#navigator-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigator Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-will_pop-modifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 will_pop() Modifier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-integration-with-navigator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Integration with Navigator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="navigation-system-design">Navigation System Design</h1>
+<h2 id="1-core-architectural-structure">1. Core Architectural Structure</h2>
+<h3 id="11-relationship-between-overlay-and-navigator">1.1 Relationship Between Overlay and Navigator</h3>
+<h4 id="policy-physical-separation-shared-internal-implementation">Policy: Physical Separation + Shared Internal Implementation</h4>
+<p>The user-facing API should be intuitive and reflect the physical structure, while internal route/stack management is shared.</p>
+<ul>
+<li><code>Navigator.push()</code> to "transition screens"</li>
+<li><code>Overlay.show()</code> to "display on the topmost layer"</li>
+</ul>
+<p>Internally, the <code>Navigator</code> acts as a stack managing <code>PageRoute</code> objects, while the <code>Overlay</code> maintains an internal <code>_modal_navigator</code> that treats Dialogs and Snackbars as routes.</p>
+<pre><code class="language-text">┌─────────────────────────────────────┐
+│ App                                  │
+│                                      │
+│  ┌───────────────────────────────┐  │
+│  │ Overlay (Physical Layer)       │  │ ← Always on top
+│  │  Internal: _modal_navigator   │  │
+│  │    ├─ DialogRoute             │  │
+│  │    └─ SnackbarRoute           │  │
+│  └───────────────────────────────┘  │
+│                                      │
+│  ┌───────────────────────────────┐  │
+│  │ Content                       │  │
+│  │  ┌──────────────────┐         │  │
+│  │  │ Navigator (Part) │         │  │ ← Placed by user
+│  │  │  ├─ PageRoute    │         │  │
+│  │  │  └─ PageRoute    │         │  │
+│  │  └──────────────────┘         │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+</code></pre>
+<h3 id="12-root-navigator-design">1.2 Root Navigator Design</h3>
+<p>Fullscreen transitions are a common pattern, making a root Navigator essentially mandatory. <code>App</code> provides a root Navigator by default along with a global access API.</p>
+<pre><code class="language-python"># Global access (concise, recommended)
+Navigator.root().push(...)
+
+# Context-based (for future extensibility, detailed control)
+Navigator.of(context).push(...)              # Nearest Navigator
+Navigator.of(context, root=True).push(...)   # Root Navigator
+</code></pre>
+<h3 id="13-context-lookup-pattern">1.3 Context Lookup Pattern</h3>
+<p>To support independent Navigators (transition histories) per tab, we implement <code>Navigator.of(context)</code>.</p>
+<ul>
+<li>Implementation simply traverses up the parent chain.</li>
+<li>The root Navigator can be retrieved in O(1) via <code>Navigator.root()</code>, ensuring common cases are concise and fast.</li>
+</ul>
+<pre><code class="language-python">class Widget:
+    def find_ancestor(self, widget_type: type[&quot;T&quot;]) -&gt; &quot;T | None&quot;:
+        &quot;&quot;&quot;Find the nearest ancestor of the specified type.&quot;&quot;&quot;
+        current = self._parent
+        while current is not None:
+            if isinstance(current, widget_type):
+                return current
+            current = current._parent
+        return None
+
+
+class Navigator(Widget):
+    _root_navigator: &quot;Navigator | None&quot; = None
+
+    @classmethod
+    def root(cls) -&gt; &quot;Navigator&quot;:
+        &quot;&quot;&quot;Get the root navigator.&quot;&quot;&quot;
+        if cls._root_navigator is None:
+            raise RuntimeError(&quot;No root navigator found.&quot;)
+        return cls._root_navigator
+
+    @classmethod
+    def of(cls, context: Widget, root: bool = False) -&gt; &quot;Navigator&quot;:
+        &quot;&quot;&quot;Find the nearest Navigator in the widget tree.&quot;&quot;&quot;
+        if root:
+            return cls.root()
+
+        navigator = context.find_ancestor(Navigator)
+        if navigator is None:
+            raise RuntimeError(
+                &quot;No Navigator found in the widget tree above &quot;
+                f&quot;{context.__class__.__name__}. &quot;
+                &quot;Did you forget to wrap your widget in a Navigator?&quot;
+            )
+        return navigator
+</code></pre>
+<h3 id="14-interface-for-viewmodels-protocol">1.4 Interface for ViewModels (Protocol)</h3>
+<p>To ensure ViewModels do not depend on the implementation details of <code>Navigator</code>, we provide <code>INavigator</code>.</p>
+<pre><code class="language-python">from __future__ import annotations
+
+from typing import Any, Protocol
+
+
+class INavigator(Protocol):
+    def push(self, content: Any) -&gt; None:
+        ...
+
+    def pop(self, result: Any | None = None) -&gt; None:
+        ...
+</code></pre>
+<h2 id="2-intent-system-design-navigation-perspective">2. Intent System Design (Navigation Perspective)</h2>
+<h3 id="20-what-is-the-intent-system">2.0 What is the Intent System?</h3>
+<p>The Intent System is a mechanism for declaring screen transitions not just by passing Widgets/Routes directly, but as data representing an "intent," which the framework resolves to a Route for execution.</p>
+<pre><code class="language-python"># Caller side (Intent)
+Navigator.root().push(ProductDetailIntent(product_id=123))
+
+# Framework side (Resolution)
+# - Look up the factory from routes using type(intent) as the key
+# - Generate a Route using factory(intent)
+</code></pre>
+<h3 id="21-intent-type-system">2.1 Intent Type System</h3>
+<p>Intents are defined as arbitrary dataclasses, requiring no base class or Protocol.</p>
+<pre><code class="language-python">from dataclasses import dataclass
+
+
+@dataclass
+class HomeIntent:
+    pass
+
+
+@dataclass
+class ProductDetailIntent:
+    product_id: int
+</code></pre>
+<h3 id="22-route-mapping-routes">2.2 Route Mapping (routes)</h3>
+<p><code>routes</code> is treated as a dictionary that maps <code>Intent instance -&gt; Route</code>.</p>
+<pre><code class="language-python">routes: dict[type, callable[[object], &quot;Route&quot;]] = {
+    HomeIntent: lambda intent: PageRoute(builder=lambda: HomeScreen()),
+    ProductDetailIntent: lambda intent: PageRoute(
+        builder=lambda: ProductDetailScreen(intent.product_id)
+    ),
+}
+
+Navigator.root().push(ProductDetailIntent(product_id=123))
+</code></pre>
+<h3 id="23-push-overload-design">2.3 <code>push</code> Overload Design</h3>
+<p><code>Navigator.push()</code> accepts the following three patterns:</p>
+<ul>
+<li>Widget</li>
+<li>Route</li>
+<li>Intent</li>
+</ul>
+<pre><code class="language-python"># Pattern 1: Widget
+Navigator.root().push(SettingsScreen())
+
+# Pattern 2: Route
+Navigator.root().push(PageRoute(builder=lambda: SettingsScreen()))
+
+# Pattern 3: Intent
+Navigator.root().push(SettingsIntent())
+</code></pre>
+<h3 id="24-handling-missing-intents">2.4 Handling Missing Intents</h3>
+<p>If an unregistered Intent is used, a <code>RuntimeError</code> is thrown to catch configuration errors early.</p>
+<pre><code class="language-python">Navigator.root().push(UnknownIntent())
+# → RuntimeError: Intent 'UnknownIntent' not found in routes
+</code></pre>
+<h3 id="25-appnavigation-initialization-pattern">2.5 <code>App.navigation(...)</code> Initialization Pattern</h3>
+<p>To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, <code>App.navigation(...)</code> is provided as an alternative initialization pattern.</p>
+<pre><code class="language-python"># App with navigation
+App.navigation(
+    routes={
+        HomeIntent: lambda intent: PageRoute(builder=...),
+        DetailIntent: lambda intent: PageRoute(builder=...),
+        SettingsIntent: lambda intent: PageRoute(builder=...),
+    },
+    initial_route=HomeIntent(),
+    title=&quot;My App&quot;,
+)
+</code></pre>
+<h2 id="3-back-button-handling">3. Back Button Handling</h2>
+<h3 id="31-event-propagation-priority">3.1 Event Propagation Priority</h3>
+<p>The default behavior for events equivalent to <code>Esc</code> / <code>Back</code> is processed in the following order:</p>
+<ol>
+<li>Close the topmost Overlay entry.</li>
+<li><code>pop()</code> the topmost Navigator.</li>
+<li>Do nothing if at the root route.</li>
+</ol>
+<pre><code class="language-python">class App:
+    def on_key_pressed(self, event):
+        if event.key == &quot;ESCAPE&quot;:
+            if self._overlay.has_entries():
+                self._overlay.close()
+                return True
+
+            if self._root_navigator and self._root_navigator.can_pop():
+                self._root_navigator.pop()
+                return True
+
+            return False
+</code></pre>
+<h3 id="32-handling-rapid-back-button-presses-multiple-inputs">3.2 Handling Rapid Back Button Presses (Multiple Inputs)</h3>
+<p>In cases where <code>Esc</code> / <code>Back</code> are input in rapid succession (key repeat, hammering, multiple OS-level events), the implementation must safely handle "back requests."</p>
+<h4 id="policy">Policy</h4>
+<ul>
+<li><code>App.handle_back_event()</code> processes exactly one request per input.</li>
+<li>If the Overlay is empty, it calls <code>Navigator.request_back()</code>.</li>
+<li><code>Navigator.request_back()</code> acts as the user input API, absorbing re-entrancy during transitions.</li>
+</ul>
+<h4 id="navigator-strategy">Navigator Strategy</h4>
+<ul>
+<li>If a back occurs during a <strong>Pop</strong> animation: add the request to a queue (<code>pending_pop_requests</code>) and immediately complete the current pop transition.</li>
+<li>When consuming the queue: skip animations for intermediate pops and treat only the final pop with normal behavior.</li>
+<li>If a back occurs during a <strong>Push</strong> animation: immediately complete the push and then perform a single pop.</li>
+<li>If <code>handle_back_event()</code> (equivalent to will-pop) returns a cancellation, discard the queue and stop further pops.</li>
+</ul>
+<h3 id="33-will_pop-modifier">3.3 <code>will_pop()</code> Modifier</h3>
+<p>Custom handling, such as confirmation before a back transition, is implemented as a Modifier.</p>
+<pre><code class="language-python">from nuiitivet.modifiers import will_pop
+
+EditScreen().modifier(will_pop(on_will_pop=self._on_will_pop))
+
+
+async def _on_will_pop(self) -&gt; bool:
+    &quot;&quot;&quot;Return True to continue pop, False to cancel.&quot;&quot;&quot;
+    if self.has_unsaved_changes.value:
+        confirmed = await Overlay.root().dialog(
+            AlertDialog(
+                title=Text(&quot;Confirmation&quot;),
+                content=Text(&quot;Go back without saving?&quot;),
+                actions=[
+                    TextButton(&quot;Cancel&quot;, on_pressed=lambda: False),
+                    TextButton(&quot;Back&quot;, on_pressed=lambda: True),
+                ],
+            )
+        )
+        return confirmed
+    return True
+</code></pre>
+<h3 id="34-integration-with-navigator">3.4 Integration with Navigator</h3>
+<p>Check the <code>will_pop</code> chain immediately before <code>Navigator.pop()</code> to allow for cancellation.</p>
+<pre><code class="language-python">class Navigator(Widget):
+    async def pop(self, result=None):
+        if not self.can_pop():
+            return
+
+        route = self._routes[-1]
+        widget = route.widget
+
+        if hasattr(widget, &quot;_modifier_element&quot;):
+            element = widget._modifier_element
+            should_pop = await self._check_will_pop(element)
+            if not should_pop:
+                return
+
+        self._routes.pop()
+        route.dispose()
+        self.mark_needs_layout()
+
+    async def _check_will_pop(self, element) -&gt; bool:
+        if hasattr(element, &quot;handle_back_event&quot;):
+            return await element.handle_back_event()
+        return True
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

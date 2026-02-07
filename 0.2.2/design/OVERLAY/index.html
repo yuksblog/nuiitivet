@@ -1,0 +1,1836 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.2.2/design/OVERLAY/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Overlay System Design - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#overlay-system-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overlay System Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-architectural-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core Architectural Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Core Architectural Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-relationship-between-overlay-and-navigator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Relationship Between Overlay and Navigator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.1 Relationship Between Overlay and Navigator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#policy-physical-separation-shared-internal-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy: Physical Separation + Shared Internal Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-intent-separation-and-sharing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Intent (Separation and Sharing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-overlay-api-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Overlay API Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Overlay API Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-api-consistency-with-navigator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 API Consistency with Navigator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-overlay-core-provides-only-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Overlay Core provides only show()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-overlayshow-core-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Overlay.show() Core API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.3 Overlay.show() Core API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#definition-of-outside-tap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition of "Outside-tap"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-positioning-overlayposition-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Positioning: OverlayPosition (v1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-overlayhandle-overlayresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 OverlayHandle / OverlayResult
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 OverlayHandle / OverlayResult">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#result-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-subclass-apis-materialoverlay-etc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Subclass APIs (MaterialOverlay, etc.)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.6 Subclass APIs (MaterialOverlay, etc.)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#responsibilities-of-materialoverlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responsibilities of MaterialOverlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#intent-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intent Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provided-apis-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provided APIs (v1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-swapping-the-root-overlay-overlay_factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Swapping the Root Overlay: overlay_factory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-note-scope-of-overlayshow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 Note: Scope of Overlay.show()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-asynchronous-processing-and-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Asynchronous Processing and Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-z-index-and-rendering-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Z-Index and Rendering Order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Z-Index and Rendering Order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-rendering-order-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Rendering Order Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1 Rendering Order Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#design-intent-rendering-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Intent (Rendering Order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-integration-with-back-navigator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Integration with Back / Navigator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pending-matters-future-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pending Matters / Future Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pending Matters / Future Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#async-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async / Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewmodel-dispose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewModel / Dispose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rendering-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rendering / Overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-prototype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation / Prototype
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="overlay-system-design">Overlay System Design</h1>
+<h2 id="1-core-architectural-structure">1. Core Architectural Structure</h2>
+<h3 id="11-relationship-between-overlay-and-navigator">1.1 Relationship Between Overlay and Navigator</h3>
+<h4 id="policy-physical-separation-shared-internal-implementation">Policy: Physical Separation + Shared Internal Implementation</h4>
+<p>The user-facing API should intuitively reflect the physical structure, while internal route/stack management is shared.</p>
+<ul>
+<li><code>Overlay.show()</code> to "display on the topmost layer"</li>
+<li><code>Navigator.push()</code> to "transition screens" (see <a href="../NAVIGATION/">docs/design/NAVIGATION.md</a> for details)</li>
+</ul>
+<p>Internally, the <code>Overlay</code> maintains an internal stack (e.g., <code>_modal_navigator</code>) to manage active overlay entries (and Routes if necessary).</p>
+<p>Note: The <code>Overlay</code> core provides only <code>show()</code>, while scenario-specific APIs (dialogs, snackbars, etc.) are delegated to subclasses.</p>
+<h4 id="design-intent-separation-and-sharing">Design Intent (Separation and Sharing)</h4>
+<ul>
+<li>Use an API that makes it intuitively clear where things are rendered from a user's perspective.</li>
+<li><code>Overlay.show()</code> is always on top.</li>
+<li><code>Navigator.push()</code> is for screen transitions.</li>
+<li>At the same time, share internal implementation for Route and stack management to avoid duplication for different display scenarios (dialog, snackbar, page, etc.).</li>
+</ul>
+<p>"Dialog/Snackbar" are conceptual examples; technically, they are treated as overlay entries (containing Routes) generated by <code>Overlay.show()</code>.</p>
+<pre><code class="language-text">┌─────────────────────────────────────┐
+│ App                                  │
+│                                      │
+│  ┌───────────────────────────────┐  │
+│  │ Overlay (Physical Layer)       │  │ ← Always on top
+│  │  Internal: _modal_navigator   │  │
+│  │    └─ OverlayEntry/Route      │  │
+│  └───────────────────────────────┘  │
+│                                      │
+│  ┌───────────────────────────────┐  │
+│  │ Content                       │  │
+│  │  ┌──────────────────┐         │  │
+│  │  │ Navigator (Part) │         │  │ ← Placed by user
+│  │  │  ├─ PageRoute    │         │  │
+│  │  │  └─ PageRoute    │         │  │
+│  │  └──────────────────┘         │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+</code></pre>
+<h2 id="2-overlay-api-design">2. Overlay API Design</h2>
+<h3 id="21-api-consistency-with-navigator">2.1 API Consistency with Navigator</h3>
+<ul>
+<li><code>App</code> provides a root Overlay and a global access API.</li>
+<li><code>IOverlay</code> is provided to ensure ViewModels do not depend on implementation details.</li>
+<li><code>Overlay.of(context)</code>: Nearest Overlay.</li>
+<li><code>Overlay.root()</code>: Root Overlay.</li>
+</ul>
+<h3 id="22-overlay-core-provides-only-show">2.2 Overlay Core provides only <code>show()</code></h3>
+<ul>
+<li><code>Overlay</code> provides only a generic <code>show()</code> and no scenario-specific APIs like <code>dialog</code>, <code>snackbar</code>, or <code>sheet</code>.</li>
+<li><code>Overlay.show()</code> accepts only <code>Widget | Route</code>.</li>
+<li>Intent resolution (<code>Intent -&gt; Widget/Route</code>) is not performed by <code>Overlay</code>.</li>
+<li>Intent resolution is provided by subclasses (e.g., <code>MaterialOverlay</code>) using an <code>IntentResolver</code>.</li>
+</ul>
+<h3 id="23-overlayshow-core-api">2.3 <code>Overlay.show()</code> Core API</h3>
+<p><code>Overlay.show()</code> is the minimal core API for displaying content on the topmost layer.</p>
+<pre><code class="language-python">def show(
+    self,
+    content: Widget | Route,
+    *,
+    passthrough: bool = False,
+    dismiss_on_outside_tap: bool = False,
+    timeout: float | None = None,
+    position: OverlayPosition | None = None,
+) -&gt; OverlayHandle[Any]:
+    ...
+</code></pre>
+<h4 id="parameters">Parameters</h4>
+<ul>
+<li><code>passthrough=False</code></li>
+<li><code>False</code>: The Overlay consumes pointer events and blocks input to the layers behind it.</li>
+<li><code>True</code>: The Overlay passes events through to layers below.</li>
+<li><code>dismiss_on_outside_tap=False</code></li>
+<li><code>True</code>: Closes the overlay when tapping outside the displayed content.</li>
+<li><code>timeout: float | None</code></li>
+<li>Duration in seconds.</li>
+<li><code>None</code>: Does not automatically close.</li>
+<li><code>position: OverlayPosition | None</code></li>
+<li><code>None</code> is equivalent to "center".</li>
+</ul>
+<h4 id="constraints">Constraints</h4>
+<ul>
+<li><code>passthrough=True</code> and <code>dismiss_on_outside_tap=True</code> are mutually exclusive (<code>ValueError</code>).</li>
+</ul>
+<h4 id="definition-of-outside-tap">Definition of "Outside-tap"</h4>
+<ul>
+<li>"Outside" is defined based on the hit-testing rules in <a href="../BOX_MODEL/">BOX_MODEL.md</a>.</li>
+<li>Outside-tap dismissal is achieved by closing when the barrier layer receives a pointer event.</li>
+<li>If the content covers the entire viewport, outside-tap dismissal will not function.</li>
+</ul>
+<h3 id="24-positioning-overlayposition-v1">2.4 Positioning: <code>OverlayPosition</code> (v1)</h3>
+<p>v1 provides only alignment and offset.</p>
+<ul>
+<li><code>OverlayPosition.alignment(alignment: str, *, offset: tuple[float, float] = (0, 0))</code></li>
+</ul>
+<p><code>alignment</code> follows the vocabulary for single-child alignment defined in <a href="../LAYOUT/">LAYOUT.md</a>.</p>
+<ul>
+<li><code>"top-left"</code>, <code>"top-center"</code>, <code>"top-right"</code></li>
+<li><code>"center-left"</code>, <code>"center"</code>, <code>"center-right"</code></li>
+<li><code>"bottom-left"</code>, <code>"bottom-center"</code>, <code>"bottom-right"</code></li>
+</ul>
+<p><code>offset</code> is applied after alignment.</p>
+<ul>
+<li>Unit: px.</li>
+<li>Coordinate system is the overlay root's layout space.</li>
+<li>$+x$ is right.</li>
+<li>$+y$ is down.</li>
+</ul>
+<h3 id="25-overlayhandle-overlayresult">2.5 <code>OverlayHandle</code> / <code>OverlayResult</code></h3>
+<p><code>Overlay.show()</code> returns an <code>OverlayHandle[T]</code>.</p>
+<ul>
+<li><code>handle.close(value)</code> closes the specific entry associated with the handle.</li>
+<li><code>await handle</code> returns a structured result.</li>
+</ul>
+<pre><code class="language-python">class OverlayResult[T]:
+    value: T | None
+    reason: OverlayDismissReason
+
+
+class OverlayDismissReason(Enum):
+    CLOSED = ...
+    OUTSIDE_TAP = ...
+    TIMEOUT = ...
+    DISPOSED = ...
+</code></pre>
+<h4 id="result-semantics">Result Semantics</h4>
+<ul>
+<li><code>handle.close(value)</code> -&gt; <code>OverlayResult(value=value, reason=CLOSED)</code></li>
+<li>Outside-tap -&gt; <code>OverlayResult(value=None, reason=OUTSIDE_TAP)</code></li>
+<li>Timeout -&gt; <code>OverlayResult(value=None, reason=TIMEOUT)</code></li>
+<li>Entry discarded without explicit close -&gt; <code>OverlayResult(value=None, reason=DISPOSED)</code></li>
+</ul>
+<p><code>await handle</code> is guaranteed not to wait indefinitely (even completed on disposal).</p>
+<h3 id="26-subclass-apis-materialoverlay-etc">2.6 Subclass APIs (MaterialOverlay, etc.)</h3>
+<p>Scenario-specific APIs are moved to subclasses.</p>
+<h4 id="responsibilities-of-materialoverlay">Responsibilities of MaterialOverlay</h4>
+<p><code>MaterialOverlay</code> is implemented as a subclass of <code>Overlay</code> and provides Material-specific resolution and shortcut APIs.</p>
+<ul>
+<li>Inheritance: <code>MaterialOverlay(Overlay)</code></li>
+<li>Retrieval:</li>
+<li><code>MaterialOverlay.root()</code> succeeds only if the root overlay is a <code>MaterialOverlay</code>.</li>
+<li><code>MaterialOverlay.of(context)</code> searches the widget tree for the nearest <code>MaterialOverlay</code>.</li>
+</ul>
+<h4 id="intent-resolution">Intent Resolution</h4>
+<ul>
+<li><code>MaterialOverlay.dialog(...)</code> accepts <code>Widget | Route | Any</code>.</li>
+<li><code>Widget | Route</code> is displayed as-is.</li>
+<li>Everything else is resolved to <code>Widget | Route</code> via <code>IntentResolver.resolve(intent)</code>.</li>
+<li><code>MaterialOverlay</code> allows for <code>IntentResolver</code> injection.</li>
+<li>Alternatively, pass <code>intents: Mapping[type[Any], Callable[[Any], Widget | Route]]</code> (internally builds a mapping resolver).</li>
+<li>Register standard intents by default:</li>
+<li><code>AlertDialogIntent</code></li>
+<li><code>LoadingDialogIntent</code></li>
+</ul>
+<h4 id="provided-apis-v1">Provided APIs (v1)</h4>
+<ul>
+<li><code>MaterialOverlay.dialog(...)</code></li>
+<li>Blocks background input by default (<code>passthrough=False</code>).</li>
+<li><code>dismiss_on_outside_tap</code> is optional.<ul>
+<li>Default is <code>False</code> for <code>LoadingDialogIntent</code>.</li>
+<li>Default is <code>True</code> for others.</li>
+</ul>
+</li>
+<li><code>MaterialOverlay.snackbar(message, *, duration=3.0)</code></li>
+<li>Implemented using <code>Snackbar</code>.</li>
+<li>Transparent to background input by default (<code>passthrough=True</code>).</li>
+<li>Automatically dismisses after <code>timeout=duration</code>.</li>
+<li>Default position: <code>OverlayPosition.alignment("bottom-center", offset=(0, -24))</code>.</li>
+<li><code>MaterialOverlay.loading(message="Loading...")</code></li>
+<li>Displays <code>LoadingDialogIntent</code> and ensures it closes upon exiting a context manager.</li>
+</ul>
+<h3 id="27-swapping-the-root-overlay-overlay_factory">2.7 Swapping the Root Overlay: <code>overlay_factory</code></h3>
+<p>To allow Material apps to use <code>MaterialOverlay</code> as the root overlay, <code>App</code> allows for overlay injection.</p>
+<ul>
+<li><code>App</code> / <code>App.navigation()</code> accepts <code>overlay_factory: Callable[[], Overlay]</code>.</li>
+<li>If omitted, <code>App</code> defaults to creating a standard <code>Overlay</code>.</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-python">app = App(
+    overlay_factory=lambda: Overlay(),
+)
+</code></pre>
+<pre><code class="language-python">app = MaterialApp(
+    overlay_factory=lambda: MaterialOverlay(),
+)
+</code></pre>
+<p>In the Material implementation, <code>MaterialApp</code> sets <code>overlay_factory</code> internally and passes <code>overlay_routes</code> to <code>MaterialOverlay(intents=...)</code> as needed.</p>
+<h3 id="28-note-scope-of-overlayshow">2.8 Note: Scope of <code>Overlay.show()</code></h3>
+<ul>
+<li><code>Overlay.show()</code> is not responsible for intent registration or providing standard dialog/widgets.</li>
+<li>Standard UI components (e.g., <code>AlertDialog</code>, <code>LoadingDialog</code>) and intents are provided by <code>MaterialOverlay</code>.</li>
+</ul>
+<h2 id="3-asynchronous-processing-and-lifecycle">3. Asynchronous Processing and Lifecycle</h2>
+<ul>
+<li>For the big picture (threads × asyncio × UI thread), see <a href="../CONCURRENCY_MODEL/">CONCURRENCY_MODEL.md</a>.</li>
+<li>Details on the execution foundation (async runtime) and event loop integration are centralized in <a href="../ASYNCIO_INTEGRATION/">ASYNCIO_INTEGRATION.md</a>.</li>
+<li>The Overlay's responsibility is to ensure that <code>await handle</code> never hangs.</li>
+<li>If an entry is removed without being explicitly closed, it completes with <code>OverlayDismissReason.DISPOSED</code>.</li>
+<li>The caller can branch based on <code>OverlayResult.reason</code>.</li>
+</ul>
+<h2 id="4-z-index-and-rendering-order">4. Z-Index and Rendering Order</h2>
+<h3 id="41-rendering-order-design">4.1 Rendering Order Design</h3>
+<p>Rendering order is controlled by insertion order (later entries are rendered on top), eliminating the need for explicit Z-index management.</p>
+<h4 id="design-intent-rendering-order">Design Intent (Rendering Order)</h4>
+<ul>
+<li>Managing numerical Z-index values adds complexity that is unnecessary for initial requirements (YAGNI).</li>
+<li>Matching the intuition that "later openings are on top" aligns with user expectations and consistency with other frameworks like Flutter.</li>
+</ul>
+<pre><code class="language-python">class Overlay(Widget):
+    def __init__(self):
+        self._entries: list[OverlayEntry] = []
+
+    def _insert_entry(self, entry: OverlayEntry):
+        self._entries.append(entry)
+        self.mark_needs_layout()
+
+    def build(self, context):
+        return Stack(children=[entry.builder() for entry in self._entries])
+</code></pre>
+<h2 id="5-integration-with-back-navigator">5. Integration with Back / Navigator</h2>
+<p>Details on Back button priority and <code>will_pop</code> are centralized in <a href="../NAVIGATION/">docs/design/NAVIGATION.md</a>.</p>
+<ul>
+<li>The Overlay focus is solely on closing the topmost overlay entry.</li>
+<li><code>Overlay.close(...)</code> is provided as a shortcut to close the topmost entry.</li>
+</ul>
+<h2 id="pending-matters-future-considerations">Pending Matters / Future Considerations</h2>
+<p>The following items are not finalized in this specification (or require implementation/verification).</p>
+<h3 id="async-runtime">Async / Runtime</h3>
+<ul>
+<li>Current behavior is defined in <a href="../ASYNCIO_INTEGRATION/">docs/design/ASYNCIO_INTEGRATION.md</a>.</li>
+<li>Handling strategy for <code>asyncio.CancelledError</code>.</li>
+<li>Implementation of Future cancellation notification.</li>
+<li>Policy for error logging (what users should see).</li>
+<li>How to launch coroutines from UI events (integration with the execution foundation).</li>
+</ul>
+<h3 id="viewmodel-dispose">ViewModel / Dispose</h3>
+<ul>
+<li>Providing helpers like <code>CompositeDisposable</code>.</li>
+<li>Organizing ViewModel lifecycle management patterns.</li>
+<li>Mechanism for automatic ViewModel disposal.</li>
+<li>Best practices for the relationship between ViewModels and Widgets.</li>
+<li>Guarding operations on already disposed Widgets.</li>
+<li>Managing state flags after disposal.</li>
+<li>Preventing double calling of <code>dispose</code>.</li>
+</ul>
+<h3 id="rendering-overlay">Rendering / Overlay</h3>
+<ul>
+<li>Scoped Overlay</li>
+<li>Rendering order (below or above the App Overlay?).</li>
+<li>Order control between Scoped Overlays.</li>
+<li>Design for introducing Z-index in the future.</li>
+<li>Maintaining compatibility (existing code continues to work).</li>
+<li>Rendering optimizations for large numbers of Overlays.</li>
+<li>Skipping rendering for non-visible Overlays.
+Details on Back Button / Events are centralized in <a href="../NAVIGATION/">docs/design/NAVIGATION.md</a>.</li>
+</ul>
+<h3 id="documentation-prototype">Documentation / Prototype</h3>
+<ul>
+<li>Finalize the core design of the Intent System.</li>
+<li>Evaluate implementation strategies for Context Lookup.</li>
+<li>Evaluate implementation strategies for asynchronous processing.</li>
+<li>Evaluate implementation strategies for Z-index management.</li>
+<li>Create class and sequence diagrams.</li>
+<li>Draft API references.</li>
+<li>Prioritize implementation tasks and create issues.</li>
+<li>Develop a minimal prototype and identify potential issues.</li>
+<li>Refine the design based on feedback.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
