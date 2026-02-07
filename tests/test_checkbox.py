@@ -32,16 +32,16 @@ def test_pointer_event_toggle_calls_handler_and_updates_state():
         called.append(v)
 
     c = Checkbox(on_toggle=on_toggle)
-    assert c.observable_state.value is False
+    assert c.value is False
     assert send_pointer_event_for_test(c, PointerEventType.PRESS) is True
     # Toggle occurs on release, not press
-    assert c.observable_state.value is False
+    assert c.value is False
     assert send_pointer_event_for_test(c, PointerEventType.RELEASE) is True
-    assert c.observable_state.value is True
+    assert c.value is True
     assert called == [True]
     assert send_pointer_event_for_test(c, PointerEventType.PRESS) is True
     assert send_pointer_event_for_test(c, PointerEventType.RELEASE) is True
-    assert c.observable_state.value is False
+    assert c.value is False
     assert called == [True, False]
 
 
@@ -67,10 +67,10 @@ def test_indeterminate_initial_and_toggle():
         called.append(v)
 
     c = Checkbox(indeterminate=True, on_toggle=on_toggle)
-    assert c.observable_state.value is None
+    assert c.value is None
     assert send_pointer_event_for_test(c, PointerEventType.PRESS) is True
     assert send_pointer_event_for_test(c, PointerEventType.RELEASE) is True
-    assert c.observable_state.value is True
+    assert c.value is True
     assert called == [True]
 
 
@@ -93,9 +93,9 @@ def test_hover_state_changes_and_hit_test_behavior():
     c = Checkbox()
     c.set_layout_rect(10, 10, 100, 40)
     assert send_pointer_event_for_test(c, PointerEventType.HOVER, 20, 20) is True
-    assert c._hover is True
+    assert c.state.hovered is True
     assert send_pointer_event_for_test(c, PointerEventType.HOVER, 0, 0) is False
-    assert c._hover is False
+    assert c.state.hovered is False
     assert c.hit_test(20, 20) is c
     # assert c.hit_test(0, 0) is None
 
@@ -120,21 +120,12 @@ def test_disabled_prevents_toggle_and_press():
         called.append(v)
 
     c = Checkbox(disabled=True, on_toggle=on_toggle)
-    assert c.observable_state.value is False
+    assert c.value is False
     assert send_pointer_event_for_test(c, PointerEventType.PRESS) is False
     assert send_pointer_event_for_test(c, PointerEventType.RELEASE) is False
-    assert c.observable_state.value is False
+    assert c.value is False
     assert called == []
     assert c.state.pressed is False
-
-
-def test_focus_api_sets_flag_and_invalidates():
-    c = Checkbox()
-    assert c.state.focused is False
-    c.focus()
-    assert c.state.focused is True
-    c.blur()
-    assert c.state.focused is False
 
 
 def test_disabled_observable_updates_interaction_state():
@@ -168,13 +159,13 @@ def test_indeterminate_observable_separate_from_checked():
         called.append(v)
 
     c = Checkbox(checked=checked, indeterminate=indeterminate, on_toggle=on_toggle)
-    assert c.observable_state.value is None
+    assert c.value is None
 
     assert send_pointer_event_for_test(c, PointerEventType.PRESS) is True
     assert send_pointer_event_for_test(c, PointerEventType.RELEASE) is True
     assert indeterminate.value is False
     assert checked.value is True
-    assert c.observable_state.value is True
+    assert c.value is True
     assert called == [True]
 
 

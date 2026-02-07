@@ -1,11 +1,7 @@
 from nuiitivet.material.app import MaterialApp
 from nuiitivet.material.text_fields import FilledTextField, OutlinedTextField
-from nuiitivet.material.icon import Icon
-from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.column import Column
-from nuiitivet.material.symbols import Symbols
-from nuiitivet.material.theme.color_role import ColorRole
 
 
 def main():
@@ -13,8 +9,8 @@ def main():
     tf_filled = FilledTextField(
         value="",
         label="Username",
-        leading_icon=Icon(Symbols.person, style=IconStyle(color=ColorRole.ON_SURFACE_VARIANT)),
-        trailing_icon=Icon(Symbols.cancel, style=IconStyle(color=ColorRole.ON_SURFACE_VARIANT)),
+        leading_icon="person",
+        trailing_icon="cancel",
         width=300,
         padding=10,
     )
@@ -23,7 +19,7 @@ def main():
     tf_outlined = OutlinedTextField(
         value="",
         label="Password",
-        leading_icon=Icon(Symbols.lock, style=IconStyle(color=ColorRole.ON_SURFACE_VARIANT)),
+        leading_icon="lock",
         width=300,
         padding=10,
     )

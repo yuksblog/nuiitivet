@@ -15,11 +15,11 @@ def test_focus_traversal_and_shift_tab():
     handled = app._dispatch_key_press("tab")
     assert handled is True
     assert app._focused_target is cb1
-    assert getattr(cb1, "_focused", False) is True
+    assert cb1.state.focused is True
     handled = app._dispatch_key_press("tab")
     assert handled is True
     assert app._focused_target is cb3
-    assert getattr(cb3, "_focused", False) is True
+    assert cb3.state.focused is True
     orig_pyglet = sys.modules.get("pyglet")
     try:
         fake_key = types.SimpleNamespace(MOD_SHIFT=1)
@@ -29,7 +29,7 @@ def test_focus_traversal_and_shift_tab():
         handled = app._dispatch_key_press("tab", modifiers=1)
         assert handled is True
         assert app._focused_target is cb1
-        assert getattr(cb1, "_focused", False) is True
+        assert cb1.state.focused is True
     finally:
         if orig_pyglet is None:
             try:

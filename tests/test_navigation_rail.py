@@ -5,6 +5,8 @@ from enum import IntEnum
 import pytest
 
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
+from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.observable.value import _ObservableValue
 
 
@@ -254,3 +256,56 @@ def test_rail_item_with_style():
 
     item = RailItem(icon="settings", label="Settings", style=style)
     assert item.style == style
+
+
+def test_rail_item_interactive_inheritance():
+    """Verify RailItem uses InteractiveWidget for MD3 visual effects."""
+    items = [RailItem(icon="home", label="Home")]
+    rail = NavigationRail(children=items)
+
+    # Force UI build
+    if not rail._item_buttons:
+        rail._rebuild_ui()
+
+    button = rail._item_buttons[0]
+    assert isinstance(button, InteractiveWidget)
+
+
+def test_rail_item_no_focus():
+    """Verify RailItem does not accept keyboard focus (MD3 spec)."""
+    items = [RailItem(icon="home", label="Home")]
+    rail = NavigationRail(children=items)
+
+    # Force UI build
+    if not rail._item_buttons:
+        rail._rebuild_ui()
+
+    button = rail._item_buttons[0]
+    # InteractiveWidget adds FocusNode by default, but NavigationRail should remove it
+    assert button.get_node(FocusNode) is None
+
+
+def test_rail_item_selection_state():
+    """Verify state.selected updates."""
+    items = [
+        RailItem(icon="home", label="Home"),
+        RailItem(icon="settings", label="Settings"),
+    ]
+    rail = NavigationRail(children=items, index=0)
+
+    # Force UI build
+    if not rail._item_buttons:
+        rail._rebuild_ui()
+
+    btn1 = rail._item_buttons[0]
+    btn2 = rail._item_buttons[1]
+
+    # Initial state
+    assert btn1.state.selected is True
+    assert btn2.state.selected is False
+
+    # Change selection via internal handler (simulating click)
+    rail._handle_item_click(1)
+
+    assert btn1.state.selected is False
+    assert btn2.state.selected is True

@@ -13,7 +13,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import Disposable, ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.toggleable import Toggleable
-from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.material.interactive_widget import InteractiveWidget
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-class Checkbox(Toggleable):
-    """A minimal Material-like Checkbox widget (M3準拠).
+class Checkbox(Toggleable, InteractiveWidget):
+    """A minimal Material-like Checkbox widget (M3).
 
     Parameters:
     - checked: Checked state source (bool / Observable[bool] / Observable[Optional[bool]])
@@ -122,15 +122,6 @@ class Checkbox(Toggleable):
             exception_once(_logger, "checkbox_size_exc", "Failed to parse checkbox size")
             self._touch_target_size = 48
 
-        # Configure FocusNode
-        self._focused = False
-        self._focus_from_pointer = False
-
-        node = self.get_node(FocusNode)
-        if node and isinstance(node, FocusNode):
-            node._on_key = lambda k, m: self.on_key_event(k, m)
-            node._on_focus_change = self._handle_focus_change
-
     def _effective_value_from_external(self) -> Optional[bool]:
         if self._checked_external_tri is not None:
             return self._checked_external_tri.value
@@ -205,48 +196,6 @@ class Checkbox(Toggleable):
                 pass
         self._external_unsubs.clear()
         super().on_unmount()
-
-    @property
-    def observable_state(self) -> ObservableProtocol[Optional[bool]]:
-        return self._get_state_obj()
-
-    # Public focus API compatibility
-    def focus(self) -> None:
-        try:
-            node = self.get_node(FocusNode)
-            if node and isinstance(node, FocusNode):
-                node.request_focus()
-            else:
-                self.state.focused = True
-                self.invalidate()
-        except Exception:
-            exception_once(_logger, "checkbox_focus_exc", "Checkbox.focus failed")
-
-    def blur(self) -> None:
-        try:
-            self.state.focused = False
-            self.invalidate()
-        except Exception:
-            exception_once(_logger, "checkbox_blur_exc", "Checkbox.blur failed")
-
-    def _handle_focus_change(self, focused: bool) -> None:
-        self._focused = focused
-        # state.focused is updated by FocusNode
-        if not focused:
-            self._focus_from_pointer = False
-        self.invalidate()
-
-    def request_focus_from_pointer(self) -> None:
-        self._focus_from_pointer = True
-        super().request_focus_from_pointer()
-        if self._focused:
-            self.invalidate()
-
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
-        if key in ("space", "enter") and not self.disabled:
-            self._handle_click()  # Toggleable method
-            return True
-        return False
 
     def _handle_click(self) -> None:
         if self.disabled:
@@ -334,15 +283,6 @@ class Checkbox(Toggleable):
 
         return (int(total_w), int(total_h))
 
-    # Compatibility properties for tests
-    @property
-    def _hover(self) -> bool:
-        return self.state.hovered
-
-    @property
-    def _pressed(self) -> bool:
-        return self.state.pressed
-
     @property
     def style(self):
         if self._style is not None:
@@ -403,18 +343,23 @@ class Checkbox(Toggleable):
             stroke_p = make_paint(color=stroke_color, style="stroke", stroke_width=stroke_w, aa=True)
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
-            overlay_alpha = (
-                self.style.pressed_alpha
-                if self.state.pressed
-                else (self.style.hover_alpha if self.state.hovered else 0.0)
-            )
+            # Check for keyboard focus (Ring visible)
+            is_keyboard_focus = self.should_show_focus_ring
 
-            if overlay_alpha and overlay_alpha > 0.0:
+            # Determine State Layer opacity
+            overlay_alpha = self._get_active_state_layer_opacity()
+
+            if overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
                 cy_center = float(cy + touch_sz / 2.0)
                 r = float(state_diam / 2.0)
-                on_surf = roles.get(ColorRole.ON_SURFACE, "#000000")
-                ov = skcolor(on_surf, overlay_alpha)
+
+                # State Layer color (Checked=Primary, Unchecked=OnSurface)
+                is_checked = self.value is True or self.value is None
+                base_color_role = ColorRole.PRIMARY if is_checked else ColorRole.ON_SURFACE
+                base_color = roles.get(base_color_role, "#000000")
+
+                ov = skcolor(base_color, overlay_alpha)
                 p_ov = make_paint(color=ov, style="fill", aa=True)
                 try:
                     canvas.drawCircle(cx_center, cy_center, r, p_ov)
@@ -424,8 +369,7 @@ class Checkbox(Toggleable):
             if rect is not None and stroke_p is not None:
                 draw_round_rect(canvas, rect, corner, stroke_p)
 
-            show_focus_ring = getattr(self, "_focused", False) and not getattr(self, "_focus_from_pointer", False)
-            if show_focus_ring:
+            if is_keyboard_focus:
                 focus_alpha = 0.12
                 prim = roles.get(ColorRole.PRIMARY, "#000000")
                 focus_col = skcolor(prim, focus_alpha)
@@ -451,15 +395,13 @@ class Checkbox(Toggleable):
                 if rect is not None and fill_p is not None:
                     draw_round_rect(canvas, rect, corner, fill_p)
 
-            overlay_alpha = (
-                self.style.pressed_alpha
-                if self.state.pressed
-                else (self.style.hover_alpha if self.state.hovered else 0.0)
-            )
+            # Secondary overlay check (legacy or box-specific?)
+            # We use the same opacity logic
+            overlay_alpha_box = overlay_alpha
 
-            if overlay_alpha and overlay_alpha > 0.0:
+            if overlay_alpha_box and overlay_alpha_box > 0.0:
                 base = "#000000" if self.state.pressed else "#FFFFFF"
-                ov = skcolor(base, overlay_alpha)
+                ov = skcolor(base, overlay_alpha_box)
                 p_ov = make_paint(color=ov, style="fill", aa=True)
                 if rect is not None and p_ov is not None:
                     draw_round_rect(canvas, rect, corner, p_ov)

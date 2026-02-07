@@ -15,6 +15,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.material.interactive_widget import InteractiveWidget
 
 
 class RailItem(Widget):
@@ -93,7 +94,7 @@ class RailItem(Widget):
         return self._label_widget
 
 
-class _RailItemButton(InteractionHostMixin, Box):
+class _RailItemButton(InteractiveWidget):
     """Internal button widget for NavigationRail items."""
 
     def __init__(
@@ -189,17 +190,15 @@ class _RailItemButton(InteractionHostMixin, Box):
 
         super().__init__(
             child=child,
+            on_click=on_click,
             width=Sizing.auto(),  # Fit content width
             height=Sizing.auto(),  # Fit content height
             padding=(8, 0, 0, 0) if expanded else 0,
+            focusable=False,  # MD3 spec: NavigationRail items don't accept keyboard focus
         )
 
-        self.on_click_handler = on_click
-        self._state = InteractionState(disabled=False)
-
-        # Enable hover and click
-        self.enable_hover()
-        self.enable_click(on_click=self._handle_click)
+        # Sync interaction state
+        self.state.selected = selected
 
     def set_selected(self, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
         # Re-resolve colors.
@@ -218,16 +217,65 @@ class _RailItemButton(InteractionHostMixin, Box):
         eff_style = rail_style or NavigationRailStyle()
         bgcolor = (eff_style.indicator_color or ColorRole.SECONDARY_CONTAINER) if selected else None
         self._indicator_box.bgcolor = bgcolor
-        self._state.selected = bool(selected)
+        self.state.selected = bool(selected)
 
         # Also need to update icon/text colors if we want full correctness.
         # Given the scope, maybe just updating bg is enough if we assume rebuild on significant changes.
         pass
 
-    def _handle_click(self) -> None:
-        """Handle click event."""
-        if self.on_click_handler is not None:
-            self.on_click_handler()
+    def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
+        """Override to draw state layer matching the indicator shape/position."""
+        indicator = self._indicator_box
+        if indicator is None or indicator.layout_rect is None:
+            return
+
+        from nuiitivet.widgeting.widget_kernel import WidgetKernel
+
+        # Calculate relative offset of the indicator within this widget
+        rel_x = 0.0
+        rel_y = 0.0
+        curr: Optional[WidgetKernel] = indicator
+        while curr is not None and curr != self:
+            if curr.layout_rect:
+                rel_x += curr.layout_rect[0]
+                rel_y += curr.layout_rect[1]
+            curr = curr.parent
+
+        if curr != self:
+            # Indicator is not in the subtree (should not happen)
+            return
+
+        # Indicator dimensions
+        ind_w = indicator.layout_rect[2]
+        ind_h = indicator.layout_rect[3]
+
+        # Draw bounds
+        abs_x = x + rel_x
+        abs_y = y + rel_y
+
+        # Draw state layer
+        opacity = self._get_active_state_layer_opacity()
+        if opacity <= 0:
+            return
+
+        from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
+        from nuiitivet.theme.resolver import resolve_color_to_rgba
+
+        try:
+            color = resolve_color_to_rgba(self.state_layer_color, self)
+            if color is None:
+                return
+            r, g, b, a = color
+            final_alpha = a * opacity
+            paint = make_paint(color=(r, g, b, final_alpha), style="fill")
+
+            rect = make_rect(abs_x, abs_y, ind_w, ind_h)
+            radii = list(indicator.corner_radii_pixels(ind_w, ind_h))
+
+            draw_round_rect(canvas, rect, radii, paint)
+
+        except Exception:
+            pass
 
 
 class NavigationRail(Widget):

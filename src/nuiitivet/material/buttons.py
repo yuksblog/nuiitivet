@@ -18,12 +18,10 @@ from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.button import ButtonBase
-from nuiitivet.rendering.skia import make_paint
-from nuiitivet.rendering.skia.geometry import draw_round_rect, make_rect
-from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -254,20 +252,20 @@ def resolve_button_style_params(
         "shadow_color": shadow_color,
         "shadow_blur": shadow_blur,
         "shadow_offset": shadow_offset,
-        "overlay_color": overlay_color,
+        "state_layer_color": overlay_color,
         "hover_opacity": hover_opacity,
         "pressed_opacity": pressed_opacity,
+        "drag_opacity": 0.16,
     }
 
 
 # --- Material Base Class ---
 
 
-class MaterialButtonBase(ButtonBase):
+class MaterialButtonBase(InteractiveWidget):
     """
     Base class for Material Design buttons.
-    Adds Material-specific behavior:
-    - State Layer (overlay) for hover/press
+    Uses InteractiveWidget for state layer handling.
     """
 
     @property
@@ -291,9 +289,12 @@ class MaterialButtonBase(ButtonBase):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int, int, int]] = 0,
         # Overlay / Feedback configuration
-        overlay_color: ColorSpec = None,
+        state_layer_color: ColorSpec = None,
+        overlay_color: ColorSpec = None,  # Backward compatibility
         hover_opacity: float = 0.08,
         pressed_opacity: float = 0.12,
+        drag_opacity: float = 0.16,
+        disabled_opacity: float = 0.38,
         **kwargs,
     ):
         """Initialize MaterialButtonBase.
@@ -305,11 +306,17 @@ class MaterialButtonBase(ButtonBase):
             width: Width specification.
             height: Height specification.
             padding: Padding specification.
-            overlay_color: Color of the overlay state layer.
+            state_layer_color: Color of the state layer (overlay).
             hover_opacity: Opacity of the overlay when hovered.
             pressed_opacity: Opacity of the overlay when pressed.
+            drag_opacity: Opacity of the overlay when dragged.
+            disabled_opacity: Opacity of the content when disabled.
             **kwargs: Additional arguments passed to the base class.
         """
+        # Support old `overlay_color` arg by mapping to `state_layer_color`
+        if state_layer_color is None and overlay_color is not None:
+            state_layer_color = overlay_color
+
         super().__init__(
             child=child,
             on_click=on_click,
@@ -317,12 +324,37 @@ class MaterialButtonBase(ButtonBase):
             width=width,
             height=height,
             padding=padding,
+            state_layer_color=state_layer_color,
             **kwargs,
         )
 
-        self.overlay_color = overlay_color
-        self.hover_opacity = hover_opacity
-        self.pressed_opacity = pressed_opacity
+        # Instance-level customization of opacities for InteractiveWidget
+        self._HOVER_OPACITY = hover_opacity
+        self._PRESS_OPACITY = pressed_opacity
+        self._DRAG_OPACITY = drag_opacity
+
+        self.disabled_opacity = disabled_opacity
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int):
+        # Handle disabled state opacity (logic ported from ButtonBase)
+        layer_count = 0
+        if self.disabled and self.disabled_opacity < 1.0:
+            try:
+                opacity_paint = make_opacity_paint(self.disabled_opacity)
+                if opacity_paint is not None:
+                    canvas.saveLayer(None, opacity_paint)
+                    layer_count += 1
+            except Exception:
+                exception_once(logger, "button_apply_disabled_layer_exc", "Failed to apply disabled opacity layer")
+
+        try:
+            super().paint(canvas, x, y, width, height)
+        finally:
+            if layer_count > 0:
+                try:
+                    canvas.restore()
+                except Exception:
+                    exception_once(logger, "button_restore_layer_exc", "Failed to restore disabled opacity layer")
 
     def _container_height_pixels(self, allocated_height: int) -> int:
         try:
@@ -359,6 +391,14 @@ class MaterialButtonBase(ButtonBase):
     def draw_border(self, canvas, x: int, y: int, width: int, height: int):
         cx, cy, cw, ch = self._container_rect(x, y, width, height)
         return super().draw_border(canvas, cx, cy, cw, ch)
+
+    def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
+        cx, cy, cw, ch = self._container_rect(x, y, width, height)
+        super().draw_state_layer(canvas, cx, cy, cw, ch)
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
+        cx, cy, cw, ch = self._container_rect(x, y, width, height)
+        super().draw_focus_indicator(canvas, cx, cy, cw, ch)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         w, h = super().preferred_size(max_width=max_width, max_height=max_height)
@@ -399,53 +439,6 @@ class MaterialButtonBase(ButtonBase):
             h = min(int(h), int(max_height))
 
         return int(w), int(h)
-
-    def draw_overlay(self, canvas, x: int, y: int, width: int, height: int):
-        if self.disabled:
-            return
-
-        opacity = 0.0
-        if self.state.pressed:
-            opacity = self.pressed_opacity
-        elif self.state.hovered:
-            opacity = self.hover_opacity
-
-        if opacity <= 0.0:
-            return
-
-        color = self.overlay_color
-        if color is None:
-            # Default to black if not specified, though usually it should be passed
-            color = "#000000"
-
-        try:
-            from nuiitivet.theme.manager import manager as theme_manager
-
-            # Resolve color to RGBA tuple
-            rgba = resolve_color_to_rgba(color, theme=theme_manager.current)
-            # Apply opacity to alpha channel
-            final_alpha = int(rgba[3] * opacity)
-            final_color = (rgba[0], rgba[1], rgba[2], final_alpha)
-
-            paint = make_paint(color=final_color, style="fill", aa=True)
-
-            if paint:
-                cx, cy, cw, ch = self._container_rect(x, y, width, height)
-                self._draw_overlay_rect(canvas, cx, cy, cw, ch, paint)
-
-        except Exception:
-            exception_once(logger, "button_draw_overlay_exc", "draw_overlay failed")
-
-    def _draw_overlay_rect(self, canvas, x: int, y: int, width: int, height: int, p):
-        radii = list(self.corner_radii_pixels(width, height))
-        rect = make_rect(x, y, width, height)
-        if rect is None:
-            return
-
-        if radii and any(r > 0.0 for r in radii):
-            draw_round_rect(canvas, rect, radii, p)
-        else:
-            canvas.drawRect(rect, p)
 
 
 # --- Concrete Implementations ---
@@ -534,8 +527,9 @@ class FilledButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
         self.invalidate()
 
 
@@ -627,9 +621,9 @@ class OutlinedButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
-        self.pressed_opacity = params["pressed_opacity"]
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
         self.border_color = params["border_color"]
         self.invalidate()
 
@@ -720,9 +714,9 @@ class TextButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
-        self.pressed_opacity = params["pressed_opacity"]
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
 
         self.invalidate()
 
@@ -810,9 +804,9 @@ class ElevatedButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
-        self.pressed_opacity = params["pressed_opacity"]
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
         self.invalidate()
 
 
@@ -899,9 +893,9 @@ class FilledTonalButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
-        self.pressed_opacity = params["pressed_opacity"]
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
         self.invalidate()
 
 
@@ -982,8 +976,7 @@ class FloatingActionButton(MaterialButtonBase):
         self.shadow_blur = params["shadow_blur"]
         self.shadow_offset = params["shadow_offset"]
 
-        self.overlay_color = params["overlay_color"]
-        self.hover_opacity = params["hover_opacity"]
-        self.pressed_opacity = params["pressed_opacity"]
-
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
         self.invalidate()

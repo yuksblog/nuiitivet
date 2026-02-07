@@ -29,6 +29,7 @@ class Clickable(InteractionHostMixin, Box):
         on_press: Optional[Callable[[PointerEvent], None]] = None,
         on_release: Optional[Callable[[PointerEvent], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
+        focusable: bool = True,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
@@ -71,7 +72,7 @@ class Clickable(InteractionHostMixin, Box):
         else:
             self.enable_hover()
 
-        if not initial_disabled:
+        if not initial_disabled and focusable:
             self.add_node(FocusNode())
 
     def _apply_disabled(self, value: bool) -> None:
