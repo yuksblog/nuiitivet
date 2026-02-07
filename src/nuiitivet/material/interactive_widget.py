@@ -59,12 +59,14 @@ class InteractiveWidget(Clickable):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         disabled: bool | Any = False,
+        focusable: bool = True,
         **kwargs,
     ):
         super().__init__(
             child=child,
             on_click=on_click,
             disabled=disabled,
+            focusable=focusable,
             width=width,
             height=height,
             padding=padding,
