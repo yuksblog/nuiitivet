@@ -12,10 +12,10 @@ import logging
 from typing import Any, Callable, Optional, Tuple, Type, TypeVar, Union, TYPE_CHECKING, cast
 
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.interaction import FocusNode, InteractionHostMixin
+from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import draw_round_rect, make_font, make_paint, make_rect, make_text_blob, get_typeface
 from nuiitivet.theme.resolver import resolve_color_to_rgba
@@ -23,6 +23,8 @@ from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
+from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.material.theme.color_role import ColorRole
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
@@ -66,7 +68,7 @@ def _build_text_field_icon(
     return Icon(icon, size=24, padding=0)
 
 
-class TextField(InteractionHostMixin, ComposableWidget):
+class TextField(InteractiveWidget):
     """A text input widget base class.
 
     Note:
@@ -156,7 +158,14 @@ class TextField(InteractionHostMixin, ComposableWidget):
             padding: Padding around the text field.
             style: Custom style configuration.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(
+            width=width,
+            height=height,
+            padding=padding,
+            on_click=lambda: self.focus(),
+            state_layer_color=ColorRole.ON_SURFACE,
+            disabled=False,  # Set initial disabled state below
+        )
 
         self._label_source: ReadOnlyObservableProtocol[str] | None = None
         self._error_text_source: ReadOnlyObservableProtocol[str | None] | None = None
@@ -229,13 +238,24 @@ class TextField(InteractionHostMixin, ComposableWidget):
         )
         self.add_child(self._editable)
 
-        self.enable_click(on_press=self._handle_press)
-
+        # Handle initial disabled state
         if initial_disabled:
             self._apply_disabled(True)
 
         # Initialize label state
         self._update_label_state()
+
+    @property
+    def should_show_focus_ring(self) -> bool:
+        """Override to check internal editable focus interaction."""
+        return self._editable.state.focused and not self._focus_from_pointer
+
+    def corner_radii_pixels(self, width: float, height: float) -> Tuple[float, float, float, float]:
+        style = self.style
+        r = style.border_radius
+        if self._variant == "filled":
+            return (r, r, 0, 0)
+        return (r, r, r, r)
 
     def _apply_disabled(self, value: bool) -> None:
         next_disabled = bool(value)
@@ -294,6 +314,11 @@ class TextField(InteractionHostMixin, ComposableWidget):
                 self._apply_disabled(bool(self._disabled_source.value))
             except Exception:
                 exception_once(_logger, "text_field_bind_disabled_exc", "TextField failed to bind disabled")
+
+    def _handle_focus_change(self, focused: bool) -> None:
+        super()._handle_focus_change(focused)
+        if focused and hasattr(self, "_editable"):
+            self._editable.focus()
 
     @property
     def style(self) -> TextFieldStyle:
@@ -495,10 +520,17 @@ class TextField(InteractionHostMixin, ComposableWidget):
             error_h = 0
 
         self._draw_container(canvas, cx, cy, cw, ch)
+
+        if not self.disabled:
+            self.draw_state_layer(canvas, cx, cy, cw, ch)
+
         self._draw_editable(canvas, x, y)
         self._draw_label(canvas, text_x, text_y, text_h, cy)
         self._draw_icons(canvas, x, y)
         self._draw_error(canvas, cx, cy, ch)
+
+        if self.should_show_focus_ring:
+            self.draw_focus_indicator(canvas, cx, cy, cw, ch)
 
     def _draw_editable(self, canvas, x: int, y: int) -> None:
         rect = self._editable.layout_rect
