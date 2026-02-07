@@ -8,16 +8,19 @@ handling the State Layer visualization (hover, focus, press states).
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union, Any, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.rendering.skia.color import make_opacity_paint
-from nuiitivet.rendering.skia.geometry import clip_round_rect, make_rect
+from nuiitivet.rendering.skia.geometry import make_rect, draw_round_rect
 from nuiitivet.widgets.clickable import Clickable
+from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.rendering.sizing import SizingLike
+
+if TYPE_CHECKING:
+    from nuiitivet.widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,11 @@ class InteractiveWidget(Clickable):
     _PRESS_OPACITY = 0.12
     _DRAG_OPACITY = 0.16
 
+    # MD3 Focus Indicator Standard
+    _FOCUS_RING_THICKNESS = 3.0
+    _FOCUS_RING_OFFSET = 2.0
+    _FOCUS_RING_COLOR = ColorRole.SECONDARY
+
     def __init__(
         self,
         child: Optional["Widget"] = None,
@@ -63,6 +71,64 @@ class InteractiveWidget(Clickable):
             **kwargs,
         )
         self.state_layer_color = state_layer_color
+        self._focus_from_pointer = False
+
+        # Attach key event handler to the FocusNode (Standard Accessibility)
+        node = self.get_node(FocusNode)
+        if node and isinstance(node, FocusNode):
+            node._on_key = self.on_key_event
+            node._on_focus_change = self._handle_focus_change
+
+    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
+        """Handle key events (Space/Enter to click)."""
+        if self.disabled:
+            return False
+
+        if key in ("space", "enter"):
+            # Trigger click via PointerInputNode to ensure callbacks are invoked
+            self._pointer_node._emit_click()
+            return True
+        return False
+
+    def _handle_focus_change(self, focused: bool) -> None:
+        """Handle focus state changes."""
+        if not focused:
+            self._focus_from_pointer = False
+
+    def request_focus_from_pointer(self) -> None:
+        """Request focus originating from a pointer (e.g. click)."""
+        self._focus_from_pointer = True
+        super().request_focus_from_pointer()
+
+    @property
+    def should_show_focus_ring(self) -> bool:
+        """Return True if the focus ring should be visible."""
+        # MD3: Hide focus ring if focus came from pointer interaction
+        return self.state.focused and not self._focus_from_pointer
+
+    def paint_outsets(self) -> Tuple[int, int, int, int]:
+        """Compute visual overflow (outsets) including focus ring."""
+        # Get base outsets (e.g. from Box shadow)
+        base = super().paint_outsets()
+
+        # Calculate focus ring outsets if potentially visible
+        # Note: We include this even if not currently focused to avoid
+        # surface resizing/jank during interaction.
+        ring_outset = 0
+        if not self.disabled:
+            # MD3 Focus Ring extends outside the bounds by (offset + thickness)
+            import math
+
+            val = self._FOCUS_RING_THICKNESS + max(0, self._FOCUS_RING_OFFSET)
+            ring_outset = int(math.ceil(val))
+
+        # Combine by taking max of each side
+        return (
+            max(base[0], ring_outset),
+            max(base[1], ring_outset),
+            max(base[2], ring_outset),
+            max(base[3], ring_outset),
+        )
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Override paint to inject draw_state_layer."""
@@ -81,6 +147,10 @@ class InteractiveWidget(Clickable):
         # 4. Border (from Box)
         self.draw_border(canvas, x, y, width, height)
 
+        # 5. Focus Indicator (New)
+        if not self.disabled and self.should_show_focus_ring:
+            self.draw_focus_indicator(canvas, x, y, width, height)
+
     def _get_active_state_layer_opacity(self) -> float:
         """Return the opacity for the current state layer based on interaction state."""
         state = self.state
@@ -88,8 +158,6 @@ class InteractiveWidget(Clickable):
             return self._DRAG_OPACITY
         elif state.pressed:
             return self._PRESS_OPACITY
-        elif state.focused:
-            return self._FOCUS_OPACITY
         elif state.hovered:
             return self._HOVER_OPACITY
         return 0.0
@@ -131,3 +199,34 @@ class InteractiveWidget(Clickable):
 
         except Exception:
             exception_once(logger, "interactive_widget_state_layer_exc", "Failed to draw state layer")
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
+        """Draws the MD3 Focus Indicator (Ring) when focused."""
+        try:
+            # Focus ring color is usually Secondary
+            color = resolve_color_to_rgba(self._FOCUS_RING_COLOR, self)
+            if color is None:
+                return
+
+            from nuiitivet.rendering.skia import make_paint
+
+            # 3dp limit
+            thickness = self._FOCUS_RING_THICKNESS
+            offset = self._FOCUS_RING_OFFSET
+
+            # Draw outside the container
+            inflate = offset + (thickness / 2)
+
+            paint = make_paint(color=color, style="stroke", stroke_width=thickness)
+
+            # Inflate rect
+            rect = make_rect(x - inflate, y - inflate, width + (inflate * 2), height + (inflate * 2))
+
+            # Adjust corner radii for the outer ring
+            original_radii = list(self.corner_radii_pixels(width, height))
+            radii = [r + inflate for r in original_radii]
+
+            draw_round_rect(canvas, rect, radii, paint)
+
+        except Exception:
+            exception_once(logger, "interactive_widget_focus_ring_exc", "Failed to draw focus indicator")

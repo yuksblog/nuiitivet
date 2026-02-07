@@ -329,6 +329,7 @@ class MyWidget(ComposableWidget):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     model = MyWidgetModel()
     widget = MyWidget(model)
     import nuiitivet as nv

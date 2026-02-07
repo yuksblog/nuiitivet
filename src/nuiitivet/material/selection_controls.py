@@ -13,9 +13,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import Disposable, ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.toggleable import Toggleable
-from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.material.interactive_widget import InteractiveWidget
-from nuiitivet.material.theme.color_role import ColorRole
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
@@ -25,7 +23,7 @@ _logger = logging.getLogger(__name__)
 
 
 class Checkbox(Toggleable, InteractiveWidget):
-    """A minimal Material-like Checkbox widget (M3準拠).
+    """A minimal Material-like Checkbox widget (M3).
 
     Parameters:
     - checked: Checked state source (bool / Observable[bool] / Observable[Optional[bool]])
@@ -124,15 +122,6 @@ class Checkbox(Toggleable, InteractiveWidget):
             exception_once(_logger, "checkbox_size_exc", "Failed to parse checkbox size")
             self._touch_target_size = 48
 
-        # Configure FocusNode
-        self._focused = False
-        self._focus_from_pointer = False
-
-        node = self.get_node(FocusNode)
-        if node and isinstance(node, FocusNode):
-            node._on_key = lambda k, m: self.on_key_event(k, m)
-            node._on_focus_change = self._handle_focus_change
-
     def _effective_value_from_external(self) -> Optional[bool]:
         if self._checked_external_tri is not None:
             return self._checked_external_tri.value
@@ -207,48 +196,6 @@ class Checkbox(Toggleable, InteractiveWidget):
                 pass
         self._external_unsubs.clear()
         super().on_unmount()
-
-    @property
-    def observable_state(self) -> ObservableProtocol[Optional[bool]]:
-        return self._get_state_obj()
-
-    # Public focus API compatibility
-    def focus(self) -> None:
-        try:
-            node = self.get_node(FocusNode)
-            if node and isinstance(node, FocusNode):
-                node.request_focus()
-            else:
-                self.state.focused = True
-                self.invalidate()
-        except Exception:
-            exception_once(_logger, "checkbox_focus_exc", "Checkbox.focus failed")
-
-    def blur(self) -> None:
-        try:
-            self.state.focused = False
-            self.invalidate()
-        except Exception:
-            exception_once(_logger, "checkbox_blur_exc", "Checkbox.blur failed")
-
-    def _handle_focus_change(self, focused: bool) -> None:
-        self._focused = focused
-        # state.focused is updated by FocusNode
-        if not focused:
-            self._focus_from_pointer = False
-        self.invalidate()
-
-    def request_focus_from_pointer(self) -> None:
-        self._focus_from_pointer = True
-        super().request_focus_from_pointer()
-        if self._focused:
-            self.invalidate()
-
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
-        if key in ("space", "enter") and not self.disabled:
-            self._handle_click()  # Toggleable method
-            return True
-        return False
 
     def _handle_click(self) -> None:
         if self.disabled:
@@ -336,15 +283,6 @@ class Checkbox(Toggleable, InteractiveWidget):
 
         return (int(total_w), int(total_h))
 
-    # Compatibility properties for tests
-    @property
-    def _hover(self) -> bool:
-        return self.state.hovered
-
-    @property
-    def _pressed(self) -> bool:
-        return self.state.pressed
-
     @property
     def style(self):
         if self._style is not None:
@@ -406,26 +344,12 @@ class Checkbox(Toggleable, InteractiveWidget):
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
             # Check for keyboard focus (Ring visible)
-            is_keyboard_focus = getattr(self, "_focused", False) and not getattr(self, "_focus_from_pointer", False)
+            is_keyboard_focus = self.should_show_focus_ring
 
-            # Determine State Layer opacity manually to handle Focus Ring exclusion
-            state = self.state
-            overlay_alpha = 0.0
+            # Determine State Layer opacity
+            overlay_alpha = self._get_active_state_layer_opacity()
 
-            if state.dragging or state.pressed:
-                # Always show pressed/drag states
-                overlay_alpha = self._DRAG_OPACITY if state.dragging else self._PRESS_OPACITY
-            elif state.hovered:
-                # Always show hover state
-                overlay_alpha = self._HOVER_OPACITY
-            elif state.focused:
-                # Only show focus state layer if NOT using keyboard focus (meaning pointer focus, or fallback)
-                # But actually, if we have keyboard focus, we show the Ring.
-                # If we show the Ring, we usually DONT show the Focus State Layer (12%) to avoid clutter.
-                if not is_keyboard_focus:
-                    overlay_alpha = self._FOCUS_OPACITY
-
-            if overlay_alpha and overlay_alpha > 0.0:
+            if overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
                 cy_center = float(cy + touch_sz / 2.0)
                 r = float(state_diam / 2.0)
@@ -445,8 +369,7 @@ class Checkbox(Toggleable, InteractiveWidget):
             if rect is not None and stroke_p is not None:
                 draw_round_rect(canvas, rect, corner, stroke_p)
 
-            show_focus_ring = getattr(self, "_focused", False) and not getattr(self, "_focus_from_pointer", False)
-            if show_focus_ring:
+            if is_keyboard_focus:
                 focus_alpha = 0.12
                 prim = roles.get(ColorRole.PRIMARY, "#000000")
                 focus_col = skcolor(prim, focus_alpha)

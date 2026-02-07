@@ -19,8 +19,8 @@ def test_resolve_overlay_defaults():
     # hover_opacity = base_alpha * 0.5 (0.04)
 
     # FilledButton resolves the default filled style at initialization time.
-    assert abs(b.pressed_opacity - 0.08) < 1e-6
-    assert abs(b.hover_opacity - 0.04) < 1e-6
+    assert abs(b._PRESS_OPACITY - 0.08) < 1e-6
+    assert abs(b._HOVER_OPACITY - 0.04) < 1e-6
 
 
 @pytest.mark.parametrize(
@@ -36,8 +36,8 @@ def test_resolve_overlay_defaults():
 )
 def test_resolve_overlay_defaults_for_variants(factory, expected_pressed: float, expected_hover: float):
     b = factory()
-    assert abs(b.pressed_opacity - expected_pressed) < 1e-6
-    assert abs(b.hover_opacity - expected_hover) < 1e-6
+    assert abs(b._PRESS_OPACITY - expected_pressed) < 1e-6
+    assert abs(b._HOVER_OPACITY - expected_hover) < 1e-6
 
 
 def test_resolve_overlay_with_style_alpha_scaled():
@@ -57,6 +57,6 @@ def test_resolve_overlay_with_style_alpha_scaled():
     b = FilledButton(label="lbl", style=style)
 
     # Check that params were correctly passed to ButtonBase
-    assert b.overlay_color == "#112233"
-    assert abs(b.pressed_opacity - 0.2) < 1e-06
-    assert abs(b.hover_opacity - 0.1) < 1e-06
+    assert b.state_layer_color == "#112233"
+    assert abs(b._PRESS_OPACITY - 0.2) < 1e-06
+    assert abs(b._HOVER_OPACITY - 0.1) < 1e-06
