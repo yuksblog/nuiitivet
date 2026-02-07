@@ -229,11 +229,13 @@ class _RailItemButton(InteractiveWidget):
         if indicator is None or indicator.layout_rect is None:
             return
 
+        from nuiitivet.widgeting.widget_kernel import WidgetKernel
+
         # Calculate relative offset of the indicator within this widget
         rel_x = 0.0
         rel_y = 0.0
-        curr = indicator
-        while curr != self and curr.parent is not None:
+        curr: Optional[WidgetKernel] = indicator
+        while curr is not None and curr != self:
             if curr.layout_rect:
                 rel_x += curr.layout_rect[0]
                 rel_y += curr.layout_rect[1]
