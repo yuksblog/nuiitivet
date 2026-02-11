@@ -9,6 +9,7 @@ from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.events import FocusEvent
 from nuiitivet.input.pointer import PointerEvent
+from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from .modifier import Modifier, ModifierElement
 from .widget_animation import AnimationHostMixin
 from .widget_binding import BindingHostMixin
@@ -45,9 +46,9 @@ class Widget(
     def __init__(
         self,
         *,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: PaddingLike = None,
+        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        padding: Union[PaddingLike, ReadOnlyObservableProtocol] = None,
         max_children: Optional[int] = None,
         overflow_policy: str = "none",
     ) -> None:

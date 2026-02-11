@@ -164,13 +164,18 @@ class App:
 
         pref_w = 0
         pref_h = 0
-        if window_auto_size_target is not None:
+        width_sizing = parse_window_sizing(width)
+        height_sizing = parse_window_sizing(height)
+        needs_auto_size = width_sizing.kind == "auto" or height_sizing.kind == "auto"
+        if window_auto_size_target is not None and needs_auto_size:
             target = window_auto_size_target
+            built_for_sizing: Widget | None = None
             if isinstance(target, ComposableWidget):
                 try:
                     built = target.evaluate_build()
                     if built is not None and built is not target:
                         target = built
+                        built_for_sizing = built
                 except Exception:
                     target = window_auto_size_target
             try:
@@ -178,14 +183,22 @@ class App:
             except Exception:
                 pref_w, pref_h = 0, 0
 
+            if built_for_sizing is not None:
+                try:
+                    built_for_sizing.unmount()
+                except Exception:
+                    pass
+
         # Include custom title bar preferred height for auto sizing.
-        if isinstance(title_bar, CustomTitleBar):
+        if isinstance(title_bar, CustomTitleBar) and needs_auto_size:
             title_target: Widget = title_bar.content
+            built_title_target: Widget | None = None
             if isinstance(title_target, ComposableWidget):
                 try:
                     built = title_target.evaluate_build()
                     if built is not None and built is not title_target:
                         title_target = built
+                        built_title_target = built
                 except Exception:
                     title_target = title_bar.content
             try:
@@ -194,6 +207,12 @@ class App:
                 tw, th = 0, 0
             pref_w = max(int(pref_w), int(tw))
             pref_h = int(pref_h) + int(th)
+
+            if built_title_target is not None:
+                try:
+                    built_title_target.unmount()
+                except Exception:
+                    pass
 
         self.width = self._resolve_window_sizing(width, preferred=int(pref_w), fallback=640)
         self.height = self._resolve_window_sizing(height, preferred=int(pref_h), fallback=480)

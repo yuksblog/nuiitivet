@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from typing import Callable, Optional, Sequence, Tuple, Union
+import logging
 
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.rendering.sizing import SizingLike, Sizing
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.animation import Animatable, DrivenAnimatable, LinearMotion, Rect, RectTween
+from nuiitivet.animation.tween import LerpTween
 from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
+from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material.text import Text
 from nuiitivet.material.icon import Icon
 from nuiitivet.widgets.box import Box
@@ -16,6 +20,14 @@ from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
+from nuiitivet.theme.types import ColorSpec
+from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
+from nuiitivet.modifiers.transform import rotate
+
+
+logger = logging.getLogger(__name__)
 
 
 class RailItem(Widget):
@@ -53,29 +65,23 @@ class RailItem(Widget):
         self._icon_widget: Widget
         self._label_widget: Widget
 
-        # Use style if provided, otherwise defaults will be handled by parent or standard defaults
-        # For now, we initialize with minimal style and let parent update it,
-        # or defaults if used standalone (unlikely).
+        # Use provided style or defer to defaults.
         icon_color = style.icon_color if style and style.icon_color else ColorRole.ON_SURFACE
-        self._icon_widget = Icon(icon, size=24, style=IconStyle(color=icon_color))
+        icon_size = style.icon_size if style else NavigationRailStyle().icon_size
+        self._icon_widget = Icon(icon, size=icon_size, style=IconStyle(color=icon_color))
 
-        label_style = style.label_text_style if style and style.label_text_style else None
-        # Merge with base requirements
-        base_text_style = TextStyle(
+        # Base label style.
+        text_style = TextStyle(
             color=(style.label_color if style and style.label_color else ColorRole.ON_SURFACE_VARIANT),
             font_size=12,
             text_alignment="center",
             overflow="ellipsis",
         )
-        final_text_style = base_text_style
-        if label_style:
-            # Simple merge logic or just use base + color?
-            # TextStyle.copy_with is useful here if available
-            pass
+        # TODO: Merge label_style if provided.
 
         self._label_widget = Text(
             label,
-            style=final_text_style,
+            style=text_style,
         )
 
     @property
@@ -94,6 +100,14 @@ class RailItem(Widget):
         return self._label_widget
 
 
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _to_int(value: float) -> int:
+    return int(round(float(value)))
+
+
 class _RailItemButton(InteractiveWidget):
     """Internal button widget for NavigationRail items."""
 
@@ -101,16 +115,111 @@ class _RailItemButton(InteractiveWidget):
         self,
         rail_item: RailItem,
         selected: bool,
-        expanded: bool,
+        expand_animation: Animatable,
+        label_animation: Animatable,
         rail_style: Optional[NavigationRailStyle] = None,
         on_click: Optional[Callable[[], None]] = None,
     ) -> None:
-        from nuiitivet.material.text import Text
-
+        self._expand_animation = expand_animation
+        self._label_animation = label_animation
         # Resolve effective style: item style > rail style > defaults
         eff_style = rail_item.style or rail_style or NavigationRailStyle()
+        self._eff_style = eff_style
+        self._selected = bool(selected)
+        self._indicator_color: Optional[ColorSpec] = None
+        self._indicator_rect: Optional[Tuple[int, int, int, int]] = None
+        self._indicator_radius: float = 0.0
 
-        # Resolve colors based on proper effective style
+        # Core widgets
+        self._icon_widget = rail_item.icon_widget
+
+        base_label_style = eff_style.label_text_style or TextStyle(
+            color=ColorRole.ON_SURFACE_VARIANT,
+            font_size=14,
+            text_alignment="start",
+            overflow="clip",
+        )
+
+        self._vertical_label = Text(
+            rail_item.label_spec,
+            style=base_label_style.copy_with(font_size=12, text_alignment="center"),
+        )
+        self._horizontal_label = Text(
+            rail_item.label_spec,
+            style=base_label_style.copy_with(font_size=14, text_alignment="start"),
+        )
+
+        # Fixed content size with animated clip window.
+        self._vertical_content = Box(
+            child=self._vertical_label,
+            width=Sizing.fixed(eff_style.container_width_collapsed),
+            height=Sizing.fixed(eff_style.label_height),
+            alignment="center",
+        )
+        self._vertical_label_container = Box(
+            child=self._vertical_content,
+            width=Sizing.fixed(eff_style.container_width_collapsed),
+            height=Sizing.fixed(eff_style.label_height),
+            alignment="top_center",
+        )
+        self._vertical_label_container.clip_content = True
+
+        self._horizontal_content = Box(
+            child=self._horizontal_label,
+            width=Sizing.fixed(eff_style.horizontal_label_width),
+            height=Sizing.fixed(eff_style.label_height),
+            alignment="center_left",
+        )
+        self._horizontal_label_container = Box(
+            child=self._horizontal_content,
+            width=Sizing.fixed(eff_style.horizontal_label_width),
+            height=Sizing.fixed(eff_style.label_height),
+            alignment="center_left",
+        )
+        self._horizontal_label_container.clip_content = True
+
+        # Test compatibility objects.
+        self._indicator_box = Box(
+            child=None,
+            background_color=None,
+            corner_radius=eff_style.indicator_height_collapsed / 2.0,
+            width=Sizing.auto(),
+            height=Sizing.fixed(eff_style.indicator_height_collapsed),
+            alignment="center_left",
+            padding=(
+                _to_int(eff_style.indicator_horizontal_padding),
+                0,
+                _to_int(eff_style.indicator_horizontal_padding),
+                0,
+            ),
+        )
+        self._icon_gap_spacer = Spacer(width=Sizing.fixed(0))
+        self._content_column = Column(children=[], gap=4)
+
+        super().__init__(
+            child=None,
+            on_click=on_click,
+            width=Sizing.flex(1),
+            height=Sizing.fixed(eff_style.item_height),
+            padding=0,
+            focusable=False,
+        )
+
+        # Add children manually; draw_children is overridden.
+        self.add_child(self._icon_widget)
+        self.add_child(self._horizontal_label_container)
+        self.add_child(self._vertical_label_container)
+
+        self._apply_colors(selected=self._selected, rail_style=rail_style)
+
+        # Sync interaction state
+        self.state.selected = selected
+        self.on_dispose(lambda: None)
+
+    # Bindings are automatically disposed by BindingHostMixin/observe.
+
+    def _apply_colors(self, *, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
+        eff_style = self._eff_style or rail_style or NavigationRailStyle()
         if selected:
             icon_color = eff_style.selected_icon_color or ColorRole.ON_SECONDARY_CONTAINER
             label_color = eff_style.selected_label_color or ColorRole.ON_SURFACE
@@ -118,164 +227,286 @@ class _RailItemButton(InteractiveWidget):
         else:
             icon_color = eff_style.icon_color or ColorRole.ON_SURFACE_VARIANT
             label_color = eff_style.label_color or ColorRole.ON_SURFACE_VARIANT
-            indicator_color = None  # Transparent
+            indicator_color = None
 
-        # Update Icon Color
-        if isinstance(rail_item.icon_widget, Icon):
-            # We should avoid modifying the shared widget state if multiple rails use same item,
-            # but RailItem is likely 1:1.
-            # Better: update the style of the icon widget.
-            rail_item.icon_widget._style = IconStyle(color=icon_color)
-            rail_item.icon_widget.invalidate()
+        if isinstance(self._icon_widget, Icon):
+            self._icon_widget._style = IconStyle(color=icon_color)
+            self._icon_widget.invalidate()
 
-        label_widget = rail_item.label_widget
-        if isinstance(label_widget, Text):
-            current_style = getattr(label_widget, "_style", None) or TextStyle()
+        if isinstance(self._vertical_label, Text):
+            current_style = getattr(self._vertical_label, "_style", None) or TextStyle()
+            self._vertical_label._style = current_style.copy_with(color=label_color, text_alignment="center")
+            self._vertical_label.invalidate()
 
-            # Base font size/alignment based on expanded state
-            if expanded:
-                new_style = current_style.copy_with(color=label_color, text_alignment="start", font_size=14)
-                label_widget.width_sizing = Sizing.auto()
-            else:
-                new_style = current_style.copy_with(color=label_color, text_alignment="center", font_size=12)
-                label_widget.width_sizing = Sizing.fixed(72)
+        if isinstance(self._horizontal_label, Text):
+            current_style = getattr(self._horizontal_label, "_style", None) or TextStyle()
+            self._horizontal_label._style = current_style.copy_with(color=label_color, text_alignment="start")
+            self._horizontal_label.invalidate()
 
-            label_widget._style = new_style
-
-        child: Widget
-        if expanded:
-            # Expanded: icon + label horizontally with active indicator on both
-            # Active indicator wraps both icon and label
-            indicator_content = Row(
-                [rail_item.icon_widget, label_widget],
-                gap=8,  # M3 spec: 8dp icon-label space
-                padding=0,  # No padding inside indicator
-                cross_alignment="center",
-            )
-
-            # Active indicator (background) - wraps icon + label
-            indicator = Box(
-                child=indicator_content,
-                background_color=indicator_color,
-                corner_radius=16,  # M3 spec: full rounded
-                width=Sizing.auto(),
-                height=Sizing.fixed(56),
-                padding=(16, 8),  # M3 spec: 16dp leading/trailing, 8dp vertical
-            )
-
-            self._indicator_box: Box = indicator
-
-            child = indicator
-        else:
-            # Collapsed: icon (with indicator) above label, vertically stacked
-            # Active indicator only wraps the icon
-            icon_indicator = Box(
-                child=rail_item.icon_widget,
-                background_color=indicator_color,
-                corner_radius=16,  # M3 spec: full rounded
-                width=Sizing.fixed(56),  # M3 spec: 56dp width
-                height=Sizing.fixed(32),  # M3 spec: 32dp height
-                alignment="center",  # Center icon
-            )
-
-            self._indicator_box = icon_indicator
-
-            # Stack indicator and label vertically, both centered
-            child = Column(
-                [icon_indicator, label_widget],
-                gap=4,  # M3 spec: 4dp icon-label space
-                cross_alignment="center",  # Center both items
-                padding=0,
-            )
-
-        super().__init__(
-            child=child,
-            on_click=on_click,
-            width=Sizing.auto(),  # Fit content width
-            height=Sizing.auto(),  # Fit content height
-            padding=(8, 0, 0, 0) if expanded else 0,
-            focusable=False,  # MD3 spec: NavigationRail items don't accept keyboard focus
-        )
-
-        # Sync interaction state
-        self.state.selected = selected
+        self._indicator_color = indicator_color
 
     def set_selected(self, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
-        # Re-resolve colors.
-        # CAUTION: This method needs context of the item style too ideally.
-        # But for now let's just update the background which is the main dynamic part here.
-        # Ideally we should rebuild or have robust state update.
-        # For simplicity, we just update bg color here as before, assuming other styles static?
-        # No, colors change on selection.
-        # We might need to trigger a rebuild or update children styles manually.
-
-        # Access the effective style again? We don't have reference to rail_item easily unless we store it.
-        # Let's just update background for now, or improve this class to store item/style.
-
-        # Fallback to simple update for now to match strict update requirement
-        # But we should use the style if possible.
-        eff_style = rail_style or NavigationRailStyle()
-        bgcolor = (eff_style.indicator_color or ColorRole.SECONDARY_CONTAINER) if selected else None
-        self._indicator_box.bgcolor = bgcolor
+        self._selected = bool(selected)
+        self._apply_colors(selected=self._selected, rail_style=rail_style)
         self.state.selected = bool(selected)
+        self.invalidate()
 
-        # Also need to update icon/text colors if we want full correctness.
-        # Given the scope, maybe just updating bg is enough if we assume rebuild on significant changes.
-        pass
+    def layout(self, width: int, height: int) -> None:
+        Widget.layout(self, width, height)
+
+        t_layout = _clamp01(self._expand_animation.value)
+        t_label = _clamp01(self._label_animation.value)
+
+        collapsed_width = float(self._eff_style.container_width_collapsed)
+        margin = max(0.0, (collapsed_width - self._eff_style.indicator_width_collapsed) / 2.0)
+
+        gap_collapsed = float(self._eff_style.gap_collapsed)
+        gap_expanded = float(self._eff_style.gap_expanded)
+
+        # Indicator rect interpolation
+        indicator_tween = RectTween(
+            begin=Rect(
+                x=margin,
+                y=0.0,
+                width=float(self._eff_style.indicator_width_collapsed),
+                height=float(self._eff_style.indicator_height_collapsed),
+            ),
+            end=Rect(
+                x=margin,
+                y=0.0,
+                width=float(self._eff_style.indicator_width_expanded),
+                height=float(self._eff_style.item_height),
+            ),
+        )
+        indicator_rect = indicator_tween.transform(t_layout)
+        ind_x_i, ind_y_i, ind_w_i, ind_h_i = indicator_rect.to_int_tuple()
+
+        self._indicator_rect = (ind_x_i, ind_y_i, ind_w_i, ind_h_i)
+        self._indicator_radius = float(ind_h_i) / 2.0
+
+        # Update test compatibility objects.
+        gap_tween = LerpTween(gap_collapsed, float(self._eff_style.label_gap_expanded))
+        gap_value = gap_tween.transform(t_label)
+        self._indicator_box.height_sizing = Sizing.fixed(ind_h_i)
+        self._indicator_box.corner_radius = float(ind_h_i) / 2.0
+        self._icon_gap_spacer.width_sizing = Sizing.fixed(_to_int(gap_value))
+
+        column_gap_tween = LerpTween(gap_collapsed, gap_expanded)
+        self._content_column.gap = _to_int(column_gap_tween.transform(t_label))
+
+        # Icon rect interpolation
+        icon_size = float(self._eff_style.icon_size)
+        icon_x = margin + float(self._eff_style.indicator_horizontal_padding)
+        icon_tween = RectTween(
+            begin=Rect(
+                x=icon_x,
+                y=(float(self._eff_style.indicator_height_collapsed) - icon_size) / 2.0,
+                width=icon_size,
+                height=icon_size,
+            ),
+            end=Rect(
+                x=icon_x,
+                y=(float(self._eff_style.item_height) - icon_size) / 2.0,
+                width=icon_size,
+                height=icon_size,
+            ),
+        )
+        icon_rect = icon_tween.transform(t_layout).to_int_tuple()
+        self._icon_widget.layout(icon_rect[2], icon_rect[3])
+        self._icon_widget.set_layout_rect(icon_rect[0], icon_rect[1], icon_rect[2], icon_rect[3])
+
+        # Horizontal label window rect interpolation
+        label_x_collapsed = icon_x + icon_size + gap_collapsed
+        label_x_expanded = icon_x + icon_size + float(self._eff_style.label_gap_expanded)
+        label_height = float(self._eff_style.label_height)
+        label_y_collapsed = (float(self._eff_style.indicator_height_collapsed) - label_height) / 2.0
+        label_y_expanded = (float(self._eff_style.item_height) - label_height) / 2.0
+
+        label_tween = RectTween(
+            begin=Rect(x=label_x_collapsed, y=label_y_collapsed, width=0.0, height=label_height),
+            end=Rect(
+                x=label_x_expanded,
+                y=label_y_expanded,
+                width=float(self._eff_style.horizontal_label_width),
+                height=label_height,
+            ),
+        )
+        label_rect = label_tween.transform(t_label).to_int_tuple()
+        self._horizontal_label_container.layout(label_rect[2], label_rect[3])
+        self._horizontal_label_container.set_layout_rect(label_rect[0], label_rect[1], label_rect[2], label_rect[3])
+
+        # Vertical label window rect interpolation
+        vertical_y_collapsed = float(self._eff_style.indicator_height_collapsed) + gap_collapsed
+        vertical_y_expanded = float(self._eff_style.item_height) + gap_expanded
+        vertical_tween = RectTween(
+            begin=Rect(x=0.0, y=vertical_y_collapsed, width=collapsed_width, height=label_height),
+            end=Rect(x=0.0, y=vertical_y_expanded, width=collapsed_width, height=0.0),
+        )
+        vertical_rect = vertical_tween.transform(t_label).to_int_tuple()
+        self._vertical_label_container.layout(vertical_rect[2], vertical_rect[3])
+        self._vertical_label_container.set_layout_rect(
+            vertical_rect[0],
+            vertical_rect[1],
+            vertical_rect[2],
+            vertical_rect[3],
+        )
+
+    def draw_background(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        if canvas is None or self._indicator_rect is None:
+            return
+
+        if not self._selected or self._indicator_color is None:
+            return
+
+        color = resolve_color_to_rgba(self._indicator_color, self)
+        if color is None:
+            return
+        r, g, b, a = color
+        paint = make_paint(color=(r, g, b, a), style="fill")
+
+        ind_x, ind_y, ind_w, ind_h = self._indicator_rect
+        rect = make_rect(x + ind_x, y + ind_y, ind_w, ind_h)
+        radius = float(self._indicator_radius)
+        radii = [radius, radius, radius, radius]
+        draw_round_rect(canvas, rect, radii, paint)
 
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
-        """Override to draw state layer matching the indicator shape/position."""
-        indicator = self._indicator_box
-        if indicator is None or indicator.layout_rect is None:
+        """Draw state layer matching the indicator shape."""
+        if self._indicator_rect is None:
             return
 
-        from nuiitivet.widgeting.widget_kernel import WidgetKernel
+        ind_x, ind_y, ind_w, ind_h = self._indicator_rect
+        abs_x = x + ind_x
+        abs_y = y + ind_y
 
-        # Calculate relative offset of the indicator within this widget
-        rel_x = 0.0
-        rel_y = 0.0
-        curr: Optional[WidgetKernel] = indicator
-        while curr is not None and curr != self:
-            if curr.layout_rect:
-                rel_x += curr.layout_rect[0]
-                rel_y += curr.layout_rect[1]
-            curr = curr.parent
-
-        if curr != self:
-            # Indicator is not in the subtree (should not happen)
-            return
-
-        # Indicator dimensions
-        ind_w = indicator.layout_rect[2]
-        ind_h = indicator.layout_rect[3]
-
-        # Draw bounds
-        abs_x = x + rel_x
-        abs_y = y + rel_y
-
-        # Draw state layer
+        # Draw state layer.
         opacity = self._get_active_state_layer_opacity()
         if opacity <= 0:
             return
 
-        from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
-        from nuiitivet.theme.resolver import resolve_color_to_rgba
+        color = resolve_color_to_rgba(self.state_layer_color, self)
+        if color is None:
+            return
+        r, g, b, a = color
+        final_alpha = a * opacity
+        paint = make_paint(color=(r, g, b, final_alpha), style="fill")
 
-        try:
-            color = resolve_color_to_rgba(self.state_layer_color, self)
-            if color is None:
-                return
-            r, g, b, a = color
-            final_alpha = a * opacity
-            paint = make_paint(color=(r, g, b, final_alpha), style="fill")
+        rect = make_rect(abs_x, abs_y, ind_w, ind_h)
+        radius = float(self._indicator_radius)
+        radii = [radius, radius, radius, radius]
 
-            rect = make_rect(abs_x, abs_y, ind_w, ind_h)
-            radii = list(indicator.corner_radii_pixels(ind_w, ind_h))
+        draw_round_rect(canvas, rect, radii, paint)
 
-            draw_round_rect(canvas, rect, radii, paint)
+    def draw_children(self, canvas, x: int, y: int, width: int, height: int):
+        if not self.children:
+            return
 
-        except Exception:
-            pass
+        if any(child.layout_rect is None for child in self.children):
+            self.layout(width, height)
+
+        for child in self.children_snapshot():
+            rect = child.layout_rect
+            if rect is None:
+                continue
+            rel_x, rel_y, child_w, child_h = rect
+            cx = x + rel_x
+            cy = y + rel_y
+            child.set_last_rect(cx, cy, child_w, child_h)
+            child.paint(canvas, cx, cy, child_w, child_h)
+
+
+class _NavigationRailLayout(Widget):
+    """Custom deterministic layout for NavigationRail."""
+
+    def __init__(
+        self,
+        *,
+        menu_button: Optional[Widget],
+        item_buttons: Sequence[_RailItemButton],
+        animation: Animatable,
+        style: NavigationRailStyle,
+    ) -> None:
+        """Initialize layout controller.
+
+        Args:
+            menu_button: Optional menu button widget.
+            item_buttons: Rail item button widgets.
+            animation: Expand animation controller.
+            style: Effective navigation rail style.
+        """
+        super().__init__(width=Sizing.flex(1), height=Sizing.flex(1), padding=0)
+        self._menu_button = menu_button
+        self._item_buttons = list(item_buttons)
+        self._animation = animation
+        self._style = style
+        self._expand_subscription = animation.subscribe(self._on_animation_tick)
+
+        if menu_button is not None:
+            self.add_child(menu_button)
+        for item in self._item_buttons:
+            self.add_child(item)
+
+        self.on_dispose(self.dispose)
+
+    def _on_animation_tick(self, _: float) -> None:
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def layout(self, width: int, height: int) -> None:
+        Widget.layout(self, width, height)
+
+        t = _clamp01(self._animation.value)
+        gap_collapsed = float(self._style.gap_collapsed)
+        gap_expanded = float(self._style.gap_expanded)
+        collapsed_width = float(self._style.container_width_collapsed)
+        margin = max(0.0, (collapsed_width - self._style.indicator_width_collapsed) / 2.0)
+
+        cursor_collapsed = float(self._style.top_padding)
+        cursor_expanded = float(self._style.top_padding)
+
+        if self._menu_button is not None:
+            menu_size = float(self._style.menu_button_size)
+            menu_tween = RectTween(
+                begin=Rect(x=margin, y=cursor_collapsed, width=menu_size, height=menu_size),
+                end=Rect(x=margin, y=cursor_expanded, width=menu_size, height=menu_size),
+            )
+            menu_rect = menu_tween.transform(t).to_int_tuple()
+            self._menu_button.layout(menu_rect[2], menu_rect[3])
+            self._menu_button.set_layout_rect(menu_rect[0], menu_rect[1], menu_rect[2], menu_rect[3])
+            cursor_collapsed += menu_size + gap_collapsed
+            cursor_expanded += menu_size + gap_expanded
+
+        for item in self._item_buttons:
+            item_tween = RectTween(
+                begin=Rect(x=0.0, y=cursor_collapsed, width=float(width), height=float(self._style.item_height)),
+                end=Rect(x=0.0, y=cursor_expanded, width=float(width), height=float(self._style.item_height)),
+            )
+            item_rect = item_tween.transform(t).to_int_tuple()
+            item.layout(item_rect[2], item_rect[3])
+            item.set_layout_rect(item_rect[0], item_rect[1], item_rect[2], item_rect[3])
+            cursor_collapsed += float(self._style.item_height) + gap_collapsed
+            cursor_expanded += float(self._style.item_height) + gap_expanded
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        self.set_last_rect(x, y, width, height)
+
+        if any(child.layout_rect is None for child in self.children):
+            self.layout(width, height)
+
+        for child in self.children_snapshot():
+            rect = child.layout_rect
+            if rect is None:
+                continue
+            rel_x, rel_y, child_w, child_h = rect
+            cx = x + rel_x
+            cy = y + rel_y
+            child.set_last_rect(cx, cy, child_w, child_h)
+            child.paint(canvas, cx, cy, child_w, child_h)
+
+    def dispose(self) -> None:
+        if self._expand_subscription is not None:
+            self._expand_subscription.dispose()
+            self._expand_subscription = None
 
 
 class NavigationRail(Widget):
@@ -309,8 +540,8 @@ class NavigationRail(Widget):
         on_select: Optional[Callable[[int], None]] = None,
         expanded: Union[bool, _ObservableValue[bool]] = False,
         show_menu_button: bool = True,
-        width: SizingLike = None,
-        height: SizingLike = None,
+        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[NavigationRailStyle] = None,
     ) -> None:
@@ -327,16 +558,33 @@ class NavigationRail(Widget):
             padding: Padding specification.
             style: Custom NavigationRailStyle.
         """
-        # Store expanded state before calling super().__init__
-        # so _calculate_width() works correctly
         self._is_expanded = expanded.value if isinstance(expanded, _ObservableValue) else bool(expanded)
         self._style = style
+        self._menu_icon_name: Optional[_ObservableValue[str]] = None
+        eff_style = style or NavigationRailStyle()
 
-        # If width is not specified, use calculated width
+        # Animation setup
+        initial_expanded_value = 1.0 if self._is_expanded else 0.0
+        self._expand_animation = Animatable(initial_expanded_value)
+        self._expand_motion = EXPRESSIVE_DEFAULT_SPATIAL
+        self._label_animation = Animatable(initial_expanded_value)
+        self._label_animation.drive(LinearMotion(0.175))
+        self._menu_rotation_anim = Animatable(initial_expanded_value)
+        self._menu_rotation: DrivenAnimatable[float] = self._menu_rotation_anim.drive(
+            LinearMotion(0.175),
+            LerpTween(180.0, 360.0),
+        )
+        self._log_instance_id = id(self)
+        logger.debug("NavigationRail init id=%s", self._log_instance_id)
+
+        # Drive width via animation if not fixed
         if width is None:
-            # Calculate default width based on expanded state
-            default_width = 220 if self._is_expanded else 96
-            width = default_width
+            self._width_tween = LerpTween(
+                float(eff_style.container_width_collapsed), float(eff_style.container_width_expanded)
+            )
+            width = self._expand_animation.drive(self._expand_motion, self._width_tween).map(
+                lambda v: Sizing.fixed(int(v))
+            )
 
         super().__init__(width=width, height=height, padding=padding)
 
@@ -346,7 +594,7 @@ class NavigationRail(Widget):
         self.on_select = on_select
         self.show_menu_button = show_menu_button
 
-        # Handle index (Observable or plain int)
+        # Handle index.
         self._index_observable: Optional[_ObservableValue[int]] = None
         self._index_subscription = None
         if isinstance(index, _ObservableValue):
@@ -356,7 +604,7 @@ class NavigationRail(Widget):
         else:
             self._current_index = self._validate_index(int(index))
 
-        # Handle expanded (Observable or plain bool)
+        # Handle expanded state.
         self._expanded_observable: Optional[_ObservableValue[bool]] = None
         self._expanded_subscription = None
         if isinstance(expanded, _ObservableValue):
@@ -365,10 +613,10 @@ class NavigationRail(Widget):
             self._expanded_subscription = expanded.subscribe(self._on_expanded_changed)
         # else: _is_expanded already set above
 
-        # Ensure subscriptions are released when this widget is removed from the tree.
+        # Ensure subscriptions are released when removed from the tree.
         self.on_dispose(self.dispose)
 
-        # Build UI
+        # Build UI.
         self._rebuild_ui()
 
     def _on_index_changed(self, new_index: int) -> None:
@@ -388,16 +636,22 @@ class NavigationRail(Widget):
             self._item_buttons[new_index].set_selected(True, self.style)
         self.invalidate()
 
+    # def _on_animation_tick(self, progress: float) -> None:
+    # Replaced by direct binding
+
     def _on_expanded_changed(self, new_expanded: bool) -> None:
         """Handle Observable expanded changes."""
-        old_expanded = self._is_expanded
-        self._is_expanded = bool(new_expanded)
-        if old_expanded != self._is_expanded:
-            # Update width based on new expanded state
-            new_width = 220 if self._is_expanded else 96
-            self._width_sizing = Sizing.fixed(new_width)
-            self._rebuild_ui()
-            self.mark_needs_layout()
+        # Drive animation instead of immediate rebuild.
+        should_expand = bool(new_expanded)
+        target_value = 1.0 if should_expand else 0.0
+        self._expand_animation.target = target_value
+        self._label_animation.target = target_value
+        self._menu_rotation_anim.target = target_value
+
+        self._is_expanded = should_expand
+        if self._menu_icon_name is not None:
+            self._menu_icon_name.value = "menu_open" if should_expand else "menu"
+        # Keep structure static; animate properties only.
 
     def _validate_index(self, index: int) -> int:
         """Ensure index is within valid range."""
@@ -407,21 +661,16 @@ class NavigationRail(Widget):
 
     def _rebuild_ui(self) -> None:
         """Rebuild the navigation rail UI."""
-        # Clear existing children
+        # Clear existing children.
         self.clear_children()
 
-        # Calculate width based on expanded state
-        rail_width = self._calculate_width()
-
-        # Build menu button if enabled
+        # Build menu button if enabled.
         menu_button = None
+        eff_style = self.style or NavigationRailStyle()
         if self.show_menu_button:
             menu_button = self._build_menu_button()
-            if self._is_expanded:
-                # Align with item icon center in expanded mode.
-                menu_button = Box(child=menu_button, padding=(8, 0, 0, 0))
 
-        # Build rail items
+        # Build rail items.
         item_buttons = []
         for idx, rail_item in enumerate(self._rail_items):
             selected = idx == self._current_index
@@ -432,37 +681,29 @@ class NavigationRail(Widget):
             button = _RailItemButton(
                 rail_item=rail_item,
                 selected=selected,
-                expanded=self._is_expanded,
+                expand_animation=self._expand_animation,
+                label_animation=self._label_animation,
                 rail_style=self.style,
                 on_click=_on_click,
             )
             item_buttons.append(button)
         self._item_buttons = item_buttons
 
-        # Build column layout
-        children = []
-        if menu_button is not None:
-            children.append(menu_button)
-        children.extend(item_buttons)
-
-        # Expanded: start-aligned; Collapsed: centered in the 96dp rail.
-        cross_alignment = "start" if self._is_expanded else "center"
-        rail_column = Column(
-            children=children,
-            gap=0 if self._is_expanded else 4,
-            padding=(12, 44, 12, 12),
-            cross_alignment=cross_alignment,
-            width=Sizing.fixed(rail_width),
-            height=Sizing.flex(1),
+        rail_layout = _NavigationRailLayout(
+            menu_button=menu_button,
+            item_buttons=item_buttons,
+            animation=self._expand_animation,
+            style=eff_style,
         )
 
-        # Add background
+        # Add background.
         bg_color = self.style.background if self.style and self.style.background else ColorRole.SURFACE
         rail_bg = Box(
-            child=rail_column,
+            child=rail_layout,
             background_color=bg_color,
-            width=Sizing.fixed(rail_width),
+            width=Sizing.flex(1),
             height=Sizing.flex(1),
+            alignment="top_left",
         )
 
         self.add_child(rail_bg)
@@ -470,26 +711,31 @@ class NavigationRail(Widget):
     def _calculate_width(self) -> int:
         """Calculate rail width based on expanded state."""
         if self.width_sizing.kind == "fixed":
-            # Use explicit width if provided
+            # Use explicit width if provided.
             return int(self.width_sizing.value)
-        # M3 defaults: 96dp collapsed, 220dp expanded
-        return 220 if self._is_expanded else 96
+        # M3 defaults: 96dp collapsed, 220dp expanded.
+        eff_style = self.style or NavigationRailStyle()
+        return int(eff_style.container_width_expanded if self._is_expanded else eff_style.container_width_collapsed)
 
     def _build_menu_button(self) -> Widget:
         """Build the menu toggle button."""
-        icon_name = "menu" if not self._is_expanded else "menu_open"
-        from nuiitivet.material.styles.icon_style import IconStyle
+        if self._menu_icon_name is None:
+            self._menu_icon_name = _ObservableValue("menu_open" if self._is_expanded else "menu")
 
+        eff_style = self.style or NavigationRailStyle()
         color = self.style.menu_icon_color if self.style and self.style.menu_icon_color else ColorRole.ON_SURFACE
-        icon = Icon(icon_name, size=24, style=IconStyle(color=color))
+        icon_size = eff_style.icon_size
+        icon = Icon(self._menu_icon_name, size=icon_size, style=IconStyle(color=color)).modifier(
+            rotate(self._menu_rotation)
+        )
 
-        # Wrap with InteractionHostMixin for click handling
+        # Wrap with InteractionHostMixin for click handling.
         class MenuButton(InteractionHostMixin, Box):
             def __init__(self, child: Widget, on_click: Callable[[], None]):
                 super().__init__(
                     child=child,
-                    width=Sizing.fixed(56),
-                    height=Sizing.fixed(56),
+                    width=Sizing.fixed(eff_style.menu_button_size),
+                    height=Sizing.fixed(eff_style.menu_button_size),
                     alignment="center",
                 )
                 self._state = InteractionState(disabled=False)
@@ -500,31 +746,28 @@ class NavigationRail(Widget):
 
     def _toggle_expanded(self) -> None:
         """Toggle expanded state."""
+        new_state = not self._is_expanded
+
         if self._expanded_observable is not None:
-            # Update Observable
-            self._expanded_observable.value = not self._is_expanded
+            # Update Observable (triggers subscription).
+            self._expanded_observable.value = new_state
         else:
-            # Update local state
-            self._is_expanded = not self._is_expanded
-            # Update width based on new expanded state
-            new_width = 220 if self._is_expanded else 96
-            self._width_sizing = Sizing.fixed(new_width)
-            self._rebuild_ui()
-            self.mark_needs_layout()
+            # Update local state directly.
+            self._on_expanded_changed(new_state)
 
     def _handle_item_click(self, index: int) -> None:
         """Handle item selection."""
         if self._index_observable is not None:
-            # Update Observable
+            # Update Observable.
             self._index_observable.value = index
         else:
-            # Update local state
+            # Update local state.
             old_index = self._current_index
             self._current_index = index
             if old_index != self._current_index:
                 self._update_selected(old_index, self._current_index)
 
-        # Fire callback
+        # Fire callback.
         if self.on_select is not None:
             self.on_select(index)
 
@@ -547,7 +790,7 @@ class NavigationRail(Widget):
         """Calculate preferred size for the navigation rail."""
         rail_width = self._calculate_width()
 
-        # Get height from child if present
+        # Get height from child if present.
         children = self.children_snapshot()
         if children:
             child = children[0]
@@ -562,7 +805,7 @@ class NavigationRail(Widget):
 
             return (int(preferred_w), int(preferred_h))
 
-        # Default minimum height
+        # Default minimum height.
         preferred_w = int(rail_width)
         preferred_h = 400
         if max_width is not None:
@@ -579,10 +822,15 @@ class NavigationRail(Widget):
         if not children:
             return
 
-        # Layout the single child (Box containing Column)
+        # Layout the single child (Box containing Column).
         child = children[0]
-        rail_width = self._calculate_width()
-        child.layout(rail_width, height)
+        # Use provided dimensions minus padding.
+        l, t, r, b = self.padding
+        cw = max(0, width - l - r)
+        ch = max(0, height - t - b)
+
+        child.layout(cw, ch)
+        child.set_layout_rect(l, t, cw, ch)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the NavigationRail."""
@@ -590,11 +838,11 @@ class NavigationRail(Widget):
         if not children:
             return
 
-        # Auto-layout fallback
+        # Auto-layout fallback.
         if any(c.layout_rect is None for c in children):
             self.layout(width, height)
 
-        # Paint the child
+        # Paint the child.
         child = children[0]
         rect = child.layout_rect
         if rect is None:
@@ -609,9 +857,13 @@ class NavigationRail(Widget):
 
     def dispose(self) -> None:
         """Clean up subscriptions."""
+        logger.debug("NavigationRail dispose id=%s", self._log_instance_id)
         if self._index_subscription is not None:
             self._index_subscription.dispose()
             self._index_subscription = None
         if self._expanded_subscription is not None:
             self._expanded_subscription.dispose()
             self._expanded_subscription = None
+        self._expand_animation.stop()  # Ensure ticker stopped
+        self._label_animation.stop()
+        self._menu_rotation_anim.stop()

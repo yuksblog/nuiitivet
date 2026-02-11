@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import logging
 import weakref
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
 from .widget_builder import flush_scope_recompositions
-
+from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
 _logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
 
 _DEPENDENCY_ALL = object()
 _PendingEntry = Tuple[weakref.ReferenceType[Any], Set[object], Set[str]]
@@ -132,8 +133,47 @@ class BindingHostMixin:
     _bindings: List
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[override]
-        super().__init__(*args, **kwargs)
         self._bindings = []
+        super().__init__(*args, **kwargs)
+
+    def observe(self, observable: ReadOnlyObservableProtocol[T], callback: Callable[[T], None]) -> None:
+        """Subscribe to an observable and manage the subscription lifecycle.
+
+        Applies the current value immediately, then updates on changes.
+        """
+        # Apply initial value
+        try:
+            callback(observable.value)
+        except Exception:
+            exception_once(
+                _logger,
+                f"widget_binding_observe_initial_exc:{type(self).__name__}",
+                "Exception in observe initial callback for widget=%s",
+                type(self).__name__,
+            )
+
+        # Create subscription wrapper
+        def _on_change(val: T) -> None:
+            try:
+                callback(val)
+            except Exception:
+                exception_once(
+                    _logger,
+                    f"widget_binding_observe_callback_exc:{type(self).__name__}",
+                    "Exception in observe callback for widget=%s",
+                    type(self).__name__,
+                )
+
+        try:
+            sub = observable.subscribe(_on_change)
+            self.bind(sub)
+        except Exception:
+            exception_once(
+                _logger,
+                f"widget_binding_observe_subscribe_exc:{type(self).__name__}",
+                "Failed to subscribe in observe for widget=%s",
+                type(self).__name__,
+            )
 
     def bind(self, disposable) -> None:
         try:
