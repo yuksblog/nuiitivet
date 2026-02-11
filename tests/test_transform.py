@@ -1,7 +1,6 @@
 """Tests for TransformBox and transform modifiers."""
 
 from unittest.mock import MagicMock
-import pytest
 
 from nuiitivet.modifiers.transform import (
     TransformBox,
@@ -530,7 +529,6 @@ def test_paint_exception_handling():
 def test_preferred_size_exception_handling():
     """Test preferred_size handles child exceptions gracefully."""
     # Create a widget that raises on preferred_size
-    widget = MockWidget()
 
     class BadWidget(Box):
         def preferred_size(self, max_width=None, max_height=None):
