@@ -16,6 +16,9 @@ class Clock(Protocol):
     def schedule_once(self, fn: Callable[[float], None], delay: float) -> None:  # pragma: no cover - protocol
         raise NotImplementedError
 
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:  # pragma: no cover - protocol
+        raise NotImplementedError
+
     def unschedule(self, fn: Callable[[float], None]) -> None:  # pragma: no cover - protocol
         raise NotImplementedError
 
@@ -29,6 +32,7 @@ class _ThreadClock:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._timers: Dict[int, threading.Timer] = {}
+        self._intervals: Dict[int, threading.Thread] = {}
 
     def schedule_once(self, fn: Callable[[float], None], delay: float) -> None:
         def _run() -> None:
@@ -50,14 +54,58 @@ class _ThreadClock:
             self._timers[id(fn)] = timer
         timer.start()
 
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:
+        # Avoid creating recursive threads. Use a persistent loop for interval tasks.
+        # But for simplicity in this fallback clock, we just launch ONE daemon thread per interval task
+        # that sleeps and calls the function repeatedly.
+
+        def _loop() -> None:
+            import time
+
+            while True:
+                start_time = time.perf_counter()
+                try:
+                    # Check if still scheduled
+                    with self._lock:
+                        if id(fn) not in self._intervals:
+                            break
+                    fn(interval)
+                except Exception:
+                    exception_once(_logger, "thread_clock_interval_exc", "Interval callback failed")
+
+                # Sleep for the remainder
+                elapsed = time.perf_counter() - start_time
+                wait_time = max(0.0, interval - elapsed)
+                if wait_time > 0:
+                    time.sleep(wait_time)
+                else:
+                    # If lagging, invoke immediately but yield time slice
+                    time.sleep(0.001)
+
+        t = threading.Thread(target=_loop, daemon=True)
+        with self._lock:
+            self._intervals[id(fn)] = t
+        t.start()
+
+    def _schedule_interval_internal(self, fn: Callable[[float], None], interval: float) -> None:
+        # Removed recursive logic.
+        pass
+
     def unschedule(self, fn: Callable[[float], None]) -> None:
         with self._lock:
             timer = self._timers.pop(id(fn), None)
+            # Just pop from _intervals. The loop thread checks this dict.
+            # We don't have a direct handle to stop the thread other than removing from dict.
+            # (Threading.Thread doesn't have cancel())
+            self._intervals.pop(id(fn), None)
+
         if timer is not None:
             try:
                 timer.cancel()
             except Exception:
                 exception_once(_logger, "thread_clock_cancel_timer_exc", "Timer cancel failed")
+
+        # Interval thread will exit on next loop check.
 
 
 clock: Clock = _ThreadClock()

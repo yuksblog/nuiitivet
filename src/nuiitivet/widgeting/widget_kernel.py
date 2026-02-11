@@ -9,6 +9,7 @@ from ..common.logging_once import exception_once
 from ..rendering.padding import parse_padding
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
+from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
 
 _logger = logging.getLogger(__name__)
@@ -27,24 +28,39 @@ class WidgetKernel:
     def __init__(
         self,
         *,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: PaddingLike = None,
+        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        padding: Union[PaddingLike, ReadOnlyObservableProtocol] = None,
         **_: Any,
     ) -> None:
         super().__init__()
         self._parent = None
         self._last_rect = None
         self._layout_rect = None
-        self._width_sizing: Sizing = parse_sizing(width)
-        self._height_sizing: Sizing = parse_sizing(height)
 
-        try:
-            self._padding = parse_padding(padding)
-        except Exception:
-            self._padding = (0, 0, 0, 0)
+        # Initialize with None/default first, as properties will handle observables later
+        # But properties rely on binding mixin capabilities already being initialized?
+        # Typically MRO calls Mixins.__init__ FIRST if using super().
+        # Wait, WidgetKernel calls super().__init__() at top.
+        # But WidgetKernel is at the END of Widget MRO.
+        # So BindingHostMixin.__init__ has already run.
+
+        # However, we cannot pass Observable to parse_sizing.
+        # We should use the setters we defined!
+        # But setters need `self` to be fully initialized?
+
+        # Initialize internal storage to defaults first to satisfy type checker/logic
+        self._width_sizing = parse_sizing(None)
+        self._height_sizing = parse_sizing(None)
+        self._padding = (0, 0, 0, 0)
+
         self._layout_align: Optional[Union[str, Tuple[str, str]]] = None
         self._cross_align: Optional[str] = None
+
+        # Now use property setters which handle Observables
+        self.width_sizing = width  # type: ignore
+        self.height_sizing = height  # type: ignore
+        self.padding = padding  # type: ignore
 
     @property
     def parent(self) -> Optional["WidgetKernel"]:
@@ -118,7 +134,11 @@ class WidgetKernel:
         return self._width_sizing
 
     @width_sizing.setter
-    def width_sizing(self, value: SizingLike) -> None:
+    def width_sizing(self, value: Union[SizingLike, ReadOnlyObservableProtocol]) -> None:
+        if isinstance(value, ReadOnlyObservableProtocol):
+            if hasattr(self, "observe"):
+                self.observe(value, lambda v: setattr(self, "width_sizing", v))  # type: ignore
+            return
         self._width_sizing = parse_sizing(value)
         self._notify_layout_param_changed()
 
@@ -127,7 +147,11 @@ class WidgetKernel:
         return self._height_sizing
 
     @height_sizing.setter
-    def height_sizing(self, value: SizingLike) -> None:
+    def height_sizing(self, value: Union[SizingLike, ReadOnlyObservableProtocol]) -> None:
+        if isinstance(value, ReadOnlyObservableProtocol):
+            if hasattr(self, "observe"):
+                self.observe(value, lambda v: setattr(self, "height_sizing", v))  # type: ignore
+            return
         self._height_sizing = parse_sizing(value)
         self._notify_layout_param_changed()
 
@@ -137,7 +161,11 @@ class WidgetKernel:
         return self._padding
 
     @padding.setter
-    def padding(self, pad: PaddingLike) -> None:
+    def padding(self, pad: Union[PaddingLike, ReadOnlyObservableProtocol]) -> None:
+        if isinstance(pad, ReadOnlyObservableProtocol):
+            if hasattr(self, "observe"):
+                self.observe(pad, lambda v: setattr(self, "padding", v))  # type: ignore
+            return
         try:
             self._padding = parse_padding(pad)
         except Exception:

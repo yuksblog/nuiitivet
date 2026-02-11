@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Generic, Protocol, TypeVar
+from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 T = TypeVar("T")
 CompareFunc = Callable[[T, T], bool]
@@ -17,6 +17,7 @@ class Disposable:
             self._disposed = True
 
 
+@runtime_checkable
 class ReadOnlyObservableProtocol(Protocol, Generic[T]):
     def subscribe(self, cb: Callable[[T], None]) -> Disposable: ...
 

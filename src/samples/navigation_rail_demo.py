@@ -2,6 +2,8 @@
 
 from enum import IntEnum
 
+# import logging
+
 from nuiitivet.material.app import MaterialApp
 from nuiitivet.material import Text
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
@@ -12,6 +14,8 @@ from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
+
+# logging.basicConfig(level=logging.DEBUG, force=True)
 
 
 class Section(IntEnum):

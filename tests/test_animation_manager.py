@@ -37,6 +37,9 @@ class _FakeClock:
     def unschedule(self, fn: Callable[[float], None]) -> None:
         self._scheduled = [c for c in self._scheduled if c.fn is not fn]
 
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:
+        pass
+
     def advance(self, dt: float) -> None:
         self._now += float(dt)
         ready = [c for c in self._scheduled if c.when_s <= self._now]

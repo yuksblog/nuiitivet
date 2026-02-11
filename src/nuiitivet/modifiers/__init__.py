@@ -7,6 +7,7 @@ from .focus import focusable
 from .hover import hoverable
 from .scroll import scrollable
 from .shadow import shadow
+from .transform import opacity, rotate, scale, translate
 from .will_pop import will_pop
 
 __all__ = [
@@ -17,7 +18,11 @@ __all__ = [
     "corner_radius",
     "focusable",
     "hoverable",
+    "opacity",
+    "rotate",
+    "scale",
     "scrollable",
     "shadow",
+    "translate",
     "will_pop",
 ]
