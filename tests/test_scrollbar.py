@@ -18,31 +18,6 @@ class DummyApp:
         self.invalidate_calls += 1
 
 
-class DummyAnimationHandle:
-
-    def __init__(self) -> None:
-        self.cancelled = False
-
-    def cancel(self) -> None:
-        self.cancelled = True
-
-
-class DummyAnimateApp(DummyApp):
-    """App stub that also provides animate()."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.animate_calls = 0
-        self.last_handle: DummyAnimationHandle | None = None
-
-    def animate(self, **kwargs):
-        del kwargs
-        self.animate_calls += 1
-        handle = DummyAnimationHandle()
-        self.last_handle = handle
-        return handle
-
-
 def test_scrollbar_mounts_and_listens_to_controller() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=100.0, viewport_size=200, content_size=300)
@@ -61,18 +36,23 @@ def test_scrollbar_mounts_and_listens_to_controller() -> None:
 def test_scrollbar_auto_hide_starts_animation_on_scroll() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=200.0, viewport_size=200, content_size=400)
-    behavior = ScrollbarBehavior(auto_hide=True, hide_delay=0.01, fade_duration=0.01)
+    behavior = ScrollbarBehavior(auto_hide=True, hide_delay=0.2, fade_duration=0.01)
     scrollbar = Scrollbar(controller, behavior=behavior)
-    app = DummyAnimateApp()
+    app = DummyApp()
     scrollbar.mount(app)
+
+    assert scrollbar._visibility.target == 1.0
+
     controller.axis_state(ScrollDirection.VERTICAL).offset.value = 10.0
-    assert app.animate_calls == 1
-    assert app.last_handle is not None
-    handle = app.last_handle
+    assert scrollbar._hide_timer is not None
+    assert scrollbar._visibility.target == 1.0
+
+    scrollbar._on_hide_timer_thread()
+    assert scrollbar._visibility.target == 0.0
+
     scrollbar.unmount()
-    assert handle is not None
-    assert handle.cancelled is True
     assert scrollbar._offset_unsubscribe is None
+    assert scrollbar._visibility_unsubscribe is None
 
 
 def test_scrollbar_drag_responds_to_mouse_move() -> None:

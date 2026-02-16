@@ -11,8 +11,9 @@ from dataclasses import dataclass
 import logging
 import threading
 import time
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
+from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.scrolling import ScrollController, ScrollDirection
 from nuiitivet.widgeting.widget import Widget
@@ -62,7 +63,7 @@ class Scrollbar(InteractionHostMixin, Widget):
 
     _offset_unsubscribe: Optional[object]
     _hide_timer: Optional[threading.Timer]
-    _hide_anim: Optional[Any]
+    _visibility_unsubscribe: Optional[object]
 
     def __init__(
         self,
@@ -101,7 +102,10 @@ class Scrollbar(InteractionHostMixin, Widget):
         self._last_interaction = 0.0
         self._offset_unsubscribe = None
         self._hide_timer = None
-        self._hide_anim = None
+        initial_visibility = 1.0
+        motion = LinearMotion(duration=self.fade_duration) if self.fade_duration > 0.0 else None
+        self._visibility = Animatable(initial_visibility, motion=motion)
+        self._visibility_unsubscribe = None
 
         # Initialize InteractionHostMixin
         # We use DraggableNode for thumb interaction and PointerInputNode for track interaction.
@@ -157,10 +161,8 @@ class Scrollbar(InteractionHostMixin, Widget):
 
             if self.auto_hide:
                 self._cancel_hide_timer()
-                self._cancel_hide_animation()
-                started = self._start_hide_animation_with_manager()
-                if not started:
-                    self._start_hide_fallback_timer()
+                self._visibility.target = 1.0
+                self._start_hide_fallback_timer()
 
             if not skip_invalidate:
                 self.invalidate()
@@ -290,6 +292,16 @@ class Scrollbar(InteractionHostMixin, Widget):
             if not self.auto_hide:
                 self._last_interaction = time.time()
 
+            def _visibility_cb(_value: float) -> None:
+                try:
+                    self.invalidate(immediate=True)
+                except Exception:
+                    exception_once(
+                        logger, "scrollbar_visibility_invalidate_exc", "Scrollbar visibility invalidate raised"
+                    )
+
+            self._visibility_unsubscribe = self._visibility.subscribe(_visibility_cb)
+
             axis_state = self._controller.axis_state(self.direction)
 
             def _offset_cb(_value) -> None:
@@ -302,6 +314,7 @@ class Scrollbar(InteractionHostMixin, Widget):
         except Exception:
             exception_once(logger, "scrollbar_on_mount_exc", "Scrollbar on_mount raised")
             self._offset_unsubscribe = None
+            self._visibility_unsubscribe = None
 
     def on_unmount(self) -> None:
         try:
@@ -316,14 +329,31 @@ class Scrollbar(InteractionHostMixin, Widget):
                     self._offset_unsubscribe = None
         except Exception:
             exception_once(logger, "scrollbar_on_unmount_exc", "Scrollbar on_unmount raised")
-        self._cancel_hide_animation()
+        try:
+            if self._visibility_unsubscribe:
+                try:
+                    if hasattr(self._visibility_unsubscribe, "dispose"):
+                        self._visibility_unsubscribe.dispose()
+                finally:
+                    self._visibility_unsubscribe = None
+        except Exception:
+            exception_once(logger, "scrollbar_visibility_unsubscribe_exc", "Scrollbar visibility unsubscribe raised")
+
+        try:
+            self._visibility.stop()
+        except Exception:
+            exception_once(logger, "scrollbar_visibility_stop_exc", "Scrollbar visibility stop raised")
+
         self._cancel_hide_timer()
 
     def _on_hide_timer_thread(self) -> None:
         try:
-            self.invalidate()
+            self._visibility.target = 0.0
+            self.invalidate(immediate=True)
         except Exception:
-            exception_once(logger, "scrollbar_hide_timer_invalidate_exc", "Scrollbar hide timer invalidate raised")
+            exception_once(
+                logger, "scrollbar_hide_timer_visibility_exc", "Scrollbar hide timer visibility update raised"
+            )
         try:
             timer = getattr(self, "_hide_timer", None)
             if timer is not None:
@@ -335,22 +365,6 @@ class Scrollbar(InteractionHostMixin, Widget):
         except Exception:
             exception_once(logger, "scrollbar_hide_timer_cleanup_exc", "Hide timer cleanup raised")
 
-    def _start_hide_animation_with_manager(self) -> bool:
-        app = getattr(self, "_app", None)
-        if app is None:
-            return False
-        try:
-            self._hide_anim = self.animate(
-                duration=self.fade_duration,
-                delay=self.hide_delay,
-                on_update=lambda _p: self.invalidate(immediate=True),
-            )
-            return True
-        except Exception:
-            exception_once(logger, "scrollbar_start_hide_anim_exc", "Scrollbar hide animation start raised")
-            self._hide_anim = None
-            return False
-
     def _start_hide_fallback_timer(self) -> None:
         try:
             t = threading.Timer(self.hide_delay, self._on_hide_timer_thread)
@@ -360,16 +374,6 @@ class Scrollbar(InteractionHostMixin, Widget):
         except Exception:
             exception_once(logger, "scrollbar_start_hide_timer_exc", "Scrollbar hide timer start raised")
             self._hide_timer = None
-
-    def _cancel_hide_animation(self) -> None:
-        handle = getattr(self, "_hide_anim", None)
-        if handle is None:
-            return
-        try:
-            handle.cancel()
-        except Exception:
-            exception_once(logger, "scrollbar_hide_anim_cancel_exc", "Scrollbar hide animation cancel raised")
-        self._hide_anim = None
 
     def _cancel_hide_timer(self) -> None:
         timer = getattr(self, "_hide_timer", None)
@@ -438,21 +442,7 @@ class Scrollbar(InteractionHostMixin, Widget):
 
         tr = hex_to_rgba(on_surface, alpha=0.12)
         track_color = rgba_to_skia_color(tr)
-        progress = 1.0
-        if self.auto_hide:
-            now = time.time()
-            if self._last_interaction > 0:
-                elapsed = now - self._last_interaction
-            else:
-                elapsed = float("inf")
-
-            if elapsed < self.hide_delay:
-                progress = 1.0
-            elif elapsed < self.hide_delay + self.fade_duration:
-                denom = max(1e-6, self.fade_duration)
-                progress = 1.0 - ((elapsed - self.hide_delay) / denom)
-            else:
-                progress = 0.0
+        progress = 1.0 if not self.auto_hide else float(self._visibility.value)
 
         try:
             p = float(progress)
