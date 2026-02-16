@@ -11,7 +11,6 @@ from nuiitivet.input.events import FocusEvent
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from .modifier import Modifier, ModifierElement
-from .widget_animation import AnimationHostMixin
 from .widget_binding import BindingHostMixin
 from .widget_builder import BuilderHostMixin
 from .widget_children import ChildContainerMixin
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 class Widget(
-    AnimationHostMixin,
     BindingHostMixin,
     LifecycleHostMixin,
     InputHubMixin,
@@ -83,6 +81,31 @@ class Widget(
                     type(parent).__name__,
                 )
         self.invalidate()
+
+    def invalidate(self, immediate: bool = False) -> None:
+        app = getattr(self, "_app", None)
+        if app is None:
+            return
+        try:
+            app.invalidate(immediate=immediate)
+        except TypeError:
+            try:
+                app.invalidate()
+            except Exception:
+                exception_once(
+                    logger,
+                    f"widget_invalidate_fallback_exc:{type(app).__name__}",
+                    "App.invalidate() fallback call raised for app=%s",
+                    type(app).__name__,
+                )
+        except Exception:
+            exception_once(
+                logger,
+                f"widget_invalidate_exc:{type(app).__name__}",
+                "App.invalidate(immediate=%s) raised for app=%s",
+                immediate,
+                type(app).__name__,
+            )
 
     # --- Context lookup ----------------------------------------------------
     def find_ancestor(self, widget_type: Type[T]) -> Optional[T]:

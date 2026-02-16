@@ -33,7 +33,6 @@ Following Python's MRO (Method Resolution Order), method calls chain from top to
 
 ```python
 class Widget(
-    AnimationHostMixin,   # Animation
     BindingHostMixin,     # Data binding (Observable)
     LifecycleHostMixin,   # Lifecycle (mount/unmount)
     InputHubMixin,        # Input events
@@ -92,21 +91,14 @@ class ComposableWidget(
   - Registers subscriptions via `bind` or `bind_to`.
   - Automatically unsubscribes (Disposes) during `on_unmount`.
 
-### 6. AnimationHostMixin (Animation)
-
-- **Role**: Manages animations and frame update requests.
-- **Responsibilities**:
-  - Provides `animate` and `animate_value` methods.
-  - Delegates redrawing requests via the `invalidate` method.
-
-### 7. InputHubMixin (Input)
+### 6. InputHubMixin (Input)
 
 - **Role**: Handles routing and handling of input events.
 - **Responsibilities**:
   - Dispatches pointer, keyboard, focus, and scroll events.
   - Registers event handlers like `on_click`.
 
-### 8. ChildContainerMixin (Children)
+### 7. ChildContainerMixin (Children)
 
 - **Role**: Manages the direct list of child elements (`children`).
 - **Responsibilities**:
@@ -114,7 +106,7 @@ class ComposableWidget(
   - Provides operational APIs like `add_child` and `remove_child`.
   - Maintains child elements using `ChildrenStore`.
 
-### 9. WidgetKernel (Base Element)
+### 8. WidgetKernel (Base Element)
 
 - **Role**: A base class providing the physical entity and basic behavior of a widget.
 - **Responsibilities**:

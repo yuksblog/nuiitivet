@@ -11,7 +11,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..widgeting.widget import ComposableWidget, Widget
-from nuiitivet.animation import Animation, AnimationHandle, AnimationManager, ease_cubic_out
 from .pointer import PointerCaptureManager
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
 from ..widgeting.widget_binding import flush_binding_invalidations
@@ -295,12 +294,6 @@ class App:
         self._last_hover_target = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
-        self._animation_manager: Optional[AnimationManager] = None
-        try:
-            self._animation_manager = AnimationManager(self)
-        except Exception:
-            exception_once(logger, "app_animation_manager_init_exc", "AnimationManager(...) failed")
-            self._animation_manager = None
         self._pointer_capture_manager = PointerCaptureManager()
         self._pointer_capture_manager.set_cancel_callback(self._handle_pointer_cancel)
         self._primary_pointer_id = 1
@@ -523,7 +516,6 @@ class App:
         # framework internals. This is intentionally lightweight and best-effort.
         ignore_suffixes = (
             "/nuiitivet/core/app.py",
-            "/nuiitivet/widgeting/widget_animation.py",
             "/nuiitivet/widgeting/widget.py",
             "/nuiitivet/widgeting/widget_builder.py",
             "/nuiitivet/widgeting/widget_binding.py",
@@ -706,36 +698,6 @@ class App:
                 loop.request_draw(immediate=immediate)
             except Exception:
                 exception_once(logger, "app_request_draw_exc", "Event loop request_draw raised")
-
-    @property
-    def animation_manager(self) -> Optional[AnimationManager]:
-        if self._animation_manager is None:
-            try:
-                self._animation_manager = AnimationManager(self)
-            except Exception:
-                self._animation_manager = None
-        return self._animation_manager
-
-    def animate(
-        self,
-        *,
-        duration: float,
-        on_update: Callable[[float], None],
-        delay: float = 0.0,
-        easing: Callable[[float], float] = ease_cubic_out,
-        on_complete: Optional[Callable[[], None]] = None,
-    ) -> AnimationHandle:
-        manager = self.animation_manager
-        if manager is None:
-            raise RuntimeError("Animation support is unavailable for this App instance.")
-        animation = Animation(
-            duration=duration,
-            on_update=on_update,
-            easing=easing,
-            delay=delay,
-            on_complete=on_complete,
-        )
-        return manager.start(animation)
 
     def _render_to_png_bytes(self) -> bytes:
         """Render the root widget to PNG bytes (raster surface).
@@ -1006,30 +968,6 @@ class App:
             flush_scope_recompositions()
         except Exception:
             exception_once(logger, "app_flush_scope_recompositions_pre_exc", "flush_scope_recompositions failed")
-        # step app-level animations before rendering so the scene reflects
-        # the latest animated values.
-        try:
-            mgr = self.animation_manager
-            if mgr is not None:
-                try:
-                    # Clamp dt so on-demand rendering does not fast-forward
-                    # animations after long sleeps or idle periods.
-                    preferred_fps = getattr(self, "_preferred_draw_fps", None)
-                    if preferred_fps is None:
-                        max_dt = 1.0 / 60.0
-                    else:
-                        try:
-                            fps_value = float(preferred_fps)
-                        except Exception:
-                            fps_value = 30.0
-                        max_dt = 1.0 / fps_value if fps_value > 0 else 1.0 / 60.0
-
-                    dt_clamped = max(0.0, min(float(dt), max_dt))
-                    mgr.step(dt_clamped)
-                except Exception:
-                    exception_once(logger, "app_animation_step_exc", "AnimationManager.step raised")
-        except Exception:
-            exception_once(logger, "app_animation_manager_access_exc", "Accessing animation manager raised")
         try:
             flush_binding_invalidations()
         except Exception:
