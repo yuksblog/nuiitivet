@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Protocol
 
 from nuiitivet.animation import Animatable, BezierMotion, Motion
-from nuiitivet.widgeting.widget_animation import AnimationHandleLike
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +29,18 @@ class TransitionMotions:
         return TransitionMotionPreset(duration_sec=0.6, x1=0.2, y1=0.0, x2=0.0, y2=1.0)
 
 
-class _TransitionAnimHandle(AnimationHandleLike):
+class TransitionHandle(Protocol):
+    @property
+    def is_running(self) -> bool: ...
+
+    def pause(self) -> None: ...
+
+    def resume(self) -> None: ...
+
+    def cancel(self) -> None: ...
+
+
+class _TransitionAnimHandle(TransitionHandle):
     def __init__(self, engine: "TransitionEngine", token: int) -> None:
         self._engine = engine
         self._token = token
@@ -77,7 +87,7 @@ class TransitionEngine:
         on_complete: Callable[[], None] | None = None,
         motion: Motion | None = None,
         restart: bool = True,
-    ) -> AnimationHandleLike:
+    ) -> TransitionHandle:
         """Start or retarget a transition animation.
 
         Args:
@@ -175,4 +185,4 @@ class TransitionEngine:
         return self._active_token == token
 
 
-__all__ = ["TransitionEngine", "TransitionMotionPreset", "TransitionMotions"]
+__all__ = ["TransitionEngine", "TransitionMotionPreset", "TransitionMotions", "TransitionHandle"]

@@ -7,12 +7,11 @@ from typing import Any, Callable, ClassVar, Literal, Mapping
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgeting.widget_animation import AnimationHandleLike
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
 from .route import PageRoute, Route
 from .stack_runtime import RouteStackRuntime
-from .transition_engine import TransitionEngine
+from .transition_engine import TransitionEngine, TransitionHandle
 from .transition_spec import EmptyTransitionSpec, TransitionPhase
 
 
@@ -72,7 +71,7 @@ class Navigator(ComposableWidget):
         self._stack = RouteStackRuntime(initial_routes=list(routes or []))
         self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = dict(intent_routes or {})
         self._transition: _NavTransition | None = None
-        self._transition_handle: AnimationHandleLike | None = None
+        self._transition_handle: TransitionHandle | None = None
         self._transition_engine = TransitionEngine()
         self._pending_pop_requests: int = 0
         self._exiting_route: Route | None = None
