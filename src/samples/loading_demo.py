@@ -55,7 +55,7 @@ class LoadingDemo(nv.ComposableWidget):
             except Exception:
                 exception_once(_logger, "loading_dialog_demo_ctx_exit_exc", "Overlay loading context __exit__ raised")
 
-        runtime.clock.schedule_once(_close, 2.0)
+        runtime.clock.schedule_once(_close, 10.0)
 
     def build(self) -> nv.Widget:
         return nv.Container(

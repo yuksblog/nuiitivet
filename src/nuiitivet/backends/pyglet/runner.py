@@ -566,6 +566,13 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     event_loop = ResponsiveEventLoop(window, app._render_frame, effective_draw_fps)
     setattr(app, "_event_loop", event_loop)
 
+    # IMPORTANT: align observable runtime clock with the actual event-loop clock
+    # that is ticked in ResponsiveEventLoop.run()/run_async().
+    try:
+        set_clock(event_loop.clock)
+    except Exception:
+        exception_once(logger, "pyglet_set_event_loop_clock_exc", "set_clock(event_loop.clock) failed")
+
     try:
         event_loop.run()
     finally:

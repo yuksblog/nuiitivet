@@ -6,23 +6,26 @@ This package contains lightweight, frame-driven animation utilities.
 from .easing import ease_cubic_out
 from .animation import Animation
 from .manager import AnimationHandle, AnimationManager
-from .animatable import Animatable, DrivenAnimatable
+from .animatable import Animatable
+from .converter import VectorConverter, FloatConverter, RgbaTupleConverter
 from .motion import Motion, LinearMotion, BezierMotion, SpringMotion
-from .tween import Rect, RectTween, IntTween, LerpTween
+from .interpolate import Rect, lerp, lerp_int, lerp_rect
 
 __all__ = [
     "Animatable",
     "Animation",
     "AnimationHandle",
     "AnimationManager",
-    "DrivenAnimatable",
+    "VectorConverter",
+    "FloatConverter",
+    "RgbaTupleConverter",
     "Motion",
     "LinearMotion",
     "BezierMotion",
     "SpringMotion",
     "ease_cubic_out",
     "Rect",
-    "RectTween",
-    "IntTween",
-    "LerpTween",
+    "lerp",
+    "lerp_int",
+    "lerp_rect",
 ]

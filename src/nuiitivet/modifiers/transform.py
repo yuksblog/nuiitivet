@@ -13,6 +13,7 @@ from ..widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
 
+
 AngleLike = Union[float, ReadOnlyObservableProtocol[float]]
 ScaleLike = Union[float, Tuple[float, float], ReadOnlyObservableProtocol[float]]
 TranslateLike = Union[Tuple[float, float], ReadOnlyObservableProtocol[Tuple[float, float]]]
@@ -52,6 +53,10 @@ class TransformBox(Widget):
         self._translate_x: float = 0.0
         self._translate_y: float = 0.0
         self._opacity: float = 1.0
+        self._rotation_source: Optional[AngleLike] = None
+        self._scale_source: Optional[ScaleLike] = None
+        self._translation_source: Optional[TranslateLike] = None
+        self._opacity_source: Optional[OpacityLike] = None
         self.add_child(child)
 
         if rotation is not None:
@@ -72,6 +77,7 @@ class TransformBox(Widget):
         return None
 
     def _bind_rotation(self, rotation: AngleLike) -> None:
+        self._rotation_source = rotation
         if isinstance(rotation, ReadOnlyObservableProtocol):
             try:
                 self.observe(rotation, self._set_rotation)
@@ -92,6 +98,7 @@ class TransformBox(Widget):
         self.invalidate()
 
     def _bind_scale(self, scale: ScaleLike) -> None:
+        self._scale_source = scale
         if isinstance(scale, ReadOnlyObservableProtocol):
             try:
                 self.observe(scale, self._set_scale)
@@ -117,6 +124,7 @@ class TransformBox(Widget):
         self.invalidate()
 
     def _bind_translation(self, translation: TranslateLike) -> None:
+        self._translation_source = translation
         if isinstance(translation, ReadOnlyObservableProtocol):
             try:
                 self.observe(translation, self._set_translation)
@@ -139,6 +147,7 @@ class TransformBox(Widget):
         self.invalidate()
 
     def _bind_opacity(self, opacity: OpacityLike) -> None:
+        self._opacity_source = opacity
         if isinstance(opacity, ReadOnlyObservableProtocol):
             try:
                 self.observe(opacity, self._set_opacity)
@@ -157,6 +166,21 @@ class TransformBox(Widget):
         except Exception:
             self._opacity = 1.0
         self.invalidate()
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        bindings = getattr(self, "_bindings", None)
+        if isinstance(bindings, list) and len(bindings) > 0:
+            return
+
+        if self._rotation_source is not None:
+            self._bind_rotation(self._rotation_source)
+        if self._scale_source is not None:
+            self._bind_scale(self._scale_source)
+        if self._translation_source is not None:
+            self._bind_translation(self._translation_source)
+        if self._opacity_source is not None:
+            self._bind_opacity(self._opacity_source)
 
     def _resolve_origin(self, width: int, height: int) -> Tuple[float, float]:
         if isinstance(self._transform_origin, str):
@@ -287,22 +311,19 @@ class TransformModifier(ModifierElement):
     transform_origin: OriginLike = "center"
 
     def apply(self, widget: Widget) -> Widget:
-        # Merge with existing TransformBox if possible
+        # Merge with existing TransformBox in-place to preserve active observable
+        # bindings from previously applied transform modifiers.
         if isinstance(widget, TransformBox):
-            # Already a TransformBox, merge transforms
-            return TransformBox(
-                widget.children[0] if widget.children else widget,
-                rotation=self.rotation if self.rotation is not None else widget._rotation,
-                scale=(widget._scale_x, widget._scale_y) if self.scale is None else self.scale,
-                translation=(
-                    (widget._translate_x, widget._translate_y) if self.translation is None else self.translation
-                ),
-                opacity=self.opacity if self.opacity is not None else widget._opacity,
-                transform_origin=self.transform_origin,
-                width=widget.width_sizing,
-                height=widget.height_sizing,
-            )
-
+            widget._transform_origin = self.transform_origin
+            if self.rotation is not None:
+                widget._bind_rotation(self.rotation)
+            if self.scale is not None:
+                widget._bind_scale(self.scale)
+            if self.translation is not None:
+                widget._bind_translation(self.translation)
+            if self.opacity is not None:
+                widget._bind_opacity(self.opacity)
+            return widget
         return TransformBox(
             widget,
             rotation=self.rotation,

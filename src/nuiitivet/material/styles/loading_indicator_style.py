@@ -7,6 +7,8 @@ from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
+from nuiitivet.animation.motion import Motion
+from nuiitivet.material.motion import EXPRESSIVE_SLOW_SPATIAL
 
 if TYPE_CHECKING:
     from ...theme import Theme
@@ -33,7 +35,9 @@ class LoadingIndicatorStyle:
     active_size_ratio: float = 38.0 / 48.0
 
     # Animation
-    cycle_duration: float = 4.55  # seconds
+    # Default motion uses Expressive Default Effects.
+    # Note: The duration is defined by the motion token (approx 0.2s for EXPRESSIVE_DEFAULT_EFFECTS).
+    motion: Motion = EXPRESSIVE_SLOW_SPATIAL
     shapes: Sequence["MaterialShapeId"] = ()  # Set to DEFAULT_LOADING_INDICATOR_SEQUENCE in default()
 
     # Container styling (for contained variant)

@@ -25,6 +25,8 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.animation import Animatable, RgbaTupleConverter
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
@@ -214,10 +216,6 @@ class TextField(InteractiveWidget):
 
         self._on_change = on_change
 
-        # Animation state
-        self._label_progress = 0.0
-        self._label_anim = None
-
         # Children
         if self.leading_icon is not None:
             self.add_child(self.leading_icon)
@@ -237,6 +235,38 @@ class TextField(InteractiveWidget):
             disabled=initial_disabled,
         )
         self.add_child(self._editable)
+
+        # Animation state
+        has_text = bool(self._editable.value)
+        self._label_progress = Animatable(
+            1.0 if has_text else 0.0,
+            motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        )
+        self._label_progress.subscribe(lambda _: self.invalidate())
+
+        # Indicator Animations
+        init_ind_width = style.indicator_width
+        self._anim_indicator_width = Animatable(
+            float(init_ind_width),
+            motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        )
+        self._anim_indicator_width.subscribe(lambda _: self.invalidate())
+
+        init_ind_color = resolve_color_to_rgba(style.indicator_color, theme=theme_manager.current)
+        self._anim_indicator_color = Animatable.vector(
+            init_ind_color,
+            converter=RgbaTupleConverter(),
+            motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        )
+        self._anim_indicator_color.subscribe(lambda _: self.invalidate())
+
+        init_label_color = resolve_color_to_rgba(style.label_color, theme=theme_manager.current)
+        self._anim_label_color = Animatable.vector(
+            init_label_color,
+            converter=RgbaTupleConverter(),
+            motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        )
+        self._anim_label_color.subscribe(lambda _: self.invalidate())
 
         # Handle initial disabled state
         if initial_disabled:
@@ -289,10 +319,16 @@ class TextField(InteractiveWidget):
         self.error_text = str(value) if value is not None else None
         style = self.style
         self._editable.cursor_color = style.error_cursor_color if self.error_text else style.cursor_color
+        self._update_label_state()
         self.mark_needs_layout()
 
     def on_mount(self) -> None:
         super().on_mount()
+
+        # Ensure visual state matches the current theme/focus on mount.
+        # This handles cases where initial theme might have been different or
+        # Animatable needs a kick (if initial values were somehow problematic).
+        self._update_label_state()
 
         if self._label_source is not None:
             try:
@@ -479,19 +515,42 @@ class TextField(InteractiveWidget):
         should_float = has_text or is_focused
 
         target = 1.0 if should_float else 0.0
-        if self._label_progress == target:
-            return
+        self._label_progress.target = target
 
-        if not getattr(self, "_app", None):
-            self._label_progress = target
-            return
+        # Style updates
+        style = self.style
+        is_error = bool(self.error_text)
 
-        self._label_anim = self.animate_value(
-            target=target,
-            duration=0.2,
-            start=self._label_progress,
-            apply=lambda v: setattr(self, "_label_progress", v),
-        )
+        def _resolve(c):
+            return resolve_color_to_rgba(c, theme=theme_manager.current)
+
+        # 1. Label Color
+        if is_error:
+            target_label_c = style.error_label_color
+        elif is_focused:
+            target_label_c = style.focused_label_color
+        else:
+            target_label_c = style.label_color
+        if hasattr(self, "_anim_label_color"):
+            self._anim_label_color.target = _resolve(target_label_c)
+
+        # 2. Indicator Color
+        if is_error:
+            target_ind_c = style.error_indicator_color
+        elif is_focused:
+            target_ind_c = style.focused_indicator_color
+        else:
+            target_ind_c = style.indicator_color
+        if hasattr(self, "_anim_indicator_color"):
+            self._anim_indicator_color.target = _resolve(target_ind_c)
+
+        # 3. Indicator Width
+        if is_focused:
+            target_w = style.focused_indicator_width
+        else:
+            target_w = style.indicator_width
+        if hasattr(self, "_anim_indicator_width"):
+            self._anim_indicator_width.target = float(target_w)
 
     def build(self) -> Widget:
         return self
@@ -550,11 +609,7 @@ class TextField(InteractiveWidget):
         if not self.label:
             return
 
-        style = self.style
-        is_focused = self._editable.state.focused
-        is_error = bool(self.error_text)
-
-        label_progress = self._label_progress
+        label_progress = self._label_progress.value
 
         start_size = 16
         end_size = 12
@@ -571,14 +626,7 @@ class TextField(InteractiveWidget):
 
             current_label_y = start_y - (start_y - end_y) * label_progress
 
-            label_color = resolve_color_to_rgba(
-                (
-                    style.error_label_color
-                    if is_error
-                    else (style.focused_label_color if is_focused else style.label_color)
-                ),
-                theme=theme_manager.current,
-            )
+            label_color = self._anim_label_color.value
             paint_label = make_paint(color=label_color)
 
             blob = make_text_blob(self.label, label_font)
@@ -686,8 +734,6 @@ class FilledTextField(TextField):
 
     def _draw_container(self, canvas, cx, cy, cw, ch):
         style = self.style
-        is_focused = self._editable.state.focused
-        is_error = bool(self.error_text)
 
         container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
         paint_container = make_paint(color=container_color)
@@ -695,15 +741,8 @@ class FilledTextField(TextField):
         if rect is not None and paint_container is not None:
             draw_round_rect(canvas, rect, [style.border_radius, style.border_radius, 0, 0], paint_container)
 
-        indicator_color = resolve_color_to_rgba(
-            (
-                style.error_indicator_color
-                if is_error
-                else (style.focused_indicator_color if is_focused else style.indicator_color)
-            ),
-            theme=theme_manager.current,
-        )
-        indicator_width = style.focused_indicator_width if is_focused else style.indicator_width
+        indicator_color = self._anim_indicator_color.value
+        indicator_width = self._anim_indicator_width.value
         paint_indicator = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
         canvas.drawLine(cx, cy + ch, cx + cw, cy + ch, paint_indicator)
 
@@ -768,8 +807,6 @@ class OutlinedTextField(TextField):
 
     def _draw_container(self, canvas, cx, cy, cw, ch):
         style = self.style
-        is_focused = self._editable.state.focused
-        is_error = bool(self.error_text)
 
         container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
         paint_container = make_paint(color=container_color)
@@ -777,15 +814,8 @@ class OutlinedTextField(TextField):
         if rect is not None and paint_container is not None:
             draw_round_rect(canvas, rect, style.border_radius, paint_container)
 
-        indicator_color = resolve_color_to_rgba(
-            (
-                style.error_indicator_color
-                if is_error
-                else (style.focused_indicator_color if is_focused else style.indicator_color)
-            ),
-            theme=theme_manager.current,
-        )
-        indicator_width = style.focused_indicator_width if is_focused else style.indicator_width
+        indicator_color = self._anim_indicator_color.value
+        indicator_width = self._anim_indicator_width.value
         paint_border = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
         if rect is not None and paint_border is not None:
             draw_round_rect(canvas, rect, style.border_radius, paint_border)

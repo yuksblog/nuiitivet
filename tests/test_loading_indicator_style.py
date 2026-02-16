@@ -8,6 +8,7 @@ from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
+from nuiitivet.animation.motion import BezierMotion
 
 
 def test_loading_indicator_uses_theme_default_style():
@@ -31,13 +32,13 @@ def test_loading_indicator_accepts_custom_style():
     custom_style = LoadingIndicatorStyle(
         foreground=ColorRole.SECONDARY,
         active_size_ratio=0.9,
-        cycle_duration=3.0,
+        motion=BezierMotion(0.34, 0.80, 0.34, 1.00, duration=3.0),
     )
     indicator = LoadingIndicator(size=64, style=custom_style)
     assert indicator._user_style is custom_style
     assert indicator.style.foreground == ColorRole.SECONDARY
     assert indicator.style.active_size_ratio == 0.9
-    assert indicator.style.cycle_duration == 3.0
+    assert indicator.style.motion.duration == 3.0
 
 
 def test_loading_indicator_style_copy_with():
@@ -45,10 +46,10 @@ def test_loading_indicator_style_copy_with():
     base = LoadingIndicatorStyle.default()
     custom = base.copy_with(
         foreground=ColorRole.TERTIARY,
-        cycle_duration=2.5,
+        motion=BezierMotion(0.34, 0.80, 0.34, 1.00, duration=2.5),
     )
     assert custom.foreground == ColorRole.TERTIARY
-    assert custom.cycle_duration == 2.5
+    assert custom.motion.duration == 2.5
     assert custom.background is None
     assert custom.active_size_ratio == base.active_size_ratio
 
@@ -58,7 +59,7 @@ def test_theme_with_custom_loading_indicator_style():
     light, _ = MaterialTheme.from_seed_pair("#6750A4")
     custom_style = LoadingIndicatorStyle(
         foreground=ColorRole.ERROR,
-        cycle_duration=5.0,
+        motion=BezierMotion(0.34, 0.80, 0.34, 1.00, duration=5.0),
         padding=8,
     )
 
@@ -73,7 +74,7 @@ def test_theme_with_custom_loading_indicator_style():
         manager.set_theme(custom_theme)
         indicator = LoadingIndicator(size=48)
         assert indicator.style.foreground == ColorRole.ERROR
-        assert indicator.style.cycle_duration == 5.0
+        assert indicator.style.motion.duration == 5.0
         assert indicator.style.padding == 8
     finally:
         manager.set_theme(old_theme)

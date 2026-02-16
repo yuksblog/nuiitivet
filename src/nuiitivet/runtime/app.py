@@ -36,11 +36,17 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 
 if TYPE_CHECKING:
+    from nuiitivet.navigation.navigator import Navigator
     from nuiitivet.navigation.route import Route
     from nuiitivet.overlay.overlay import Overlay
 
 
 logger = logging.getLogger(__name__)
+
+NavigatorFactory = Callable[
+    ["Route", Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None],
+    "Navigator",
+]
 
 
 # NOTE: compatibility wrapper removed. Use `resolve_color_to_rgba` from
@@ -118,28 +124,49 @@ class App:
         return scope.app_proxy
 
     @staticmethod
-    def _merge_dialog_factories(
-        user_dialogs: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
-    ) -> dict[type[Any], Callable[[Any], "Route | Widget"]]:
-        from nuiitivet.overlay import DialogRoute
-        from nuiitivet.overlay.intents import PlainDialogIntent, LoadingDialogIntent
-        from nuiitivet.overlay.dialogs import PlainDialog, PlainLoadingDialog
+    def _build_root_navigation_stack(
+        *,
+        initial: "Route",
+        intent_routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
+        overlay_factory: Callable[[], "Overlay"] | None,
+        navigator_factory: NavigatorFactory | None = None,
+    ) -> tuple[Widget, Widget | None]:
+        from nuiitivet.layout.stack import Stack
+        from nuiitivet.navigation import Navigator, Route
+        from nuiitivet.overlay import Overlay
+        from nuiitivet.rendering.sizing import Sizing
 
-        defaults: dict[type[Any], Callable[[Any], "Route | Widget"]] = {
-            PlainDialogIntent: lambda i: PlainDialog(i),
-            LoadingDialogIntent: lambda i: DialogRoute(
-                builder=lambda: PlainLoadingDialog(i),
-                barrier_dismissible=False,
-            ),
-        }
+        resolved_overlay_factory = overlay_factory or Overlay
+        overlay = resolved_overlay_factory()
+        if not isinstance(overlay, Overlay):
+            raise TypeError("overlay_factory must return an Overlay instance")
+        Overlay.set_root(overlay)
 
-        merged: dict[type[Any], Callable[[Any], "Route | Widget"]] = dict(defaults)
-        if user_dialogs is None:
-            return merged
+        def _default_navigator_factory(
+            initial_route: Route,
+            routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
+        ) -> Navigator:
+            return Navigator(routes=[initial_route], intent_routes=routes)
 
-        for intent_type, factory in user_dialogs.items():
-            merged[intent_type] = factory
-        return merged
+        resolved_navigator_factory = navigator_factory or _default_navigator_factory
+        navigator = resolved_navigator_factory(initial, intent_routes)
+        if not isinstance(navigator, Navigator):
+            raise TypeError("navigator_factory must return a Navigator instance")
+        Navigator.set_root(navigator)
+
+        initial_route_widget: Widget | None = None
+        try:
+            initial_route_widget = navigator._route_widget(initial)  # type: ignore[attr-defined]
+        except Exception:
+            exception_once(logger, "navigator_route_widget_prime_exc", "Failed to prime initial route widget")
+
+        navigator.width_sizing = Sizing.flex(100)
+        navigator.height_sizing = Sizing.flex(100)
+        overlay.width_sizing = Sizing.flex(100)
+        overlay.height_sizing = Sizing.flex(100)
+
+        root_widget = Stack(children=[navigator, overlay], width="100%", height="100%")
+        return root_widget, initial_route_widget
 
     def _init_common(
         self,
@@ -363,7 +390,8 @@ class App:
 
         if overlay is not None:
             try:
-                if overlay.has_entries():
+                has_entries = bool(overlay.has_entries())
+                if has_entries:
                     overlay.close_topmost()
                     return True
             except Exception:
@@ -382,13 +410,13 @@ class App:
             try:
                 request_back = getattr(navigator, "request_back", None)
                 if callable(request_back):
-                    return bool(request_back())
+                    handled = bool(request_back())
+                    return handled
                 if navigator.can_pop():
                     navigator.pop()
                     return True
             except Exception:
                 exception_once(logger, "app_navigator_back_exc", "Navigator back handling failed")
-
         return False
 
     @classmethod
@@ -398,6 +426,7 @@ class App:
         routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]],
         initial_route: Any,
         overlay_factory: Callable[[], "Overlay"] | None = None,
+        navigator_factory: NavigatorFactory | None = None,
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         title_bar: Optional[TitleBar] = None,
@@ -412,19 +441,7 @@ class App:
         - The UI is stacked as [Navigator, Overlay]
         """
 
-        from nuiitivet.layout.stack import Stack
-        from nuiitivet.navigation import Navigator, PageRoute, Route
-        from nuiitivet.overlay import Overlay
-        from nuiitivet.rendering.sizing import Sizing
-
-        resolved_overlay_factory = overlay_factory
-        if resolved_overlay_factory is None:
-            resolved_overlay_factory = Overlay
-
-        overlay = resolved_overlay_factory()
-        if not isinstance(overlay, Overlay):
-            raise TypeError("overlay_factory must return an Overlay instance")
-        Overlay.set_root(overlay)
+        from nuiitivet.navigation import PageRoute, Route
 
         try:
             factory = routes[type(initial_route)]
@@ -440,23 +457,12 @@ class App:
         else:
             raise TypeError("Route factory must return a Route or Widget.")
 
-        navigator = Navigator(routes=[initial], intent_routes=routes)
-        Navigator.set_root(navigator)
-
-        # Prime the initial route widget so it is reachable from the widget tree
-        # even before the first render/layout pass.
-        initial_route_widget: Widget | None = None
-        try:
-            initial_route_widget = navigator._route_widget(initial)  # type: ignore[attr-defined]
-        except Exception:
-            exception_once(logger, "navigator_route_widget_prime_exc", "Failed to prime initial route widget")
-
-        navigator.width_sizing = Sizing.flex(100)
-        navigator.height_sizing = Sizing.flex(100)
-        overlay.width_sizing = Sizing.flex(100)
-        overlay.height_sizing = Sizing.flex(100)
-
-        root_widget = Stack(children=[navigator, overlay], width="100%", height="100%")
+        root_widget, initial_route_widget = cls._build_root_navigation_stack(
+            initial=initial,
+            intent_routes=routes,
+            overlay_factory=overlay_factory,
+            navigator_factory=navigator_factory,
+        )
         self = cls.__new__(cls)
         self._init_common(
             root=root_widget,
@@ -479,6 +485,7 @@ class App:
         title_bar: Optional[TitleBar] = None,
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay_factory: Callable[[], "Overlay"] | None = None,
+        navigator_factory: NavigatorFactory | None = None,
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
     ):
@@ -486,38 +493,17 @@ class App:
         if not isinstance(content, Widget):
             raise TypeError("'content' must be a Widget instance.")
 
-        from nuiitivet.layout.stack import Stack
-        from nuiitivet.navigation import Navigator, PageRoute
-        from nuiitivet.overlay import Overlay
-        from nuiitivet.rendering.sizing import Sizing
+        from nuiitivet.navigation import PageRoute
 
-        resolved_overlay_factory = overlay_factory
-        if resolved_overlay_factory is None:
-            resolved_overlay_factory = Overlay
+        from nuiitivet.navigation.transition_spec import Transitions
 
-        overlay = resolved_overlay_factory()
-        if not isinstance(overlay, Overlay):
-            raise TypeError("overlay_factory must return an Overlay instance")
-        Overlay.set_root(overlay)
-
-        initial = PageRoute(builder=lambda: content, transition="none")
-        navigator = Navigator(routes=[initial])
-        Navigator.set_root(navigator)
-
-        # Prime the initial route widget so it is reachable from the widget tree
-        # even before the first render/layout pass.
-        initial_route_widget: Widget | None = None
-        try:
-            initial_route_widget = navigator._route_widget(initial)  # type: ignore[attr-defined]
-        except Exception:
-            exception_once(logger, "navigator_route_widget_prime_init_exc", "Failed to prime initial route widget")
-
-        navigator.width_sizing = Sizing.flex(100)
-        navigator.height_sizing = Sizing.flex(100)
-        overlay.width_sizing = Sizing.flex(100)
-        overlay.height_sizing = Sizing.flex(100)
-
-        root_widget = Stack(children=[navigator, overlay], width="100%", height="100%")
+        initial = PageRoute(builder=lambda: content, transition_spec=Transitions.empty())
+        root_widget, initial_route_widget = self._build_root_navigation_stack(
+            initial=initial,
+            intent_routes=None,
+            overlay_factory=overlay_factory,
+            navigator_factory=navigator_factory,
+        )
         self._init_common(
             root=root_widget,
             width=width,

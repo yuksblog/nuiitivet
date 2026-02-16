@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, Sequence
 
 
 @dataclass
@@ -11,20 +11,34 @@ class MotionState:
     """Mutable motion state used by Motion.
 
     Attributes:
-        value: Current animated value.
-        target: Current target value.
-        start: Start value used by time-based specs.
+        value: Current animated vector value.
+        target: Current target vector value.
+        start: Start vector used by time-based specs.
         elapsed: Elapsed time in seconds.
-        velocity: Current velocity for physics-based specs.
+        velocity: Current vector velocity for physics-based specs.
         done: Whether the motion has reached its target.
     """
 
-    value: float
-    target: float
-    start: float
+    value: list[float]
+    target: list[float]
+    start: list[float]
     elapsed: float
-    velocity: float = 0.0
+    velocity: list[float]
     done: bool = False
+
+    def __post_init__(self) -> None:
+        dim = len(self.value)
+        if len(self.target) != dim or len(self.start) != dim or len(self.velocity) != dim:
+            raise ValueError("MotionState vectors must have the same dimension")
+
+
+def _copy_vector(value: Sequence[float]) -> list[float]:
+    return [float(v) for v in value]
+
+
+def _assert_same_dimension(lhs: Sequence[float], rhs: Sequence[float], *, message: str) -> None:
+    if len(lhs) != len(rhs):
+        raise ValueError(message)
 
 
 class Motion(Protocol):
@@ -34,11 +48,11 @@ class Motion(Protocol):
     and handling retargeting without pausing.
     """
 
-    def create_state(self, value: float, target: float) -> MotionState: ...
+    def create_state(self, value: list[float], target: list[float]) -> MotionState: ...
 
     def step(self, state: MotionState, dt: float) -> bool: ...
 
-    def retarget(self, state: MotionState, target: float) -> None: ...
+    def retarget(self, state: MotionState, target: list[float]) -> None: ...
 
 
 class LinearMotion:
@@ -51,25 +65,37 @@ class LinearMotion:
     def __init__(self, duration: float) -> None:
         self.duration = max(0.0, float(duration))
 
-    def create_state(self, value: float, target: float) -> MotionState:
-        return MotionState(value=float(value), target=float(target), start=float(value), elapsed=0.0)
+    def create_state(self, value: list[float], target: list[float]) -> MotionState:
+        _assert_same_dimension(value, target, message="LinearMotion requires value/target dimensions to match")
+        value_vec = _copy_vector(value)
+        target_vec = _copy_vector(target)
+        return MotionState(
+            value=value_vec,
+            target=target_vec,
+            start=value_vec.copy(),
+            elapsed=0.0,
+            velocity=[0.0 for _ in value_vec],
+        )
 
-    def retarget(self, state: MotionState, target: float) -> None:
-        state.start = float(state.value)
-        state.target = float(target)
+    def retarget(self, state: MotionState, target: list[float]) -> None:
+        _assert_same_dimension(state.value, target, message="LinearMotion retarget dimension mismatch")
+        state.start = state.value.copy()
+        state.target = _copy_vector(target)
         state.elapsed = 0.0
         state.done = False
 
     def step(self, state: MotionState, dt: float) -> bool:
         duration = self.duration
         if duration <= 0.0:
-            state.value = float(state.target)
+            state.value = state.target.copy()
             state.done = True
             return True
 
         state.elapsed += max(0.0, float(dt))
         progress = min(1.0, state.elapsed / max(duration, 1e-9))
-        state.value = state.start + (state.target - state.start) * progress
+        state.value = [
+            start + (target - start) * progress for start, target in zip(state.start, state.target, strict=True)
+        ]
         state.done = progress >= 1.0
         return state.done
 
@@ -89,26 +115,38 @@ class BezierMotion:
         self.duration = max(0.0, float(duration))
         self._curve = _CubicBezier(float(x1), float(y1), float(x2), float(y2))
 
-    def create_state(self, value: float, target: float) -> MotionState:
-        return MotionState(value=float(value), target=float(target), start=float(value), elapsed=0.0)
+    def create_state(self, value: list[float], target: list[float]) -> MotionState:
+        _assert_same_dimension(value, target, message="BezierMotion requires value/target dimensions to match")
+        value_vec = _copy_vector(value)
+        target_vec = _copy_vector(target)
+        return MotionState(
+            value=value_vec,
+            target=target_vec,
+            start=value_vec.copy(),
+            elapsed=0.0,
+            velocity=[0.0 for _ in value_vec],
+        )
 
-    def retarget(self, state: MotionState, target: float) -> None:
-        state.start = float(state.value)
-        state.target = float(target)
+    def retarget(self, state: MotionState, target: list[float]) -> None:
+        _assert_same_dimension(state.value, target, message="BezierMotion retarget dimension mismatch")
+        state.start = state.value.copy()
+        state.target = _copy_vector(target)
         state.elapsed = 0.0
         state.done = False
 
     def step(self, state: MotionState, dt: float) -> bool:
         duration = self.duration
         if duration <= 0.0:
-            state.value = float(state.target)
+            state.value = state.target.copy()
             state.done = True
             return True
 
         state.elapsed += max(0.0, float(dt))
         progress = min(1.0, state.elapsed / max(duration, 1e-9))
         eased = self._curve.transform(progress)
-        state.value = state.start + (state.target - state.start) * eased
+        state.value = [
+            start + (target - start) * eased for start, target in zip(state.start, state.target, strict=True)
+        ]
         state.done = progress >= 1.0
         return state.done
 
@@ -129,26 +167,42 @@ class SpringMotion:
         damping: float,
         mass: float,
         *,
-        initial_velocity: float = 0.0,
+        initial_velocity: float | Sequence[float] = 0.0,
         tolerance: float = 1e-3,
     ) -> None:
         self.stiffness = float(stiffness)
         self.damping = float(damping)
         self.mass = max(1e-9, float(mass))
-        self.initial_velocity = float(initial_velocity)
+        self.initial_velocity = initial_velocity
         self.tolerance = max(0.0, float(tolerance))
 
-    def create_state(self, value: float, target: float) -> MotionState:
+    def _make_initial_velocity(self, dimension: int) -> list[float]:
+        if isinstance(self.initial_velocity, Sequence) and not isinstance(self.initial_velocity, (str, bytes)):
+            initial_velocity = _copy_vector(self.initial_velocity)
+            if len(initial_velocity) == 1 and dimension > 1:
+                return [initial_velocity[0] for _ in range(dimension)]
+            if len(initial_velocity) != dimension:
+                raise ValueError("SpringMotion initial_velocity dimension mismatch")
+            return initial_velocity
+
+        scalar = float(self.initial_velocity)
+        return [scalar for _ in range(dimension)]
+
+    def create_state(self, value: list[float], target: list[float]) -> MotionState:
+        _assert_same_dimension(value, target, message="SpringMotion requires value/target dimensions to match")
+        value_vec = _copy_vector(value)
+        target_vec = _copy_vector(target)
         return MotionState(
-            value=float(value),
-            target=float(target),
-            start=float(value),
+            value=value_vec,
+            target=target_vec,
+            start=value_vec.copy(),
             elapsed=0.0,
-            velocity=float(self.initial_velocity),
+            velocity=self._make_initial_velocity(len(value_vec)),
         )
 
-    def retarget(self, state: MotionState, target: float) -> None:
-        state.target = float(target)
+    def retarget(self, state: MotionState, target: list[float]) -> None:
+        _assert_same_dimension(state.value, target, message="SpringMotion retarget dimension mismatch")
+        state.target = _copy_vector(target)
         state.done = False
 
     def step(self, state: MotionState, dt: float) -> bool:
@@ -156,15 +210,27 @@ class SpringMotion:
         if dt <= 0.0:
             return state.done
 
-        displacement = state.value - state.target
-        acceleration = (-self.stiffness * displacement - self.damping * state.velocity) / self.mass
-        state.velocity += acceleration * dt
-        state.value += state.velocity * dt
+        next_velocity: list[float] = []
+        next_value: list[float] = []
+        for value, target, velocity in zip(state.value, state.target, state.velocity, strict=True):
+            displacement = value - target
+            acceleration = (-self.stiffness * displacement - self.damping * velocity) / self.mass
+            velocity = velocity + acceleration * dt
+            value = value + velocity * dt
+            next_velocity.append(velocity)
+            next_value.append(value)
+
+        state.velocity = next_velocity
+        state.value = next_value
         state.elapsed += dt
 
-        if abs(state.velocity) <= self.tolerance and abs(state.value - state.target) <= self.tolerance:
-            state.value = float(state.target)
-            state.velocity = 0.0
+        velocity_stable = all(abs(v) <= self.tolerance for v in state.velocity)
+        position_stable = all(
+            abs(v - target) <= self.tolerance for v, target in zip(state.value, state.target, strict=True)
+        )
+        if velocity_stable and position_stable:
+            state.value = state.target.copy()
+            state.velocity = [0.0 for _ in state.velocity]
             state.done = True
 
         return state.done

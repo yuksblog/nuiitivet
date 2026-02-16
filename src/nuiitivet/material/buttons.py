@@ -16,6 +16,7 @@ from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -29,6 +30,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+_STATE_LAYER_MOTION = LinearMotion(0.1)
+_COLOR_MOTION = LinearMotion(0.15)
 
 _Symbol: Optional[Type["Symbol"]] = None
 _Widget: Optional[Type["Widget"]] = None
@@ -80,6 +84,16 @@ def _coerce_fixed_height_px(height: SizingLike) -> Optional[int]:
     if isinstance(height, (int, float)):
         return int(height)
     return None
+
+
+def _resolve_color_rgba(value: ColorSpec) -> Tuple[int, int, int, int]:
+    from nuiitivet.theme.manager import manager
+    from nuiitivet.theme.resolver import resolve_color_to_rgba
+
+    return resolve_color_to_rgba(value, theme=manager.current)
+
+
+_RGBA_CONVERTER = RgbaTupleConverter()
 
 
 def make_child_from_label(label: Any, foreground: ColorSpec = ColorRole.ON_SURFACE) -> Any:
@@ -173,6 +187,7 @@ def resolve_button_style_params(
     cr = None
     bc = None
     bw = 0.0
+    fg = None
 
     if style is not None:
         bg = style.background
@@ -181,6 +196,7 @@ def resolve_button_style_params(
         cr = style.corner_radius
         bc = getattr(style, "border_color", None)
         bw = getattr(style, "border_width", 0.0) or 0.0
+        fg = getattr(style, "foreground", None)
 
     if pad is None:
         pad = 0
@@ -245,6 +261,7 @@ def resolve_button_style_params(
     return {
         "height": h,
         "background_color": bg,
+        "foreground_color": fg,
         "padding": pad,
         "corner_radius": cr,
         "border_color": bc,
@@ -288,6 +305,11 @@ class MaterialButtonBase(InteractiveWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int, int, int]] = 0,
+        background_color: ColorSpec = None,
+        foreground_color: ColorSpec = None,
+        border_color: ColorSpec = None,
+        border_width: float = 0.0,
+        corner_radius: Union[float, Tuple[float, float, float, float]] = 0.0,
         # Overlay / Feedback configuration
         state_layer_color: ColorSpec = None,
         overlay_color: ColorSpec = None,  # Backward compatibility
@@ -306,6 +328,11 @@ class MaterialButtonBase(InteractiveWidget):
             width: Width specification.
             height: Height specification.
             padding: Padding specification.
+            background_color: Button container color.
+            foreground_color: Button foreground color (text/icon).
+            border_color: Border color for outlined buttons.
+            border_width: Border width for outlined buttons.
+            corner_radius: Corner radius for the button container.
             state_layer_color: Color of the state layer (overlay).
             hover_opacity: Opacity of the overlay when hovered.
             pressed_opacity: Opacity of the overlay when pressed.
@@ -324,6 +351,10 @@ class MaterialButtonBase(InteractiveWidget):
             width=width,
             height=height,
             padding=padding,
+            background_color=background_color,
+            border_color=border_color,
+            border_width=border_width,
+            corner_radius=corner_radius,
             state_layer_color=state_layer_color,
             **kwargs,
         )
@@ -334,6 +365,158 @@ class MaterialButtonBase(InteractiveWidget):
         self._DRAG_OPACITY = drag_opacity
 
         self.disabled_opacity = disabled_opacity
+
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
+
+        self._foreground_targets: list[Widget] = []
+        self._bg_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
+        self._border_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
+        self._foreground_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
+
+        self._init_foreground_targets()
+        self._update_color_targets(
+            background_color=background_color,
+            border_color=border_color,
+            foreground_color=foreground_color,
+        )
+
+    def on_unmount(self) -> None:
+        self._dispose_color_animations()
+        super().on_unmount()
+
+    def _init_foreground_targets(self) -> None:
+        if self._foreground_targets:
+            return
+
+        from nuiitivet.widgets.text import TextBase
+
+        try:
+            from nuiitivet.material.icon import Icon
+        except Exception:
+            Icon = None  # type: ignore
+
+        def _walk(widget: Widget) -> None:
+            if isinstance(widget, TextBase):
+                self._foreground_targets.append(widget)
+                return
+            if Icon is not None and isinstance(widget, Icon):
+                self._foreground_targets.append(widget)
+                return
+            for child in widget.children_snapshot():
+                if isinstance(child, Widget):
+                    _walk(child)
+
+        for child in self.children_snapshot():
+            if isinstance(child, Widget):
+                _walk(child)
+
+    def _apply_foreground_rgba(self, rgba: Tuple[int, int, int, int]) -> None:
+        from nuiitivet.widgets.text import TextBase
+
+        for widget in self._foreground_targets:
+            if isinstance(widget, TextBase):
+                try:
+                    text_style: Any = widget._style if getattr(widget, "_style", None) is not None else widget.style
+                    widget._style = text_style.copy_with(color=rgba)
+                    widget.invalidate()
+                except Exception:
+                    continue
+                continue
+
+            try:
+                from nuiitivet.material.icon import Icon
+            except Exception:
+                Icon = None  # type: ignore
+
+            if Icon is not None and isinstance(widget, Icon):
+                try:
+                    icon_style: Any = widget._style if getattr(widget, "_style", None) is not None else widget.style
+                    widget._style = icon_style.copy_with(color=rgba)
+                    widget.invalidate()
+                except Exception:
+                    continue
+
+    def _update_color_targets(
+        self,
+        *,
+        background_color: ColorSpec,
+        border_color: ColorSpec,
+        foreground_color: ColorSpec,
+    ) -> None:
+        resolved_bg = _resolve_color_rgba(background_color)
+        resolved_border = _resolve_color_rgba(border_color)
+        resolved_fg = _resolve_color_rgba(foreground_color)
+
+        if self._bg_color_anim is None:
+            self._bg_color_anim = Animatable.vector(
+                resolved_bg,
+                _RGBA_CONVERTER,
+                motion=_COLOR_MOTION,
+            )
+            self.bind(self._bg_color_anim.subscribe(lambda rgba: setattr(self, "bgcolor", rgba)))
+        else:
+            self._bg_color_anim.target = resolved_bg
+
+        if self._border_color_anim is None:
+            self._border_color_anim = Animatable.vector(
+                resolved_border,
+                _RGBA_CONVERTER,
+                motion=_COLOR_MOTION,
+            )
+            self.bind(self._border_color_anim.subscribe(lambda rgba: setattr(self, "border_color", rgba)))
+        else:
+            self._border_color_anim.target = resolved_border
+
+        if self._foreground_color_anim is None:
+            self._foreground_color_anim = Animatable.vector(resolved_fg, _RGBA_CONVERTER, motion=_COLOR_MOTION)
+            self.bind(self._foreground_color_anim.subscribe(self._apply_foreground_rgba))
+        else:
+            self._foreground_color_anim.target = resolved_fg
+
+    def _dispose_color_animations(self) -> None:
+        if self._bg_color_anim is not None:
+            self._bg_color_anim = None
+        if self._border_color_anim is not None:
+            self._border_color_anim = None
+        if self._foreground_color_anim is not None:
+            self._foreground_color_anim = None
+
+    def _apply_style_params(self, params: dict[str, Any]) -> None:
+        self.padding = params["padding"]
+        self.corner_radius = params["corner_radius"]
+        self.border_width = params["border_width"]
+        self.shadow_color = params["shadow_color"]
+        self.shadow_blur = params["shadow_blur"]
+        self.shadow_offset = params["shadow_offset"]
+
+        self.state_layer_color = params["state_layer_color"]
+        self._HOVER_OPACITY = params["hover_opacity"]
+        self._PRESS_OPACITY = params["pressed_opacity"]
+        self._DRAG_OPACITY = params["drag_opacity"]
+
+        self._update_color_targets(
+            background_color=params["background_color"],
+            border_color=params["border_color"],
+            foreground_color=params["foreground_color"],
+        )
+        self.invalidate()
+
+    def _get_state_layer_target_opacity(self) -> float:
+        state = self.state
+        if state.dragging:
+            return float(self._DRAG_OPACITY)
+        if state.pressed:
+            return float(self._PRESS_OPACITY)
+        if state.hovered:
+            return float(self._HOVER_OPACITY)
+        return 0.0
+
+    def _get_active_state_layer_opacity(self) -> float:
+        target = self._get_state_layer_target_opacity()
+        if abs(self._state_layer_anim.target - target) > 1e-6:
+            self._state_layer_anim.target = target
+        return float(self._state_layer_anim.value)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # Handle disabled state opacity (logic ported from ButtonBase)
@@ -504,6 +687,7 @@ class FilledButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -518,19 +702,7 @@ class FilledButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-        self.invalidate()
+        self._apply_style_params(params)
 
 
 class OutlinedButton(MaterialButtonBase):
@@ -598,6 +770,7 @@ class OutlinedButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -612,20 +785,7 @@ class OutlinedButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-        self.border_color = params["border_color"]
-        self.invalidate()
+        self._apply_style_params(params)
 
 
 class TextButton(MaterialButtonBase):
@@ -691,6 +851,7 @@ class TextButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -705,20 +866,7 @@ class TextButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-
-        self.invalidate()
+        self._apply_style_params(params)
 
 
 class ElevatedButton(MaterialButtonBase):
@@ -781,6 +929,7 @@ class ElevatedButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -795,19 +944,7 @@ class ElevatedButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-        self.invalidate()
+        self._apply_style_params(params)
 
 
 class FilledTonalButton(MaterialButtonBase):
@@ -870,6 +1007,7 @@ class FilledTonalButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -884,19 +1022,7 @@ class FilledTonalButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-        self.invalidate()
+        self._apply_style_params(params)
 
 
 class FloatingActionButton(MaterialButtonBase):
@@ -953,6 +1079,7 @@ class FloatingActionButton(MaterialButtonBase):
         from nuiitivet.theme.manager import manager
 
         manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
 
     def on_unmount(self) -> None:
         from nuiitivet.theme.manager import manager
@@ -967,16 +1094,4 @@ class FloatingActionButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-
-        # Update properties
-        self.bgcolor = params["background_color"]
-        self.padding = params["padding"]
-        self.corner_radius = params["corner_radius"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
-
-        self.state_layer_color = params["state_layer_color"]
-        self._HOVER_OPACITY = params["hover_opacity"]
-        self._PRESS_OPACITY = params["pressed_opacity"]
-        self.invalidate()
+        self._apply_style_params(params)

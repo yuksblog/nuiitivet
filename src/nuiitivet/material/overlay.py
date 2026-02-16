@@ -10,11 +10,18 @@ from nuiitivet.material.buttons import TextButton
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.navigation.route import Route
+from nuiitivet.overlay.dialog_route import DialogRoute
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.widgeting.widget import Widget
+from .overlay_visual_state import MaterialOverlayLayerComposer
+from .transition_spec import (
+    MaterialTransitions,
+    MaterialDialogTransitionSpec,
+    MaterialSnackbarTransitionSpec,
+)
 
 from .intents import AlertDialogIntent, LoadingIntent
 
@@ -39,20 +46,27 @@ class MaterialOverlay(Overlay):
         intent_resolver: IntentResolver | None = None,
         intents: Mapping[type[Any], Callable[[Any], Widget | Route]] | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(layer_composer=MaterialOverlayLayerComposer())
 
         if intent_resolver is not None and intents is not None:
             raise ValueError("Specify only one of intent_resolver or intents")
 
         if intent_resolver is None:
             defaults: dict[type[Any], Callable[[Any], Widget | Route]] = {
-                AlertDialogIntent: lambda i: AlertDialog(
-                    title=i.title,
-                    message=i.message,
-                    icon=i.icon,
-                    actions=[TextButton("OK", on_click=lambda: Overlay.root().close(None), width=80)],
+                AlertDialogIntent: lambda i: DialogRoute(
+                    builder=lambda: AlertDialog(
+                        title=i.title,
+                        message=i.message,
+                        icon=i.icon,
+                        actions=[TextButton("OK", on_click=lambda: Overlay.root().close(None), width=80)],
+                    ),
+                    transition_spec=MaterialTransitions.dialog(),
                 ),
-                LoadingIntent: lambda _: LoadingIndicator(),
+                LoadingIntent: lambda _: DialogRoute(
+                    builder=lambda: LoadingIndicator(),
+                    transition_spec=MaterialTransitions.dialog(),
+                    barrier_dismissible=False,
+                ),
             }
             if intents:
                 defaults.update(intents)
@@ -87,21 +101,56 @@ class MaterialOverlay(Overlay):
         dismiss_on_outside_tap: bool | None = None,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
+        transition: MaterialDialogTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
-        if isinstance(dialog, (Widget, Route)):
-            resolved: Widget | Route = dialog
-        else:
-            resolved = self._intent_resolver.resolve(dialog)
-
         if dismiss_on_outside_tap is None:
             dismiss_on_outside_tap = True
 
+        route = self._normalize_dialog_to_route(
+            dialog,
+            dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
+            transition=transition,
+        )
+
         return self.show(
-            resolved,
+            route,
             passthrough=False,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             timeout=timeout,
             position=position,
+        )
+
+    def _normalize_dialog_to_route(
+        self,
+        dialog: Widget | Route | Any,
+        *,
+        dismiss_on_outside_tap: bool,
+        transition: MaterialDialogTransitionSpec | None = None,
+    ) -> Route:
+        """Normalize dialog input to a Route.
+
+        This is the single boundary adapter for `dialog(...)` input polymorphism.
+        """
+        resolved: Widget | Route
+        if isinstance(dialog, (Widget, Route)):
+            resolved = dialog
+        else:
+            resolved = self._intent_resolver.resolve(dialog)
+
+        if isinstance(resolved, Route):
+            # If explicit transition is provided, override the route's spec.
+            # Only if the resolved route is mutable or we can replace the spec.
+            # Route.transition_spec is not read-only property, but just an attribute?
+            # Let's assume we can/should overwrite it if an explicit one is given.
+            if transition is not None:
+                resolved.transition_spec = transition
+            return resolved
+
+        widget = resolved
+        return DialogRoute(
+            builder=lambda: widget,
+            transition_spec=transition or MaterialTransitions.dialog(),
+            barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
     def snackbar(
@@ -109,6 +158,7 @@ class MaterialOverlay(Overlay):
         message: str,
         *,
         duration: float = 3.0,
+        transition: MaterialSnackbarTransitionSpec | None = None,
     ) -> OverlayHandle[None]:
         return self.show(
             Snackbar(str(message)),
@@ -116,6 +166,7 @@ class MaterialOverlay(Overlay):
             dismiss_on_outside_tap=False,
             timeout=float(duration),
             position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
+            transition_spec=transition or MaterialTransitions.snackbar(),
         )
 
     class _LoadingContext(AbstractContextManager[None], AbstractAsyncContextManager[None]):

@@ -11,6 +11,8 @@ from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
+from nuiitivet.overlay.dialog_route import DialogRoute
+from nuiitivet.navigation.transition_spec import EmptyTransitionSpec
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 
@@ -35,6 +37,8 @@ def test_overlay_dialog_intent_resolves_to_widget() -> None:
     overlay.dialog(_ConfirmIntent("hi"), dismiss_on_outside_tap=False)
 
     assert overlay.has_entries() is True
+    route = next(iter(overlay._entry_to_route.values()))
+    assert not isinstance(route.transition_spec, EmptyTransitionSpec)
 
 
 def test_overlay_dialog_intent_resolves_to_route() -> None:
@@ -55,6 +59,31 @@ def test_overlay_dialog_unknown_intent_raises() -> None:
 
     with pytest.raises(RuntimeError, match=r"No overlay intent is registered: _ConfirmIntent"):
         overlay.dialog(_ConfirmIntent("x"), dismiss_on_outside_tap=False)
+
+
+def test_material_overlay_dialog_accepts_widget_without_manual_dialog_route() -> None:
+    overlay = MaterialOverlay(intents={})
+    widget = AlertDialog(title="Widget dialog")
+
+    route = overlay._normalize_dialog_to_route(widget, dismiss_on_outside_tap=False)
+
+    assert isinstance(route, DialogRoute)
+    assert route.barrier_dismissible is False
+
+    overlay.dialog(widget, dismiss_on_outside_tap=False)
+    assert overlay.has_entries() is True
+
+
+def test_material_overlay_dialog_accepts_custom_route_without_wrapping() -> None:
+    overlay = MaterialOverlay(intents={})
+    route = DialogRoute(builder=lambda: AlertDialog(title="Custom route"), barrier_dismissible=False)
+
+    normalized = overlay._normalize_dialog_to_route(route, dismiss_on_outside_tap=False)
+
+    assert normalized is route
+
+    overlay.dialog(route, dismiss_on_outside_tap=False)
+    assert overlay.has_entries() is True
 
 
 def test_overlay_loading_context_closes_on_exit() -> None:

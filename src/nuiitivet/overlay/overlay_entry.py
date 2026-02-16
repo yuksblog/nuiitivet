@@ -46,6 +46,7 @@ class OverlayEntry:
         self._on_dispose = on_dispose
         self._widget: Optional[Widget] = None
         self._is_visible = True
+        self._is_disposed = False
 
     def build_widget(self) -> Widget:
         """Build and cache the widget.
@@ -53,6 +54,8 @@ class OverlayEntry:
         Returns:
             The widget to display in the overlay.
         """
+        if self._widget is not None and getattr(self._widget, "_unmounted", False):
+            self._widget = None
         if self._widget is None:
             self._widget = self.builder()
         return self._widget
@@ -68,6 +71,10 @@ class OverlayEntry:
 
     def dispose(self) -> None:
         """Clean up resources associated with this entry."""
+        if self._is_disposed:
+            return
+        self._is_disposed = True
+
         if self._on_dispose is not None:
             try:
                 self._on_dispose()

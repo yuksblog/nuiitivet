@@ -5,6 +5,7 @@ import asyncio
 from nuiitivet.layout.stack import Stack
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.overlay.dialog_route import DialogRoute
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayDismissReason
 from nuiitivet.overlay.result import OverlayResult
@@ -15,6 +16,7 @@ from nuiitivet.material.buttons import FilledButton
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.widgeting.widget import Widget
 import pytest
 
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
@@ -39,9 +41,20 @@ def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:
     children = built.children_snapshot()
     assert len(children) == 2
     positioned = children[1]
-    positioned_children = positioned.children_snapshot()
-    assert len(positioned_children) == 1
-    assert positioned_children[0] is dialog
+
+    current = positioned
+    found_dialog = False
+    for _ in range(4):
+        nested = current.children_snapshot()
+        if len(nested) != 1:
+            break
+        child = nested[0]
+        if child is dialog:
+            found_dialog = True
+            break
+        current = child
+
+    assert found_dialog is True
 
 
 def test_overlay_show_dismiss_on_outside_tap_false_does_not_close_on_barrier_click() -> None:
@@ -167,3 +180,65 @@ def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
     result = asyncio.run(run())
     assert result.value is None
     assert result.reason is OverlayDismissReason.CLOSED
+
+
+def test_overlay_dialogroute_uses_barrier_dismissible_default_true() -> None:
+    overlay = Overlay()
+    route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=True)
+    overlay.show(route)
+
+    root = Stack(children=[overlay], alignment="center")
+    root.mount(None)
+    root.layout(800, 600)
+
+    assert overlay.has_entries() is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.PRESS, 5, 5) is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, 5, 5) is True
+    assert overlay.has_entries() is False
+
+
+def test_overlay_dialogroute_uses_barrier_dismissible_default_false() -> None:
+    overlay = Overlay()
+    route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=False)
+    overlay.show(route)
+
+    root = Stack(children=[overlay], alignment="center")
+    root.mount(None)
+    root.layout(800, 600)
+
+    assert overlay.has_entries() is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.PRESS, 5, 5) is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, 5, 5) is True
+    assert overlay.has_entries() is True
+
+
+def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
+    class _UnmountCountWidget(Widget):
+        def __init__(self) -> None:
+            super().__init__()
+            self.unmount_count = 0
+
+        def on_unmount(self) -> None:
+            self.unmount_count += 1
+            super().on_unmount()
+
+        def build(self) -> Widget:
+            return self
+
+    overlay_widget = Overlay()
+    widget_input = _UnmountCountWidget()
+    overlay_widget.show(widget_input, dismiss_on_outside_tap=False)
+    overlay_widget.close_topmost()
+
+    assert overlay_widget.has_entries() is False
+    assert widget_input.unmount_count == 1
+
+    overlay_route = Overlay()
+    route_widget = _UnmountCountWidget()
+    route_input = DialogRoute(builder=lambda: route_widget, barrier_dismissible=False)
+    overlay_route.show(route_input, dismiss_on_outside_tap=False)
+    overlay_route.close_topmost()
+
+    assert overlay_route.has_entries() is False
+    assert route_widget.unmount_count == 1
+    assert route_input._widget is None  # type: ignore[attr-defined]

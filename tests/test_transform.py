@@ -168,6 +168,27 @@ def test_transform_box_with_observable_opacity():
     assert modified._opacity == 0.5
 
 
+def test_chained_transform_preserves_existing_observable_bindings() -> None:
+    """Applying additional transform modifiers must not break existing bindings."""
+    opacity_obs = _ObservableValue(0.0)
+    scale_obs = _ObservableValue(1.0)
+
+    widget = MockWidget()
+    modified = widget.modifier(opacity(opacity_obs) | scale(scale_obs))
+
+    assert isinstance(modified, TransformBox)
+    assert modified._opacity == 0.0
+    assert modified._scale_x == 1.0
+    assert modified._scale_y == 1.0
+
+    opacity_obs.value = 0.7
+    assert modified._opacity == 0.7
+
+    scale_obs.value = 1.4
+    assert modified._scale_x == 1.4
+    assert modified._scale_y == 1.4
+
+
 def test_transform_origin_center():
     """Test transform origin resolution for 'center'."""
     widget = MockWidget()

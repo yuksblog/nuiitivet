@@ -12,13 +12,19 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.alignment import normalize_alignment
 from nuiitivet.modifiers.background import background
 from nuiitivet.modifiers.clickable import clickable
+from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
 from nuiitivet.navigation import PageRoute, Route
+from nuiitivet.navigation.stack_runtime import RouteStackRuntime
+from nuiitivet.navigation.transition_engine import TransitionEngine
+from nuiitivet.navigation.transition_spec import EmptyTransitionSpec, TransitionPhase, TransitionSpec, Transitions
 from nuiitivet.common.logging_once import exception_once
 from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
 from .overlay_position import OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
+from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
+from .transition_state import OverlayTransitionState
 
 
 logger = logging.getLogger(__name__)
@@ -35,23 +41,53 @@ class _ModalNavigator(ComposableWidget):
     def __init__(self, *, base_route: Route) -> None:
         super().__init__(width="100%", height="100%")
         self._base_route = base_route
-        self._routes: list[Route] = [base_route]
+        self._stack = RouteStackRuntime(initial_routes=[base_route], pinned_routes=[base_route])
+        self._pending_dispose: dict[int, Callable[[], None]] = {}
+
+    @property
+    def _routes(self) -> list[Route]:
+        return self._stack.routes
 
     def can_pop(self) -> bool:
-        return len(self._routes) > 1
+        return self._stack.can_pop(min_routes=1)
 
-    def push(self, route: Route) -> None:
-        self._routes.append(route)
+    def push(self, route: _OverlayEntryRoute) -> None:
+        self._stack.push(route)
+        if self._should_animate_route(route):
+            route.start_enter(
+                on_update=lambda: self.invalidate(),
+                on_complete=lambda: self._mark_active(route),
+            )
+        else:
+            self._stack.mark_active(route)
         self.rebuild()
 
-    def remove_route(self, route: Route) -> None:
+    def remove_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
         if route is self._base_route:
             return
-        if route not in self._routes:
+        if route not in self._stack.routes:
+            if on_disposed is not None:
+                on_disposed()
             return
-        self._routes.remove(route)
+        if not self._stack.mark_exiting(route):
+            if on_disposed is not None:
+                on_disposed()
+            return
+        if on_disposed is not None:
+            self._pending_dispose[id(route)] = on_disposed
+
+        if self._should_animate_route(route):
+            route.start_exit(
+                on_update=lambda: self.invalidate(),
+                on_complete=lambda: self._finalize_route_exit(route),
+            )
+            return
+
+        self._finalize_route_exit(route)
+
+    def _finalize_route_exit(self, route: _OverlayEntryRoute) -> None:
         try:
-            route.dispose()
+            self._stack.complete_exit(route)
         except Exception:
             exception_once(
                 logger,
@@ -59,20 +95,50 @@ class _ModalNavigator(ComposableWidget):
                 "Overlay modal route dispose raised (route=%s)",
                 type(route).__name__,
             )
+        callback = self._pending_dispose.pop(id(route), None)
+        if callback is not None:
+            try:
+                callback()
+            except Exception:
+                exception_once(
+                    logger,
+                    f"overlay_modal_route_on_disposed_exc:{type(route).__name__}",
+                    "Overlay modal route on_disposed raised (route=%s)",
+                    type(route).__name__,
+                )
         self.rebuild()
 
     def pop(self) -> None:
         if not self.can_pop():
             return
-        route = self._routes[-1]
+        route = self._stack.begin_pop()
+        if route is None:
+            return
+        if not isinstance(route, _OverlayEntryRoute):
+            self._finalize_route_exit(self._coerce_route(route))
+            return
         self.remove_route(route)
+
+    def _coerce_route(self, route: Route) -> _OverlayEntryRoute:
+        if isinstance(route, _OverlayEntryRoute):
+            return route
+        raise RuntimeError(f"Overlay modal runtime requires _OverlayEntryRoute, got: {type(route).__name__}")
+
+    def _mark_active(self, route: Route) -> None:
+        self._stack.mark_active(route)
+        self.invalidate()
+
+    def _should_animate_route(self, route: Route) -> bool:
+        if isinstance(route.transition_spec, EmptyTransitionSpec):
+            return False
+        return getattr(self, "_app", None) is not None
 
     def build(self) -> Widget:
         if not self.can_pop():
             return Container()
 
         layers: list[Widget] = []
-        for route in self._routes[1:]:
+        for route in self._stack.routes[1:]:
             try:
                 layers.append(route.build_widget())
             except Exception:
@@ -104,11 +170,95 @@ class _OverlayEntryRoute(Route):
     double-dispose when the entry is removed.
     """
 
-    def __init__(self, entry: OverlayEntry, *, transition: str = "none") -> None:
-        super().__init__(builder=entry.build_widget, transition=transition)
+    def __init__(
+        self,
+        entry: OverlayEntry,
+        *,
+        transition_spec: TransitionSpec | None = None,
+        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
+        barrier_dismissible: bool = True,
+    ) -> None:
+        super().__init__(builder=entry.build_widget, transition_spec=transition_spec or Transitions.empty())
+        self.barrier_color = barrier_color
+        self.barrier_dismissible = bool(barrier_dismissible)
+        self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
+        self._transition_engine = TransitionEngine()
+
+    @property
+    def transition_phase_obs(self) -> Observable[TransitionPhase]:
+        return self.transition_state.phase_obs
+
+    @property
+    def transition_progress_obs(self) -> Observable[float]:
+        return self.transition_state.progress_obs
+
+    def start_enter(self, *, on_update: Callable[[], None], on_complete: Callable[[], None]) -> None:
+        self.transition_phase_obs.value = TransitionPhase.ENTER
+        self.transition_progress_obs.value = 0.0
+
+        motion = self._get_motion(TransitionPhase.ENTER)
+
+        self._transition_engine.start(
+            start=0.0,
+            target=1.0,
+            apply=lambda v: self._apply_progress(v, on_update=on_update),
+            on_complete=lambda: self._finish_enter(on_update=on_update, on_complete=on_complete),
+            motion=motion,
+        )
+
+    def start_exit(self, *, on_update: Callable[[], None], on_complete: Callable[[], None]) -> None:
+        self.transition_phase_obs.value = TransitionPhase.EXIT
+        self.transition_progress_obs.value = 0.0
+
+        motion = self._get_motion(TransitionPhase.EXIT)
+
+        self._transition_engine.start(
+            start=0.0,
+            target=1.0,
+            apply=lambda v: self._apply_progress(v, on_update=on_update),
+            on_complete=on_complete,
+            motion=motion,
+        )
+
+    def _get_motion(self, phase: TransitionPhase) -> Any | None:
+        try:
+            definition = getattr(self.transition_spec, phase.value, None)
+            if definition is None:
+                return None
+            return getattr(definition, "motion", None)
+        except Exception:
+            return None
+
+    def _apply_progress(self, value: float, *, on_update: Callable[[], None]) -> None:
+        clamped = max(0.0, min(1.0, float(value)))
+        self.transition_progress_obs.value = clamped
+        on_update()
+
+    def _finish_enter(self, *, on_update: Callable[[], None], on_complete: Callable[[], None]) -> None:
+        self.transition_phase_obs.value = TransitionPhase.ACTIVE
+        self.transition_progress_obs.value = 1.0
+        on_update()
+        on_complete()
 
     def dispose(self) -> None:
+        self._transition_engine.dispose()
         self._widget = None
+
+
+class _DefaultOverlayLayerComposer:
+    """Fallback core composer with minimal, design-agnostic rendering."""
+
+    def compose(self, context: OverlayLayerCompositionContext) -> Widget:
+        positioned_content = context.position_content(context.content)
+
+        if context.passthrough:
+            return positioned_content
+
+        barrier = Container(width="100%", height="100%").modifier(
+            background(context.barrier_color)
+            | clickable(on_click=context.on_barrier_click if context.barrier_dismissible else None)
+        )
+        return Stack(children=[barrier, positioned_content], alignment="top-left", width="100%", height="100%")
 
 
 class Overlay(ComposableWidget):
@@ -134,17 +284,18 @@ class Overlay(ComposableWidget):
 
     _root_overlay: Optional["Overlay"] = None  # Class variable for root overlay
 
-    def __init__(self) -> None:
+    def __init__(self, *, layer_composer: OverlayLayerComposer | None = None) -> None:
         super().__init__(width="100%", height="100%")
 
         # Overlay entries are implemented as routes on a private modal navigator.
         # A base route keeps the navigator mounted even when empty.
-        self._base_route: Route = PageRoute(builder=lambda: Container(), transition="none")
+        self._base_route: Route = PageRoute(builder=lambda: Container(), transition_spec=Transitions.empty())
         self._modal_navigator: _ModalNavigator = _ModalNavigator(base_route=self._base_route)
-        self._entry_to_route: Dict[OverlayEntry, Route] = {}
+        self._entry_to_route: Dict[OverlayEntry, _OverlayEntryRoute] = {}
         self._entry_to_future: Dict[OverlayEntry, asyncio.Future[OverlayResult[Any]]] = {}
         self._entry_to_pending_result: Dict[OverlayEntry, OverlayResult[Any]] = {}
         self._entry_to_timeout_cb: Dict[OverlayEntry, Callable[[float], None]] = {}
+        self._layer_composer: OverlayLayerComposer = layer_composer or _DefaultOverlayLayerComposer()
 
     def _get_future_for_entry(self, entry: OverlayEntry) -> asyncio.Future[OverlayResult[Any]] | None:
         return self._entry_to_future.get(entry)
@@ -215,6 +366,36 @@ class Overlay(ComposableWidget):
         self._complete_entry_future(entry, OverlayResult(value=None, reason=reason))
         self.remove_entry(entry)
 
+    def _normalize_to_route(self, content: Widget | Route) -> Route:
+        """Normalize overlay content to a Route.
+
+        This is the single boundary adapter for `show(...)` input polymorphism.
+        Internal overlay runtime should operate on `Route` only.
+        """
+        if isinstance(content, Route):
+            return content
+
+        widget = content
+        return PageRoute(builder=lambda: widget, transition_spec=Transitions.empty())
+
+    def _to_overlay_entry_route(
+        self,
+        *,
+        entry: OverlayEntry,
+        route: Route,
+        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
+        barrier_dismissible: bool = True,
+    ) -> _OverlayEntryRoute:
+        """Wrap a content route into the modal runtime route adapter."""
+        resolved_barrier_color = getattr(route, "barrier_color", barrier_color)
+        resolved_barrier_dismissible = getattr(route, "barrier_dismissible", barrier_dismissible)
+        return _OverlayEntryRoute(
+            entry,
+            transition_spec=route.transition_spec,
+            barrier_color=resolved_barrier_color,
+            barrier_dismissible=bool(resolved_barrier_dismissible),
+        )
+
     def show(
         self,
         content: Widget | Route,
@@ -223,6 +404,7 @@ class Overlay(ComposableWidget):
         dismiss_on_outside_tap: bool = False,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
+        transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Show a widget or route as an overlay entry.
 
@@ -237,56 +419,83 @@ class Overlay(ComposableWidget):
 
         entry: OverlayEntry
 
-        content_route: Route | None = None
-        content_widget: Widget
-        transition: str = "none"
+        content_route = self._normalize_to_route(content)
 
-        if isinstance(content, Route):
-            content_route = content
-            transition = getattr(content, "transition", "none")
-            content_widget = content.build_widget()
-        else:
-            content_widget = content
+        if transition_spec is not None:
+            match getattr(content_route, "transition_spec", None):
+                # Only override if we can (e.g. valid route object)
+                # Actually content_route is always a Route here.
+                case _:
+                    content_route.transition_spec = transition_spec
+
+        content_widget = content_route.build_widget()
+        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128)
+        barrier_dismissible = bool(dismiss_on_outside_tap)
+        barrier_color = getattr(content_route, "barrier_color", barrier_color)
+        route_barrier_dismissible = getattr(content_route, "barrier_dismissible", None)
+        if route_barrier_dismissible is not None and dismiss_on_outside_tap is False:
+            barrier_dismissible = bool(route_barrier_dismissible)
 
         effective_position = position or OverlayPosition.alignment("center")
-        positioned = _PositionedOverlayContent(
-            content_widget,
-            alignment=effective_position.alignment_key,
-            offset=effective_position.offset,
-        )
+
+        def position_content(content: Widget) -> Widget:
+            return _PositionedOverlayContent(
+                content,
+                alignment=effective_position.alignment_key,
+                offset=effective_position.offset,
+            )
 
         def on_dispose() -> None:
             self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
+            try:
+                content_route._widget = None  # type: ignore[attr-defined]
+            except Exception:
+                exception_once(
+                    logger,
+                    f"overlay_show_release_cached_widget_exc:{type(content_route).__name__}",
+                    "Overlay show release cached widget raised (route=%s)",
+                    type(content_route).__name__,
+                )
 
-            if content_route is not None:
-                try:
-                    content_route._widget = None  # type: ignore[attr-defined]
-                except Exception:
-                    exception_once(
-                        logger,
-                        f"overlay_show_release_cached_widget_exc:{type(content_route).__name__}",
-                        "Overlay show release cached widget raised (route=%s)",
-                        type(content_route).__name__,
-                    )
-
-        def build_layer() -> Widget:
-            if passthrough:
-                return positioned
-
-            scrim_color = (0, 0, 0, 128)
-
+        def build_layer(route: _OverlayEntryRoute) -> Widget:
             def on_barrier_click() -> None:
-                if dismiss_on_outside_tap:
+                if barrier_dismissible:
                     self._dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
 
-            barrier = Container(width="100%", height="100%").modifier(
-                background(scrim_color) | clickable(on_click=on_barrier_click if dismiss_on_outside_tap else None)
+            context = OverlayLayerCompositionContext(
+                content=content_widget,
+                transition_state=route.transition_state,
+                passthrough=passthrough,
+                barrier_color=barrier_color,
+                barrier_dismissible=barrier_dismissible,
+                on_barrier_click=on_barrier_click,
+                position_content=position_content,
             )
-            return Stack(children=[barrier, positioned], alignment="top-left", width="100%", height="100%")
+            return self._layer_composer.compose(context)
 
-        entry = OverlayEntry(builder=build_layer, on_dispose=on_dispose)
-        modal_route = _OverlayEntryRoute(entry, transition=transition)
+        route_holder: dict[str, _OverlayEntryRoute] = {}
+        layer_holder: dict[str, Widget] = {}
+
+        def build_entry_widget() -> Widget:
+            route = route_holder.get("route")
+            if route is None:
+                return Container()
+            layer = layer_holder.get("layer")
+            if layer is None:
+                layer = build_layer(route)
+                layer_holder["layer"] = layer
+            return layer
+
+        entry = OverlayEntry(builder=build_entry_widget, on_dispose=on_dispose)
+        modal_route = self._to_overlay_entry_route(
+            entry=entry,
+            route=content_route,
+            barrier_color=barrier_color,
+            barrier_dismissible=barrier_dismissible,
+        )
+        route_holder["route"] = modal_route
         self._insert_entry_with_route(entry, modal_route)
+
         self.rebuild()
 
         if timeout is not None:
@@ -315,13 +524,16 @@ class Overlay(ComposableWidget):
         return self._modal_navigator
 
     def insert_entry(self, entry: OverlayEntry) -> None:
-        route = PageRoute(builder=entry.build_widget, transition="none")
+        route = PageRoute(builder=entry.build_widget, transition_spec=Transitions.empty())
         self._insert_entry_with_route(entry, route)
         self.rebuild()
 
     def _insert_entry_with_route(self, entry: OverlayEntry, route: Route) -> None:
-        self._entry_to_route[entry] = route
-        self._modal_navigator.push(route)
+        modal_route = (
+            route if isinstance(route, _OverlayEntryRoute) else self._to_overlay_entry_route(entry=entry, route=route)
+        )
+        self._entry_to_route[entry] = modal_route
+        self._modal_navigator.push(modal_route)
 
     def remove_entry(self, entry: OverlayEntry) -> None:
         route = self._entry_to_route.pop(entry, None)
@@ -338,12 +550,11 @@ class Overlay(ComposableWidget):
             except Exception:
                 self._entry_to_pending_result[entry] = OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED)
 
-        self._remove_modal_route(route)
-        entry.dispose()
+        self._remove_modal_route(route, on_disposed=entry.dispose)
         self.rebuild()
 
-    def _remove_modal_route(self, route: Route) -> None:
-        self._modal_navigator.remove_route(route)
+    def _remove_modal_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
+        self._modal_navigator.remove_route(route, on_disposed=on_disposed)
 
     def has_entries(self) -> bool:
         try:

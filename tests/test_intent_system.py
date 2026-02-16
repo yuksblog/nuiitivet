@@ -100,7 +100,20 @@ def test_overlay_dialog_intent_raises_when_unregistered() -> None:
 def test_overlay_dialog_route_disposes_route_on_remove() -> None:
     overlay = Overlay()
 
-    route: Route = PageRoute(builder=_FlagWidget)
+    class _UnmountCountWidget(Widget):
+        def __init__(self) -> None:
+            super().__init__()
+            self.unmount_count = 0
+
+        def on_unmount(self) -> None:
+            self.unmount_count += 1
+            super().on_unmount()
+
+        def build(self) -> Widget:
+            return self
+
+    route_widget = _UnmountCountWidget()
+    route: Route = PageRoute(builder=lambda: route_widget)
 
     handle = overlay.show(route)
 
@@ -108,5 +121,35 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
     assert route._widget is not None  # type: ignore[attr-defined]
 
     handle.close()
+    handle.close()
 
     assert route._widget is None  # type: ignore[attr-defined]
+    assert route_widget.unmount_count == 1
+
+
+def test_overlay_normalize_to_route_passes_route_through() -> None:
+    overlay = Overlay()
+    route = PageRoute(builder=_FlagWidget)
+
+    normalized = overlay._normalize_to_route(route)
+
+    assert normalized is route
+
+
+def test_overlay_normalize_to_route_wraps_widget() -> None:
+    overlay = Overlay()
+    widget = _FlagWidget(label="overlay")
+
+    normalized = overlay._normalize_to_route(widget)
+
+    assert isinstance(normalized, Route)
+    assert normalized is not widget
+    assert normalized.build_widget() is widget
+
+
+def test_material_overlay_dialog_normalize_to_route_resolves_intent() -> None:
+    overlay = MaterialOverlay(intents={_DialogIntent: lambda i: _FlagWidget(label=i.label)})
+
+    route = overlay._normalize_dialog_to_route(_DialogIntent(label="intent"), dismiss_on_outside_tap=True)
+
+    assert isinstance(route, Route)

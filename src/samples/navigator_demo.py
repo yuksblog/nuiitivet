@@ -31,7 +31,7 @@ class HomeIntent:
 class HomePage(ComposableWidget):
     def build(self) -> Widget:
         def go_next() -> None:
-            Navigator.of(self).push(PageRoute(builder=DetailsPage, transition="fade"))
+            Navigator.of(self).push(PageRoute(builder=DetailsPage))
 
         return Container(
             padding=24,
@@ -53,7 +53,7 @@ class DetailsPage(ComposableWidget):
             Navigator.of(self).pop()
 
         def push_more() -> None:
-            Navigator.of(self).push(PageRoute(builder=DetailsPage, transition="fade"))
+            Navigator.of(self).push(PageRoute(builder=DetailsPage))
 
         return Container(
             padding=24,

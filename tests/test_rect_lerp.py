@@ -1,6 +1,6 @@
-"""Tests for RectTween."""
+"""Tests for rectangle interpolation helpers."""
 
-from nuiitivet.animation.tween import Rect, RectTween
+from nuiitivet.animation.interpolate import Rect, lerp_rect
 
 
 def test_rect_creation():
@@ -47,41 +47,39 @@ def test_rect_from_tuple():
     assert rect.height == 50.0
 
 
-def test_rect_tween_interpolation():
-    """Test RectTween linear interpolation."""
+def test_rect_lerp_interpolation():
+    """Test rectangle linear interpolation."""
     begin = Rect(x=0.0, y=0.0, width=100.0, height=50.0)
     end = Rect(x=100.0, y=50.0, width=200.0, height=100.0)
-    tween = RectTween(begin, end)
 
     # At t=0.0, should return begin
-    result = tween.transform(0.0)
+    result = lerp_rect(begin, end, 0.0)
     assert result.x == 0.0
     assert result.y == 0.0
     assert result.width == 100.0
     assert result.height == 50.0
 
     # At t=1.0, should return end
-    result = tween.transform(1.0)
+    result = lerp_rect(begin, end, 1.0)
     assert result.x == 100.0
     assert result.y == 50.0
     assert result.width == 200.0
     assert result.height == 100.0
 
     # At t=0.5, should return midpoint
-    result = tween.transform(0.5)
+    result = lerp_rect(begin, end, 0.5)
     assert result.x == 50.0
     assert result.y == 25.0
     assert result.width == 150.0
     assert result.height == 75.0
 
 
-def test_rect_tween_with_to_int_tuple():
-    """Test RectTween with to_int_tuple conversion."""
+def test_rect_lerp_with_to_int_tuple():
+    """Test rectangle interpolation with to_int_tuple conversion."""
     begin = Rect(x=0.0, y=0.0, width=96.0, height=32.0)
     end = Rect(x=0.0, y=0.0, width=220.0, height=56.0)
-    tween = RectTween(begin, end)
 
-    result = tween.transform(0.5).to_int_tuple()
+    result = lerp_rect(begin, end, 0.5).to_int_tuple()
     assert result == (0, 0, 158, 44)
 
 
@@ -95,19 +93,18 @@ def test_rect_immutability():
         pass  # Expected
 
 
-def test_rect_tween_quarter_interpolation():
-    """Test RectTween at quarter points."""
+def test_rect_lerp_quarter_interpolation():
+    """Test rectangle interpolation at quarter points."""
     begin = Rect(x=0.0, y=0.0, width=100.0, height=100.0)
     end = Rect(x=100.0, y=100.0, width=200.0, height=200.0)
-    tween = RectTween(begin, end)
 
-    result = tween.transform(0.25)
+    result = lerp_rect(begin, end, 0.25)
     assert result.x == 25.0
     assert result.y == 25.0
     assert result.width == 125.0
     assert result.height == 125.0
 
-    result = tween.transform(0.75)
+    result = lerp_rect(begin, end, 0.75)
     assert result.x == 75.0
     assert result.y == 75.0
     assert result.width == 175.0

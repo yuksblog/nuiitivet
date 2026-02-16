@@ -15,6 +15,7 @@ from nuiitivet.common.logging_once import exception_once
 
 logger = logging.getLogger(__name__)
 
+
 if TYPE_CHECKING:
     from pyglet.window import Window
 

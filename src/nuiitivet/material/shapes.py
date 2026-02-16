@@ -56,7 +56,7 @@ class ShapeParams:
 _SHAPE_PARAMS: Dict[MaterialShapeId, ShapeParams] = {
     MaterialShapeId.SOFT_BURST: ShapeParams(a=1.0, b=1.0, exp=1.6, ripple_k=12, ripple_amp=0.10, phase=0.2),
     MaterialShapeId.COOKIE_9_SIDED: ShapeParams(a=1.0, b=1.0, exp=2.2, ripple_k=9, ripple_amp=0.14, phase=0.0),
-    MaterialShapeId.PENTAGON: ShapeParams(a=1.0, b=1.0, exp=4.0, ripple_k=5, ripple_amp=0.06, phase=0.0),
+    MaterialShapeId.PENTAGON: ShapeParams(a=1.0, b=1.0, exp=2.4, ripple_k=5, ripple_amp=0.06, phase=0.0),
     MaterialShapeId.PILL: ShapeParams(a=1.25, b=0.78, exp=6.5, ripple_k=0, ripple_amp=0.0, phase=0.0),
     MaterialShapeId.SUNNY: ShapeParams(a=1.0, b=1.0, exp=2.0, ripple_k=8, ripple_amp=0.22, phase=0.0),
     MaterialShapeId.COOKIE_4_SIDED: ShapeParams(a=1.0, b=1.0, exp=5.5, ripple_k=4, ripple_amp=0.10, phase=0.0),

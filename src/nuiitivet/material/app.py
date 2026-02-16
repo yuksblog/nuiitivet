@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Optional, cast
 
+from nuiitivet.material.navigation_visual_state import MaterialNavigationLayerComposer
+from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialTheme
-from nuiitivet.navigation.route import Route
+from nuiitivet.navigation.navigator import Navigator
+from nuiitivet.navigation.route import PageRoute, Route
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.title_bar import TitleBar
 from nuiitivet.runtime.window import WindowPosition, WindowSizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
+
+from .transition_spec import MaterialTransitions
 
 
 class MaterialApp(App):
@@ -57,15 +62,50 @@ class MaterialApp(App):
         if theme is None:
             theme = MaterialTheme.light("#6750A4")
 
+        wrapped_routes: dict[type[Any], Callable[[Any], Route | Widget]] = {}
+
+        def _normalize_resolved(value: Route | Widget) -> Route:
+            if isinstance(value, Route):
+                return value
+            if isinstance(value, Widget):
+                widget = value
+                return PageRoute(
+                    builder=lambda: widget,
+                    transition_spec=MaterialTransitions.page(),
+                )
+            raise TypeError("Route factory must return a Route or Widget.")
+
+        def _wrap_route_factory(
+            factory: Callable[[Any], Route | Widget],
+        ) -> Callable[[Any], Route]:
+            def _wrapped(intent: Any) -> Route:
+                return _normalize_resolved(factory(intent))
+
+            return _wrapped
+
+        for intent_type, factory in routes.items():
+            wrapped_routes[intent_type] = _wrap_route_factory(factory)
+
         def _overlay_factory() -> MaterialOverlay:
             return MaterialOverlay(intents=overlay_routes)
+
+        def _navigator_factory(
+            initial: Route,
+            intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None,
+        ) -> Navigator:
+            return MaterialNavigator(
+                routes=[initial],
+                intent_routes=intent_routes,
+                layer_composer=MaterialNavigationLayerComposer(),
+            )
 
         return cast(
             MaterialApp,
             super().navigation(
-                routes=routes,
+                routes=wrapped_routes,
                 initial_route=initial_route,
                 overlay_factory=_overlay_factory,
+                navigator_factory=_navigator_factory,
                 width=width,
                 height=height,
                 title_bar=title_bar,
@@ -105,6 +145,16 @@ class MaterialApp(App):
         def _overlay_factory() -> MaterialOverlay:
             return MaterialOverlay(intents=overlay_routes)
 
+        def _navigator_factory(
+            initial: Route,
+            intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None,
+        ) -> Navigator:
+            return MaterialNavigator(
+                routes=[initial],
+                intent_routes=intent_routes,
+                layer_composer=MaterialNavigationLayerComposer(),
+            )
+
         super().__init__(
             content=content,
             width=width,
@@ -113,5 +163,6 @@ class MaterialApp(App):
             background=background,
             theme=theme,
             overlay_factory=_overlay_factory,
+            navigator_factory=_navigator_factory,
             window_position=window_position,
         )

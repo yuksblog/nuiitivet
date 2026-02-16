@@ -5,6 +5,8 @@ This demo shows how to use the Overlay system:
 - AlertDialog with custom content and actions
 """
 
+import logging
+
 from nuiitivet.material.app import MaterialApp
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -14,6 +16,9 @@ from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+
+
+logger = logging.getLogger(__name__)
 
 
 class OverlayDemo(ComposableWidget):
@@ -28,20 +33,29 @@ class OverlayDemo(ComposableWidget):
     def show_snackbar(self):
         """Show a simple snackbar message."""
         self.snackbar_count.value += 1
-        MaterialOverlay.root().snackbar(f"Snackbar #{self.snackbar_count.value}")
+        overlay = MaterialOverlay.root()
+        logger.warning("[overlay-demo] show_snackbar before entries=%s", overlay.has_entries())
+        overlay.snackbar(f"Snackbar #{self.snackbar_count.value}")
+        logger.warning("[overlay-demo] show_snackbar after entries=%s", overlay.has_entries())
 
     def show_long_snackbar(self):
         """Show a snackbar with longer duration."""
-        MaterialOverlay.root().snackbar("This snackbar lasts 5 seconds", duration=5.0)
+        overlay = MaterialOverlay.root()
+        logger.warning("[overlay-demo] show_long_snackbar before entries=%s", overlay.has_entries())
+        overlay.snackbar("This snackbar lasts 5 seconds", duration=5.0)
+        logger.warning("[overlay-demo] show_long_snackbar after entries=%s", overlay.has_entries())
 
     def show_info_dialog(self):
         """Show an information dialog."""
+        overlay = MaterialOverlay.root()
+        logger.warning("[overlay-demo] show_info_dialog begin entries=%s", overlay.has_entries())
 
         def on_ok():
             self.dialog_result.value = "Info dialog: OK clicked"
-            MaterialOverlay.root().close_topmost()
+            logger.warning("[overlay-demo] info_dialog on_ok close_topmost")
+            overlay.close_topmost()
 
-        MaterialOverlay.root().dialog(
+        overlay.dialog(
             AlertDialog(
                 title="Information",
                 message="This is an information dialog.",
@@ -50,19 +64,24 @@ class OverlayDemo(ComposableWidget):
                 ],
             )
         )
+        logger.warning("[overlay-demo] show_info_dialog end entries=%s", overlay.has_entries())
 
     def show_confirm_dialog(self):
         """Show a confirmation dialog."""
+        overlay = MaterialOverlay.root()
+        logger.warning("[overlay-demo] show_confirm_dialog begin entries=%s", overlay.has_entries())
 
         def on_cancel():
             self.dialog_result.value = "Confirm dialog: Cancelled"
-            MaterialOverlay.root().close_topmost()
+            logger.warning("[overlay-demo] confirm_dialog cancel close_topmost")
+            overlay.close_topmost()
 
         def on_confirm():
             self.dialog_result.value = "Confirm dialog: Confirmed"
-            MaterialOverlay.root().close_topmost()
+            logger.warning("[overlay-demo] confirm_dialog confirm close_topmost")
+            overlay.close_topmost()
 
-        MaterialOverlay.root().dialog(
+        overlay.dialog(
             AlertDialog(
                 title="Confirm Action",
                 message="Are you sure you want to proceed?",
@@ -72,17 +91,21 @@ class OverlayDemo(ComposableWidget):
                 ],
             )
         )
+        logger.warning("[overlay-demo] show_confirm_dialog end entries=%s", overlay.has_entries())
 
     def show_custom_dialog(self):
         """Show a dialog with custom styling."""
+        overlay = MaterialOverlay.root()
+        logger.warning("[overlay-demo] show_custom_dialog begin entries=%s", overlay.has_entries())
 
         def on_close():
             self.dialog_result.value = "Custom dialog: Closed"
-            MaterialOverlay.root().close_topmost()
+            logger.warning("[overlay-demo] custom_dialog close_topmost")
+            overlay.close_topmost()
 
         from nuiitivet.material.styles.dialog_style import DialogStyle
 
-        MaterialOverlay.root().dialog(
+        overlay.dialog(
             AlertDialog(
                 title="Custom Dialog",
                 message="This dialog has custom content.\nMultiple lines are supported.",
@@ -97,6 +120,7 @@ class OverlayDemo(ComposableWidget):
                 ),
             )
         )
+        logger.warning("[overlay-demo] show_custom_dialog end entries=%s", overlay.has_entries())
 
     def build(self) -> Widget:
         """Build the demo widget tree."""

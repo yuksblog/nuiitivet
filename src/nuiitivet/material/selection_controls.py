@@ -9,8 +9,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
 
+from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import Disposable, ObservableProtocol
+from nuiitivet.observable import ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -20,6 +21,9 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+_STATE_LAYER_MOTION = LinearMotion(0.1)
+_SELECTION_MOTION = LinearMotion(0.12)
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -49,7 +53,6 @@ class Checkbox(Toggleable, InteractiveWidget):
         self._checked_external_tri: ObservableProtocol[Optional[bool]] | None = None
         self._checked_external_bool: ObservableProtocol[bool] | None = None
         self._indeterminate_external: ObservableProtocol[bool] | None = None
-        self._external_unsubs: list[Disposable] = []
 
         checked_is_obs = hasattr(checked, "subscribe") and hasattr(checked, "value")
         indeterminate_is_obs = hasattr(indeterminate, "subscribe") and hasattr(indeterminate, "value")
@@ -122,6 +125,12 @@ class Checkbox(Toggleable, InteractiveWidget):
             exception_once(_logger, "checkbox_size_exc", "Failed to parse checkbox size")
             self._touch_target_size = 48
 
+        initial_selection = 1.0 if self.value is True or self.value is None else 0.0
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SELECTION_MOTION)
+        self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
+
     def _effective_value_from_external(self) -> Optional[bool]:
         if self._checked_external_tri is not None:
             return self._checked_external_tri.value
@@ -158,23 +167,12 @@ class Checkbox(Toggleable, InteractiveWidget):
     def on_mount(self) -> None:
         super().on_mount()
 
-        def _subscribe(obs: object) -> None:
-            subscribe = getattr(obs, "subscribe", None)
-            if not callable(subscribe):
-                return
-            try:
-                unsub = subscribe(lambda _v: self._sync_from_external())
-                if hasattr(unsub, "dispose"):
-                    self._external_unsubs.append(cast(Disposable, unsub))
-            except Exception:
-                return
-
         if self._checked_external_tri is not None:
-            _subscribe(self._checked_external_tri)
+            self.observe(self._checked_external_tri, lambda _v: self._sync_from_external())
         if self._checked_external_bool is not None:
-            _subscribe(self._checked_external_bool)
+            self.observe(self._checked_external_bool, lambda _v: self._sync_from_external())
         if self._indeterminate_external is not None:
-            _subscribe(self._indeterminate_external)
+            self.observe(self._indeterminate_external, lambda _v: self._sync_from_external())
 
         self._sync_from_external()
 
@@ -188,14 +186,30 @@ class Checkbox(Toggleable, InteractiveWidget):
             except Exception:
                 pass
 
-    def on_unmount(self) -> None:
-        for unsub in self._external_unsubs:
-            try:
-                unsub.dispose()
-            except Exception:
-                pass
-        self._external_unsubs.clear()
-        super().on_unmount()
+    def _get_state_layer_target_opacity(self) -> float:
+        state = self.state
+        if state.dragging:
+            return float(self._DRAG_OPACITY)
+        if state.pressed:
+            return float(self._PRESS_OPACITY)
+        if state.hovered:
+            return float(self._HOVER_OPACITY)
+        return 0.0
+
+    def _get_active_state_layer_opacity(self) -> float:
+        target = self._get_state_layer_target_opacity()
+        if abs(self._state_layer_anim.target - target) > 1e-6:
+            self._state_layer_anim.target = target
+        return float(self._state_layer_anim.value)
+
+    def _get_selection_target(self) -> float:
+        return 1.0 if self.value is True or self.value is None else 0.0
+
+    def _get_selection_progress(self) -> float:
+        target = self._get_selection_target()
+        if abs(self._selection_anim.target - target) > 1e-6:
+            self._selection_anim.target = target
+        return float(self._selection_anim.value)
 
     def _handle_click(self) -> None:
         if self.disabled:
@@ -389,9 +403,10 @@ class Checkbox(Toggleable, InteractiveWidget):
                     draw_oval(canvas, make_rect(ox, oy, side, side), focus_p)
 
             val = self.value
-            if val is True or val is None:
+            selection_progress = self._get_selection_progress()
+            if selection_progress > 1e-6:
                 prim = roles.get(ColorRole.PRIMARY, "#000000")
-                fill_p = make_paint(color=skcolor(prim), style="fill", aa=True)
+                fill_p = make_paint(color=skcolor(prim, selection_progress), style="fill", aa=True)
                 if rect is not None and fill_p is not None:
                     draw_round_rect(canvas, rect, corner, fill_p)
 
@@ -406,12 +421,12 @@ class Checkbox(Toggleable, InteractiveWidget):
                 if rect is not None and p_ov is not None:
                     draw_round_rect(canvas, rect, corner, p_ov)
 
-            if val is True or val is None:
+            if (val is True or val is None) and selection_progress > 1e-6:
                 mark_is_none = val is None
                 mark_style = "stroke" if not mark_is_none else "fill"
                 onp = roles.get(ColorRole.ON_PRIMARY, "#000000")
                 mark_p = make_paint(
-                    color=skcolor(onp),
+                    color=skcolor(onp, selection_progress),
                     style=mark_style,
                     stroke_width=max(1.0, icon_sz * 0.12),
                     aa=True,

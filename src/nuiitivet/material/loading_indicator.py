@@ -11,9 +11,10 @@ from typing import Any, List, Optional, Sequence, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, make_paint, make_path, rgba_to_skia_color
+from nuiitivet.animation import Animatable
+from nuiitivet.observable import runtime
 from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.widgeting.widget_animation import AnimationHandleLike
 
 from .shapes import (
     MaterialShapeId,
@@ -28,11 +29,6 @@ logger = logging.getLogger(__name__)
 
 # Implementation detail: number of points to sample per shape
 _SAMPLE_POINTS = 96
-
-
-def _ease_in_out_sine(t: float) -> float:
-    tt = max(0.0, min(1.0, float(t)))
-    return 0.5 - 0.5 * cos(pi * tt)
 
 
 class ShapeMorphSequence:
@@ -60,21 +56,24 @@ class ShapeMorphSequence:
         return pts
 
     def points_at(self, phase: float) -> List[Point]:
-        """Return interpolated points for phase in [0,1)."""
+        """Return interpolated points for phase in [0, inf).
 
+        Each integer step in phase represents one full shape transition.
+        """
         p = float(phase)
-        p = p % 1.0
         count = len(self._shape_ids)
-        seg_f = p * count
-        seg = int(seg_f) % count
-        t = seg_f - int(seg_f)
+
+        # seg is the shape index (A->B, B->C, ...)
+        seg = int(p) % count
+        # t is the progress within the transition (0.0 to 1.0)
+        t = p - int(p)
 
         a_id = self._shape_ids[seg]
         b_id = self._shape_ids[(seg + 1) % count]
 
-        # A slight easing makes the morph feel less robotic.
-        eased_t = _ease_in_out_sine(t)
-        return lerp_points(self._points_for(a_id), self._points_for(b_id), eased_t)
+        # Note: We rely on the driving animation to handle easing.
+        # So here we use linear interpolation of points based on t.
+        return lerp_points(self._points_for(a_id), self._points_for(b_id), t)
 
 
 class LoadingIndicator(Widget):
@@ -106,8 +105,9 @@ class LoadingIndicator(Widget):
         self._size = int(size)
         self._user_style = style
 
-        self._phase = 0.0
-        self._loop_anim: AnimationHandleLike | None = None
+        self._phase_anim: Animatable[float] | None = None
+        self._anim_sub: Any = None
+        self._loop_timer: Any = None
         self._path: Any = None
 
     @property
@@ -140,40 +140,52 @@ class LoadingIndicator(Widget):
         self._start_loop()
 
     def on_unmount(self) -> None:
-        try:
-            if self._loop_anim is not None:
-                self._loop_anim.cancel()
-        except Exception:
-            exception_once(logger, "loading_indicator_cancel_exc", "LoadingIndicator animation cancel raised")
-        self._loop_anim = None
+        if self._anim_sub is not None:
+            self._anim_sub.dispose()
+            self._anim_sub = None
+        if self._loop_timer is not None:
+            runtime.clock.unschedule(self._loop_timer)
+            self._loop_timer = None
+        if self._phase_anim is not None:
+            self._phase_anim.stop()
+            self._phase_anim = None
         super().on_unmount()
 
     def _start_loop(self) -> None:
-        if self._loop_anim is not None and getattr(self._loop_anim, "is_running", False):
-            return
+        motion = self.style.motion
+        # Duration for one shape transition (A->B)
+        duration = getattr(motion, "duration", 0.2)
 
-        cycle_duration = self.style.cycle_duration
+        # Start from 0.0
+        self._phase_anim = Animatable(0.0, motion=motion)
+        self._phase_anim.target = 1.0
 
-        def _apply(progress: float) -> None:
-            self._phase = float(progress)
-            self.invalidate()
+        if self._anim_sub is not None:
+            self._anim_sub.dispose()
+        self._anim_sub = self._phase_anim.subscribe(lambda _: self.invalidate())
 
-        def _restart() -> None:
-            self._loop_anim = None
-            # Restart if still mounted.
-            if getattr(self, "_app", None) is not None:
-                self._start_loop()
+        if self._loop_timer is not None:
+            runtime.clock.unschedule(self._loop_timer)
 
-        try:
-            self._loop_anim = self.animate(
-                duration=max(0.1, cycle_duration),
-                on_update=_apply,
-                easing=lambda t: t,
-                on_complete=_restart,
-            )
-        except Exception:
-            exception_once(logger, "loading_indicator_start_anim_exc", "LoadingIndicator animation start raised")
-            self._loop_anim = None
+        def _next_step(dt: float) -> None:
+            if not getattr(self, "_app", None):
+                self._loop_timer = None
+                return
+
+            if self._phase_anim:
+                # Increment target by 1.0 for the next transition
+                # Animatable handles retargeting from current value -> next integer
+                next_target = self._phase_anim.target + 1.0
+                self._phase_anim.target = next_target
+
+                # Avoid floating point creep by resetting periodically?
+                # For now let it run. Float precision 2^23 gives plenty of loops.
+
+            # Schedule next update
+            runtime.clock.schedule_once(_next_step, duration)
+
+        self._loop_timer = _next_step
+        runtime.clock.schedule_once(_next_step, duration)
 
     def _resolve_indicator_color(self) -> int | Any:
         """Resolve indicator foreground color to skia color or RGBA tuple."""
@@ -231,11 +243,12 @@ class LoadingIndicator(Widget):
         cy = float(y) + float(height) / 2.0
         radius = float(active) / 2.0
 
+        phase = self._phase_anim.value if self._phase_anim else 0.0
         model = self._get_model()
-        points = model.points_at(self._phase)
+        points = model.points_at(phase)
 
         # Rotation: clockwise, with a quarter-turn offset to feel less static.
-        ang = (self._phase * 2.0 * pi) + (pi / 2.0)
+        ang = (phase * 2.0 * pi) + (pi / 2.0)
         ca = cos(ang)
         sa = sin(ang)
 

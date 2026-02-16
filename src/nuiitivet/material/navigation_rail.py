@@ -7,8 +7,7 @@ from nuiitivet.widgeting.widget import Widget
 from nuiitivet.rendering.sizing import SizingLike, Sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
-from nuiitivet.animation import Animatable, DrivenAnimatable, LinearMotion, Rect, RectTween
-from nuiitivet.animation.tween import LerpTween
+from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material.text import Text
@@ -23,7 +22,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.theme.resolver import resolve_color_to_rgba
-from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
 
 
@@ -264,56 +263,55 @@ class _RailItemButton(InteractiveWidget):
         gap_expanded = float(self._eff_style.gap_expanded)
 
         # Indicator rect interpolation
-        indicator_tween = RectTween(
-            begin=Rect(
+        indicator_rect = lerp_rect(
+            Rect(
                 x=margin,
                 y=0.0,
                 width=float(self._eff_style.indicator_width_collapsed),
                 height=float(self._eff_style.indicator_height_collapsed),
             ),
-            end=Rect(
+            Rect(
                 x=margin,
                 y=0.0,
                 width=float(self._eff_style.indicator_width_expanded),
                 height=float(self._eff_style.item_height),
             ),
+            t_layout,
         )
-        indicator_rect = indicator_tween.transform(t_layout)
         ind_x_i, ind_y_i, ind_w_i, ind_h_i = indicator_rect.to_int_tuple()
 
         self._indicator_rect = (ind_x_i, ind_y_i, ind_w_i, ind_h_i)
         self._indicator_radius = float(ind_h_i) / 2.0
 
         # Update test compatibility objects.
-        gap_tween = LerpTween(gap_collapsed, float(self._eff_style.label_gap_expanded))
-        gap_value = gap_tween.transform(t_label)
+        gap_value = lerp(gap_collapsed, float(self._eff_style.label_gap_expanded), t_label)
         self._indicator_box.height_sizing = Sizing.fixed(ind_h_i)
         self._indicator_box.corner_radius = float(ind_h_i) / 2.0
         self._icon_gap_spacer.width_sizing = Sizing.fixed(_to_int(gap_value))
 
-        column_gap_tween = LerpTween(gap_collapsed, gap_expanded)
-        self._content_column.gap = _to_int(column_gap_tween.transform(t_label))
+        self._content_column.gap = _to_int(lerp(gap_collapsed, gap_expanded, t_label))
 
         # Icon rect interpolation
         icon_size = float(self._eff_style.icon_size)
         icon_x = margin + float(self._eff_style.indicator_horizontal_padding)
-        icon_tween = RectTween(
-            begin=Rect(
+        icon_rect = lerp_rect(
+            Rect(
                 x=icon_x,
                 y=(float(self._eff_style.indicator_height_collapsed) - icon_size) / 2.0,
                 width=icon_size,
                 height=icon_size,
             ),
-            end=Rect(
+            Rect(
                 x=icon_x,
                 y=(float(self._eff_style.item_height) - icon_size) / 2.0,
                 width=icon_size,
                 height=icon_size,
             ),
+            t_layout,
         )
-        icon_rect = icon_tween.transform(t_layout).to_int_tuple()
-        self._icon_widget.layout(icon_rect[2], icon_rect[3])
-        self._icon_widget.set_layout_rect(icon_rect[0], icon_rect[1], icon_rect[2], icon_rect[3])
+        icon_rect_i = icon_rect.to_int_tuple()
+        self._icon_widget.layout(icon_rect_i[2], icon_rect_i[3])
+        self._icon_widget.set_layout_rect(icon_rect_i[0], icon_rect_i[1], icon_rect_i[2], icon_rect_i[3])
 
         # Horizontal label window rect interpolation
         label_x_collapsed = icon_x + icon_size + gap_collapsed
@@ -322,33 +320,37 @@ class _RailItemButton(InteractiveWidget):
         label_y_collapsed = (float(self._eff_style.indicator_height_collapsed) - label_height) / 2.0
         label_y_expanded = (float(self._eff_style.item_height) - label_height) / 2.0
 
-        label_tween = RectTween(
-            begin=Rect(x=label_x_collapsed, y=label_y_collapsed, width=0.0, height=label_height),
-            end=Rect(
+        label_rect = lerp_rect(
+            Rect(x=label_x_collapsed, y=label_y_collapsed, width=0.0, height=label_height),
+            Rect(
                 x=label_x_expanded,
                 y=label_y_expanded,
                 width=float(self._eff_style.horizontal_label_width),
                 height=label_height,
             ),
+            t_label,
         )
-        label_rect = label_tween.transform(t_label).to_int_tuple()
-        self._horizontal_label_container.layout(label_rect[2], label_rect[3])
-        self._horizontal_label_container.set_layout_rect(label_rect[0], label_rect[1], label_rect[2], label_rect[3])
+        label_rect_i = label_rect.to_int_tuple()
+        self._horizontal_label_container.layout(label_rect_i[2], label_rect_i[3])
+        self._horizontal_label_container.set_layout_rect(
+            label_rect_i[0], label_rect_i[1], label_rect_i[2], label_rect_i[3]
+        )
 
         # Vertical label window rect interpolation
         vertical_y_collapsed = float(self._eff_style.indicator_height_collapsed) + gap_collapsed
         vertical_y_expanded = float(self._eff_style.item_height) + gap_expanded
-        vertical_tween = RectTween(
-            begin=Rect(x=0.0, y=vertical_y_collapsed, width=collapsed_width, height=label_height),
-            end=Rect(x=0.0, y=vertical_y_expanded, width=collapsed_width, height=0.0),
+        vertical_rect = lerp_rect(
+            Rect(x=0.0, y=vertical_y_collapsed, width=collapsed_width, height=label_height),
+            Rect(x=0.0, y=vertical_y_expanded, width=collapsed_width, height=0.0),
+            t_label,
         )
-        vertical_rect = vertical_tween.transform(t_label).to_int_tuple()
-        self._vertical_label_container.layout(vertical_rect[2], vertical_rect[3])
+        vertical_rect_i = vertical_rect.to_int_tuple()
+        self._vertical_label_container.layout(vertical_rect_i[2], vertical_rect_i[3])
         self._vertical_label_container.set_layout_rect(
-            vertical_rect[0],
-            vertical_rect[1],
-            vertical_rect[2],
-            vertical_rect[3],
+            vertical_rect_i[0],
+            vertical_rect_i[1],
+            vertical_rect_i[2],
+            vertical_rect_i[3],
         )
 
     def draw_background(self, canvas, x: int, y: int, width: int, height: int) -> None:
@@ -466,24 +468,26 @@ class _NavigationRailLayout(Widget):
 
         if self._menu_button is not None:
             menu_size = float(self._style.menu_button_size)
-            menu_tween = RectTween(
-                begin=Rect(x=margin, y=cursor_collapsed, width=menu_size, height=menu_size),
-                end=Rect(x=margin, y=cursor_expanded, width=menu_size, height=menu_size),
+            menu_rect = lerp_rect(
+                Rect(x=margin, y=cursor_collapsed, width=menu_size, height=menu_size),
+                Rect(x=margin, y=cursor_expanded, width=menu_size, height=menu_size),
+                t,
             )
-            menu_rect = menu_tween.transform(t).to_int_tuple()
-            self._menu_button.layout(menu_rect[2], menu_rect[3])
-            self._menu_button.set_layout_rect(menu_rect[0], menu_rect[1], menu_rect[2], menu_rect[3])
+            menu_rect_i = menu_rect.to_int_tuple()
+            self._menu_button.layout(menu_rect_i[2], menu_rect_i[3])
+            self._menu_button.set_layout_rect(menu_rect_i[0], menu_rect_i[1], menu_rect_i[2], menu_rect_i[3])
             cursor_collapsed += menu_size + gap_collapsed
             cursor_expanded += menu_size + gap_expanded
 
         for item in self._item_buttons:
-            item_tween = RectTween(
-                begin=Rect(x=0.0, y=cursor_collapsed, width=float(width), height=float(self._style.item_height)),
-                end=Rect(x=0.0, y=cursor_expanded, width=float(width), height=float(self._style.item_height)),
+            item_rect = lerp_rect(
+                Rect(x=0.0, y=cursor_collapsed, width=float(width), height=float(self._style.item_height)),
+                Rect(x=0.0, y=cursor_expanded, width=float(width), height=float(self._style.item_height)),
+                t,
             )
-            item_rect = item_tween.transform(t).to_int_tuple()
-            item.layout(item_rect[2], item_rect[3])
-            item.set_layout_rect(item_rect[0], item_rect[1], item_rect[2], item_rect[3])
+            item_rect_i = item_rect.to_int_tuple()
+            item.layout(item_rect_i[2], item_rect_i[3])
+            item.set_layout_rect(item_rect_i[0], item_rect_i[1], item_rect_i[2], item_rect_i[3])
             cursor_collapsed += float(self._style.item_height) + gap_collapsed
             cursor_expanded += float(self._style.item_height) + gap_expanded
 
@@ -565,25 +569,29 @@ class NavigationRail(Widget):
 
         # Animation setup
         initial_expanded_value = 1.0 if self._is_expanded else 0.0
-        self._expand_animation = Animatable(initial_expanded_value)
         self._expand_motion = EXPRESSIVE_DEFAULT_SPATIAL
-        self._label_animation = Animatable(initial_expanded_value)
-        self._label_animation.drive(LinearMotion(0.175))
-        self._menu_rotation_anim = Animatable(initial_expanded_value)
-        self._menu_rotation: DrivenAnimatable[float] = self._menu_rotation_anim.drive(
-            LinearMotion(0.175),
-            LerpTween(180.0, 360.0),
+        self._expand_animation: Animatable[float] = Animatable(initial_expanded_value, motion=self._expand_motion)
+        self._label_animation: Animatable[float] = Animatable(initial_expanded_value, motion=EXPRESSIVE_DEFAULT_EFFECTS)
+        self._menu_rotation_anim: Animatable[float] = Animatable(
+            initial_expanded_value,
+            motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
+        self._menu_rotation = self._menu_rotation_anim.map(lambda progress: lerp(180.0, 360.0, progress))
         self._log_instance_id = id(self)
         logger.debug("NavigationRail init id=%s", self._log_instance_id)
 
         # Drive width via animation if not fixed
         if width is None:
-            self._width_tween = LerpTween(
-                float(eff_style.container_width_collapsed), float(eff_style.container_width_expanded)
-            )
-            width = self._expand_animation.drive(self._expand_motion, self._width_tween).map(
-                lambda v: Sizing.fixed(int(v))
+            width = self._expand_animation.map(
+                lambda progress: Sizing.fixed(
+                    int(
+                        lerp(
+                            float(eff_style.container_width_collapsed),
+                            float(eff_style.container_width_expanded),
+                            progress,
+                        )
+                    )
+                )
             )
 
         super().__init__(width=width, height=height, padding=padding)

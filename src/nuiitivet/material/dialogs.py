@@ -16,7 +16,7 @@ from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import Observable, ObservableProtocol
+from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -42,13 +42,29 @@ class AlertDialog(ComposableWidget):
 
     def __init__(
         self,
-        title: Optional[Union[str, Observable]] = None,
-        message: Optional[Union[str, Observable]] = None,
+        title: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
+        message: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
         *,
-        icon: Optional[Union[str, "Symbol", ObservableProtocol]] = None,
+        icon: Optional[
+            Union[
+                str,
+                "Symbol",
+                ReadOnlyObservableProtocol[str],
+                ReadOnlyObservableProtocol["Symbol"],
+            ]
+        ] = None,
         actions: Optional[List[Widget]] = None,
         style: Optional[DialogStyle] = None,
     ):
+        """Initialize AlertDialog.
+
+        Args:
+            title: Optional title text source.
+            message: Optional message text source.
+            icon: Optional icon source.
+            actions: Optional action widgets (typically buttons).
+            style: Optional dialog style override.
+        """
         super().__init__()
         self.title = title
         self.message = message

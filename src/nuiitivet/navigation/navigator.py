@@ -3,14 +3,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 import logging
-from typing import Any, Callable, ClassVar, Mapping
+from typing import Any, Callable, ClassVar, Literal, Mapping
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgeting.widget_animation import AnimationHandleLike
 
+from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
 from .route import PageRoute, Route
+from .stack_runtime import RouteStackRuntime
+from .transition_engine import TransitionEngine
+from .transition_spec import EmptyTransitionSpec, TransitionPhase
 
 
 _logger = logging.getLogger(__name__)
@@ -18,11 +21,32 @@ _logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class _NavTransition:
-    kind: str  # "push" or "pop"
+    kind: Literal["push", "pop"]
+    from_route: Route
+    to_route: Route
     from_widget: Widget
     to_widget: Widget
     progress: float
-    duration_ms: int
+
+
+class _DefaultNavigationLayerComposer:
+    """Fallback core composer with minimal, design-agnostic rendering."""
+
+    def paint_static(self, *, canvas, widget: Widget, x: int, y: int, width: int, height: int) -> None:
+        widget.paint(canvas, x, y, width, height)
+
+    def paint_transition(self, context: NavigationLayerCompositionContext) -> None:
+        if context.kind == "push":
+            context.from_widget.paint(context.canvas, context.x, context.y, context.width, context.height)
+            context.to_widget.paint(context.canvas, context.x, context.y, context.width, context.height)
+            return
+
+        if context.kind == "pop":
+            context.to_widget.paint(context.canvas, context.x, context.y, context.width, context.height)
+            context.from_widget.paint(context.canvas, context.x, context.y, context.width, context.height)
+            return
+
+        context.to_widget.paint(context.canvas, context.x, context.y, context.width, context.height)
 
 
 class Navigator(ComposableWidget):
@@ -42,13 +66,17 @@ class Navigator(ComposableWidget):
         routes: Sequence[Route] | None = None,
         *,
         intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
+        layer_composer: NavigationLayerComposer | None = None,
     ) -> None:
         super().__init__()
-        self._routes: list[Route] = list(routes or [])
+        self._stack = RouteStackRuntime(initial_routes=list(routes or []))
         self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = dict(intent_routes or {})
         self._transition: _NavTransition | None = None
         self._transition_handle: AnimationHandleLike | None = None
+        self._transition_engine = TransitionEngine()
         self._pending_pop_requests: int = 0
+        self._exiting_route: Route | None = None
+        self._layer_composer: NavigationLayerComposer = layer_composer or _DefaultNavigationLayerComposer()
 
     @classmethod
     def set_root(cls, navigator: Navigator) -> None:
@@ -68,7 +96,7 @@ class Navigator(ComposableWidget):
         return navigator
 
     def can_pop(self) -> bool:
-        return len(self._routes) > 1
+        return self._stack.can_pop(min_routes=1)
 
     def build(self) -> Widget:
         return self
@@ -77,6 +105,10 @@ class Navigator(ComposableWidget):
         handle = self._transition_handle
         self._transition_handle = None
         self._transition = None
+        exiting = self._exiting_route
+        self._exiting_route = None
+        if exiting is not None:
+            self._stack.mark_active(exiting)
         if handle is None:
             return
         cancel = getattr(handle, "cancel", None)
@@ -91,9 +123,7 @@ class Navigator(ComposableWidget):
                 )
 
     def _top_route(self) -> Route | None:
-        if not self._routes:
-            return None
-        return self._routes[-1]
+        return self._stack.top()
 
     def _route_widget(self, route: Route) -> Widget:
         widget = route.build_widget()
@@ -101,38 +131,45 @@ class Navigator(ComposableWidget):
             self.add_child(widget)
         return widget
 
-    def _resolve_intent(self, intent: Any) -> Route | Widget:
+    def _route_from_widget(self, widget: Widget) -> Route:
+        """Wrap a widget into a page route for navigator runtime."""
+        return PageRoute(builder=lambda: widget)
+
+    def _resolve_intent_to_route(self, intent: Any) -> Route:
+        """Resolve an intent and normalize the result to a Route."""
         factory = self._intent_routes.get(type(intent))
         if factory is None:
             raise RuntimeError(f"No route is registered for intent: {type(intent).__name__}")
-        return factory(intent)
+        resolved = factory(intent)
+        if isinstance(resolved, Route):
+            return resolved
+        return self._route_from_widget(resolved)
 
-    def _paint_with_opacity(self, canvas, widget: Widget, x: int, y: int, width: int, height: int, opacity: float):
-        if canvas is None or opacity >= 1.0:
-            widget.paint(canvas, x, y, width, height)
-            return
+    def _normalize_to_route(self, route_or_widget_or_intent: Route | Widget | Any) -> Route:
+        """Normalize external push input to a Route.
 
-        clamped = max(0.0, min(1.0, float(opacity)))
-        layer_paint = make_opacity_paint(clamped)
-        if layer_paint is None or not hasattr(canvas, "saveLayer"):
-            widget.paint(canvas, x, y, width, height)
-            return
+        This is the single boundary adapter for `push(...)` input polymorphism.
+        Internal navigator runtime must only operate on `Route`.
+        """
+        if isinstance(route_or_widget_or_intent, Route):
+            return route_or_widget_or_intent
 
-        saved = False
+        if isinstance(route_or_widget_or_intent, Widget):
+            return self._route_from_widget(route_or_widget_or_intent)
+
+        return self._resolve_intent_to_route(route_or_widget_or_intent)
+
+    def _is_animated_transition(self, route: Route) -> bool:
+        return not isinstance(route.transition_spec, EmptyTransitionSpec)
+
+    def _get_motion(self, route: Route, phase: TransitionPhase) -> Any | None:
         try:
-            canvas.saveLayer(None, layer_paint)
-            saved = True
-            widget.paint(canvas, x, y, width, height)
-        finally:
-            if saved:
-                try:
-                    canvas.restore()
-                except Exception:
-                    exception_once(
-                        _logger,
-                        "navigator_canvas_restore_exc",
-                        "Failed to restore canvas layer",
-                    )
+            definition = getattr(route.transition_spec, phase.value, None)
+            if definition is None:
+                return None
+            return getattr(definition, "motion", None)
+        except Exception:
+            return None
 
     def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
         self._cancel_transition()
@@ -140,36 +177,32 @@ class Navigator(ComposableWidget):
         previous_route = self._top_route()
         previous_widget = None if previous_route is None else self._route_widget(previous_route)
 
-        if isinstance(route_or_widget_or_intent, Route):
-            route = route_or_widget_or_intent
-        elif isinstance(route_or_widget_or_intent, Widget):
-            widget = route_or_widget_or_intent
-            route = PageRoute(builder=lambda: widget)
-        else:
-            resolved = self._resolve_intent(route_or_widget_or_intent)
-            if isinstance(resolved, Route):
-                route = resolved
-            else:
-                widget = resolved
-                route = PageRoute(builder=lambda: widget)
+        route = self._normalize_to_route(route_or_widget_or_intent)
 
-        self._routes.append(route)
+        self._stack.push(route)
+        self._stack.mark_active(route)
         new_widget = self._route_widget(route)
 
-        if previous_widget is not None and route.transition == "fade" and getattr(self, "_app", None) is not None:
+        if (
+            previous_widget is not None
+            and self._is_animated_transition(route)
+            and getattr(self, "_app", None) is not None
+        ):
+            assert previous_route is not None
             self._transition = _NavTransition(
                 kind="push",
+                from_route=previous_route,
+                to_route=route,
                 from_widget=previous_widget,
                 to_widget=new_widget,
                 progress=0.0,
-                duration_ms=600,
             )
-            self._transition_handle = self.animate_value(
+            self._transition_handle = self._transition_engine.start(
                 start=0.0,
                 target=1.0,
-                duration=float(self._transition.duration_ms) / 1000.0,
                 apply=lambda v: setattr(self._transition, "progress", float(v)) if self._transition else None,
                 on_complete=self._finish_transition,
+                motion=self._get_motion(route, TransitionPhase.ENTER),
             )
         else:
             self._transition = None
@@ -269,8 +302,9 @@ class Navigator(ComposableWidget):
 
         self._cancel_transition()
 
-        outgoing = self._routes[-1]
-        incoming = self._routes[-2]
+        routes = self._stack.routes
+        outgoing = routes[-1]
+        incoming = routes[-2]
         outgoing_widget = self._route_widget(outgoing)
         incoming_widget = self._route_widget(incoming)
 
@@ -285,25 +319,30 @@ class Navigator(ComposableWidget):
                 exception_once(_logger, "navigator_back_handler_exc", "Route handle_back_event raised")
 
         app = getattr(self, "_app", None)
-        if not skip_animation and outgoing.transition == "fade" and app is not None:
+        if not skip_animation and self._is_animated_transition(outgoing) and app is not None:
+            self._stack.mark_exiting(outgoing)
+            self._exiting_route = outgoing
             self._transition = _NavTransition(
                 kind="pop",
+                from_route=outgoing,
+                to_route=incoming,
                 from_widget=outgoing_widget,
                 to_widget=incoming_widget,
                 progress=1.0,
-                duration_ms=600,
             )
-            self._transition_handle = self.animate_value(
+            self._transition_handle = self._transition_engine.start(
                 start=1.0,
                 target=0.0,
-                duration=float(self._transition.duration_ms) / 1000.0,
                 apply=lambda v: setattr(self._transition, "progress", float(v)) if self._transition else None,
                 on_complete=self._finish_pop,
+                motion=self._get_motion(outgoing, TransitionPhase.EXIT),
             )
             self.mark_needs_layout()
             self.invalidate()
             return True
 
+        self._stack.mark_exiting(outgoing)
+        self._exiting_route = outgoing
         self._finish_pop_once()
         self._drain_pending_pops()
         return True
@@ -316,13 +355,17 @@ class Navigator(ComposableWidget):
     def _finish_pop_once(self) -> None:
         self._transition_handle = None
         self._transition = None
-        if not self.can_pop():
+        route = self._exiting_route
+        self._exiting_route = None
+        if route is None:
+            route = self._stack.begin_pop()
+
+        if route is None:
             self.invalidate()
             return
 
-        route = self._routes.pop()
         widget = route.build_widget()
-        route.dispose()
+        self._stack.complete_exit(route)
         try:
             self.remove_child(widget)
         except Exception:
@@ -339,7 +382,7 @@ class Navigator(ComposableWidget):
         self.set_layout_rect(0, 0, width, height)
 
         # Layout all cached route widgets so hit_test coordinate translation works.
-        for route in self._routes:
+        for route in self._stack.routes:
             widget = route.build_widget() if route._widget is not None else None
             if widget is None:
                 continue
@@ -352,69 +395,49 @@ class Navigator(ComposableWidget):
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
-        if not self._routes:
+        routes = self._stack.routes
+        if not routes:
             return
 
         transition = self._transition
         if transition is None:
-            top_widget = self._route_widget(self._routes[-1])
-            top_widget.paint(canvas, x, y, width, height)
+            top_widget = self._route_widget(routes[-1])
+            self._layer_composer.paint_static(canvas=canvas, widget=top_widget, x=x, y=y, width=width, height=height)
             return
 
-        if transition.kind == "push":
-            # Cross-fade: fade out old while fading in new.
-            self._paint_with_opacity(
-                canvas,
-                transition.from_widget,
-                x,
-                y,
-                width,
-                height,
-                opacity=1.0 - transition.progress,
-            )
-            self._paint_with_opacity(
-                canvas,
-                transition.to_widget,
-                x,
-                y,
-                width,
-                height,
-                opacity=transition.progress,
-            )
-            return
-
-        if transition.kind == "pop":
-            # Cross-fade: fade out outgoing while fading in incoming.
-            self._paint_with_opacity(
-                canvas,
-                transition.to_widget,
-                x,
-                y,
-                width,
-                height,
-                opacity=1.0 - transition.progress,
-            )
-            self._paint_with_opacity(
-                canvas,
-                transition.from_widget,
-                x,
-                y,
-                width,
-                height,
-                opacity=transition.progress,
-            )
-            return
+        if transition.kind in ("push", "pop"):
+            phase_progress = _transition_phase_progress(transition)
+            if phase_progress is not None:
+                from_phase, to_phase, p = phase_progress
+                context = NavigationLayerCompositionContext(
+                    canvas=canvas,
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=height,
+                    kind=transition.kind,
+                    from_widget=transition.from_widget,
+                    to_widget=transition.to_widget,
+                    from_phase=from_phase,
+                    to_phase=to_phase,
+                    progress=p,
+                    from_transition_spec=transition.from_route.transition_spec,
+                    to_transition_spec=transition.to_route.transition_spec,
+                )
+                self._layer_composer.paint_transition(context)
+                return
 
         # Unknown transition kind: paint top.
-        top_widget = self._route_widget(self._routes[-1])
-        top_widget.paint(canvas, x, y, width, height)
+        top_widget = self._route_widget(routes[-1])
+        self._layer_composer.paint_static(canvas=canvas, widget=top_widget, x=x, y=y, width=width, height=height)
 
     def hit_test(self, x: int, y: int):
         transition = self._transition
         if transition is None:
-            if not self._routes:
+            routes = self._stack.routes
+            if not routes:
                 return None
-            return self._route_widget(self._routes[-1]).hit_test(x, y)
+            return self._route_widget(routes[-1]).hit_test(x, y)
 
         # During transitions, prefer the visually top-most widget.
         if transition.kind == "push":
@@ -430,3 +453,21 @@ class Navigator(ComposableWidget):
             return transition.to_widget.hit_test(x, y)
 
         return super().hit_test(x, y)
+
+    def on_unmount(self) -> None:
+        self._transition_engine.dispose()
+        super().on_unmount()
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _transition_phase_progress(transition: _NavTransition) -> tuple[TransitionPhase, TransitionPhase, float] | None:
+    if transition.kind == "push":
+        p = _clamp01(transition.progress)
+        return (TransitionPhase.EXIT, TransitionPhase.ENTER, p)
+    if transition.kind == "pop":
+        p = _clamp01(1.0 - transition.progress)
+        return (TransitionPhase.EXIT, TransitionPhase.ENTER, p)
+    return None

@@ -2,6 +2,7 @@
 
 import pytest
 from nuiitivet.overlay import Overlay, OverlayEntry
+from nuiitivet.overlay.overlay import _OverlayEntryRoute
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.container import Container
 
@@ -33,6 +34,7 @@ def test_overlay_insert_entry():
 
     assert len(overlay._entry_to_route) == 1
     assert overlay.has_entries()
+    assert isinstance(next(iter(overlay._entry_to_route.values())), _OverlayEntryRoute)
 
 
 def test_overlay_remove_entry():
@@ -197,3 +199,19 @@ def test_overlay_has_entries_with_invisible_entry():
 
     # has_entries() should return False
     assert not overlay.has_entries()
+
+
+def test_overlay_entry_dispose_is_idempotent() -> None:
+    dispose_calls = 0
+
+    def on_dispose() -> None:
+        nonlocal dispose_calls
+        dispose_calls += 1
+
+    entry = OverlayEntry(builder=lambda: DummyWidget("idempotent"), on_dispose=on_dispose)
+    entry.build_widget()
+
+    entry.dispose()
+    entry.dispose()
+
+    assert dispose_calls == 1

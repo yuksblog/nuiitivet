@@ -21,7 +21,7 @@ from nuiitivet.material.app import MaterialApp
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.material import Text
+from nuiitivet.material import Text, MaterialTransitions, FadeIn, ScaleIn, SlideOutVertically
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -61,7 +61,12 @@ def _filled(label: str, *, on_click) -> FilledButton:
 class HomePage(ComposableWidget):
     def build(self) -> Widget:
         async def open_dialog() -> None:
-            result = await MaterialOverlay.root().dialog(HelloDialogIntent())
+            # Demonstrate custom transition: ScaleIn + FadeIn -> FadeOut + SlideDown
+            transition = MaterialTransitions.dialog(
+                enter=FadeIn() | ScaleIn(initial_scale=0.5),
+                exit=SlideOutVertically(target_offset_y=50, duration=0.4),
+            )
+            result = await MaterialOverlay.root().dialog(HelloDialogIntent(), transition=transition)
             if result.value == "OK":
                 MaterialOverlay.root().snackbar("Dialog confirmed (OK)")
             else:
@@ -172,9 +177,9 @@ def main() -> None:
 
     MaterialApp.navigation(
         routes={
-            HomeIntent: lambda _i: PageRoute(builder=HomePage, transition="fade"),
-            DetailsIntent: lambda _i: PageRoute(builder=DetailsPage, transition="fade"),
-            SettingsIntent: lambda _i: PageRoute(builder=SettingsPage, transition="fade"),
+            HomeIntent: lambda _i: PageRoute(builder=HomePage),
+            DetailsIntent: lambda _i: PageRoute(builder=DetailsPage),
+            SettingsIntent: lambda _i: PageRoute(builder=SettingsPage),
         },
         initial_route=HomeIntent(),
         overlay_routes={

@@ -51,6 +51,13 @@ __all__ = [
     "AlertDialog",
     "LoadingIndicator",
     "LoadingIntent",
+    "MaterialTransitions",
+    "FadeIn",
+    "FadeOut",
+    "ScaleIn",
+    "ScaleOut",
+    "SlideInVertically",
+    "SlideOutVertically",
 ]
 
 
@@ -81,6 +88,13 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
     "LoadingIntent": ("intents", "LoadingIntent"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
+    "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
+    "FadeIn": ("transitions", "FadeIn"),
+    "FadeOut": ("transitions", "FadeOut"),
+    "ScaleIn": ("transitions", "ScaleIn"),
+    "ScaleOut": ("transitions", "ScaleOut"),
+    "SlideInVertically": ("transitions", "SlideInVertically"),
+    "SlideOutVertically": ("transitions", "SlideOutVertically"),
 }
 
 
