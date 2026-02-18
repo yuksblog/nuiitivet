@@ -1,0 +1,3020 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.3.0/guide/observable/">
+      
+      
+        <link rel="prev" href="../dialogs/">
+      
+      
+        <link rel="next" href="../threading/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>State Management - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#observable-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              State Management
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-an-observable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an Observable?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-usage-class-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Usage: Class Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-observable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Observable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-and-setting-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting and Setting Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subscribing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subscribing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reactive-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reactive Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reactive Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mapfn-transform-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .map(fn) - Transform Value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combineother-combine-multiple-observables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .combine(other) - Combine Multiple Observables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combinea-b-combine-3-observables-function-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        combine(a, b, ...) - Combine 3+ Observables (Function Style)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observablecomputefn-automatic-dependency-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observable.compute(fn) - Automatic Dependency Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-efficient-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        batch() - Efficient Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selection Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-operator-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Operator to Use?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thread-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thread Safety
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Thread Safety">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution-dispatch_to_ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: .dispatch_to_ui()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-in-method-chains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage in Method Chains
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timing-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Timing Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debounce-wait-for-input-to-stabilize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        debounce() - Wait for Input to Stabilize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#throttle-sample-regularly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        throttle() - Sample Regularly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debounce-vs-throttle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        debounce vs throttle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chainable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chainable
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-viewmodel-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. ViewModel Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-defining-derived-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Defining Derived State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Memory Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-utilizing-batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Utilizing batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-custom-comparison-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Custom Comparison Function
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample Code
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sample Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#counter-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Counter App
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shopping-cart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shopping Cart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#asynchronous-data-fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asynchronous Data Fetching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO List
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-an-observable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an Observable?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-usage-class-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Usage: Class Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-observable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Observable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-and-setting-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting and Setting Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subscribing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subscribing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reactive-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reactive Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reactive Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mapfn-transform-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .map(fn) - Transform Value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combineother-combine-multiple-observables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .combine(other) - Combine Multiple Observables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combinea-b-combine-3-observables-function-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        combine(a, b, ...) - Combine 3+ Observables (Function Style)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observablecomputefn-automatic-dependency-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observable.compute(fn) - Automatic Dependency Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-efficient-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        batch() - Efficient Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selection Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-operator-to-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Operator to Use?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thread-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thread Safety
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Thread Safety">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution-dispatch_to_ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: .dispatch_to_ui()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-in-method-chains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage in Method Chains
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timing-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Timing Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debounce-wait-for-input-to-stabilize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        debounce() - Wait for Input to Stabilize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#throttle-sample-regularly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        throttle() - Sample Regularly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debounce-vs-throttle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        debounce vs throttle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chainable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chainable
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-viewmodel-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. ViewModel Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-defining-derived-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Defining Derived State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Memory Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-utilizing-batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Utilizing batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-custom-comparison-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Custom Comparison Function
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample Code
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sample Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#counter-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Counter App
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shopping-cart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shopping Cart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#asynchronous-data-fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asynchronous Data Fetching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO List
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="observable-guide">Observable Guide</h1>
+<p>Observables in the nuiitivet framework are a core feature for realizing reactive programming. They allow for declarative and intuitive UI state management.</p>
+<h2 id="quick-start">Quick Start</h2>
+<h3 id="basic-usage">Basic Usage</h3>
+<p>The most intuitive way to define Observables is inside <code>__init__</code>, just like standard instance variables.</p>
+<pre><code class="language-python">import nuiitivet as nv
+
+class Counter:
+    def __init__(self):
+        # 1. Define as instance attribute
+        self.count = nv.Observable(0)
+
+        # You can define computed observables here too
+        self.double_count = self.count.map(lambda c: c * 2)
+
+counter = Counter()
+
+# 2. Subscribe to value changes
+counter.count.subscribe(lambda value: print(f&quot;Count: {value}&quot;))
+
+# 3. Update value
+counter.count.value = 1  # -&gt; &quot;Count: 1&quot; is printed
+</code></pre>
+<h3 id="integration-with-ui">Integration with UI</h3>
+<pre><code class="language-python">import nuiitivet as nv
+from nuiitivet import material
+
+class CounterApp:
+    def __init__(self):
+        self.count = nv.Observable(0)
+
+    def build(self):
+        return nv.Column(
+            children=[
+                # Automatically display the value of count (Reactive)
+                material.Text(text=self.count.map(lambda c: f&quot;Count: {c}&quot;)),
+                material.FilledButton(
+                    text=&quot;Increment&quot;,
+                    on_click=lambda: self.increment()
+                )
+            ]
+        )
+
+    def increment(self):
+        self.count.value += 1  # UI is automatically updated
+</code></pre>
+<h2 id="basic-concepts">Basic Concepts</h2>
+<h3 id="what-is-an-observable">What is an Observable?</h3>
+<p>An Observable represents a "value that can be observed". When the value changes, a notification is sent to all registered subscribers.</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li>✅ Intuitive usage (just like normal variables)</li>
+<li>✅ Automatic change notifications</li>
+<li>✅ Automatic cleanup to prevent memory leaks</li>
+<li>✅ Efficient updates using batch()</li>
+</ul>
+<h3 id="advanced-usage-class-attributes">Advanced Usage: Class Attributes</h3>
+<p>While defining observables in <code>__init__</code> is standard, you can also define them as <strong>class attributes</strong> (Descriptor pattern).</p>
+<pre><code class="language-python">class Model:
+    # Defined on class, but independent for each instance
+    value = Observable(0)
+
+a = Model()
+b = Model()
+
+a.value.value = 10
+b.value.value = 20  # Independent from 'a'
+</code></pre>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li><strong>Better Debugging</strong>: Class attributes automatically know their own name (e.g., "Model.value"), providing better error messages.</li>
+<li><strong>Memory Efficiency</strong>: The underlying storage is created only when accessed, which can be efficient for objects with many optional signals.</li>
+</ul>
+<p><strong>Limitations:</strong></p>
+<ul>
+<li><strong>No Computed Observables</strong>: You generally cannot define computed observables (like <code>.map()</code>) as class attributes because they require access to the instance (<code>self</code>), which isn't available at class definition time.</li>
+<li><strong>Split Definitions</strong>: If you mix class attributes (for simple values) and <code>__init__</code> (for computed values), your state definitions may become scattered.</li>
+</ul>
+<p>For these reasons, starting with <strong>instance attributes</strong> in <code>__init__</code> is recommended for most cases.</p>
+<h2 id="api-reference">API Reference</h2>
+<h3 id="basic-operations">Basic Operations</h3>
+<h4 id="creating-an-observable">Creating an Observable</h4>
+<pre><code class="language-python"># Create with initial value
+name = Observable(&quot;Alice&quot;)
+age = Observable(20)
+items = Observable([])
+</code></pre>
+<h4 id="getting-and-setting-values">Getting and Setting Values</h4>
+<pre><code class="language-python"># Get value
+current_value = observable.value.value
+
+# Set value
+observable.value.value = new_value
+</code></pre>
+<h4 id="subscribing">Subscribing</h4>
+<pre><code class="language-python"># Register a callback
+subscription = observable.value.subscribe(lambda value: print(value))
+
+# Unsubscribe (Usually not needed - managed automatically)
+subscription.unsubscribe()
+</code></pre>
+<h3 id="reactive-operators">Reactive Operators</h3>
+<h4 id="mapfn-transform-value"><code>.map(fn)</code> - Transform Value</h4>
+<p>Transforms the value of a single Observable.</p>
+<pre><code class="language-python">age = Observable(20)
+is_adult = age.map(lambda x: x &gt;= 18)
+
+is_adult.subscribe(lambda v: print(f&quot;Adult: {v}&quot;))
+age.value = 15  # -&gt; &quot;Adult: False&quot;
+age.value = 20  # -&gt; &quot;Adult: True&quot;
+</code></pre>
+<p><strong>Usage Examples:</strong></p>
+<ul>
+<li>Formatting numbers: <code>price.map(lambda p: f"¥{p:,}")</code></li>
+<li>Converting booleans: <code>count.map(lambda c: c &gt; 0)</code></li>
+<li>Extracting object properties: <code>user.map(lambda u: u.name)</code></li>
+</ul>
+<h4 id="combineother-combine-multiple-observables"><code>.combine(other)</code> - Combine Multiple Observables</h4>
+<p>Combines two Observables. Used in combination with <code>.compute(fn)</code>.</p>
+<pre><code class="language-python">price = Observable(100)
+quantity = Observable(2)
+
+# Combine two values and calculate
+total = price.combine(quantity).compute(lambda p, q: p * q)
+
+total.subscribe(lambda v: print(f&quot;Total: {v}&quot;))
+price.value = 200  # -&gt; &quot;Total: 400&quot;
+quantity.value = 3  # -&gt; &quot;Total: 600&quot;
+</code></pre>
+<h4 id="combinea-b-combine-3-observables-function-style"><code>combine(a, b, ...)</code> - Combine 3+ Observables (Function Style)</h4>
+<p>When combining 3 or more Observables, the function style is concise.</p>
+<pre><code class="language-python">from nuiitivet.observable import combine
+
+price = Observable(100)
+quantity = Observable(2)
+discount = Observable(0.1)
+
+# Combine 3 values
+total = combine(price, quantity, discount).compute(
+    lambda p, q, d: p * q * (1 - d)
+)
+
+total.subscribe(lambda v: print(f&quot;Total: ¥{v:.0f}&quot;))
+# price=100, qty=2, discount=0.1 -&gt; &quot;Total: ¥180&quot;
+</code></pre>
+<h4 id="observablecomputefn-automatic-dependency-tracking"><code>Observable.compute(fn)</code> - Automatic Dependency Tracking</h4>
+<p>Automatic dependency tracking is useful for cases involving complex calculations or conditional branching.</p>
+<pre><code class="language-python">class Cart:
+    def __init__(self):
+        self.show_detail = Observable(True)
+        self.price = Observable(100)
+        self.quantity = Observable(2)
+
+        # Calculation with conditional branching - dependencies are tracked automatically
+        self.display = Observable.compute(lambda: (
+            f&quot;¥{self.price.value * self.quantity.value:,}&quot;
+            if self.show_detail.value
+            else &quot;---&quot;
+        ))
+</code></pre>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>No need to explicitly specify dependencies</li>
+<li>Handles dynamic dependencies due to conditional branching</li>
+<li>Code is intuitive and easy to read</li>
+</ul>
+<h3 id="batch-efficient-updates">batch() - Efficient Updates</h3>
+<p>When updating multiple Observables simultaneously, using <code>batch()</code> can group notifications into a single update.</p>
+<pre><code class="language-python">from nuiitivet.observable import batch
+
+price = Observable(100)
+quantity = Observable(2)
+total = price.combine(quantity).compute(lambda p, q: p * q)
+
+# Without batch - total is recalculated twice
+price.value = 200
+quantity.value = 3
+
+# With batch - total is recalculated only once
+with batch():
+    price.value = 200
+    quantity.value = 3
+# total is recalculated only once here
+</code></pre>
+<p><strong>Automatic batch:</strong>
+Since batch is automatically applied within UI event handlers, you usually don't need to write <code>batch()</code> explicitly.</p>
+<pre><code class="language-python">def on_click(self):
+    # Automatically batched within event handler
+    self.price.value = 200
+    self.quantity.value = 3
+    # -&gt; Notified only once
+</code></pre>
+<h2 id="selection-guide">Selection Guide</h2>
+<h3 id="which-operator-to-use">Which Operator to Use?</h3>
+<pre><code class="language-python"># ✅ 1:1 Transformation -&gt; .map()
+is_adult = age.map(lambda x: x &gt;= 18)
+formatted_price = price.map(lambda p: f&quot;¥{p:,}&quot;)
+
+# ✅ 2 Observables -&gt; .combine().compute()
+subtotal = price.combine(quantity).compute(lambda p, q: p * q)
+full_name = first_name.combine(last_name).compute(lambda f, l: f&quot;{f} {l}&quot;)
+
+# ✅ 3+ Observables -&gt; combine(...).compute()
+total = combine(price, quantity, discount).compute(
+    lambda p, q, d: p * q * (1 - d)
+)
+
+# ✅ Complex Calculation / Conditional Branching -&gt; Observable.compute()
+display = Observable.compute(lambda: (
+    self.tax_included.value if self.show_tax.value
+    else self.tax_excluded.value
+))
+</code></pre>
+<h3 id="performance-considerations">Performance Considerations</h3>
+<ul>
+<li><code>.map()</code> and <code>.combine()</code> internally use <code>Observable.compute()</code>, so performance is equivalent.</li>
+<li>Since explicit dependencies (<code>.map()</code>, <code>.combine()</code>) are more readable, they are recommended for simple cases.</li>
+<li><code>Observable.compute()</code> is suitable for conditional branching and complex logic.</li>
+</ul>
+<h2 id="thread-safety">Thread Safety</h2>
+<h3 id="the-problem">The Problem</h3>
+<p>Updating an Observable from a worker thread can cause UI widgets to update outside the UI thread, leading to crashes.</p>
+<pre><code class="language-python">import threading
+
+class ViewModel:
+    data = Observable([])
+
+# ❌ Dangerous Code
+def worker():
+    result = fetch_data()  # Heavy process
+    viewmodel.data.value = result  # &lt;- Update from worker thread
+
+threading.Thread(target=worker).start()
+
+# Subscribe in UI
+viewmodel.data.subscribe(lambda d: update_widget(d))  # &lt;- Crash!
+</code></pre>
+<h3 id="solution-dispatch_to_ui">Solution: <code>.dispatch_to_ui()</code></h3>
+<p>Attach <code>.dispatch_to_ui()</code> to Observables that affect the UI to ensure update notifications run on the UI thread.</p>
+<pre><code class="language-python">class ViewModel:
+    data = Observable([])
+
+    def __init__(self):
+        # Enable .dispatch_to_ui() for Observables used for UI binding
+        self.data.dispatch_to_ui()
+
+    def load_async(self):
+        def worker():
+            result = fetch_data()
+            self.data.value = result  # ✅ Notification runs on UI thread
+
+        threading.Thread(target=worker).start()
+</code></pre>
+<h3 id="default-behavior">Default Behavior</h3>
+<p>If <code>.dispatch_to_ui()</code> is not called, Observables run <strong>fast</strong> (no thread check).</p>
+<pre><code class="language-python"># Logic Layer - Default (Fast)
+class DataProcessor:
+    raw_data = Observable([])  # No dispatch
+    filtered = raw_data.map(lambda x: [i for i in x if i &gt; 0])  # Fast
+</code></pre>
+<p><strong>Usage Principles:</strong></p>
+<ul>
+<li><strong>UI Layer (ViewModel)</strong>: Explicitly call <code>.dispatch_to_ui()</code></li>
+<li><strong>Logic Layer</strong>: Do not specify anything (Default fast)</li>
+</ul>
+<h3 id="usage-in-method-chains">Usage in Method Chains</h3>
+<p><code>.dispatch_to_ui()</code> can be inserted in the middle or at the end of a method chain.</p>
+<pre><code class="language-python"># Pattern 1: Create at the end
+total = (price
+         .combine(quantity)
+         .compute(lambda p, q: p * q)
+         .dispatch_to_ui())
+
+# Pattern 2: Create in the middle
+total = (price
+         .combine(quantity)
+         .dispatch_to_ui()
+         .compute(lambda p, q: p * q))
+</code></pre>
+<h3 id="important-constraints">Important Constraints</h3>
+<p>Inside the compute function, you <strong>must not access objects limited to the UI thread</strong>.</p>
+<pre><code class="language-python"># ❌ Wrong: Accessing Widget inside compute
+class ViewModel:
+    label = Label(&quot;Count: 0&quot;)  # UI Widget
+    count = Observable(0)
+
+    # ❌ Will crash!
+    display = Observable.compute(lambda:
+        f&quot;Count: {self.label.text}&quot;  # &lt;- label.text is limited to UI thread
+    ).dispatch_to_ui()
+
+# ✅ Correct: Use only Observable values
+class ViewModel:
+    count = Observable(0)
+
+    # ✅ Use only Observable value
+    display = count.map(lambda c: f&quot;Count: {c}&quot;)
+
+    # Update UI via subscribe
+    display.subscribe(lambda text: self.label.text = text)
+</code></pre>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>✅ Use only Observable values inside compute</li>
+<li>❌ Do not touch UI Widgets or UI thread-specific objects</li>
+<li>✅ Perform UI updates in the subscribe callback</li>
+</ul>
+<h2 id="timing-control">Timing Control</h2>
+<p>For high-frequency events (search input, mouse movement, scrolling, etc.), limiting processing frequency can improve performance.</p>
+<h3 id="debounce-wait-for-input-to-stabilize">debounce() - Wait for Input to Stabilize</h3>
+<p>Executes <strong>once after a specified time has passed since the last change</strong> in a series of changes.</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Search box input (Search after user stops typing)</li>
+<li>Form validation (Check after input completion)</li>
+<li>Auto-save (Save after editing stops)</li>
+</ul>
+<pre><code class="language-python">from nuiitivet.observable import Observable
+
+class SearchModel:
+    query = Observable(&quot;&quot;)
+
+    def __init__(self):
+        # Execute search if no input for 0.5 seconds
+        self.debounced_query = self.query.debounce(0.5)
+        self.debounced_query.subscribe(self._perform_search)
+
+    def _perform_search(self, query: str):
+        if query.strip():
+            print(f&quot;🔍 Searching for: '{query}'&quot;)
+            # API call, etc.
+
+# Example
+model = SearchModel()
+model.query.value = &quot;h&quot;      # Not searched
+model.query.value = &quot;he&quot;     # Not searched
+model.query.value = &quot;hello&quot;  # Not searched
+# ... Wait 0.5 seconds ...
+# -&gt; &quot;🔍 Searching for: 'hello'&quot; is executed
+</code></pre>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Significantly reduces number of API requests</li>
+<li>Reduces server load</li>
+<li>Avoids unnecessary calculations</li>
+</ul>
+<h3 id="throttle-sample-regularly">throttle() - Sample Regularly</h3>
+<p><strong>Executes the first change immediately, then executes only at specified intervals</strong>.</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Mouse movement tracking</li>
+<li>Scroll position monitoring</li>
+<li>Window resize events</li>
+<li>Real-time data updates</li>
+</ul>
+<pre><code class="language-python">from nuiitivet.observable import Observable
+
+class MouseTracker:
+    mouse_x = Observable(0)
+    mouse_y = Observable(0)
+
+    def __init__(self):
+        # Sample at 0.1s intervals (Max 10 times/sec)
+        self.throttled_x = self.mouse_x.throttle(0.1)
+        self.throttled_y = self.mouse_y.throttle(0.1)
+
+        self.throttled_x.subscribe(self._update_display)
+
+    def _update_display(self, x: int):
+        print(f&quot;📍 Position updated: {x}&quot;)
+
+# Example
+tracker = MouseTracker()
+tracker.mouse_x.value = 10   # -&gt; Immediately &quot;📍 Position updated: 10&quot;
+tracker.mouse_x.value = 20   # Ignored (less than 0.1s)
+tracker.mouse_x.value = 30   # Ignored (less than 0.1s)
+# ... 0.1s passed ...
+# -&gt; &quot;📍 Position updated: 30&quot; is executed
+</code></pre>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Maintains UI responsiveness (First change reflected immediately)</li>
+<li>Ensures performance even with high-frequency events</li>
+<li>Smooth UX with periodic updates</li>
+</ul>
+<h3 id="debounce-vs-throttle">debounce vs throttle</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>debounce</th>
+<th>throttle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>First change</strong></td>
+<td>Wait</td>
+<td>Execute immediately</td>
+</tr>
+<tr>
+<td><strong>During continuous changes</strong></td>
+<td>Keep waiting</td>
+<td>Execute periodically</td>
+</tr>
+<tr>
+<td><strong>Last change</strong></td>
+<td>Always execute</td>
+<td>Depends on timing</td>
+</tr>
+<tr>
+<td><strong>Execution count</strong></td>
+<td>Minimized</td>
+<td>Constant interval</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-python"># Search Box -&gt; debounce (Wait for input completion)
+search_query = Observable(&quot;&quot;)
+debounced = search_query.debounce(0.5)  # ✅ Search after user stops typing
+
+# Mouse Tracking -&gt; throttle (Immediate reaction + Periodic update)
+mouse_pos = Observable((0, 0))
+throttled = mouse_pos.throttle(0.1)  # ✅ First movement immediate, then every 0.1s
+</code></pre>
+<h3 id="chainable">Chainable</h3>
+<p>debounce/throttle can also be chained with other operators.</p>
+<pre><code class="language-python"># debounce -&gt; map -&gt; dispatch_to_ui
+formatted_query = (
+    query
+    .debounce(0.5)
+    .map(lambda q: q.strip().lower())
+    .dispatch_to_ui()
+)
+
+# throttle -&gt; compute
+position_display = (
+    mouse_x
+    .throttle(0.1)
+    .combine(mouse_y.throttle(0.1))
+    .compute(lambda x, y: f&quot;({x}, {y})&quot;)
+)
+</code></pre>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>The <code>.value</code> property returns the original value immediately (no delay).</li>
+<li>Avoid heavy processing as it runs on the UI thread.</li>
+</ul>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="1-viewmodel-pattern">1. ViewModel Pattern</h3>
+<p>Consolidate UI logic into a ViewModel class.</p>
+<pre><code class="language-python">class TodoViewModel:
+    items = Observable([])
+    selected_item = Observable(None)
+
+    # Derived states defined as None initially
+    item_count = None
+    has_items = None
+
+    def __init__(self):
+        # Enable .dispatch_to_ui() for UI Observables
+        self.items.dispatch_to_ui()
+        self.selected_item.dispatch_to_ui()
+        self.item_count = self.items.map(lambda items: len(items))
+        self.has_items = self.item_count.map(lambda count: count &gt; 0)
+
+    def add_item(self, text: str):
+        with batch():
+            current = self.items.value
+            self.items.value = current + [{&quot;text&quot;: text, &quot;done&quot;: False}]
+</code></pre>
+<h3 id="2-defining-derived-state">2. Defining Derived State</h3>
+<p>Define values calculated from other Observables as computed.</p>
+<pre><code class="language-python">class ShoppingCart:
+    items = Observable([])
+    tax_rate = Observable(0.1)
+
+    def __init__(self):
+        # Subtotal
+        self.subtotal = self.items.map(
+            lambda items: sum(item[&quot;price&quot;] * item[&quot;qty&quot;] for item in items)
+        )
+
+        # Total (Subtotal + Tax)
+        self.total = combine(self.subtotal, self.tax_rate).compute(
+            lambda sub, rate: sub * (1 + rate)
+        )
+</code></pre>
+<h3 id="3-memory-management">3. Memory Management</h3>
+<p>Usually, unsubscribing is not necessary (managed automatically).</p>
+<pre><code class="language-python"># ✅ Recommended: Leave to automatic management
+def create_counter():
+    count = Observable(0)
+    doubled = count.map(lambda x: x * 2)
+    return doubled
+# Automatically cleaned up when out of scope
+</code></pre>
+<p>Use <code>Disposable</code> if you want to explicitly manage long-lived objects.</p>
+<pre><code class="language-python">from nuiitivet.observable import Disposable
+
+class ViewModel(Disposable):
+    def __init__(self):
+        super().__init__()
+
+        self.count = Observable(0)
+        self.doubled = self.count.map(lambda x: x * 2)
+
+        # Register to Disposable
+        self.add_disposable(self.doubled)
+
+    def dispose(self):
+        super().dispose()  # Release all at once
+</code></pre>
+<h3 id="4-utilizing-batch">4. Utilizing batch</h3>
+<p>Group related updates with <code>batch()</code>.</p>
+<pre><code class="language-python">def reset_form(self):
+    with batch():
+        self.name.value = &quot;&quot;
+        self.email.value = &quot;&quot;
+        self.age.value = 0
+        self.errors.value = []
+    # Notified only once here
+</code></pre>
+<h3 id="5-custom-comparison-function">5. Custom Comparison Function</h3>
+<p>You can customize the identity check for values.</p>
+<pre><code class="language-python"># Default: Compare with ==
+count = Observable(0)
+
+# Custom Compare: Always notify
+always_notify = Observable(0, compare=lambda a, b: False)
+
+# Custom Compare: Notify on specific condition
+def compare_users(a, b):
+    if a is None or b is None:
+        return a is b
+    return a.id == b.id
+
+user = Observable(None, compare=compare_users)
+</code></pre>
+<h2 id="sample-code">Sample Code</h2>
+<h3 id="counter-app">Counter App</h3>
+<pre><code class="language-python">from nuiitivet.observable import Observable
+from nuiitivet.widgets import Column, Row, Button, Text
+from nuiitivet.runtime.app import App
+
+class CounterApp:
+    count = Observable(0)
+
+    def __init__(self):
+        self.count.dispatch_to_ui()
+
+    def build(self):
+        return Column(
+            children=[
+                Text(
+                    text=self.count.map(lambda c: f&quot;Count: {c}&quot;),
+                    size=32
+                ),
+                Row(
+                    gap=10,
+                    children=[
+                        Button(
+                            text=&quot;-&quot;,
+                            on_click=lambda: self.decrement()
+                        ),
+                        Button(
+                            text=&quot;+&quot;,
+                            on_click=lambda: self.increment()
+                        ),
+                    ]
+                )
+            ],
+            gap=20,
+            padding=20
+        )
+
+    def increment(self):
+        self.count.value += 1
+
+    def decrement(self):
+        self.count.value -= 1
+
+if __name__ == &quot;__main__&quot;:
+    app = App(CounterApp().build)
+    app.run()
+</code></pre>
+<h3 id="shopping-cart">Shopping Cart</h3>
+<pre><code class="language-python">from nuiitivet.observable import Observable, combine
+
+class ShoppingCart:
+    price = Observable(100)
+    quantity = Observable(1)
+    discount = Observable(0.1)
+
+    def __init__(self):
+        self.price.dispatch_to_ui()
+        self.quantity.dispatch_to_ui()
+        self.discount.dispatch_to_ui()
+        # Subtotal
+        self.subtotal = self.price.combine(self.quantity).compute(
+            lambda p, q: p * q
+        )
+
+        # Total (After discount)
+        self.total = combine(
+            self.subtotal, 
+            self.discount
+        ).compute(lambda sub, disc: sub * (1 - disc))
+
+        # Display string
+        self.display = self.total.map(lambda t: f&quot;Total: ¥{t:,.0f}&quot;)
+</code></pre>
+<h3 id="asynchronous-data-fetching">Asynchronous Data Fetching</h3>
+<pre><code class="language-python">import threading
+from nuiitivet.observable import Observable
+
+class DataViewModel:
+    data = Observable([])
+    loading = Observable(False)
+    error = Observable(None)
+
+    def __init__(self):
+        # Enable .dispatch_to_ui() for UI Observables
+        self.data.dispatch_to_ui()
+        self.loading.dispatch_to_ui()
+        self.error.dispatch_to_ui()
+
+    def load_data_async(self):
+        def worker():
+            try:
+                self.loading.value = True
+                self.error.value = None
+
+                # Heavy process (API request etc.)
+                result = fetch_data_from_api()
+
+                # Set result (Notified on UI thread)
+                self.data.value = result
+            except Exception as e:
+                self.error.value = str(e)
+            finally:
+                self.loading.value = False
+
+        threading.Thread(target=worker).start()
+
+def fetch_data_from_api():
+    import time
+    time.sleep(2)  # Simulate network delay
+    return [{&quot;id&quot;: 1, &quot;name&quot;: &quot;Item 1&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;Item 2&quot;}]
+</code></pre>
+<h3 id="todo-list">TODO List</h3>
+<pre><code class="language-python">from nuiitivet.observable import Observable, batch
+
+class TodoViewModel:
+    items = Observable([])
+    filter_mode = Observable(&quot;all&quot;)  # &quot;all&quot; | &quot;active&quot; | &quot;completed&quot;
+
+    def __init__(self):
+        self.items.dispatch_to_ui()
+        self.filter_mode.dispatch_to_ui()
+        # Filtered Items
+        self.filtered_items = combine(
+            self.items,
+            self.filter_mode
+        ).compute(lambda items, mode: self._filter_items(items, mode))
+
+        # Statistics
+        self.total_count = self.items.map(lambda items: len(items))
+        self.active_count = self.items.map(
+            lambda items: len([i for i in items if not i[&quot;done&quot;]])
+        )
+        self.completed_count = self.items.map(
+            lambda items: len([i for i in items if i[&quot;done&quot;]])
+        )
+
+    def _filter_items(self, items, mode):
+        if mode == &quot;active&quot;:
+            return [i for i in items if not i[&quot;done&quot;]]
+        elif mode == &quot;completed&quot;:
+            return [i for i in items if i[&quot;done&quot;]]
+        else:
+            return items
+
+    def add_item(self, text: str):
+        current = self.items.value
+        new_item = {&quot;id&quot;: len(current), &quot;text&quot;: text, &quot;done&quot;: False}
+
+        self.items.value = current + [new_item]
+
+    def toggle_item(self, item_id: int):
+        items = self.items.value
+        new_items = [
+            {**item, &quot;done&quot;: not item[&quot;done&quot;]} if item[&quot;id&quot;] == item_id else item
+            for item in items
+        ]
+        self.items.value = new_items
+
+    def clear_completed(self):
+        self.items.value = [i for i in self.items.value if not i[&quot;done&quot;]]
+</code></pre>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><a href="../layout/">Layout Guide</a> - Widget arrangement and layout system</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

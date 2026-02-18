@@ -1,0 +1,2173 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.3.0/design/M3_AND_PADDING_INTEGRATION_RULES/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Integration Rules for M3 Specs and Framework Padding - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#integration-rules-for-m3-specs-and-framework-padding" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Integration Rules for M3 Specs and Framework Padding
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#essence-of-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Essence of the Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#actual-representation-in-m3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actual Representation in M3
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Actual Representation in M3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-button-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Button (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-checkbox-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Checkbox (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-list-item-m3-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: List Item (M3 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implicit-rules-of-m3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implicit Rules of M3
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#meaning-of-padding-in-the-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Meaning of padding in the Framework
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Meaning of padding in the Framework">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interpretation-a-internal-padding-container-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation A: Internal Padding (Container-like)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpretation-b-appears-as-outer-margin-common-misconception" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpretation B: Appears as "Outer Margin" (Common Misconception)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposal-2-layer-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposal: 2-Layer Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposal: 2-Layer Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rule-1-m3-component-self-contained-internal-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule 1: M3 Component = Self-contained Internal Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rule-2-widgetpadding-allocated-content-insets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule 2: Widget.padding = allocated → content insets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rule-3-m3-internal-structure-is-auto-calculated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule 3: M3 Internal Structure is Auto-calculated
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unified-rule-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unified Rule Definition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Unified Rule Definition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adopted-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Adopted Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-fixed-size-widget-checkbox-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Fixed-size Widget (Checkbox, Icon)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-variable-size-widget-button" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Variable-size Widget (Button)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-3-layout-widget-column-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 3: Layout Widget (Column, Row)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terminology-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminology Cleanup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Terminology Cleanup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m3-term-framework-term-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3 Term → Framework Term Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-distinction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important Distinction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#specific-example-checkbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specific Example: Checkbox
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Specific Example: Checkbox">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m3-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3 Specification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-layout-adjustments-are-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When Layout Adjustments are Needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary-unified-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary: Unified Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Summary: Unified Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guaranteeing-consistency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Guaranteeing Consistency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prep-checklist-for-the-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prep Checklist for the Future
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prep Checklist for the Future">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-define-target-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Define Target Widgets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-md3-specification-data-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) MD3 Specification Data (Numbers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-state-specific-differences-visuals-and-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) State-specific Differences (Visuals and Input)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rule-integration-mapping-to-box_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Rule Integration (Mapping to BOX_MODEL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-theme-style-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Theme / Style Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-acceptance-criteria-testing-perspective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) Acceptance Criteria (Testing Perspective)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#template-from-specification-to-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Template: From Specification to Implementation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Template: From Specification to Implementation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Widget:
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Widget:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#md3-spec-per-variant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MD3 Spec (per variant)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State differences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#framework-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#styletheme-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Style/Theme tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests / Demo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="integration-rules-for-m3-specs-and-framework-padding">Integration Rules for M3 Specs and Framework Padding</h1>
+<p>See <a href="../BOX_MODEL/">BOX_MODEL.md</a> for the single source of truth on <code>padding</code>, hit testing, and visual overflow (<code>outsets</code>).</p>
+<h2 id="essence-of-the-problem">Essence of the Problem</h2>
+<p><strong>M3 does not have the concept of <code>padding</code> or <code>margin</code> in the CSS sense.</strong></p>
+<p>In the M3 specification, the sizes of each component are defined as:</p>
+<ul>
+<li><strong>Touch Target</strong> (Interaction area)</li>
+<li><strong>Container Size</strong> (Visual container)</li>
+<li><strong>Content Size</strong> (Internal content)</li>
+<li><strong>State Layer</strong> (Feedback area)</li>
+</ul>
+<p>However, the terms <strong>"padding" or "margin" are not used</strong>.</p>
+<h2 id="actual-representation-in-m3">Actual Representation in M3</h2>
+<h3 id="example-1-button-m3-specs">Example 1: Button (M3 Specs)</h3>
+<pre><code class="language-text">Container height: 40dp
+Horizontal padding: 24dp (Distance between internal text and container edge)
+Minimum width: 48dp (Touch target)
+</code></pre>
+<p>→ M3 calls it "padding," but this refers to the <strong>content layout within the container</strong>.</p>
+<h3 id="example-2-checkbox-m3-specs">Example 2: Checkbox (M3 Specs)</h3>
+<pre><code class="language-text">Container: 18×18dp (Icon)
+State layer: 40×40dp (Circular)
+Minimum touch target: 48×48dp
+</code></pre>
+<p>→ The word "padding" is not used; <strong>the sizes for each layer are defined independently</strong>.</p>
+<h3 id="example-3-list-item-m3-specs">Example 3: List Item (M3 Specs)</h3>
+<pre><code class="language-text">Container height: 56dp
+Leading element: 24×24dp icon
+Content padding: 16dp (From leading/trailing edge)
+Spacing between icon and text: 16dp
+</code></pre>
+<p>→ "Padding" is used as an <strong>internal sequence rule for placing content</strong>.</p>
+<h2 id="implicit-rules-of-m3">Implicit Rules of M3</h2>
+<p>An implicit hierarchical structure exists in M3:</p>
+<pre><code class="language-text">Component (Total component area)
+├─ Touch Target (Minimum 48×48dp, Interaction area)
+├─ Container (Visual boundary)
+├─ State Layer (Hover/Press feedback)
+└─ Content (Internal content)
+    └─ Internal Spacing/Padding (Content placement)
+</code></pre>
+<p><strong>Important</strong>: These are all part of the <strong>internal structure of the component</strong> and are <strong>independent of external layout</strong>.</p>
+<h2 id="meaning-of-padding-in-the-framework">Meaning of <code>padding</code> in the Framework</h2>
+<p>In our framework:</p>
+<pre><code class="language-python">Widget(padding=...)
+</code></pre>
+<p>This is a <strong>feature of the Widget base class</strong>, having two interpretations:</p>
+<h3 id="interpretation-a-internal-padding-container-like">Interpretation A: Internal Padding (Container-like)</h3>
+<pre><code class="language-text">┌─────────────────────────────┐
+│ Widget Boundary             │
+│  ┌─────────────────────┐    │
+│  │ padding (Inner space) │    │
+│  │  ┌───────────────┐  │    │
+│  │  │   Content     │  │    │
+│  │  └───────────────┘  │    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+</code></pre>
+<p>→ Corresponds to M3's "content placement within a Container."</p>
+<h3 id="interpretation-b-appears-as-outer-margin-common-misconception">Interpretation B: Appears as "Outer Margin" (Common Misconception)</h3>
+<pre><code class="language-text">┌─────────────────────────────┐
+│ Parent Layout               │
+│  ┌─────────────────────┐    │
+│  │ padding (insets)    │    │
+│  │  ┌───────────────┐  │    │
+│  │  │   Widget      │  │    │
+│  │  │   Boundary    │  │    │
+│  │  └───────────────┘  │    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+</code></pre>
+<p>→ M3 has no corresponding concept (however, Framework <code>padding</code> is not margin).</p>
+<ul>
+<li><code>padding</code> itself is the <code>allocated</code> → <code>content</code> insets.</li>
+<li>Depending on the painting/hit testing rules of a leaf widget, it may look or behave like "outer margin."</li>
+</ul>
+<h2 id="proposal-2-layer-model">Proposal: 2-Layer Model</h2>
+<h3 id="rule-1-m3-component-self-contained-internal-structure">Rule 1: M3 Component = Self-contained Internal Structure</h3>
+<p>Each M3 component (Button, Checkbox, etc.) is a <strong>closed unit with an internal structure</strong>.</p>
+<pre><code class="language-python"># M3 components have &quot;M3-spec sizes&quot;
+Checkbox(size=48)  # M3's &quot;48dp touch target&quot;
+Button(height=40)  # M3's &quot;40dp container height&quot;
+</code></pre>
+<p>→ These are <strong>M3-spec parameters</strong> and are unrelated to <code>padding</code>.</p>
+<h3 id="rule-2-widgetpadding-allocated-content-insets">Rule 2: Widget.padding = allocated → content insets</h3>
+<p><code>Widget.padding</code> represents the <strong>insets used to derive the content rect from the allocated rect</strong>.</p>
+<p>Note: In leaf widgets, this can appear as "outer margin."</p>
+<ul>
+<li>If the visual painting (e.g., no background) is aligned with the content rect, the padding area often appears visually blank.</li>
+<li>However, since hit testing is (generally) based on the <code>allocated rect</code>, the padding area may still be part of the touch target.</li>
+</ul>
+<pre><code class="language-python"># M3 component + Framework layout adjustment
+Checkbox(size=48, padding=10)
+#        ^         ^
+#        M3 spec   insets (padding)
+</code></pre>
+<p><strong>Illustration</strong>:</p>
+<pre><code class="language-text">┌─────────────────────────────────────┐
+│ Widget (Included in preferred_size)   │
+│  ┌─────────────────────────────┐    │
+│  │ padding=10 (insets)         │    │
+│  │  ┌───────────────────────┐  │    │
+│  │  │ M3 Component          │  │    │
+│  │  │ (size=48)             │  │    │
+│  │  │  - Touch Target       │  │    │
+│  │  │  - State Layer        │  │    │
+│  │  │  - Icon               │  │    │
+│  │  └───────────────────────┘  │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+preferred_size = 48 + 10*2 = 68dp
+</code></pre>
+<h3 id="rule-3-m3-internal-structure-is-auto-calculated">Rule 3: M3 Internal Structure is Auto-calculated</h3>
+<p>The internal structure of M3 components (Icon/State Layer/Touch Target) is <strong>calculated automatically according to M3 specs</strong>.</p>
+<pre><code class="language-python">class Checkbox(Widget):
+    def __init__(self, size=48, padding=0, ...):
+        super().__init__(width=size, height=size, padding=padding)
+
+        # Internal structure per M3 spec (not touched by user)
+        self._touch_target = size              # 48dp
+        self._state_layer = size * (40/48)     # 40dp (M3 ratio)
+        self._icon_size = size * (18/48)       # 18dp (M3 ratio)
+
+    def preferred_size(self):
+        # M3 size + padding
+        l, t, r, b = self.padding
+        return (self._touch_target + l + r,
+                self._touch_target + t + b)
+
+    def paint(self, canvas, x, y, width, height):
+        # Apply padding to get content area
+        cx, cy, cw, ch = self.content_rect(x, y, width, height)
+
+        # Place M3 component within content area
+        # (Draw M3 internal structure here)
+        self._paint_m3_component(canvas, cx, cy, cw, ch)
+</code></pre>
+<h2 id="unified-rule-definition">Unified Rule Definition</h2>
+<h3 id="adopted-rules">✅ Adopted Rules</h3>
+<p><strong><code>Widget.padding</code> = <code>allocated</code> → <code>content</code> insets (Common to all Widgets)</strong></p>
+<ol>
+<li>
+<p><strong>M3-spec parameters</strong>: <code>size</code>, <code>height</code>, <code>width</code>, etc.</p>
+<ul>
+<li>Follows official M3 specifications.</li>
+<li>Defines internal component structure.</li>
+</ul>
+</li>
+<li>
+<p><strong>Framework padding</strong>: <code>padding</code> parameter.</p>
+<ul>
+<li><code>allocated</code> → <code>content</code> insets.</li>
+<li>Included in <code>preferred_size()</code> (as a result, may behave as "surrounding space" in the layout).</li>
+</ul>
+</li>
+<li>
+<p><strong>M3 internal structure</strong>: Auto-calculated.</p>
+<ul>
+<li>Touch Target, State Layer, Icon, etc.</li>
+<li>Calculated automatically using M3 ratios.</li>
+<li>Usually not something users need to worry about.</li>
+</ul>
+</li>
+</ol>
+<h3 id="implementation-patterns">Implementation Patterns</h3>
+<h4 id="pattern-1-fixed-size-widget-checkbox-icon">Pattern 1: Fixed-size Widget (Checkbox, Icon)</h4>
+<pre><code class="language-python">class Checkbox(Widget):
+    def __init__(self, size=48, padding=0, ...):
+        # M3: size = Touch Target
+        # Framework: padding = allocated→content insets
+        super().__init__(width=size, height=size, padding=padding)
+        self._m3_size = size
+
+    def preferred_size(self):
+        l, t, r, b = self.padding
+        return (self._m3_size + l + r, self._m3_size + t + b)
+</code></pre>
+<h4 id="pattern-2-variable-size-widget-button">Pattern 2: Variable-size Widget (Button)</h4>
+<pre><code class="language-python">class Button(Widget):
+    def __init__(self, label, padding=0, ...):
+        # M3: Internal padding (24dp horizontal) is a separate parameter
+        # Framework: padding = allocated→content insets
+        super().__init__(padding=padding)
+        self._m3_horizontal_padding = 24  # M3 Internal
+        self._m3_height = 40              # M3 Spec
+
+    def preferred_size(self):
+        # M3: text width + M3 internal padding
+        text_w = self._measure_text()
+        m3_width = text_w + self._m3_horizontal_padding * 2
+        m3_height = self._m3_height
+
+        # Framework: M3 size + padding
+        l, t, r, b = self.padding
+        return (m3_width + l + r, m3_height + t + b)
+</code></pre>
+<h4 id="pattern-3-layout-widget-column-row">Pattern 3: Layout Widget (Column, Row)</h4>
+<pre><code class="language-python">class Column(Widget):
+    def __init__(self, children, spacing=0, padding=0, ...):
+        # M3: Not applicable (Layout is a framework feature)
+        # Framework: padding = Inner padding before placing children
+        super().__init__(padding=padding)
+        self._spacing = spacing  # Spacing between children
+
+    def preferred_size(self):
+        # Size of children + spacing
+        children_size = self._calculate_children_size()
+
+        # Framework: children + padding
+        l, t, r, b = self.padding
+        return (children_size.w + l + r, children_size.h + t + b)
+</code></pre>
+<h2 id="terminology-cleanup">Terminology Cleanup</h2>
+<h3 id="m3-term-framework-term-mapping">M3 Term → Framework Term Mapping</h3>
+<table>
+<thead>
+<tr>
+<th>M3 Term</th>
+<th>Framework Term</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Container size</td>
+<td><code>size</code>, <code>width</code>, <code>height</code></td>
+<td>Size of the M3 component</td>
+</tr>
+<tr>
+<td>Content padding (Internal)</td>
+<td>M3 Parameter or Auto-calculated</td>
+<td>Internal layout within the component</td>
+</tr>
+<tr>
+<td>Touch target</td>
+<td>M3 Parameter (usually <code>size</code>)</td>
+<td>Interaction area</td>
+</tr>
+<tr>
+<td>State layer</td>
+<td>Auto-calculated</td>
+<td>Determined using M3 ratios</td>
+</tr>
+<tr>
+<td>Spacing (between items)</td>
+<td><code>spacing</code></td>
+<td>Distance between child elements</td>
+</tr>
+<tr>
+<td><strong>(N/A)</strong></td>
+<td><code>padding</code></td>
+<td><code>allocated</code> → <code>content</code> insets (may appear as visual surrounding space)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="important-distinction">Important Distinction</h3>
+<pre><code class="language-python"># ❌ Concept that does not exist in M3
+m3_component.margin = ...  # No margin in M3
+
+# ✅ Concept added in the Framework
+widget.padding = ...  # allocated→content insets
+
+# ✅ M3 Concepts
+m3_component.size = 48           # Touch target (M3 spec)
+m3_component.container_height = 40  # Container (M3 spec)
+</code></pre>
+<h2 id="specific-example-checkbox">Specific Example: Checkbox</h2>
+<h3 id="m3-specification">M3 Specification</h3>
+<pre><code class="language-text">Touch target: 48×48dp (minimum)
+State layer: 40dp diameter
+Icon: 18×18dp
+</code></pre>
+<h3 id="framework-implementation">Framework Implementation</h3>
+<pre><code class="language-python">Checkbox(
+    size=48,      # M3: Touch target
+    padding=0,    # Framework: insets (default)
+)
+
+# preferred_size() = 48×48 (M3 size)
+# Internal structure:
+#   touch_target = 48dp (size)
+#   state_layer = 40dp (Auto-calculated: 48 * 40/48)
+#   icon = 18dp (Auto-calculated: 48 * 18/48)
+</code></pre>
+<h3 id="when-layout-adjustments-are-needed">When Layout Adjustments are Needed</h3>
+<pre><code class="language-python">Checkbox(
+    size=48,       # M3: Touch target
+    padding=10,    # Framework: insets
+)
+
+# preferred_size() = 68×68 (48 + 10*2)
+# M3 internal structure remains drawn within a 48dp region.
+# Insets shrink the content rect, which may result in visual surrounding blank space.
+</code></pre>
+<h2 id="summary-unified-rules">Summary: Unified Rules</h2>
+<h3 id="decisions">✅ Decisions</h3>
+<ol>
+<li>
+<p><strong>M3-spec parameters (<code>size</code>, <code>width</code>, <code>height</code>, etc.)</strong></p>
+<ul>
+<li>Defines the <strong>internal structure</strong> of the M3 component.</li>
+<li>Follows official M3 specifications.</li>
+<li>Independent of <code>padding</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Framework padding</strong></p>
+<ul>
+<li><code>allocated</code> → <code>content</code> insets (a concept that does not exist in M3).</li>
+<li>Included in <code>preferred_size()</code>.</li>
+<li>Default value is <code>0</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Terminology usage</strong></p>
+<ul>
+<li>"M3 internal padding" → M3-spec parameter or auto-calculated.</li>
+<li>"Widget padding" → <code>allocated</code> → <code>content</code> insets.</li>
+</ul>
+</li>
+<li>
+<p><strong>Implementation Policy</strong></p>
+<ul>
+<li>M3 components are self-contained.</li>
+<li><code>padding</code> is common to all Widgets as <code>allocated</code> → <code>content</code> insets.</li>
+<li>Layout Widgets (Column/Row) use <code>padding</code> as internal spacing.</li>
+</ul>
+</li>
+</ol>
+<h3 id="guaranteeing-consistency">🎯 Guaranteeing Consistency</h3>
+<pre><code class="language-python"># Unified across all Widgets
+Column(padding=10)      # Inner spacing before child placement
+Row(padding=10)         # Inner spacing before child placement
+Text(padding=10)        # Surrounding space for text
+Checkbox(padding=10)    # allocated→content insets (appears as surrounding space in leaf)
+Icon(padding=10)        # allocated→content insets (appears as surrounding space in leaf)
+Button(padding=10)      # allocated→content insets
+</code></pre>
+<p><strong>Meaning</strong>: Unified under "spacing included in <code>preferred_size</code>."</p>
+<p><strong>M3 internal structure</strong>: Managed independently by each Widget (independent of <code>padding</code>).</p>
+<h2 id="prep-checklist-for-the-future">Prep Checklist for the Future</h2>
+<p>To ensure smooth MD3 compliance, prepare the following before starting implementation.</p>
+<h3 id="1-define-target-widgets">1) Define Target Widgets</h3>
+<ul>
+<li>Widget name (e.g., Switch / Radio / Slider / ListItem, etc.)</li>
+<li>Variant (e.g., Filled/Outlined, Small/Medium/Large, etc.)</li>
+<li>Platform differences (Differences between Android/iOS/Web, if any)</li>
+</ul>
+<h3 id="2-md3-specification-data-numbers">2) MD3 Specification Data (Numbers)</h3>
+<p>At a minimum, collect the following numbers for each variant:</p>
+<ul>
+<li>Touch target (Minimum size)</li>
+<li>Container size (Height/Width, Shape)</li>
+<li>Content insets (leading/trailing/top/bottom)</li>
+<li>Icon/indicator size</li>
+<li>Gap/spacing (Between elements)</li>
+<li>State layer (Size, shape, display conditions)</li>
+<li>Typography (Font size, line height, weight, etc.)</li>
+</ul>
+<p>Note:</p>
+<ul>
+<li>M3's "padding" generally refers to the <strong>layout of content within a Container</strong>.</li>
+<li>Framework <code>Widget.padding</code> is treated as <code>allocated</code> → <code>content</code> insets (per BOX_MODEL rules).</li>
+</ul>
+<h3 id="3-state-specific-differences-visuals-and-input">3) State-specific Differences (Visuals and Input)</h3>
+<ul>
+<li>enabled / disabled</li>
+<li>hovered / pressed</li>
+<li>focused (Presence of focus ring/outline, whether it's an outset)</li>
+<li>selected / checked / indeterminate</li>
+</ul>
+<p>Specify whether "the size changes" or "only the rendering changes" for each state.</p>
+<h3 id="4-rule-integration-mapping-to-box_model">4) Rule Integration (Mapping to BOX_MODEL)</h3>
+<ul>
+<li>Preferred size: Does it meet the touch target? (e.g., min 48)</li>
+<li>Paint: Where is the container drawn? (e.g., centered as 40 within 48)</li>
+<li>Hit test: Is it based on the allocated rect? (Exception: viewport/clip)</li>
+<li>Outsets: Are shadows/focus/overlays treated as outsets? (Not included in layout/hit test)</li>
+</ul>
+<h3 id="5-theme-style-design">5) Theme / Style Design</h3>
+<ul>
+<li>Tokens to include in <code>*Style</code> (e.g., <code>container_height</code>, <code>content_insets</code>, <code>spacing</code>, <code>min_height</code>)</li>
+<li>Whether to reference via <code>ThemeData</code> or allow overrides via Widget arguments.</li>
+<li>Changes where breaking existing Styles/APIs is acceptable (do not consider backward compatibility).</li>
+</ul>
+<h3 id="6-acceptance-criteria-testing-perspective">6) Acceptance Criteria (Testing Perspective)</h3>
+<ul>
+<li>Expected <code>preferred_size</code> (Fixed value or range)</li>
+<li>Ensure <code>padding</code> is included in <code>preferred_size</code>.</li>
+<li>Ensure <code>hit_test</code> follows the <code>allocated rect</code>.</li>
+<li>Ensure visible region constraints of clip/viewport are not broken.</li>
+</ul>
+<p>If possible, prepare visual verification samples in <code>src/samples/*_demo.py</code> simultaneously.</p>
+<h2 id="template-from-specification-to-implementation">Template: From Specification to Implementation</h2>
+<p>In the future, fill out this template to turn a task into an implementation task.</p>
+<h3 id="widget">Widget: <NAME></h3>
+<h4 id="md3-spec-per-variant">MD3 Spec (per variant)</h4>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Touch target</th>
+<th>Container</th>
+<th>Insets (L/T/R/B)</th>
+<th>Icon</th>
+<th>Gap</th>
+<th>Font</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>default</td>
+<td>48x48</td>
+<td>40h</td>
+<td>16/0/16/0</td>
+<td>20</td>
+<td>8</td>
+<td>14</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="state-differences">State differences</h4>
+<ul>
+<li>disabled:</li>
+<li>hovered:</li>
+<li>pressed:</li>
+<li>focused:</li>
+<li>selected:</li>
+</ul>
+<h4 id="framework-mapping">Framework mapping</h4>
+<ul>
+<li><code>Widget.padding</code>:</li>
+<li><code>preferred_size</code>:</li>
+<li><code>paint</code> (container placement):</li>
+<li><code>hit_test</code>:</li>
+<li><code>outsets</code>:</li>
+</ul>
+<h4 id="styletheme-tokens">Style/Theme tokens</h4>
+<ul>
+<li>Style fields to add/update:</li>
+<li>ThemeData wiring:</li>
+</ul>
+<h4 id="tests-demo">Tests / Demo</h4>
+<ul>
+<li>Tests to add/update:</li>
+<li>Demo to add/update:</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
