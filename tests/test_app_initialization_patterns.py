@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
 from nuiitivet.navigation import Navigator
 from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App, AppScope
-from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
 class _FlagWidget(Widget):
@@ -18,6 +20,11 @@ class _FlagWidget(Widget):
 
     def build(self) -> Widget:
         return self
+
+
+class _ComposableFixedBox(ComposableWidget):
+    def build(self) -> Widget:
+        return Container(width=200, height=50)
 
 
 def test_app_content_provides_root_overlay() -> None:
@@ -67,3 +74,16 @@ def test_app_navigation_sets_root_navigator_and_overlay() -> None:
     finally:
         Navigator._root = prev_nav  # type: ignore[attr-defined]
         Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+
+
+def test_app_auto_window_size_measures_unmounted_composable_children() -> None:
+    content = Column(
+        children=[_ComposableFixedBox()],
+        gap=16,
+        padding=16,
+    )
+
+    app = App(content=content, width="auto", height="auto")
+
+    assert app.width == 232
+    assert app.height == 82

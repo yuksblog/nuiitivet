@@ -531,6 +531,18 @@ class BuilderHostMixin:
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         if self._built:
             return measure_preferred_size(self._built, max_width=max_width, max_height=max_height)
+
+        # Unmounted composables still need intrinsic sizing (e.g. App auto
+        # window sizing before mount). Evaluate build once and measure the
+        # returned subtree directly.
+        try:
+            built = self.evaluate_build()
+        except Exception:
+            return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
+
+        if built is not None and built is not self:
+            return measure_preferred_size(built, max_width=max_width, max_height=max_height)
+
         return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
 
     def rebuild(self) -> None:
