@@ -1,6 +1,7 @@
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 from nuiitivet.modifiers import background, border, clip, corner_radius, shadow
+from nuiitivet.observable import Observable
 
 
 class MockWidget(Widget):
@@ -94,6 +95,21 @@ def test_corner_radius_modifier():
     assert result.corner_radius == 10
     assert result.clip_content is True
     assert result.children[0] is w
+
+
+def test_corner_radius_keeps_background_observable_binding():
+    source = Observable(False)
+    color = source.map(lambda hovered: "#2196F3" if hovered else "#E0E0E0")
+
+    w = MockWidget()
+    result = w.modifier(background(color) | corner_radius(10))
+
+    assert isinstance(result, Box)
+    assert result.bgcolor == "#E0E0E0"
+
+    source.value = True
+
+    assert result.bgcolor == "#2196F3"
 
 
 def test_clip_modifier():

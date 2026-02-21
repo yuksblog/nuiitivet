@@ -28,32 +28,8 @@ class CornerRadiusModifier(ModifierElement):
         return False
 
     def apply(self, widget: Widget) -> Widget:
-        self._apply_to_box(widget)
-        # Optimization: Always merge with existing ModifierBox
-        if isinstance(widget, ModifierBox):
-            child = widget.children[0] if widget.children else None
-            if child is not None:
-                self._apply_to_box(child)
-            box = ModifierBox(
-                child=child,
-                width=widget.width_sizing,
-                height=widget.height_sizing,
-                padding=widget.padding,
-                modifier=widget._modifier_chain,
-                # Merged properties (overwrite radius)
-                background_color=widget.bgcolor,
-                border_width=widget.border_width,
-                border_color=widget.border_color,
-                corner_radius=self.radius,
-                shadow_blur=widget.shadow_blur,
-                shadow_color=widget.shadow_color,
-                shadow_offset=widget.shadow_offset,
-                alignment=widget.alignment,
-            )
-            box.clip_content = True
-            return box
-
         if isinstance(widget, Box):
+            self._apply_to_box(widget)
             widget.clip_content = True
             return widget
 
