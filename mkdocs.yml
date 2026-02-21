@@ -51,6 +51,12 @@ nav:
           - Overflow: guide/layout_overflow.md
           - Extras: guide/layout_extras.md
       - Dialogs: guide/dialogs.md
+      - Modifiers:
+          - Overview: guide/modifier.md
+          - Decoration: guide/modifier_decoration.md
+          - Interaction: guide/modifier_interaction.md
+          - Transform: guide/modifier_transform.md
+          - Others: guide/modifier_others.md
       - State Management: guide/observable.md
       - Async & Threading: guide/threading.md
       - Interaction: guide/interaction_region.md
