@@ -61,6 +61,19 @@ SAMPLES = [
     ("src/samples/dialogs/view_model_direct.py", "dialogs_view_model_direct.png"),
     ("src/samples/dialogs/view_model_intent.py", "dialogs_view_model_intent.png"),
     ("src/samples/dialogs/custom_intent.py", "dialogs_custom_intent.png"),
+    # Modifiers
+    ("src/samples/modifier/basic_usage.py", "modifier_basic.png"),
+    ("src/samples/modifier_decoration/background_border.py", "modifier_decoration_bg_border.png"),
+    ("src/samples/modifier_decoration/corner_radius_clip.py", "modifier_decoration_radius_clip.png"),
+    ("src/samples/modifier_decoration/shadow.py", "modifier_decoration_shadow.png"),
+    ("src/samples/modifier_interaction/clickable.py", "modifier_interaction_clickable.png"),
+    ("src/samples/modifier_interaction/hoverable.py", "modifier_interaction_hoverable.png"),
+    ("src/samples/modifier_interaction/focusable.py", "modifier_interaction_focusable.png"),
+    ("src/samples/modifier_transform/opacity.py", "modifier_transform_opacity.png"),
+    ("src/samples/modifier_transform/rotate_scale.py", "modifier_transform_rotate_scale.png"),
+    ("src/samples/modifier_transform/translate.py", "modifier_transform_translate.png"),
+    ("src/samples/modifier_others/scrollable.py", "modifier_others_scrollable.png"),
+    ("src/samples/modifier_others/will_pop.py", "modifier_others_will_pop.png"),
 ]
 
 
