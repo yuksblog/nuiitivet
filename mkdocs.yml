@@ -56,6 +56,11 @@ nav:
           - PageRoute & Animations: guide/navigation_route.md
           - Intent-Based Navigation: guide/navigation_intent.md
           - Nested Navigation: guide/navigation_sub.md
+      - Window:
+          - Overview: guide/window.md
+          - Title Bar: guide/window_title_bar.md
+          - Size and Position: guide/window_size_position.md
+          - Operations: guide/window_operations.md
       - Modifiers:
           - Overview: guide/modifier.md
           - Decoration: guide/modifier_decoration.md
