@@ -51,6 +51,11 @@ nav:
           - Overflow: guide/layout_overflow.md
           - Extras: guide/layout_extras.md
       - Dialogs: guide/dialogs.md
+      - Navigation:
+          - Overview: guide/navigation.md
+          - PageRoute & Animations: guide/navigation_route.md
+          - Intent-Based Navigation: guide/navigation_intent.md
+          - Nested Navigation: guide/navigation_sub.md
       - Modifiers:
           - Overview: guide/modifier.md
           - Decoration: guide/modifier_decoration.md

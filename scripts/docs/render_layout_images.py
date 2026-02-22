@@ -74,6 +74,11 @@ SAMPLES = [
     ("src/samples/modifier_transform/translate.py", "modifier_transform_translate.png"),
     ("src/samples/modifier_others/scrollable.py", "modifier_others_scrollable.png"),
     ("src/samples/modifier_others/will_pop.py", "modifier_others_will_pop.png"),
+    # Navigation
+    ("src/samples/navigation/basic.py", "navigation_basic.png"),
+    ("src/samples/navigation/route.py", "navigation_route.png"),
+    ("src/samples/navigation/intent.py", "navigation_intent.png"),
+    ("src/samples/navigation/sub.py", "navigation_sub.png"),
 ]
 
 
