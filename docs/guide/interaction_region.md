@@ -22,7 +22,7 @@ The region hosts an `InteractionState` object that records the live pointer flag
 | --- | --- |
 | `hovered` | Pointer is inside the region (or captured and still over the rect). |
 | `pressed` | Active press sequence is in progress. |
-| `focused` | Widget is focused (set by App-level focus handling). See `docs/design/tasks/FOCUS_AND_KEYBOARD.md`. |
+| `focused` | Widget is focused (set by App-level focus handling). |
 | `disabled` | Modifier or widget marked the interaction as disabled. |
 | `dragging` / `scrolling` | Reserved for drag/scroll modifiers. |
 | `selected`, `checked`, `toggled_on` | Convenience flags for composite controls. |
