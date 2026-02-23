@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.dialog_style import DialogStyle
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
+    from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+    from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.styles.text_style import TextStyle
     from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
@@ -47,6 +49,8 @@ class MaterialThemeData(ThemeExtension):
 
     # Other styles
     _checkbox_style: "CheckboxStyle | None" = None
+    _radio_button_style: "RadioButtonStyle | None" = None
+    _switch_style: "SwitchStyle | None" = None
     _alert_dialog_style: "DialogStyle | None" = None
     _icon_style: "IconStyle | None" = None
     _text_style: "TextStyle | None" = None
@@ -162,6 +166,24 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.checkbox_style import CheckboxStyle
 
         return CheckboxStyle()
+
+    @property
+    def radio_button_style(self) -> "RadioButtonStyle":
+        """Get RadioButtonStyle for this theme."""
+        if self._radio_button_style is not None:
+            return self._radio_button_style
+        from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+
+        return RadioButtonStyle()
+
+    @property
+    def switch_style(self) -> "SwitchStyle":
+        """Get SwitchStyle for this theme."""
+        if self._switch_style is not None:
+            return self._switch_style
+        from nuiitivet.material.styles.switch_style import SwitchStyle
+
+        return SwitchStyle()
 
     @property
     def alert_dialog_style(self) -> "DialogStyle":

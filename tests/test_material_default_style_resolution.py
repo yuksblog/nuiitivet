@@ -7,7 +7,9 @@ from nuiitivet.material import (
     Icon,
     NavigationRail,
     OutlinedTextField,
+    RadioButton,
     RailItem,
+    Switch,
     Text,
     TextField,
 )
@@ -50,6 +52,20 @@ def test_material_checkbox_defaults_to_theme_checkbox_style() -> None:
     mat = manager.current.extension(MaterialThemeData)
     assert mat is not None
     assert c.style == mat.checkbox_style
+
+
+def test_material_radio_button_defaults_to_theme_radio_style() -> None:
+    r = RadioButton("a")
+    mat = manager.current.extension(MaterialThemeData)
+    assert mat is not None
+    assert r.style == mat.radio_button_style
+
+
+def test_material_switch_defaults_to_theme_switch_style() -> None:
+    s = Switch()
+    mat = manager.current.extension(MaterialThemeData)
+    assert mat is not None
+    assert s.style == mat.switch_style
 
 
 def test_text_field_defaults_to_default_text_field_style() -> None:
