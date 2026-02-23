@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         TextButton,
     )
     from .card import Card, ElevatedCard, FilledCard, OutlinedCard
+    from .chip import AssistChip, FilterChip, InputChip, SuggestionChip
     from .dialogs import AlertDialog
     from .loading_indicator import LoadingIndicator
     from .intents import LoadingIntent
@@ -39,6 +40,10 @@ __all__ = [
     "ElevatedCard",
     "FilledCard",
     "OutlinedCard",
+    "AssistChip",
+    "FilterChip",
+    "InputChip",
+    "SuggestionChip",
     "ElevatedButton",
     "FilledButton",
     "FilledTonalButton",
@@ -78,6 +83,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ElevatedCard": ("card", "ElevatedCard"),
     "FilledCard": ("card", "FilledCard"),
     "OutlinedCard": ("card", "OutlinedCard"),
+    "AssistChip": ("chip", "AssistChip"),
+    "FilterChip": ("chip", "FilterChip"),
+    "InputChip": ("chip", "InputChip"),
+    "SuggestionChip": ("chip", "SuggestionChip"),
     "ElevatedButton": ("buttons", "ElevatedButton"),
     "FilledButton": ("buttons", "FilledButton"),
     "FilledTonalButton": ("buttons", "FilledTonalButton"),

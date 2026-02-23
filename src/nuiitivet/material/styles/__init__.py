@@ -5,6 +5,7 @@ Export core style dataclasses used by widgets: `ButtonStyle`, `CheckboxStyle`, `
 
 from .checkbox_style import CheckboxStyle
 from .button_style import ButtonStyle
+from .chip_style import ChipStyle
 from .dialog_style import DialogStyle
 from .icon_style import IconStyle
 from .loading_indicator_style import LoadingIndicatorStyle
@@ -18,6 +19,7 @@ from .text_style import TextStyle
 __all__ = [
     "ButtonStyle",
     "CheckboxStyle",
+    "ChipStyle",
     "DialogStyle",
     "IconStyle",
     "LoadingIndicatorStyle",
