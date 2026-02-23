@@ -29,6 +29,8 @@ class TextFieldStyle:
     label_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     focused_label_color: ColorSpec = ColorRole.PRIMARY
     error_label_color: ColorSpec = ColorRole.ERROR
+    supporting_text_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
+    error_supporting_text_color: ColorSpec = ColorRole.ERROR
 
     # Cursor & Selection
     cursor_color: ColorSpec = ColorRole.PRIMARY

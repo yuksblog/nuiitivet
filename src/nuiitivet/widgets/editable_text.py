@@ -203,10 +203,11 @@ class EditableText(InteractionHostMixin, Widget):
             return (0, 0)
 
         text = self._state_internal.value.text
+        display_text = self._get_display_text(text)
         # If empty, measure a dummy character to get height
-        measure_text = text if text else "M"
+        measure_text = display_text if display_text else "M"
 
-        width = int(font.measureText(measure_text)) if text else 0
+        width = int(font.measureText(measure_text)) if display_text else 0
         metrics = font.getMetrics()
         height = int(-metrics.fAscent + metrics.fDescent)
 
@@ -262,14 +263,16 @@ class EditableText(InteractionHostMixin, Widget):
         if not text:
             return 0
 
+        display_text = self._get_display_text(text)
+
         if x < 0:
             return 0
 
         for i in range(len(text) + 1):
-            sub = text[:i]
+            sub = display_text[:i]
             w = font.measureText(sub)
             if w > x:
-                prev_w = font.measureText(text[: i - 1]) if i > 0 else 0
+                prev_w = font.measureText(display_text[: i - 1]) if i > 0 else 0
                 if x - prev_w < w - x:
                     return i - 1
                 return i
@@ -462,6 +465,7 @@ class EditableText(InteractionHostMixin, Widget):
         is_focused = self.state.focused
         current_value = self._state_internal.value
         text = current_value.text
+        display_text = self._get_display_text(text)
         selection = current_value.selection
 
         font = self._get_font()
@@ -472,18 +476,18 @@ class EditableText(InteractionHostMixin, Widget):
             ty = y + (height + text_height) / 2 - font_metrics.fDescent
 
             # Draw Text
-            if text:
+            if display_text:
                 from nuiitivet.theme.manager import manager as theme_manager
 
                 text_color = resolve_color_to_rgba(self.text_color, theme=theme_manager.current)
                 paint_text = make_paint(color=text_color)
-                blob = make_text_blob(text, font)
+                blob = make_text_blob(display_text, font)
                 if blob:
                     canvas.drawTextBlob(blob, x, ty, paint_text)
 
             # Draw Cursor
             if is_focused and selection.is_collapsed:
-                cursor_text = text[: selection.end]
+                cursor_text = display_text[: selection.end]
                 cursor_x = font.measureText(cursor_text)
 
                 cursor_top = ty + font_metrics.fAscent
@@ -508,3 +512,8 @@ class EditableText(InteractionHostMixin, Widget):
                         cursor_bottom,
                         paint_cursor,
                     )
+
+    def _get_display_text(self, text: str) -> str:
+        if not self._obscure_text:
+            return text
+        return "•" * len(text)

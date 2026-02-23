@@ -85,8 +85,12 @@ class TextField(InteractiveWidget):
     - on_change: Callback when value changes
     - label: Floating label text (supports Observable)
     - leading_icon: Icon source (Symbol/str or Observable of them)
+    - on_tap_leading_icon: Callback invoked when the leading icon is tapped
     - trailing_icon: Icon source (Symbol/str or Observable of them)
-    - error_text: Error message to display (supports Observable)
+    - on_tap_trailing_icon: Callback invoked when the trailing icon is tapped
+    - obscure_text: Whether to mask text display (password-style)
+    - supporting_text: Supporting text to display below the field (supports Observable)
+    - is_error: Whether the field is in error state (supports Observable)
     - style: Custom style configuration
     - width: Explicit width sizing
     - height: Explicit height sizing
@@ -135,9 +139,14 @@ class TextField(InteractiveWidget):
         *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        on_tap_leading_icon: Optional[Callable[[], None]] = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
+        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
+        obscure_text: bool = False,
+        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
+        is_error: bool | ObservableProtocol[bool] | None = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
@@ -152,8 +161,13 @@ class TextField(InteractiveWidget):
             on_change: Callback when value changes.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
+            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
             trailing_icon: Icon displayed after the text.
-            error_text: Error message to display.
+            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
+            obscure_text: Whether to mask text display (password-style).
+            supporting_text: Supporting text displayed below the field.
+            is_error: Whether to use error colors for the field.
+            error_text: Deprecated alias for supporting_text.
             disabled: Whether the text field is disabled.
             width: Width specification.
             height: Height specification.
@@ -170,7 +184,8 @@ class TextField(InteractiveWidget):
         )
 
         self._label_source: ReadOnlyObservableProtocol[str] | None = None
-        self._error_text_source: ReadOnlyObservableProtocol[str | None] | None = None
+        self._supporting_text_source: ReadOnlyObservableProtocol[str | None] | None = None
+        self._is_error_source: ObservableProtocol[bool] | None = None
         self._disabled_source: ObservableProtocol[bool] | None = None
 
         label_value: str | None
@@ -183,16 +198,31 @@ class TextField(InteractiveWidget):
         else:
             label_value = str(label) if label is not None else None
 
-        error_text_value: str | None
-        if hasattr(error_text, "subscribe") and hasattr(error_text, "value"):
-            self._error_text_source = cast("ReadOnlyObservableProtocol[str | None]", error_text)
+        self._legacy_error_text_mode = supporting_text is None and error_text is not None and is_error is None
+
+        supporting_text_value: str | None
+        supporting_source = supporting_text if supporting_text is not None else error_text
+        if hasattr(supporting_source, "subscribe") and hasattr(supporting_source, "value"):
+            self._supporting_text_source = cast("ReadOnlyObservableProtocol[str | None]", supporting_source)
             try:
-                v = self._error_text_source.value
-                error_text_value = str(v) if v is not None else None
+                v = self._supporting_text_source.value
+                supporting_text_value = str(v) if v is not None else None
             except Exception:
-                error_text_value = None
+                supporting_text_value = None
         else:
-            error_text_value = str(error_text) if error_text is not None else None
+            supporting_text_value = str(supporting_source) if supporting_source is not None else None
+
+        initial_is_error: bool
+        if hasattr(is_error, "subscribe") and hasattr(is_error, "value"):
+            self._is_error_source = cast("ObservableProtocol[bool]", is_error)
+            try:
+                initial_is_error = bool(self._is_error_source.value)
+            except Exception:
+                initial_is_error = False
+        elif is_error is None:
+            initial_is_error = self._legacy_error_text_mode and supporting_text_value is not None
+        else:
+            initial_is_error = bool(is_error)
 
         initial_disabled: bool
         if hasattr(disabled, "subscribe") and hasattr(disabled, "value"):
@@ -207,7 +237,15 @@ class TextField(InteractiveWidget):
         self.label = label_value
         self.leading_icon = _build_text_field_icon(leading_icon, arg_name="leading_icon")
         self.trailing_icon = _build_text_field_icon(trailing_icon, arg_name="trailing_icon")
-        self.error_text = error_text_value
+        self._on_tap_leading_icon = on_tap_leading_icon
+        self._on_tap_trailing_icon = on_tap_trailing_icon
+        self.supporting_text = supporting_text_value
+        self.is_error = initial_is_error
+
+        if self._on_tap_leading_icon is not None and self.leading_icon is None:
+            raise ValueError("on_tap_leading_icon requires leading_icon to be provided")
+        if self._on_tap_trailing_icon is not None and self.trailing_icon is None:
+            raise ValueError("on_tap_trailing_icon requires trailing_icon to be provided")
 
         self._user_style = style
         # Default variant for base class is filled
@@ -229,10 +267,11 @@ class TextField(InteractiveWidget):
             on_change=self._handle_editable_change,
             on_focus_change=self._on_editable_focus_change,
             text_color=style.text_color,
-            cursor_color=style.cursor_color if not self.error_text else style.error_cursor_color,
+            cursor_color=style.error_cursor_color if self.is_error else style.cursor_color,
             selection_color=style.selection_color,
             font_size=16,  # BodyLarge
             disabled=initial_disabled,
+            obscure_text=bool(obscure_text),
         )
         self.add_child(self._editable)
 
@@ -275,6 +314,9 @@ class TextField(InteractiveWidget):
         # Initialize label state
         self._update_label_state()
 
+        # Preserve existing click behavior while adding press handling for icon taps.
+        self.enable_click(on_press=self._handle_press)
+
     @property
     def should_show_focus_ring(self) -> bool:
         """Override to check internal editable focus interaction."""
@@ -315,10 +357,33 @@ class TextField(InteractiveWidget):
         self.label = str(value) if value is not None else None
         self.invalidate()
 
-    def _set_error_text(self, value: Any) -> None:
-        self.error_text = str(value) if value is not None else None
+    def _set_supporting_text(self, value: Any) -> None:
+        self.supporting_text = str(value) if value is not None else None
+        if self._legacy_error_text_mode:
+            self.is_error = self.supporting_text is not None
         style = self.style
-        self._editable.cursor_color = style.error_cursor_color if self.error_text else style.cursor_color
+        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._update_label_state()
+        self.mark_needs_layout()
+
+    def _set_is_error(self, value: Any) -> None:
+        self.is_error = bool(value)
+        style = self.style
+        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._update_label_state()
+        self.invalidate()
+
+    @property
+    def error_text(self) -> str | None:
+        """Deprecated alias for supporting_text."""
+        return self.supporting_text
+
+    @error_text.setter
+    def error_text(self, value: str | None) -> None:
+        self.supporting_text = value
+        self.is_error = value is not None
+        style = self.style
+        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
         self._update_label_state()
         self.mark_needs_layout()
 
@@ -337,12 +402,23 @@ class TextField(InteractiveWidget):
             except Exception:
                 exception_once(_logger, "text_field_bind_label_exc", "TextField failed to bind label")
 
-        if self._error_text_source is not None:
+        if self._supporting_text_source is not None:
             try:
-                self.bind_to(self._error_text_source, self._set_error_text, dependency="error_text")
-                self._set_error_text(self._error_text_source.value)
+                self.bind_to(self._supporting_text_source, self._set_supporting_text, dependency="supporting_text")
+                self._set_supporting_text(self._supporting_text_source.value)
             except Exception:
-                exception_once(_logger, "text_field_bind_error_text_exc", "TextField failed to bind error_text")
+                exception_once(
+                    _logger,
+                    "text_field_bind_supporting_text_exc",
+                    "TextField failed to bind supporting_text",
+                )
+
+        if self._is_error_source is not None:
+            try:
+                self.bind_to(self._is_error_source, self._set_is_error, dependency="is_error")
+                self._set_is_error(self._is_error_source.value)
+            except Exception:
+                exception_once(_logger, "text_field_bind_is_error_exc", "TextField failed to bind is_error")
 
         if self._disabled_source is not None:
             try:
@@ -374,6 +450,14 @@ class TextField(InteractiveWidget):
     @value.setter
     def value(self, new_text: str):
         self._editable.value = new_text
+
+    @property
+    def obscure_text(self) -> bool:
+        return self._editable.obscure_text
+
+    @obscure_text.setter
+    def obscure_text(self, value: bool) -> None:
+        self._editable.obscure_text = bool(value)
 
     def _handle_editable_change(self, new_text: str) -> None:
         self._update_label_state()
@@ -420,7 +504,7 @@ class TextField(InteractiveWidget):
             height = int(h_dim.value)
         else:
             height = default_height
-            if self.error_text and font:
+            if self.supporting_text and font:
                 font.setSize(12)
                 metrics = font.getMetrics()
                 error_h = -metrics.fAscent + metrics.fDescent
@@ -448,7 +532,7 @@ class TextField(InteractiveWidget):
 
         # Reserve space for error text
         self._error_height = 0
-        if self.error_text:
+        if self.supporting_text:
             font = self._get_font()
             if font:
                 font.setSize(12)
@@ -498,7 +582,43 @@ class TextField(InteractiveWidget):
         self._editable.focus()
 
     def _handle_press(self, event: PointerEvent) -> None:
+        if self.disabled:
+            return
+
+        if self._is_point_in_icon_rect(event, self.leading_icon):
+            self._invoke_icon_tap_callback(self._on_tap_leading_icon, key="leading")
+            self.focus()
+            return
+
+        if self._is_point_in_icon_rect(event, self.trailing_icon):
+            self._invoke_icon_tap_callback(self._on_tap_trailing_icon, key="trailing")
+            self.focus()
+            return
+
         self.focus()
+
+    def _is_point_in_icon_rect(self, event: PointerEvent, icon: Optional[Widget]) -> bool:
+        if icon is None:
+            return False
+        rect = icon.layout_rect
+        if rect is None:
+            return False
+
+        rx, ry, rw, rh = rect
+        return rx <= event.x <= (rx + rw) and ry <= event.y <= (ry + rh)
+
+    def _invoke_icon_tap_callback(self, cb: Optional[Callable[[], None]], *, key: str) -> None:
+        if cb is None:
+            return
+        try:
+            cb()
+        except Exception:
+            exception_once(
+                _logger,
+                f"text_field_tap_{key}_icon_exc",
+                "TextField %s icon tap callback raised",
+                key,
+            )
 
     def _get_font(self):
         tf = get_typeface(
@@ -519,7 +639,7 @@ class TextField(InteractiveWidget):
 
         # Style updates
         style = self.style
-        is_error = bool(self.error_text)
+        is_error = bool(self.is_error)
 
         def _resolve(c):
             return resolve_color_to_rgba(c, theme=theme_manager.current)
@@ -586,7 +706,7 @@ class TextField(InteractiveWidget):
         self._draw_editable(canvas, x, y)
         self._draw_label(canvas, text_x, text_y, text_h, cy)
         self._draw_icons(canvas, x, y)
-        self._draw_error(canvas, cx, cy, ch)
+        self._draw_supporting_text(canvas, cx, cy, ch)
 
         if self.should_show_focus_ring:
             self.draw_focus_indicator(canvas, cx, cy, cw, ch)
@@ -646,26 +766,24 @@ class TextField(InteractiveWidget):
                 tx, ty, tw, th = rect
                 self.trailing_icon.paint(canvas, x + tx, y + ty, tw, th)
 
-    def _draw_error(self, canvas, cx, cy, ch):
-        if not self.error_text:
+    def _draw_supporting_text(self, canvas, cx, cy, ch):
+        if not self.supporting_text:
             return
 
         style = self.style
-        is_error = bool(self.error_text)
+        supporting_font = self._get_font()
+        if supporting_font:
+            supporting_font.setSize(12)
+            supporting_metrics = supporting_font.getMetrics()
+            supporting_y = cy + ch + 4 - supporting_metrics.fAscent
 
-        if is_error:
-            error_font = self._get_font()
-            if error_font:
-                error_font.setSize(12)
-                error_metrics = error_font.getMetrics()
-                error_y = cy + ch + 4 - error_metrics.fAscent
+            supporting_color_spec = style.error_supporting_text_color if self.is_error else style.supporting_text_color
+            supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=theme_manager.current)
+            paint_supporting = make_paint(color=supporting_color)
 
-                error_color = resolve_color_to_rgba(style.error_label_color, theme=theme_manager.current)
-                paint_error = make_paint(color=error_color)
-
-                blob = make_text_blob(self.error_text, error_font)
-                if blob:
-                    canvas.drawTextBlob(blob, cx + 16, error_y, paint_error)
+            blob = make_text_blob(self.supporting_text, supporting_font)
+            if blob:
+                canvas.drawTextBlob(blob, cx + 16, supporting_y, paint_supporting)
 
     def _copy_to_clipboard(self, text: str) -> None:
         get_system_clipboard().set_text(text)
@@ -692,9 +810,14 @@ class FilledTextField(TextField):
         *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        on_tap_leading_icon: Optional[Callable[[], None]] = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
+        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
+        obscure_text: bool = False,
+        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
+        is_error: bool | ObservableProtocol[bool] | None = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
@@ -709,8 +832,13 @@ class FilledTextField(TextField):
             on_change: Callback when value changes.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
+            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
             trailing_icon: Icon displayed after the text.
-            error_text: Error message to display.
+            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
+            obscure_text: Whether to mask text display (password-style).
+            supporting_text: Supporting text displayed below the field.
+            is_error: Whether to use error colors for the field.
+            error_text: Deprecated alias for supporting_text.
             disabled: Whether the text field is disabled.
             width: Width specification.
             height: Height specification.
@@ -723,7 +851,12 @@ class FilledTextField(TextField):
             on_change=on_change,
             label=label,
             leading_icon=leading_icon,
+            on_tap_leading_icon=on_tap_leading_icon,
             trailing_icon=trailing_icon,
+            on_tap_trailing_icon=on_tap_trailing_icon,
+            obscure_text=obscure_text,
+            supporting_text=supporting_text,
+            is_error=is_error,
             error_text=error_text,
             disabled=disabled,
             width=width,
@@ -765,9 +898,14 @@ class OutlinedTextField(TextField):
         *,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        on_tap_leading_icon: Optional[Callable[[], None]] = None,
         trailing_icon: (
             Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
         ) = None,
+        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
+        obscure_text: bool = False,
+        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
+        is_error: bool | ObservableProtocol[bool] | None = None,
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
@@ -782,8 +920,13 @@ class OutlinedTextField(TextField):
             on_change: Callback when value changes.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
+            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
             trailing_icon: Icon displayed after the text.
-            error_text: Error message to display.
+            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
+            obscure_text: Whether to mask text display (password-style).
+            supporting_text: Supporting text displayed below the field.
+            is_error: Whether to use error colors for the field.
+            error_text: Deprecated alias for supporting_text.
             disabled: Whether the text field is disabled.
             width: Width specification.
             height: Height specification.
@@ -796,7 +939,12 @@ class OutlinedTextField(TextField):
             on_change=on_change,
             label=label,
             leading_icon=leading_icon,
+            on_tap_leading_icon=on_tap_leading_icon,
             trailing_icon=trailing_icon,
+            on_tap_trailing_icon=on_tap_trailing_icon,
+            obscure_text=obscure_text,
+            supporting_text=supporting_text,
+            is_error=is_error,
             error_text=error_text,
             disabled=disabled,
             width=width,
