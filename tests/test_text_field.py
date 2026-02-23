@@ -11,6 +11,7 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_LEFT,
 )
+from nuiitivet.input.pointer import PointerEvent, PointerEventType
 
 
 def test_text_field_initial_value():
@@ -42,6 +43,34 @@ def test_text_field_arrow_keys():
     # Cursor at end (3)
     tf._editable._handle_text_motion(TEXT_MOTION_LEFT)
     assert tf._editable._state_internal.value.selection == TextRange(2, 2)
+
+
+def test_text_field_obscure_text_sets_editable_masking() -> None:
+    tf = TextField(value="secret", obscure_text=True)
+    assert tf._editable.obscure_text is True
+
+
+def test_text_field_obscure_text_masks_rendered_text() -> None:
+    tf = TextField(value="secret", obscure_text=True)
+
+    mock_font = MagicMock()
+    mock_font.measureText = MagicMock(return_value=10)
+    mock_font.setSize = MagicMock()
+
+    metrics = MagicMock()
+    metrics.fAscent = -10
+    metrics.fDescent = 3
+    mock_font.getMetrics = MagicMock(return_value=metrics)
+
+    canvas = MagicMock()
+
+    with patch("nuiitivet.widgets.editable_text.EditableText._get_font", return_value=mock_font):
+        with patch("nuiitivet.widgets.editable_text.make_paint", return_value=MagicMock()):
+            with patch("nuiitivet.widgets.editable_text.resolve_color_to_rgba", return_value=(0, 0, 0, 255)):
+                with patch("nuiitivet.widgets.editable_text.make_text_blob", return_value=MagicMock()) as blob_mock:
+                    tf._editable.paint(canvas, 0, 0, 200, 56)
+
+    blob_mock.assert_called_with("••••••", mock_font)
 
 
 def test_text_field_paints_cursor_when_focused() -> None:
@@ -185,6 +214,123 @@ def test_text_field_rejects_widget_icon_instances() -> None:
         TextField(value="", leading_icon=Icon("search"))  # type: ignore[arg-type]
 
 
+def test_text_field_invokes_icon_tap_callbacks_on_press() -> None:
+    leading_tapped = False
+    trailing_tapped = False
+
+    def _on_leading() -> None:
+        nonlocal leading_tapped
+        leading_tapped = True
+
+    def _on_trailing() -> None:
+        nonlocal trailing_tapped
+        trailing_tapped = True
+
+    tf = TextField(
+        value="",
+        leading_icon="search",
+        on_tap_leading_icon=_on_leading,
+        trailing_icon="close",
+        on_tap_trailing_icon=_on_trailing,
+    )
+    tf.layout(200, 56)
+
+    tf._handle_press(PointerEvent.mouse_event(1, PointerEventType.PRESS, 13, 28))
+    tf._handle_press(PointerEvent.mouse_event(2, PointerEventType.PRESS, 187, 28))
+
+    assert leading_tapped is True
+    assert trailing_tapped is True
+
+
+def test_text_field_does_not_invoke_icon_callbacks_when_pressing_non_icon_area() -> None:
+    leading_tapped = False
+    trailing_tapped = False
+
+    def _on_leading() -> None:
+        nonlocal leading_tapped
+        leading_tapped = True
+
+    def _on_trailing() -> None:
+        nonlocal trailing_tapped
+        trailing_tapped = True
+
+    tf = TextField(
+        value="",
+        leading_icon="search",
+        on_tap_leading_icon=_on_leading,
+        trailing_icon="close",
+        on_tap_trailing_icon=_on_trailing,
+    )
+    tf.layout(200, 56)
+
+    tf._handle_press(PointerEvent.mouse_event(1, PointerEventType.PRESS, 100, 28))
+
+    assert leading_tapped is False
+    assert trailing_tapped is False
+
+
+def test_text_field_does_not_invoke_icon_callbacks_when_disabled() -> None:
+    leading_tapped = False
+
+    def _on_leading() -> None:
+        nonlocal leading_tapped
+        leading_tapped = True
+
+    tf = TextField(
+        value="",
+        leading_icon="search",
+        on_tap_leading_icon=_on_leading,
+        disabled=True,
+    )
+    tf.layout(200, 56)
+
+    tf._handle_press(PointerEvent.mouse_event(1, PointerEventType.PRESS, 13, 28))
+
+    assert leading_tapped is False
+
+
+def test_text_field_supporting_text_uses_dedicated_color_tokens() -> None:
+    style = TextFieldStyle.outlined().copy_with(
+        supporting_text_color="#112233",
+        error_supporting_text_color="#aa0000",
+    )
+    tf = TextField(value="", supporting_text="hint", is_error=False, style=style)
+
+    mock_font = MagicMock()
+    metrics = MagicMock()
+    metrics.fAscent = -10
+    metrics.fDescent = 3
+    mock_font.getMetrics = MagicMock(return_value=metrics)
+    mock_font.setSize = MagicMock()
+
+    recorded_specs: list[object] = []
+
+    def _resolve(spec, **kwargs):
+        recorded_specs.append(spec)
+        return (0, 0, 0, 255)
+
+    canvas = MagicMock()
+
+    with patch.object(tf, "_get_font", return_value=mock_font):
+        with patch("nuiitivet.material.text_fields.resolve_color_to_rgba", side_effect=_resolve):
+            with patch("nuiitivet.material.text_fields.make_paint", return_value=MagicMock()):
+                with patch("nuiitivet.material.text_fields.make_text_blob", return_value=MagicMock()):
+                    tf._draw_supporting_text(canvas, 0, 0, 56)
+
+    assert style.supporting_text_color in recorded_specs
+
+    tf.is_error = True
+    recorded_specs.clear()
+
+    with patch.object(tf, "_get_font", return_value=mock_font):
+        with patch("nuiitivet.material.text_fields.resolve_color_to_rgba", side_effect=_resolve):
+            with patch("nuiitivet.material.text_fields.make_paint", return_value=MagicMock()):
+                with patch("nuiitivet.material.text_fields.make_text_blob", return_value=MagicMock()):
+                    tf._draw_supporting_text(canvas, 0, 0, 56)
+
+    assert style.error_supporting_text_color in recorded_specs
+
+
 def test_text_field_label_supports_observable() -> None:
     label = _make_obs("Name")
     tf = TextField(value="", label=label)
@@ -198,20 +344,49 @@ def test_text_field_label_supports_observable() -> None:
     tf.on_unmount()
 
 
-def test_text_field_error_text_supports_observable_and_updates_cursor_color() -> None:
+def test_text_field_supporting_text_and_is_error_support_observable() -> None:
+    supporting_text = _make_obs(None)
+    is_error = _make_obs(False)
+    style = TextFieldStyle.outlined()
+    tf = TextField(value="", supporting_text=supporting_text, is_error=is_error, style=style)
+
+    with patch.object(tf, "mark_needs_layout", wraps=tf.mark_needs_layout) as mark_needs_layout:
+        tf.mount(MagicMock())
+        assert tf.supporting_text is None
+        assert tf._editable.cursor_color == style.cursor_color
+
+        supporting_text.value = "Need at least 8 characters"
+        assert tf.supporting_text == "Need at least 8 characters"
+        assert tf._editable.cursor_color == style.cursor_color
+
+        is_error.value = True
+        assert tf._editable.cursor_color == style.error_cursor_color
+        assert mark_needs_layout.called is True
+
+    tf.on_unmount()
+
+
+def test_text_field_error_text_legacy_alias_still_updates_error_state() -> None:
     error_text = _make_obs(None)
     style = TextFieldStyle.outlined()
     tf = TextField(value="", error_text=error_text, style=style)
 
-    with patch.object(tf, "mark_needs_layout", wraps=tf.mark_needs_layout) as mark_needs_layout:
-        tf.mount(MagicMock())
-        assert tf.error_text is None
-        assert tf._editable.cursor_color == style.cursor_color
+    tf.mount(MagicMock())
+    assert tf.error_text is None
+    assert tf.supporting_text is None
+    assert tf.is_error is False
+    assert tf._editable.cursor_color == style.cursor_color
 
-        error_text.value = "Oops"
-        assert tf.error_text == "Oops"
-        assert tf._editable.cursor_color == style.error_cursor_color
-        assert mark_needs_layout.called is True
+    error_text.value = "Oops"
+    assert tf.error_text == "Oops"
+    assert tf.supporting_text == "Oops"
+    assert tf.is_error is True
+    assert tf._editable.cursor_color == style.error_cursor_color
+
+    error_text.value = None
+    assert tf.error_text is None
+    assert tf.is_error is False
+    assert tf._editable.cursor_color == style.cursor_color
 
     tf.on_unmount()
 

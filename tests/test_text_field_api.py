@@ -1,8 +1,13 @@
 from unittest.mock import patch, MagicMock
+
+import pytest
+
 from nuiitivet.material.text_fields import TextField
+from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.observable import Observable
 from nuiitivet.input.codes import MOD_META, TEXT_MOTION_BACKSPACE
+from nuiitivet.input.pointer import PointerEvent, PointerEventType
 
 
 def test_text_field_value_property():
@@ -102,3 +107,50 @@ def test_paste(mock_get_clipboard):
     tf._editable._handle_key("v", MOD_META)
 
     assert tf.value == "hello world"
+
+
+def test_text_field_api_obscure_text_property_round_trip() -> None:
+    tf = TextField(value="secret", obscure_text=True)
+    assert tf.obscure_text is True
+
+    tf.obscure_text = False
+    assert tf.obscure_text is False
+
+
+def test_text_field_api_rejects_icon_tap_callback_without_icon() -> None:
+    with pytest.raises(ValueError):
+        TextField(value="", on_tap_leading_icon=lambda: None)
+
+    with pytest.raises(ValueError):
+        TextField(value="", on_tap_trailing_icon=lambda: None)
+
+
+def test_text_field_api_invokes_trailing_icon_callback_on_icon_press() -> None:
+    tapped = False
+
+    def _on_trailing() -> None:
+        nonlocal tapped
+        tapped = True
+
+    tf = TextField(
+        value="",
+        trailing_icon="close",
+        on_tap_trailing_icon=_on_trailing,
+    )
+    tf.layout(200, 56)
+
+    tf._handle_press(PointerEvent.mouse_event(1, PointerEventType.PRESS, 187, 28))
+
+    assert tapped is True
+
+
+def test_text_field_api_supporting_text_and_is_error_color_contract() -> None:
+    style = TextFieldStyle.outlined()
+    tf = TextField(value="", supporting_text="hint", is_error=False, style=style)
+    assert tf.supporting_text == "hint"
+    assert tf.is_error is False
+    assert tf._editable.cursor_color == style.cursor_color
+
+    tf._set_is_error(True)
+    assert tf.is_error is True
+    assert tf._editable.cursor_color == style.error_cursor_color
