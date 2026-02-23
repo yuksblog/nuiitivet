@@ -67,7 +67,14 @@ nav:
           - Interaction: guide/modifier_interaction.md
           - Transform: guide/modifier_transform.md
           - Others: guide/modifier_others.md
-      - State Management: guide/observable.md
+      - State Management:
+          - Overview: guide/observable.md
+          - Getting Started: guide/observable/getting-started.md
+          - Basic API: guide/observable/basic-api.md
+          - Operators: guide/observable/operators.md
+          - Practical Controls: guide/observable/practical-controls.md
+          - Thread Safety: guide/observable/thread-safety.md
+          - Patterns and Recipes: guide/observable/patterns-and-recipes.md
       - Async & Threading: guide/threading.md
       - Interaction: guide/interaction_region.md
       - Packaging: guide/packaging.md

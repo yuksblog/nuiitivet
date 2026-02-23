@@ -46,4 +46,4 @@ Refer to the following guides based on what you want to create.
 
 ## More Details
 
-For contributors interested in the internal layout engine specifications and design philosophy, please refer to [docs/design/LAYOUT.md](../design/LAYOUT.md).
+This guide focuses on practical usage in app code.
