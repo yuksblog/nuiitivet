@@ -2,6 +2,8 @@
 
 This module contains the implementation of Material Design 3 selection controls:
 - Checkbox
+- RadioButton / RadioGroup
+- Switch
 """
 
 from __future__ import annotations
@@ -9,21 +11,23 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
 
-from nuiitivet.animation import Animatable, LinearMotion
+from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.layout.container import Container
+from nuiitivet.observable import Observable, ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+    from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+    from nuiitivet.material.styles.switch_style import SwitchStyle
 
 
 _logger = logging.getLogger(__name__)
-
-_STATE_LAYER_MOTION = LinearMotion(0.1)
-_SELECTION_MOTION = LinearMotion(0.12)
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -126,9 +130,9 @@ class Checkbox(Toggleable, InteractiveWidget):
             self._touch_target_size = 48
 
         initial_selection = 1.0 if self.value is True or self.value is None else 0.0
-        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
-        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SELECTION_MOTION)
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
 
     def _effective_value_from_external(self) -> Optional[bool]:
@@ -459,3 +463,603 @@ class Checkbox(Toggleable, InteractiveWidget):
         except Exception:
             exception_once(_logger, "checkbox_paint_exc", "Checkbox paint raised")
             return
+
+
+class RadioGroup(Container):
+    """Container that manages a single selected value for descendant RadioButtons."""
+
+    def __init__(
+        self,
+        child: Widget,
+        *,
+        value: object | ObservableProtocol[object | None] | None = None,
+        on_change: Optional[Callable[[object | None], None]] = None,
+    ) -> None:
+        """Initialize RadioGroup.
+
+        Args:
+            child: Root child subtree that contains radio options.
+            value: Selected value or external observable selected value.
+            on_change: Callback invoked when selection changes.
+        """
+        if not isinstance(child, Widget):
+            raise TypeError(f"child must be Widget, got {type(child)}")
+        super().__init__(child=child)
+
+        self._value_external: ObservableProtocol[object | None] | None = None
+        if hasattr(value, "subscribe") and hasattr(value, "value"):
+            self._value_external = cast("ObservableProtocol[object | None]", value)
+            initial_value = self._value_external.value
+        else:
+            initial_value = value
+
+        self._value_internal: Observable[object | None] = Observable(initial_value)
+        self._on_change = on_change
+
+    @property
+    def value(self) -> object | None:
+        """Current selected value."""
+        if self._value_external is not None:
+            return self._value_external.value
+        return self._value_internal.value
+
+    @value.setter
+    def value(self, new_value: object | None) -> None:
+        self._set_value(new_value, emit=False)
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._value_external is not None:
+            self.observe(self._value_external, lambda _v: self._invalidate_descendant_radios())
+
+    def select(self, new_value: object | None) -> None:
+        """Select a new value and notify listeners."""
+        self._set_value(new_value, emit=True)
+
+    def _set_value(self, new_value: object | None, *, emit: bool) -> None:
+        if self.value == new_value:
+            return
+
+        if self._value_external is not None:
+            self._value_external.value = new_value
+        else:
+            self._value_internal.value = new_value
+
+        self._invalidate_descendant_radios()
+
+        if emit and self._on_change is not None:
+            self._on_change(new_value)
+
+    def _invalidate_descendant_radios(self) -> None:
+        self.invalidate()
+
+        def _walk(node: Widget) -> None:
+            for child in node.children_snapshot():
+                if not isinstance(child, Widget):
+                    continue
+                if isinstance(child, RadioGroup):
+                    continue
+                if isinstance(child, RadioButton):
+                    child._sync_selected_state()
+                    child.invalidate()
+                _walk(child)
+
+        _walk(self)
+
+
+class RadioButton(Toggleable, InteractiveWidget):
+    """Material Design 3 RadioButton controlled by nearest RadioGroup."""
+
+    def __init__(
+        self,
+        value: object | None,
+        *,
+        disabled: bool | ObservableProtocol[bool] = False,
+        size: SizingLike = 48,
+        padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
+        style: Optional["RadioButtonStyle"] = None,
+    ) -> None:
+        """Initialize RadioButton.
+
+        Args:
+            value: Option value represented by this radio button.
+            disabled: Disable interaction when True.
+            size: Touch target size.
+            padding: Space around the touch target.
+            style: Style override. Uses theme style when omitted.
+        """
+        self.option_value = value
+        self._style = style
+
+        final_padding = padding if padding is not None else (style.padding if style is not None else 0)
+        self._user_padding = padding
+
+        super().__init__(
+            value=False,
+            on_change=None,
+            tristate=False,
+            disabled=disabled,
+            width=size,
+            height=size,
+            padding=final_padding,
+        )
+
+        try:
+            from nuiitivet.rendering.sizing import parse_sizing
+
+            parsed = parse_sizing(size, default=None)
+            if parsed.kind == "fixed":
+                self._touch_target_size = int(parsed.value)
+            else:
+                self._touch_target_size = 48
+        except Exception:
+            self._touch_target_size = 48
+
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
+        self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
+
+        self._selection_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_SPATIAL)
+        self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
+
+    @property
+    def style(self) -> "RadioButtonStyle":
+        """Resolved style for this RadioButton."""
+        if self._style is not None:
+            return self._style
+        from nuiitivet.theme.manager import manager
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme = manager.current.extension(MaterialThemeData)
+        if theme is None:
+            raise ValueError("MaterialThemeData not found in current theme")
+        return theme.radio_button_style
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._user_padding is None and self._style is None:
+            try:
+                style = self.style
+                if style.padding != 0:
+                    self.padding = style.padding
+                    self.invalidate()
+            except Exception:
+                pass
+        self._sync_selected_state()
+
+    def _selected(self) -> bool:
+        group = self.find_ancestor(RadioGroup)
+        if group is None:
+            return bool(self.value)
+        return group.value == self.option_value
+
+    def _sync_selected_state(self) -> None:
+        self.value = self._selected()
+
+    def _handle_click(self) -> None:
+        if self.disabled:
+            return
+
+        group = self.find_ancestor(RadioGroup)
+        if group is None:
+            return
+
+        group.select(self.option_value)
+
+    def _get_state_layer_target_opacity(self) -> float:
+        state = self.state
+        if state.dragging:
+            return float(self._DRAG_OPACITY)
+        if state.pressed:
+            return float(self._PRESS_OPACITY)
+        if state.hovered:
+            return float(self._HOVER_OPACITY)
+        return 0.0
+
+    def _get_active_state_layer_opacity(self) -> float:
+        target = self._get_state_layer_target_opacity()
+        if abs(self._state_layer_anim.target - target) > 1e-6:
+            self._state_layer_anim.target = target
+        return float(self._state_layer_anim.value)
+
+    def _get_selection_progress(self) -> float:
+        self._sync_selected_state()
+        target = 1.0 if bool(self.value) else 0.0
+        if abs(self._selection_anim.target - target) > 1e-6:
+            self._selection_anim.target = target
+        return float(self._selection_anim.value)
+
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return preferred size including padding."""
+        w_dim = self.width_sizing
+        h_dim = self.height_sizing
+
+        width = int(w_dim.value) if w_dim.kind == "fixed" else self._touch_target_size
+        height = int(h_dim.value) if h_dim.kind == "fixed" else self._touch_target_size
+
+        l, t, r, b = self.padding
+        total_w = width + l + r
+        total_h = height + t + b
+
+        if max_width is not None:
+            total_w = min(int(total_w), int(max_width))
+        if max_height is not None:
+            total_h = min(int(total_h), int(max_height))
+        return (int(total_w), int(total_h))
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        """Paint radio button with MD3-like visuals."""
+        try:
+            from nuiitivet.rendering.skia import draw_oval, make_paint, make_rect, skcolor
+            from nuiitivet.material.theme.color_role import ColorRole
+            from nuiitivet.material.theme.theme_data import MaterialThemeData
+            from nuiitivet.theme import manager as theme_manager
+
+            content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
+            touch_sz = min(content_w, content_h)
+            if touch_sz <= 0:
+                return
+
+            cx = content_x + (content_w - touch_sz) // 2
+            cy = content_y + (content_h - touch_sz) // 2
+
+            self.set_last_rect(x, y, width, height)
+
+            sizes = self.style.compute_sizes(touch_sz)
+            icon_diameter = float(cast(float, sizes["icon_diameter"]))
+            inner_dot = float(cast(float, sizes["inner_dot"]))
+            stroke_width = float(cast(float, sizes["stroke_width"]))
+            state_layer_size = float(cast(float, sizes["state_layer_size"]))
+
+            icon_x = cx + (touch_sz - icon_diameter) / 2.0
+            icon_y = cy + (touch_sz - icon_diameter) / 2.0
+
+            mat = theme_manager.current.extension(MaterialThemeData)
+            roles = mat.roles if mat is not None else {}
+
+            selected = bool(self.value)
+            if self.disabled:
+                stroke_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+                stroke_alpha = self.style.disabled_alpha
+            else:
+                stroke_hex = roles.get(
+                    ColorRole.PRIMARY if selected else ColorRole.ON_SURFACE_VARIANT,
+                    "#000000",
+                )
+                stroke_alpha = 1.0
+
+            overlay_alpha = self._get_active_state_layer_opacity()
+            if overlay_alpha > 0.0:
+                base = roles.get(ColorRole.PRIMARY if selected else ColorRole.ON_SURFACE, "#000000")
+                layer_paint = make_paint(color=skcolor(base, overlay_alpha), style="fill", aa=True)
+                layer_rect = make_rect(
+                    cx + (touch_sz - state_layer_size) / 2.0,
+                    cy + (touch_sz - state_layer_size) / 2.0,
+                    state_layer_size,
+                    state_layer_size,
+                )
+                if layer_rect is not None and layer_paint is not None:
+                    draw_oval(canvas, layer_rect, layer_paint)
+
+            ring_paint = make_paint(
+                color=skcolor(stroke_hex, stroke_alpha),
+                style="stroke",
+                stroke_width=stroke_width,
+                aa=True,
+            )
+            ring_rect = make_rect(icon_x, icon_y, icon_diameter, icon_diameter)
+            if ring_rect is not None and ring_paint is not None:
+                draw_oval(canvas, ring_rect, ring_paint)
+
+            progress = self._get_selection_progress()
+            if progress > 1e-6:
+                if self.disabled:
+                    dot_color = roles.get(ColorRole.ON_SURFACE, "#000000")
+                    dot_alpha = progress * self.style.disabled_alpha
+                else:
+                    dot_color = roles.get(ColorRole.PRIMARY, "#000000")
+                    dot_alpha = progress
+                dot_paint = make_paint(
+                    color=skcolor(dot_color, dot_alpha),
+                    style="fill",
+                    aa=True,
+                )
+                dot_size = inner_dot * progress
+                dot_rect = make_rect(
+                    cx + (touch_sz - dot_size) / 2.0,
+                    cy + (touch_sz - dot_size) / 2.0,
+                    dot_size,
+                    dot_size,
+                )
+                if dot_rect is not None and dot_paint is not None:
+                    draw_oval(canvas, dot_rect, dot_paint)
+
+            if self.should_show_focus_ring:
+                focus_stroke = float(cast(float, sizes["focus_stroke"]))
+                focus_offset = float(cast(float, sizes["focus_offset"]))
+                focus_color = roles.get(ColorRole.PRIMARY, "#000000")
+                focus_size = state_layer_size + (focus_offset * 2.0)
+                focus_rect = make_rect(
+                    cx + (touch_sz - focus_size) / 2.0,
+                    cy + (touch_sz - focus_size) / 2.0,
+                    focus_size,
+                    focus_size,
+                )
+                focus_paint = make_paint(
+                    color=skcolor(focus_color, self.style.focus_alpha),
+                    style="stroke",
+                    stroke_width=focus_stroke,
+                    aa=True,
+                )
+                if focus_rect is not None and focus_paint is not None:
+                    draw_oval(canvas, focus_rect, focus_paint)
+        except Exception:
+            exception_once(_logger, "radio_button_paint_exc", "RadioButton paint raised")
+
+
+class Switch(Toggleable, InteractiveWidget):
+    """Material Design 3 Switch widget."""
+
+    def __init__(
+        self,
+        checked: bool | ObservableProtocol[bool] = False,
+        *,
+        on_change: Optional[Callable[[bool], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        size: SizingLike = 48,
+        padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
+        style: Optional["SwitchStyle"] = None,
+    ) -> None:
+        """Initialize Switch.
+
+        Args:
+            checked: Checked state source (bool or observable bool).
+            on_change: Callback invoked when checked state changes.
+            disabled: Disable interaction when True.
+            size: Touch target size.
+            padding: Space around the switch.
+            style: Style override. Uses theme style when omitted.
+        """
+        self._style = style
+        self._user_padding = padding
+        self._on_change_bool = on_change
+
+        final_padding = padding if padding is not None else (style.padding if style is not None else 0)
+
+        def _on_toggle(next_val: Optional[bool]) -> None:
+            if self._on_change_bool is not None:
+                self._on_change_bool(bool(next_val))
+
+        toggleable_value = cast("bool | ObservableProtocol[Optional[bool]]", checked)
+
+        super().__init__(
+            value=toggleable_value,
+            on_change=_on_toggle,
+            tristate=False,
+            disabled=disabled,
+            width=size,
+            height=size,
+            padding=final_padding,
+        )
+
+        try:
+            from nuiitivet.rendering.sizing import parse_sizing
+
+            parsed = parse_sizing(size, default=None)
+            if parsed.kind == "fixed":
+                self._touch_target_size = int(parsed.value)
+            else:
+                self._touch_target_size = 48
+        except Exception:
+            self._touch_target_size = 48
+
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
+        self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
+        initial_selection = 1.0 if bool(self.value) else 0.0
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=EXPRESSIVE_DEFAULT_SPATIAL)
+        self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
+
+    @property
+    def style(self) -> "SwitchStyle":
+        """Resolved style for this Switch."""
+        if self._style is not None:
+            return self._style
+        from nuiitivet.theme.manager import manager
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme = manager.current.extension(MaterialThemeData)
+        if theme is None:
+            raise ValueError("MaterialThemeData not found in current theme")
+        return theme.switch_style
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._user_padding is None and self._style is None:
+            try:
+                style = self.style
+                if style.padding != 0:
+                    self.padding = style.padding
+                    self.invalidate()
+            except Exception:
+                pass
+
+    def _get_state_layer_target_opacity(self) -> float:
+        state = self.state
+        if state.dragging:
+            return float(self._DRAG_OPACITY)
+        if state.pressed:
+            return float(self._PRESS_OPACITY)
+        if state.hovered:
+            return float(self._HOVER_OPACITY)
+        return 0.0
+
+    def _get_active_state_layer_opacity(self) -> float:
+        target = self._get_state_layer_target_opacity()
+        if abs(self._state_layer_anim.target - target) > 1e-6:
+            self._state_layer_anim.target = target
+        return float(self._state_layer_anim.value)
+
+    def _get_selection_progress(self) -> float:
+        target = 1.0 if bool(self.value) else 0.0
+        if abs(self._selection_anim.target - target) > 1e-6:
+            self._selection_anim.target = target
+        return float(self._selection_anim.value)
+
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return preferred size including padding."""
+        w_dim = self.width_sizing
+        h_dim = self.height_sizing
+
+        width = int(w_dim.value) if w_dim.kind == "fixed" else self._touch_target_size
+        height = int(h_dim.value) if h_dim.kind == "fixed" else self._touch_target_size
+
+        l, t, r, b = self.padding
+        total_w = width + l + r
+        total_h = height + t + b
+
+        if max_width is not None:
+            total_w = min(int(total_w), int(max_width))
+        if max_height is not None:
+            total_h = min(int(total_h), int(max_height))
+        return (int(total_w), int(total_h))
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        """Paint switch with animated thumb and track."""
+        try:
+            from nuiitivet.material.theme.color_role import ColorRole
+            from nuiitivet.material.theme.theme_data import MaterialThemeData
+            from nuiitivet.rendering.skia import draw_oval, draw_round_rect, make_paint, make_rect, skcolor
+            from nuiitivet.theme import manager as theme_manager
+
+            content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
+            touch_sz = min(content_w, content_h)
+            if touch_sz <= 0:
+                return
+
+            cx = content_x + (content_w - touch_sz) // 2
+            cy = content_y + (content_h - touch_sz) // 2
+            self.set_last_rect(x, y, width, height)
+
+            sizes = self.style.compute_sizes(touch_sz)
+            track_w = float(cast(float, sizes["track_width"]))
+            track_h = float(cast(float, sizes["track_height"]))
+            thumb_unselected_d = float(cast(float, sizes["thumb_diameter_unselected"]))
+            thumb_selected_d = float(cast(float, sizes["thumb_diameter_selected"]))
+            thumb_pressed_d = float(cast(float, sizes["thumb_diameter_pressed"]))
+            track_outline_w = float(cast(float, sizes["track_outline_width"]))
+            state_layer_size = float(cast(float, sizes["state_layer_size"]))
+            track_radius = track_h / 2.0
+
+            track_x = cx + (touch_sz - track_w) / 2.0
+            track_y = cy + (touch_sz - track_h) / 2.0
+
+            mat = theme_manager.current.extension(MaterialThemeData)
+            roles = mat.roles if mat is not None else {}
+
+            progress = self._get_selection_progress()
+            checked = bool(self.value)
+            pressed = bool(self.state.pressed or self.state.dragging)
+
+            if pressed:
+                thumb_d = thumb_pressed_d
+            else:
+                thumb_d = thumb_selected_d if checked else thumb_unselected_d
+
+            unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
+            checked_track_hex = roles.get(ColorRole.PRIMARY, "#000000")
+            unchecked_outline_hex = roles.get(ColorRole.OUTLINE, "#616161")
+            unchecked_thumb_hex = roles.get(ColorRole.OUTLINE, "#616161")
+            checked_thumb_hex = roles.get(ColorRole.ON_PRIMARY, "#FFFFFF")
+
+            disabled_checked_track_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+            disabled_checked_thumb_hex = roles.get(ColorRole.SURFACE, "#FFFFFF")
+            disabled_unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
+            disabled_unchecked_outline_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+            disabled_unchecked_thumb_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+
+            if self.disabled:
+                if checked:
+                    track_hex = disabled_checked_track_hex
+                    track_alpha = self.style.disabled_checked_track_alpha
+                    thumb_hex = disabled_checked_thumb_hex
+                    thumb_alpha = self.style.disabled_checked_thumb_alpha
+                    outline_hex = None
+                    outline_alpha = 0.0
+                else:
+                    track_hex = disabled_unchecked_track_hex
+                    track_alpha = self.style.disabled_unchecked_track_alpha
+                    thumb_hex = disabled_unchecked_thumb_hex
+                    thumb_alpha = self.style.disabled_unchecked_thumb_alpha
+                    outline_hex = disabled_unchecked_outline_hex
+                    outline_alpha = self.style.disabled_unchecked_track_outline_alpha
+            else:
+                track_hex = checked_track_hex if checked else unchecked_track_hex
+                track_alpha = 1.0
+                thumb_hex = checked_thumb_hex if checked else unchecked_thumb_hex
+                thumb_alpha = 1.0
+                outline_hex = None if checked else unchecked_outline_hex
+                outline_alpha = 1.0
+
+            track_paint = make_paint(color=skcolor(track_hex, track_alpha), style="fill", aa=True)
+            track_rect = make_rect(track_x, track_y, track_w, track_h)
+            if track_rect is not None and track_paint is not None:
+                draw_round_rect(canvas, track_rect, track_radius, track_paint)
+
+            if outline_hex is not None:
+                outline_paint = make_paint(
+                    color=skcolor(outline_hex, outline_alpha),
+                    style="stroke",
+                    stroke_width=track_outline_w,
+                    aa=True,
+                )
+                if track_rect is not None and outline_paint is not None:
+                    draw_round_rect(canvas, track_rect, track_radius, outline_paint)
+
+            thumb_center_start = track_x + (track_h / 2.0)
+            thumb_center_end = track_x + track_w - (track_h / 2.0)
+            thumb_center_x = thumb_center_start + (thumb_center_end - thumb_center_start) * progress
+            thumb_x = thumb_center_x - (thumb_d / 2.0)
+            thumb_y = track_y + (track_h - thumb_d) / 2.0
+
+            overlay_alpha = self._get_active_state_layer_opacity()
+            if overlay_alpha > 0.0:
+                overlay_rect = make_rect(
+                    thumb_x + (thumb_d - state_layer_size) / 2.0,
+                    thumb_y + (thumb_d - state_layer_size) / 2.0,
+                    state_layer_size,
+                    state_layer_size,
+                )
+                overlay_base_role = ColorRole.PRIMARY if checked else ColorRole.ON_SURFACE
+                overlay_color = roles.get(overlay_base_role, "#000000")
+                overlay_paint = make_paint(color=skcolor(overlay_color, overlay_alpha), style="fill", aa=True)
+                if overlay_rect is not None and overlay_paint is not None:
+                    draw_oval(canvas, overlay_rect, overlay_paint)
+
+            thumb_paint = make_paint(color=skcolor(thumb_hex, thumb_alpha), style="fill", aa=True)
+            thumb_rect = make_rect(thumb_x, thumb_y, thumb_d, thumb_d)
+            if thumb_rect is not None and thumb_paint is not None:
+                draw_oval(canvas, thumb_rect, thumb_paint)
+
+            if self.should_show_focus_ring:
+                focus_stroke = float(cast(float, sizes["focus_stroke"]))
+                focus_offset = float(cast(float, sizes["focus_offset"]))
+                focus_color = roles.get(ColorRole.PRIMARY, "#000000")
+                focus_size = state_layer_size + (focus_offset * 2.0)
+                focus_rect = make_rect(
+                    thumb_x + (thumb_d - focus_size) / 2.0,
+                    thumb_y + (thumb_d - focus_size) / 2.0,
+                    focus_size,
+                    focus_size,
+                )
+                focus_paint = make_paint(
+                    color=skcolor(focus_color, self.style.focus_alpha),
+                    style="stroke",
+                    stroke_width=focus_stroke,
+                    aa=True,
+                )
+                if focus_rect is not None and focus_paint is not None:
+                    draw_oval(canvas, focus_rect, focus_paint)
+        except Exception:
+            exception_once(_logger, "switch_paint_exc", "Switch paint raised")
+
+
+__all__ = ["Checkbox", "RadioGroup", "RadioButton", "Switch"]

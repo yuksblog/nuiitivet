@@ -40,6 +40,32 @@ def test_checkbox_style_compute_sizes():
     assert sizes["state_layer_diameter"] == 40.0
 
 
+def test_radio_button_style_defaults_and_compute_sizes():
+    """RadioButtonStyle has sensible defaults and computes sizes."""
+    from nuiitivet.material.styles import RadioButtonStyle
+    from nuiitivet.material.theme.color_role import ColorRole
+
+    style = RadioButtonStyle()
+    assert style.default_touch_target == 48
+    assert style.selected_stroke == ColorRole.PRIMARY
+    sizes = style.compute_sizes(48)
+    assert sizes["icon_diameter"] == 20
+    assert sizes["inner_dot"] > 0
+
+
+def test_switch_style_defaults_and_compute_sizes():
+    """SwitchStyle has sensible defaults and computes sizes."""
+    from nuiitivet.material.styles import SwitchStyle
+    from nuiitivet.material.theme.color_role import ColorRole
+
+    style = SwitchStyle()
+    assert style.default_touch_target == 48
+    assert style.checked_track == ColorRole.PRIMARY
+    sizes = style.compute_sizes(48)
+    assert sizes["track_width"] > sizes["track_height"]
+    assert sizes["thumb_diameter"] > 0
+
+
 def test_icon_style_defaults():
     """IconStyle has correct M3 defaults."""
     from nuiitivet.material.styles import IconStyle
@@ -131,11 +157,13 @@ def test_button_style_tonal():
 
 def test_style_classes_are_immutable():
     """All style classes are frozen dataclasses."""
-    from nuiitivet.material.styles import ButtonStyle, CheckboxStyle, IconStyle
+    from nuiitivet.material.styles import ButtonStyle, CheckboxStyle, IconStyle, RadioButtonStyle, SwitchStyle
 
     button = ButtonStyle()
     checkbox = CheckboxStyle()
     icon = IconStyle()
+    radio = RadioButtonStyle()
+    switch = SwitchStyle()
     try:
         button.padding = 30
         assert False, "Should not be able to modify frozen dataclass"
@@ -148,6 +176,16 @@ def test_style_classes_are_immutable():
         pass
     try:
         icon.default_size = 32
+        assert False, "Should not be able to modify frozen dataclass"
+    except Exception:
+        pass
+    try:
+        radio.icon_diameter_ratio = 1.0
+        assert False, "Should not be able to modify frozen dataclass"
+    except Exception:
+        pass
+    try:
+        switch.track_width_ratio = 2.0
         assert False, "Should not be able to modify frozen dataclass"
     except Exception:
         pass

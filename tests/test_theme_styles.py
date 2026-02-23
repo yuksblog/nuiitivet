@@ -13,12 +13,18 @@ def test_theme_has_style_properties():
     assert mat is not None
     assert hasattr(mat, "filled_button_style")
     assert hasattr(mat, "checkbox_style")
+    assert hasattr(mat, "radio_button_style")
+    assert hasattr(mat, "switch_style")
     assert hasattr(mat, "icon_style")
     button = mat.filled_button_style
     checkbox = mat.checkbox_style
+    radio = mat.radio_button_style
+    switch = mat.switch_style
     icon = mat.icon_style
     assert button is not None
     assert checkbox is not None
+    assert radio is not None
+    assert switch is not None
     assert icon is not None
 
 
@@ -28,6 +34,8 @@ def test_theme_default_styles():
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
     from nuiitivet.material.styles.icon_style import IconStyle
+    from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+    from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
     light, dark = MaterialTheme.from_seed_pair("#6750A4")
@@ -39,8 +47,14 @@ def test_theme_default_styles():
     assert button.container_height == 40
     assert button.padding == (16, 0, 16, 0)
     checkbox = mat.checkbox_style
+    radio = mat.radio_button_style
+    switch = mat.switch_style
     assert isinstance(checkbox, CheckboxStyle)
+    assert isinstance(radio, RadioButtonStyle)
+    assert isinstance(switch, SwitchStyle)
     assert checkbox.default_touch_target == 48
+    assert radio.default_touch_target == 48
+    assert switch.default_touch_target == 48
     assert checkbox.icon_size_ratio == 18.0 / 48.0
     icon = mat.icon_style
     assert isinstance(icon, IconStyle)
@@ -86,9 +100,13 @@ def test_theme_style_lazy_loading():
     assert mat is not None
     button = mat.filled_button_style
     checkbox = mat.checkbox_style
+    radio = mat.radio_button_style
+    switch = mat.switch_style
     icon = mat.icon_style
     assert button is not None
     assert checkbox is not None
+    assert radio is not None
+    assert switch is not None
     assert icon is not None
 
 
@@ -107,12 +125,18 @@ def test_theme_manager_provides_styles():
         assert mat is not None
         assert hasattr(mat, "filled_button_style")
         assert hasattr(mat, "checkbox_style")
+        assert hasattr(mat, "radio_button_style")
+        assert hasattr(mat, "switch_style")
         assert hasattr(mat, "icon_style")
         button = mat.filled_button_style
         checkbox = mat.checkbox_style
+        radio = mat.radio_button_style
+        switch = mat.switch_style
         icon = mat.icon_style
         assert button is not None
         assert checkbox is not None
+        assert radio is not None
+        assert switch is not None
         assert icon is not None
     finally:
         manager.set_theme(old)
@@ -177,4 +201,6 @@ def test_theme_styles_independent_of_mode():
     assert dark_mat is not None
     assert light_mat.filled_button_style.corner_radius == dark_mat.filled_button_style.corner_radius
     assert light_mat.checkbox_style.default_touch_target == dark_mat.checkbox_style.default_touch_target
+    assert light_mat.radio_button_style.default_touch_target == dark_mat.radio_button_style.default_touch_target
+    assert light_mat.switch_style.default_touch_target == dark_mat.switch_style.default_touch_target
     assert light_mat.icon_style.default_size == dark_mat.icon_style.default_size

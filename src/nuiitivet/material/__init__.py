@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from .intents import LoadingIntent
     from .icon import Icon
     from .navigation_rail import NavigationRail, RailItem
-    from .selection_controls import Checkbox
+    from .selection_controls import Checkbox, RadioButton, RadioGroup, Switch
     from .symbols import Symbol, Symbols
     from .text_fields import FilledTextField, OutlinedTextField, TextField
     from .text import Text
@@ -32,6 +32,9 @@ __all__ = [
     "Symbols",
     "Symbol",
     "Checkbox",
+    "RadioButton",
+    "RadioGroup",
+    "Switch",
     "Card",
     "ElevatedCard",
     "FilledCard",
@@ -68,6 +71,9 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "Symbols": ("symbols", "Symbols"),
     "Symbol": ("symbols", "Symbol"),
     "Checkbox": ("selection_controls", "Checkbox"),
+    "RadioButton": ("selection_controls", "RadioButton"),
+    "RadioGroup": ("selection_controls", "RadioGroup"),
+    "Switch": ("selection_controls", "Switch"),
     "Card": ("card", "Card"),
     "ElevatedCard": ("card", "ElevatedCard"),
     "FilledCard": ("card", "FilledCard"),
