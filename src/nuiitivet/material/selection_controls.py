@@ -19,6 +19,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
@@ -30,6 +31,8 @@ _logger = logging.getLogger(__name__)
 
 _STATE_LAYER_MOTION = LinearMotion(0.1)
 _SELECTION_MOTION = LinearMotion(0.12)
+_SWITCH_STATE_LAYER_MOTION = EXPRESSIVE_DEFAULT_EFFECTS
+_SWITCH_SELECTION_MOTION = EXPRESSIVE_DEFAULT_SPATIAL
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -849,10 +852,10 @@ class Switch(Toggleable, InteractiveWidget):
         except Exception:
             self._touch_target_size = 48
 
-        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_SWITCH_STATE_LAYER_MOTION)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
         initial_selection = 1.0 if bool(self.value) else 0.0
-        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SELECTION_MOTION)
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SWITCH_SELECTION_MOTION)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
 
     @property
@@ -939,7 +942,10 @@ class Switch(Toggleable, InteractiveWidget):
             sizes = self.style.compute_sizes(touch_sz)
             track_w = float(cast(float, sizes["track_width"]))
             track_h = float(cast(float, sizes["track_height"]))
-            thumb_d = float(cast(float, sizes["thumb_diameter"]))
+            thumb_unselected_d = float(cast(float, sizes["thumb_diameter_unselected"]))
+            thumb_selected_d = float(cast(float, sizes["thumb_diameter_selected"]))
+            thumb_pressed_d = float(cast(float, sizes["thumb_diameter_pressed"]))
+            track_outline_w = float(cast(float, sizes["track_outline_width"]))
             state_layer_size = float(cast(float, sizes["state_layer_size"]))
             track_radius = track_h / 2.0
 
@@ -950,24 +956,68 @@ class Switch(Toggleable, InteractiveWidget):
             roles = mat.roles if mat is not None else {}
 
             progress = self._get_selection_progress()
+            checked = bool(self.value)
+            pressed = bool(self.state.pressed or self.state.dragging)
+
+            if pressed:
+                thumb_d = thumb_pressed_d
+            else:
+                thumb_d = thumb_selected_d if checked else thumb_unselected_d
 
             unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
             checked_track_hex = roles.get(ColorRole.PRIMARY, "#000000")
+            unchecked_outline_hex = roles.get(ColorRole.OUTLINE, "#616161")
             unchecked_thumb_hex = roles.get(ColorRole.OUTLINE, "#616161")
             checked_thumb_hex = roles.get(ColorRole.ON_PRIMARY, "#FFFFFF")
 
-            track_hex = checked_track_hex if progress >= 0.5 else unchecked_track_hex
-            thumb_hex = checked_thumb_hex if progress >= 0.5 else unchecked_thumb_hex
+            disabled_checked_track_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+            disabled_checked_thumb_hex = roles.get(ColorRole.SURFACE, "#FFFFFF")
+            disabled_unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
+            disabled_unchecked_outline_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+            disabled_unchecked_thumb_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
 
-            alpha = self.style.disabled_alpha if self.disabled else 1.0
-            track_paint = make_paint(color=skcolor(track_hex, alpha), style="fill", aa=True)
+            if self.disabled:
+                if checked:
+                    track_hex = disabled_checked_track_hex
+                    track_alpha = self.style.disabled_checked_track_alpha
+                    thumb_hex = disabled_checked_thumb_hex
+                    thumb_alpha = self.style.disabled_checked_thumb_alpha
+                    outline_hex = None
+                    outline_alpha = 0.0
+                else:
+                    track_hex = disabled_unchecked_track_hex
+                    track_alpha = self.style.disabled_unchecked_track_alpha
+                    thumb_hex = disabled_unchecked_thumb_hex
+                    thumb_alpha = self.style.disabled_unchecked_thumb_alpha
+                    outline_hex = disabled_unchecked_outline_hex
+                    outline_alpha = self.style.disabled_unchecked_track_outline_alpha
+            else:
+                track_hex = checked_track_hex if checked else unchecked_track_hex
+                track_alpha = 1.0
+                thumb_hex = checked_thumb_hex if checked else unchecked_thumb_hex
+                thumb_alpha = 1.0
+                outline_hex = None if checked else unchecked_outline_hex
+                outline_alpha = 1.0
+
+            track_paint = make_paint(color=skcolor(track_hex, track_alpha), style="fill", aa=True)
             track_rect = make_rect(track_x, track_y, track_w, track_h)
             if track_rect is not None and track_paint is not None:
                 draw_round_rect(canvas, track_rect, track_radius, track_paint)
 
-            thumb_start = track_x + (track_h - thumb_d) / 2.0
-            thumb_end = track_x + track_w - track_h + (track_h - thumb_d) / 2.0
-            thumb_x = thumb_start + (thumb_end - thumb_start) * progress
+            if outline_hex is not None:
+                outline_paint = make_paint(
+                    color=skcolor(outline_hex, outline_alpha),
+                    style="stroke",
+                    stroke_width=track_outline_w,
+                    aa=True,
+                )
+                if track_rect is not None and outline_paint is not None:
+                    draw_round_rect(canvas, track_rect, track_radius, outline_paint)
+
+            thumb_center_start = track_x + (track_h / 2.0)
+            thumb_center_end = track_x + track_w - (track_h / 2.0)
+            thumb_center_x = thumb_center_start + (thumb_center_end - thumb_center_start) * progress
+            thumb_x = thumb_center_x - (thumb_d / 2.0)
             thumb_y = track_y + (track_h - thumb_d) / 2.0
 
             overlay_alpha = self._get_active_state_layer_opacity()
@@ -978,12 +1028,13 @@ class Switch(Toggleable, InteractiveWidget):
                     state_layer_size,
                     state_layer_size,
                 )
-                overlay_color = roles.get(ColorRole.ON_SURFACE, "#000000")
+                overlay_base_role = ColorRole.PRIMARY if checked else ColorRole.ON_SURFACE
+                overlay_color = roles.get(overlay_base_role, "#000000")
                 overlay_paint = make_paint(color=skcolor(overlay_color, overlay_alpha), style="fill", aa=True)
                 if overlay_rect is not None and overlay_paint is not None:
                     draw_oval(canvas, overlay_rect, overlay_paint)
 
-            thumb_paint = make_paint(color=skcolor(thumb_hex, alpha), style="fill", aa=True)
+            thumb_paint = make_paint(color=skcolor(thumb_hex, thumb_alpha), style="fill", aa=True)
             thumb_rect = make_rect(thumb_x, thumb_y, thumb_d, thumb_d)
             if thumb_rect is not None and thumb_paint is not None:
                 draw_oval(canvas, thumb_rect, thumb_paint)
