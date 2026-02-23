@@ -1,0 +1,2917 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.3.2/design/ANIMATION_SYSTEM/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Animation System Internal Design - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#animation-system-internal-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Animation System Internal Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout_extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation_route/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PageRoute & Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation_intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation_sub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window_title_bar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Title Bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window_size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window_operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifier_decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifier_interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifier_transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifier_others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/basic-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/practical-controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/thread-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/observable/patterns-and-recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async & Threading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose-and-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose and Scope
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Purpose and Scope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#in-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audience-and-reading-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audience and reading path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-terminology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Terminology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-system-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. System Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. System Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-dependency-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Dependency direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-widget-entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Widget entry points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-core-data-model-and-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Core Data Model and Invariants
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Core Data Model and Invariants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-animatable-internal-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Animatable internal state
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-motionstate-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 MotionState fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Invariants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-lifecycle-and-state-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Lifecycle and State Transitions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Lifecycle and State Transitions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-initialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Initialization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-target-assignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Target assignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-tick-progression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Tick progression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-widget-lifecycle-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Widget lifecycle integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-scheduler-and-time-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Scheduler and Time Semantics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-motion-contract-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Motion Contract Specification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Motion Contract Specification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-linearbezier-retarget-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Linear/Bezier retarget policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-spring-retarget-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Spring retarget policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-error-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Error behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-vectorconverter-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. VectorConverter Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-observable-integration-and-ownership" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Observable Integration and Ownership
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Observable Integration and Ownership">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-ownership-decision-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Ownership decision table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-widget-integration-patterns-developer-facing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Widget Integration Patterns (Developer-Facing)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Widget Integration Patterns (Developer-Facing)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-pattern-a-direct-property-binding-preferred-when-possible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Pattern A: Direct Property Binding (Preferred when possible)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-pattern-b-manual-subscription-low-level-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Pattern B: Manual Subscription (Low-level control)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-pattern-c-late-read-in-paint-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Pattern C: Late Read in paint() / layout()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-cross-check-matrix-secondary-review-lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 Cross-check matrix (secondary review lens)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-material-integration-case-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Material Integration Case Notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Material Integration Case Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-buttons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Buttons
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-textfield" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 TextField
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-navigationrail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 NavigationRail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-loadingindicator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 LoadingIndicator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-failure-modes-and-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Failure Modes and Mitigations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Failure Modes and Mitigations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-symptoms-likely-causes-and-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 Symptoms, likely causes, and fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-test-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Test Traceability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Test Traceability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#131-widget-author-test-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 Widget author test checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-future-extensions-design-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Future Extensions (Design Hooks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-minimal-internal-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: Minimal Internal Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix A: Minimal Internal Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-in-flight-retarget-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.1 In-flight retarget sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-unmount-cleanup-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A.2 Unmount cleanup sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="animation-system-internal-design">Animation System Internal Design</h1>
+<h2 id="1-purpose-and-scope">1. Purpose and Scope</h2>
+<p>This document defines the <strong>internal design</strong> of nuiitivet animation primitives, centered on <code>Animatable</code>.</p>
+<h3 id="in-scope">In scope</h3>
+<ul>
+<li>Runtime behavior of <code>Animatable</code> in <code>src/nuiitivet/animation/animatable.py</code></li>
+<li>Motion contracts and state model in <code>src/nuiitivet/animation/motion.py</code></li>
+<li>Value/vector conversion contracts in <code>src/nuiitivet/animation/converter.py</code></li>
+<li>Integration patterns observed in <code>src/nuiitivet/material/*</code></li>
+</ul>
+<h3 id="out-of-scope">Out of scope</h3>
+<ul>
+<li>End-user tutorials and cookbook-style usage guides</li>
+<li>Full visual design catalog for transitions</li>
+<li>M3 design rationale not directly affecting runtime contracts</li>
+</ul>
+<h3 id="audience-and-reading-path">Audience and reading path</h3>
+<ul>
+<li>Widget authors should start with Section 10 and Section 11.</li>
+<li>For runtime guarantees and cleanup requirements, then read Section 5, Section 9, and Section 12.</li>
+<li>Section 7 and Section 8 are primarily for motion/converter implementers.</li>
+</ul>
+<h2 id="2-terminology">2. Terminology</h2>
+<ul>
+<li><strong>value</strong>: Current resolved animation value (<code>Animatable.value</code>).</li>
+<li><strong>target</strong>: Destination value (<code>Animatable.target</code>).</li>
+<li><strong>retarget</strong>: Updating <code>target</code> while animation is active.</li>
+<li><strong>tick</strong>: One scheduler callback that advances state by <code>dt</code>.</li>
+<li><strong>done</strong>: Motion completion state (<code>MotionState.done</code>).</li>
+<li><strong>visual-only animation</strong>: Affects paint output only.</li>
+<li><strong>layout-affecting animation</strong>: Affects measured size or child layout.</li>
+</ul>
+<h2 id="3-system-architecture">3. System Architecture</h2>
+<h3 id="31-components">3.1 Components</h3>
+<ul>
+<li><code>Animatable[T]</code></li>
+<li>Owns value/target and ticking lifecycle.</li>
+<li>Delegates motion math to <code>Motion</code>.</li>
+<li><code>Motion</code></li>
+<li>Creates and updates mutable <code>MotionState</code>.</li>
+<li>Handles retarget semantics.</li>
+<li><code>VectorConverter[T]</code></li>
+<li>Converts domain values to/from numeric vectors.</li>
+<li><code>runtime.clock</code></li>
+<li>Schedules per-frame callbacks.</li>
+</ul>
+<h3 id="32-dependency-direction">3.2 Dependency direction</h3>
+<p><code>Widget/material</code> -&gt; <code>Animatable</code> -&gt; <code>Motion</code> / <code>VectorConverter</code> -&gt; <code>runtime.clock</code></p>
+<p>Animation primitives do not depend on material widget implementation details.</p>
+<h3 id="33-widget-entry-points">3.3 Widget entry points</h3>
+<p>Widget code should interact with animation primitives through three entry points:</p>
+<ul>
+<li><code>target</code> assignment: drive animation from interaction/domain state.</li>
+<li><code>subscribe(...)</code>: request redraw/layout or perform controlled side effects.</li>
+<li><code>map(...)</code>: derive read-only observable values for property binding.</li>
+</ul>
+<p>Do not access or mutate <code>Animatable</code> internals (<code>_state</code>, <code>_ticker</code>) from widget code.</p>
+<h2 id="4-core-data-model-and-invariants">4. Core Data Model and Invariants</h2>
+<h3 id="41-animatable-internal-state">4.1 <code>Animatable</code> internal state</h3>
+<p><code>Animatable</code> maintains:</p>
+<ul>
+<li><code>_value: _ObservableValue[T]</code></li>
+<li><code>_target: T</code></li>
+<li><code>_motion: Motion | None</code></li>
+<li><code>_state: MotionState | None</code></li>
+<li><code>_ticker: Callable[[float], None] | None</code></li>
+</ul>
+<h3 id="42-motionstate-fields">4.2 <code>MotionState</code> fields</h3>
+<p><code>MotionState</code> carries mutable simulation data:</p>
+<ul>
+<li><code>value: list[float]</code></li>
+<li><code>target: list[float]</code></li>
+<li><code>start: list[float]</code></li>
+<li><code>elapsed: float</code></li>
+<li><code>velocity: list[float]</code></li>
+<li><code>done: bool</code></li>
+</ul>
+<h3 id="43-invariants">4.3 Invariants</h3>
+<ul>
+<li><code>len(value) == len(target) == len(start) == len(velocity)</code> must hold.</li>
+<li>When done:</li>
+<li>state value is snapped to state target,</li>
+<li><code>Animatable.value</code> equals converted target,</li>
+<li>ticker is unscheduled.</li>
+<li><code>stop()</code> must produce a quiescent state:</li>
+<li>target is synchronized to current value,</li>
+<li>velocity is zeroed,</li>
+<li>done is set to true.</li>
+</ul>
+<h2 id="5-lifecycle-and-state-transitions">5. Lifecycle and State Transitions</h2>
+<h3 id="51-initialization">5.1 Initialization</h3>
+<ul>
+<li>Float mode: <code>Animatable(initial_value: float, motion=...)</code> uses <code>FloatConverter</code>.</li>
+<li>Generic mode: <code>Animatable.vector(initial, converter, motion=...)</code>.</li>
+<li>If <code>motion</code> is provided, initial <code>MotionState</code> is created with <code>value == target == initial</code>.</li>
+</ul>
+<h3 id="52-target-assignment">5.2 Target assignment</h3>
+<p>When assigning <code>anim.target = x</code>:</p>
+<ol>
+<li><code>_target</code> is updated.</li>
+<li>If <code>motion is None</code>, <code>_value</code> is updated immediately (no ticking).</li>
+<li>Else:</li>
+<li>convert target to vector,</li>
+<li><code>create_state(...)</code> if missing, otherwise <code>retarget(...)</code>,</li>
+<li>ensure ticker is scheduled.</li>
+</ol>
+<h3 id="53-tick-progression">5.3 Tick progression</h3>
+<p>On each <code>_tick(dt)</code>:</p>
+<ol>
+<li>Guard: if motion/state missing, stop ticking.</li>
+<li>Call <code>motion.step(state, dt)</code>.</li>
+<li>Publish converted <code>state.value</code> to <code>_value</code>.</li>
+<li>If done:</li>
+<li>publish exact target value,</li>
+<li>normalize <code>state.value = state.target.copy()</code>,</li>
+<li>mark <code>state.done = True</code>,</li>
+<li>unschedule ticker.</li>
+</ol>
+<h3 id="54-stop">5.4 Stop</h3>
+<p><code>stop()</code> must:</p>
+<ul>
+<li>unschedule ticker,</li>
+<li>set target to current value,</li>
+<li>normalize state vectors to current value,</li>
+<li>zero velocity,</li>
+<li>mark done.</li>
+</ul>
+<h3 id="55-widget-lifecycle-integration">5.5 Widget lifecycle integration</h3>
+<ul>
+<li>Initialize animation wiring in construction/mount paths before first paint.</li>
+<li>If mount can change effective state (theme/focus/external observable), re-sync animation targets on mount.</li>
+<li>On unmount/dispose, stop animations that can continue ticking and dispose owned subscriptions/timers.</li>
+<li>Cleanup order should be: dispose subscriptions -&gt; unschedule timers -&gt; <code>stop()</code> active animatables -&gt; clear refs.</li>
+</ul>
+<h2 id="6-scheduler-and-time-semantics">6. Scheduler and Time Semantics</h2>
+<ul>
+<li>Ticking is registered via <code>runtime.clock.schedule_interval(..., 1 / 60.0)</code>.</li>
+<li>Registration is idempotent (<code>_ticker</code> guard prevents duplicates).</li>
+<li>Unschedule is idempotent (<code>_ticker is None</code> guard).</li>
+<li>Motions clamp negative <code>dt</code> to <code>0.0</code>.</li>
+<li>Time-based motions with <code>duration &lt;= 0.0</code> complete immediately.</li>
+</ul>
+<h2 id="7-motion-contract-specification">7. Motion Contract Specification</h2>
+<p><code>Motion</code> protocol defines:</p>
+<ul>
+<li><code>create_state(value, target) -&gt; MotionState</code></li>
+<li><code>step(state, dt) -&gt; bool</code> (returns done)</li>
+<li><code>retarget(state, target) -&gt; None</code></li>
+</ul>
+<h3 id="71-linearbezier-retarget-policy">7.1 Linear/Bezier retarget policy</h3>
+<ul>
+<li><code>start</code> becomes current <code>state.value</code>.</li>
+<li><code>target</code> becomes new target.</li>
+<li><code>elapsed</code> resets to <code>0.0</code>.</li>
+<li><code>done</code> resets to <code>False</code>.</li>
+</ul>
+<h3 id="72-spring-retarget-policy">7.2 Spring retarget policy</h3>
+<ul>
+<li><code>target</code> is replaced.</li>
+<li>Existing velocity is preserved.</li>
+<li><code>done</code> resets to <code>False</code>.</li>
+</ul>
+<h3 id="73-error-behavior">7.3 Error behavior</h3>
+<ul>
+<li>Dimension mismatch raises <code>ValueError</code>.</li>
+<li><code>SpringMotion</code> initial velocity dimension mismatch raises <code>ValueError</code>.</li>
+</ul>
+<h2 id="8-vectorconverter-contract">8. VectorConverter Contract</h2>
+<p><code>VectorConverter[T]</code> must satisfy:</p>
+<ul>
+<li>Stable vector dimensionality for a given <code>T</code> domain.</li>
+<li>Deterministic <code>to_vector</code>/<code>from_vector</code> behavior.</li>
+<li>Defensive validation in <code>from_vector</code> where required (e.g., RGBA length must be 4).</li>
+</ul>
+<p>Implementation notes:</p>
+<ul>
+<li><code>FloatConverter</code> maps scalar to one-dimensional vector.</li>
+<li><code>RgbaTupleConverter</code> clamps channels to integer <code>[0, 255]</code>.</li>
+</ul>
+<h2 id="9-observable-integration-and-ownership">9. Observable Integration and Ownership</h2>
+<p><code>Animatable</code> exposes <code>_ObservableValue</code> APIs:</p>
+<ul>
+<li><code>subscribe(cb)</code></li>
+<li><code>changes()</code></li>
+<li><code>map(transform)</code></li>
+</ul>
+<p>Ownership rules:</p>
+<ul>
+<li>If subscription is created manually, caller owns disposal.</li>
+<li>If bound through framework host mechanisms, host manages lifecycle.</li>
+<li>Design docs must explicitly state ownership for every subscription site.</li>
+</ul>
+<h3 id="91-ownership-decision-table">9.1 Ownership decision table</h3>
+<table>
+<thead>
+<tr>
+<th>Wiring style</th>
+<th>Typical API</th>
+<th>Disposal owner</th>
+<th>Required action by widget author</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct binding via host</td>
+<td>framework-managed bind/observe API</td>
+<td>Host/binding framework</td>
+<td>Ensure dependency is registered correctly</td>
+</tr>
+<tr>
+<td>Manual subscription</td>
+<td><code>anim.subscribe(...)</code></td>
+<td>Widget/component</td>
+<td>Dispose on unmount/dispose</td>
+</tr>
+<tr>
+<td>Timer + animation loop</td>
+<td>scheduler callbacks + <code>Animatable</code></td>
+<td>Widget/component</td>
+<td>Unschedule timer and stop animation on unmount</td>
+</tr>
+</tbody>
+</table>
+<h2 id="10-widget-integration-patterns-developer-facing">10. Widget Integration Patterns (Developer-Facing)</h2>
+<p>This section intentionally uses <strong>Pattern A/B/C</strong> as the primary taxonomy because it is easier for widget authors to choose an implementation style.</p>
+<h3 id="101-pattern-a-direct-property-binding-preferred-when-possible">10.1 Pattern A: Direct Property Binding (Preferred when possible)</h3>
+<p>Use <code>Animatable</code> (or <code>map(...)</code>) directly as an observable input to widget properties.</p>
+<p>Responsibilities:</p>
+<ul>
+<li>Prefer this pattern for simple value propagation with minimal lifecycle code.</li>
+<li>Keep transformation logic pure and deterministic (<code>map(...)</code> should not have side effects).</li>
+</ul>
+<p>Cautions:</p>
+<ul>
+<li>If the bound property affects geometry, ensure the target widget/property path triggers layout updates.</li>
+<li>Avoid heavy computations inside <code>map(...)</code> because it runs on every value publication.</li>
+</ul>
+<p>Typical failures:</p>
+<ul>
+<li>Binding to a visual property while expecting layout updates.</li>
+<li>Hiding expensive work in a transform function and causing frame drops.</li>
+</ul>
+<h3 id="102-pattern-b-manual-subscription-low-level-control">10.2 Pattern B: Manual Subscription (Low-level control)</h3>
+<p>Subscribe explicitly and perform imperative updates in the callback.</p>
+<p>Responsibilities:</p>
+<ul>
+<li>Use when callback side effects are required (multiple property updates, conditional logic, external sync).</li>
+<li>Explicitly request repaint/layout based on the changed domain.</li>
+</ul>
+<p>Cautions:</p>
+<ul>
+<li>If value changes affect geometry, call <code>mark_needs_layout()</code> (and typically <code>invalidate()</code>).</li>
+<li>Define disposal ownership clearly (manual subscriptions must be disposed by owner).</li>
+<li>Prevent retarget chatter with epsilon checks before assigning <code>target</code> repeatedly.</li>
+</ul>
+<p>Typical failures:</p>
+<ul>
+<li>Calling only <code>invalidate()</code> for layout-affecting animation.</li>
+<li>Forgetting to dispose subscriptions on unmount/dispose.</li>
+<li>Reassigning the same target every frame and causing unnecessary work.</li>
+</ul>
+<h3 id="103-pattern-c-late-read-in-paint-layout">10.3 Pattern C: Late Read in <code>paint()</code> / <code>layout()</code></h3>
+<p>Read <code>anim.value</code> during rendering/layout execution without synchronizing to an intermediate stored property.</p>
+<p>Responsibilities:</p>
+<ul>
+<li>Use in custom widgets where direct pull-based reads keep state minimal.</li>
+<li>Pair with an external tick trigger (<code>subscribe(...)</code>) so paint/layout is re-requested while animation progresses.</li>
+</ul>
+<p>Cautions:</p>
+<ul>
+<li><code>paint()</code> / <code>layout()</code> must be read-only with respect to animation targets.</li>
+<li>Never assign <code>target</code> (or other state-changing operations) from paint-driven hot paths.</li>
+<li>For layout-driven animation, ensure layout invalidation is requested on ticks.</li>
+</ul>
+<p>Typical failures:</p>
+<ul>
+<li>Infinite redraw loops caused by side effects in paint/layout.</li>
+<li>Stale geometry when <code>value</code> is read in layout but layout is not invalidated on updates.</li>
+</ul>
+<h3 id="104-cross-check-matrix-secondary-review-lens">10.4 Cross-check matrix (secondary review lens)</h3>
+<p>After choosing Pattern A/B/C, verify behavior by these orthogonal checks:</p>
+<ul>
+<li><strong>Visual-only</strong>: repaint request is sufficient.</li>
+<li><strong>Layout-affecting</strong>: layout + repaint requests are both wired.</li>
+<li><strong>State-sync retargeting</strong>: source state changes update targets without chatter.</li>
+</ul>
+<h2 id="11-material-integration-case-notes">11. Material Integration Case Notes</h2>
+<h3 id="111-buttons">11.1 Buttons</h3>
+<ul>
+<li>Adopted pattern(s): <strong>Pattern B + Pattern C</strong></li>
+<li>Separate animatables for state layer opacity and RGBA channels.</li>
+<li>Color animatables are created once, then retargeted.</li>
+</ul>
+<h3 id="112-textfield">11.2 TextField</h3>
+<ul>
+<li>Adopted pattern(s): <strong>Pattern B</strong></li>
+<li>Multiple coordinated animatables (<code>label_progress</code>, indicator width/color, label color).</li>
+<li>On mount, state is re-synchronized to avoid stale initial visual state.</li>
+</ul>
+<h3 id="113-navigationrail">11.3 NavigationRail</h3>
+<ul>
+<li>Adopted pattern(s): <strong>Pattern A + Pattern B + Pattern C</strong></li>
+<li>Multiple animatables synchronized from one expanded state.</li>
+<li>Uses <code>map(...)</code> for derived values (width, icon rotation).</li>
+<li>Layout class subscribes to animation ticks and requests layout+invalidate.</li>
+</ul>
+<h3 id="114-loadingindicator">11.4 LoadingIndicator</h3>
+<ul>
+<li>Adopted pattern(s): <strong>Pattern B + Pattern C</strong></li>
+<li>Continuous loop via periodic retarget (<code>target += 1.0</code>).</li>
+<li>Requires strict unmount cleanup: unschedule timer, dispose subscription, stop animatable.</li>
+</ul>
+<h2 id="12-failure-modes-and-mitigations">12. Failure Modes and Mitigations</h2>
+<h3 id="121-symptoms-likely-causes-and-fixes">12.1 Symptoms, likely causes, and fixes</h3>
+<ul>
+<li><strong>Symptom</strong>: animation stutters or CPU usage spikes while state is stable</li>
+<li>Likely cause: repeated retargeting to effectively the same value</li>
+<li>
+<p>Fix: compare current target with epsilon before assignment</p>
+</li>
+<li>
+<p><strong>Symptom</strong>: widget visually updates but geometry stays stale</p>
+</li>
+<li>Likely cause: layout-affecting animation only calls repaint</li>
+<li>
+<p>Fix: request both layout and repaint on animation ticks</p>
+</li>
+<li>
+<p><strong>Symptom</strong>: redraw never settles / apparent render loop</p>
+</li>
+<li>Likely cause: side effects in <code>paint()</code>/<code>layout()</code> (including target assignments)</li>
+<li>
+<p>Fix: keep render/layout paths read-only and move state updates to event callbacks</p>
+</li>
+<li>
+<p><strong>Symptom</strong>: callbacks fire after unmount / leaked work</p>
+</li>
+<li>Likely cause: manual subscriptions or timers not cleaned up</li>
+<li>
+<p>Fix: document ownership and execute unmount cleanup sequence</p>
+</li>
+<li>
+<p><strong>Symptom</strong>: runtime <code>ValueError</code> in motion/converter paths</p>
+</li>
+<li>Likely cause: vector dimension mismatch</li>
+<li>
+<p>Fix: enforce dimension consistency in converter and motion boundaries</p>
+</li>
+<li>
+<p><strong>Symptom</strong>: long-running loop animation drifts over time</p>
+</li>
+<li>Likely cause: unbounded floating-point accumulation</li>
+<li>Fix: define tolerance and optional periodic phase normalization policy</li>
+</ul>
+<h2 id="13-test-traceability">13. Test Traceability</h2>
+<p>Current core behaviors are validated by tests such as:</p>
+<ul>
+<li><code>tests/test_animatable_vector_driven.py</code></li>
+<li>float default converter behavior,</li>
+<li>custom converter behavior,</li>
+<li>in-flight retarget behavior,</li>
+<li>spring multidimensional convergence.</li>
+<li><code>tests/test_text_field_animation.py</code></li>
+<li>widget-level animation wiring and fake-clock stepping behavior.</li>
+</ul>
+<p>Design changes must update this traceability section when adding or changing contracts.</p>
+<h3 id="131-widget-author-test-checklist">13.1 Widget author test checklist</h3>
+<p>For any new widget animation, verify at least:</p>
+<ul>
+<li>Retarget-in-flight behavior (state changes during active animation).</li>
+<li>Correct invalidation kind:</li>
+<li>repaint-only for visual changes,</li>
+<li>layout + repaint for geometry changes.</li>
+<li>Unmount/dispose cleanup (no post-unmount callbacks, timers, or ticking).</li>
+<li>External observable sync correctness on initial mount and subsequent updates.</li>
+</ul>
+<h2 id="14-future-extensions-design-hooks">14. Future Extensions (Design Hooks)</h2>
+<ul>
+<li>Pause/resume animation control API.</li>
+<li>Optional conversion-result caching for heavy value types.</li>
+<li>Explicit long-running loop policy (drift reset threshold, watchdog).</li>
+<li>Additional composition semantics for transitions (e.g., multiply/add blending).</li>
+</ul>
+<hr />
+<h2 id="appendix-a-minimal-internal-sequence">Appendix A: Minimal Internal Sequence</h2>
+<h3 id="a1-in-flight-retarget-sequence">A.1 In-flight retarget sequence</h3>
+<ol>
+<li><code>target = A</code> schedules ticking and starts progression.</li>
+<li>Before completion, <code>target = B</code> calls <code>retarget(...)</code>.</li>
+<li>Motion continues from current state (not from original start).</li>
+<li>Completion snaps to exact <code>B</code>, then ticker stops.</li>
+</ol>
+<h3 id="a2-unmount-cleanup-sequence">A.2 Unmount cleanup sequence</h3>
+<ol>
+<li>Dispose subscriptions owned by widget.</li>
+<li>Unschedule loop callbacks/timers.</li>
+<li>Call <code>anim.stop()</code> if animation may still be active.</li>
+<li>Clear references to avoid stale callbacks.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
