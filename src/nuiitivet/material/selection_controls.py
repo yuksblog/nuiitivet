@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
 
-from nuiitivet.animation import Animatable, LinearMotion
+from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable, ObservableProtocol
@@ -28,11 +28,6 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
-
-_STATE_LAYER_MOTION = LinearMotion(0.1)
-_SELECTION_MOTION = LinearMotion(0.12)
-_SWITCH_STATE_LAYER_MOTION = EXPRESSIVE_DEFAULT_EFFECTS
-_SWITCH_SELECTION_MOTION = EXPRESSIVE_DEFAULT_SPATIAL
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -135,9 +130,9 @@ class Checkbox(Toggleable, InteractiveWidget):
             self._touch_target_size = 48
 
         initial_selection = 1.0 if self.value is True or self.value is None else 0.0
-        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
-        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SELECTION_MOTION)
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
 
     def _effective_value_from_external(self) -> Optional[bool]:
@@ -600,10 +595,10 @@ class RadioButton(Toggleable, InteractiveWidget):
         except Exception:
             self._touch_target_size = 48
 
-        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
 
-        self._selection_anim: Animatable[float] = Animatable(0.0, motion=_SELECTION_MOTION)
+        self._selection_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
 
     @property
@@ -757,9 +752,14 @@ class RadioButton(Toggleable, InteractiveWidget):
 
             progress = self._get_selection_progress()
             if progress > 1e-6:
-                dot_color = roles.get(ColorRole.PRIMARY, "#000000")
+                if self.disabled:
+                    dot_color = roles.get(ColorRole.ON_SURFACE, "#000000")
+                    dot_alpha = progress * self.style.disabled_alpha
+                else:
+                    dot_color = roles.get(ColorRole.PRIMARY, "#000000")
+                    dot_alpha = progress
                 dot_paint = make_paint(
-                    color=skcolor(dot_color, progress * (self.style.disabled_alpha if self.disabled else 1.0)),
+                    color=skcolor(dot_color, dot_alpha),
                     style="fill",
                     aa=True,
                 )
@@ -852,10 +852,10 @@ class Switch(Toggleable, InteractiveWidget):
         except Exception:
             self._touch_target_size = 48
 
-        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_SWITCH_STATE_LAYER_MOTION)
+        self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
         initial_selection = 1.0 if bool(self.value) else 0.0
-        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=_SWITCH_SELECTION_MOTION)
+        self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
 
     @property
