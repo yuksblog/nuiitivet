@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from nuiitivet.layout.container import Container
@@ -39,7 +41,7 @@ def test_assist_chip_with_leading_icon() -> None:
 
 def test_input_chip_requires_trailing_icon() -> None:
     with pytest.raises(TypeError):
-        InputChip("Input")
+        cast(Any, InputChip)("Input")
 
 
 def test_input_chip_includes_trailing_icon() -> None:
@@ -128,7 +130,7 @@ def test_input_chip_trailing_icon_target_is_focusable() -> None:
     target = chip._trailing_icon_tap_target
 
     assert target is not None
-    assert target.get_node(FocusNode) is not None
+    assert cast(Any, target).get_node(FocusNode) is not None
 
 
 def test_suggestion_chip_basic() -> None:

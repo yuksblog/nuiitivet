@@ -11,9 +11,9 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
-from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ def _resolve_fixed_height(height: SizingLike, fallback: int) -> int:
 
 def _chip_text(
     label: str | ReadOnlyObservableProtocol[str],
-    color: ColorRole | tuple[int, int, int, int] | str,
+    color: ColorSpec,
 ) -> Text:
     return Text(label, style=TextStyle(font_size=14, color=color, text_alignment="center"))
 
@@ -47,7 +47,7 @@ def _chip_text(
 def _chip_icon(
     name: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
     *,
-    color: ColorRole | tuple[int, int, int, int] | str,
+    color: ColorSpec,
 ) -> Icon:
     return Icon(name, size=18, style=IconStyle(color=color))
 
