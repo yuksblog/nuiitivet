@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.styles.card_style import CardStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+    from nuiitivet.material.styles.chip_style import ChipStyle
     from nuiitivet.material.styles.dialog_style import DialogStyle
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
@@ -49,6 +50,10 @@ class MaterialThemeData(ThemeExtension):
 
     # Other styles
     _checkbox_style: "CheckboxStyle | None" = None
+    _assist_chip_style: "ChipStyle | None" = None
+    _filter_chip_style: "ChipStyle | None" = None
+    _input_chip_style: "ChipStyle | None" = None
+    _suggestion_chip_style: "ChipStyle | None" = None
     _radio_button_style: "RadioButtonStyle | None" = None
     _switch_style: "SwitchStyle | None" = None
     _alert_dialog_style: "DialogStyle | None" = None
@@ -166,6 +171,42 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.checkbox_style import CheckboxStyle
 
         return CheckboxStyle()
+
+    @property
+    def assist_chip_style(self) -> "ChipStyle":
+        """Get Assist ChipStyle for this theme."""
+        if self._assist_chip_style is not None:
+            return self._assist_chip_style
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return ChipStyle.assist()
+
+    @property
+    def filter_chip_style(self) -> "ChipStyle":
+        """Get Filter ChipStyle for this theme."""
+        if self._filter_chip_style is not None:
+            return self._filter_chip_style
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return ChipStyle.filter()
+
+    @property
+    def input_chip_style(self) -> "ChipStyle":
+        """Get Input ChipStyle for this theme."""
+        if self._input_chip_style is not None:
+            return self._input_chip_style
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return ChipStyle.input()
+
+    @property
+    def suggestion_chip_style(self) -> "ChipStyle":
+        """Get Suggestion ChipStyle for this theme."""
+        if self._suggestion_chip_style is not None:
+            return self._suggestion_chip_style
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return ChipStyle.suggestion()
 
     @property
     def radio_button_style(self) -> "RadioButtonStyle":
