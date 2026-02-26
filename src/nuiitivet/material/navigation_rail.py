@@ -8,8 +8,6 @@ from nuiitivet.rendering.sizing import SizingLike, Sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material.text import Text
 from nuiitivet.material.icon import Icon
 from nuiitivet.widgets.box import Box
@@ -69,19 +67,25 @@ class RailItem(Widget):
         self._icon_widget: Widget
         self._label_widget: Widget
 
-        # Use provided style or defer to defaults.
-        icon_color = style.icon_color if style and style.icon_color else ColorRole.ON_SURFACE
-        icon_size = style.icon_size if style else NavigationRailStyle().icon_size
+        eff_style = style or NavigationRailStyle()
+        icon_color = eff_style.icon_color or ColorRole.ON_SURFACE
+        icon_size = eff_style.icon_size
         self._icon_widget = Icon(icon, size=icon_size, style=IconStyle(color=icon_color))
 
-        # Base label style.
-        text_style = TextStyle(
-            color=(style.label_color if style and style.label_color else ColorRole.ON_SURFACE_VARIANT),
-            font_size=12,
-            text_alignment="center",
-            overflow="ellipsis",
-        )
-        # TODO: Merge label_style if provided.
+        if eff_style.label_text_style is not None:
+            text_style = eff_style.label_text_style.copy_with(
+                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
+                font_size=12,
+                text_alignment="center",
+                overflow="ellipsis",
+            )
+        else:
+            text_style = TextStyle(
+                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
+                font_size=12,
+                text_alignment="center",
+                overflow="ellipsis",
+            )
 
         self._label_widget = Text(
             label,
@@ -111,10 +115,6 @@ class RailItem(Widget):
 
 def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
-
-
-def _to_int(value: float) -> int:
-    return int(round(float(value)))
 
 
 class _RailItemButton(InteractiveWidget):
@@ -187,24 +187,6 @@ class _RailItemButton(InteractiveWidget):
         )
         self._horizontal_label_container.clip_content = True
 
-        # Test compatibility objects.
-        self._indicator_box = Box(
-            child=None,
-            background_color=None,
-            corner_radius=eff_style.indicator_height_collapsed / 2.0,
-            width=Sizing.auto(),
-            height=Sizing.fixed(eff_style.indicator_height_collapsed),
-            alignment="center_left",
-            padding=(
-                _to_int(eff_style.indicator_horizontal_padding),
-                0,
-                _to_int(eff_style.indicator_horizontal_padding),
-                0,
-            ),
-        )
-        self._icon_gap_spacer = Spacer(width=Sizing.fixed(0))
-        self._content_column = Column(children=[], gap=4)
-
         # Badge state
         self._badge_widget: Optional[Widget] = None
         self._badge_rect: Optional[Tuple[int, int, int, int]] = None
@@ -247,12 +229,7 @@ class _RailItemButton(InteractiveWidget):
     def _on_badge_changed(self, value: BadgeValue) -> None:
         """React to badge observable changes."""
         self._update_badge_widget(value)
-        # Do NOT call mark_needs_layout() here: propagating it up the tree would
-        # set _needs_layout=True on _NavigationRailLayout and short-circuit its
-        # own animation-tick mark_needs_layout (early-return guard), which would
-        # stall the expand/collapse animations.
-        # Instead, just invalidate to schedule a repaint; draw_children will
-        # detect _badge_rect is None and call self.layout() itself.
+        # Keep animation flow intact; repaint is enough after badge swap.
         self.invalidate()
 
     def _update_badge_widget(self, value: BadgeValue) -> None:
@@ -326,14 +303,6 @@ class _RailItemButton(InteractiveWidget):
         self._indicator_rect = (ind_x_i, ind_y_i, ind_w_i, ind_h_i)
         self._indicator_radius = float(ind_h_i) / 2.0
 
-        # Update test compatibility objects.
-        gap_value = lerp(gap_collapsed, float(self._eff_style.label_gap_expanded), t_label)
-        self._indicator_box.height_sizing = Sizing.fixed(ind_h_i)
-        self._indicator_box.corner_radius = float(ind_h_i) / 2.0
-        self._icon_gap_spacer.width_sizing = Sizing.fixed(_to_int(gap_value))
-
-        self._content_column.gap = _to_int(lerp(gap_collapsed, gap_expanded, t_label))
-
         # Icon rect interpolation
         icon_size = float(self._eff_style.icon_size)
         icon_x = margin + float(self._eff_style.indicator_horizontal_padding)
@@ -400,14 +369,7 @@ class _RailItemButton(InteractiveWidget):
         )
 
     def _place_badge(self) -> None:
-        """Compute and cache badge rect from the already-placed icon rect.
-
-        This is called from ``layout()`` (guaranteed to run every animation
-        frame) so it is always in sync with the current icon position.
-        Keeping this logic separate avoids calling the heavy ``layout()``
-        method from inside ``draw_children`` (which would mutate layout state
-        mid-paint and break the ``mark_needs_layout`` propagation chain).
-        """
+        """Compute and cache badge rect from the current icon rect."""
         if self._badge_widget is None:
             self._badge_rect = None
             return
@@ -489,10 +451,7 @@ class _RailItemButton(InteractiveWidget):
         if any(child.layout_rect is None for child in self.children):
             self.layout(width, height)
 
-        # If badge value changed since last layout, recompute badge placement
-        # using the icon's already-set layout_rect.  This avoids re-running
-        # the full layout() from inside a paint call (which would clobber the
-        # mark_needs_layout chain and stall animations).
+        # Recompute badge placement lazily when badge content changed.
         if self._badge_widget is not None and self._badge_rect is None:
             self._place_badge()
 
@@ -740,9 +699,6 @@ class NavigationRail(Widget):
             self._item_buttons[new_index].set_selected(True, self.style)
         self.invalidate()
 
-    # def _on_animation_tick(self, progress: float) -> None:
-    # Replaced by direct binding
-
     def _on_expanded_changed(self, new_expanded: bool) -> None:
         """Handle Observable expanded changes."""
         # Drive animation instead of immediate rebuild.
@@ -801,7 +757,7 @@ class NavigationRail(Widget):
         )
 
         # Add background.
-        bg_color = self.style.background if self.style and self.style.background else ColorRole.SURFACE
+        bg_color = eff_style.background or ColorRole.SURFACE
         rail_bg = Box(
             child=rail_layout,
             background_color=bg_color,
@@ -827,7 +783,7 @@ class NavigationRail(Widget):
             self._menu_icon_name = _ObservableValue("menu_open" if self._is_expanded else "menu")
 
         eff_style = self.style or NavigationRailStyle()
-        color = self.style.menu_icon_color if self.style and self.style.menu_icon_color else ColorRole.ON_SURFACE
+        color = eff_style.menu_icon_color or ColorRole.ON_SURFACE
         icon_size = eff_style.icon_size
         icon = Icon(self._menu_icon_name, size=icon_size, style=IconStyle(color=color)).modifier(
             rotate(self._menu_rotation)
