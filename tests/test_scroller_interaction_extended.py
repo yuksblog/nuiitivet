@@ -22,6 +22,7 @@ def _make_basic_scroller():
         scrollbar_thickness=20,
         scrollbar_padding=0,
     )
+    scroller.layout(200, 200)
     scroller.set_last_rect(0, 0, 200, 200)
     if scroller._scrollbar:
         scroller._scrollbar.set_last_rect(180, 0, 20, 200)

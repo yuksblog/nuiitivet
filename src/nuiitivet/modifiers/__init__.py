@@ -7,6 +7,7 @@ from .focus import focusable
 from .hover import hoverable
 from .scroll import scrollable
 from .shadow import shadow
+from .stick import stick
 from .transform import opacity, rotate, scale, translate
 from .will_pop import will_pop
 
@@ -23,6 +24,7 @@ __all__ = [
     "scale",
     "scrollable",
     "shadow",
+    "stick",
     "translate",
     "will_pop",
 ]

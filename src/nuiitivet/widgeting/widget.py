@@ -66,11 +66,19 @@ class Widget(
 
     def mark_needs_layout(self) -> None:
         """Mark this widget as needing layout recalculation."""
-        if self._needs_layout:
-            return
+        already_dirty = self._needs_layout
         self._needs_layout = True
         parent = getattr(self, "_parent", None)
         if isinstance(parent, Widget):
+            # Always propagate to root.  An early-return guard ("if already
+            # dirty, skip") would be valid only if the invariant "every dirty
+            # node's ancestors are also dirty" were globally maintained.
+            # However, clear_needs_layout() is called only on AppScope (the
+            # root), leaving intermediate nodes dirty.  When the next animation
+            # tick fires, a selective guard would stop propagation at the first
+            # already-dirty intermediate, never reaching the cleared root.
+            # Walking all the way to the root on every call is O(tree-depth)
+            # – the same cost as the original code when no ancestor was dirty.
             try:
                 parent.mark_needs_layout()
             except Exception:
@@ -80,7 +88,8 @@ class Widget(
                     "Widget.mark_needs_layout() failed for parent=%s",
                     type(parent).__name__,
                 )
-        self.invalidate()
+        if not already_dirty:
+            self.invalidate()
 
     def invalidate(self, immediate: bool = False) -> None:
         app = getattr(self, "_app", None)
