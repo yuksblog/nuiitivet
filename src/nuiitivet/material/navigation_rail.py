@@ -8,8 +8,6 @@ from nuiitivet.rendering.sizing import SizingLike, Sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material.text import Text
 from nuiitivet.material.icon import Icon
 from nuiitivet.widgets.box import Box
@@ -22,6 +20,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.material.badge import BadgeValue, LargeBadge
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
 
@@ -41,6 +40,7 @@ class RailItem(Widget):
         icon: str,
         label: str,
         *,
+        badge: Optional[ReadOnlyObservableProtocol[BadgeValue]] = None,
         style: Optional[NavigationRailStyle] = None,
     ) -> None:
         """Initialize RailItem.
@@ -48,6 +48,8 @@ class RailItem(Widget):
         Args:
             icon: The icon name to display.
             label: The label text to display.
+            badge: Optional Observable badge value. Use ``BadgeValue.small()``,
+                ``BadgeValue.large(count)`` or ``BadgeValue.none()``.
             style: Optional style override for this item.
         """
         super().__init__()
@@ -59,24 +61,31 @@ class RailItem(Widget):
 
         self.icon_spec = icon
         self.label_spec = label
+        self._badge_observable: Optional[ReadOnlyObservableProtocol[BadgeValue]] = badge
         self._style = style
 
         self._icon_widget: Widget
         self._label_widget: Widget
 
-        # Use provided style or defer to defaults.
-        icon_color = style.icon_color if style and style.icon_color else ColorRole.ON_SURFACE
-        icon_size = style.icon_size if style else NavigationRailStyle().icon_size
+        eff_style = style or NavigationRailStyle()
+        icon_color = eff_style.icon_color or ColorRole.ON_SURFACE
+        icon_size = eff_style.icon_size
         self._icon_widget = Icon(icon, size=icon_size, style=IconStyle(color=icon_color))
 
-        # Base label style.
-        text_style = TextStyle(
-            color=(style.label_color if style and style.label_color else ColorRole.ON_SURFACE_VARIANT),
-            font_size=12,
-            text_alignment="center",
-            overflow="ellipsis",
-        )
-        # TODO: Merge label_style if provided.
+        if eff_style.label_text_style is not None:
+            text_style = eff_style.label_text_style.copy_with(
+                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
+                font_size=12,
+                text_alignment="center",
+                overflow="ellipsis",
+            )
+        else:
+            text_style = TextStyle(
+                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
+                font_size=12,
+                text_alignment="center",
+                overflow="ellipsis",
+            )
 
         self._label_widget = Text(
             label,
@@ -98,13 +107,14 @@ class RailItem(Widget):
         """Get the label widget."""
         return self._label_widget
 
+    @property
+    def badge_observable(self) -> Optional[ReadOnlyObservableProtocol[BadgeValue]]:
+        """Get the optional badge observable."""
+        return self._badge_observable
+
 
 def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
-
-
-def _to_int(value: float) -> int:
-    return int(round(float(value)))
 
 
 class _RailItemButton(InteractiveWidget):
@@ -177,23 +187,10 @@ class _RailItemButton(InteractiveWidget):
         )
         self._horizontal_label_container.clip_content = True
 
-        # Test compatibility objects.
-        self._indicator_box = Box(
-            child=None,
-            background_color=None,
-            corner_radius=eff_style.indicator_height_collapsed / 2.0,
-            width=Sizing.auto(),
-            height=Sizing.fixed(eff_style.indicator_height_collapsed),
-            alignment="center_left",
-            padding=(
-                _to_int(eff_style.indicator_horizontal_padding),
-                0,
-                _to_int(eff_style.indicator_horizontal_padding),
-                0,
-            ),
-        )
-        self._icon_gap_spacer = Spacer(width=Sizing.fixed(0))
-        self._content_column = Column(children=[], gap=4)
+        # Badge state
+        self._badge_widget: Optional[Widget] = None
+        self._badge_rect: Optional[Tuple[int, int, int, int]] = None
+        self._badge_subscription = None
 
         super().__init__(
             child=None,
@@ -213,9 +210,33 @@ class _RailItemButton(InteractiveWidget):
 
         # Sync interaction state
         self.state.selected = selected
-        self.on_dispose(lambda: None)
+
+        # Subscribe to badge observable if provided.
+        badge_observable = rail_item.badge_observable
+        if badge_observable is not None:
+            self._update_badge_widget(badge_observable.value)
+            self._badge_subscription = badge_observable.subscribe(self._on_badge_changed)
+
+        self.on_dispose(self._dispose_badge)
 
     # Bindings are automatically disposed by BindingHostMixin/observe.
+
+    def _dispose_badge(self) -> None:
+        if self._badge_subscription is not None:
+            self._badge_subscription.dispose()
+            self._badge_subscription = None
+
+    def _on_badge_changed(self, value: BadgeValue) -> None:
+        """React to badge observable changes."""
+        self._update_badge_widget(value)
+        # Request layout so _place_badge() runs in the layout phase before paint.
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def _update_badge_widget(self, value: BadgeValue) -> None:
+        """Create or clear the badge widget from a BadgeValue."""
+        self._badge_widget = value.to_widget()
+        self._badge_rect = None
 
     def _apply_colors(self, *, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
         eff_style = self._eff_style or rail_style or NavigationRailStyle()
@@ -283,14 +304,6 @@ class _RailItemButton(InteractiveWidget):
         self._indicator_rect = (ind_x_i, ind_y_i, ind_w_i, ind_h_i)
         self._indicator_radius = float(ind_h_i) / 2.0
 
-        # Update test compatibility objects.
-        gap_value = lerp(gap_collapsed, float(self._eff_style.label_gap_expanded), t_label)
-        self._indicator_box.height_sizing = Sizing.fixed(ind_h_i)
-        self._indicator_box.corner_radius = float(ind_h_i) / 2.0
-        self._icon_gap_spacer.width_sizing = Sizing.fixed(_to_int(gap_value))
-
-        self._content_column.gap = _to_int(lerp(gap_collapsed, gap_expanded, t_label))
-
         # Icon rect interpolation
         icon_size = float(self._eff_style.icon_size)
         icon_x = margin + float(self._eff_style.indicator_horizontal_padding)
@@ -312,6 +325,9 @@ class _RailItemButton(InteractiveWidget):
         icon_rect_i = icon_rect.to_int_tuple()
         self._icon_widget.layout(icon_rect_i[2], icon_rect_i[3])
         self._icon_widget.set_layout_rect(icon_rect_i[0], icon_rect_i[1], icon_rect_i[2], icon_rect_i[3])
+
+        # Badge layout: compute and store badge rect relative to this item.
+        self._place_badge()
 
         # Horizontal label window rect interpolation
         label_x_collapsed = icon_x + icon_size + gap_collapsed
@@ -352,6 +368,36 @@ class _RailItemButton(InteractiveWidget):
             vertical_rect_i[2],
             vertical_rect_i[3],
         )
+
+    def _place_badge(self) -> None:
+        """Compute and cache badge rect from the current icon rect."""
+        if self._badge_widget is None:
+            self._badge_rect = None
+            return
+
+        icon_lr = self._icon_widget.layout_rect
+        if icon_lr is None:
+            self._badge_rect = None
+            return
+
+        bw, bh = self._badge_widget.preferred_size()
+        if bw <= 0 or bh <= 0:
+            self._badge_rect = None
+            return
+
+        ix, iy, iw, _ih = icon_lr
+        if isinstance(self._badge_widget, LargeBadge):
+            # stick(alignment="top-right", anchor="bottom-left", offset=(-12, 14))
+            bx = int(round(ix + iw - 12.0))
+            by = int(round(iy + 14.0 - bh))
+        else:
+            # SmallBadge: stick(alignment="top-right", anchor="bottom-left", offset=(-6, 6))
+            bx = int(round(ix + iw - 6.0))
+            by = int(round(iy + 6.0 - bh))
+
+        self._badge_widget.layout(bw, bh)
+        self._badge_widget.set_layout_rect(bx, by, bw, bh)
+        self._badge_rect = (bx, by, bw, bh)
 
     def draw_background(self, canvas, x: int, y: int, width: int, height: int) -> None:
         if canvas is None or self._indicator_rect is None:
@@ -404,7 +450,7 @@ class _RailItemButton(InteractiveWidget):
             return
 
         if any(child.layout_rect is None for child in self.children):
-            self.layout(width, height)
+            return
 
         for child in self.children_snapshot():
             rect = child.layout_rect
@@ -415,6 +461,12 @@ class _RailItemButton(InteractiveWidget):
             cy = y + rel_y
             child.set_last_rect(cx, cy, child_w, child_h)
             child.paint(canvas, cx, cy, child_w, child_h)
+
+        # Paint badge on top of all other children.
+        if self._badge_widget is not None and self._badge_rect is not None:
+            bx, by, bw, bh = self._badge_rect
+            self._badge_widget.set_last_rect(x + bx, y + by, bw, bh)
+            self._badge_widget.paint(canvas, x + bx, y + by, bw, bh)
 
 
 class _NavigationRailLayout(Widget):
@@ -495,7 +547,7 @@ class _NavigationRailLayout(Widget):
         self.set_last_rect(x, y, width, height)
 
         if any(child.layout_rect is None for child in self.children):
-            self.layout(width, height)
+            return
 
         for child in self.children_snapshot():
             rect = child.layout_rect
@@ -644,9 +696,6 @@ class NavigationRail(Widget):
             self._item_buttons[new_index].set_selected(True, self.style)
         self.invalidate()
 
-    # def _on_animation_tick(self, progress: float) -> None:
-    # Replaced by direct binding
-
     def _on_expanded_changed(self, new_expanded: bool) -> None:
         """Handle Observable expanded changes."""
         # Drive animation instead of immediate rebuild.
@@ -705,7 +754,7 @@ class NavigationRail(Widget):
         )
 
         # Add background.
-        bg_color = self.style.background if self.style and self.style.background else ColorRole.SURFACE
+        bg_color = eff_style.background or ColorRole.SURFACE
         rail_bg = Box(
             child=rail_layout,
             background_color=bg_color,
@@ -731,7 +780,7 @@ class NavigationRail(Widget):
             self._menu_icon_name = _ObservableValue("menu_open" if self._is_expanded else "menu")
 
         eff_style = self.style or NavigationRailStyle()
-        color = self.style.menu_icon_color if self.style and self.style.menu_icon_color else ColorRole.ON_SURFACE
+        color = eff_style.menu_icon_color or ColorRole.ON_SURFACE
         icon_size = eff_style.icon_size
         icon = Icon(self._menu_icon_name, size=icon_size, style=IconStyle(color=color)).modifier(
             rotate(self._menu_rotation)
@@ -846,9 +895,9 @@ class NavigationRail(Widget):
         if not children:
             return
 
-        # Auto-layout fallback.
+        # Layout not yet complete; skip this frame.
         if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
+            return
 
         # Paint the child.
         child = children[0]
