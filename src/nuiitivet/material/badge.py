@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar, Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Tuple, Union
 
 from nuiitivet.material.styles.badge_style import LargeBadgeStyle, SmallBadgeStyle
 from nuiitivet.material.styles.text_style import TextStyle
@@ -157,7 +157,6 @@ class BadgeValue:
     kind: Literal["none", "small", "large"]
     count: Optional[int] = None
     max: int = 999
-    NONE: ClassVar["BadgeValue"]
 
     @classmethod
     def none(cls) -> "BadgeValue":
@@ -196,6 +195,3 @@ class BadgeValue:
         if self.count is None:
             raise ValueError("large badge requires count")
         return LargeBadge(self.count, max=self.max)
-
-
-BadgeValue.NONE = BadgeValue.none()

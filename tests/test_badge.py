@@ -31,7 +31,7 @@ def test_large_badge_validates_count() -> None:
 
 def test_badge_value_none_to_widget() -> None:
     assert BadgeValue.none().to_widget() is None
-    assert BadgeValue.NONE.to_widget() is None
+    assert BadgeValue.none().to_widget() is None
 
 
 def test_badge_value_small_to_widget() -> None:
