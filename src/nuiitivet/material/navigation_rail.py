@@ -229,7 +229,8 @@ class _RailItemButton(InteractiveWidget):
     def _on_badge_changed(self, value: BadgeValue) -> None:
         """React to badge observable changes."""
         self._update_badge_widget(value)
-        # Keep animation flow intact; repaint is enough after badge swap.
+        # Request layout so _place_badge() runs in the layout phase before paint.
+        self.mark_needs_layout()
         self.invalidate()
 
     def _update_badge_widget(self, value: BadgeValue) -> None:
@@ -449,11 +450,7 @@ class _RailItemButton(InteractiveWidget):
             return
 
         if any(child.layout_rect is None for child in self.children):
-            self.layout(width, height)
-
-        # Recompute badge placement lazily when badge content changed.
-        if self._badge_widget is not None and self._badge_rect is None:
-            self._place_badge()
+            return
 
         for child in self.children_snapshot():
             rect = child.layout_rect
@@ -550,7 +547,7 @@ class _NavigationRailLayout(Widget):
         self.set_last_rect(x, y, width, height)
 
         if any(child.layout_rect is None for child in self.children):
-            self.layout(width, height)
+            return
 
         for child in self.children_snapshot():
             rect = child.layout_rect
@@ -898,9 +895,9 @@ class NavigationRail(Widget):
         if not children:
             return
 
-        # Auto-layout fallback.
+        # Layout not yet complete; skip this frame.
         if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
+            return
 
         # Paint the child.
         child = children[0]
