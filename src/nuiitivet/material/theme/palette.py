@@ -80,6 +80,7 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 ColorRole.ON_SURFACE_VARIANT: "on_surface_variant",
                 ColorRole.SURFACE_CONTAINER_HIGHEST: "surface_container_highest",
                 ColorRole.OUTLINE: "outline",
+                ColorRole.OUTLINE_VARIANT: "outline_variant",
                 ColorRole.SHADOW: "shadow",
                 ColorRole.SCRIM: "scrim",
                 ColorRole.ERROR: "error",
@@ -123,6 +124,10 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 light_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = light_roles.get(ColorRole.SURFACE_VARIANT, "#E7E0EC")
             if ColorRole.SURFACE_CONTAINER_HIGHEST not in dark_roles:
                 dark_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = dark_roles.get(ColorRole.SURFACE_VARIANT, "#49454F")
+            if ColorRole.OUTLINE_VARIANT not in light_roles:
+                light_roles[ColorRole.OUTLINE_VARIANT] = light_roles.get(ColorRole.OUTLINE, "#CAC4D0")
+            if ColorRole.OUTLINE_VARIANT not in dark_roles:
+                dark_roles[ColorRole.OUTLINE_VARIANT] = dark_roles.get(ColorRole.OUTLINE, "#49454F")
 
             return light_roles, dark_roles
     except Exception:
@@ -219,6 +224,7 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
             (ColorRole.ON_SURFACE_VARIANT, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 30)),
             (ColorRole.SURFACE_CONTAINER_HIGHEST, (cp.neutral, 90)),
             (ColorRole.OUTLINE, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 60)),
+            (ColorRole.OUTLINE_VARIANT, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 80)),
             (ColorRole.ERROR, (cp.error if hasattr(cp, "error") else cp.primary, 40)),
             (ColorRole.ON_ERROR, (cp.error if hasattr(cp, "error") else cp.primary, 100)),
         ]
@@ -237,6 +243,8 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 # map some tones differently for dark
                 if role == ColorRole.SURFACE_CONTAINER_HIGHEST:
                     dark_tone = 22
+                elif role == ColorRole.OUTLINE_VARIANT:
+                    dark_tone = 30
                 else:
                     dark_tone = 80 if tonev == 40 else (12 if tonev == 100 else tonev)
                 dark_roles[role] = tone_hex(pal, dark_tone)
@@ -320,6 +328,7 @@ def _hsl_roles_from_seed(seed_hex: str) -> Tuple[Dict[ColorRole, str], Dict[Colo
         ColorRole.ON_SURFACE_VARIANT: 0.30,
         ColorRole.SURFACE_CONTAINER_HIGHEST: 0.90,
         ColorRole.OUTLINE: 0.60,
+        ColorRole.OUTLINE_VARIANT: 0.80,
         ColorRole.ERROR: 0.50,
         ColorRole.ON_ERROR: 0.98,
         ColorRole.ERROR_CONTAINER: 0.90,
@@ -347,6 +356,7 @@ def _hsl_roles_from_seed(seed_hex: str) -> Tuple[Dict[ColorRole, str], Dict[Colo
         ColorRole.ON_SURFACE_VARIANT: 0.88,
         ColorRole.SURFACE_CONTAINER_HIGHEST: 0.22,
         ColorRole.OUTLINE: 0.72,
+        ColorRole.OUTLINE_VARIANT: 0.30,
         ColorRole.ERROR: 0.80,
         ColorRole.ON_ERROR: 0.12,
         ColorRole.ERROR_CONTAINER: 0.90,
@@ -360,7 +370,7 @@ def _hsl_roles_from_seed(seed_hex: str) -> Tuple[Dict[ColorRole, str], Dict[Colo
     def tone_for(role: ColorRole, tone_val: float, is_container: bool) -> str:
         sat_mult = 0.6 if is_container else 1.0
         # outline/scrim/shadow in this simplified builder are desaturated
-        if role in (ColorRole.OUTLINE,):
+        if role in (ColorRole.OUTLINE, ColorRole.OUTLINE_VARIANT):
             return make_tone(h, 0.0, tone_val)
         return make_tone(h, s, tone_val, sat_mult)
 

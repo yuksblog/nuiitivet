@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .badge import BadgeValue, LargeBadge, SmallBadge
     from .app import MaterialApp
+    from .divider import Divider
     from .buttons import (
         ElevatedButton,
         FilledButton,
@@ -32,6 +33,7 @@ __all__ = [
     "SmallBadge",
     "LargeBadge",
     "BadgeValue",
+    "Divider",
     "Text",
     "Icon",
     "Symbols",
@@ -78,6 +80,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),
     "BadgeValue": ("badge", "BadgeValue"),
+    "Divider": ("divider", "Divider"),
     "Text": ("text", "Text"),
     "Icon": ("icon", "Icon"),
     "Symbols": ("symbols", "Symbols"),
