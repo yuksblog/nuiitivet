@@ -850,6 +850,11 @@ class App:
                         self.request_focus(nodes[0])
                         return True
 
+                    # Allow composite widgets to consume Tab internally
+                    # (e.g. RangeSlider switching between handles).
+                    if cur.wants_tab(modifiers):
+                        return cur.handle_key_event("tab", modifiers)
+
                     idx = nodes.index(cur)
 
                     # Treat bit0 as shift (matches pyglet MOD_SHIFT in practice).

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 from enum import Enum
 from typing import Callable, Optional, Sequence, Tuple, cast
 
@@ -15,7 +14,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
 from nuiitivet.observable import ObservableProtocol
-from nuiitivet.rendering.sizing import Sizing, SizingLike
+from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
 from nuiitivet.widgets.interaction import DraggableNode, PointerInputNode
 from nuiitivet.animation import Animatable
 
@@ -30,15 +29,8 @@ class Orientation(Enum):
     VERTICAL = "vertical"
 
 
-def _resolve_length_sizing(length: SizingLike) -> SizingLike:
-    if isinstance(length, str):
-        m = re.fullmatch(r"\s*([0-9]*\.?[0-9]+)\s*fr\s*", length, flags=re.IGNORECASE)
-        if m is not None:
-            weight = float(m.group(1))
-            if weight <= 0.0:
-                return Sizing.auto()
-            return Sizing.flex(weight)
-    return length
+def _resolve_length_sizing(length: SizingLike) -> Sizing:
+    return parse_sizing(length, default=Sizing.flex(1.0))
 
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
@@ -58,9 +50,22 @@ class _SliderBase(InteractiveWidget):
         disabled: bool | ObservableProtocol[bool],
         orientation: Orientation,
         length: SizingLike,
-        padding,
-        style,
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int],
+        style: Optional["SliderStyle"],
     ) -> None:
+        """Initialize shared slider state.
+
+        Args:
+            min_value: Minimum value.
+            max_value: Maximum value.
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            orientation: Slider orientation.
+            length: Axis length sizing.
+            padding: Padding around the slider.
+            style: Optional SliderStyle override.
+        """
         self._min_value = float(min_value)
         self._max_value = float(max_value)
         self._stops = int(stops) if stops is not None else None
@@ -69,7 +74,6 @@ class _SliderBase(InteractiveWidget):
         self._style = style
         style_for_layout = style or SliderStyle.xs()
 
-        self._dragging = False
         self._active_handle_index = 0
         self._space_accel_armed = False
 
@@ -79,8 +83,13 @@ class _SliderBase(InteractiveWidget):
         self._track_h = 0.0
         self._track_start = 0.0
         self._track_end = 0.0
+        self._handle_range_start = 0.0
+        self._handle_range_end = 0.0
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
+        self._handle_width_anim: Animatable[float] = Animatable(
+            style_for_layout.handle_width, motion=EXPRESSIVE_DEFAULT_EFFECTS
+        )
 
         default_padding = 0 if padding is None else padding
         if orientation is Orientation.HORIZONTAL:
@@ -99,6 +108,7 @@ class _SliderBase(InteractiveWidget):
         )
 
         self.bind(self._state_layer_anim.subscribe(lambda _v: self.invalidate()))
+        self.bind(self._handle_width_anim.subscribe(lambda _v: self.invalidate()))
 
         self._drag_node = DraggableNode(
             on_drag_start=self._on_drag_start,
@@ -112,8 +122,18 @@ class _SliderBase(InteractiveWidget):
         self._track_node.enable_click(on_press=self._on_track_press)
         self.add_node(self._track_node)
 
+        self._handle_count = 1
+
+        # Wire Tab interception so composite sliders can consume Tab
+        # internally to switch between handles.
+        from nuiitivet.widgets.interaction import FocusNode
+
+        focus_node = self.get_node(FocusNode)
+        if focus_node is not None and isinstance(focus_node, FocusNode):
+            focus_node._wants_tab = self._wants_tab
+
     @property
-    def style(self):
+    def style(self) -> SliderStyle:
         if self._style is not None:
             return self._style
         try:
@@ -147,27 +167,22 @@ class _SliderBase(InteractiveWidget):
 
     def _track_ratio_from_pointer(self, event: PointerEvent) -> float:
         axis_value = event.x if self._orientation is Orientation.HORIZONTAL else event.y
-        if self._track_end <= self._track_start:
+        h_span = self._handle_range_end - self._handle_range_start
+        if h_span <= 0.0:
             return 0.0
-        return _clamp((axis_value - self._track_start) / (self._track_end - self._track_start), 0.0, 1.0)
-
-    def _get_state_layer_target_opacity(self) -> float:
-        if self.state.dragging:
-            return float(self._DRAG_OPACITY)
-        if self.state.pressed:
-            return float(self._PRESS_OPACITY)
-        if self.state.hovered:
-            return float(self._HOVER_OPACITY)
-        return 0.0
+        ratio = _clamp((axis_value - self._handle_range_start) / h_span, 0.0, 1.0)
+        # Vertical: invert so larger value is at the top (smaller y)
+        if self._orientation is Orientation.VERTICAL:
+            ratio = 1.0 - ratio
+        return ratio
 
     def _get_active_state_layer_opacity(self) -> float:
-        target = self._get_state_layer_target_opacity()
+        target = super()._get_active_state_layer_opacity()
         if abs(self._state_layer_anim.target - target) > 1e-6:
             self._state_layer_anim.target = target
         return float(self._state_layer_anim.value)
 
     def _on_drag_start(self, event: PointerEvent) -> None:
-        self._dragging = True
         self._active_handle_index = self._pick_handle_index(event)
         self._update_value_from_ratio(self._track_ratio_from_pointer(event), from_track=False)
 
@@ -175,11 +190,14 @@ class _SliderBase(InteractiveWidget):
         self._update_value_from_ratio(self._track_ratio_from_pointer(event), from_track=False)
 
     def _on_drag_end(self, _event: PointerEvent) -> None:
-        self._dragging = False
+        pass
 
     def _on_track_press(self, event: PointerEvent) -> None:
         self._active_handle_index = self._pick_handle_index(event)
         self._update_value_from_ratio(self._track_ratio_from_pointer(event), from_track=True)
+        # Hand off to the drag node so subsequent MOVE events continue
+        # to update the handle position while the pointer is held down.
+        self._drag_node.activate(event)
 
     def _hit_test_track(self, x: float, y: float) -> bool:
         gx, gy, gw, gh = self.global_layout_rect or (0, 0, 0, 0)
@@ -208,15 +226,24 @@ class _SliderBase(InteractiveWidget):
         return False
 
     def _current_handle_width(self) -> float:
-        if self.state.focused or self.state.pressed or self.state.dragging:
-            return float(self.style.handle_width_focused)
-        return float(self.style.handle_width)
+        target = (
+            float(self.style.handle_width_focused)
+            if (self.should_show_focus_ring or self.state.pressed)
+            else float(self.style.handle_width)
+        )
+        if abs(self._handle_width_anim.target - target) > 1e-6:
+            self._handle_width_anim.target = target
+        return float(self._handle_width_anim.value)
 
     def on_key_event(self, key: str, modifiers: int = 0) -> bool:
         if self.disabled:
             return False
 
         key_name = (key or "").lower()
+
+        if key_name == "tab":
+            return self._handle_tab_key(modifiers)
+
         if key_name == "space":
             self._space_accel_armed = True
             return True
@@ -231,6 +258,30 @@ class _SliderBase(InteractiveWidget):
         delta = step if inc else -step
         self._step_active_handle(delta)
         self._space_accel_armed = False
+        return True
+
+    def _wants_tab(self, modifiers: int = 0) -> bool:
+        """Return True if Tab should be consumed internally.
+
+        For single-handle sliders this always returns False.
+        Multi-handle sliders override to return True when Tab can
+        move focus to the next handle within the widget.
+        """
+        if self._handle_count <= 1:
+            return False
+        go_back = bool(int(modifiers) & 1)
+        if go_back:
+            return self._active_handle_index > 0
+        return self._active_handle_index < self._handle_count - 1
+
+    def _handle_tab_key(self, modifiers: int = 0) -> bool:
+        """Move active handle index on Tab."""
+        go_back = bool(int(modifiers) & 1)
+        if go_back:
+            self._active_handle_index = max(0, self._active_handle_index - 1)
+        else:
+            self._active_handle_index = min(self._handle_count - 1, self._active_handle_index + 1)
+        self.invalidate()
         return True
 
     def _keyboard_step(self, modifiers: int, *, large: bool = False) -> float:
@@ -272,6 +323,7 @@ class _SliderBase(InteractiveWidget):
             from nuiitivet.theme import manager as theme_manager
 
             self.set_last_rect(x, y, width, height)
+            self.draw_background(canvas, x, y, width, height)
             self._compute_geometry(float(x), float(y), float(width), float(height))
 
             style = self.style
@@ -288,44 +340,160 @@ class _SliderBase(InteractiveWidget):
                 active_track_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
                 inactive_track_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
                 handle_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+                active_stop_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
+                inactive_stop_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
 
-            track_radius = min(self._track_h, self._track_w) / 2.0
-            track_rect = make_rect(self._track_x, self._track_y, self._track_w, self._track_h)
-            if track_rect is not None:
-                inactive_alpha = style.disabled_inactive_track_alpha if self.disabled else 1.0
-                inactive_paint = make_paint(color=skcolor(inactive_track_hex, inactive_alpha), style="fill", aa=True)
-                if inactive_paint is not None:
-                    draw_round_rect(canvas, track_rect, track_radius, inactive_paint)
+            inactive_radius = float(style.inactive_track_trailing_shape)
+            active_radius = float(style.active_track_leading_shape)
 
             active_start, active_end = self._active_range_ratio()
             if active_end < active_start:
                 active_start, active_end = active_end, active_start
-            if active_end > active_start:
-                active_rect = self._active_track_rect(active_start, active_end)
-                if active_rect is not None:
-                    active_alpha = style.disabled_active_track_alpha if self.disabled else 1.0
-                    active_paint = make_paint(color=skcolor(active_track_hex, active_alpha), style="fill", aa=True)
-                    if active_paint is not None:
-                        draw_round_rect(canvas, active_rect, track_radius, active_paint)
+
+            # --- Segment-based track rendering (handle gap on both sides) ---
+            handle_w_now = self._current_handle_width()
+            lead = float(style.handle_leading_space)
+            trail = float(style.handle_trailing_space)
+            centers_now = self._handle_centers()
+
+            # Compute blocked (handle gap) zones in axis coordinates
+            # The axis dimension of the handle is always handle_w_now (the thin/short side).
+            # active_handle_height is the cross-axis dimension in both orientations.
+            blocked: list[tuple[float, float]] = []
+            for hx, hy in centers_now:
+                half = handle_w_now / 2.0
+                center_ax = hx if self._orientation is Orientation.HORIZONTAL else hy
+                blocked.append((center_ax - half - lead, center_ax + half + trail))
+            blocked.sort()
+            h_span = self._handle_range_end - self._handle_range_start
+
+            def _ratio_to_ax(ratio: float) -> float:
+                """Map active range ratio to canvas axis coord.
+
+                Boundary values (0 / 1) snap to the track ends so the active
+                track always fills flush to the edge of the full track rect.
+                Interior values map through the handle movable range.
+                Vertical orientation is inverted (larger value = smaller y = top).
+                """
+                if self._orientation is Orientation.VERTICAL:
+                    if ratio <= 0.0:
+                        return self._track_end
+                    if ratio >= 1.0:
+                        return self._track_start
+                    return self._handle_range_start + (1.0 - ratio) * h_span
+                else:
+                    if ratio <= 0.0:
+                        return self._track_start
+                    if ratio >= 1.0:
+                        return self._track_end
+                    return self._handle_range_start + ratio * h_span
+
+            a_s_ax = _ratio_to_ax(active_start)
+            a_e_ax = _ratio_to_ax(active_end)
+            # Ensure axis ordering (vertical inversion swaps the two)
+            if a_s_ax > a_e_ax:
+                a_s_ax, a_e_ax = a_e_ax, a_s_ax
+
+            # Extra gaps at active boundary points (e.g. center of CenteredSlider)
+            # No handle exists at these points, so the gap is just 6dp total (3dp each side).
+            center_half_gap = float(style.handle_leading_space) / 2.0
+            for br in self._active_boundary_ratios():
+                bax = _ratio_to_ax(br)
+                blocked.append((bax - center_half_gap, bax + center_half_gap))
+            blocked.sort()
+
+            # Build cut points and draw non-blocked segments
+            # Only cut at track boundaries, active range boundaries, and handle gap boundaries
+            # (do NOT cut at _handle_range_start/end — those are for handle movement only)
+            cut_set = {
+                self._track_start,
+                self._track_end,
+                a_s_ax,
+                a_e_ax,
+            }
+            for bs, be in blocked:
+                cut_set.update((bs, be))
+            cuts = sorted(c for c in cut_set if self._track_start - 1e-6 <= c <= self._track_end + 1e-6)
+
+            for i in range(len(cuts) - 1):
+                sa, ea = cuts[i], cuts[i + 1]
+                if ea - sa < 0.5:
+                    continue
+                mid = (sa + ea) / 2.0
+                if any(bs <= mid <= be for bs, be in blocked):
+                    continue  # inside handle gap
+                is_active = a_s_ax - 1e-6 <= mid <= a_e_ax + 1e-6
+                if is_active:
+                    seg_alpha = style.disabled_active_track_alpha if self.disabled else 1.0
+                    seg_paint = make_paint(color=skcolor(active_track_hex, seg_alpha), style="fill", aa=True)
+                    seg_radius = active_radius
+                else:
+                    seg_alpha = style.disabled_inactive_track_alpha if self.disabled else 1.0
+                    seg_paint = make_paint(color=skcolor(inactive_track_hex, seg_alpha), style="fill", aa=True)
+                    seg_radius = inactive_radius
+
+                # Per-corner radii: only apply radius on edges at track ends.
+                # Edges adjacent to handle gaps or active boundaries are flat (0).
+                at_start = abs(sa - self._track_start) < 1.0
+                at_end = abs(ea - self._track_end) < 1.0
+                if self._orientation is Orientation.HORIZONTAL:
+                    # Rect corners: [TL, TR, BR, BL]
+                    # Left edge = at_start, Right edge = at_end
+                    r_left = seg_radius if at_start else 0.0
+                    r_right = seg_radius if at_end else 0.0
+                    seg_radii = [r_left, r_right, r_right, r_left]
+                    seg_rect = make_rect(sa, self._track_y, ea - sa, self._track_h)
+                else:
+                    # Rect corners: [TL, TR, BR, BL]
+                    # Top edge = at_start, Bottom edge = at_end
+                    r_top = seg_radius if at_start else 0.0
+                    r_bottom = seg_radius if at_end else 0.0
+                    seg_radii = [r_top, r_top, r_bottom, r_bottom]
+                    seg_rect = make_rect(self._track_x, sa, self._track_w, ea - sa)
+                if seg_rect is not None and seg_paint is not None:
+                    draw_round_rect(canvas, seg_rect, seg_radii, seg_paint)
+
+            # --- Stop indicators ---
+            stop_r = float(style.stop_indicator_size) / 2.0
+            # Inset from track ends: stop_r + trailing_space creates 4dp visible gap
+            stop_inset = stop_r + float(style.stop_indicator_trailing_space)
+            stop_range_s = self._track_start + stop_inset
+            stop_range_e = self._track_end - stop_inset
+            # Handle proximity gap: stop_r + trailing_space + half-handle (axis dim = handle_w_now)
+            handle_gap = stop_inset + handle_w_now / 2.0
 
             if self._stops is not None and self._stops >= 2:
                 steps = max(2, int(self._stops))
-                centers = self._handle_centers()
-                gap = float(style.stop_indicator_trailing_space)
-                stop_r = float(style.stop_indicator_size) / 2.0
-                for idx in range(steps):
-                    ratio = float(idx) / float(steps - 1)
-                    sx, sy = self._point_on_track(ratio)
-                    near_handle = any(abs(sx - hx) < gap and abs(sy - hy) < gap for hx, hy in centers)
-                    if near_handle:
-                        continue
-                    stop_rect = make_rect(sx - stop_r, sy - stop_r, stop_r * 2.0, stop_r * 2.0)
-                    if stop_rect is None:
-                        continue
-                    color = active_stop_hex if active_start <= ratio <= active_end else inactive_stop_hex
-                    stop_paint = make_paint(color=skcolor(color, 1.0), style="fill", aa=True)
-                    if stop_paint is not None:
-                        draw_oval(canvas, stop_rect, stop_paint)
+                stop_ts = [float(i) / float(steps - 1) for i in range(steps)]
+            else:
+                # stops 未指定: 終了端のみ1個表示
+                stop_ts = [1.0]
+
+            for t in stop_ts:
+                # Map value ratio to axis position.
+                # Vertical: t=1.0 (max value) → top = stop_range_s (small y)
+                if self._orientation is Orientation.VERTICAL:
+                    axis_pos = stop_range_s + (stop_range_e - stop_range_s) * (1.0 - t)
+                else:
+                    axis_pos = stop_range_s + (stop_range_e - stop_range_s) * t
+                # t is already the value ratio, use it directly for active/inactive color
+                stop_ratio = t
+                if self._orientation is Orientation.HORIZONTAL:
+                    sx, sy = axis_pos, self._track_y + self._track_h / 2.0
+                    near_handle = any(abs(sx - hx) < handle_gap for hx, _hy in centers_now)
+                else:
+                    sx, sy = self._track_x + self._track_w / 2.0, axis_pos
+                    near_handle = any(abs(sy - hy) < handle_gap for _hx, hy in centers_now)
+                if near_handle:
+                    continue
+                stop_rect = make_rect(sx - stop_r, sy - stop_r, stop_r * 2.0, stop_r * 2.0)
+                if stop_rect is None:
+                    continue
+                color = active_stop_hex if active_start <= stop_ratio <= active_end else inactive_stop_hex
+                stop_alpha = style.disabled_inactive_track_alpha if self.disabled else 1.0
+                stop_paint = make_paint(color=skcolor(color, stop_alpha), style="fill", aa=True)
+                if stop_paint is not None:
+                    draw_oval(canvas, stop_rect, stop_paint)
 
             layer_alpha = self._get_active_state_layer_opacity()
             centers = self._handle_centers()
@@ -333,19 +501,19 @@ class _SliderBase(InteractiveWidget):
                 active_index = max(0, min(self._active_handle_index, len(centers) - 1))
                 cx, cy = centers[active_index]
 
-                if layer_alpha > 0.0:
-                    layer_size = float(style.state_layer_size)
-                    layer_rect = make_rect(cx - layer_size / 2.0, cy - layer_size / 2.0, layer_size, layer_size)
-                    if layer_rect is not None:
-                        layer_color = roles.get(ColorRole.PRIMARY, "#000000")
-                        layer_paint = make_paint(color=skcolor(layer_color, layer_alpha), style="fill", aa=True)
-                        if layer_paint is not None:
-                            draw_oval(canvas, layer_rect, layer_paint)
-
                 handle_w = self._current_handle_width()
                 handle_h = float(style.active_handle_height)
                 if self._orientation is Orientation.VERTICAL:
                     handle_w, handle_h = handle_h, handle_w
+
+                if layer_alpha > 0.0:
+                    # State layer: same rect and radius as the handle itself.
+                    layer_rect = make_rect(cx - handle_w / 2.0, cy - handle_h / 2.0, handle_w, handle_h)
+                    if layer_rect is not None:
+                        layer_color = roles.get(ColorRole.PRIMARY, "#000000")
+                        layer_paint = make_paint(color=skcolor(layer_color, layer_alpha), style="fill", aa=True)
+                        if layer_paint is not None:
+                            draw_round_rect(canvas, layer_rect, min(handle_w, handle_h) / 2.0, layer_paint)
 
                 for hx, hy in centers:
                     handle_rect = make_rect(hx - handle_w / 2.0, hy - handle_h / 2.0, handle_w, handle_h)
@@ -359,8 +527,12 @@ class _SliderBase(InteractiveWidget):
                 if self.should_show_focus_ring:
                     focus_stroke = max(1.0, float(style.focus_stroke_ratio) * 48.0)
                     focus_offset = float(style.focus_offset_ratio) * 48.0
-                    focus_size = float(style.state_layer_size) + (focus_offset * 2.0)
-                    focus_rect = make_rect(cx - focus_size / 2.0, cy - focus_size / 2.0, focus_size, focus_size)
+                    # Inflate handle rect: offset outward + half stroke so stroke center is at offset
+                    inflation = focus_offset + focus_stroke / 2.0
+                    f_w = handle_w + inflation * 2.0
+                    f_h = handle_h + inflation * 2.0
+                    f_r = min(handle_w, handle_h) / 2.0 + inflation
+                    focus_rect = make_rect(cx - f_w / 2.0, cy - f_h / 2.0, f_w, f_h)
                     if focus_rect is not None:
                         focus_color = roles.get(ColorRole.PRIMARY, "#000000")
                         focus_paint = make_paint(
@@ -370,11 +542,14 @@ class _SliderBase(InteractiveWidget):
                             aa=True,
                         )
                         if focus_paint is not None:
-                            draw_oval(canvas, focus_rect, focus_paint)
+                            draw_round_rect(canvas, focus_rect, f_r, focus_paint)
 
                 if self._show_value_indicator and self.state.dragging:
                     active_value = self._active_value_for_indicator()
                     self._draw_value_indicator(canvas, cx, cy, active_value)
+
+            self.draw_children(canvas, x, y, width, height)
+            self.draw_border(canvas, x, y, width, height)
         except Exception:
             exception_once(_logger, "slider_paint_exc", "Slider paint raised")
 
@@ -397,16 +572,20 @@ class _SliderBase(InteractiveWidget):
         theme = theme_manager.current.extension(MaterialThemeData)
         roles = theme.roles if theme is not None else {}
 
-        bg_hex = roles.get(ColorRole.SURFACE, "#1F1F1F")
-        text_hex = roles.get(ColorRole.ON_SURFACE, "#FFFFFF")
+        bg_hex = roles.get(ColorRole.INVERSE_SURFACE, "#1F1F1F")
+        text_hex = roles.get(ColorRole.INVERSE_ON_SURFACE, "#FFFFFF")
 
         bubble_w = float(style.value_indicator_width)
         bubble_h = float(style.value_indicator_height)
         bubble_r = bubble_h / 2.0
         bottom_gap = float(style.value_indicator_bottom_space)
 
-        bx = cx - (bubble_w / 2.0)
-        by = cy - (bubble_h + bottom_gap)
+        if self._orientation is Orientation.HORIZONTAL:
+            bx = cx - (bubble_w / 2.0)
+            by = cy - (bubble_h + bottom_gap)
+        else:
+            bx = cx - (bubble_w + bottom_gap)
+            by = cy - (bubble_h / 2.0)
 
         bubble_rect = make_rect(bx, by, bubble_w, bubble_h)
         if bubble_rect is None:
@@ -468,16 +647,24 @@ class _SliderBase(InteractiveWidget):
             self._track_start = self._track_y
             self._track_end = self._track_y + self._track_h
 
+        # Handle movable range: inset by stop indicator size + spacing from track ends
+        stop_inset = float(style.stop_indicator_size) / 2.0 + float(style.stop_indicator_trailing_space)
+        self._handle_range_start = self._track_start + stop_inset
+        self._handle_range_end = max(self._handle_range_start, self._track_end - stop_inset)
+
     def _point_on_track(self, ratio: float) -> Tuple[float, float]:
+        """Return the pixel (x, y) for a given ratio within the handle movable range."""
         ratio = _clamp(ratio, 0.0, 1.0)
+        h_span = self._handle_range_end - self._handle_range_start
         if self._orientation is Orientation.HORIZONTAL:
             return (
-                self._track_start + ((self._track_end - self._track_start) * ratio),
+                self._handle_range_start + h_span * ratio,
                 self._track_y + self._track_h / 2.0,
             )
+        # Vertical: invert so larger value is at the top (smaller y)
         return (
             self._track_x + self._track_w / 2.0,
-            self._track_start + ((self._track_end - self._track_start) * ratio),
+            self._handle_range_start + h_span * (1.0 - ratio),
         )
 
     def _active_track_rect(self, start_ratio: float, end_ratio: float):
@@ -519,6 +706,13 @@ class _SliderBase(InteractiveWidget):
     def _active_value_for_indicator(self) -> float:
         raise NotImplementedError
 
+    def _active_boundary_ratios(self) -> Sequence[float]:
+        """Return extra value ratios where a handle-sized gap must be cut in the track.
+
+        Used by CenteredSlider to add a gap at the center (value=0) point.
+        """
+        return ()
+
 
 class Slider(_SliderBase):
     """Material Design 3 Slider widget."""
@@ -534,9 +728,9 @@ class Slider(_SliderBase):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1fr",
+        length: SizingLike = "1%",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
-        style=None,
+        style: Optional["SliderStyle"] = None,
     ) -> None:
         """Initialize Slider.
 
@@ -643,10 +837,25 @@ class CenteredSlider(Slider):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1fr",
+        length: SizingLike = "1%",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
-        style=None,
+        style: Optional["SliderStyle"] = None,
     ) -> None:
+        """Initialize CenteredSlider.
+
+        Args:
+            value: Current slider value or observable value.
+            on_change: Callback invoked when value changes.
+            min_value: Minimum value (default: -1.0).
+            max_value: Maximum value (default: 1.0).
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            orientation: Slider orientation.
+            length: Axis length sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
         super().__init__(
             value=value,
             on_change=on_change,
@@ -666,6 +875,10 @@ class CenteredSlider(Slider):
         current = self._value_to_ratio(self.value)
         return (center, current)
 
+    def _active_boundary_ratios(self) -> Sequence[float]:
+        """Return the center ratio so a gap is cut at the center point."""
+        return (self._value_to_ratio(0.0),)
+
 
 class RangeSlider(_SliderBase):
     """Material Design 3 Range Slider widget."""
@@ -682,9 +895,9 @@ class RangeSlider(_SliderBase):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1fr",
+        length: SizingLike = "1%",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
-        style=None,
+        style: Optional["SliderStyle"] = None,
     ) -> None:
         """Initialize RangeSlider.
 
@@ -735,6 +948,8 @@ class RangeSlider(_SliderBase):
             padding=padding,
             style=style,
         )
+
+        self._handle_count = 2
 
     def on_mount(self) -> None:
         super().on_mount()

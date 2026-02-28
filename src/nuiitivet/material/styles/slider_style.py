@@ -24,7 +24,7 @@ class SliderStyle:
     handle_trailing_space: float = 6.0
 
     stop_indicator_size: float = 4.0
-    stop_indicator_trailing_space: float = 6.0
+    stop_indicator_trailing_space: float = 4.0
 
     value_indicator_height: float = 44.0
     value_indicator_width: float = 48.0
@@ -37,8 +37,8 @@ class SliderStyle:
     handle_color: ColorSpec = ColorRole.PRIMARY
     active_stop_indicator_color: ColorSpec = ColorRole.ON_PRIMARY
     inactive_stop_indicator_color: ColorSpec = ColorRole.ON_SECONDARY_CONTAINER
-    value_indicator_color: ColorSpec = ColorRole.SURFACE
-    value_indicator_text_color: ColorSpec = ColorRole.ON_SURFACE
+    value_indicator_color: ColorSpec = ColorRole.INVERSE_SURFACE
+    value_indicator_text_color: ColorSpec = ColorRole.INVERSE_ON_SURFACE
 
     disabled_active_track_color: ColorSpec = ColorRole.ON_SURFACE
     disabled_active_track_alpha: float = 0.38

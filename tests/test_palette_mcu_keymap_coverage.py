@@ -25,6 +25,8 @@ def test_theme_from_color_full_keymap(monkeypatch):
         "on_background": "#0F0F0F",
         "surface": "#101010",
         "on_surface": "#111111",
+        "inverse_surface": "#1B1B1F",
+        "inverse_on_surface": "#F2F0F4",
         "surface_variant": "#121212",
         "on_surface_variant": "#131313",
         "outline": "#141414",

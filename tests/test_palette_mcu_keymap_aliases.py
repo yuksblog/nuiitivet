@@ -25,6 +25,8 @@ def test_theme_from_color_camelcase_aliases(monkeypatch):
         "onBackground": "#0F0F0F",
         "surface": "#101010",
         "onSurface": "#111111",
+        "inverseSurface": "#1B1B1F",
+        "inverseOnSurface": "#F2F0F4",
         "surfaceVariant": "#121212",
         "onSurfaceVariant": "#131313",
         "outline": "#141414",
