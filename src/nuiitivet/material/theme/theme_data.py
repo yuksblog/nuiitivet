@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
     from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+    from nuiitivet.material.styles.slider_style import SliderStyle
     from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.styles.text_style import TextStyle
     from nuiitivet.material.styles.text_field_style import TextFieldStyle
@@ -56,6 +57,7 @@ class MaterialThemeData(ThemeExtension):
     _suggestion_chip_style: "ChipStyle | None" = None
     _radio_button_style: "RadioButtonStyle | None" = None
     _switch_style: "SwitchStyle | None" = None
+    _slider_style: "SliderStyle | None" = None
     _alert_dialog_style: "DialogStyle | None" = None
     _icon_style: "IconStyle | None" = None
     _text_style: "TextStyle | None" = None
@@ -225,6 +227,15 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.switch_style import SwitchStyle
 
         return SwitchStyle()
+
+    @property
+    def slider_style(self) -> "SliderStyle":
+        """Get SliderStyle for this theme."""
+        if self._slider_style is not None:
+            return self._slider_style
+        from nuiitivet.material.styles.slider_style import SliderStyle
+
+        return SliderStyle.xs()
 
     @property
     def alert_dialog_style(self) -> "DialogStyle":

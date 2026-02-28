@@ -76,9 +76,16 @@ def make_rrect(rect, radii: Sequence[float]) -> Optional[object]:
     if not normalized:
         return None
 
+    # Build radii as list of (rx, ry) tuples for setRectRadii (skia.Point format).
+    radii_points = [(r, r) for r in normalized]
+
+    # Also build flat pairs for MakeRectRadii (some skia builds accept this).
     radii_pairs = []
     for radius in normalized:
         radii_pairs.extend([radius, radius])
+
+    # Check if all corner radii are identical — if so MakeRectXY is fine.
+    all_same = all(abs(r - normalized[0]) < 1e-6 for r in normalized)
 
     maker = getattr(rrect_cls, "MakeRectRadii", None)
     if callable(maker):
@@ -87,6 +94,23 @@ def make_rrect(rect, radii: Sequence[float]) -> Optional[object]:
         except Exception:
             exception_once(logger, "skia_rrect_make_rect_radii_exc", "skia.RRect.MakeRectRadii failed")
 
+    # Try setRectRadii with list[skia.Point] (tuple) format before MakeRectXY,
+    # because MakeRectXY cannot represent per-corner radii.
+    if not all_same:
+        try:
+            rrect = rrect_cls()
+        except Exception:
+            debug_once(logger, "skia_rrect_ctor_make_rrect_exc", "skia.RRect() failed in make_rrect")
+            rrect = None
+        if rrect is not None:
+            setter = getattr(rrect, "setRectRadii", None)
+            if callable(setter):
+                try:
+                    setter(rect, radii_points)
+                    return rrect
+                except Exception:
+                    exception_once(logger, "skia_rrect_set_rect_radii_exc", "skia.RRect.setRectRadii failed")
+
     maker_xy = getattr(rrect_cls, "MakeRectXY", None)
     if callable(maker_xy):
         try:
@@ -94,20 +118,6 @@ def make_rrect(rect, radii: Sequence[float]) -> Optional[object]:
             return maker_xy(rect, fallback, fallback)
         except Exception:
             exception_once(logger, "skia_rrect_make_rect_xy_exc", "skia.RRect.MakeRectXY failed")
-
-    try:
-        rrect = rrect_cls()
-    except Exception:
-        debug_once(logger, "skia_rrect_ctor_make_rrect_exc", "skia.RRect() failed in make_rrect")
-        rrect = None
-    if rrect is not None:
-        setter = getattr(rrect, "setRectRadii", None)
-        if callable(setter):
-            try:
-                setter(rect, radii_pairs)
-                return rrect
-            except Exception:
-                exception_once(logger, "skia_rrect_set_rect_radii_exc", "skia.RRect.setRectRadii failed")
 
     return None
 

@@ -285,6 +285,48 @@ class DraggableNode(InteractionNode):
         self._active_pointer_id: Optional[int] = None
         self._last_pos: Optional[Tuple[float, float]] = None
 
+    def activate(self, event: PointerEvent) -> None:
+        """Programmatically start a drag session.
+
+        Call this when another node (e.g. a track-press handler) has already
+        consumed the initial PRESS but subsequent MOVE events should be
+        handled by this ``DraggableNode``.
+
+        Args:
+            event: The pointer event that initiated the interaction.
+        """
+        if self._active_pointer_id is not None:
+            return
+        self._active_pointer_id = event.id
+        self._last_pos = (event.x, event.y)
+        self.state.dragging = True
+        self.state.pressed = True
+
+        if self.owner:
+            try:
+                self.owner.capture_pointer(event)
+            except Exception:
+                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+                exception_once(
+                    logger,
+                    f"draggable_activate_capture_exc:{owner_name}",
+                    "capture_pointer raised during activate (owner=%s)",
+                    owner_name,
+                )
+            self.owner.invalidate()
+
+        if self._on_drag_start:
+            try:
+                self._on_drag_start(event)
+            except Exception:
+                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+                exception_once(
+                    logger,
+                    f"draggable_activate_on_drag_start_exc:{owner_name}",
+                    "on_drag_start raised during activate (owner=%s)",
+                    owner_name,
+                )
+
     def handle_pointer_event(self, event: PointerEvent, bounds: Optional[Sequence[float]] = None) -> bool:
         if self.state.disabled:
             return False
@@ -439,6 +481,21 @@ class FocusNode(InteractionNode):
         self._on_ime_composition = on_ime_composition
         self._children: list["FocusNode"] = []
         self._parent: Optional["FocusNode"] = None
+        self._wants_tab: Optional[Callable[[int], bool]] = None
+
+    def wants_tab(self, modifiers: int = 0) -> bool:
+        """Return True if this node wants to consume Tab internally.
+
+        Composite widgets (e.g. RangeSlider) override this via the
+        ``_wants_tab`` callback to intercept Tab before the App moves
+        focus to the next node in the traversal list.
+
+        Args:
+            modifiers: Keyboard modifier flags (e.g. Shift).
+        """
+        if self._wants_tab is not None:
+            return self._wants_tab(modifiers)
+        return False
 
     def request_focus(self) -> None:
         if self.region and hasattr(self.region, "_app") and self.region._app:

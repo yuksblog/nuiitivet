@@ -80,9 +80,32 @@ In addition to raw key events (`on_key`), `FocusNode` supports high-level text i
   - `text`: The full text being composed (or the text to be inserted).
   - `start`, `length`: The range within `text` that is currently selected or highlighted by the IME.
 
-## Node Roles & Extensibility
+## Composite Widgets with Multiple Focus Targets
 
-The Node-based architecture allows for future expansion by adding specialized nodes without modifying the core `InteractionRegion`.
+Some widgets (e.g., `RangeSlider`) contain multiple interactive sub-elements (handles/thumbs) that the user should be able to navigate independently via the keyboard.
+
+### Approaches Considered
+
+| Approach | Description | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| **A. Tab Interception** | The widget holds a single `FocusNode`. When Tab is pressed, the `App` queries the focused node before performing traversal. If the node indicates it wants to consume Tab internally (via a protocol method), the event is forwarded to the node's key handler instead of advancing to the next widget. | Minimal architecture change. Reusable for other composite widgets (DataGrid, TreeView, TabList). Preserves the "1 widget = 1 FocusNode" invariant. | Non-standard compared to platforms where each sub-element is an independent focusable. Limited semantic information for screen readers. |
+| **B. Multiple FocusNodes per Widget** | Each sub-element has its own `FocusNode`, collected independently during Tab traversal. | Matches platform conventions (Web, Android, Flutter, WPF). Each sub-element can carry its own accessibility label. | Breaks the "1 widget = 1 FocusNode" assumption. Requires significant refactoring of both the focus collection and the widget internals. |
+
+### Current Decision: Approach A
+
+Approach A is adopted for the following reasons:
+
+1. **Architectural fit** — The current interaction system assumes one `FocusNode` per `InteractionHostMixin`. Approach B would require either relaxing this invariant across the framework or splitting RangeSlider into multiple internal widgets, both of which have wide-reaching implications.
+2. **Generality** — The Tab interception mechanism (`FocusNode` protocol for consuming Tab) is reusable by any composite widget that needs internal keyboard navigation, not just sliders.
+3. **Incremental cost** — The change is localized to `App._dispatch_key` (query before traversal) and the widget's `on_key_event` (handle Tab to switch sub-elements). No other widgets are affected.
+
+Industry frameworks (MUI, Android, Flutter, WPF) use Approach B, but this is primarily because their platforms provide independent focusable primitives by default (e.g., `<input>`, `View`, `Composable`), not because of a deliberate design preference over A.
+
+### Future Consideration
+
+When screen reader / accessibility tree support is implemented (via `SemanticsNode`), revisit this decision. Approach B may become necessary to provide per-thumb semantic labels (e.g., "Start value: 30", "End value: 70"). At that point, the `SemanticsNode` design will inform whether multiple `FocusNode`s per widget or a single node with multiple semantic children is the better fit.
+
+## Node Roles & Extensibility
 
 The Node-based architecture allows for future expansion by adding specialized nodes without modifying the core `InteractionRegion`.
 

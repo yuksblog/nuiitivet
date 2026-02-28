@@ -76,6 +76,8 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 ColorRole.ON_BACKGROUND: "on_background",
                 ColorRole.SURFACE: "surface",
                 ColorRole.ON_SURFACE: "on_surface",
+                ColorRole.INVERSE_SURFACE: "inverse_surface",
+                ColorRole.INVERSE_ON_SURFACE: "inverse_on_surface",
                 ColorRole.SURFACE_VARIANT: "surface_variant",
                 ColorRole.ON_SURFACE_VARIANT: "on_surface_variant",
                 ColorRole.SURFACE_CONTAINER_HIGHEST: "surface_container_highest",
@@ -124,6 +126,14 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 light_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = light_roles.get(ColorRole.SURFACE_VARIANT, "#E7E0EC")
             if ColorRole.SURFACE_CONTAINER_HIGHEST not in dark_roles:
                 dark_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = dark_roles.get(ColorRole.SURFACE_VARIANT, "#49454F")
+            if ColorRole.INVERSE_SURFACE not in light_roles:
+                light_roles[ColorRole.INVERSE_SURFACE] = light_roles.get(ColorRole.ON_SURFACE, "#1C1B1F")
+            if ColorRole.INVERSE_SURFACE not in dark_roles:
+                dark_roles[ColorRole.INVERSE_SURFACE] = dark_roles.get(ColorRole.ON_SURFACE, "#E6E1E5")
+            if ColorRole.INVERSE_ON_SURFACE not in light_roles:
+                light_roles[ColorRole.INVERSE_ON_SURFACE] = light_roles.get(ColorRole.SURFACE, "#F4EFF4")
+            if ColorRole.INVERSE_ON_SURFACE not in dark_roles:
+                dark_roles[ColorRole.INVERSE_ON_SURFACE] = dark_roles.get(ColorRole.SURFACE, "#313033")
             if ColorRole.OUTLINE_VARIANT not in light_roles:
                 light_roles[ColorRole.OUTLINE_VARIANT] = light_roles.get(ColorRole.OUTLINE, "#CAC4D0")
             if ColorRole.OUTLINE_VARIANT not in dark_roles:
