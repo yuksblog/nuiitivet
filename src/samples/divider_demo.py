@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from typing import List
+
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material import Divider, Text
 from nuiitivet.material.app import MaterialApp
 from nuiitivet.material.styles.divider_style import DividerStyle
+from nuiitivet.widgeting.widget import Widget
 
 
 def _section_title(label: str) -> Text:
@@ -17,7 +20,7 @@ def _section_title(label: str) -> Text:
 def _list_section() -> Column:
     """Horizontal Dividers inside a Column (list-style)."""
     items = ["Inbox", "Sent", "Drafts", "Trash"]
-    children = []
+    children: List[Widget] = []
     for i, item in enumerate(items):
         children.append(
             Row(
@@ -37,7 +40,7 @@ def _list_section() -> Column:
 def _inset_section() -> Column:
     """Horizontal Dividers with inset_left (simulating list with leading icon space)."""
     items = ["Profile", "Settings", "Help", "Sign out"]
-    children = []
+    children: List[Widget] = []
     for i, item in enumerate(items):
         children.append(
             Row(
@@ -60,7 +63,7 @@ def _inset_section() -> Column:
 def _row_section() -> Row:
     """Vertical Dividers inside a Row."""
     labels = ["Home", "Explore", "Favorites", "Account"]
-    children = []
+    children: List[Widget] = []
     for i, label in enumerate(labels):
         children.append(
             Column(
