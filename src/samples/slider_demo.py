@@ -66,6 +66,10 @@ def main() -> None:
         on_change=lambda value: setattr(centered_value, "value", value),
     )
 
+    def _on_range_change(values: tuple[float, float]) -> None:
+        range_start.value = values[0]
+        range_end.value = values[1]
+
     range_slider = RangeSlider(
         value_start=range_start,
         value_end=range_end,
@@ -73,10 +77,7 @@ def main() -> None:
         length=320,
         min_value=0.0,
         max_value=1.0,
-        on_change=lambda values: (
-            setattr(range_start, "value", values[0]),
-            setattr(range_end, "value", values[1]),
-        ),
+        on_change=_on_range_change,
     )
 
     range_label = range_start.combine(range_end).compute(lambda start, end: f"Range: {start:.2f} - {end:.2f}")
