@@ -56,6 +56,7 @@ class ColorRole(Enum):
     SURFACE_CONTAINER_HIGHEST = "surfaceContainerHighest"
 
     OUTLINE = "outline"
+    OUTLINE_VARIANT = "outlineVariant"
     SHADOW = "shadow"
     SCRIM = "scrim"
 
