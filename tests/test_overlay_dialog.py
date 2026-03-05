@@ -1,4 +1,4 @@
-"""Tests for Overlay.show()."""
+"""Tests for Overlay modal/modeless APIs."""
 
 import asyncio
 
@@ -31,7 +31,7 @@ def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:
     overlay = Overlay()
     dialog = AlertDialog(title="Title", message="Body")
 
-    overlay.show(dialog, dismiss_on_outside_tap=False)
+    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
 
     assert overlay.has_entries() is True
     entry = next(iter(overlay._entry_to_route.keys()))
@@ -57,11 +57,11 @@ def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:
     assert found_dialog is True
 
 
-def test_overlay_show_dismiss_on_outside_tap_false_does_not_close_on_barrier_click() -> None:
+def test_overlay_show_modal_dismiss_on_outside_tap_false_does_not_close_on_barrier_click() -> None:
     overlay = Overlay()
     dialog = AlertDialog(title="Title")
 
-    overlay.show(dialog, dismiss_on_outside_tap=False)
+    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
 
     root = Stack(children=[overlay], alignment="center")
     root.mount(None)
@@ -83,7 +83,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
     ok_button = FilledButton("OK", on_click=on_ok)
     dialog = AlertDialog(title="Title", message="Body", actions=[ok_button])
 
-    overlay.show(dialog, dismiss_on_outside_tap=False)
+    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
 
     root = Stack(children=[overlay], alignment="center")
     # Mount so BuilderHostMixin builds dialog contents.
@@ -104,7 +104,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
 
 def test_overlay_dialog_dialogroute_barrier_dismissible_true_closes_on_barrier_click() -> None:
     overlay = Overlay()
-    overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=True)
+    overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=True)
 
     root = Stack(children=[overlay], alignment="center")
     root.mount(None)
@@ -116,7 +116,7 @@ def test_overlay_dialog_dialogroute_barrier_dismissible_true_closes_on_barrier_c
     assert overlay.has_entries() is False
 
 
-def test_overlay_show_passthrough_allows_background_click() -> None:
+def test_overlay_show_modeless_passthrough_allows_background_click() -> None:
     clicked: list[bool] = []
 
     def on_bg() -> None:
@@ -124,7 +124,7 @@ def test_overlay_show_passthrough_allows_background_click() -> None:
 
     bg = Container(width="100%", height="100%").modifier(clickable(on_click=on_bg))
     overlay = Overlay()
-    overlay.show(AlertDialog(title="Title"), passthrough=True)
+    overlay.show_modeless(AlertDialog(title="Title"))
 
     bg.width_sizing = Sizing.flex(100)
     bg.height_sizing = Sizing.flex(100)
@@ -141,11 +141,38 @@ def test_overlay_show_passthrough_allows_background_click() -> None:
     assert clicked == [True]
 
 
+def test_overlay_show_light_dismiss_closes_and_blocks_background_click() -> None:
+    clicked: list[bool] = []
+
+    def on_bg() -> None:
+        clicked.append(True)
+
+    bg = Container(width="100%", height="100%").modifier(clickable(on_click=on_bg))
+    overlay = Overlay()
+    overlay.show_light_dismiss(AlertDialog(title="Title"))
+
+    bg.width_sizing = Sizing.flex(100)
+    bg.height_sizing = Sizing.flex(100)
+    overlay.width_sizing = Sizing.flex(100)
+    overlay.height_sizing = Sizing.flex(100)
+
+    root = Stack(children=[bg, overlay], alignment="center")
+    root.mount(None)
+    root.layout(800, 600)
+    root.set_layout_rect(0, 0, 800, 600)
+
+    assert overlay.has_entries() is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.PRESS, 5, 5) is True
+    assert send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, 5, 5) is True
+    assert overlay.has_entries() is False
+    assert clicked == []
+
+
 def test_overlay_dialog_route_is_disposed_on_close_topmost() -> None:
     overlay = Overlay()
 
     route = Route(builder=lambda: AlertDialog(title="Title"))
-    overlay.show(route, dismiss_on_outside_tap=False)
+    overlay.show_modal(route, dismiss_on_outside_tap=False)
 
     # Route widget is created eagerly by Overlay.dialog().
     assert route._widget is not None
@@ -158,7 +185,7 @@ def test_overlay_dialog_async_resolves_with_close_result() -> None:
     overlay = Overlay()
 
     async def run() -> OverlayResult[bool]:
-        handle = overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
+        handle = overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
         await asyncio.sleep(0)
         handle.close(True)
         return await handle
@@ -172,7 +199,7 @@ def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
     overlay = Overlay()
 
     async def run() -> OverlayResult[None]:
-        handle = overlay.show(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
+        handle = overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
         await asyncio.sleep(0)
         handle.close()
         return await handle
@@ -185,7 +212,7 @@ def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
 def test_overlay_dialogroute_uses_barrier_dismissible_default_true() -> None:
     overlay = Overlay()
     route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=True)
-    overlay.show(route)
+    overlay.show_modal(route)
 
     root = Stack(children=[overlay], alignment="center")
     root.mount(None)
@@ -200,7 +227,7 @@ def test_overlay_dialogroute_uses_barrier_dismissible_default_true() -> None:
 def test_overlay_dialogroute_uses_barrier_dismissible_default_false() -> None:
     overlay = Overlay()
     route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=False)
-    overlay.show(route)
+    overlay.show_modal(route)
 
     root = Stack(children=[overlay], alignment="center")
     root.mount(None)
@@ -212,7 +239,7 @@ def test_overlay_dialogroute_uses_barrier_dismissible_default_false() -> None:
     assert overlay.has_entries() is True
 
 
-def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
+def test_overlay_show_modal_widget_and_route_have_disposal_parity() -> None:
     class _UnmountCountWidget(Widget):
         def __init__(self) -> None:
             super().__init__()
@@ -227,7 +254,7 @@ def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
 
     overlay_widget = Overlay()
     widget_input = _UnmountCountWidget()
-    overlay_widget.show(widget_input, dismiss_on_outside_tap=False)
+    overlay_widget.show_modal(widget_input, dismiss_on_outside_tap=False)
     overlay_widget.close_topmost()
 
     assert overlay_widget.has_entries() is False
@@ -236,7 +263,7 @@ def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
     overlay_route = Overlay()
     route_widget = _UnmountCountWidget()
     route_input = DialogRoute(builder=lambda: route_widget, barrier_dismissible=False)
-    overlay_route.show(route_input, dismiss_on_outside_tap=False)
+    overlay_route.show_modal(route_input, dismiss_on_outside_tap=False)
     overlay_route.close_topmost()
 
     assert overlay_route.has_entries() is False

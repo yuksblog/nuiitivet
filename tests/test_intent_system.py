@@ -115,7 +115,7 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
     route_widget = _UnmountCountWidget()
     route: Route = PageRoute(builder=lambda: route_widget)
 
-    handle = overlay.show(route)
+    handle = overlay.show_modal(route)
 
     # Route widget is created eagerly by Overlay.dialog().
     assert route._widget is not None  # type: ignore[attr-defined]

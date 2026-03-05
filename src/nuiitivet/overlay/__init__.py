@@ -5,7 +5,7 @@ from .intent_resolver import IntentResolver
 from .overlay_handle import OverlayHandle
 from .overlay import Overlay
 from .overlay_entry import OverlayEntry
-from .overlay_position import OverlayPosition
+from .overlay_position import AnchoredOverlayPosition, OverlayPosition
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .result import OverlayDismissReason, OverlayResult
 from .toast import PlainToast
@@ -13,6 +13,7 @@ from .toast import PlainToast
 from .intents import PlainDialogIntent, LoadingDialogIntent
 
 __all__ = [
+    "AnchoredOverlayPosition",
     "PlainDialogIntent",
     "DialogRoute",
     "IntentResolver",

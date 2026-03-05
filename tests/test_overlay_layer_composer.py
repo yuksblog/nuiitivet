@@ -19,7 +19,7 @@ def test_overlay_delegates_layer_composition_to_injected_composer() -> None:
     overlay = Overlay(layer_composer=composer)
 
     dialog = AlertDialog(title="Title", message="Body")
-    overlay.show(dialog, dismiss_on_outside_tap=False)
+    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
 
     entry = next(iter(overlay._entry_to_route.keys()))
     built = entry.build_widget()

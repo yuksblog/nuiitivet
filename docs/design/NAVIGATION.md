@@ -9,7 +9,7 @@
 The user-facing API should be intuitive and reflect the physical structure, while internal route/stack management is shared.
 
 - `Navigator.push()` to "transition screens"
-- `Overlay.show()` to "display on the topmost layer"
+- `Overlay.show_modal()` / `Overlay.show_modeless()` / `Overlay.show_light_dismiss()` to "display on the topmost layer"
 
 Internally, the `Navigator` acts as a stack managing `PageRoute` objects, while the `Overlay` maintains an internal `_modal_navigator` that treats Dialogs and Snackbars as routes.
 
