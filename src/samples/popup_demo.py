@@ -30,7 +30,7 @@ from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
 def _menu_item(label: str, on_click=None) -> Widget:
-    box = Box(
+    box: Widget = Box(
         child=Text(label, style=TextStyle(font_size=14)),
         padding=12,
         width="100%",
@@ -42,7 +42,7 @@ def _menu_item(label: str, on_click=None) -> Widget:
     return box
 
 
-def _popup_menu(*items: tuple[str, ...]) -> Widget:
+def _popup_menu(*items: str) -> Widget:
     """A styled panel containing menu items."""
     children = [_menu_item(label) for label in items]
     return Box(
@@ -230,8 +230,6 @@ class _TransitionDemo(ComposableWidget):
     is_open: Observable[bool] = Observable(False)
 
     def build(self) -> Widget:
-        from nuiitivet.modifiers import clickable
-
         def toggle() -> None:
             self.is_open.value = not self.is_open.value
 
