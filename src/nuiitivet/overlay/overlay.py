@@ -21,7 +21,7 @@ from nuiitivet.navigation.transition_spec import EmptyTransitionSpec, Transition
 from nuiitivet.common.logging_once import exception_once
 from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
-from .overlay_position import OverlayPosition
+from .overlay_position import AnchoredOverlayPosition, OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .transition_state import OverlayTransitionState
@@ -396,24 +396,98 @@ class Overlay(ComposableWidget):
             barrier_dismissible=bool(resolved_barrier_dismissible),
         )
 
-    def show(
+    def show_modal(
         self,
         content: Widget | Route,
         *,
-        passthrough: bool = False,
         dismiss_on_outside_tap: bool = False,
+        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
         timeout: float | None = None,
-        position: OverlayPosition | None = None,
+        position: OverlayPosition | AnchoredOverlayPosition | None = None,
         transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
-        """Show a widget or route as an overlay entry.
+        """Show modal content as an overlay entry.
 
         Notes:
             - `await handle` returns an OverlayResult.
             - Awaiting requires a running async runtime.
         """
-        if passthrough and dismiss_on_outside_tap:
-            raise ValueError("passthrough=True with dismiss_on_outside_tap=True is not supported")
+        return self._show_internal(
+            content,
+            passthrough=False,
+            dismiss_on_outside_tap=dismiss_on_outside_tap,
+            barrier_color=barrier_color,
+            timeout=timeout,
+            position=position,
+            transition_spec=transition_spec,
+            use_route_barrier=True,
+        )
+
+    def show_modeless(
+        self,
+        content: Widget | Route,
+        *,
+        timeout: float | None = None,
+        position: OverlayPosition | AnchoredOverlayPosition | None = None,
+        transition_spec: TransitionSpec | None = None,
+    ) -> OverlayHandle[Any]:
+        """Show modeless content as an overlay entry.
+
+        Notes:
+            - `await handle` returns an OverlayResult.
+            - Awaiting requires a running async runtime.
+        """
+        return self._show_internal(
+            content,
+            passthrough=True,
+            dismiss_on_outside_tap=False,
+            barrier_color=(0, 0, 0, 0),
+            timeout=timeout,
+            position=position,
+            transition_spec=transition_spec,
+            use_route_barrier=False,
+        )
+
+    def show_light_dismiss(
+        self,
+        content: Widget | Route,
+        *,
+        timeout: float | None = None,
+        position: OverlayPosition | AnchoredOverlayPosition | None = None,
+        transition_spec: TransitionSpec | None = None,
+    ) -> OverlayHandle[Any]:
+        """Show content with light-dismiss behavior.
+
+        Light-dismiss uses an invisible full-screen hit layer that closes the
+        overlay when tapping outside the content. Outside taps are consumed.
+
+        Notes:
+            - `await handle` returns an OverlayResult.
+            - Awaiting requires a running async runtime.
+        """
+        return self._show_internal(
+            content,
+            passthrough=False,
+            dismiss_on_outside_tap=True,
+            barrier_color=(0, 0, 0, 0),
+            timeout=timeout,
+            position=position,
+            transition_spec=transition_spec,
+            use_route_barrier=False,
+        )
+
+    def _show_internal(
+        self,
+        content: Widget | Route,
+        *,
+        passthrough: bool,
+        dismiss_on_outside_tap: bool,
+        barrier_color: tuple[int, int, int, int],
+        timeout: float | None,
+        position: OverlayPosition | AnchoredOverlayPosition | None,
+        transition_spec: TransitionSpec | None,
+        use_route_barrier: bool,
+    ) -> OverlayHandle[Any]:
         if timeout is not None and float(timeout) < 0:
             raise ValueError("timeout must be >= 0 or None")
 
@@ -423,22 +497,23 @@ class Overlay(ComposableWidget):
 
         if transition_spec is not None:
             match getattr(content_route, "transition_spec", None):
-                # Only override if we can (e.g. valid route object)
-                # Actually content_route is always a Route here.
                 case _:
                     content_route.transition_spec = transition_spec
 
         content_widget = content_route.build_widget()
-        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128)
+        resolved_barrier_color = barrier_color
         barrier_dismissible = bool(dismiss_on_outside_tap)
-        barrier_color = getattr(content_route, "barrier_color", barrier_color)
-        route_barrier_dismissible = getattr(content_route, "barrier_dismissible", None)
-        if route_barrier_dismissible is not None and dismiss_on_outside_tap is False:
-            barrier_dismissible = bool(route_barrier_dismissible)
+        if use_route_barrier:
+            resolved_barrier_color = getattr(content_route, "barrier_color", resolved_barrier_color)
+            route_barrier_dismissible = getattr(content_route, "barrier_dismissible", None)
+            if route_barrier_dismissible is not None and dismiss_on_outside_tap is False:
+                barrier_dismissible = bool(route_barrier_dismissible)
 
         effective_position = position or OverlayPosition.alignment("center")
 
         def position_content(content: Widget) -> Widget:
+            if isinstance(effective_position, AnchoredOverlayPosition):
+                return effective_position.make_position_content(content)
             return _PositionedOverlayContent(
                 content,
                 alignment=effective_position.alignment_key,
@@ -466,7 +541,7 @@ class Overlay(ComposableWidget):
                 content=content_widget,
                 transition_state=route.transition_state,
                 passthrough=passthrough,
-                barrier_color=barrier_color,
+                barrier_color=resolved_barrier_color,
                 barrier_dismissible=barrier_dismissible,
                 on_barrier_click=on_barrier_click,
                 position_content=position_content,
@@ -490,7 +565,7 @@ class Overlay(ComposableWidget):
         modal_route = self._to_overlay_entry_route(
             entry=entry,
             route=content_route,
-            barrier_color=barrier_color,
+            barrier_color=resolved_barrier_color,
             barrier_dismissible=barrier_dismissible,
         )
         route_holder["route"] = modal_route

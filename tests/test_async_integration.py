@@ -26,7 +26,7 @@ async def test_overlay_dialog_await():
     Overlay.set_root(overlay)
 
     # Create a dialog handle
-    handle = overlay.show(Text("Dialog"), dismiss_on_outside_tap=False)
+    handle = overlay.show_modal(Text("Dialog"), dismiss_on_outside_tap=False)
 
     # Create a task to close the dialog after a delay
     async def close_later():

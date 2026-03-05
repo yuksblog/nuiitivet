@@ -1,4 +1,4 @@
-"""Tests for Overlay.show() timeout behavior."""
+"""Tests for Overlay.show_modeless() timeout behavior."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from nuiitivet.overlay.result import OverlayDismissReason
 from nuiitivet.widgets.text import TextBase as Text
 
 
-def test_overlay_show_timeout_auto_dismisses_via_clock(monkeypatch) -> None:
+def test_overlay_show_modeless_timeout_auto_dismisses_via_clock(monkeypatch) -> None:
     overlay = Overlay()
 
     calls: list[float] = []
@@ -24,7 +24,7 @@ def test_overlay_show_timeout_auto_dismisses_via_clock(monkeypatch) -> None:
 
     monkeypatch.setattr(runtime, "clock", types.SimpleNamespace(schedule_once=schedule_once, unschedule=unschedule))
 
-    handle = overlay.show(Text("Hi"), passthrough=True, timeout=0.1)
+    handle = overlay.show_modeless(Text("Hi"), timeout=0.1)
     assert overlay.has_entries() is False
     assert handle.done() is True
 

@@ -112,9 +112,8 @@ class MaterialOverlay(Overlay):
             transition=transition,
         )
 
-        return self.show(
+        return self.show_modal(
             route,
-            passthrough=False,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             timeout=timeout,
             position=position,
@@ -160,10 +159,8 @@ class MaterialOverlay(Overlay):
         duration: float = 3.0,
         transition: MaterialSnackbarTransitionSpec | None = None,
     ) -> OverlayHandle[None]:
-        return self.show(
+        return self.show_modeless(
             Snackbar(str(message)),
-            passthrough=True,
-            dismiss_on_outside_tap=False,
             timeout=float(duration),
             position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
             transition_spec=transition or MaterialTransitions.snackbar(),
@@ -176,9 +173,8 @@ class MaterialOverlay(Overlay):
             self._handle: OverlayHandle[Any] | None = None
 
         def __enter__(self) -> None:
-            self._handle = self._overlay.show(
+            self._handle = self._overlay.show_modal(
                 self._indicator,
-                passthrough=False,
                 dismiss_on_outside_tap=False,
                 timeout=None,
                 position=OverlayPosition.alignment("center"),

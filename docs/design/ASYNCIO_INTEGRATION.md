@@ -61,7 +61,7 @@ If no asyncio loop is running (e.g. during some tests or shutdown), async handle
 
 Overlay APIs are awaitable by using an internal asyncio future per entry.
 
-- `Overlay.show(...)` returns an `OverlayHandle`.
+- `Overlay.show_modal(...)` / `Overlay.show_modeless(...)` / `Overlay.show_light_dismiss(...)` return an `OverlayHandle`.
 - Awaiting the handle requires a running asyncio loop (`asyncio.get_running_loop()`).
 - Closing/dismissing/disposal completes the future with an `OverlayResult`.
 

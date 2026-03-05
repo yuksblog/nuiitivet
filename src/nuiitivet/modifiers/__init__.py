@@ -5,6 +5,7 @@ from .clip import clip
 from .corner_radius import corner_radius
 from .focus import focusable
 from .hover import hoverable
+from .popup import modeless, light_dismiss
 from .scroll import scrollable
 from .shadow import shadow
 from .stick import stick
@@ -20,6 +21,8 @@ __all__ = [
     "focusable",
     "hoverable",
     "opacity",
+    "modeless",
+    "light_dismiss",
     "rotate",
     "scale",
     "scrollable",

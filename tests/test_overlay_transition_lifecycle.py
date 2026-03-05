@@ -58,7 +58,7 @@ def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
             transition_spec=_AnimatedTransitionSpec(),
             barrier_dismissible=False,
         )
-        overlay.show(route)
+        overlay.show_modal(route)
 
         entry = next(iter(overlay._entry_to_route.keys()))
         modal_route = overlay._entry_to_route[entry]
@@ -104,7 +104,7 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
                 transition_spec=_AnimatedTransitionSpec(),
                 barrier_dismissible=False,
             )
-            overlay.show(route)
+            overlay.show_modal(route)
             fake_clock.advance(0.7)  # finish enter
             entry = next(iter(overlay._entry_to_route.keys()))
             overlay.remove_entry(entry)
