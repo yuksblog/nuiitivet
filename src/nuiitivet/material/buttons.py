@@ -10,6 +10,8 @@ This module contains the implementation of various Material Design 3 buttons:
 - OutlinedToggleButton
 - TextToggleButton
 - TonalToggleButton
+- IconButton
+- IconToggleButton
 - FloatingActionButton
 """
 
@@ -21,7 +23,8 @@ from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, c
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
-from nuiitivet.material.styles.button_style import ButtonStyle
+from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
+from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
@@ -1029,6 +1032,80 @@ class FilledTonalButton(MaterialButtonBase):
         self._apply_style_params(params)
 
 
+class IconButton(MaterialButtonBase):
+    """Material icon-only action button driven by style presets."""
+
+    def __init__(
+        self,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        *,
+        on_click: Optional[Callable[[], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        size: int = 40,
+        style: Optional[ButtonStyle] = None,
+    ):
+        """Initialize IconButton.
+
+        Args:
+            icon: Icon glyph source.
+            on_click: Callback invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            size: Visual container size in pixels.
+            style: Icon button style preset or custom style.
+        """
+        resolved_size = max(1, int(size))
+        base_style = style if style is not None else IconButtonStyle.standard()
+        effective_style = base_style.copy_with(
+            container_height=resolved_size,
+            corner_radius=resolved_size // 2,
+            min_width=max(int(getattr(base_style, "min_width", 48) or 48), 48, resolved_size),
+            min_height=max(int(getattr(base_style, "min_height", 48) or 48), 48, resolved_size),
+        )
+
+        self._user_style = effective_style
+        self._user_padding = None
+        self._user_height = resolved_size
+
+        child_widget = build_button_child(
+            label=None,
+            icon=icon,
+            foreground=effective_style.foreground if effective_style else ColorRole.ON_SURFACE,
+            button_height=resolved_size,
+            style=effective_style,
+        )
+
+        params = resolve_button_style_params(effective_style, None, resolved_size, disabled)
+        super().__init__(
+            child=child_widget,
+            on_click=on_click,
+            width=resolved_size,
+            disabled=disabled,
+            **params,
+        )
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        from nuiitivet.theme.manager import manager
+
+        manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
+
+    def on_unmount(self) -> None:
+        from nuiitivet.theme.manager import manager
+
+        manager.unsubscribe(self._on_theme_change)
+        super().on_unmount()
+
+    def _on_theme_change(self, theme) -> None:
+        params = resolve_button_style_params(
+            self.style,
+            self._user_padding,
+            self._user_height,
+            self.disabled,
+        )
+        self._apply_style_params(params)
+
+
 class ToggleButtonBase(MaterialButtonBase):
     """Base class for Material toggle buttons.
 
@@ -1243,6 +1320,55 @@ class TonalToggleButton(ToggleButtonBase):
     _toggle_base_variant = "tonal"
 
 
+class IconToggleButton(ToggleButtonBase):
+    """Material icon-only toggle button driven by state-paired styles."""
+
+    def __init__(
+        self,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        *,
+        selected: bool | ObservableProtocol[bool] = False,
+        on_change: Optional[Callable[[bool], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        size: int = 40,
+        style: Optional[IconToggleButtonStyle] = None,
+    ):
+        """Initialize IconToggleButton.
+
+        Args:
+            icon: Icon glyph source.
+            selected: Selected state value or observable.
+            on_change: Callback invoked with the new selected state.
+            disabled: Whether the button is disabled.
+            size: Visual container size in pixels.
+            style: Toggle style pair for selected and unselected states.
+        """
+        self._icon_size = max(1, int(size))
+        self._icon_toggle_style = style if style is not None else IconToggleButtonStyle.standard()
+
+        super().__init__(
+            label=None,
+            icon=icon,
+            selected=selected,
+            on_change=on_change,
+            disabled=disabled,
+            width=self._icon_size,
+            height=self._icon_size,
+            padding=0,
+            style=None,
+        )
+
+    def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
+        base_style = self._icon_toggle_style.selected if selected else self._icon_toggle_style.unselected
+        return base_style.copy_with(
+            container_height=self._icon_size,
+            corner_radius=self._icon_size // 2,
+            min_width=max(int(getattr(base_style, "min_width", 48) or 48), 48, self._icon_size),
+            min_height=max(int(getattr(base_style, "min_height", 48) or 48), 48, self._icon_size),
+            padding=0,
+        )
+
+
 class FloatingActionButton(MaterialButtonBase):
     """Minimal Floating Action Button (rectangular for now)."""
 
@@ -1292,6 +1418,11 @@ class FloatingActionButton(MaterialButtonBase):
             **params,
         )
 
+        self._press_scale_x_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
+        self._press_scale_y_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
+        self.bind(self._press_scale_x_anim.subscribe(lambda _: self.invalidate()))
+        self.bind(self._press_scale_y_anim.subscribe(lambda _: self.invalidate()))
+
     def on_mount(self) -> None:
         super().on_mount()
         from nuiitivet.theme.manager import manager
@@ -1313,3 +1444,37 @@ class FloatingActionButton(MaterialButtonBase):
             self.disabled,
         )
         self._apply_style_params(params)
+
+    def _expressive_press_scale(self) -> tuple[float, float]:
+        target = (0.94, 0.9) if self.state.pressed and not self.disabled else (1.0, 1.0)
+        if abs(self._press_scale_x_anim.target - target[0]) > 1e-6:
+            self._press_scale_x_anim.target = target[0]
+        if abs(self._press_scale_y_anim.target - target[1]) > 1e-6:
+            self._press_scale_y_anim.target = target[1]
+        return float(self._press_scale_x_anim.value), float(self._press_scale_y_anim.value)
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int):
+        sx, sy = self._expressive_press_scale()
+        if abs(sx - 1.0) < 1e-6 and abs(sy - 1.0) < 1e-6:
+            super().paint(canvas, x, y, width, height)
+            return
+
+        if (
+            canvas is None
+            or not hasattr(canvas, "save")
+            or not hasattr(canvas, "translate")
+            or not hasattr(canvas, "scale")
+        ):
+            super().paint(canvas, x, y, width, height)
+            return
+
+        ox = float(x) + (float(width) / 2.0)
+        oy = float(y) + (float(height) / 2.0)
+        canvas.save()
+        try:
+            canvas.translate(ox, oy)
+            canvas.scale(float(sx), float(sy))
+            canvas.translate(-ox, -oy)
+            super().paint(canvas, x, y, width, height)
+        finally:
+            canvas.restore()

@@ -173,7 +173,7 @@ class ButtonStyle:
             background=ColorRole.PRIMARY,
             foreground=ColorRole.ON_PRIMARY,
             border_width=0.0,
-            corner_radius=28,
+            corner_radius=16,
             padding=(8, 8, 8, 8),
             container_height=56,
             min_width=56,
@@ -300,4 +300,178 @@ class ButtonStyle:
         return cls.filled()
 
 
-__all__ = ["ButtonStyle"]
+class IconButtonStyle:
+    """Preset factories for icon-only button styles."""
+
+    @classmethod
+    def standard(cls) -> ButtonStyle:
+        """Return the standard icon-button style."""
+        return ButtonStyle(
+            background=None,
+            foreground=ColorRole.ON_SURFACE_VARIANT,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def filled(cls) -> ButtonStyle:
+        """Return the filled icon-button style."""
+        return ButtonStyle(
+            background=ColorRole.PRIMARY,
+            foreground=ColorRole.ON_PRIMARY,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_PRIMARY,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def outlined(cls) -> ButtonStyle:
+        """Return the outlined icon-button style."""
+        return ButtonStyle(
+            background=None,
+            foreground=ColorRole.ON_SURFACE_VARIANT,
+            border_color=ColorRole.OUTLINE,
+            border_width=1.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def tonal(cls) -> ButtonStyle:
+        """Return the tonal icon-button style."""
+        return ButtonStyle(
+            background=ColorRole.SECONDARY_CONTAINER,
+            foreground=ColorRole.ON_SECONDARY_CONTAINER,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
+            overlay_alpha=0.12,
+        )
+
+
+@dataclass(frozen=True)
+class IconToggleButtonStyle:
+    """State-paired style for icon toggle button widgets."""
+
+    selected: ButtonStyle
+    unselected: ButtonStyle
+
+    @classmethod
+    def standard(cls) -> "IconToggleButtonStyle":
+        """Return styles for the standard icon-toggle button variant."""
+        return cls(
+            selected=ButtonStyle(
+                background=ColorRole.SECONDARY_CONTAINER,
+                foreground=ColorRole.ON_SECONDARY_CONTAINER,
+                border_width=0.0,
+                corner_radius=20,
+                container_height=40,
+                padding=0,
+                min_width=48,
+                min_height=48,
+                elevation=0.0,
+                overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
+                overlay_alpha=0.12,
+            ),
+            unselected=IconButtonStyle.standard(),
+        )
+
+    @classmethod
+    def filled(cls) -> "IconToggleButtonStyle":
+        """Return styles for the filled icon-toggle button variant."""
+        return cls(
+            selected=IconButtonStyle.filled(),
+            unselected=ButtonStyle(
+                background=ColorRole.SURFACE_CONTAINER_HIGHEST,
+                foreground=ColorRole.ON_SURFACE_VARIANT,
+                border_width=0.0,
+                corner_radius=20,
+                container_height=40,
+                padding=0,
+                min_width=48,
+                min_height=48,
+                elevation=0.0,
+                overlay_color=ColorRole.ON_SURFACE,
+                overlay_alpha=0.12,
+            ),
+        )
+
+    @classmethod
+    def outlined(cls) -> "IconToggleButtonStyle":
+        """Return styles for the outlined icon-toggle button variant."""
+        return cls(
+            selected=ButtonStyle(
+                background=ColorRole.INVERSE_SURFACE,
+                foreground=ColorRole.INVERSE_ON_SURFACE,
+                border_color=ColorRole.INVERSE_SURFACE,
+                border_width=1.0,
+                corner_radius=20,
+                container_height=40,
+                padding=0,
+                min_width=48,
+                min_height=48,
+                elevation=0.0,
+                overlay_color=ColorRole.INVERSE_ON_SURFACE,
+                overlay_alpha=0.12,
+            ),
+            unselected=IconButtonStyle.outlined(),
+        )
+
+    @classmethod
+    def tonal(cls) -> "IconToggleButtonStyle":
+        """Return styles for the tonal icon-toggle button variant."""
+        return cls(
+            selected=ButtonStyle(
+                background=ColorRole.TERTIARY_CONTAINER,
+                foreground=ColorRole.ON_TERTIARY_CONTAINER,
+                border_width=0.0,
+                corner_radius=20,
+                container_height=40,
+                padding=0,
+                min_width=48,
+                min_height=48,
+                elevation=0.0,
+                overlay_color=ColorRole.ON_TERTIARY_CONTAINER,
+                overlay_alpha=0.12,
+            ),
+            unselected=ButtonStyle(
+                background=ColorRole.SECONDARY_CONTAINER,
+                foreground=ColorRole.ON_SECONDARY_CONTAINER,
+                border_width=0.0,
+                corner_radius=20,
+                container_height=40,
+                padding=0,
+                min_width=48,
+                min_height=48,
+                elevation=0.0,
+                overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
+                overlay_alpha=0.12,
+            ),
+        )
+
+
+__all__ = ["ButtonStyle", "IconButtonStyle", "IconToggleButtonStyle"]
