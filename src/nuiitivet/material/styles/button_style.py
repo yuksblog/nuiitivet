@@ -184,6 +184,69 @@ class ButtonStyle:
         )
 
     @classmethod
+    def filled_toggle(cls) -> "ButtonStyle":
+        """Style for selected filled toggle button."""
+        return cls(
+            background=ColorRole.PRIMARY,
+            foreground=ColorRole.ON_PRIMARY,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=(16, 0, 16, 0),
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.08,
+        )
+
+    @classmethod
+    def outlined_toggle(cls) -> "ButtonStyle":
+        """Style for selected outlined toggle button."""
+        return cls(
+            background=ColorRole.SECONDARY_CONTAINER,
+            foreground=ColorRole.ON_SECONDARY_CONTAINER,
+            border_color=ColorRole.SECONDARY_CONTAINER,
+            border_width=1.0,
+            corner_radius=20,
+            container_height=40,
+            padding=(16, 0, 16, 0),
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.08,
+        )
+
+    @classmethod
+    def text_toggle(cls) -> "ButtonStyle":
+        """Style for selected text toggle button."""
+        return cls(
+            background=ColorRole.SECONDARY_CONTAINER,
+            foreground=ColorRole.ON_SECONDARY_CONTAINER,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=(16, 0, 16, 0),
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.08,
+        )
+
+    @classmethod
+    def tonal_toggle(cls) -> "ButtonStyle":
+        """Style for selected tonal toggle button."""
+        return cls(
+            background=ColorRole.TERTIARY_CONTAINER,
+            foreground=ColorRole.ON_TERTIARY_CONTAINER,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=(16, 0, 16, 0),
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.08,
+        )
+
+    @classmethod
     def from_theme(cls, theme: "Theme", variant: str = "filled") -> "ButtonStyle":
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
@@ -203,6 +266,14 @@ class ButtonStyle:
                 return theme_data.tonal_button_style
             if v in ("fab", "floating_action_button"):
                 return theme_data.fab_style
+            if v == "filled_toggle":
+                return cls.filled_toggle()
+            if v == "outlined_toggle":
+                return cls.outlined_toggle()
+            if v == "text_toggle":
+                return cls.text_toggle()
+            if v == "tonal_toggle":
+                return cls.tonal_toggle()
 
         # Fallback if no theme data or unknown variant (though unknown variant logic is same as above)
         if v == "filled":
@@ -217,6 +288,14 @@ class ButtonStyle:
             return cls.tonal()
         if v in ("fab", "floating_action_button"):
             return cls.fab()
+        if v == "filled_toggle":
+            return cls.filled_toggle()
+        if v == "outlined_toggle":
+            return cls.outlined_toggle()
+        if v == "text_toggle":
+            return cls.text_toggle()
+        if v == "tonal_toggle":
+            return cls.tonal_toggle()
 
         return cls.filled()
 

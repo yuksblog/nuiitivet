@@ -6,13 +6,17 @@ This module contains the implementation of various Material Design 3 buttons:
 - TextButton
 - ElevatedButton
 - FilledTonalButton
+- FilledToggleButton
+- OutlinedToggleButton
+- TextToggleButton
+- TonalToggleButton
 - FloatingActionButton
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING
+from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
@@ -1023,6 +1027,220 @@ class FilledTonalButton(MaterialButtonBase):
             self.disabled,
         )
         self._apply_style_params(params)
+
+
+class ToggleButtonBase(MaterialButtonBase):
+    """Base class for Material toggle buttons.
+
+    This class handles `selected` state semantics and emits `on_change` with
+    the new boolean value when toggled.
+    """
+
+    _toggle_base_variant: str = "filled"
+
+    @property
+    def selected(self) -> bool:
+        """Return current selected state."""
+        if self._selected_external is not None:
+            return bool(self._selected_external.value)
+        return bool(self._selected_internal)
+
+    @selected.setter
+    def selected(self, new_value: bool) -> None:
+        if self._selected_external is not None:
+            try:
+                self._selected_external.value = bool(new_value)
+            except Exception:
+                pass
+            return
+        self._selected_internal = bool(new_value)
+
+    @property
+    def style(self) -> ButtonStyle:
+        """Return selected/unselected style resolved from current theme."""
+        return self._resolve_style_for_selected(self.selected)
+
+    def __init__(
+        self,
+        label: str | ReadOnlyObservableProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
+        selected: bool | ObservableProtocol[bool] = False,
+        on_change: Optional[Callable[[bool], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        style: Optional[ButtonStyle] = None,
+    ):
+        """Initialize toggle button.
+
+        Args:
+            label: Text label for the button.
+            icon: Icon for the button.
+            selected: Selected state or observable selected source.
+            on_change: Callback invoked with the new selected value.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding specification.
+            style: Custom selected style.
+        """
+        self._variant = f"{self._toggle_base_variant}_toggle"
+        self._user_style = style
+        self._user_padding = padding
+        self._user_height = height
+        self.on_change = on_change
+
+        self._selected_external: ObservableProtocol[bool] | None = None
+        if hasattr(selected, "subscribe") and hasattr(selected, "value"):
+            self._selected_external = cast("ObservableProtocol[bool]", selected)
+            self._selected_internal = bool(self._selected_external.value)
+        else:
+            self._selected_internal = bool(selected)
+
+        effective_style = self.style
+        text_color = effective_style.foreground if effective_style else ColorRole.ON_SURFACE
+        height_px = _coerce_fixed_height_px(height)
+
+        child_widget = build_button_child(
+            label=label,
+            icon=icon,
+            foreground=text_color,
+            button_height=height_px,
+            style=effective_style,
+        )
+
+        params = resolve_button_style_params(
+            effective_style,
+            padding,
+            height,
+            disabled,
+        )
+
+        super().__init__(
+            child=child_widget,
+            on_click=self._handle_toggle,
+            width=width,
+            disabled=disabled,
+            **params,
+        )
+
+        self.state.checked = self.selected
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        from nuiitivet.theme.manager import manager
+
+        manager.subscribe(self._on_theme_change)
+        self._on_theme_change(manager.current)
+
+        if self._selected_external is not None:
+            self.observe(self._selected_external, self._on_selected_external_change)
+            self._sync_selected_state()
+
+    def on_unmount(self) -> None:
+        from nuiitivet.theme.manager import manager
+
+        manager.unsubscribe(self._on_theme_change)
+        super().on_unmount()
+
+    def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
+        if self._user_style is not None:
+            return self._user_style
+
+        if selected:
+            from nuiitivet.theme.manager import manager
+
+            return ButtonStyle.from_theme(manager.current, self._variant)
+
+        if self._toggle_base_variant == "filled":
+            # Filled toggle's unselected state is intentionally muted/outlined.
+            return ButtonStyle(
+                background=None,
+                foreground=ColorRole.PRIMARY,
+                border_color=ColorRole.OUTLINE,
+                border_width=1.0,
+                corner_radius=20,
+                container_height=40,
+                padding=(16, 0, 16, 0),
+                elevation=0.0,
+                overlay_color=ColorRole.PRIMARY,
+                overlay_alpha=0.08,
+            )
+        if self._toggle_base_variant == "outlined":
+            return ButtonStyle.outlined()
+        if self._toggle_base_variant == "text":
+            return ButtonStyle.text()
+        if self._toggle_base_variant == "tonal":
+            return ButtonStyle(
+                background=None,
+                foreground=ColorRole.ON_SURFACE_VARIANT,
+                border_color=ColorRole.OUTLINE,
+                border_width=1.0,
+                corner_radius=20,
+                container_height=40,
+                padding=(16, 0, 16, 0),
+                elevation=0.0,
+                overlay_color=ColorRole.ON_SURFACE,
+                overlay_alpha=0.08,
+            )
+
+        from nuiitivet.theme.manager import manager
+
+        return ButtonStyle.from_theme(manager.current, self._toggle_base_variant)
+
+    def _on_theme_change(self, theme) -> None:
+        params = resolve_button_style_params(
+            self.style,
+            self._user_padding,
+            self._user_height,
+            self.disabled,
+        )
+        self._apply_style_params(params)
+
+    def _on_selected_external_change(self, _new_value: bool) -> None:
+        self._sync_selected_state()
+
+    def _sync_selected_state(self) -> None:
+        self.state.checked = self.selected
+        self._on_theme_change(None)
+        self.invalidate()
+
+    def _handle_toggle(self) -> None:
+        if self.disabled:
+            return
+
+        new_value = not self.selected
+        self.selected = new_value
+        self._sync_selected_state()
+
+        if self.on_change is not None:
+            self.on_change(new_value)
+
+
+class FilledToggleButton(ToggleButtonBase):
+    """Filled toggle button."""
+
+    _toggle_base_variant = "filled"
+
+
+class OutlinedToggleButton(ToggleButtonBase):
+    """Outlined toggle button."""
+
+    _toggle_base_variant = "outlined"
+
+
+class TextToggleButton(ToggleButtonBase):
+    """Text toggle button."""
+
+    _toggle_base_variant = "text"
+
+
+class TonalToggleButton(ToggleButtonBase):
+    """Tonal toggle button."""
+
+    _toggle_base_variant = "tonal"
 
 
 class FloatingActionButton(MaterialButtonBase):
