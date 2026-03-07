@@ -372,6 +372,78 @@ class IconButtonStyle:
             overlay_alpha=0.12,
         )
 
+    @classmethod
+    def vibrant(cls) -> ButtonStyle:
+        """Return the vibrant icon-button style.
+
+        This is intended for use on vibrant containers such as a vibrant toolbar.
+        """
+        return ButtonStyle(
+            background=None,
+            foreground=ColorRole.ON_PRIMARY_CONTAINER,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_PRIMARY_CONTAINER,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def filled_vibrant(cls) -> ButtonStyle:
+        """Return the filled vibrant icon-button style."""
+        return ButtonStyle(
+            background=ColorRole.PRIMARY,
+            foreground=ColorRole.ON_PRIMARY,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_PRIMARY,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def outlined_vibrant(cls) -> ButtonStyle:
+        """Return the outlined vibrant icon-button style."""
+        return ButtonStyle(
+            background=None,
+            foreground=ColorRole.ON_PRIMARY_CONTAINER,
+            border_color=ColorRole.ON_PRIMARY_CONTAINER,
+            border_width=1.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_PRIMARY_CONTAINER,
+            overlay_alpha=0.12,
+        )
+
+    @classmethod
+    def tonal_vibrant(cls) -> ButtonStyle:
+        """Return the tonal vibrant icon-button style."""
+        return ButtonStyle(
+            background=ColorRole.SURFACE_CONTAINER_HIGHEST,
+            foreground=ColorRole.ON_SURFACE,
+            border_width=0.0,
+            corner_radius=20,
+            container_height=40,
+            padding=0,
+            min_width=48,
+            min_height=48,
+            elevation=0.0,
+            overlay_color=ColorRole.ON_SURFACE,
+            overlay_alpha=0.12,
+        )
+
 
 @dataclass(frozen=True)
 class IconToggleButtonStyle:

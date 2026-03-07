@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from .text_fields import FilledTextField, OutlinedTextField, TextField
     from .text import Text
     from .overlay import MaterialOverlay
+    from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
 
 __all__ = [
     "MaterialApp",
@@ -82,6 +83,9 @@ __all__ = [
     "AlertDialog",
     "LoadingIndicator",
     "LoadingIntent",
+    "DockedToolbar",
+    "FloatingToolbar",
+    "ToolbarOrientation",
     "MaterialTransitions",
     "FadeIn",
     "FadeOut",
@@ -139,6 +143,9 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "AlertDialog": ("dialogs", "AlertDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
     "LoadingIntent": ("intents", "LoadingIntent"),
+    "DockedToolbar": ("toolbar", "DockedToolbar"),
+    "FloatingToolbar": ("toolbar", "FloatingToolbar"),
+    "ToolbarOrientation": ("toolbar", "ToolbarOrientation"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
     "FadeIn": ("transitions", "FadeIn"),
