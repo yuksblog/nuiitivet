@@ -16,6 +16,10 @@ from tests.helpers.pointer import send_pointer_event_for_test
         IconButtonStyle.filled(),
         IconButtonStyle.outlined(),
         IconButtonStyle.tonal(),
+        IconButtonStyle.vibrant(),
+        IconButtonStyle.filled_vibrant(),
+        IconButtonStyle.outlined_vibrant(),
+        IconButtonStyle.tonal_vibrant(),
     ],
 )
 def test_icon_button_renders_icon_only_and_circular(style):
@@ -35,6 +39,10 @@ def test_icon_button_renders_icon_only_and_circular(style):
         IconButtonStyle.filled(),
         IconButtonStyle.outlined(),
         IconButtonStyle.tonal(),
+        IconButtonStyle.vibrant(),
+        IconButtonStyle.filled_vibrant(),
+        IconButtonStyle.outlined_vibrant(),
+        IconButtonStyle.tonal_vibrant(),
     ],
 )
 def test_icon_button_disabled_blocks_pointer_interaction(style):

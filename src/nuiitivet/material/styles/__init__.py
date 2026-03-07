@@ -17,6 +17,7 @@ from .slider_style import SliderStyle
 from .switch_style import SwitchStyle
 from .text_field_style import TextFieldStyle
 from .text_style import TextStyle
+from .toolbar_style import ToolbarStyle
 
 __all__ = [
     "ButtonStyle",
@@ -36,4 +37,5 @@ __all__ = [
     "SwitchStyle",
     "TextFieldStyle",
     "TextStyle",
+    "ToolbarStyle",
 ]

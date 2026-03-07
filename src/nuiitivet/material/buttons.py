@@ -1446,7 +1446,11 @@ class FloatingActionButton(MaterialButtonBase):
         self._apply_style_params(params)
 
     def _expressive_press_scale(self) -> tuple[float, float]:
-        target = (0.94, 0.9) if self.state.pressed and not self.disabled else (1.0, 1.0)
+        target = (
+            (0.94, 0.9)
+            if self.state.pressed and not self.disabled
+            else (1.0, 1.0)
+        )
         if abs(self._press_scale_x_anim.target - target[0]) > 1e-6:
             self._press_scale_x_anim.target = target[0]
         if abs(self._press_scale_y_anim.target - target[1]) > 1e-6:
