@@ -11,6 +11,7 @@ from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.widgets.box import Box
+from nuiitivet.widgeting.widget import Widget
 
 PaddingLike = Union[int, tuple[int, int], tuple[int, int, int, int]]
 ToolbarOrientation = Literal["horizontal", "vertical"]
@@ -69,9 +70,10 @@ class DockedToolbar(Box):
         self._user_style = style
         effective_style = self.style
         children = _validate_buttons(buttons)
+        row_children: list[Widget] = list(children)
 
         content = Row(
-            children,
+            row_children,
             width="100%",
             gap=effective_style.item_gap,
             main_alignment="space-between",
@@ -127,10 +129,11 @@ class FloatingToolbar(Box):
         effective_style = self.style
         children = _validate_buttons(buttons)
         content_padding = _resolve_content_padding(effective_style, children)
+        layout_children: list[Widget] = list(children)
 
         if orientation == "horizontal":
-            content = Row(
-                children,
+            layout_content: Widget = Row(
+                layout_children,
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
@@ -138,8 +141,8 @@ class FloatingToolbar(Box):
             )
             inner_height: SizingLike = effective_style.container_height
         else:
-            content = Column(
-                children,
+            layout_content = Column(
+                layout_children,
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
@@ -150,7 +153,7 @@ class FloatingToolbar(Box):
         # Floating toolbar shape is always fully rounded per spec intent.
         inner_corner_radius = 9999
         self._inner_container = Box(
-            child=content,
+            child=layout_content,
             height=inner_height,
             padding=0,
             background_color=effective_style.background,
