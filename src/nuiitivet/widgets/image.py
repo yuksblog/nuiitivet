@@ -200,13 +200,13 @@ class Image(Widget):
         if self._decoded_token == token and self._decoded_image is not None:
             return self._decoded_image
 
-        skia = get_skia(raise_if_missing=False)
-        if skia is None:
+        backend = get_skia(raise_if_missing=False)
+        if backend is None:
             self._decoded_image = None
             self._decoded_token = None
             return None
 
-        image_cls = getattr(skia, "Image", None)
+        image_cls = getattr(backend, "Image", None)
         make_from_encoded = getattr(image_cls, "MakeFromEncoded", None) if image_cls is not None else None
         if not callable(make_from_encoded):
             self._decoded_image = None

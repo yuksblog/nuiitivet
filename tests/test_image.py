@@ -60,7 +60,7 @@ def test_image_observable_none_to_bytes_updates_and_draws(monkeypatch) -> None:
 
     monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
 
-    source = Observable(None)
+    source: Observable[bytes | None] = Observable(None)
     w = Image(source, width=100, height=100)
     canvas = MagicMock()
 

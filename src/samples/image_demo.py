@@ -9,6 +9,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.material import FilledButton, MaterialApp, OutlinedButton, Text
 from nuiitivet.observable import Observable
+from nuiitivet.rendering.fit import Fit
 from nuiitivet.widgets import Image
 
 
@@ -57,7 +58,7 @@ def _make_demo_png_bytes(width: int = 320, height: int = 120) -> bytes:
     return signature + _png_chunk(b"IHDR", ihdr) + _png_chunk(b"IDAT", idat) + _png_chunk(b"IEND", b"")
 
 
-def _fit_card(title: str, fit: str, source: Observable[bytes | None]) -> Container:
+def _fit_card(title: str, fit: Fit, source: Observable[bytes | None]) -> Container:
     return Container(
         child=Column(
             gap=8,
