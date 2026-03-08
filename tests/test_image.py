@@ -59,6 +59,7 @@ def test_image_observable_none_to_bytes_updates_and_draws(monkeypatch) -> None:
     import nuiitivet.widgets.image as image_mod
 
     monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
+    monkeypatch.setattr(image_mod, "make_rect", lambda x, y, w, h: (x, y, w, h))
 
     source: Observable[bytes | None] = Observable(None)
     w = Image(source, width=100, height=100)
