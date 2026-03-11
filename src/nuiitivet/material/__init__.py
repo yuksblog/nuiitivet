@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .chip import AssistChip, FilterChip, InputChip, SuggestionChip
     from .dialogs import AlertDialog
     from .loading_indicator import LoadingIndicator
+    from .menu import Menu, MenuDivider, MenuItem, SubMenuItem
     from .intents import LoadingIntent
     from .icon import Icon
     from .navigation_rail import NavigationRail, RailItem
@@ -82,6 +83,10 @@ __all__ = [
     "MaterialOverlay",
     "AlertDialog",
     "LoadingIndicator",
+    "Menu",
+    "MenuDivider",
+    "MenuItem",
+    "SubMenuItem",
     "LoadingIntent",
     "DockedToolbar",
     "FloatingToolbar",
@@ -142,6 +147,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "AlertDialog": ("dialogs", "AlertDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
+    "Menu": ("menu", "Menu"),
+    "MenuDivider": ("menu", "MenuDivider"),
+    "MenuItem": ("menu", "MenuItem"),
+    "SubMenuItem": ("menu", "SubMenuItem"),
     "LoadingIntent": ("intents", "LoadingIntent"),
     "DockedToolbar": ("toolbar", "DockedToolbar"),
     "FloatingToolbar": ("toolbar", "FloatingToolbar"),
