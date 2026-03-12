@@ -214,6 +214,7 @@ class TooltipModifier(ModifierElement):
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap widget in TooltipBox and wire transient interaction behavior."""
+        anchor: Widget
         if isinstance(widget, InteractionHostMixin):
             anchor = widget
         else:
