@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from .text import Text
     from .overlay import MaterialOverlay
     from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
+    from .tooltip import Tooltip, RichTooltip
 
 __all__ = [
     "MaterialApp",
@@ -91,6 +92,8 @@ __all__ = [
     "DockedToolbar",
     "FloatingToolbar",
     "ToolbarOrientation",
+    "Tooltip",
+    "RichTooltip",
     "MaterialTransitions",
     "FadeIn",
     "FadeOut",
@@ -155,6 +158,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "DockedToolbar": ("toolbar", "DockedToolbar"),
     "FloatingToolbar": ("toolbar", "FloatingToolbar"),
     "ToolbarOrientation": ("toolbar", "ToolbarOrientation"),
+    "Tooltip": ("tooltip", "Tooltip"),
+    "RichTooltip": ("tooltip", "RichTooltip"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
     "FadeIn": ("transitions", "FadeIn"),

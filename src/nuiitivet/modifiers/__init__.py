@@ -6,6 +6,7 @@ from .corner_radius import corner_radius
 from .focus import focusable
 from .hover import hoverable
 from .popup import modeless, light_dismiss
+from .tooltip import tooltip
 from .scroll import scrollable
 from .shadow import shadow
 from .stick import stick
@@ -23,6 +24,7 @@ __all__ = [
     "opacity",
     "modeless",
     "light_dismiss",
+    "tooltip",
     "rotate",
     "scale",
     "scrollable",
