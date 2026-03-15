@@ -25,6 +25,12 @@ if TYPE_CHECKING:
     from .chip import AssistChip, FilterChip, InputChip, SuggestionChip
     from .dialogs import AlertDialog
     from .loading_indicator import LoadingIndicator
+    from .progress_indicators import (
+        CircularProgressIndicator,
+        IndeterminateCircularProgressIndicator,
+        IndeterminateLinearProgressIndicator,
+        LinearProgressIndicator,
+    )
     from .menu import Menu, MenuDivider, MenuItem, SubMenuItem
     from .intents import LoadingIntent
     from .icon import Icon
@@ -84,6 +90,10 @@ __all__ = [
     "MaterialOverlay",
     "AlertDialog",
     "LoadingIndicator",
+    "LinearProgressIndicator",
+    "IndeterminateLinearProgressIndicator",
+    "CircularProgressIndicator",
+    "IndeterminateCircularProgressIndicator",
     "Menu",
     "MenuDivider",
     "MenuItem",
@@ -150,6 +160,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "AlertDialog": ("dialogs", "AlertDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
+    "LinearProgressIndicator": ("progress_indicators", "LinearProgressIndicator"),
+    "IndeterminateLinearProgressIndicator": ("progress_indicators", "IndeterminateLinearProgressIndicator"),
+    "CircularProgressIndicator": ("progress_indicators", "CircularProgressIndicator"),
+    "IndeterminateCircularProgressIndicator": ("progress_indicators", "IndeterminateCircularProgressIndicator"),
     "Menu": ("menu", "Menu"),
     "MenuDivider": ("menu", "MenuDivider"),
     "MenuItem": ("menu", "MenuItem"),
