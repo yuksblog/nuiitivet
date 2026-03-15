@@ -10,6 +10,11 @@ from .chip_style import ChipStyle
 from .dialog_style import DialogStyle
 from .icon_style import IconStyle
 from .loading_indicator_style import LoadingIndicatorStyle
+from .progress_indicator_style import (
+    CircularProgressIndicatorStyle,
+    LinearProgressIndicatorStyle,
+    ProgressIndicatorStyle,
+)
 from .menu_style import MenuStyle
 from .navigation_rail_style import NavigationRailStyle
 from .radio_button_style import RadioButtonStyle
@@ -32,6 +37,9 @@ __all__ = [
     "DialogStyle",
     "IconStyle",
     "LoadingIndicatorStyle",
+    "ProgressIndicatorStyle",
+    "LinearProgressIndicatorStyle",
+    "CircularProgressIndicatorStyle",
     "MenuStyle",
     "NavigationRailStyle",
     "RadioButtonStyle",

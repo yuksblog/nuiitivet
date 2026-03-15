@@ -16,6 +16,10 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.dialog_style import DialogStyle
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
+    from nuiitivet.material.styles.progress_indicator_style import (
+        CircularProgressIndicatorStyle,
+        LinearProgressIndicatorStyle,
+    )
     from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
     from nuiitivet.material.styles.slider_style import SliderStyle
     from nuiitivet.material.styles.switch_style import SwitchStyle
@@ -65,6 +69,10 @@ class MaterialThemeData(ThemeExtension):
     # Loading indicator variants
     _loading_indicator_style: "LoadingIndicatorStyle | None" = None
     _contained_loading_indicator_style: "LoadingIndicatorStyle | None" = None
+
+    # Progress indicator variants
+    _linear_progress_indicator_style: "LinearProgressIndicatorStyle | None" = None
+    _circular_progress_indicator_style: "CircularProgressIndicatorStyle | None" = None
 
     @property
     def filled_button_style(self) -> "ButtonStyle":
@@ -281,6 +289,24 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
 
         return LoadingIndicatorStyle.contained()
+
+    @property
+    def linear_progress_indicator_style(self) -> "LinearProgressIndicatorStyle":
+        """Get LinearProgressIndicatorStyle for this theme."""
+        if self._linear_progress_indicator_style is not None:
+            return self._linear_progress_indicator_style
+        from nuiitivet.material.styles.progress_indicator_style import LinearProgressIndicatorStyle
+
+        return LinearProgressIndicatorStyle.default()
+
+    @property
+    def circular_progress_indicator_style(self) -> "CircularProgressIndicatorStyle":
+        """Get CircularProgressIndicatorStyle for this theme."""
+        if self._circular_progress_indicator_style is not None:
+            return self._circular_progress_indicator_style
+        from nuiitivet.material.styles.progress_indicator_style import CircularProgressIndicatorStyle
+
+        return CircularProgressIndicatorStyle.default()
 
     def copy_with(self, **kwargs: Any) -> "MaterialThemeData":
         """Create a copy of this theme data with the given fields replaced."""

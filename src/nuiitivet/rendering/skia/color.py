@@ -48,7 +48,13 @@ def rgba_to_skia_color(rgba: Tuple[int, int, int, int]):
         return rgba
 
 
-def make_paint(color=None, style: str = "fill", stroke_width: float = 1.0, aa: bool = True):
+def make_paint(
+    color=None,
+    style: str = "fill",
+    stroke_width: float = 1.0,
+    aa: bool = True,
+    stroke_cap: str | None = None,
+):
     """Create and return a configured skia.Paint (or None if unavailable)."""
     skia = get_skia(raise_if_missing=False)
     if skia is None:
@@ -77,6 +83,29 @@ def make_paint(color=None, style: str = "fill", stroke_width: float = 1.0, aa: b
                 "skia_paint_set_stroke_width_exc",
                 "skia.Paint.setStrokeWidth failed",
             )
+
+        if style == "stroke" and stroke_cap:
+            cap_name = str(stroke_cap).strip().lower()
+            cap_attr = {
+                "butt": "kButt_Cap",
+                "round": "kRound_Cap",
+                "square": "kSquare_Cap",
+            }.get(cap_name)
+            if cap_attr is not None:
+                cap_const = getattr(skia.Paint, cap_attr, None)
+                if cap_const is None:
+                    cap_enum = getattr(skia.Paint, "Cap", None)
+                    if cap_enum is not None:
+                        cap_const = getattr(cap_enum, cap_attr, None)
+                if cap_const is not None:
+                    try:
+                        paint.setStrokeCap(cap_const)
+                    except Exception:
+                        exception_once(
+                            _logger,
+                            "skia_paint_set_stroke_cap_exc",
+                            "skia.Paint.setStrokeCap failed",
+                        )
 
         if color is not None:
             try:
