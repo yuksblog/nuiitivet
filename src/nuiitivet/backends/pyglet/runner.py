@@ -133,6 +133,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         caption=caption,
         style=style,
         vsync=False,
+        resizable=getattr(app, "resizable", True),
     )
 
     # Check scale immediately and resize if needed
