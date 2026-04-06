@@ -18,7 +18,6 @@ from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.widgeting.widget import Widget
 from .overlay_visual_state import MaterialOverlayLayerComposer
 from .sheet import BottomSheet, SideSheet
-from .styles.sheet_style import SideSheetStyle
 from .transition_spec import (
     MaterialTransitions,
     MaterialBottomSheetTransitionSpec,
