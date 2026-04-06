@@ -18,6 +18,8 @@ class TransitionVisuals:
     scale_y: float | None = None
     translate_x: float | None = None
     translate_y: float | None = None
+    translate_x_fraction: float | None = None
+    translate_y_fraction: float | None = None
 
     # Allows merging visuals from multiple patterns
     def merge(self, other: TransitionVisuals) -> TransitionVisuals:
@@ -27,6 +29,12 @@ class TransitionVisuals:
             scale_y=other.scale_y if other.scale_y is not None else self.scale_y,
             translate_x=other.translate_x if other.translate_x is not None else self.translate_x,
             translate_y=other.translate_y if other.translate_y is not None else self.translate_y,
+            translate_x_fraction=(
+                other.translate_x_fraction if other.translate_x_fraction is not None else self.translate_x_fraction
+            ),
+            translate_y_fraction=(
+                other.translate_y_fraction if other.translate_y_fraction is not None else self.translate_y_fraction
+            ),
         )
 
 
@@ -117,6 +125,35 @@ class ScalePattern:
         sx = self.start_scale_x + (self.end_scale_x - self.start_scale_x) * progress
         sy = self.start_scale_y + (self.end_scale_y - self.start_scale_y) * progress
         return TransitionVisuals(scale_x=sx, scale_y=sy)
+
+    def __or__(self, other: TransitionPattern) -> TransitionPattern:
+        return CompositePattern(self, other)
+
+
+class FractionalSlidePattern:
+    """Controls translation as a fraction of the widget's allocated size.
+
+    A value of +1.0 means one full width (for x) or height (for y) offset.
+    This allows sheet transitions to slide in/out by exactly their own size,
+    regardless of the actual pixel dimensions.
+    """
+
+    def __init__(
+        self,
+        start_x: float = 0.0,
+        start_y: float = 0.0,
+        end_x: float = 0.0,
+        end_y: float = 0.0,
+    ) -> None:
+        self.start_x = start_x
+        self.start_y = start_y
+        self.end_x = end_x
+        self.end_y = end_y
+
+    def resolve(self, progress: float) -> TransitionVisuals:
+        fx = self.start_x + (self.end_x - self.start_x) * progress
+        fy = self.start_y + (self.end_y - self.start_y) * progress
+        return TransitionVisuals(translate_x_fraction=fx, translate_y_fraction=fy)
 
     def __or__(self, other: TransitionPattern) -> TransitionPattern:
         return CompositePattern(self, other)

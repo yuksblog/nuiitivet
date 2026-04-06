@@ -17,9 +17,13 @@ from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.widgeting.widget import Widget
 from .overlay_visual_state import MaterialOverlayLayerComposer
+from .sheet import BottomSheet, SideSheet
+from .styles.sheet_style import SideSheetStyle
 from .transition_spec import (
     MaterialTransitions,
+    MaterialBottomSheetTransitionSpec,
     MaterialDialogTransitionSpec,
+    MaterialSideSheetTransitionSpec,
     MaterialSnackbarTransitionSpec,
 )
 
@@ -137,10 +141,7 @@ class MaterialOverlay(Overlay):
             resolved = self._intent_resolver.resolve(dialog)
 
         if isinstance(resolved, Route):
-            # If explicit transition is provided, override the route's spec.
-            # Only if the resolved route is mutable or we can replace the spec.
-            # Route.transition_spec is not read-only property, but just an attribute?
-            # Let's assume we can/should overwrite it if an explicit one is given.
+            # Route.transition_spec is a plain dataclass field; assignment is valid.
             if transition is not None:
                 resolved.transition_spec = transition
             return resolved
@@ -205,3 +206,74 @@ class MaterialOverlay(Overlay):
         else:
             resolved = self._intent_resolver.resolve(indicator)
         return MaterialOverlay._LoadingContext(self, resolved)
+
+    def side_sheet(
+        self,
+        sheet: SideSheet,
+        *,
+        dismiss_on_outside_tap: bool = True,
+        transition: MaterialSideSheetTransitionSpec | None = None,
+    ) -> OverlayHandle[Any]:
+        """Display a modal side sheet.
+
+        The sheet's position, corner radii, and transition direction are derived
+        from ``sheet.side``.  Visual styling (background, size, corner radius) is
+        fully owned by the :class:`SideSheet` widget.
+
+        Args:
+            sheet: SideSheet widget that defines content, headline, and styling.
+            dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
+                Defaults to ``True``.
+            transition: Custom slide transition.
+                Defaults to ``MaterialTransitions.side_sheet(side=sheet.side)``.
+        """
+        if transition is None:
+            transition = MaterialTransitions.side_sheet(side=sheet.side)
+
+        alignment = "top-right" if sheet.side == "right" else "top-left"
+
+        route = DialogRoute(
+            builder=lambda: sheet,
+            transition_spec=transition,
+            barrier_dismissible=bool(dismiss_on_outside_tap),
+        )
+
+        return self.show_modal(
+            route,
+            dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
+            position=OverlayPosition.alignment(alignment),
+        )
+
+    def bottom_sheet(
+        self,
+        sheet: BottomSheet,
+        *,
+        dismiss_on_outside_tap: bool = True,
+        transition: MaterialBottomSheetTransitionSpec | None = None,
+    ) -> OverlayHandle[Any]:
+        """Display a modal bottom sheet sliding up from the bottom edge.
+
+        Visual styling (background, size, corner radius) is fully owned by the
+        :class:`BottomSheet` widget.
+
+        Args:
+            sheet: BottomSheet widget that defines content, headline, and styling.
+            dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
+                Defaults to ``True``.
+            transition: Custom slide transition.
+                Defaults to ``MaterialTransitions.bottom_sheet()``.
+        """
+        if transition is None:
+            transition = MaterialTransitions.bottom_sheet()
+
+        route = DialogRoute(
+            builder=lambda: sheet,
+            transition_spec=transition,
+            barrier_dismissible=bool(dismiss_on_outside_tap),
+        )
+
+        return self.show_modal(
+            route,
+            dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
+            position=OverlayPosition.alignment("bottom-center"),
+        )

@@ -17,6 +17,26 @@ from nuiitivet.widgeting.widget import Widget
 from .transition_visual_spec import resolve_material_transition_visual_spec
 
 
+def _resolve_content_translation(state: "OverlayVisualState", content: Widget) -> tuple[float, float]:
+    """Resolve pixel translation, incorporating any fractional components.
+
+    Fractional values are multiplied by the content widget's current allocated
+    dimensions.  Uses ``layout_rect`` first (available after the layout pass)
+    and falls back to ``preferred_size`` for the very first frame.
+    """
+    tx, ty = state.content_translation
+    fx, fy = state.content_translation_fraction
+    if fx != 0.0 or fy != 0.0:
+        rect = getattr(content, "layout_rect", None)
+        if rect is not None:
+            _, _, w, h = rect
+        else:
+            w, h = content.preferred_size()
+        tx += fx * float(w)
+        ty += fy * float(h)
+    return (tx, ty)
+
+
 @dataclass(frozen=True, slots=True)
 class OverlayVisualState:
     """Material visual parameters for one overlay transition frame."""
@@ -24,6 +44,7 @@ class OverlayVisualState:
     content_opacity: float
     content_scale: tuple[float, float]
     content_translation: tuple[float, float]
+    content_translation_fraction: tuple[float, float]
     barrier_opacity: float | None
 
 
@@ -45,6 +66,7 @@ class MaterialOverlayVisualMapper:
             content_opacity=float(visual.content_opacity),
             content_scale=visual.content_scale,
             content_translation=visual.content_translation,
+            content_translation_fraction=visual.content_translation_fraction,
             barrier_opacity=visual.barrier_opacity,
         )
 
@@ -61,7 +83,9 @@ class MaterialOverlayLayerComposer(OverlayLayerComposer):
 
         content_opacity_obs = combine(visual_obs).compute(lambda state: state.content_opacity)
         content_scale_obs = combine(visual_obs).compute(lambda state: state.content_scale)
-        content_translation_obs = combine(visual_obs).compute(lambda state: state.content_translation)
+        content_translation_obs = combine(visual_obs).compute(
+            lambda state: _resolve_content_translation(state, context.content)
+        )
         barrier_opacity_obs = combine(visual_obs).compute(
             lambda state: 1.0 if state.barrier_opacity is None else state.barrier_opacity
         )

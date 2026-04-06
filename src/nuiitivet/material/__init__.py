@@ -43,6 +43,12 @@ if TYPE_CHECKING:
     from .overlay import MaterialOverlay
     from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
     from .tooltip import Tooltip, RichTooltip
+    from .styles.sheet_style import SideSheetStyle, BottomSheetStyle
+    from .sheet import SideSheet, BottomSheet
+    from .transition_spec import (
+        MaterialSideSheetTransitionSpec,
+        MaterialBottomSheetTransitionSpec,
+    )
 
 __all__ = [
     "MaterialApp",
@@ -105,6 +111,12 @@ __all__ = [
     "Tooltip",
     "RichTooltip",
     "MaterialTransitions",
+    "MaterialSideSheetTransitionSpec",
+    "MaterialBottomSheetTransitionSpec",
+    "SideSheetStyle",
+    "BottomSheetStyle",
+    "SideSheet",
+    "BottomSheet",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -176,6 +188,12 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RichTooltip": ("tooltip", "RichTooltip"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
+    "MaterialSideSheetTransitionSpec": ("transition_spec", "MaterialSideSheetTransitionSpec"),
+    "MaterialBottomSheetTransitionSpec": ("transition_spec", "MaterialBottomSheetTransitionSpec"),
+    "SideSheetStyle": ("styles.sheet_style", "SideSheetStyle"),
+    "BottomSheetStyle": ("styles.sheet_style", "BottomSheetStyle"),
+    "SideSheet": ("sheet", "SideSheet"),
+    "BottomSheet": ("sheet", "BottomSheet"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),
