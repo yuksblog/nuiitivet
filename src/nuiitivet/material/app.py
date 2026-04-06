@@ -42,6 +42,7 @@ class MaterialApp(App):
         theme: Optional[Any] = None,
         title_bar: Optional[TitleBar] = None,
         window_position: WindowPosition | None = None,
+        resizable: bool = True,
     ) -> "MaterialApp":
         """Create a MaterialApp with a root Navigator and Overlay.
 
@@ -55,6 +56,7 @@ class MaterialApp(App):
             theme: The MaterialTheme to use. Defaults to Light theme.
             title_bar: Custom window title bar.
             window_position: Initial window position.
+            resizable: Whether the window can be resized. Defaults to True.
 
         Returns:
             Configured MaterialApp instance.
@@ -112,6 +114,7 @@ class MaterialApp(App):
                 background=background,
                 theme=theme,
                 window_position=window_position,
+                resizable=resizable,
             ),
         )
 
@@ -126,6 +129,7 @@ class MaterialApp(App):
         theme: Optional[Any] = None,
         title_bar: Optional[TitleBar] = None,
         window_position: WindowPosition | None = None,
+        resizable: bool = True,
     ) -> None:
         """Initialize a MaterialApp with a single root widget.
 
@@ -138,6 +142,7 @@ class MaterialApp(App):
             theme: The MaterialTheme to use. Defaults to Light theme.
             title_bar: Custom window title bar.
             window_position: Initial window position.
+            resizable: Whether the window can be resized. Defaults to True.
         """
         if theme is None:
             theme = MaterialTheme.light("#6750A4")
@@ -165,4 +170,5 @@ class MaterialApp(App):
             overlay_factory=_overlay_factory,
             navigator_factory=_navigator_factory,
             window_position=window_position,
+            resizable=resizable,
         )

@@ -178,6 +178,7 @@ class App:
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
         window_auto_size_target: Widget | None = None,
+        resizable: bool = True,
     ) -> None:
         if not isinstance(root, Widget):
             raise TypeError("App.root must be a Widget instance.")
@@ -243,6 +244,7 @@ class App:
         self.width = self._resolve_window_sizing(width, preferred=int(pref_w), fallback=640)
         self.height = self._resolve_window_sizing(height, preferred=int(pref_h), fallback=480)
         self.window_position = window_position
+        self.resizable = resizable
 
         if title_bar is None:
             title_bar = DefaultTitleBar()
@@ -426,6 +428,7 @@ class App:
         background: ColorSpec = PlainColorRole.SURFACE,
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
+        resizable: bool = True,
     ) -> "App":
         """Create an App with a root Navigator and Overlay.
 
@@ -466,6 +469,7 @@ class App:
             theme=theme,
             window_position=window_position,
             window_auto_size_target=initial_route_widget,
+            resizable=resizable,
         )
         return self
 
@@ -481,6 +485,7 @@ class App:
         navigator_factory: NavigatorFactory | None = None,
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
+        resizable: bool = True,
     ):
         """Initialize App with a root Navigator and Overlay."""
         if not isinstance(content, Widget):
@@ -506,6 +511,7 @@ class App:
             theme=theme,
             window_position=window_position,
             window_auto_size_target=initial_route_widget,
+            resizable=resizable,
         )
 
     def _debug_record_invalidate(self) -> None:

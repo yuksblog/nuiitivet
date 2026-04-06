@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
+from nuiitivet.material.app import MaterialApp
 from nuiitivet.navigation import Navigator
 from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App, AppScope
@@ -87,3 +88,82 @@ def test_app_auto_window_size_measures_unmounted_composable_children() -> None:
 
     assert app.width == 232
     assert app.height == 82
+
+
+def test_app_resizable_default_true() -> None:
+    app = App(content=_FlagWidget())
+
+    assert app.resizable is True
+
+
+def test_app_resizable_explicit_false() -> None:
+    app = App(content=_FlagWidget(), resizable=False)
+
+    assert app.resizable is False
+
+
+def test_app_navigation_resizable_default_true() -> None:
+    prev_nav = Navigator._root  # type: ignore[attr-defined]
+    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
+    try:
+        Navigator._root = None  # type: ignore[attr-defined]
+        Overlay._root_overlay = None  # type: ignore[attr-defined]
+
+        app = App.navigation(
+            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            initial_route=_HomeIntent(label="home"),
+        )
+
+        assert app.resizable is True
+    finally:
+        Navigator._root = prev_nav  # type: ignore[attr-defined]
+        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+
+
+def test_app_navigation_resizable_explicit_false() -> None:
+    prev_nav = Navigator._root  # type: ignore[attr-defined]
+    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
+    try:
+        Navigator._root = None  # type: ignore[attr-defined]
+        Overlay._root_overlay = None  # type: ignore[attr-defined]
+
+        app = App.navigation(
+            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            initial_route=_HomeIntent(label="home"),
+            resizable=False,
+        )
+
+        assert app.resizable is False
+    finally:
+        Navigator._root = prev_nav  # type: ignore[attr-defined]
+        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+
+
+def test_material_app_resizable_default_true() -> None:
+    prev_nav = Navigator._root  # type: ignore[attr-defined]
+    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
+    try:
+        Navigator._root = None  # type: ignore[attr-defined]
+        Overlay._root_overlay = None  # type: ignore[attr-defined]
+
+        app = MaterialApp(content=_FlagWidget())
+
+        assert app.resizable is True
+    finally:
+        Navigator._root = prev_nav  # type: ignore[attr-defined]
+        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+
+
+def test_material_app_resizable_explicit_false() -> None:
+    prev_nav = Navigator._root  # type: ignore[attr-defined]
+    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
+    try:
+        Navigator._root = None  # type: ignore[attr-defined]
+        Overlay._root_overlay = None  # type: ignore[attr-defined]
+
+        app = MaterialApp(content=_FlagWidget(), resizable=False)
+
+        assert app.resizable is False
+    finally:
+        Navigator._root = prev_nav  # type: ignore[attr-defined]
+        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
