@@ -14,6 +14,8 @@ from .transition_spec import (
     MaterialDialogTransitionSpec,
     MaterialPageTransitionSpec,
     MaterialSnackbarTransitionSpec,
+    MaterialSideSheetTransitionSpec,
+    MaterialBottomSheetTransitionSpec,
 )
 
 
@@ -24,6 +26,7 @@ class MaterialTransitionVisualSpec:
     content_opacity: float
     content_scale: tuple[float, float]
     content_translation: tuple[float, float]
+    content_translation_fraction: tuple[float, float]
     barrier_opacity: float | None
 
 
@@ -41,6 +44,7 @@ def resolve_material_transition_visual_spec(
             content_opacity=1.0,
             content_scale=(1.0, 1.0),
             content_translation=(0.0, 0.0),
+            content_translation_fraction=(0.0, 0.0),
             barrier_opacity=None,
         )
 
@@ -74,6 +78,16 @@ def resolve_material_transition_visual_spec(
         # Snakebars don't have a barrier (or pass-through)
         barrier = None
 
+    elif isinstance(transition_spec, (MaterialSideSheetTransitionSpec, MaterialBottomSheetTransitionSpec)):
+        if phase is TransitionPhase.ENTER:
+            definition = transition_spec.enter
+            barrier = p
+        elif phase is TransitionPhase.EXIT:
+            definition = transition_spec.exit
+            barrier = 1.0 - p
+        else:
+            barrier = 1.0
+
     if definition is not None:
         visuals = definition.pattern.resolve(p)
 
@@ -82,11 +96,14 @@ def resolve_material_transition_visual_spec(
         scale_y = visuals.scale_y if visuals.scale_y is not None else 1.0
         trans_x = visuals.translate_x if visuals.translate_x is not None else 0.0
         trans_y = visuals.translate_y if visuals.translate_y is not None else 0.0
+        trans_fx = visuals.translate_x_fraction if visuals.translate_x_fraction is not None else 0.0
+        trans_fy = visuals.translate_y_fraction if visuals.translate_y_fraction is not None else 0.0
 
         return MaterialTransitionVisualSpec(
             content_opacity=opacity,
             content_scale=(scale_x, scale_y),
             content_translation=(trans_x, trans_y),
+            content_translation_fraction=(trans_fx, trans_fy),
             barrier_opacity=barrier,
         )
 
@@ -95,6 +112,7 @@ def resolve_material_transition_visual_spec(
         content_opacity=1.0,
         content_scale=(1.0, 1.0),
         content_translation=(0.0, 0.0),
+        content_translation_fraction=(0.0, 0.0),
         barrier_opacity=barrier,
     )
 
