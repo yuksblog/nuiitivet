@@ -2,6 +2,7 @@ import ctypes
 from ctypes import wintypes
 import logging
 import sys
+from typing import Any
 
 from nuiitivet.common.logging_once import exception_once
 
@@ -26,7 +27,7 @@ if sys.platform == "win32":
     # LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM)
     # LRESULT is LONG_PTR (long long on 64-bit)
     if ctypes.sizeof(ctypes.c_void_p) == 8:
-        LRESULT = ctypes.c_longlong
+        LRESULT: Any = ctypes.c_longlong
         SetWindowLongPtr = user32.SetWindowLongPtrW
     else:
         LRESULT = ctypes.c_long
@@ -42,8 +43,8 @@ if sys.platform == "win32":
     CallWindowProc.restype = LRESULT
 
     # Store original WndProc
-    _original_wndprocs = {}
-    _hwnd_to_window = {}
+    _original_wndprocs: dict[int, int] = {}
+    _hwnd_to_window: dict[int, Any] = {}
 
     def _get_composition_string(himc, flag):
         # Get size first
