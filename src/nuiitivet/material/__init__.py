@@ -45,6 +45,17 @@ if TYPE_CHECKING:
     from .tooltip import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle
     from .sheet import SideSheet, BottomSheet
+    from .button_group import (
+        GroupButton,
+        ButtonGroupPosition,
+        StandardButtonGroup,
+        ConnectedButtonGroup,
+    )
+    from .styles.button_group_style import (
+        ButtonGroupSize,
+        StandardButtonGroupStyle,
+        ConnectedButtonGroupStyle,
+    )
     from .transition_spec import (
         MaterialSideSheetTransitionSpec,
         MaterialBottomSheetTransitionSpec,
@@ -117,6 +128,13 @@ __all__ = [
     "BottomSheetStyle",
     "SideSheet",
     "BottomSheet",
+    "GroupButton",
+    "ButtonGroupPosition",
+    "ButtonGroupSize",
+    "StandardButtonGroupStyle",
+    "ConnectedButtonGroupStyle",
+    "StandardButtonGroup",
+    "ConnectedButtonGroup",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -194,6 +212,13 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "BottomSheetStyle": ("styles.sheet_style", "BottomSheetStyle"),
     "SideSheet": ("sheet", "SideSheet"),
     "BottomSheet": ("sheet", "BottomSheet"),
+    "GroupButton": ("button_group", "GroupButton"),
+    "ButtonGroupPosition": ("button_group", "ButtonGroupPosition"),
+    "ButtonGroupSize": ("styles.button_group_style", "ButtonGroupSize"),
+    "StandardButtonGroupStyle": ("styles.button_group_style", "StandardButtonGroupStyle"),
+    "ConnectedButtonGroupStyle": ("styles.button_group_style", "ConnectedButtonGroupStyle"),
+    "StandardButtonGroup": ("button_group", "StandardButtonGroup"),
+    "ConnectedButtonGroup": ("button_group", "ConnectedButtonGroup"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),
