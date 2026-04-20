@@ -1114,6 +1114,17 @@ class App:
                         window.set_fullscreen(False)
                         return
 
+                    try:
+                        if sys.platform == "win32":
+                            import ctypes
+
+                            SW_RESTORE = 9
+                            hwnd = getattr(window, "_hwnd", None)
+                            if hwnd:
+                                ctypes.windll.user32.ShowWindow(hwnd, SW_RESTORE)
+                    except Exception:
+                        exception_once(logger, "app_dispatch_restore_win32_exc", "Windows restore fallback failed")
+
                     # Try to activate (restore from minimize on some platforms)
                     if hasattr(window, "activate"):
                         window.activate()
