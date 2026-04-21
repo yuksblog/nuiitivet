@@ -30,7 +30,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = md.MaterialApp(content=content, title_bar=nv.DefaultTitleBar(title="Hoverable Modifier"))
+    app = md.App(content=content, title_bar=nv.DefaultTitleBar(title="Hoverable Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

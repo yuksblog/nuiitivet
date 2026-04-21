@@ -1,6 +1,6 @@
 """Demo app to test Column and Row padding functionality."""
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.card import FilledCard
@@ -12,7 +12,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 
 def main():
     """Show various padding configurations for Column and Row."""
-    app = MaterialApp(
+    app = App(
         content=FilledCard(
             child=Column(
                 [

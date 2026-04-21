@@ -12,7 +12,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.button_group import (
     GroupButton,
     ConnectedButtonGroup,
@@ -220,7 +220,7 @@ def main() -> None:
     )
 
     root = Box(child=content, padding=24)
-    app = MaterialApp(content=root)
+    app = App(content=root)
     app.run()
 
 

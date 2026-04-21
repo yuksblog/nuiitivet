@@ -2,9 +2,9 @@
 
 This sample demonstrates:
 1. Using `async` event handlers (on_click).
-2. Using `async with MaterialOverlay.loading()` while awaiting.
+2. Using `async with Overlay.loading()` while awaiting.
 3. Updating UI (Observable) from within an async handler without blocking.
-4. Awaiting `MaterialOverlay.dialog` results directly.
+4. Awaiting `Overlay.dialog` results directly.
 """
 
 import asyncio
@@ -36,17 +36,17 @@ class AsyncDemoApp(nv.ComposableWidget):
         """Handler for the 'Start Task' button."""
 
         # 1. Show loading dialog using async context manager
-        async with md.MaterialOverlay.root().loading():
+        async with md.Overlay.root().loading():
             await self._heavy_task()
 
         # 2. Show confirmation dialog and await result
-        result = await md.MaterialOverlay.root().dialog(
+        result = await md.Overlay.root().dialog(
             md.AlertDialog(
                 title="Task Finished",
                 message=f"Count reached {self.counter.value}. Reset?",
                 actions=[
-                    md.TextButton("No", on_click=lambda: md.MaterialOverlay.root().close(False)),
-                    md.TextButton("Yes", on_click=lambda: md.MaterialOverlay.root().close(True)),
+                    md.TextButton("No", on_click=lambda: md.Overlay.root().close(False)),
+                    md.TextButton("Yes", on_click=lambda: md.Overlay.root().close(True)),
                 ],
             )
         )
@@ -56,9 +56,9 @@ class AsyncDemoApp(nv.ComposableWidget):
             self.counter.value = 0
             self.progress.value = 0.0
             self.status.value = "Reset"
-            md.MaterialOverlay.root().snackbar("Counter reset!")
+            md.Overlay.root().snackbar("Counter reset!")
         else:
-            md.MaterialOverlay.root().snackbar("Kept current count")
+            md.Overlay.root().snackbar("Kept current count")
 
     async def on_concurrent_test(self) -> None:
         """Demonstrate that UI is responsive during async sleep."""
@@ -69,7 +69,7 @@ class AsyncDemoApp(nv.ComposableWidget):
         await asyncio.sleep(3)
 
         self.status.value = "Wait finished!"
-        md.MaterialOverlay.root().snackbar("3 seconds passed")
+        md.Overlay.root().snackbar("3 seconds passed")
 
     def on_start_task_click(self) -> None:
         from nuiitivet.widgeting.callbacks import invoke_event_handler
@@ -140,7 +140,7 @@ class AsyncDemoApp(nv.ComposableWidget):
 if __name__ == "__main__":
     print("Starting Async Demo...")
     # Initialize the app with our demo widget
-    app = md.MaterialApp(content=AsyncDemoApp())
+    app = md.App(content=AsyncDemoApp())
     print("App initialized. Running...")
     app.run()
     print("App finished.")

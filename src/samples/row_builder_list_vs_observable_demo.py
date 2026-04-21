@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import List
 
 from nuiitivet.observable import Observable
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material.buttons import FilledButton, OutlinedButton
 from nuiitivet.material.card import FilledCard
@@ -151,5 +151,5 @@ class RowBuilderDemo(ComposableWidget):
 
 if __name__ == "__main__":
     widget = RowBuilderDemo()
-    app = MaterialApp(content=widget)
+    app = App(content=widget)
     app.run()

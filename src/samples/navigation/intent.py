@@ -2,7 +2,7 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import FilledButton, MaterialApp, Text
+from nuiitivet.material import FilledButton, App, Text
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -70,7 +70,7 @@ class HomeScreen(ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = MaterialApp.navigation(
+    app = App.navigation(
         routes={
             HomeIntent: lambda _: HomeScreen(),
             DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),

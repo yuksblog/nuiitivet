@@ -1,4 +1,4 @@
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -98,7 +98,7 @@ def main():
     # Wrap in Scroller because it will be long
     scrollable_root = root.modifier(scrollable())
 
-    app = MaterialApp(content=scrollable_root)
+    app = App(content=scrollable_root)
     app.run()
 
 

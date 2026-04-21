@@ -4,7 +4,7 @@ While you can push widgets directly to the `Navigator`, using `PageRoute` gives 
 
 ## Customizing Animations
 
-By default, `MaterialApp` applies a standard Material Design transition when navigating between screens. However, you can customize this behavior by providing a `TransitionSpec` to a `PageRoute`.
+By default, `App` applies a standard Material Design transition when navigating between screens. However, you can customize this behavior by providing a `TransitionSpec` to a `PageRoute`.
 
 Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `ScaleIn`, `ScaleOut`, `SlideInVertically`, and `SlideOutVertically`. You can combine these effects using the `|` operator to create complex animations.
 

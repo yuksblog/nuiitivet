@@ -1,4 +1,4 @@
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -70,7 +70,7 @@ def main():
         ],
     )
 
-    app = MaterialApp(root)
+    app = App(root)
     app.run()
 
 

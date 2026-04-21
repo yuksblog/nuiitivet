@@ -4,7 +4,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.modifiers import background, border, corner_radius
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
@@ -76,7 +76,7 @@ def main() -> None:
         cross_alignment="start",
     )
 
-    app = MaterialApp(content=content)
+    app = App(content=content)
     app.run()
 
 

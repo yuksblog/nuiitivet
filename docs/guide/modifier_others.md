@@ -35,7 +35,7 @@ import nuiitivet.material as md
 from dataclasses import dataclass
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import Overlay
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator, PageRoute
@@ -83,14 +83,14 @@ class EditScreen(nv.ComposableWidget):
             return True
 
         def _cancel() -> None:
-            MaterialOverlay.root().close(None)
+            Overlay.root().close(None)
 
         def _discard() -> None:
             self._initial_text = str(self.text.value)
-            MaterialOverlay.root().close(None)
+            Overlay.root().close(None)
             Navigator.root().pop()
 
-        MaterialOverlay.root().dialog(
+        Overlay.root().dialog(
             AlertDialog(
                 title="Discard changes?",
                 message="You have unsaved changes.",
@@ -131,7 +131,7 @@ class EditScreen(nv.ComposableWidget):
         )
 
 def main() -> None:
-    md.MaterialApp.navigation(
+    md.App.navigation(
         routes={HomeIntent: lambda _i: PageRoute(builder=HomeScreen)},
         initial_route=HomeIntent(),
     ).run()

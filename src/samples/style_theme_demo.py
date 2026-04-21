@@ -8,7 +8,7 @@ Demonstrates:
 """
 
 from dataclasses import replace
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
@@ -17,14 +17,14 @@ from nuiitivet.material.icon import Icon
 from nuiitivet.material.buttons import FilledButton
 from nuiitivet.material.styles import ButtonStyle, CheckboxStyle, IconStyle, TextStyle
 from nuiitivet.theme import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material import ThemeFactory
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 
 def main():
-    light, _ = MaterialTheme.from_seed_pair("#6750A4", name="Base Theme")
+    light, _ = ThemeFactory.from_seed_pair("#6750A4", name="Base Theme")
     custom_checkbox = CheckboxStyle(
         default_touch_target=56,
         icon_size_ratio=0.5,
@@ -112,7 +112,7 @@ def main():
         Text("• copy_with() → customizes existing style", style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT)),
     ]
     root = Column(gap=16, padding=20, children=children)
-    app = MaterialApp(content=root)
+    app = App(content=root)
     app.run()
 
 

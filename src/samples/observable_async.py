@@ -12,7 +12,7 @@ import time
 from typing import Optional
 
 from nuiitivet.observable import Observable
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -171,7 +171,7 @@ class AsyncDataApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = AsyncDataApp()
-    app = MaterialApp(content=widget)
+    app = App(content=widget)
     try:
         app.run()
     except Exception:

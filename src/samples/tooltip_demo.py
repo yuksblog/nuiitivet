@@ -5,7 +5,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import RichTooltip, Text, Tooltip
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, IconButton, OutlinedButton
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.modifiers import tooltip
@@ -96,5 +96,5 @@ class TooltipStyleCustom:
 
 
 if __name__ == "__main__":
-    app = MaterialApp(content=TooltipDemo(), width=760, height=520)
+    app = App(content=TooltipDemo(), width=760, height=520)
     app.run()

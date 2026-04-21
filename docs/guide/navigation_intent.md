@@ -14,9 +14,9 @@ class DetailsIntent:
     item_id: int
 ```
 
-## Configuring MaterialApp.navigation()
+## Configuring App.navigation()
 
-To use Intents, you configure your `MaterialApp` using the `navigation()` method instead of the standard constructor. You provide a mapping of Intent types to route builder functions.
+To use Intents, you configure your `App` using the `navigation()` method instead of the standard constructor. You provide a mapping of Intent types to route builder functions.
 
 ![Navigation Intent](../assets/navigation_intent.png)
 
@@ -25,7 +25,7 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import MaterialApp, FilledButton, Text
+from nuiitivet.material import App, FilledButton, Text
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -72,7 +72,7 @@ class DetailsScreen(ComposableWidget):
             ),
         )
 
-app = MaterialApp.navigation(
+app = App.navigation(
     routes={
         HomeIntent: lambda _: HomeScreen(),
         DetailsIntent: lambda intent: DetailsScreen(intent),

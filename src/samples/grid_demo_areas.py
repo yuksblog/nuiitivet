@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.material import Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.card import FilledCard
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -45,7 +45,7 @@ class GridDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = GridDemo()
-    app = MaterialApp(content=demo, width=640, height=480)
+    app = App(content=demo, width=640, height=480)
     try:
         app.run()
     except Exception:

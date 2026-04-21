@@ -34,7 +34,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", padding=24, child=grid)
 
-    app = md.MaterialApp(
+    app = md.App(
         content=root,
         title_bar=nv.DefaultTitleBar(title="nv.Container Alignment"),
         width="auto",

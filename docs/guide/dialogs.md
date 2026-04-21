@@ -6,7 +6,7 @@ nuiitivet offers a robust dialog system built on top of the Overlay architecture
 
 ## Basic Usage
 
-The most straightforward way to show a dialog is to create an `AlertDialog` widget and pass it to `MaterialOverlay.root().dialog()`.
+The most straightforward way to show a dialog is to create an `AlertDialog` widget and pass it to `Overlay.root().dialog()`.
 
 The `dialog()` method is **awaitable**, meaning you can wait for the user to close the dialog and receive a result.
 
@@ -17,8 +17,8 @@ class BasicDialogDemo(ComposableWidget):
     result_text: Observable[str] = Observable("Ready")
 
     async def _show_dialog(self):
-        # MaterialOverlay.root() finds the globally unique Overlay
-        overlay = MaterialOverlay.root()
+        # Overlay.root() finds the globally unique Overlay
+        overlay = Overlay.root()
 
         # Create the dialog widget
         dialog = AlertDialog(
@@ -64,7 +64,7 @@ class BasicDialogDemo(ComposableWidget):
 
 ### Key Points
 
-- `MaterialOverlay.root()`: Retrieves the root overlay instance.
+- `Overlay.root()`: Retrieves the root overlay instance.
 - `overlay.dialog(widget)`: Displays the widget as a modal dialog with a scrim.
 - `overlay.close(value, target)`: Closes the dialog associated with `target`. The `value` is wrapped in an `OverlayResult` and returned to the caller of `await overlay.dialog()`.
 
@@ -78,7 +78,7 @@ You are not limited to `AlertDialog`. Any Widget can be shown in the overlay. Th
 class CustomDialogContent(ComposableWidget):
     """A completely custom widget to be used as a dialog."""
     
-    def __init__(self, overlay: MaterialOverlay):
+    def __init__(self, overlay: Overlay):
         super().__init__()
         self.overlay = overlay
         self.counter = Observable(0)
@@ -137,7 +137,7 @@ class CoupledViewModel:
     def __init__(self):
         self.status = Observable("Ready")
 
-    async def process_action(self, overlay: MaterialOverlay):
+    async def process_action(self, overlay: Overlay):
         self.status.value = "Processing..."
         
         # Logic creates UI components directly
@@ -153,7 +153,7 @@ class CoupledViewModel:
 
 class DirectViewModelDemo(ComposableWidget):
     async def _on_run_click(self):
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         await self.vm.process_action(overlay)
 ```
 
@@ -179,7 +179,7 @@ class DecoupledViewModel:
     def __init__(self):
         self.status = Observable("Ready")
 
-    async def process_action(self, overlay: MaterialOverlay):
+    async def process_action(self, overlay: Overlay):
         self.status.value = "Processing..."
         
         # We just create a data description of what we want
@@ -212,19 +212,19 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
        initial_value: int = 0
    ```
 
-2. **Map Intent to Dialog**: Register the connection between the Intent data and its Widget in `MaterialApp`.
+2. **Map Intent to Dialog**: Register the connection between the Intent data and its Widget in `App`.
 
    ```python
    def create_counter_dialog(intent: CounterIntent) -> Widget:
        # This function knows about Widgets, but ViewModel doesn't
        return CustomDialogContent(
-           MaterialOverlay.root(),
+           Overlay.root(),
            initial=intent.initial_value
        )
 
    class IntentDemoApp(ComposableWidget):
        def build(self) -> Widget:
-           return MaterialApp(
+           return App(
                content=HomeView(),
                overlay_routes={
                    CounterIntent: create_counter_dialog
@@ -236,7 +236,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 
    ```python
    class MyViewModel:
-       async def open_counter(self, overlay: MaterialOverlay):
+       async def open_counter(self, overlay: Overlay):
            # Pure logic, using our custom intent
            result = await overlay.dialog(CounterIntent(initial_value=5))
            

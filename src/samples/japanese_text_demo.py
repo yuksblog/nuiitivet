@@ -1,5 +1,5 @@
 import nuiitivet
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.text import Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.layout.column import Column
@@ -23,8 +23,8 @@ def main():
         cross_alignment="center",
     )
 
-    # Use MaterialApp which sets up the proper theme and window
-    app = MaterialApp(
+    # Use App which sets up the proper theme and window
+    app = App(
         content=column,
         width=600,
         height=400,

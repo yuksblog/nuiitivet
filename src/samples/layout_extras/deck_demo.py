@@ -58,7 +58,7 @@ class DeckDemo(nv.ComposableWidget):
 
 def main(png: str = ""):
 
-    app = md.MaterialApp(
+    app = md.App(
         content=DeckDemo(),
         title_bar=nv.DefaultTitleBar(title="nv.Deck Demo"),
         width=520,

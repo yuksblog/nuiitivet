@@ -14,7 +14,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, FilledTonalButton, OutlinedButton, ElevatedButton, TextButton
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
@@ -104,7 +104,7 @@ def main() -> None:
 
     root = Box(child=content, padding=24, background_color="#F2F2F7")
 
-    app = MaterialApp(content=root)
+    app = App(content=root)
     app.run()
 
 

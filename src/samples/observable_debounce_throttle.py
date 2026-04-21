@@ -6,7 +6,7 @@ Demonstrates timing control with debounce and throttle:
 - Throttle: Button clicks sampled at regular intervals
 """
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.observable import Observable
@@ -191,5 +191,5 @@ class DebounceThrottleDemo(ComposableWidget):
 
 if __name__ == "__main__":
     widget = DebounceThrottleDemo()
-    app = MaterialApp(content=widget)
+    app = App(content=widget)
     app.run()

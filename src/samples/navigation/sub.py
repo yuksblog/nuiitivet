@@ -1,6 +1,6 @@
 import nuiitivet as nv
 
-from nuiitivet.material import FilledButton, MaterialApp, Text
+from nuiitivet.material import FilledButton, App, Text
 from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -102,7 +102,7 @@ class MainScreen(ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = MaterialApp(
+    app = App(
         content=MainScreen(),
         title_bar=nv.DefaultTitleBar(title="Nested Navigation"),
         width=400,

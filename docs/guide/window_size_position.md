@@ -1,6 +1,6 @@
 # Window Size and Position
 
-You can control how the window is sized and where it appears on the screen using `WindowSizing` and `WindowPosition`. These are configured when initializing your `App` or `MaterialApp`.
+You can control how the window is sized and where it appears on the screen using `WindowSizing` and `WindowPosition`. These are configured when initializing your `App` or `App`.
 
 ## WindowSizing
 

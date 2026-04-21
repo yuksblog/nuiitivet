@@ -1,4 +1,4 @@
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Checkbox, Text
 from nuiitivet.material.text_fields import FilledTextField, OutlinedTextField
 from nuiitivet.layout.container import Container
@@ -54,7 +54,7 @@ def main():
         height=400,
         padding=20,
     )
-    app = MaterialApp(root)
+    app = App(root)
     app.run()
 
 

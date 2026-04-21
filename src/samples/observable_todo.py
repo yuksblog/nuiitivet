@@ -11,7 +11,7 @@ from typing import List
 from dataclasses import dataclass
 
 from nuiitivet.observable import Observable
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material import Checkbox
 from nuiitivet.material.styles.text_style import TextStyle
@@ -213,7 +213,7 @@ class TodoApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = TodoApp()
-    app = MaterialApp(content=widget)
+    app = App(content=widget)
     try:
         app.run()
     except Exception:

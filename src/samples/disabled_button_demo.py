@@ -1,6 +1,6 @@
 """Visual demo for disabled button states."""
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.observable import Observable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -65,5 +65,5 @@ class DisabledButtonDemoWidget:
 
 if __name__ == "__main__":
     demo = DisabledButtonDemoWidget()
-    app = MaterialApp(content=demo.build())
+    app = App(content=demo.build())
     app.run()

@@ -14,7 +14,7 @@ def main(png: str = ""):
         ).modifier(mod.scrollable(axis="y", show_scrollbar=True)),
     )
 
-    app = md.MaterialApp(content=widget, title_bar=nv.DefaultTitleBar(title="Scrollable List"), width=400)
+    app = md.App(content=widget, title_bar=nv.DefaultTitleBar(title="Scrollable List"), width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

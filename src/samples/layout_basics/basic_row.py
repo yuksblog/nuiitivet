@@ -12,7 +12,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = md.MaterialApp(content=actions, title_bar=nv.DefaultTitleBar(title="Basic nv.Row"), width=400)
+    app = md.App(content=actions, title_bar=nv.DefaultTitleBar(title="Basic nv.Row"), width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

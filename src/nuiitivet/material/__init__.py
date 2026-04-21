@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .badge import BadgeValue, LargeBadge, SmallBadge
     from .app import MaterialApp
+    from .app import MaterialApp as App
     from .divider import Divider
     from .buttons import (
         ElevatedButton,
@@ -41,6 +42,9 @@ if TYPE_CHECKING:
     from .text_fields import FilledTextField, OutlinedTextField, TextField
     from .text import Text
     from .overlay import MaterialOverlay
+    from .overlay import MaterialOverlay as Overlay
+    from .theme.material_theme import MaterialTheme
+    from .theme.material_theme import MaterialTheme as ThemeFactory
     from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
     from .tooltip import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle
@@ -63,6 +67,9 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MaterialApp",
+    "App",
+    "MaterialTheme",
+    "ThemeFactory",
     "SmallBadge",
     "LargeBadge",
     "BadgeValue",
@@ -105,6 +112,7 @@ __all__ = [
     "NavigationRail",
     "RailItem",
     "MaterialOverlay",
+    "Overlay",
     "AlertDialog",
     "LoadingIndicator",
     "LinearProgressIndicator",
@@ -146,6 +154,9 @@ __all__ = [
 
 _EXPORTS: dict[str, tuple[str, str]] = {
     "MaterialApp": ("app", "MaterialApp"),
+    "App": ("app", "MaterialApp"),
+    "MaterialTheme": ("theme", "MaterialTheme"),
+    "ThemeFactory": ("theme", "MaterialTheme"),
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),
     "BadgeValue": ("badge", "BadgeValue"),
@@ -188,6 +199,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
+    "Overlay": ("overlay", "MaterialOverlay"),
     "AlertDialog": ("dialogs", "AlertDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
     "LinearProgressIndicator": ("progress_indicators", "LinearProgressIndicator"),

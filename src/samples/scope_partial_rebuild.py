@@ -6,7 +6,7 @@ Run with:
 
 from __future__ import annotations
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
@@ -102,7 +102,7 @@ class ScopedCountersDemo(ComposableWidget):
 
 def main() -> None:
     demo = ScopedCountersDemo()
-    app = MaterialApp(content=demo)
+    app = App(content=demo)
     app.run()
 
 

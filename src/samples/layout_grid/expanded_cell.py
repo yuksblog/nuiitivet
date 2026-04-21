@@ -24,7 +24,7 @@ def main(png: str = ""):
 
     root = nv.Container(padding=50, child=widget)
 
-    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="Expanded Cell"))
+    app = md.App(content=root, title_bar=nv.DefaultTitleBar(title="Expanded Cell"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

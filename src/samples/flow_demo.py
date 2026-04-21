@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -105,7 +105,7 @@ class FlowDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = FlowDemo()
-    app = MaterialApp(
+    app = App(
         content=demo,
         width=600,
         height=500,

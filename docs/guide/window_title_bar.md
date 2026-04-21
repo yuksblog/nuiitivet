@@ -2,7 +2,7 @@
 
 The title bar is the top section of the window that typically contains the application title and window controls (minimize, maximize, close). Nuiitivet provides two ways to configure the title bar: `DefaultTitleBar` and `CustomTitleBar`.
 
-You can set the title bar when initializing your application using the `title_bar` parameter in `App` or `MaterialApp`.
+You can set the title bar when initializing your application using the `title_bar` parameter in `App` or `App`.
 
 ## DefaultTitleBar
 

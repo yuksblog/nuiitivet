@@ -5,11 +5,11 @@ Shows how to trigger a standard AlertDialog using an Intent from a ViewModel-lik
 This decouples the presentation logic (ViewModel) from the View implementation.
 """
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.intents import AlertDialogIntent
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -23,7 +23,7 @@ class DecoupledViewModel:
     def __init__(self):
         self.status = Observable("Ready")
 
-    async def process_action(self, overlay: MaterialOverlay):
+    async def process_action(self, overlay: Overlay):
         self.status.value = "Processing..."
 
         # Express the intent to show an operation complete dialog
@@ -41,7 +41,7 @@ class IntentDemo(ComposableWidget):
         self.vm = DecoupledViewModel()
 
     async def _on_run_click(self):
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         await self.vm.process_action(overlay)
 
     def build(self) -> Widget:
@@ -68,11 +68,11 @@ def main(png_path: str = ""):
             icon="check_circle",
             actions=[TextButton("OK")],
         )
-        app = MaterialApp(content=Container(alignment="center", child=dialog), width=400, height=300)
+        app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return MaterialApp(content=IntentDemo(), width=400, height=300)
+    return App(content=IntentDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":
