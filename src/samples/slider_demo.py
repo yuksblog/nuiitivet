@@ -6,7 +6,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.material import CenteredSlider, Orientation, RangeSlider, Slider, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.observable import Observable
 
 
@@ -110,7 +110,7 @@ def main() -> None:
         padding=24,
     )
 
-    app = MaterialApp(content=Container(child=content, padding=8))
+    app = App(content=Container(child=content, padding=8))
     app.run()
 
 

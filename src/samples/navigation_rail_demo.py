@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import BadgeValue, FilledButton, OutlinedButton, Text, TextButton
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -120,7 +120,7 @@ class NavigationRailDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = NavigationRailDemo()
-    app = MaterialApp(content=demo, width=800, height=600)
+    app = App(content=demo, width=800, height=600)
     try:
         app.run()
     except Exception:

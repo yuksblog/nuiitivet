@@ -1,4 +1,4 @@
-"""MaterialOverlay.loading() demo.
+"""Overlay.loading() demo.
 
 Shows how to display a centered loading indicator overlay.
 """
@@ -23,10 +23,10 @@ class LoadingDemo(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self._active_handle: OverlayHandle[Any] | None = None
-        self._active_ctx: md.MaterialOverlay._LoadingContext | None = None
+        self._active_ctx: md.Overlay._LoadingContext | None = None
 
     def show_manual_overlay_loading(self) -> None:
-        overlay = md.MaterialOverlay.root()
+        overlay = md.Overlay.root()
         handle = overlay.show_modal(
             md.LoadingIndicator(size=48),
             dismiss_on_outside_tap=False,
@@ -42,8 +42,8 @@ class LoadingDemo(nv.ComposableWidget):
         runtime.clock.schedule_once(_close, 2.0)
 
     def show_loading_context_non_blocking(self) -> None:
-        """Show MaterialOverlay.loading() without blocking the UI thread."""
-        overlay = md.MaterialOverlay.root()
+        """Show Overlay.loading() without blocking the UI thread."""
+        overlay = md.Overlay.root()
         ctx = overlay.loading()
         ctx.__enter__()
         self._active_ctx = ctx
@@ -76,7 +76,7 @@ class LoadingDemo(nv.ComposableWidget):
 
 
 def main() -> None:
-    md.MaterialApp(content=LoadingDemo()).run()
+    md.App(content=LoadingDemo()).run()
 
 
 if __name__ == "__main__":

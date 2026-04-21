@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from nuiitivet.layout.column import Column
 from nuiitivet.material import FilledButton, Menu, MenuDivider, MenuItem, SubMenuItem, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.modifiers.popup import light_dismiss
 from nuiitivet.observable.value import Observable
 
@@ -63,7 +63,7 @@ def main() -> None:
         padding=24,
     )
 
-    app = MaterialApp(content=content, width=500, height=600)
+    app = App(content=content, width=500, height=600)
     app.run()
 
 

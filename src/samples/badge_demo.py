@@ -5,7 +5,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Icon, LargeBadge, SmallBadge, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 
 
 def _badge_item(title: str, icon) -> Column:
@@ -43,7 +43,7 @@ def main() -> None:
         cross_alignment="start",
     )
 
-    app = MaterialApp(content=content)
+    app = App(content=content)
     app.run()
 
 

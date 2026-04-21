@@ -17,8 +17,8 @@ from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
 from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.material.app import MaterialApp
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import App
+from nuiitivet.material import Overlay
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material import Text, MaterialTransitions, FadeIn, ScaleIn, SlideOutVertically
@@ -66,11 +66,11 @@ class HomePage(ComposableWidget):
                 enter=FadeIn() | ScaleIn(initial_scale=0.5),
                 exit=SlideOutVertically(target_offset_y=50, duration=0.4),
             )
-            result = await MaterialOverlay.root().dialog(HelloDialogIntent(), transition=transition)
+            result = await Overlay.root().dialog(HelloDialogIntent(), transition=transition)
             if result.value == "OK":
-                MaterialOverlay.root().snackbar("Dialog confirmed (OK)")
+                Overlay.root().snackbar("Dialog confirmed (OK)")
             else:
-                MaterialOverlay.root().snackbar("Dialog dismissed")
+                Overlay.root().snackbar("Dialog dismissed")
 
         def go_next() -> None:
             Navigator.of(self).push(DetailsIntent())
@@ -96,7 +96,7 @@ class DetailsPage(ComposableWidget):
             Navigator.of(self).pop()
 
         def show_snackbar() -> None:
-            MaterialOverlay.root().snackbar("Snackbar from Details")
+            Overlay.root().snackbar("Snackbar from Details")
 
         def go_settings() -> None:
             Navigator.of(self).push(SettingsIntent())
@@ -122,11 +122,11 @@ class SettingsPage(ComposableWidget):
             Navigator.of(self).pop()
 
         async def confirm_reset() -> None:
-            result = await MaterialOverlay.root().dialog(ConfirmResetDialogIntent())
+            result = await Overlay.root().dialog(ConfirmResetDialogIntent())
             if result.value is True:
-                MaterialOverlay.root().snackbar("Reset done")
+                Overlay.root().snackbar("Reset done")
             else:
-                MaterialOverlay.root().snackbar("Cancelled")
+                Overlay.root().snackbar("Cancelled")
 
         return Container(
             padding=24,
@@ -147,7 +147,7 @@ def main() -> None:
         dialog: Widget
 
         def on_ok() -> None:
-            MaterialOverlay.root().close("OK", target=dialog)
+            Overlay.root().close("OK", target=dialog)
 
         dialog = AlertDialog(
             title="Hello",
@@ -160,10 +160,10 @@ def main() -> None:
         dialog: Widget
 
         def on_cancel() -> None:
-            MaterialOverlay.root().close(False, target=dialog)
+            Overlay.root().close(False, target=dialog)
 
         def on_reset() -> None:
-            MaterialOverlay.root().close(True, target=dialog)
+            Overlay.root().close(True, target=dialog)
 
         dialog = AlertDialog(
             title="Confirm",
@@ -175,7 +175,7 @@ def main() -> None:
         )
         return dialog
 
-    MaterialApp.navigation(
+    App.navigation(
         routes={
             HomeIntent: lambda _i: PageRoute(builder=HomePage),
             DetailsIntent: lambda _i: PageRoute(builder=DetailsPage),

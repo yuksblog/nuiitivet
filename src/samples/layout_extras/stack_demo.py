@@ -36,7 +36,7 @@ def main(png: str = ""):
         style=CardStyle(background=None, border_radius=0),
     )
 
-    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="nv.Stack Demo"))
+    app = md.App(content=root, title_bar=nv.DefaultTitleBar(title="nv.Stack Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

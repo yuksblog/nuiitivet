@@ -5,7 +5,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import (
     FilledToggleButton,
     OutlinedToggleButton,
@@ -128,5 +128,5 @@ class ToggleButtonsDemoWidget:
 
 if __name__ == "__main__":
     demo = ToggleButtonsDemoWidget()
-    app = MaterialApp(content=demo.build())
+    app = App(content=demo.build())
     app.run()

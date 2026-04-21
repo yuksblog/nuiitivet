@@ -10,7 +10,7 @@ from nuiitivet.material import (
     IndeterminateCircularProgressIndicator,
     IndeterminateLinearProgressIndicator,
     LinearProgressIndicator,
-    MaterialApp,
+    App,
     Slider,
     Switch,
     Text,
@@ -78,7 +78,7 @@ def main() -> None:
         cross_alignment="start",
     )
 
-    app = MaterialApp(content=Container(child=content, padding=24))
+    app = App(content=Container(child=content, padding=24))
     app.run()
 
 

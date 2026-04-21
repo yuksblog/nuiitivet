@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
@@ -175,7 +175,7 @@ class DesktopAppDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = DesktopAppDemo()
-    app = MaterialApp(content=demo, width=800, height=768)
+    app = App(content=demo, width=800, height=768)
     try:
         app.run()
     except Exception:

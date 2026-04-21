@@ -17,7 +17,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
 from nuiitivet.navigation import Navigator, PageRoute
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -71,7 +71,7 @@ class DetailsPage(ComposableWidget):
 
 
 def main() -> None:
-    MaterialApp.navigation(
+    App.navigation(
         routes={
             HomeIntent: lambda _i: PageRoute(builder=HomePage),
         },

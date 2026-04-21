@@ -15,7 +15,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.MaterialApp(content=widget, title_bar=nv.DefaultTitleBar(title="nv.Spacer Flex Demo"))
+    app = md.App(content=widget, title_bar=nv.DefaultTitleBar(title="nv.Spacer Flex Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

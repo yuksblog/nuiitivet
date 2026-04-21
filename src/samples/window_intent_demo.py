@@ -1,11 +1,10 @@
 """Demo of intent-based window control."""
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.runtime.app import App
 from nuiitivet.observable import runtime
 from nuiitivet.runtime.intents import (
     ExitAppIntent,
@@ -82,7 +81,7 @@ class WindowDemo(ComposableWidget):
 
 
 def main():
-    app = MaterialApp(content=WindowDemo())
+    app = App(content=WindowDemo())
     app.run()
 
 

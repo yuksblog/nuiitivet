@@ -20,7 +20,7 @@ def main(png: str = ""):
         child=nv.Column(children=items, gap=8),
     ).modifier(scrollable(axis="y"))
 
-    app = md.MaterialApp(content=content, title_bar=nv.DefaultTitleBar(title="Scrollable Modifier"), width=400)
+    app = md.App(content=content, title_bar=nv.DefaultTitleBar(title="Scrollable Modifier"), width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

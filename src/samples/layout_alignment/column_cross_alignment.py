@@ -54,7 +54,7 @@ def main(png: str = ""):
         cross_alignment="start",
     )
 
-    app = md.MaterialApp(
+    app = md.App(
         content=content,
         title_bar=nv.DefaultTitleBar(title="nv.Column cross_alignment"),
         width="auto",

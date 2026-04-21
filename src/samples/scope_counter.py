@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
@@ -67,5 +67,5 @@ class ScopeCounterDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = ScopeCounterDemo()
-    app = MaterialApp(content=demo)
+    app = App(content=demo)
     app.run()

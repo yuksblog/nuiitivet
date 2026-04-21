@@ -19,7 +19,7 @@ def main(png: str = ""):
 
     root = nv.Container(padding=100, child=widget)
 
-    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="Clipped Content"), width=400)
+    app = md.App(content=root, title_bar=nv.DefaultTitleBar(title="Clipped Content"), width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

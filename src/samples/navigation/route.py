@@ -4,7 +4,7 @@ from nuiitivet.material import (
     FadeIn,
     FadeOut,
     FilledButton,
-    MaterialApp,
+    App,
     MaterialTransitions,
     SlideInVertically,
     SlideOutVertically,
@@ -68,7 +68,7 @@ class HomeScreen(ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = MaterialApp(
+    app = App(
         content=HomeScreen(),
         title_bar=nv.DefaultTitleBar(title="Navigation Route"),
         width=400,

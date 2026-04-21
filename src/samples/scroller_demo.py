@@ -1,6 +1,6 @@
 """Scroller のサンプル: 基本的な使い方"""
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
@@ -56,7 +56,7 @@ def main():
         gap=16,
         cross_alignment="center",
     )
-    app = MaterialApp(root)
+    app = App(root)
     app.run()
 
 
@@ -78,7 +78,7 @@ def main_auto_hide():
         padding=8,
         scrollbar=ScrollbarBehavior(auto_hide=True),
     )
-    app = MaterialApp(scroller)
+    app = App(scroller)
     app.run()
 
 
@@ -97,7 +97,7 @@ def main_with_controller():
         scroll_controller=controller,
         scrollbar=ScrollbarBehavior(auto_hide=True),
     )
-    app = MaterialApp(scroller)
+    app = App(scroller)
     import threading
 
     def auto_scroll():
@@ -133,7 +133,7 @@ def main_horizontal():
         padding=(16, 16, 16, 32),
         scrollbar=ScrollbarBehavior(auto_hide=True),
     )
-    app = MaterialApp(scroller)
+    app = App(scroller)
     app.run()
 
 

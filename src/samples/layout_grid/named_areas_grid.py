@@ -37,7 +37,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.MaterialApp(
+    app = md.App(
         content=widget, title_bar=nv.DefaultTitleBar(title="nv.Grid Layout (Named Areas)"), width=400, height=400
     )
     if png:

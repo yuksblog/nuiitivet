@@ -6,7 +6,7 @@ Nuiitivet provides a robust navigation system for managing screen transitions an
 
 The `Navigator` is a widget that manages a set of child widgets with a stack discipline. It allows you to transition between different screens (or "pages") in your application.
 
-When you use `MaterialApp.navigation()`, a root `Navigator` is automatically created and configured for you. You can access this root navigator from anywhere in your application using `Navigator.root()`.
+When you use `App.navigation()`, a root `Navigator` is automatically created and configured for you. You can access this root navigator from anywhere in your application using `Navigator.root()`.
 
 ## Basic Navigation: Push and Pop
 

@@ -11,7 +11,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = md.MaterialApp(content=widget, title_bar=nv.DefaultTitleBar(title="nv.Container Demo"))
+    app = md.App(content=widget, title_bar=nv.DefaultTitleBar(title="nv.Container Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

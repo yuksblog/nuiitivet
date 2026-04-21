@@ -5,7 +5,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import AssistChip, FilterChip, InputChip, SuggestionChip, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.observable import Observable
 
 
@@ -85,7 +85,7 @@ class ChipsDemoWidget:
 def main() -> None:
     """Run chip demo."""
     demo = ChipsDemoWidget()
-    app = MaterialApp(content=demo.build())
+    app = App(content=demo.build())
     app.run()
 
 

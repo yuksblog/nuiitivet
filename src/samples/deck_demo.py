@@ -2,7 +2,7 @@
 
 from enum import IntEnum
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -140,7 +140,7 @@ class DeckDemo(ComposableWidget):
 
 if __name__ == "__main__":
     demo = DeckDemo()
-    app = MaterialApp(content=demo, width=600, height=400)
+    app = App(content=demo, width=600, height=400)
     try:
         app.run()
     except Exception:

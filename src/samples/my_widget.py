@@ -10,7 +10,7 @@ import sys
 from typing import List, Optional
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Checkbox, Icon, Text
 from nuiitivet.material.styles import IconStyle
 from nuiitivet.observable import Observable
@@ -36,7 +36,7 @@ from nuiitivet.material.buttons import (
 from nuiitivet.theme import manager as theme_manager
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material import ThemeFactory
 
 
 _logger = logging.getLogger(__name__)
@@ -45,9 +45,9 @@ _logger = logging.getLogger(__name__)
 def _update_theme_seed(seed: str) -> None:
     mode = theme_manager.current.mode
     if mode == "dark":
-        theme_manager.set_theme(MaterialTheme.dark(seed))
+        theme_manager.set_theme(ThemeFactory.dark(seed))
     else:
-        theme_manager.set_theme(MaterialTheme.light(seed))
+        theme_manager.set_theme(ThemeFactory.light(seed))
 
 
 def _toggle_theme_mode() -> None:
@@ -55,9 +55,9 @@ def _toggle_theme_mode() -> None:
     # Default seed since we don't track it
     seed = "#6750A4"
     if mode == "light":
-        theme_manager.set_theme(MaterialTheme.dark(seed))
+        theme_manager.set_theme(ThemeFactory.dark(seed))
     else:
-        theme_manager.set_theme(MaterialTheme.light(seed))
+        theme_manager.set_theme(ThemeFactory.light(seed))
 
 
 class MyWidgetModel:
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     widget = MyWidget(model)
     import nuiitivet as nv
 
-    app = MaterialApp(
+    app = App(
         content=widget,
         # width=750,
         # height=850,

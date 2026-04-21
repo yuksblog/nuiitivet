@@ -7,7 +7,7 @@ from typing import Callable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material import FilledButton, MaterialApp, OutlinedButton, Text
+from nuiitivet.material import FilledButton, App, OutlinedButton, Text
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.fit import Fit
 from nuiitivet.widgets import Image
@@ -119,7 +119,7 @@ def main() -> None:
         ],
     )
 
-    app = MaterialApp(root)
+    app = App(root)
     app.run()
 
 

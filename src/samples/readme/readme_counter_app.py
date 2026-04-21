@@ -36,7 +36,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    app = md.MaterialApp(content=CounterApp(), title_bar=nv.DefaultTitleBar(title="Counter Demo"))
+    app = md.App(content=CounterApp(), title_bar=nv.DefaultTitleBar(title="Counter Demo"))
 
     if args.png:
         app.render_to_png(args.png)

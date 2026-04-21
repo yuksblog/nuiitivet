@@ -5,7 +5,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import DockedToolbar, FloatingToolbar, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import IconButton
 from nuiitivet.material.styles import IconButtonStyle, ToolbarStyle
 from nuiitivet.widgets.box import Box
@@ -91,7 +91,7 @@ class ToolbarDemoWidget:
 def main() -> None:
     """Run toolbar demo."""
     demo = ToolbarDemoWidget()
-    app = MaterialApp(content=demo.build())
+    app = App(content=demo.build())
     app.run()
 
 

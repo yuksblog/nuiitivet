@@ -39,7 +39,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.MaterialApp(
+    app = md.App(
         content=widget,
         title_bar=nv.DefaultTitleBar(title="Step 1: Simple nv.Grid"),
         width=400,

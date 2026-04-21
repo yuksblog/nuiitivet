@@ -14,7 +14,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.MaterialApp(content=root, title_bar=nv.DefaultTitleBar(title="Auto Size"), width=400)
+    app = md.App(content=root, title_bar=nv.DefaultTitleBar(title="Auto Size"), width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

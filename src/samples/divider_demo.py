@@ -8,7 +8,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material import Divider, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.widgeting.widget import Widget
 
@@ -98,7 +98,7 @@ def main() -> None:
         gap=16,
     )
 
-    app = MaterialApp(content=content)
+    app = App(content=content)
     app.run()
 
 

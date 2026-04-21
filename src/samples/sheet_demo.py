@@ -17,8 +17,8 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material import (
     Divider,
     FilledButton,
-    MaterialApp,
-    MaterialOverlay,
+    App,
+    Overlay,
     OutlinedButton,
     Text,
 )
@@ -60,13 +60,13 @@ def _sheet_content(label: str) -> Box:
 def main() -> None:
     def open_right_sheet() -> None:
         """Right-side sheet — default SideSheetStyle (width=400)."""
-        MaterialOverlay.root().side_sheet(
+        Overlay.root().side_sheet(
             SideSheet(_sheet_content("Right Side Sheet"), headline="Settings"),
         )
 
     def open_left_sheet() -> None:
         """Left-side sheet — custom width."""
-        MaterialOverlay.root().side_sheet(
+        Overlay.root().side_sheet(
             SideSheet(
                 _sheet_content("Left Side Sheet"),
                 headline="Navigation",
@@ -77,7 +77,7 @@ def main() -> None:
 
     def open_bottom_sheet_fixed() -> None:
         """Bottom sheet — fixed height."""
-        MaterialOverlay.root().bottom_sheet(
+        Overlay.root().bottom_sheet(
             BottomSheet(
                 _sheet_content("Bottom Sheet (height=280)"),
                 headline="Filter",
@@ -87,7 +87,7 @@ def main() -> None:
 
     def open_bottom_sheet_auto() -> None:
         """Bottom sheet — content-driven height (default)."""
-        MaterialOverlay.root().bottom_sheet(
+        Overlay.root().bottom_sheet(
             BottomSheet(
                 _sheet_content("Bottom Sheet (content-driven)"),
                 headline="Filter",
@@ -96,7 +96,7 @@ def main() -> None:
 
     def open_non_dismissible_sheet() -> None:
         """Right-side sheet — dismiss_on_outside_tap=False, close via on_close callback."""
-        handle = MaterialOverlay.root().side_sheet(
+        handle = Overlay.root().side_sheet(
             SideSheet(
                 _sheet_content("Non-Dismissible Sheet"),
                 headline="Edit",
@@ -128,7 +128,7 @@ def main() -> None:
             padding=24,
         )
 
-        MaterialOverlay.root().side_sheet(
+        Overlay.root().side_sheet(
             SideSheet(
                 content,
                 headline="Settings",
@@ -165,7 +165,7 @@ def main() -> None:
         padding=32,
     )
 
-    app = MaterialApp(content=content, width=600, height=420)
+    app = App(content=content, width=600, height=420)
     app.run()
 
 

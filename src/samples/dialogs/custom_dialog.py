@@ -1,12 +1,12 @@
 """
 Custom Dialog Usage
 
-Shows how to display any generic Widget as a modal dialog using MaterialOverlay.
+Shows how to display any generic Widget as a modal dialog using Overlay.
 """
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, OutlinedButton
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.material.card import Card
 from nuiitivet.layout.column import Column
@@ -20,7 +20,7 @@ from nuiitivet.widgeting.widget import ComposableWidget, Widget
 class CustomDialogContent(ComposableWidget):
     """A completely custom widget to be used as a dialog."""
 
-    def __init__(self, overlay: MaterialOverlay):
+    def __init__(self, overlay: Overlay):
         super().__init__()
         self.overlay = overlay
         self.counter = Observable(0)
@@ -58,7 +58,7 @@ class CustomDialogDemo(ComposableWidget):
     last_count: Observable[str] = Observable("No count yet")
 
     async def _show_custom_dialog(self):
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
 
         # Pass the overlay instance to the content so it can close itself
         content = CustomDialogContent(overlay)
@@ -90,13 +90,13 @@ def main(png_path: str = ""):
         from typing import cast
 
         # Mock overlay for screenshot
-        content = CustomDialogContent(overlay=cast(MaterialOverlay, None))
+        content = CustomDialogContent(overlay=cast(Overlay, None))
         content.counter.value = 5
-        app = MaterialApp(content=Container(alignment="center", child=content), width=400, height=300)
+        app = App(content=Container(alignment="center", child=content), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return MaterialApp(content=CustomDialogDemo(), width=400, height=300)
+    return App(content=CustomDialogDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":

@@ -7,11 +7,11 @@ This demo shows how to use the Overlay system:
 
 import logging
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import Overlay
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material import Text
@@ -33,21 +33,21 @@ class OverlayDemo(ComposableWidget):
     def show_snackbar(self):
         """Show a simple snackbar message."""
         self.snackbar_count.value += 1
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         logger.warning("[overlay-demo] show_snackbar before entries=%s", overlay.has_entries())
         overlay.snackbar(f"Snackbar #{self.snackbar_count.value}")
         logger.warning("[overlay-demo] show_snackbar after entries=%s", overlay.has_entries())
 
     def show_long_snackbar(self):
         """Show a snackbar with longer duration."""
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         logger.warning("[overlay-demo] show_long_snackbar before entries=%s", overlay.has_entries())
         overlay.snackbar("This snackbar lasts 5 seconds", duration=5.0)
         logger.warning("[overlay-demo] show_long_snackbar after entries=%s", overlay.has_entries())
 
     def show_info_dialog(self):
         """Show an information dialog."""
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         logger.warning("[overlay-demo] show_info_dialog begin entries=%s", overlay.has_entries())
 
         def on_ok():
@@ -68,7 +68,7 @@ class OverlayDemo(ComposableWidget):
 
     def show_confirm_dialog(self):
         """Show a confirmation dialog."""
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         logger.warning("[overlay-demo] show_confirm_dialog begin entries=%s", overlay.has_entries())
 
         def on_cancel():
@@ -95,7 +95,7 @@ class OverlayDemo(ComposableWidget):
 
     def show_custom_dialog(self):
         """Show a dialog with custom styling."""
-        overlay = MaterialOverlay.root()
+        overlay = Overlay.root()
         logger.warning("[overlay-demo] show_custom_dialog begin entries=%s", overlay.has_entries())
 
         def on_close():
@@ -150,7 +150,7 @@ class OverlayDemo(ComposableWidget):
 
 def main():
     """Run the overlay demo."""
-    app = MaterialApp(content=OverlayDemo(), width=600, height=700)
+    app = App(content=OverlayDemo(), width=600, height=700)
     app.run()
 
 

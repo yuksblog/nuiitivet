@@ -34,7 +34,7 @@ def main(png: str = ""):
 
     # 400x400 as requested
     # title_bar argument included so render_layout_images.py can extract the title string
-    app = md.MaterialApp(
+    app = md.App(
         content=widget,
         title_bar=nv.DefaultTitleBar(title="nv.Grid Layout"),
         width=400,

@@ -8,7 +8,7 @@ Demonstrates:
 """
 
 from nuiitivet.observable import Observable, combine
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
@@ -165,7 +165,7 @@ class ShoppingCartApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = ShoppingCartApp()
-    app = MaterialApp(content=widget)
+    app = App(content=widget)
     try:
         app.run()
     except Exception:

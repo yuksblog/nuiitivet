@@ -1,13 +1,13 @@
 """
 Basic Dialog Usage
 
-Shows how to display a standard AlertDialog using MaterialOverlay.
+Shows how to display a standard AlertDialog using Overlay.
 """
 
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, TextButton
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -19,8 +19,8 @@ class BasicDialogDemo(ComposableWidget):
     result_text: Observable[str] = Observable("Ready")
 
     async def _show_dialog(self):
-        # MaterialOverlay.root() finds the globally unique Overlay
-        overlay = MaterialOverlay.root()
+        # Overlay.root() finds the globally unique Overlay
+        overlay = Overlay.root()
 
         # Create the dialog widget
         dialog = AlertDialog(
@@ -69,11 +69,11 @@ def main(png_path: str = ""):
             message="Do you want to proceed with this action?",
             actions=[TextButton("CANCEL"), TextButton("OK")],
         )
-        app = MaterialApp(content=Container(alignment="center", child=dialog), width=400, height=300)
+        app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return MaterialApp(content=BasicDialogDemo(), width=400, height=300)
+    return App(content=BasicDialogDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.MaterialApp(
+    app = md.App(
         content=widget,
         title_bar=nv.DefaultTitleBar(title="Step 2: Spanning"),
         width=400,

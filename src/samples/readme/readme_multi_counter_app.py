@@ -51,7 +51,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    app = md.MaterialApp(content=MultiCounterApp())
+    app = md.App(content=MultiCounterApp())
 
     if args.png:
         app.render_to_png(args.png)

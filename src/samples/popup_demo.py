@@ -14,7 +14,7 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Icon, Text
-from nuiitivet.material.app import MaterialApp
+from nuiitivet.material import App
 from nuiitivet.material.buttons import FilledButton, OutlinedButton
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.transition_spec import MaterialTransitions
@@ -349,7 +349,7 @@ def _build_content() -> Widget:
 
 
 def main() -> None:
-    app = MaterialApp(content=_build_content())
+    app = App(content=_build_content())
     app.run()
 
 

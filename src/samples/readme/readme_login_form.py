@@ -38,7 +38,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    app = md.MaterialApp(content=build_login_form(), title_bar=nv.DefaultTitleBar(title="Login Form"))
+    app = md.App(content=build_login_form(), title_bar=nv.DefaultTitleBar(title="Login Form"))
 
     if args.png:
         app.render_to_png(args.png)
