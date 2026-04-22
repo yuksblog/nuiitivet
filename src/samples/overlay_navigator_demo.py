@@ -175,13 +175,15 @@ def main() -> None:
         )
         return dialog
 
-    App.navigation(
-        routes={
-            HomeIntent: lambda _i: PageRoute(builder=HomePage),
-            DetailsIntent: lambda _i: PageRoute(builder=DetailsPage),
-            SettingsIntent: lambda _i: PageRoute(builder=SettingsPage),
-        },
-        initial_route=HomeIntent(),
+    App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda _i: PageRoute(builder=HomePage),
+                DetailsIntent: lambda _i: PageRoute(builder=DetailsPage),
+                SettingsIntent: lambda _i: PageRoute(builder=SettingsPage),
+            },
+        ),
         overlay_routes={
             HelloDialogIntent: _build_hello_dialog,
             ConfirmResetDialogIntent: _build_confirm_reset_dialog,

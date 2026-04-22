@@ -131,9 +131,11 @@ class EditScreen(nv.ComposableWidget):
         )
 
 def main() -> None:
-    md.App.navigation(
-        routes={HomeIntent: lambda _i: PageRoute(builder=HomeScreen)},
-        initial_route=HomeIntent(),
+    md.App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={HomeIntent: lambda _i: PageRoute(builder=HomeScreen)},
+        ),
     ).run()
 ```
 

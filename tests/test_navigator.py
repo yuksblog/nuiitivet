@@ -34,7 +34,7 @@ def test_navigator_push_sets_built_child() -> None:
 
 
 def test_navigator_pop_disposes_route_widget() -> None:
-    nav = Navigator([PageRoute(builder=_FlagWidget)])
+    nav = Navigator(PageRoute(builder=_FlagWidget))
 
     page2 = _FlagWidget()
     nav.push(page2)
@@ -45,7 +45,7 @@ def test_navigator_pop_disposes_route_widget() -> None:
 
 
 def test_navigator_pop_noop_when_single_route() -> None:
-    nav = Navigator([PageRoute(builder=_FlagWidget)])
+    nav = Navigator(PageRoute(builder=_FlagWidget))
     nav.rebuild()
     nav.pop()
     assert nav.can_pop() is False

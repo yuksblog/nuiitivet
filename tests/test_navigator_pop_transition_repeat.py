@@ -37,7 +37,7 @@ class _Handle:
 
 
 def test_pop_finishes_when_pop_transition_running() -> None:
-    nav = Navigator(routes=[PageRoute(builder=_FlagWidget), PageRoute(builder=_FlagWidget)])
+    nav = Navigator.routes([PageRoute(builder=_FlagWidget), PageRoute(builder=_FlagWidget)])
 
     # Simulate an in-flight pop transition without requiring App.animate.
     handle = _Handle()

@@ -14,9 +14,9 @@ class DetailsIntent:
     item_id: int
 ```
 
-## Configuring App.navigation()
+## Configuring Navigator.intents()
 
-To use Intents, you configure your `App` using the `navigation()` method instead of the standard constructor. You provide a mapping of Intent types to route builder functions.
+To use Intents, you create a Navigator with the `Navigator.intents(...)` factory and pass it to `App(...)`. You provide a mapping of Intent types to route builder functions.
 
 ![Navigation Intent](../assets/navigation_intent.png)
 
@@ -72,12 +72,14 @@ class DetailsScreen(ComposableWidget):
             ),
         )
 
-app = App.navigation(
-    routes={
-        HomeIntent: lambda _: HomeScreen(),
-        DetailsIntent: lambda intent: DetailsScreen(intent),
-    }
-    initial_route=HomeIntent(),
+app = App(
+    Navigator.intents(
+        initial_route=HomeIntent(),
+        routes={
+            HomeIntent: lambda _: HomeScreen(),
+            DetailsIntent: lambda intent: DetailsScreen(intent),
+        },
+    ),
     title_bar=nv.DefaultTitleBar(title="Navigation Intent"),
     width=400,
     height=300,

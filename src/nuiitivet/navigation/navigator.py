@@ -14,7 +14,6 @@ from .stack_runtime import RouteStackRuntime
 from .transition_engine import TransitionEngine, TransitionHandle
 from .transition_spec import EmptyTransitionSpec, TransitionPhase
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -51,7 +50,12 @@ class _DefaultNavigationLayerComposer:
 class Navigator(ComposableWidget):
     """A minimal navigation stack.
 
-    Phase 3 scope:
+    Initialization forms:
+        - ``Navigator(screen)``: start with a single screen (``Route`` or ``Widget``).
+        - ``Navigator.routes([...])``: pre-populated stack (e.g. deep linking).
+        - ``Navigator.intents(initial_route=..., routes={...})``: Intent-based routing.
+
+    Features:
         - push/pop
         - root()/set_root()
         - of(context)
@@ -62,20 +66,85 @@ class Navigator(ComposableWidget):
 
     def __init__(
         self,
-        routes: Sequence[Route] | None = None,
+        screen: Route | Widget | None = None,
         *,
-        intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
         layer_composer: NavigationLayerComposer | None = None,
     ) -> None:
+        """Initialize a Navigator with a single initial screen.
+
+        Args:
+            screen: The initial screen as a ``Route`` or ``Widget``. If ``None``,
+                the navigator starts with an empty stack (use :meth:`routes` or
+                :meth:`intents` factories for alternative initialization).
+            layer_composer: Optional custom layer composer.
+        """
         super().__init__()
-        self._stack = RouteStackRuntime(initial_routes=list(routes or []))
-        self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = dict(intent_routes or {})
+        self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = {}
         self._transition: _NavTransition | None = None
         self._transition_handle: TransitionHandle | None = None
         self._transition_engine = TransitionEngine()
         self._pending_pop_requests: int = 0
         self._exiting_route: Route | None = None
         self._layer_composer: NavigationLayerComposer = layer_composer or _DefaultNavigationLayerComposer()
+
+        initial_routes: list[Route] = []
+        if screen is not None:
+            initial_routes.append(self._to_initial_route(screen))
+        self._stack = RouteStackRuntime(initial_routes=initial_routes)
+
+    def _to_initial_route(self, value: Route | Widget) -> Route:
+        """Convert a ``Route`` or ``Widget`` into a ``Route`` for initial stack construction."""
+        if isinstance(value, Route):
+            return value
+        if isinstance(value, Widget):
+            return self._route_from_widget(value)
+        raise TypeError(f"Navigator initial screen must be a Route or Widget, got {type(value).__name__}")
+
+    @classmethod
+    def routes(
+        cls,
+        screens: Sequence[Route | Widget],
+        *,
+        layer_composer: NavigationLayerComposer | None = None,
+    ) -> Navigator:
+        """Create a Navigator with a pre-populated stack.
+
+        Use this when the navigator should start with multiple screens already
+        on the stack (e.g. deep linking, state restoration).
+
+        Args:
+            screens: Sequence of ``Route`` or ``Widget`` instances. The last item
+                becomes the top of the stack.
+            layer_composer: Optional custom layer composer.
+        """
+        if not screens:
+            raise ValueError("Navigator.routes(...) requires at least one screen")
+        instance = cls(layer_composer=layer_composer)
+        initial_routes = [instance._to_initial_route(s) for s in screens]
+        instance._stack = RouteStackRuntime(initial_routes=initial_routes)
+        return instance
+
+    @classmethod
+    def intents(
+        cls,
+        *,
+        initial_route: Any,
+        routes: Mapping[type[Any], Callable[[Any], Route | Widget]],
+        layer_composer: NavigationLayerComposer | None = None,
+    ) -> Navigator:
+        """Create a Navigator configured for Intent-based routing.
+
+        Args:
+            initial_route: The initial Intent instance used to resolve the first route.
+            routes: Mapping of Intent types to route builder functions. Each
+                builder returns a ``Route`` or ``Widget``.
+            layer_composer: Optional custom layer composer.
+        """
+        instance = cls(layer_composer=layer_composer)
+        instance._intent_routes = dict(routes)
+        initial = instance._resolve_intent_to_route(initial_route)
+        instance._stack = RouteStackRuntime(initial_routes=[initial])
+        return instance
 
     @classmethod
     def set_root(cls, navigator: Navigator) -> None:

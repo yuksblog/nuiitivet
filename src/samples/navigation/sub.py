@@ -5,7 +5,7 @@ from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 
@@ -91,11 +91,7 @@ class MainScreen(ComposableWidget):
                 Container(
                     width=nv.Sizing.flex(1),
                     height=nv.Sizing.flex(1),
-                    child=MaterialNavigator(
-                        routes=[
-                            PageRoute(builder=lambda: NestedHome()),
-                        ]
-                    ),
+                    child=MaterialNavigator(NestedHome()),
                 ),
             ],
         )

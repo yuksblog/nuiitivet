@@ -70,12 +70,14 @@ class HomeScreen(ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = App.navigation(
-        routes={
-            HomeIntent: lambda _: HomeScreen(),
-            DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
-        },
-        initial_route=HomeIntent(),
+    app = App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda _: HomeScreen(),
+                DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
+            },
+        ),
         title_bar=nv.DefaultTitleBar(title="Navigation Intent"),
         width=400,
         height=300,

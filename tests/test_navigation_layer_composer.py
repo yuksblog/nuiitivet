@@ -22,7 +22,7 @@ class _FlagWidget(Widget):
 
 def test_navigator_delegates_static_paint_to_layer_composer() -> None:
     spy = RecordingNavigationComposer()
-    nav = Navigator(routes=[PageRoute(builder=_FlagWidget)], layer_composer=spy)
+    nav = Navigator(PageRoute(builder=_FlagWidget), layer_composer=spy)
 
     nav.paint(canvas=None, x=0, y=0, width=100, height=100)
 
@@ -33,7 +33,7 @@ def test_navigator_delegates_static_paint_to_layer_composer() -> None:
 def test_navigator_delegates_transition_paint_to_layer_composer() -> None:
     spy = RecordingNavigationComposer()
     nav = Navigator(
-        routes=[PageRoute(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec())],
+        PageRoute(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec()),
         layer_composer=spy,
     )
     nav._app = object()  # type: ignore[attr-defined]
