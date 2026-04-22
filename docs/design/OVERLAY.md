@@ -215,7 +215,7 @@ Scenario-specific APIs are moved to subclasses.
 
 To allow Material apps to use `MaterialOverlay` as the root overlay, `App` allows for overlay injection.
 
-- `App` / `App.navigation()` accepts `overlay_factory: Callable[[], Overlay]`.
+- `App` accepts `overlay_factory: Callable[[], Overlay]`.
 - If omitted, `App` defaults to creating a standard `Overlay`.
 
 Example:

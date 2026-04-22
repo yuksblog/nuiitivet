@@ -40,9 +40,9 @@ class _DialogIntent:
 
 
 def test_navigator_push_intent_resolves_to_route() -> None:
-    nav = Navigator(
-        routes=[PageRoute(builder=_FlagWidget)],
-        intent_routes={
+    nav = Navigator.intents(
+        initial_route=_PushIntent(label="home"),
+        routes={
             _PushIntent: lambda i: PageRoute(builder=lambda: _FlagWidget(label=i.label)),
         },
     )
@@ -55,7 +55,7 @@ def test_navigator_push_intent_resolves_to_route() -> None:
 
 
 def test_navigator_push_intent_raises_when_unregistered() -> None:
-    nav = Navigator(routes=[PageRoute(builder=_FlagWidget)])
+    nav = Navigator(PageRoute(builder=_FlagWidget))
 
     with pytest.raises(RuntimeError, match=r"No route is registered for intent"):
         nav.push(_PushIntent(label="x"))

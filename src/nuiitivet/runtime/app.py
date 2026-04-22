@@ -7,7 +7,6 @@ import time
 import traceback
 import warnings
 import weakref
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..widgeting.widget import ComposableWidget, Widget
@@ -36,16 +35,10 @@ from nuiitivet.layout.container import Container
 
 if TYPE_CHECKING:
     from nuiitivet.navigation.navigator import Navigator
-    from nuiitivet.navigation.route import Route
     from nuiitivet.overlay.overlay import Overlay
 
 
 logger = logging.getLogger(__name__)
-
-NavigatorFactory = Callable[
-    ["Route", Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None],
-    "Navigator",
-]
 
 
 # NOTE: compatibility wrapper removed. Use `resolve_color_to_rgba` from
@@ -125,13 +118,11 @@ class App:
     @staticmethod
     def _build_root_navigation_stack(
         *,
-        initial: "Route",
-        intent_routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
+        navigator: "Navigator",
         overlay_factory: Callable[[], "Overlay"] | None,
-        navigator_factory: NavigatorFactory | None = None,
     ) -> tuple[Widget, Widget | None]:
         from nuiitivet.layout.stack import Stack
-        from nuiitivet.navigation import Navigator, Route
+        from nuiitivet.navigation import Navigator as _Navigator
         from nuiitivet.overlay import Overlay
         from nuiitivet.rendering.sizing import Sizing
 
@@ -141,21 +132,15 @@ class App:
             raise TypeError("overlay_factory must return an Overlay instance")
         Overlay.set_root(overlay)
 
-        def _default_navigator_factory(
-            initial_route: Route,
-            routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]] | None,
-        ) -> Navigator:
-            return Navigator(routes=[initial_route], intent_routes=routes)
-
-        resolved_navigator_factory = navigator_factory or _default_navigator_factory
-        navigator = resolved_navigator_factory(initial, intent_routes)
-        if not isinstance(navigator, Navigator):
-            raise TypeError("navigator_factory must return a Navigator instance")
-        Navigator.set_root(navigator)
+        if not isinstance(navigator, _Navigator):
+            raise TypeError("navigator must be a Navigator instance")
+        _Navigator.set_root(navigator)
 
         initial_route_widget: Widget | None = None
         try:
-            initial_route_widget = navigator._route_widget(initial)  # type: ignore[attr-defined]
+            top_route = navigator._stack.top()  # type: ignore[attr-defined]
+            if top_route is not None:
+                initial_route_widget = navigator._route_widget(top_route)  # type: ignore[attr-defined]
         except Exception:
             exception_once(logger, "navigator_route_widget_prime_exc", "Failed to prime initial route widget")
 
@@ -414,64 +399,15 @@ class App:
                 exception_once(logger, "app_navigator_back_exc", "Navigator back handling failed")
         return False
 
-    @classmethod
-    def navigation(
-        cls,
-        *,
-        routes: Mapping[type[Any], Callable[[Any], "Route | Widget"]],
-        initial_route: Any,
-        overlay_factory: Callable[[], "Overlay"] | None = None,
-        navigator_factory: NavigatorFactory | None = None,
-        width: WindowSizingLike = "auto",
-        height: WindowSizingLike = "auto",
-        title_bar: Optional[TitleBar] = None,
-        background: ColorSpec = PlainColorRole.SURFACE,
-        theme: Optional[Any] = None,
-        window_position: WindowPosition | None = None,
-        resizable: bool = True,
-    ) -> "App":
-        """Create an App with a root Navigator and Overlay.
+    def _build_default_navigator(self, content: Widget) -> "Navigator":
+        """Wrap ``content`` in a default root Navigator.
 
-        This provides the Phase 6 initialization pattern:
-        - Navigator.root() / Overlay.root() are set
-        - The UI is stacked as [Navigator, Overlay]
+        Subclasses (e.g. ``MaterialApp``) can override this to provide a
+        framework-specific Navigator (e.g. ``MaterialNavigator``).
         """
+        from nuiitivet.navigation import Navigator
 
-        from nuiitivet.navigation import PageRoute, Route
-
-        try:
-            factory = routes[type(initial_route)]
-        except Exception as exc:
-            raise RuntimeError(f"No route is registered for intent: {type(initial_route).__name__}") from exc
-
-        resolved = factory(initial_route)
-        if isinstance(resolved, Route):
-            initial = resolved
-        elif isinstance(resolved, Widget):
-            widget = resolved
-            initial = PageRoute(builder=lambda: widget)
-        else:
-            raise TypeError("Route factory must return a Route or Widget.")
-
-        root_widget, initial_route_widget = cls._build_root_navigation_stack(
-            initial=initial,
-            intent_routes=routes,
-            overlay_factory=overlay_factory,
-            navigator_factory=navigator_factory,
-        )
-        self = cls.__new__(cls)
-        self._init_common(
-            root=root_widget,
-            width=width,
-            height=height,
-            title_bar=title_bar,
-            background=background,
-            theme=theme,
-            window_position=window_position,
-            window_auto_size_target=initial_route_widget,
-            resizable=resizable,
-        )
-        return self
+        return Navigator(content)
 
     def __init__(
         self,
@@ -482,25 +418,42 @@ class App:
         title_bar: Optional[TitleBar] = None,
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay_factory: Callable[[], "Overlay"] | None = None,
-        navigator_factory: NavigatorFactory | None = None,
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
         resizable: bool = True,
     ):
-        """Initialize App with a root Navigator and Overlay."""
+        """Initialize the App.
+
+        Args:
+            content: The root content. Can be either:
+                - A ``Navigator`` (including factory-built variants like
+                  ``Navigator.routes(...)`` / ``Navigator.intents(...)``), which
+                  is used directly as the root Navigator.
+                - Any other ``Widget``, in which case a default root ``Navigator``
+                  is created implicitly so ``Navigator.root().push(...)`` works
+                  out of the box.
+            width: Window width specification.
+            height: Window height specification.
+            title_bar: Custom window title bar.
+            background: Window background color.
+            overlay_factory: Optional overlay factory.
+            theme: Theme to install.
+            window_position: Initial window position.
+            resizable: Whether the window can be resized.
+        """
         if not isinstance(content, Widget):
             raise TypeError("'content' must be a Widget instance.")
 
-        from nuiitivet.navigation import PageRoute
+        from nuiitivet.navigation import Navigator
 
-        from nuiitivet.navigation.transition_spec import Transitions
+        if isinstance(content, Navigator):
+            navigator = content
+        else:
+            navigator = self._build_default_navigator(content)
 
-        initial = PageRoute(builder=lambda: content, transition_spec=Transitions.empty())
         root_widget, initial_route_widget = self._build_root_navigation_stack(
-            initial=initial,
-            intent_routes=None,
+            navigator=navigator,
             overlay_factory=overlay_factory,
-            navigator_factory=navigator_factory,
         )
         self._init_common(
             root=root_widget,

@@ -187,21 +187,37 @@ Navigator.root().push(UnknownIntent())
 # → RuntimeError: Intent 'UnknownIntent' not found in routes
 ```
 
-### 2.5 `App.navigation(...)` Initialization Pattern
+### 2.5 `Navigator.intents(...)` Initialization Pattern
 
-To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, `App.navigation(...)` is provided as an alternative initialization pattern.
+To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, `Navigator.intents(...)` is provided as an Intent-based factory. It is passed directly to `App(...)` so the resulting Navigator becomes the root Navigator.
 
 ```python
-# App with navigation
-App.navigation(
-    routes={
-        HomeIntent: lambda intent: PageRoute(builder=...),
-        DetailIntent: lambda intent: PageRoute(builder=...),
-        SettingsIntent: lambda intent: PageRoute(builder=...),
-    },
-    initial_route=HomeIntent(),
+# App with intent-based navigation
+App(
+    Navigator.intents(
+        initial_route=HomeIntent(),
+        routes={
+            HomeIntent: lambda intent: PageRoute(builder=...),
+            DetailIntent: lambda intent: PageRoute(builder=...),
+            SettingsIntent: lambda intent: PageRoute(builder=...),
+        },
+    ),
     title="My App",
 )
+```
+
+For the most common case of starting from a single screen, simply pass the screen to `App(...)`:
+
+```python
+# App wraps the Widget in an implicit root Navigator
+App(HomeScreen())
+# Navigator.root().push(...) works anywhere.
+```
+
+Use `Navigator.routes([...])` when the navigator must start with a pre-populated stack (e.g. deep linking, state restoration):
+
+```python
+App(Navigator.routes([HomeScreen(), DetailsScreen()]))
 ```
 
 ## 3. Back Button Handling

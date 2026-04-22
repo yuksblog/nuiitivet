@@ -71,11 +71,13 @@ class DetailsPage(ComposableWidget):
 
 
 def main() -> None:
-    App.navigation(
-        routes={
-            HomeIntent: lambda _i: PageRoute(builder=HomePage),
-        },
-        initial_route=HomeIntent(),
+    App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda _i: PageRoute(builder=HomePage),
+            },
+        ),
         width=480,
         height=360,
     ).run()

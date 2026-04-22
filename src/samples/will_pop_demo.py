@@ -25,7 +25,6 @@ from nuiitivet.material import Text
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -175,11 +174,13 @@ class EditScreen(ComposableWidget):
 
 
 def main() -> None:
-    App.navigation(
-        routes={
-            HomeIntent: lambda _i: PageRoute(builder=HomeScreen),
-        },
-        initial_route=HomeIntent(),
+    App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda _i: PageRoute(builder=HomeScreen),
+            },
+        ),
         width=720,
         height=420,
     ).run()

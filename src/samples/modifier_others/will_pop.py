@@ -101,11 +101,13 @@ class EditScreen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = md.App.navigation(
-        routes={
-            HomeIntent: lambda _i: PageRoute(builder=HomeScreen),
-        },
-        initial_route=HomeIntent(),
+    app = md.App(
+        Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda _i: PageRoute(builder=HomeScreen),
+            },
+        ),
         width=400,
         height=200,
         title_bar=nv.DefaultTitleBar(title="Will Pop Modifier"),

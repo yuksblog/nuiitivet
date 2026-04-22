@@ -53,18 +53,20 @@ class _HomeIntent:
     label: str
 
 
-def test_app_navigation_sets_root_navigator_and_overlay() -> None:
+def test_app_with_intents_navigator_sets_root_navigator_and_overlay() -> None:
     prev_nav = Navigator._root  # type: ignore[attr-defined]
     prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
     try:
         Navigator._root = None  # type: ignore[attr-defined]
         Overlay._root_overlay = None  # type: ignore[attr-defined]
 
-        app = App.navigation(
-            routes={
-                _HomeIntent: lambda i: _FlagWidget(label=i.label),
-            },
-            initial_route=_HomeIntent(label="home"),
+        app = App(
+            Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={
+                    _HomeIntent: lambda i: _FlagWidget(label=i.label),
+                },
+            ),
         )
 
         assert isinstance(app.root, AppScope)
@@ -102,16 +104,18 @@ def test_app_resizable_explicit_false() -> None:
     assert app.resizable is False
 
 
-def test_app_navigation_resizable_default_true() -> None:
+def test_app_with_intents_navigator_resizable_default_true() -> None:
     prev_nav = Navigator._root  # type: ignore[attr-defined]
     prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
     try:
         Navigator._root = None  # type: ignore[attr-defined]
         Overlay._root_overlay = None  # type: ignore[attr-defined]
 
-        app = App.navigation(
-            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
-            initial_route=_HomeIntent(label="home"),
+        app = App(
+            Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            ),
         )
 
         assert app.resizable is True
@@ -120,16 +124,18 @@ def test_app_navigation_resizable_default_true() -> None:
         Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
 
 
-def test_app_navigation_resizable_explicit_false() -> None:
+def test_app_with_intents_navigator_resizable_explicit_false() -> None:
     prev_nav = Navigator._root  # type: ignore[attr-defined]
     prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
     try:
         Navigator._root = None  # type: ignore[attr-defined]
         Overlay._root_overlay = None  # type: ignore[attr-defined]
 
-        app = App.navigation(
-            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
-            initial_route=_HomeIntent(label="home"),
+        app = App(
+            Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            ),
             resizable=False,
         )
 

@@ -45,8 +45,8 @@ def test_navigator_pop_respects_will_pop_cancel() -> None:
         calls.append("called")
         return False
 
-    nav = Navigator(
-        routes=[
+    nav = Navigator.routes(
+        [
             PageRoute(builder=lambda: _FlagWidget(label="root")),
             PageRoute(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
         ]
@@ -68,8 +68,8 @@ def test_navigator_pop_respects_will_pop_allow() -> None:
     def on_will_pop() -> bool:
         return True
 
-    nav = Navigator(
-        routes=[
+    nav = Navigator.routes(
+        [
             PageRoute(builder=lambda: _FlagWidget(label="root")),
             PageRoute(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
         ]
@@ -105,8 +105,8 @@ def test_navigator_pop_calls_will_pop_inside_build() -> None:
             return Widget().modifier(will_pop(on_will_pop))
 
     outgoing = Outgoing()
-    nav = Navigator(
-        routes=[
+    nav = Navigator.routes(
+        [
             PageRoute(builder=lambda: _FlagWidget(label="root")),
             PageRoute(builder=lambda: outgoing),
         ]
