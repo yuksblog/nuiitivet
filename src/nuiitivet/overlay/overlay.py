@@ -19,13 +19,13 @@ from nuiitivet.navigation.stack_runtime import RouteStackRuntime
 from nuiitivet.navigation.transition_engine import TransitionEngine
 from nuiitivet.navigation.transition_spec import EmptyTransitionSpec, TransitionPhase, TransitionSpec, Transitions
 from nuiitivet.common.logging_once import exception_once
+from .overlay_aware import OverlayAware
 from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
 from .overlay_position import AnchoredOverlayPosition, OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .transition_state import OverlayTransitionState
-
 
 logger = logging.getLogger(__name__)
 
@@ -569,6 +569,13 @@ class Overlay(ComposableWidget):
             barrier_dismissible=barrier_dismissible,
         )
         route_holder["route"] = modal_route
+
+        # Construct the handle first so OverlayAware widgets receive it
+        # before the entry is inserted (i.e. before first build / mount).
+        handle: OverlayHandle[Any] = OverlayHandle(overlay=self, entry=entry)
+        if isinstance(content_widget, OverlayAware):
+            content_widget._set_overlay_handle(handle)
+
         self._insert_entry_with_route(entry, modal_route)
 
         self.rebuild()
@@ -581,7 +588,7 @@ class Overlay(ComposableWidget):
             self._entry_to_timeout_cb[entry] = on_timeout
             runtime.clock.schedule_once(on_timeout, float(timeout))
 
-        return OverlayHandle(overlay=self, entry=entry)
+        return handle
 
     def hit_test(self, x: int, y: int):
         """Hit test that passes through if no entry is hit."""

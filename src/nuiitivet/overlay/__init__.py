@@ -2,6 +2,7 @@
 
 from .dialog_route import DialogRoute
 from .intent_resolver import IntentResolver
+from .overlay_aware import OverlayAware
 from .overlay_handle import OverlayHandle
 from .overlay import Overlay
 from .overlay_entry import OverlayEntry
@@ -22,6 +23,7 @@ __all__ = [
     "OverlayLayerComposer",
     "OverlayLayerCompositionContext",
     "OverlayDismissReason",
+    "OverlayAware",
     "OverlayEntry",
     "OverlayHandle",
     "OverlayResult",

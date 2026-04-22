@@ -115,6 +115,68 @@ class CustomDialogContent(ComposableWidget):
 
 ![Custom Dialog](../assets/dialogs_custom_dialog.png)
 
+### Self-Closing Dialogs with `OverlayAware`
+
+The example above requires the caller to pass an `Overlay` reference into
+`CustomDialogContent` so the dialog can close itself. For fully self-contained
+dialogs, inherit from `OverlayAware[T]`. The framework automatically injects
+the created `OverlayHandle` into the widget before it is mounted, so the
+dialog can close itself via `self.overlay_handle.close(value)` without any
+external wiring.
+
+The type parameter `T` describes the result type returned from
+`handle.close(value)` / `await handle`.
+
+```python
+# src/samples/dialogs/custom_dialog_overlay_aware.py (Excerpt)
+
+from nuiitivet.overlay import OverlayAware
+
+
+class CounterDialog(ComposableWidget, OverlayAware[int]):
+    """A self-contained dialog that closes itself via OverlayAware."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.counter = Observable(0)
+
+    def _close(self) -> None:
+        # No Overlay reference needed — the framework injected the handle.
+        self.overlay_handle.close(self.counter.value)
+
+    def build(self) -> Widget:
+        return Card(
+            child=Container(
+                padding=24,
+                child=Column(
+                    gap=16,
+                    children=[
+                        Text("Self-Closing Dialog"),
+                        FilledButton("Increment", on_click=self._increment),
+                        OutlinedButton("Close & Return Count", on_click=self._close),
+                    ],
+                ),
+            ),
+            width=300,
+        )
+
+
+# Caller code no longer needs to pass the overlay:
+# result = await overlay.dialog(CounterDialog())
+```
+
+#### Notes
+
+- `overlay_handle` is available from the moment the dialog is mounted. Accessing
+  it before the widget has been shown raises `RuntimeError`.
+- `OverlayAware` works with **all** overlay show APIs, including
+  `dialog`, `show_modal`, `show_modeless`, `show_light_dismiss`, `side_sheet`,
+  `bottom_sheet`, and `loading`. It also works when the widget is wrapped in a
+  `Route` (e.g. `DialogRoute(builder=lambda: CounterDialog())`).
+- Attempting to display the same `OverlayAware` widget instance while its
+  previous handle is still active raises `RuntimeError`. Re-displaying after
+  the previous handle has completed is allowed.
+
 ## Architecting Dialogs in MVVM
 
 When building larger applications with patterns like MVVM (Model-View-ViewModel), handling dialogs requires care regarding boundaries and testing. To illustrate the differences, we will use the same "Operation Complete" dialog in both coupled and decoupled patterns.
