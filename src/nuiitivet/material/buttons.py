@@ -1,18 +1,15 @@
 """Material Design 3 Buttons.
 
-This module contains the implementation of various Material Design 3 buttons:
-- FilledButton
-- OutlinedButton
-- TextButton
-- ElevatedButton
-- FilledTonalButton
-- FilledToggleButton
-- OutlinedToggleButton
-- TextToggleButton
-- TonalToggleButton
-- IconButton
-- IconToggleButton
-- FloatingActionButton
+This module contains the unified Material Design 3 button widgets:
+
+- :class:`Button` -- standard push button. Visual variant and size are
+  driven through :class:`ButtonStyle` presets
+  (``ButtonStyle.filled("s")``, ``ButtonStyle.outlined("m")`` etc.).
+- :class:`ToggleButton` -- toggle variant backed by
+  :class:`ToggleButtonStyle` that carries both selected and unselected
+  state tokens.
+- :class:`IconButton`, :class:`IconToggleButton` -- icon-only variants.
+- :class:`FloatingActionButton` -- FAB.
 """
 
 from __future__ import annotations
@@ -25,6 +22,7 @@ from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
+from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
@@ -103,14 +101,24 @@ def _resolve_color_rgba(value: ColorSpec) -> Tuple[int, int, int, int]:
 _RGBA_CONVERTER = RgbaTupleConverter()
 
 
-def make_child_from_label(label: Any, foreground: ColorSpec = ColorRole.ON_SURFACE) -> Any:
-    """Return a child widget for the given label."""
+def make_child_from_label(
+    label: Any,
+    foreground: ColorSpec = ColorRole.ON_SURFACE,
+    font_size: int = 14,
+) -> Any:
+    """Return a Material ``Text`` widget for the given label.
+
+    Args:
+        label: Label source (string, observable, etc.).
+        foreground: Foreground colour role for the label.
+        font_size: Label font size in dp (M3 size token derived).
+    """
     # Local import to avoid circular imports at module import time.
     from nuiitivet.material.text import Text
     from nuiitivet.material.styles.text_style import TextStyle
 
     # Material button label is always rendered via Material Text.
-    return Text(label, style=TextStyle(color=foreground, font_size=14, text_alignment="center"))
+    return Text(label, style=TextStyle(color=foreground, font_size=font_size, text_alignment="center"))
 
 
 def build_button_child(
@@ -147,11 +155,17 @@ def build_button_child(
 
         from nuiitivet.material.styles.icon_style import IconStyle
 
-        size_px = _m3_icon_size_for_height(base_height)
+        if style is not None and getattr(style, "icon_size", None):
+            size_px = int(style.icon_size)
+        else:
+            size_px = _m3_icon_size_for_height(base_height)
         icon_widget = Icon(icon, size=size_px, style=IconStyle(color=foreground))
     text_widget: Any = None
     if label is not None:
-        text_widget = make_child_from_label(label, foreground)
+        label_font_size = 14
+        if style is not None and getattr(style, "label_font_size", None):
+            label_font_size = int(style.label_font_size)
+        text_widget = make_child_from_label(label, foreground, font_size=label_font_size)
     if icon_widget is None and text_widget is None:
         raise ValueError("Button requires one of label or icon")
     if icon_widget is not None and text_widget is None:
@@ -297,11 +311,8 @@ class MaterialButtonBase(InteractiveWidget):
         if hasattr(self, "_user_style") and self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.manager import manager
-        from nuiitivet.material.styles.button_style import ButtonStyle
-
-        variant = getattr(self, "_variant", "filled")
-        return ButtonStyle.from_theme(manager.current, variant)
+        # Default fallback (no user style, no explicit variant resolution).
+        return ButtonStyle.filled("s")
 
     def __init__(
         self,
@@ -634,8 +645,18 @@ class MaterialButtonBase(InteractiveWidget):
 # --- Concrete Implementations ---
 
 
-class FilledButton(MaterialButtonBase):
-    """Filled button built on ButtonBase. Delegates interaction and painting."""
+class Button(MaterialButtonBase):
+    """Unified Material Design 3 button.
+
+    The visual variant (filled, outlined, text, elevated, tonal) and the
+    M3 size preset (``"xs"``..``"xl"``) are both expressed through the
+    ``style`` argument, which accepts any :class:`ButtonStyle` instance.
+    Use the :class:`ButtonStyle` factory methods to obtain variant presets:
+    ``ButtonStyle.filled("s")``, ``ButtonStyle.outlined("m")`` and so on.
+
+    When ``style`` is not provided, :meth:`ButtonStyle.filled` with size
+    ``"s"`` is used as the default.
+    """
 
     def __init__(
         self,
@@ -649,346 +670,24 @@ class FilledButton(MaterialButtonBase):
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
     ):
-        """Initialize FilledButton.
+        """Initialize Button.
 
         Args:
             label: Text label for the button.
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
+            icon: Icon glyph for the button (Symbol, string, or observable).
+            on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding specification.
-            style: Custom ButtonStyle.
+            width: Width specification. Defaults to auto.
+            height: Height specification. Defaults to auto.
+            padding: Padding override; ``None`` delegates to ``style.padding``.
+            style: Visual style preset. Defaults to ``ButtonStyle.filled("s")``.
         """
-        self._variant = "filled"
-        self._user_style = style
+        effective_style = style if style is not None else ButtonStyle.filled("s")
+        self._user_style = effective_style
         self._user_padding = padding
         self._user_height = height
 
-        effective_style = self.style
         text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY
-
-        height_px = _coerce_fixed_height_px(height)
-
-        child_widget = build_button_child(
-            label=label,
-            icon=icon,
-            foreground=text_color,
-            button_height=height_px,
-            style=effective_style,
-        )
-
-        params = resolve_button_style_params(effective_style, padding, height, disabled)
-
-        super().__init__(
-            child=child_widget,
-            on_click=on_click,
-            width=width,
-            disabled=disabled,
-            **params,
-        )
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
-    def _on_theme_change(self, theme) -> None:
-        params = resolve_button_style_params(
-            self.style,
-            self._user_padding,
-            self._user_height,
-            self.disabled,
-        )
-        self._apply_style_params(params)
-
-
-class OutlinedButton(MaterialButtonBase):
-    """Outlined button: transparent background with an outline stroke."""
-
-    def __init__(
-        self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
-        *,
-        on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[ButtonStyle] = None,
-    ):
-        """Initialize OutlinedButton.
-
-        Args:
-            label: Text label for the button.
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
-            disabled: Whether the button is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding specification.
-            style: Custom ButtonStyle.
-        """
-        self._variant = "outlined"
-        self._user_style = style
-        self._user_padding = padding
-        self._user_height = height
-
-        effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.PRIMARY
-
-        height_px = _coerce_fixed_height_px(height)
-
-        child_widget = build_button_child(
-            label=label,
-            icon=icon,
-            foreground=text_color,
-            button_height=height_px,
-            style=effective_style,
-        )
-
-        params = resolve_button_style_params(
-            effective_style,
-            padding,
-            height,
-            disabled,
-        )
-
-        super().__init__(
-            child=child_widget,
-            on_click=on_click,
-            width=width,
-            disabled=disabled,
-            **params,
-        )
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
-    def _on_theme_change(self, theme) -> None:
-        params = resolve_button_style_params(
-            self.style,
-            self._user_padding,
-            self._user_height,
-            self.disabled,
-        )
-        self._apply_style_params(params)
-
-
-class TextButton(MaterialButtonBase):
-    """Text button: no background, minimal padding, only overlay on press."""
-
-    def __init__(
-        self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
-        *,
-        on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        alignment: Union[str, Tuple[str, str]] = "center",
-        style: Optional[ButtonStyle] = None,
-    ):
-        """Initialize TextButton.
-
-        Args:
-            label: Text label for the button.
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
-            disabled: Whether the button is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding specification.
-            alignment: Content alignment.
-            style: Custom ButtonStyle.
-        """
-        self._variant = "text"
-        self._user_style = style
-        self._user_padding = padding
-        self._user_height = height
-
-        effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.PRIMARY
-
-        height_px = _coerce_fixed_height_px(height)
-
-        child_widget = build_button_child(
-            label=label,
-            icon=icon,
-            foreground=text_color,
-            button_height=height_px,
-            style=effective_style,
-        )
-
-        params = resolve_button_style_params(effective_style, padding, height, disabled)
-
-        super().__init__(
-            child=child_widget,
-            on_click=on_click,
-            width=width,
-            disabled=disabled,
-            alignment=alignment,
-            **params,
-        )
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
-    def _on_theme_change(self, theme) -> None:
-        params = resolve_button_style_params(
-            self.style,
-            self._user_padding,
-            self._user_height,
-            self.disabled,
-        )
-        self._apply_style_params(params)
-
-
-class ElevatedButton(MaterialButtonBase):
-    """Elevated button: has surface background and elevation (shadow)."""
-
-    def __init__(
-        self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
-        *,
-        on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[ButtonStyle] = None,
-    ):
-        """Initialize ElevatedButton.
-
-        Args:
-            label: Text label for the button.
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
-            disabled: Whether the button is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding specification.
-            style: Custom ButtonStyle.
-        """
-        self._variant = "elevated"
-        self._user_style = style
-        self._user_padding = padding
-        self._user_height = height
-
-        effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.ON_SURFACE
-
-        height_px = _coerce_fixed_height_px(height)
-
-        child_widget = build_button_child(
-            label=label,
-            icon=icon,
-            foreground=text_color,
-            button_height=height_px,
-            style=effective_style,
-        )
-
-        params = resolve_button_style_params(effective_style, padding, height, disabled)
-
-        super().__init__(
-            child=child_widget,
-            on_click=on_click,
-            width=width,
-            disabled=disabled,
-            **params,
-        )
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
-    def _on_theme_change(self, theme) -> None:
-        params = resolve_button_style_params(
-            self.style,
-            self._user_padding,
-            self._user_height,
-            self.disabled,
-        )
-        self._apply_style_params(params)
-
-
-class FilledTonalButton(MaterialButtonBase):
-    """Filled tonal button: uses surfaceVariant background and onSurfaceVariant text."""
-
-    def __init__(
-        self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
-        *,
-        on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[ButtonStyle] = None,
-    ):
-        """Initialize FilledTonalButton.
-
-        Args:
-            label: Text label for the button.
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
-            disabled: Whether the button is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding specification.
-            style: Custom ButtonStyle.
-        """
-        self._variant = "tonal"
-        self._user_style = style
-        self._user_padding = padding
-        self._user_height = height
-
-        effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.ON_SURFACE_VARIANT
-
         height_px = _coerce_fixed_height_px(height)
 
         child_widget = build_button_child(
@@ -1107,13 +806,13 @@ class IconButton(MaterialButtonBase):
 
 
 class ToggleButtonBase(MaterialButtonBase):
-    """Base class for Material toggle buttons.
+    """Internal base class for toggle buttons.
 
-    This class handles `selected` state semantics and emits `on_change` with
-    the new boolean value when toggled.
+    Manages ``selected`` state (internal flag or external observable) and
+    wires the widget state layer to it.  Subclasses must override
+    :meth:`_resolve_style_for_selected` to supply the concrete
+    :class:`ButtonStyle` for the current state.
     """
-
-    _toggle_base_variant: str = "filled"
 
     @property
     def selected(self) -> bool:
@@ -1134,7 +833,7 @@ class ToggleButtonBase(MaterialButtonBase):
 
     @property
     def style(self) -> ButtonStyle:
-        """Return selected/unselected style resolved from current theme."""
+        """Return the :class:`ButtonStyle` for the current selected state."""
         return self._resolve_style_for_selected(self.selected)
 
     def __init__(
@@ -1148,23 +847,19 @@ class ToggleButtonBase(MaterialButtonBase):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[ButtonStyle] = None,
     ):
-        """Initialize toggle button.
+        """Initialize the base toggle button.
 
         Args:
             label: Text label for the button.
-            icon: Icon for the button.
-            selected: Selected state or observable selected source.
+            icon: Icon glyph for the button.
+            selected: Initial selected state or external observable.
             on_change: Callback invoked with the new selected value.
             disabled: Whether the button is disabled.
             width: Width specification.
             height: Height specification.
-            padding: Padding specification.
-            style: Custom selected style.
+            padding: Padding override.
         """
-        self._variant = f"{self._toggle_base_variant}_toggle"
-        self._user_style = style
         self._user_padding = padding
         self._user_height = height
         self.on_change = on_change
@@ -1223,49 +918,11 @@ class ToggleButtonBase(MaterialButtonBase):
         super().on_unmount()
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
-        if self._user_style is not None:
-            return self._user_style
+        """Return the :class:`ButtonStyle` to apply for the given state.
 
-        if selected:
-            from nuiitivet.theme.manager import manager
-
-            return ButtonStyle.from_theme(manager.current, self._variant)
-
-        if self._toggle_base_variant == "filled":
-            # Filled toggle's unselected state is intentionally muted/outlined.
-            return ButtonStyle(
-                background=None,
-                foreground=ColorRole.PRIMARY,
-                border_color=ColorRole.OUTLINE,
-                border_width=1.0,
-                corner_radius=20,
-                container_height=40,
-                padding=(16, 0, 16, 0),
-                elevation=0.0,
-                overlay_color=ColorRole.PRIMARY,
-                overlay_alpha=0.08,
-            )
-        if self._toggle_base_variant == "outlined":
-            return ButtonStyle.outlined()
-        if self._toggle_base_variant == "text":
-            return ButtonStyle.text()
-        if self._toggle_base_variant == "tonal":
-            return ButtonStyle(
-                background=None,
-                foreground=ColorRole.ON_SURFACE_VARIANT,
-                border_color=ColorRole.OUTLINE,
-                border_width=1.0,
-                corner_radius=20,
-                container_height=40,
-                padding=(16, 0, 16, 0),
-                elevation=0.0,
-                overlay_color=ColorRole.ON_SURFACE,
-                overlay_alpha=0.08,
-            )
-
-        from nuiitivet.theme.manager import manager
-
-        return ButtonStyle.from_theme(manager.current, self._toggle_base_variant)
+        Subclasses must override this method.
+        """
+        raise NotImplementedError
 
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
@@ -1296,28 +953,57 @@ class ToggleButtonBase(MaterialButtonBase):
             self.on_change(new_value)
 
 
-class FilledToggleButton(ToggleButtonBase):
-    """Filled toggle button."""
+class ToggleButton(ToggleButtonBase):
+    """Unified Material Design 3 toggle button.
 
-    _toggle_base_variant = "filled"
+    Visual variant and size are encoded in a :class:`ToggleButtonStyle`
+    which carries both unselected- and selected-state colours.  Use
+    :meth:`ToggleButtonStyle.filled`, ``.outlined``, ``.elevated`` or
+    ``.tonal`` to obtain presets.  When ``style`` is ``None``, the style
+    defaults to :meth:`ToggleButtonStyle.filled` at size ``"s"``.
+    """
 
+    def __init__(
+        self,
+        label: str | ReadOnlyObservableProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        *,
+        selected: bool | ObservableProtocol[bool] = False,
+        on_change: Optional[Callable[[bool], None]] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        style: Optional[ToggleButtonStyle] = None,
+    ):
+        """Initialize ToggleButton.
 
-class OutlinedToggleButton(ToggleButtonBase):
-    """Outlined toggle button."""
+        Args:
+            label: Text label for the button.
+            icon: Icon glyph for the button.
+            selected: Initial selected state or external observable.
+            on_change: Callback invoked with the new selected value.
+            disabled: Whether the button is disabled.
+            width: Width specification.
+            height: Height specification.
+            padding: Padding override; ``None`` uses ``style.padding``.
+            style: Toggle style preset. Defaults to ``ToggleButtonStyle.filled("s")``.
+        """
+        self._toggle_style = style if style is not None else ToggleButtonStyle.filled("s")
 
-    _toggle_base_variant = "outlined"
+        super().__init__(
+            label=label,
+            icon=icon,
+            selected=selected,
+            on_change=on_change,
+            disabled=disabled,
+            width=width,
+            height=height,
+            padding=padding,
+        )
 
-
-class TextToggleButton(ToggleButtonBase):
-    """Text toggle button."""
-
-    _toggle_base_variant = "text"
-
-
-class TonalToggleButton(ToggleButtonBase):
-    """Tonal toggle button."""
-
-    _toggle_base_variant = "tonal"
+    def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
+        return self._toggle_style.for_selected(selected)
 
 
 class IconToggleButton(ToggleButtonBase):
@@ -1355,7 +1041,6 @@ class IconToggleButton(ToggleButtonBase):
             width=self._icon_size,
             height=self._icon_size,
             padding=0,
-            style=None,
         )
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
@@ -1392,8 +1077,7 @@ class FloatingActionButton(MaterialButtonBase):
             padding: Padding specification.
             style: Custom ButtonStyle.
         """
-        self._variant = "fab"
-        self._user_style = style
+        self._user_style = style if style is not None else ButtonStyle.fab()
         self._user_padding = padding
         self._user_height = size
 
@@ -1446,11 +1130,7 @@ class FloatingActionButton(MaterialButtonBase):
         self._apply_style_params(params)
 
     def _expressive_press_scale(self) -> tuple[float, float]:
-        target = (
-            (0.94, 0.9)
-            if self.state.pressed and not self.disabled
-            else (1.0, 1.0)
-        )
+        target = (0.94, 0.9) if self.state.pressed and not self.disabled else (1.0, 1.0)
         if abs(self._press_scale_x_anim.target - target[0]) > 1e-6:
             self._press_scale_x_anim.target = target[0]
         if abs(self._press_scale_y_anim.target - target[1]) > 1e-6:

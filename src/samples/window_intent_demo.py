@@ -1,7 +1,7 @@
 """Demo of intent-based window control."""
 
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -17,6 +17,7 @@ from nuiitivet.runtime.intents import (
     MoveWindowIntent,
     ResizeWindowIntent,
 )
+from nuiitivet.material import ButtonStyle
 
 
 class WindowDemo(ComposableWidget):
@@ -33,46 +34,46 @@ class WindowDemo(ComposableWidget):
         return Column(
             children=[
                 Text("Window Control Demo"),
-                FilledButton(
+                Button(
                     label="Full Screen",
                     on_click=lambda: App.of(self).dispatch(FullScreenIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Maximize Window",
                     on_click=lambda: App.of(self).dispatch(MaximizeWindowIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Minimize Window",
                     on_click=lambda: App.of(self).dispatch(MinimizeWindowIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Minimize & Restore (1s)",
                     on_click=lambda: self._minimize_and_restore(),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Restore Window",
                     on_click=lambda: App.of(self).dispatch(RestoreWindowIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Center Window",
                     on_click=lambda: App.of(self).dispatch(CenterWindowIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Move to (100, 100)",
                     on_click=lambda: App.of(self).dispatch(MoveWindowIntent(x=100, y=100)),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Resize to (800, 600)",
                     on_click=lambda: App.of(self).dispatch(ResizeWindowIntent(width=800, height=600)),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Close Window",
                     on_click=lambda: App.of(self).dispatch(CloseWindowIntent()),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     label="Exit App",
                     on_click=lambda: App.of(self).dispatch(ExitAppIntent()),
-                ),
+                    style=ButtonStyle.filled()),
             ],
             padding=10,
             gap=10,

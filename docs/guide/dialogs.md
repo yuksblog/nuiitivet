@@ -11,6 +11,7 @@ The most straightforward way to show a dialog is to create an `AlertDialog` widg
 The `dialog()` method is **awaitable**, meaning you can wait for the user to close the dialog and receive a result.
 
 ```python
+from nuiitivet.material import ButtonStyle
 # src/samples/dialogs/basic_usage.py (Excerpt)
 
 class BasicDialogDemo(ComposableWidget):
@@ -25,14 +26,14 @@ class BasicDialogDemo(ComposableWidget):
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
-                TextButton(
+                Button(
                     "CANCEL",
                     on_click=lambda: overlay.close("Canceled"),
-                ),
-                TextButton(
+                 style=ButtonStyle.text()),
+                Button(
                     "OK",
                     on_click=lambda: overlay.close("Confirmed"),
-                ),
+                 style=ButtonStyle.text()),
             ],
         )
 
@@ -51,10 +52,10 @@ class BasicDialogDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.result_text),
-                    FilledButton(
+                    Button(
                         "Show Alert Dialog",
                         on_click=self._show_dialog,
-                    ),
+                     style=ButtonStyle.filled()),
                 ],
             )
         )
@@ -73,6 +74,7 @@ class BasicDialogDemo(ComposableWidget):
 You are not limited to `AlertDialog`. Any Widget can be shown in the overlay. This is useful for custom forms, interactive tools, or specialized prompts.
 
 ```python
+from nuiitivet.material import ButtonStyle
 # src/samples/dialogs/custom_dialog.py (Excerpt)
 
 class CustomDialogContent(ComposableWidget):
@@ -98,11 +100,11 @@ class CustomDialogContent(ComposableWidget):
                             gap=10,
                             children=[Text("Count:"), Text(self.counter.map(str))],
                         ),
-                        FilledButton("Increment", on_click=self._increment),
-                        OutlinedButton(
+                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
+                        Button(
                             "Close & Return Count", 
                             on_click=lambda: self.overlay.close(self.counter.value)
-                        ),
+                        , style=ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -131,6 +133,7 @@ The type parameter `T` describes the result type returned from
 # src/samples/dialogs/custom_dialog_overlay_aware.py (Excerpt)
 
 from nuiitivet.overlay import OverlayAware
+from nuiitivet.material import ButtonStyle
 
 
 class CounterDialog(ComposableWidget, OverlayAware[int]):
@@ -152,8 +155,8 @@ class CounterDialog(ComposableWidget, OverlayAware[int]):
                     gap=16,
                     children=[
                         Text("Self-Closing Dialog"),
-                        FilledButton("Increment", on_click=self._increment),
-                        OutlinedButton("Close & Return Count", on_click=self._close),
+                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
+                        Button("Close & Return Count", on_click=self._close, style=ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -188,6 +191,7 @@ One approach is to have the ViewModel create Widgets directly. While simple to i
 **Direct Widget Creation Example:**
 
 ```python
+from nuiitivet.material import ButtonStyle
 # src/samples/dialogs/view_model_direct.py (Excerpt)
 
 class CoupledViewModel:
@@ -207,7 +211,7 @@ class CoupledViewModel:
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
-            actions=[TextButton("OK", on_click=lambda: overlay.close(True))]
+            actions=[Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text())]
         )
         
         await overlay.dialog(dialog)

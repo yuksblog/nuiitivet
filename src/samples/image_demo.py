@@ -7,10 +7,11 @@ from typing import Callable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material import FilledButton, App, OutlinedButton, Text
+from nuiitivet.material import App, Text, Button
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.fit import Fit
 from nuiitivet.widgets import Image
+from nuiitivet.material import ButtonStyle
 
 
 def _png_chunk(chunk_type: bytes, payload: bytes) -> bytes:
@@ -90,8 +91,8 @@ def main() -> None:
     controls = Row(
         gap=8,
         children=[
-            FilledButton("Load Image", on_click=_set_source(demo_png)),
-            OutlinedButton("Clear (None)", on_click=_set_source(None)),
+            Button("Load Image", on_click=_set_source(demo_png), style=ButtonStyle.filled()),
+            Button("Clear (None)", on_click=_set_source(None), style=ButtonStyle.outlined()),
         ],
     )
 

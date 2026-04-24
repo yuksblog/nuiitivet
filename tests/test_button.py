@@ -1,18 +1,19 @@
 import types
 
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from tests.helpers.pointer import send_pointer_event_for_test
 from nuiitivet.theme import manager
 from nuiitivet.modifiers import background, corner_radius
+from nuiitivet.material import ButtonStyle
 
 
 def test_preferred_size_default_and_custom():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     w, h = b.preferred_size()
     assert w >= 64
     assert h == 48
-    b2 = FilledButton("ok", width=200, height=60)
+    b2 = Button("ok", width=200, height=60, style=ButtonStyle.filled())
     assert b2.preferred_size() == (200, 60)
 
 
@@ -22,7 +23,7 @@ def test_pointer_event_click_calls_handler_and_pressed_state():
     def on_click():
         called.append(True)
 
-    b = FilledButton("ok", on_click=on_click)
+    b = Button("ok", on_click=on_click, style=ButtonStyle.filled())
     assert send_pointer_event_for_test(b, PointerEventType.PRESS) is True
     assert called == []
     assert getattr(b.state, "pressed", False) is True
@@ -32,7 +33,7 @@ def test_pointer_event_click_calls_handler_and_pressed_state():
 
 
 def test_hover_state_changes_and_hit_test_behavior():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     b.set_last_rect(10, 10, 100, 40)
     assert send_pointer_event_for_test(b, PointerEventType.HOVER, 20, 20) is True
     assert b.state.hovered is True
@@ -43,7 +44,7 @@ def test_hover_state_changes_and_hit_test_behavior():
 
 
 def test_corner_radius_modifier_updates_button_radius():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     assert b.corner_radius == 20
     result = b.modifier(corner_radius(30))
     assert b.corner_radius == 30
@@ -51,7 +52,7 @@ def test_corner_radius_modifier_updates_button_radius():
 
 
 def test_corner_radius_modifier_after_background_updates_in_place():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     wrapped = b.modifier(background("#eee") | corner_radius(16))
     assert b.corner_radius == 16
     assert wrapped is b
@@ -59,7 +60,7 @@ def test_corner_radius_modifier_after_background_updates_in_place():
 
 
 def test_background_modifier_updates_button_in_place():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     wrapped = b.modifier(background("#eee"))
     assert wrapped is b
     assert b.corner_radius == 20
@@ -67,7 +68,7 @@ def test_background_modifier_updates_button_in_place():
 
 
 def test_button_theme_change_invalidates_cache():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     calls = []
 
     def _cache(self):

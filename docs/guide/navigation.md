@@ -22,10 +22,11 @@ To navigate to a new screen, you use the `push()` method. This adds a new route 
 import nuiitivet as nv
 
 from nuiitivet.navigation import Navigator
-from nuiitivet.material import FilledButton, Text
+from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 class HomeScreen(ComposableWidget):
     def build(self):
@@ -38,7 +39,7 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                FilledButton("Go to Details", on_click=navigate_to_details),
+                Button("Go to Details", on_click=navigate_to_details, style=ButtonStyle.filled()),
             ],
         )
 ```
@@ -48,6 +49,7 @@ class HomeScreen(ComposableWidget):
 To return to the previous screen, you use the `pop()` method. This removes the top route from the navigator's stack, revealing the route beneath it. Let's look at the `DetailsScreen` that we pushed in the previous example.
 
 ```python
+from nuiitivet.material import ButtonStyle
 class DetailsScreen(ComposableWidget):
     def build(self):
         def go_back():
@@ -63,7 +65,7 @@ class DetailsScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Details Screen"),
-                    FilledButton("Back", on_click=go_back),
+                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )

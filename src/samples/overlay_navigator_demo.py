@@ -19,7 +19,7 @@ from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import App
 from nuiitivet.material import Overlay
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material import Text, MaterialTransitions, FadeIn, ScaleIn, SlideOutVertically
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -50,8 +50,8 @@ class HomeIntent:
     pass
 
 
-def _filled(label: str, *, on_click) -> FilledButton:
-    return FilledButton(
+def _filled(label: str, *, on_click) -> Button:
+    return Button(
         label,
         on_click=on_click,
         style=ButtonStyle(background="#6750A4", foreground="#FFFFFF"),
@@ -108,7 +108,7 @@ class DetailsPage(ComposableWidget):
                 cross_alignment="start",
                 children=[
                     Text("Details page"),
-                    TextButton("Back", on_click=go_back),
+                    Button("Back", on_click=go_back, style=ButtonStyle.text()),
                     _filled("Show snackbar", on_click=show_snackbar),
                     _filled("Go to settings", on_click=go_settings),
                 ],
@@ -135,7 +135,7 @@ class SettingsPage(ComposableWidget):
                 cross_alignment="start",
                 children=[
                     Text("Settings page"),
-                    TextButton("Back", on_click=pop_to_details),
+                    Button("Back", on_click=pop_to_details, style=ButtonStyle.text()),
                     _filled("Confirm reset (Overlay)", on_click=confirm_reset),
                 ],
             ),
@@ -169,7 +169,7 @@ def main() -> None:
             title="Confirm",
             message="Reset settings?",
             actions=[
-                TextButton("Cancel", on_click=on_cancel),
+                Button("Cancel", on_click=on_cancel, style=ButtonStyle.text()),
                 _filled("Reset", on_click=on_reset),
             ],
         )

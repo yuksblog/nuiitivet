@@ -12,9 +12,10 @@ from nuiitivet.layout.row import Row
 from nuiitivet.observable import Observable
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.widgets.box import Box
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.material import ButtonStyle
 
 
 class DebounceModel:
@@ -106,10 +107,10 @@ class DebounceThrottleDemo(ComposableWidget):
                                     style=TextStyle(color=(60, 60, 60, 255)),
                                 ),
                                 # Button
-                                FilledButton(
+                                Button(
                                     label="Click Me (Debounced)",
                                     on_click=lambda: self.debounce_model.increment(),
-                                ),
+                                    style=ButtonStyle.filled()),
                                 # Statistics
                                 Box(
                                     padding=10,
@@ -139,10 +140,10 @@ class DebounceThrottleDemo(ComposableWidget):
                                     style=TextStyle(color=(60, 60, 60, 255)),
                                 ),
                                 # Button
-                                FilledButton(
+                                Button(
                                     label="Click Me (Throttled)",
                                     on_click=lambda: self.throttle_model.increment(),
-                                ),
+                                    style=ButtonStyle.filled()),
                                 # Statistics
                                 Box(
                                     padding=10,

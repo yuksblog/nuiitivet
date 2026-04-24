@@ -14,18 +14,11 @@ Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `Sca
 import nuiitivet as nv
 
 from nuiitivet.navigation import Navigator, PageRoute
-from nuiitivet.material import (
-    FilledButton,
-    Text,
-    MaterialTransitions,
-    FadeIn,
-    SlideInVertically,
-    FadeOut,
-    SlideOutVertically
-)
+from nuiitivet.material import (Text, MaterialTransitions, FadeIn, SlideInVertically, FadeOut, SlideOutVertically, Button)
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 class AnimatedScreen(ComposableWidget):
     def build(self):
@@ -38,7 +31,7 @@ class AnimatedScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Animated Screen"),
-                    FilledButton("Back", on_click=lambda: Navigator.root().pop()),
+                    Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -65,10 +58,11 @@ If you want to transition to a new screen instantly without any animation, you c
 import nuiitivet as nv
 
 from nuiitivet.navigation import Navigator, PageRoute, Transitions
-from nuiitivet.material import FilledButton, Text
+from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 class InstantScreen(ComposableWidget):
     def build(self):
@@ -81,7 +75,7 @@ class InstantScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Instant Screen"),
-                    FilledButton("Back", on_click=lambda: Navigator.root().pop()),
+                    Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
         )

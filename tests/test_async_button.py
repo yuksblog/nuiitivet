@@ -1,6 +1,7 @@
 import asyncio
 import pytest
-from nuiitivet.material import TextButton
+from nuiitivet.material import Button
+from nuiitivet.material import ButtonStyle
 
 
 @pytest.mark.asyncio
@@ -13,7 +14,7 @@ async def test_async_button_click_handler():
         await asyncio.sleep(0.01)
         clicked.set()
 
-    button = TextButton("Click Me", on_click=on_click)
+    button = Button("Click Me", on_click=on_click, style=ButtonStyle.text())
 
     # Simulate click via PointerInputNode to ensure async handling logic is triggered
     button._pointer_node._emit_click()
@@ -37,7 +38,7 @@ async def test_sync_button_click_handler():
         nonlocal clicked
         clicked = True
 
-    button = TextButton("Click Me", on_click=on_click)
+    button = Button("Click Me", on_click=on_click, style=ButtonStyle.text())
 
     button._pointer_node._emit_click()
 

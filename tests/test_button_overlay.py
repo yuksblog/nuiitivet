@@ -1,6 +1,7 @@
 import sys
 import types
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
+from nuiitivet.material import ButtonStyle
 
 
 class _FakeRect:
@@ -116,7 +117,7 @@ def test_child_painted_without_skiamodule():
     if "skia" in sys.modules:
         del sys.modules["skia"]
     _remove_fake_skia()
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     b.paint(None, 10, 20, 100, 40)
     child = b.children[0]
     child_rect = child.last_rect
@@ -129,7 +130,7 @@ def test_child_painted_without_skiamodule():
 def test_child_painted_with_fake_skia():
     _install_fake_skia()
     try:
-        b = FilledButton("ok")
+        b = Button("ok", style=ButtonStyle.filled())
         b.paint(None, 5, 6, 120, 30)
         child = b.children[0]
         assert child.last_rect is not None

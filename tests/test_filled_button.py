@@ -1,6 +1,7 @@
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from tests.helpers.pointer import send_pointer_event_for_test
+from nuiitivet.material import ButtonStyle
 
 
 def test_filled_preferred_size_and_click():
@@ -9,7 +10,7 @@ def test_filled_preferred_size_and_click():
     def on_click():
         called.append(True)
 
-    b = FilledButton("ok", on_click=on_click)
+    b = Button("ok", on_click=on_click, style=ButtonStyle.filled())
     w, h = b.preferred_size()
     assert w >= 64
     assert h == 48
@@ -22,7 +23,7 @@ def test_filled_preferred_size_and_click():
 
 
 def test_filled_hover_and_hit_test():
-    b = FilledButton("ok")
+    b = Button("ok", style=ButtonStyle.filled())
     b.set_last_rect(10, 10, 100, 40)
     assert send_pointer_event_for_test(b, PointerEventType.HOVER, 20, 20) is True
     assert b.state.hovered is True

@@ -12,7 +12,7 @@ from nuiitivet.overlay.result import OverlayResult
 from nuiitivet.navigation import Route
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.clickable import clickable
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
@@ -20,6 +20,7 @@ from nuiitivet.widgeting.widget import Widget
 import pytest
 
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
+from nuiitivet.material import ButtonStyle
 
 
 @pytest.fixture(autouse=True)
@@ -80,7 +81,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
         clicked.append(True)
 
     overlay = Overlay()
-    ok_button = FilledButton("OK", on_click=on_ok)
+    ok_button = Button("OK", on_click=on_ok, style=ButtonStyle.filled())
     dialog = AlertDialog(title="Title", message="Body", actions=[ok_button])
 
     overlay.show_modal(dialog, dismiss_on_outside_tap=False)

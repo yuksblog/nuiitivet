@@ -2,11 +2,12 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import FilledButton, App, Text
+from nuiitivet.material import App, Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 @dataclass
@@ -37,7 +38,7 @@ class DetailsScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text(f"Details for item {self.item_id}"),
-                    FilledButton("Back", on_click=go_back),
+                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -64,7 +65,7 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                FilledButton("View Details", on_click=go_to_details),
+                Button("View Details", on_click=go_to_details, style=ButtonStyle.filled()),
             ],
         )
 

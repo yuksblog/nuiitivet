@@ -14,7 +14,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
 from nuiitivet.material import Checkbox
 from nuiitivet.material.icon import Icon
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles import ButtonStyle, CheckboxStyle, IconStyle, TextStyle
 from nuiitivet.theme import manager
 from nuiitivet.material import ThemeFactory
@@ -54,7 +54,8 @@ def main():
         Text("1. Theme-level Styles (via MaterialThemeData)", style=TextStyle(color=ColorRole.ON_SURFACE)),
         Row(gap=16, children=[Checkbox(checked=True), Text("Larger checkbox (56px touch target, 0.5 icon ratio)")]),
         Row(gap=16, children=[Icon("favorite"), Text("Larger icon (32px, rounded, secondary color)")]),
-        Row(gap=16, children=[FilledButton(label="Theme Button"), Text("Tonal button (from theme default)")]),
+        Row(gap=16, children=[Button(label="Theme Button", style=ButtonStyle.filled()),
+            Text("Tonal button (from theme default)")]),
         Text("", height=Sizing.fixed(20)),
         Text("2. Per-Widget Style Override", style=TextStyle(color=ColorRole.ON_SURFACE)),
         Row(
@@ -77,7 +78,7 @@ def main():
         Row(
             gap=16,
             children=[
-                FilledButton(label="Outlined", button_style=ButtonStyle.outlined()),
+                Button(label="Outlined", button_style=ButtonStyle.outlined(), style=ButtonStyle.filled()),
                 Text("Outlined button (overrides theme tonal)"),
             ],
         ),
@@ -93,12 +94,12 @@ def main():
         Row(
             gap=16,
             children=[
-                FilledButton(
+                Button(
                     label="Custom",
                     button_style=ButtonStyle.filled().copy_with(
                         background=ColorRole.ERROR, foreground=ColorRole.ON_ERROR
                     ),
-                ),
+                    style=ButtonStyle.filled()),
                 Text("Filled button with error colors"),
             ],
         ),

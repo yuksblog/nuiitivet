@@ -66,9 +66,9 @@ menu = nv.Column(
     padding=8,
     gap=8,
     children=[
-        md.FilledButton("Tab 1", on_click=lambda: set_index(0)),
-        md.FilledButton("Tab 2", on_click=lambda: set_index(1)),
-        md.FilledButton("Tab 3", on_click=lambda: set_index(2)),
+        md.Button("Tab 1", on_click=lambda: set_index(0), style=md.ButtonStyle.filled()),
+        md.Button("Tab 2", on_click=lambda: set_index(1), style=md.ButtonStyle.filled()),
+        md.Button("Tab 3", on_click=lambda: set_index(2), style=md.ButtonStyle.filled()),
     ],
 )
 
@@ -172,7 +172,7 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 nv.Container(
-    md.FilledButton("Centered Content"),
+    md.Button("Centered Content", style=md.ButtonStyle.filled()),
     width=250,
     height=200,
     alignment="center",
@@ -196,10 +196,10 @@ nv.Row(
     gap=16,
     width=500,
     children=[
-        md.OutlinedButton("Left 1"),
-        md.OutlinedButton("Left 2"),
+        md.Button("Left 1", style=md.ButtonStyle.outlined()),
+        md.Button("Left 2", style=md.ButtonStyle.outlined()),
         nv.Spacer(width="100%"),
-        md.FilledButton("Right"),
+        md.Button("Right", style=md.ButtonStyle.filled()),
     ],
 )
 ```

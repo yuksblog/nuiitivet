@@ -6,7 +6,8 @@ from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Callable, Literal, Mapping
 
 from nuiitivet.material.loading_indicator import LoadingIndicator
-from nuiitivet.material.buttons import TextButton
+from nuiitivet.material.buttons import Button
+from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.navigation.route import Route
@@ -61,7 +62,14 @@ class MaterialOverlay(Overlay):
                         title=i.title,
                         message=i.message,
                         icon=i.icon,
-                        actions=[TextButton("OK", on_click=lambda: Overlay.root().close(None), width=80)],
+                        actions=[
+                            Button(
+                                "OK",
+                                on_click=lambda: Overlay.root().close(None),
+                                width=80,
+                                style=ButtonStyle.text(),
+                            )
+                        ],
                     ),
                     transition_spec=MaterialTransitions.dialog(),
                 ),

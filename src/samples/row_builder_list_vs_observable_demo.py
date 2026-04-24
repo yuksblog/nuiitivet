@@ -11,7 +11,7 @@ from typing import List
 from nuiitivet.observable import Observable
 from nuiitivet.material import App
 from nuiitivet.material import Text
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.column import Column
@@ -19,6 +19,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroller import Scroller
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class _RowBuilderModel:
@@ -68,14 +69,14 @@ class RowBuilderDemo(ComposableWidget):
                             Text("Row.builder with plain list (cannot update)"),
                             Row(
                                 [
-                                    FilledButton(
+                                    Button(
                                         "Add (Plain)",
                                         on_click=self._add_plain,
-                                    ),
-                                    OutlinedButton(
+                                        style=ButtonStyle.filled()),
+                                    Button(
                                         "Remove (Plain)",
                                         on_click=self._remove_plain,
-                                    ),
+                                        style=ButtonStyle.outlined()),
                                 ],
                                 gap=8,
                                 cross_alignment="center",
@@ -104,14 +105,14 @@ class RowBuilderDemo(ComposableWidget):
                             Text("Row.builder with Observable list (can update)"),
                             Row(
                                 [
-                                    FilledButton(
+                                    Button(
                                         "Add (Observable)",
                                         on_click=self.model.add_observable,
-                                    ),
-                                    OutlinedButton(
+                                        style=ButtonStyle.filled()),
+                                    Button(
                                         "Remove (Observable)",
                                         on_click=self.model.remove_observable,
-                                    ),
+                                        style=ButtonStyle.outlined()),
                                 ],
                                 gap=8,
                                 cross_alignment="center",

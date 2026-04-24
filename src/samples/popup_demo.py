@@ -15,13 +15,14 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Icon, Text
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.modifiers import light_dismiss, modeless
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@ class _InternalStateDemo(ComposableWidget):
             self.is_open.value = not self.is_open.value
 
         anchor = (
-            FilledButton("Menu")
+            Button("Menu", style=ButtonStyle.filled())
             .modifier(clickable(on_click=toggle))
             .modifier(
                 modeless(
@@ -141,8 +142,8 @@ class _ExternalStateDemo(ComposableWidget):
                 Row(
                     children=[
                         anchor,
-                        FilledButton("Open", on_click=open_popup),
-                        OutlinedButton("Close", on_click=close_popup),
+                        Button("Open", on_click=open_popup, style=ButtonStyle.filled()),
+                        Button("Close", on_click=close_popup, style=ButtonStyle.outlined()),
                     ],
                     gap=8,
                     cross_alignment="center",
@@ -233,7 +234,7 @@ class _TransitionDemo(ComposableWidget):
         def toggle() -> None:
             self.is_open.value = not self.is_open.value
 
-        anchor = OutlinedButton("Open with animation", on_click=toggle).modifier(
+        anchor = Button("Open with animation", on_click=toggle, style=ButtonStyle.outlined()).modifier(
             modeless(
                 _popup_menu("Cut", "Copy", "Paste", "Select all"),
                 is_open=self.is_open,
@@ -274,7 +275,7 @@ class _BehaviorComparisonDemo(ComposableWidget):
             self.light_close_clicks.value = int(self.light_close_clicks.value) + 1
             self.light_open.value = False
 
-        modeless_anchor = FilledButton("Open modeless", on_click=_open_modeless).modifier(
+        modeless_anchor = Button("Open modeless", on_click=_open_modeless, style=ButtonStyle.filled()).modifier(
             modeless(
                 _popup_menu("Modeless menu", "Background is clickable"),
                 is_open=self.modeless_open,
@@ -284,7 +285,7 @@ class _BehaviorComparisonDemo(ComposableWidget):
             )
         )
 
-        light_anchor = FilledButton("Open light_dismiss", on_click=_open_light_dismiss).modifier(
+        light_anchor = Button("Open light_dismiss", on_click=_open_light_dismiss, style=ButtonStyle.filled()).modifier(
             light_dismiss(
                 _popup_menu("Light dismiss menu", "Outside tap closes"),
                 is_open=self.light_open,
@@ -297,7 +298,7 @@ class _BehaviorComparisonDemo(ComposableWidget):
         modeless_row = Row(
             children=[
                 modeless_anchor,
-                OutlinedButton("Close button behind", on_click=_inc_modeless_close_clicks),
+                Button("Close button behind", on_click=_inc_modeless_close_clicks, style=ButtonStyle.outlined()),
                 Text(self.modeless_close_clicks.map(lambda v: f"button clicks: {v}")),
             ],
             gap=8,
@@ -307,7 +308,7 @@ class _BehaviorComparisonDemo(ComposableWidget):
         light_row = Row(
             children=[
                 light_anchor,
-                OutlinedButton("Close button behind", on_click=_inc_light_close_clicks),
+                Button("Close button behind", on_click=_inc_light_close_clicks, style=ButtonStyle.outlined()),
                 Text(self.light_close_clicks.map(lambda v: f"button clicks: {v}")),
             ],
             gap=8,

@@ -33,13 +33,14 @@ In this example, an editor screen is pushed on a `Navigator`. Pop is blocked whi
 import nuiitivet as nv
 import nuiitivet.material as md
 from dataclasses import dataclass
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.observable import Observable
+from nuiitivet.material import ButtonStyle
 
 @dataclass(frozen=True, slots=True)
 class HomeIntent:
@@ -56,7 +57,7 @@ class HomeScreen(nv.ComposableWidget):
                 children=[
                     md.Text("Will Pop Modifier"),
                     md.Text("Open editor, edit text, then try Esc or Back."),
-                    FilledButton("Open editor", on_click=_open_editor),
+                    Button("Open editor", on_click=_open_editor, style=ButtonStyle.filled()),
                 ],
                 gap=14,
                 cross_alignment="start",
@@ -95,8 +96,8 @@ class EditScreen(nv.ComposableWidget):
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[
-                    TextButton("Cancel", on_click=_cancel),
-                    FilledButton("Discard", on_click=_discard),
+                    Button("Cancel", on_click=_cancel, style=ButtonStyle.text()),
+                    Button("Discard", on_click=_discard, style=ButtonStyle.filled()),
                 ],
             ),
             dismiss_on_outside_tap=False,
@@ -117,8 +118,8 @@ class EditScreen(nv.ComposableWidget):
                     ),
                     nv.Row(
                         children=[
-                            TextButton("Back", on_click=self._try_pop),
-                            FilledButton("Save", on_click=self._save),
+                            Button("Back", on_click=self._try_pop, style=ButtonStyle.text()),
+                            Button("Save", on_click=self._save, style=ButtonStyle.filled()),
                         ],
                         gap=10,
                     ),

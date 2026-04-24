@@ -5,7 +5,7 @@ Shows how to display any generic Widget as a modal dialog using Overlay.
 """
 
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.material.card import Card
@@ -15,6 +15,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class CustomDialogContent(ComposableWidget):
@@ -44,9 +45,10 @@ class CustomDialogContent(ComposableWidget):
                                 Text(self.counter.map(str)),
                             ],
                         ),
-                        FilledButton("Increment", on_click=self._increment),
+                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
                         Spacer(height=8),
-                        OutlinedButton("Close & Return Count", on_click=lambda: self.overlay.close(self.counter.value)),
+                        Button("Close & Return Count", on_click=lambda: self.overlay.close(
+                            self.counter.value), style=ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -76,10 +78,10 @@ class CustomDialogDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.last_count),
-                    FilledButton(
+                    Button(
                         "Open Custom Dialog",
                         on_click=self._show_custom_dialog,
-                    ),
+                        style=ButtonStyle.filled()),
                 ],
             ),
         )

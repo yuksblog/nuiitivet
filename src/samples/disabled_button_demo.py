@@ -5,7 +5,8 @@ from nuiitivet.observable import Observable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
-from nuiitivet.material.buttons import FilledButton, TextButton, OutlinedButton, ElevatedButton, FilledTonalButton
+from nuiitivet.material.buttons import Button
+from nuiitivet.material import ButtonStyle
 
 
 class DisabledButtonDemoWidget:
@@ -24,36 +25,41 @@ class DisabledButtonDemoWidget:
                 Text("Only enabled buttons respond to clicks"),
                 Row(
                     [
-                        FilledButton("Enabled", on_click=self.increment, width=150),
-                        FilledButton("Disabled", on_click=self.increment, disabled=True, width=150),
+                        Button("Enabled", on_click=self.increment, width=150, style=ButtonStyle.filled()),
+                        Button("Disabled", on_click=self.increment, disabled=True,
+                               width=150, style=ButtonStyle.filled()),
                     ],
                     gap=20,
                 ),
                 Row(
                     [
-                        TextButton("Enabled Text", on_click=self.increment, width=150),
-                        TextButton("Disabled Text", on_click=self.increment, disabled=True, width=150),
+                        Button("Enabled Text", on_click=self.increment, width=150, style=ButtonStyle.text()),
+                        Button("Disabled Text", on_click=self.increment,
+                               disabled=True, width=150, style=ButtonStyle.text()),
                     ],
                     gap=20,
                 ),
                 Row(
                     [
-                        OutlinedButton("Enabled Outlined", on_click=self.increment, width=150),
-                        OutlinedButton("Disabled Outlined", on_click=self.increment, disabled=True, width=150),
+                        Button("Enabled Outlined", on_click=self.increment, width=150, style=ButtonStyle.outlined()),
+                        Button("Disabled Outlined", on_click=self.increment,
+                               disabled=True, width=150, style=ButtonStyle.outlined()),
                     ],
                     gap=20,
                 ),
                 Row(
                     [
-                        ElevatedButton("Enabled Elevated", on_click=self.increment, width=150),
-                        ElevatedButton("Disabled Elevated", on_click=self.increment, disabled=True, width=150),
+                        Button("Enabled Elevated", on_click=self.increment, width=150, style=ButtonStyle.elevated()),
+                        Button("Disabled Elevated", on_click=self.increment,
+                               disabled=True, width=150, style=ButtonStyle.elevated()),
                     ],
                     gap=20,
                 ),
                 Row(
                     [
-                        FilledTonalButton("Enabled Tonal", on_click=self.increment, width=150),
-                        FilledTonalButton("Disabled Tonal", on_click=self.increment, disabled=True, width=150),
+                        Button("Enabled Tonal", on_click=self.increment, width=150, style=ButtonStyle.tonal()),
+                        Button("Disabled Tonal", on_click=self.increment,
+                               disabled=True, width=150, style=ButtonStyle.tonal()),
                     ],
                     gap=20,
                 ),

@@ -9,20 +9,14 @@ M3 Button Text Color Specifications:
 - FloatingActionButton (FAB): ON_PRIMARY
 """
 
-from nuiitivet.material.buttons import (
-    FilledButton,
-    OutlinedButton,
-    TextButton,
-    ElevatedButton,
-    FilledTonalButton,
-    FloatingActionButton,
-)
+from nuiitivet.material.buttons import FloatingActionButton, Button
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.styles.text_style import TextStyle
 import pytest
+from nuiitivet.material import ButtonStyle
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +26,7 @@ def material_theme():
 
 def test_filled_button_text_color():
     """FilledButton should use ON_PRIMARY for text per M3 spec."""
-    btn = FilledButton("Test")
+    btn = Button("Test", style=ButtonStyle.filled())
     assert len(btn.children) == 1
     text_widget = btn.children[0]
     assert isinstance(text_widget, Text)
@@ -40,17 +34,17 @@ def test_filled_button_text_color():
 
 
 def test_outlined_button_text_color():
-    """OutlinedButton should use PRIMARY for text per M3 spec."""
-    btn = OutlinedButton("Test")
+    """Outlined button uses ON_SURFACE_VARIANT for label per M3 Expressive."""
+    btn = Button("Test", style=ButtonStyle.outlined())
     assert len(btn.children) == 1
     text_widget = btn.children[0]
     assert isinstance(text_widget, Text)
-    assert text_widget.style.color == ColorRole.PRIMARY
+    assert text_widget.style.color == ColorRole.ON_SURFACE_VARIANT
 
 
 def test_text_button_text_color():
     """TextButton should use PRIMARY for text per M3 spec."""
-    btn = TextButton("Test")
+    btn = Button("Test", style=ButtonStyle.text())
     assert len(btn.children) == 1
     text_widget = btn.children[0]
     assert isinstance(text_widget, Text)
@@ -59,7 +53,7 @@ def test_text_button_text_color():
 
 def test_elevated_button_text_color():
     """ElevatedButton should use PRIMARY for text per M3 spec."""
-    btn = ElevatedButton("Test")
+    btn = Button("Test", style=ButtonStyle.elevated())
     assert len(btn.children) == 1
     text_widget = btn.children[0]
     assert isinstance(text_widget, Text)
@@ -68,7 +62,7 @@ def test_elevated_button_text_color():
 
 def test_filled_tonal_button_text_color():
     """FilledTonalButton should use ON_SECONDARY_CONTAINER for text per M3 spec."""
-    btn = FilledTonalButton("Test")
+    btn = Button("Test", style=ButtonStyle.tonal())
     assert len(btn.children) == 1
     text_widget = btn.children[0]
     assert isinstance(text_widget, Text)

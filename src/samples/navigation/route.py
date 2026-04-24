@@ -1,19 +1,12 @@
 import nuiitivet as nv
 
-from nuiitivet.material import (
-    FadeIn,
-    FadeOut,
-    FilledButton,
-    App,
-    MaterialTransitions,
-    SlideInVertically,
-    SlideOutVertically,
-    Text,
-)
+from nuiitivet.material import (FadeIn, FadeOut, App, MaterialTransitions,
+                                SlideInVertically, SlideOutVertically, Text, Button)
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator, PageRoute, Transitions
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 class DetailsScreen(ComposableWidget):
@@ -30,7 +23,7 @@ class DetailsScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Animated Details Screen"),
-                    FilledButton("Back", on_click=go_back),
+                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -61,8 +54,9 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                FilledButton("Go to Details (Custom Animation)", on_click=navigate_with_custom_animation),
-                FilledButton("Go to Details (Instant)", on_click=navigate_instantly),
+                Button("Go to Details (Custom Animation)",
+                       on_click=navigate_with_custom_animation, style=ButtonStyle.filled()),
+                Button("Go to Details (Instant)", on_click=navigate_instantly, style=ButtonStyle.filled()),
             ],
         )
 

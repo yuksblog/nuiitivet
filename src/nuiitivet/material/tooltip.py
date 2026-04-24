@@ -7,7 +7,7 @@ from typing import Callable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
@@ -171,9 +171,9 @@ class RichTooltip(ComposableWidget):
         )
         action_buttons: list[Widget] = []
         if self.action_label is not None:
-            action_buttons.append(TextButton(self.action_label, on_click=self.on_action_click, style=action_style))
+            action_buttons.append(Button(self.action_label, on_click=self.on_action_click, style=action_style))
         if self.action_label_2 is not None:
-            action_buttons.append(TextButton(self.action_label_2, on_click=self.on_action_click_2, style=action_style))
+            action_buttons.append(Button(self.action_label_2, on_click=self.on_action_click_2, style=action_style))
         if action_buttons:
             children.append(
                 Container(

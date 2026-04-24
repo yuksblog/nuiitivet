@@ -3,7 +3,7 @@
 from enum import IntEnum
 
 from nuiitivet.material import App
-from nuiitivet.material import BadgeValue, FilledButton, OutlinedButton, Text, TextButton
+from nuiitivet.material import BadgeValue, Text, Button
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
@@ -12,6 +12,7 @@ from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.material import ButtonStyle
 
 
 class Section(IntEnum):
@@ -89,15 +90,15 @@ class NavigationRailDemo(ComposableWidget):
                     Text(library_badge_label),
                     Row(
                         [
-                            FilledButton("Library +1", on_click=self._increment_library_badge),
-                            OutlinedButton("Library clear", on_click=self._clear_library_badge),
+                            Button("Library +1", on_click=self._increment_library_badge, style=ButtonStyle.filled()),
+                            Button("Library clear", on_click=self._clear_library_badge, style=ButtonStyle.outlined()),
                         ],
                         gap=8,
                     ),
                     Row(
                         [
-                            TextButton("Toggle Home dot", on_click=self._toggle_home_badge),
-                            TextButton("Toggle Search count", on_click=self._toggle_search_badge),
+                            Button("Toggle Home dot", on_click=self._toggle_home_badge, style=ButtonStyle.text()),
+                            Button("Toggle Search count", on_click=self._toggle_search_badge, style=ButtonStyle.text()),
                         ],
                         gap=8,
                     ),

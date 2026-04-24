@@ -6,8 +6,9 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material import Text
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.material import ButtonStyle
 
 
 def main():
@@ -48,7 +49,10 @@ def main():
                             [
                                 Text("Nested: Row in Column, both with padding"),
                                 Row(
-                                    [FilledButton("Button 1"), FilledButton("Button 2")],
+                                    [
+                                        Button("Button 1", style=ButtonStyle.filled()),
+                                        Button("Button 2", style=ButtonStyle.filled()),
+                                    ],
                                     gap=10,
                                     padding=10,
                                 ),
@@ -63,7 +67,7 @@ def main():
                     ),
                     FilledCard(
                         child=Row(
-                            [Text("No padding"), OutlinedButton("Button")],
+                            [Text("No padding"), Button("Button", style=ButtonStyle.outlined())],
                             gap=10,
                             padding=0,
                         ),

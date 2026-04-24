@@ -14,19 +14,13 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material import (
-    Divider,
-    FilledButton,
-    App,
-    Overlay,
-    OutlinedButton,
-    Text,
-)
+from nuiitivet.material import (Divider, App, Overlay, Text, Button)
 from nuiitivet.material.sheet import BottomSheet, SideSheet
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +114,7 @@ def main() -> None:
                 children=[
                     Divider(),
                     Text("Press the button below to simulate navigation."),
-                    OutlinedButton("Go to detail →", on_click=navigate_detail),
+                    Button("Go to detail →", on_click=navigate_detail, style=ButtonStyle.outlined()),
                 ],
                 gap=12,
                 cross_alignment="start",
@@ -144,20 +138,20 @@ def main() -> None:
                 Divider(),
                 Row(
                     children=[
-                        FilledButton("Right Sheet (default)", on_click=open_right_sheet),
-                        FilledButton("Left Sheet (w=320)", on_click=open_left_sheet),
+                        Button("Right Sheet (default)", on_click=open_right_sheet, style=ButtonStyle.filled()),
+                        Button("Left Sheet (w=320)", on_click=open_left_sheet, style=ButtonStyle.filled()),
                     ],
                     gap=12,
                 ),
                 Row(
                     children=[
-                        FilledButton("Bottom Sheet (h=280)", on_click=open_bottom_sheet_fixed),
-                        FilledButton("Bottom Sheet (auto)", on_click=open_bottom_sheet_auto),
+                        Button("Bottom Sheet (h=280)", on_click=open_bottom_sheet_fixed, style=ButtonStyle.filled()),
+                        Button("Bottom Sheet (auto)", on_click=open_bottom_sheet_auto, style=ButtonStyle.filled()),
                     ],
                     gap=12,
                 ),
-                FilledButton("Non-dismissible Sheet", on_click=open_non_dismissible_sheet),
-                FilledButton("Dynamic Back Button", on_click=open_dynamic_back_sheet),
+                Button("Non-dismissible Sheet", on_click=open_non_dismissible_sheet, style=ButtonStyle.filled()),
+                Button("Dynamic Back Button", on_click=open_dynamic_back_sheet, style=ButtonStyle.filled()),
             ],
             gap=20,
             cross_alignment="start",

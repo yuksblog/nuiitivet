@@ -15,9 +15,10 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, FilledTonalButton, OutlinedButton, ElevatedButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 def _section(title: str):
@@ -47,7 +48,7 @@ def main() -> None:
     fixed_width_buttons = Column(
         children=[
             _section("Fixed width=240 (detect centering)"),
-            *[FilledButton(label, icon="search", width=Sizing.fixed(240)) for label in samples],
+            *[Button(label, icon="search", width=Sizing.fixed(240), style=ButtonStyle.filled()) for label in samples],
         ],
         gap=10,
         cross_alignment="center",
@@ -56,11 +57,11 @@ def main() -> None:
     variants_auto_width = Column(
         children=[
             _section("Variants (auto width)"),
-            FilledButton("Filled", icon="search"),
-            OutlinedButton("Outlined", icon="search"),
-            ElevatedButton("Elevated", icon="search"),
-            FilledTonalButton("Tonal", icon="search"),
-            TextButton("Text", icon="search"),
+            Button("Filled", icon="search", style=ButtonStyle.filled()),
+            Button("Outlined", icon="search", style=ButtonStyle.outlined()),
+            Button("Elevated", icon="search", style=ButtonStyle.elevated()),
+            Button("Tonal", icon="search", style=ButtonStyle.tonal()),
+            Button("Text", icon="search", style=ButtonStyle.text()),
         ],
         gap=10,
         cross_alignment="center",
@@ -69,7 +70,7 @@ def main() -> None:
     text_buttons = Column(
         children=[
             _section("TextButton samples (auto width)"),
-            *[TextButton(label, icon="search") for label in samples],
+            *[Button(label, icon="search", style=ButtonStyle.text()) for label in samples],
         ],
         gap=10,
         cross_alignment="center",
@@ -78,7 +79,7 @@ def main() -> None:
     outlined_buttons = Column(
         children=[
             _section("OutlinedButton samples (auto width)"),
-            *[OutlinedButton(label, icon="search") for label in samples],
+            *[Button(label, icon="search", style=ButtonStyle.outlined()) for label in samples],
         ],
         gap=10,
         cross_alignment="center",

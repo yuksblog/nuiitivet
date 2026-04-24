@@ -20,10 +20,10 @@ import nuiitivet.material as md
 # Creates 16px spacing inside the container (spacing between buttons is zero)
 content = nv.Column(
     children=[
-        md.FilledButton("Button 1"),
-        md.FilledButton("Button 2"),
-        md.OutlinedButton("Button 3"),  # Only this one has different style
-        md.FilledButton("Button 4"),
+        md.Button("Button 1", style=md.ButtonStyle.filled()),
+        md.Button("Button 2", style=md.ButtonStyle.filled()),
+        md.Button("Button 3", style=md.ButtonStyle.outlined()),  # Only this one has different style
+        md.Button("Button 4", style=md.ButtonStyle.filled()),
     ],
     padding=16,
 )
@@ -43,10 +43,10 @@ import nuiitivet.material as md
 # Creates a 12px gap between buttons
 content = nv.Column(
     children=[
-        md.FilledButton("Button 1"),
-        md.FilledButton("Button 2"),
-        md.OutlinedButton("Button 3"),
-        md.FilledButton("Button 4"),
+        md.Button("Button 1", style=md.ButtonStyle.filled()),
+        md.Button("Button 2", style=md.ButtonStyle.filled()),
+        md.Button("Button 3", style=md.ButtonStyle.outlined()),
+        md.Button("Button 4", style=md.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,
@@ -70,12 +70,12 @@ import nuiitivet.material as md
 # Widen interval only before and after Button 3
 content = nv.Column(
     children=[
-        md.FilledButton("Button 1"),
-        md.FilledButton("Button 2"),
+        md.Button("Button 1", style=md.ButtonStyle.filled()),
+        md.Button("Button 2", style=md.ButtonStyle.filled()),
         nv.Spacer(height=24),  # Widen only here
-        md.OutlinedButton("Button 3"),
+        md.Button("Button 3", style=md.ButtonStyle.outlined()),
         nv.Spacer(height=24),  # Widen only here
-        md.FilledButton("Button 4"),
+        md.Button("Button 4", style=md.ButtonStyle.filled()),
     ],
     gap=12,  # Basic interval
     padding=16,
@@ -95,13 +95,13 @@ import nuiitivet.material as md
 # Create spacing only around Button 3 (top, bottom, left, right)
 content = nv.Column(
     children=[
-        md.FilledButton("Button 1"),
-        md.FilledButton("Button 2"),
+        md.Button("Button 1", style=md.ButtonStyle.filled()),
+        md.Button("Button 2", style=md.ButtonStyle.filled()),
         nv.Container(
-            child=md.OutlinedButton("Button 3"),
+            child=md.Button("Button 3", style=md.ButtonStyle.outlined()),
             padding=24,  # Secure 24px around this element only
         ),
-        md.FilledButton("Button 4"),
+        md.Button("Button 4", style=md.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,

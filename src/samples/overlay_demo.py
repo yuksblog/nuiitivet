@@ -13,9 +13,10 @@ from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable
 from nuiitivet.material import Overlay
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class OverlayDemo(ComposableWidget):
                 title="Information",
                 message="This is an information dialog.",
                 actions=[
-                    FilledButton("OK", on_click=on_ok),
+                    Button("OK", on_click=on_ok, style=ButtonStyle.filled()),
                 ],
             )
         )
@@ -86,8 +87,8 @@ class OverlayDemo(ComposableWidget):
                 title="Confirm Action",
                 message="Are you sure you want to proceed?",
                 actions=[
-                    TextButton("Cancel", on_click=on_cancel),
-                    FilledButton("Confirm", on_click=on_confirm),
+                    Button("Cancel", on_click=on_cancel, style=ButtonStyle.text()),
+                    Button("Confirm", on_click=on_confirm, style=ButtonStyle.filled()),
                 ],
             )
         )
@@ -110,7 +111,7 @@ class OverlayDemo(ComposableWidget):
                 title="Custom Dialog",
                 message="This dialog has custom content.\nMultiple lines are supported.",
                 actions=[
-                    FilledButton("Close", on_click=on_close),
+                    Button("Close", on_click=on_close, style=ButtonStyle.filled()),
                 ],
                 style=DialogStyle(
                     min_width=400.0,
@@ -131,13 +132,13 @@ class OverlayDemo(ComposableWidget):
                     Text("Overlay Demo"),
                     # Snackbar section
                     Text("Snackbar Messages:"),
-                    FilledButton("Show Snackbar", on_click=self.show_snackbar),
-                    FilledButton("Show Long Snackbar (5s)", on_click=self.show_long_snackbar),
+                    Button("Show Snackbar", on_click=self.show_snackbar, style=ButtonStyle.filled()),
+                    Button("Show Long Snackbar (5s)", on_click=self.show_long_snackbar, style=ButtonStyle.filled()),
                     # Dialog section
                     Text("Alert Dialogs:"),
-                    FilledButton("Show Info Dialog", on_click=self.show_info_dialog),
-                    FilledButton("Show Confirm Dialog", on_click=self.show_confirm_dialog),
-                    FilledButton("Show Custom Dialog", on_click=self.show_custom_dialog),
+                    Button("Show Info Dialog", on_click=self.show_info_dialog, style=ButtonStyle.filled()),
+                    Button("Show Confirm Dialog", on_click=self.show_confirm_dialog, style=ButtonStyle.filled()),
+                    Button("Show Custom Dialog", on_click=self.show_custom_dialog, style=ButtonStyle.filled()),
                     # Result display
                     Text("Last Dialog Result:"),
                     Text(self.dialog_result),

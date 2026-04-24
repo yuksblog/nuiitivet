@@ -1,6 +1,6 @@
 import nuiitivet as nv
 
-from nuiitivet.material import FilledButton, App, Text
+from nuiitivet.material import App, Text, Button
 from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -8,6 +8,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 class NestedDetails(ComposableWidget):
@@ -24,7 +25,7 @@ class NestedDetails(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Nested Details"),
-                    FilledButton("Back (Nested)", on_click=go_back),
+                    Button("Back (Nested)", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -40,7 +41,7 @@ class NestedHome(ComposableWidget):
             gap=12,
             children=[
                 Text("Nested Home"),
-                FilledButton("Go Deeper (Nested)", on_click=go_deeper),
+                Button("Go Deeper (Nested)", on_click=go_deeper, style=ButtonStyle.filled()),
             ],
         )
 
@@ -59,7 +60,7 @@ class FullScreenDetails(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Full Screen Details"),
-                    FilledButton("Back (Full Screen)", on_click=go_back),
+                    Button("Back (Full Screen)", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -84,7 +85,7 @@ class MainScreen(ComposableWidget):
                         gap=12,
                         children=[
                             Text("Sidebar Menu"),
-                            FilledButton("Open Full Screen", on_click=open_full_screen),
+                            Button("Open Full Screen", on_click=open_full_screen, style=ButtonStyle.filled()),
                         ],
                     ),
                 ),

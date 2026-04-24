@@ -25,19 +25,12 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroller import Scroller
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.material.symbols import Symbols
-from nuiitivet.material.buttons import (
-    ElevatedButton,
-    FilledButton,
-    FilledTonalButton,
-    FloatingActionButton,
-    OutlinedButton,
-    TextButton,
-)
+from nuiitivet.material.buttons import FloatingActionButton, Button
 from nuiitivet.theme import manager as theme_manager
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior
 from nuiitivet.material import ThemeFactory
-
+from nuiitivet.material import ButtonStyle
 
 _logger = logging.getLogger(__name__)
 
@@ -153,13 +146,10 @@ class MyWidget(ComposableWidget):
         children = [
             Row(
                 [
-                    FilledButton("Seed Purple", on_click=lambda: _update_theme_seed("#6750A4")),
-                    FilledButton("Seed Teal", on_click=lambda: _update_theme_seed("#00796B")),
-                    FilledButton("Seed Amber", on_click=lambda: _update_theme_seed("#FFC107")),
-                    FilledButton(
-                        "Toggle Mode",
-                        on_click=_toggle_theme_mode,
-                    ),
+                    Button("Seed Purple", on_click=lambda: _update_theme_seed("#6750A4"), style=ButtonStyle.filled()),
+                    Button("Seed Teal", on_click=lambda: _update_theme_seed("#00796B"), style=ButtonStyle.filled()),
+                    Button("Seed Amber", on_click=lambda: _update_theme_seed("#FFC107"), style=ButtonStyle.filled()),
+                    Button("Toggle Mode", on_click=_toggle_theme_mode, style=ButtonStyle.filled()),
                 ],
                 gap=8,
                 cross_alignment="center",
@@ -186,9 +176,9 @@ class MyWidget(ComposableWidget):
             ),
             Row(
                 [
-                    ElevatedButton("Record: A", on_click=lambda: self.model.record_click("A")),
-                    ElevatedButton("Record: B", on_click=lambda: self.model.record_click("B")),
-                    OutlinedButton("Clear", on_click=lambda: self.model.record_click("")),
+                    Button("Record: A", on_click=lambda: self.model.record_click("A"), style=ButtonStyle.elevated()),
+                    Button("Record: B", on_click=lambda: self.model.record_click("B"), style=ButtonStyle.elevated()),
+                    Button("Clear", on_click=lambda: self.model.record_click(""), style=ButtonStyle.outlined()),
                 ],
                 gap=8,
                 cross_alignment="center",
@@ -199,8 +189,16 @@ class MyWidget(ComposableWidget):
                         Text("Column demo:"),
                         Row(
                             [
-                                ElevatedButton("Add (Column)", on_click=self.model.add_column_item),
-                                OutlinedButton("Remove (Column)", on_click=self.model.remove_column_item),
+                                Button(
+                                    "Add (Column)",
+                                    on_click=self.model.add_column_item,
+                                    style=ButtonStyle.elevated(),
+                                ),
+                                Button(
+                                    "Remove (Column)",
+                                    on_click=self.model.remove_column_item,
+                                    style=ButtonStyle.outlined(),
+                                ),
                             ],
                             gap=8,
                             cross_alignment="center",
@@ -229,8 +227,8 @@ class MyWidget(ComposableWidget):
                         Text("Row demo:"),
                         Row(
                             [
-                                FilledTonalButton("Add (Row)", on_click=self.model.add_row_item),
-                                TextButton("Remove (Row)", on_click=self.model.remove_row_item),
+                                Button("Add (Row)", on_click=self.model.add_row_item, style=ButtonStyle.tonal()),
+                                Button("Remove (Row)", on_click=self.model.remove_row_item, style=ButtonStyle.text()),
                             ],
                             gap=8,
                             cross_alignment="center",
@@ -268,7 +266,11 @@ class MyWidget(ComposableWidget):
                         Row(
                             [
                                 FloatingActionButton(Symbols.add, on_click=self.model.add_grid_item),
-                                OutlinedButton("Remove (Grid)", on_click=self.model.remove_grid_item),
+                                Button(
+                                    "Remove (Grid)",
+                                    on_click=self.model.remove_grid_item,
+                                    style=ButtonStyle.outlined(),
+                                ),
                             ],
                             gap=8,
                             cross_alignment="center",

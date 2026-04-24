@@ -236,11 +236,12 @@ class Theme:
 ### 4. Widget Usage Pattern
 
 ```python
+from nuiitivet.material import ButtonStyle
 # User code - use theme defaults
-button = FilledButton("Click", on_click=handler)
+button = Button("Click", on_click=handler, style=ButtonStyle.filled())
 
 # User code - customize specific properties
-button = FilledButton(
+button = Button(
     "Click",
     style=manager.current.button_style.copy_with(
         corner_radius=20,
@@ -255,10 +256,10 @@ custom_style = ButtonStyle(
     corner_radius=24,
     elevation=4.0,
 )
-button = FilledButton("Custom", style=custom_style)
+button = Button("Custom", style=custom_style)
 
 # Widget implementation
-class FilledButton(BaseButton):
+class Button(BaseButton, style=ButtonStyle.filled()):
     def __init__(
         self,
         text: str,

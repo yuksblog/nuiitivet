@@ -25,11 +25,12 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import App, FilledButton, Text
+from nuiitivet.material import App, Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 @dataclass
@@ -48,7 +49,7 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                FilledButton("View Details", on_click=lambda: Navigator.root().push(DetailsIntent(item_id=42))),
+                Button("View Details", on_click=lambda: Navigator.root().push(DetailsIntent(item_id=42)), style=ButtonStyle.filled()),
             ],
         )
 
@@ -67,7 +68,7 @@ class DetailsScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text(f"Details for item {self.intent.item_id}"),
-                    FilledButton("Back", on_click=lambda: Navigator.root().pop()),
+                    Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -92,16 +93,17 @@ Once configured, you can navigate by pushing an Intent object to the `Navigator`
 
 ```python
 from nuiitivet.navigation import Navigator
-from nuiitivet.material import FilledButton
+from nuiitivet.material import Button
+from nuiitivet.material import ButtonStyle
 
 def go_to_details():
     # Push an Intent instead of a Widget or Route
     Navigator.root().push(DetailsIntent(item_id=42))
 
-FilledButton(
+Button(
     "View Details",
     on_click=go_to_details,
-)
+ style=ButtonStyle.filled())
 ```
 
 ## Why Use Intents?

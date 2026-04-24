@@ -18,8 +18,9 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 class User:
@@ -122,17 +123,18 @@ class AsyncDataApp(ComposableWidget):
                             Row(
                                 gap=10,
                                 children=[
-                                    FilledButton("User 1", on_click=lambda: vm.fetch_user(1)),
-                                    FilledButton("User 2", on_click=lambda: vm.fetch_user(2)),
-                                    FilledButton("User 3", on_click=lambda: vm.fetch_user(3)),
+                                    Button("User 1", on_click=lambda: vm.fetch_user(1), style=ButtonStyle.filled()),
+                                    Button("User 2", on_click=lambda: vm.fetch_user(2), style=ButtonStyle.filled()),
+                                    Button("User 3", on_click=lambda: vm.fetch_user(3), style=ButtonStyle.filled()),
                                 ],
                             ),
                             Row(
                                 gap=10,
                                 children=[
-                                    FilledButton("User 4", on_click=lambda: vm.fetch_user(4)),
-                                    FilledButton("User 5", on_click=lambda: vm.fetch_user(5)),
-                                    OutlinedButton("Error (999)", on_click=lambda: vm.fetch_user(999)),
+                                    Button("User 4", on_click=lambda: vm.fetch_user(4), style=ButtonStyle.filled()),
+                                    Button("User 5", on_click=lambda: vm.fetch_user(5), style=ButtonStyle.filled()),
+                                    Button("Error (999)", on_click=lambda: vm.fetch_user(
+                                        999), style=ButtonStyle.outlined()),
                                 ],
                             ),
                         ],

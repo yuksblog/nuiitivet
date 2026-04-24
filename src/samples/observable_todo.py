@@ -19,8 +19,9 @@ from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 @dataclass
@@ -141,9 +142,9 @@ class TodoApp(ComposableWidget):
                 Row(
                     gap=10,
                     children=[
-                        FilledButton(
+                        Button(
                             "Add New Task", on_click=lambda: vm.add_item(f"New task {vm.total_count.value + 1}")
-                        ),
+                            , style=ButtonStyle.filled()),
                     ],
                 ),
                 # Statistics
@@ -166,9 +167,10 @@ class TodoApp(ComposableWidget):
                         Row(
                             gap=10,
                             children=[
-                                FilledButton("All", on_click=lambda: vm.set_filter("all")),
-                                FilledButton("Active", on_click=lambda: vm.set_filter("active")),
-                                FilledButton("Completed", on_click=lambda: vm.set_filter("completed")),
+                                Button("All", on_click=lambda: vm.set_filter("all"), style=ButtonStyle.filled()),
+                                Button("Active", on_click=lambda: vm.set_filter("active"), style=ButtonStyle.filled()),
+                                Button("Completed", on_click=lambda: vm.set_filter(
+                                    "completed"), style=ButtonStyle.filled()),
                             ],
                         ),
                     ],
@@ -180,10 +182,10 @@ class TodoApp(ComposableWidget):
                     key=lambda item, idx: item.id,
                 ),
                 # Clear completed button
-                OutlinedButton(
+                Button(
                     vm.clear_button_text,
                     on_click=lambda: vm.clear_completed(),
-                ),
+                    style=ButtonStyle.outlined()),
             ],
         )
 
@@ -205,7 +207,7 @@ class TodoApp(ComposableWidget):
                         item.text,
                         style=TextStyle(color=((100, 100, 100, 255) if item.completed else (0, 0, 0, 255))),
                     ),
-                    OutlinedButton("Delete", on_click=lambda: vm.remove_item(item.id)),
+                    Button("Delete", on_click=lambda: vm.remove_item(item.id), style=ButtonStyle.outlined()),
                 ],
             ),
         )

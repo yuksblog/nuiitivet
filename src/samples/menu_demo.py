@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from nuiitivet.layout.column import Column
-from nuiitivet.material import FilledButton, Menu, MenuDivider, MenuItem, SubMenuItem, Text
+from nuiitivet.material import Menu, MenuDivider, MenuItem, SubMenuItem, Text, Button
 from nuiitivet.material import App
 from nuiitivet.modifiers.popup import light_dismiss
 from nuiitivet.observable.value import Observable
+from nuiitivet.material import ButtonStyle
 
 
 is_open: Observable[bool] = Observable(False)
@@ -45,7 +46,7 @@ def _build_menu() -> Menu:
 def main() -> None:
     menu = _build_menu()
 
-    trigger = FilledButton("File", on_click=_toggle_menu).modifier(
+    trigger = Button("File", on_click=_toggle_menu, style=ButtonStyle.filled()).modifier(
         light_dismiss(
             menu,
             is_open=is_open,

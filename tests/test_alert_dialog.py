@@ -5,6 +5,7 @@ from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 import pytest
+from nuiitivet.material import ButtonStyle
 
 
 @pytest.fixture(autouse=True)
@@ -26,11 +27,11 @@ def test_alert_dialog_creation():
 
 def test_alert_dialog_with_actions():
     """Test AlertDialog with action buttons."""
-    from nuiitivet.material.buttons import TextButton
+    from nuiitivet.material.buttons import Button
 
     actions = [
-        TextButton("Cancel"),
-        TextButton("OK"),
+        Button("Cancel", style=ButtonStyle.text()),
+        Button("OK", style=ButtonStyle.text()),
     ]
 
     dialog = AlertDialog(

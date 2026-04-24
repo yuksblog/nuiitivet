@@ -1,10 +1,11 @@
 import nuiitivet as nv
 
-from nuiitivet.material import FilledButton, App, Text
+from nuiitivet.material import App, Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 
 class DetailsScreen(ComposableWidget):
@@ -21,7 +22,7 @@ class DetailsScreen(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Details Screen"),
-                    FilledButton("Back", on_click=go_back),
+                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -37,7 +38,7 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                FilledButton("Go to Details", on_click=navigate_to_details),
+                Button("Go to Details", on_click=navigate_to_details, style=ButtonStyle.filled()),
             ],
         )
 

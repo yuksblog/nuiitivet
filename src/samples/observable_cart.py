@@ -13,9 +13,10 @@ from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.widgets.box import Box
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.material import ButtonStyle
 
 
 class ShoppingCartViewModel:
@@ -98,9 +99,9 @@ class ShoppingCartApp(ComposableWidget):
                             Row(
                                 gap=10,
                                 children=[
-                                    OutlinedButton("-100", on_click=lambda: vm.decrease_price()),
+                                    Button("-100", on_click=lambda: vm.decrease_price(), style=ButtonStyle.outlined()),
                                     Text(vm.formatted_price),
-                                    OutlinedButton("+100", on_click=lambda: vm.increase_price()),
+                                    Button("+100", on_click=lambda: vm.increase_price(), style=ButtonStyle.outlined()),
                                 ],
                             ),
                         ],
@@ -113,11 +114,11 @@ class ShoppingCartApp(ComposableWidget):
                             Row(
                                 gap=10,
                                 children=[
-                                    OutlinedButton("-", on_click=lambda: vm.decrease_quantity()),
+                                    Button("-", on_click=lambda: vm.decrease_quantity(), style=ButtonStyle.outlined()),
                                     Text(
                                         vm.quantity_display,
                                     ),
-                                    OutlinedButton("+", on_click=lambda: vm.increase_quantity()),
+                                    Button("+", on_click=lambda: vm.increase_quantity(), style=ButtonStyle.outlined()),
                                 ],
                             ),
                         ],
@@ -130,10 +131,10 @@ class ShoppingCartApp(ComposableWidget):
                             Row(
                                 gap=10,
                                 children=[
-                                    FilledButton("0%", on_click=lambda: vm.set_discount(0.0)),
-                                    FilledButton("10%", on_click=lambda: vm.set_discount(0.1)),
-                                    FilledButton("20%", on_click=lambda: vm.set_discount(0.2)),
-                                    FilledButton("30%", on_click=lambda: vm.set_discount(0.3)),
+                                    Button("0%", on_click=lambda: vm.set_discount(0.0), style=ButtonStyle.filled()),
+                                    Button("10%", on_click=lambda: vm.set_discount(0.1), style=ButtonStyle.filled()),
+                                    Button("20%", on_click=lambda: vm.set_discount(0.2), style=ButtonStyle.filled()),
+                                    Button("30%", on_click=lambda: vm.set_discount(0.3), style=ButtonStyle.filled()),
                                 ],
                             ),
                         ],
