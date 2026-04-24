@@ -39,7 +39,7 @@ def main() -> None:
 
     # Local imports that rely on adjusted sys.path
     from samples.my_widget import MyWidgetModel, MyWidget
-    from nuiitivet.material.buttons import FilledButton, ElevatedButton, FilledTonalButton
+    from nuiitivet.material.buttons import Button
     from nuiitivet.runtime.pointer import PointerEvent, PointerEventType
     from nuiitivet.theme import manager as theme_manager
     from nuiitivet.theme.resolver import resolve_color_to_rgba

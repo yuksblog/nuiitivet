@@ -6,7 +6,7 @@ This is simpler but creates strong coupling between Logic and View.
 """
 
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
@@ -14,6 +14,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class CoupledViewModel:
@@ -31,7 +32,7 @@ class CoupledViewModel:
             message="Process finished successfully.",
             icon="check_circle",
             actions=[
-                TextButton("OK", on_click=lambda: overlay.close(True)),
+                Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text()),
             ],
         )
 
@@ -55,10 +56,10 @@ class DirectViewModelDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.vm.status),
-                    FilledButton(
+                    Button(
                         "Run Process",
                         on_click=self._on_run_click,
-                    ),
+                        style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -71,7 +72,7 @@ def main(png_path: str = ""):
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
-            actions=[TextButton("OK")],
+            actions=[Button("OK", style=ButtonStyle.text())],
         )
         app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)

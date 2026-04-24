@@ -119,8 +119,8 @@ def test_button_style_outlined():
 
     style = ButtonStyle.outlined()
     assert style.background is None
-    assert style.foreground == ColorRole.PRIMARY
-    assert style.border_color == ColorRole.OUTLINE
+    assert style.foreground == ColorRole.ON_SURFACE_VARIANT
+    assert style.border_color == ColorRole.OUTLINE_VARIANT
     assert style.border_width == 1.0
 
 
@@ -140,7 +140,7 @@ def test_button_style_elevated():
     from nuiitivet.material.theme.color_role import ColorRole
 
     style = ButtonStyle.elevated()
-    assert style.background == ColorRole.SURFACE
+    assert style.background == ColorRole.SURFACE_CONTAINER_LOW
     assert style.foreground == ColorRole.PRIMARY
     assert style.elevation == 1.0
 

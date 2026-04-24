@@ -1,6 +1,7 @@
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.observable import Observable
+from nuiitivet.material import ButtonStyle
 
 
 class DummyWidget(Widget):
@@ -79,7 +80,7 @@ def test_key_event_auto_batch():
 
 def test_button_click_auto_batch():
     """Test that button on_click callbacks are automatically batched via dispatch_pointer_event."""
-    from nuiitivet.material.buttons import FilledButton
+    from nuiitivet.material.buttons import Button
 
     class ViewModel:
         count = Observable(0)
@@ -105,7 +106,7 @@ def test_button_click_auto_batch():
         vm.count.value = 5
         assert vm.computations == 1, "Computation should be deferred inside button click handler"
 
-    button = FilledButton("Test", on_click=on_click)
+    button = Button("Test", on_click=on_click, style=ButtonStyle.filled())
 
     # Simulate click through dispatch_pointer_event (which wraps in batch)
     press_event = PointerEvent.mouse_event(1, PointerEventType.PRESS, 10, 10)

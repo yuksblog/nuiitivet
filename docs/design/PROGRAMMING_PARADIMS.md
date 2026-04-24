@@ -33,14 +33,15 @@ Some UI components sit on the boundary between declarative (structure) and imper
 #### Dialog: Basic Usage (View only)
 
 ```python
+from nuiitivet.material import ButtonStyle
 # Use await within an event handler to wait for result
 result = await Overlay.dialog(
     child=AlertDialog(
         title=Text("Confirm"),
         content=Text("Are you sure?"),
         actions=[
-            TextButton("Yes", on_click=lambda: Overlay.pop(True)),
-            TextButton("No", on_click=lambda: Overlay.pop(False)),
+            Button("Yes", on_click=lambda: Overlay.pop(True), style=ButtonStyle.text()),
+            Button("No", on_click=lambda: Overlay.pop(False), style=ButtonStyle.text()),
         ]
     )
 )
@@ -74,6 +75,7 @@ class MyViewModel:
 To display a dialog with a unique layout, define a custom Intent and register it with the `Overlay`.
 
 ```python
+from nuiitivet.material import ButtonStyle
 # 1. Custom Intent (Data class)
 @dataclass
 class ConfirmIntent:
@@ -91,8 +93,8 @@ if __name__ == "__main__":
                     title=Text(intent.title),
                     content=Text(intent.message),
                     actions=[
-                        TextButton("OK", on_click=lambda: overlay.close(True)),
-                        TextButton("Cancel", on_click=lambda: overlay.close(False))
+                        Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text()),
+                        Button("Cancel", on_click=lambda: overlay.close(False), style=ButtonStyle.text())
                     ]
                 ),
                 barrier_dismissible=True,
@@ -310,7 +312,6 @@ class MainScreen(Widget):
             ),
             bottom_navigation_bar=BottomNavigationBar(...)
         )
-
 ```
 
 ### 3.6 Declarative Routing - Future Work

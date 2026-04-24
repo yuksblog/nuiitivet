@@ -6,12 +6,13 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import RichTooltip, Text, Tooltip
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, IconButton, OutlinedButton
+from nuiitivet.material.buttons import IconButton, Button
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.modifiers import tooltip
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class TooltipDemo(ComposableWidget):
@@ -42,7 +43,7 @@ class TooltipDemo(ComposableWidget):
             on_action_click_2=lambda: self._set_action("dismiss"),
         )
 
-        rich_target = FilledButton("Hover me").modifier(
+        rich_target = Button("Hover me", style=ButtonStyle.filled()).modifier(
             tooltip(
                 rich_content,
                 delay=0.2,
@@ -53,7 +54,7 @@ class TooltipDemo(ComposableWidget):
             )
         )
 
-        custom_target = OutlinedButton("Bottom-right tooltip").modifier(
+        custom_target = Button("Bottom-right tooltip", style=ButtonStyle.outlined()).modifier(
             tooltip(
                 Tooltip("Custom placement", style=TooltipStyleCustom.bottom_hint()),
                 delay=0.0,

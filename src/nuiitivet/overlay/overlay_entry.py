@@ -27,8 +27,8 @@ class OverlayEntry:
                 title="Confirm",
                 content="Are you sure?",
                 actions=[
-                    TextButton("Cancel", on_click=lambda: overlay.close(False)),
-                    TextButton("OK", on_click=lambda: overlay.close(True)),
+                    Button("Cancel", on_click=lambda: overlay.close(False), style=ButtonStyle.text()),
+                    Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text()),
                 ]
             )
 

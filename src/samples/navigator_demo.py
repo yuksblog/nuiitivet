@@ -18,9 +18,10 @@ from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
 from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +42,7 @@ class HomePage(ComposableWidget):
                 children=[
                     Text("Navigator Demo"),
                     Text("This is the first page."),
-                    FilledButton("Go to details", on_click=go_next),
+                    Button("Go to details", on_click=go_next, style=ButtonStyle.filled()),
                 ],
             ),
         ).modifier(background("#E3F2FD"))
@@ -63,8 +64,8 @@ class DetailsPage(ComposableWidget):
                 children=[
                     Text("Details"),
                     Text("This is the second page."),
-                    TextButton("Back", on_click=go_back),
-                    FilledButton("Push another details", on_click=push_more),
+                    Button("Back", on_click=go_back, style=ButtonStyle.text()),
+                    Button("Push another details", on_click=push_more, style=ButtonStyle.filled()),
                 ],
             ),
         ).modifier(background("#FFF3E0"))

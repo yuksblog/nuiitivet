@@ -1,12 +1,13 @@
 import pytest
-from nuiitivet.material.buttons import FilledButton, FloatingActionButton
+from nuiitivet.material.buttons import FloatingActionButton, Button
 from nuiitivet.material.text import Text
 from nuiitivet.material.icon import Icon
 from nuiitivet.layout.row import Row
+from nuiitivet.material import ButtonStyle
 
 
 def test_filled_button_label_only():
-    btn = FilledButton(label="Save")
+    btn = Button(label="Save", style=ButtonStyle.filled())
     assert len(btn.children) == 1
     child = btn.children[0]
     assert isinstance(child, Text)
@@ -14,7 +15,7 @@ def test_filled_button_label_only():
 
 
 def test_filled_button_icon_only():
-    btn = FilledButton(icon="search")
+    btn = Button(icon="search", style=ButtonStyle.filled())
     assert len(btn.children) == 1
     child = btn.children[0]
     assert isinstance(child, Icon)
@@ -22,7 +23,7 @@ def test_filled_button_icon_only():
 
 
 def test_filled_button_label_and_icon():
-    btn = FilledButton(label="Search", icon="search")
+    btn = Button(label="Search", icon="search", style=ButtonStyle.filled())
     assert len(btn.children) == 1
     child = btn.children[0]
     assert isinstance(child, Row)
@@ -42,14 +43,14 @@ def test_fab_icon_only():
 
 def test_invalid_icon_type_raises():
     with pytest.raises(TypeError):
-        FilledButton(icon=123)
+        Button(icon=123, style=ButtonStyle.filled())
 
 
 def test_child_override_not_supported():
     with pytest.raises(TypeError):
-        FilledButton(child=Row([Icon("search"), Text("X")], gap=6))
+        Button(child=Row([Icon("search"), Text("X")], gap=6), style=ButtonStyle.filled())
 
 
 def test_body_override_not_supported():
     with pytest.raises(TypeError):
-        FilledButton(body=Row([Icon("search"), Text("X")], gap=6))
+        Button(body=Row([Icon("search"), Text("X")], gap=6), style=ButtonStyle.filled())

@@ -3,7 +3,7 @@ from nuiitivet.runtime.app import App
 from nuiitivet.material.text import Text
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import TextButton
+from nuiitivet.material.buttons import Button
 import nuiitivet as nv
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
@@ -15,7 +15,7 @@ def main():
     title_bar_content = Row(
         children=[
             Text("Custom Title Bar", style=TextStyle(color="#ffffff")),
-            TextButton(
+            Button(
                 icon="close",
                 on_click=lambda: App.of(title_bar_content).dispatch(ExitAppIntent()),
                 width=40,

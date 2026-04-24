@@ -20,7 +20,7 @@ content = nv.Column(
     children=[
         md.FilledTextField(label="Email"),
         md.FilledTextField(label="Password"),
-        md.FilledButton("Login"),
+        md.Button("Login", style=md.ButtonStyle.filled()),
     ],
     gap=16,
     padding=16,
@@ -42,8 +42,8 @@ import nuiitivet.material as md
 
 actions = nv.Row(
     children=[
-        md.OutlinedButton("Back"),
-        md.FilledButton("Next"),
+        md.Button("Back", style=md.ButtonStyle.outlined()),
+        md.Button("Next", style=md.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,
@@ -79,8 +79,8 @@ form = nv.Column(
         # Row 3: Buttons (Horizontal)
         nv.Row(
             children=[
-                md.TextButton("Cancel"),
-                md.FilledButton("Register"),
+                md.Button("Cancel", style=md.ButtonStyle.text()),
+                md.Button("Register", style=md.ButtonStyle.filled()),
             ],
             gap=12,
         ),

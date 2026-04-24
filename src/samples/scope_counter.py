@@ -5,7 +5,8 @@ from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
+from nuiitivet.material import ButtonStyle
 
 
 class ScopeCounterDemo(ComposableWidget):
@@ -26,9 +27,9 @@ class ScopeCounterDemo(ComposableWidget):
 
         controls = Row(
             [
-                FilledButton("Increment Left", on_click=self._increment_left),
-                FilledButton("Increment Right", on_click=self._increment_right),
-                TextButton("Reset", on_click=self._reset),
+                Button("Increment Left", on_click=self._increment_left, style=ButtonStyle.filled()),
+                Button("Increment Right", on_click=self._increment_right, style=ButtonStyle.filled()),
+                Button("Reset", on_click=self._reset, style=ButtonStyle.text()),
             ],
             gap=12,
             cross_alignment="center",

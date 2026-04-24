@@ -8,26 +8,20 @@ Provides two concrete style classes:
   with junction corners and selection state colours.
 
 Each style offers ``filled()``, ``tonal()``, and ``outlined()`` factory
-classmethods that accept a ``ButtonGroupSize`` to set M3-spec size tokens.
+classmethods that accept a :data:`ButtonSize` to set M3-spec size tokens.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Literal, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
+from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
 if TYPE_CHECKING:
     from nuiitivet.theme import Theme
-
-# ---------------------------------------------------------------------------
-# Size type
-# ---------------------------------------------------------------------------
-
-ButtonGroupSize = Literal["xs", "s", "m", "l", "xl"]
-"""Size variant for a ButtonGroup, mapping to M3 spec size tokens."""
 
 # ---------------------------------------------------------------------------
 # Size token tables (M3 spec)
@@ -119,7 +113,7 @@ class StandardButtonGroupStyle:
     ``outer_corner_radius`` (exposed as a read-only property).
 
     Use ``filled()``, ``tonal()``, or ``outlined()`` to create a preset,
-    optionally passing a ``ButtonGroupSize``.
+    optionally passing a ``ButtonSize``.
     """
 
     # Container colours
@@ -172,7 +166,7 @@ class StandardButtonGroupStyle:
     # -- Factory classmethods -----------------------------------------------
 
     @classmethod
-    def filled(cls, size: ButtonGroupSize = "s") -> "StandardButtonGroupStyle":
+    def filled(cls, size: ButtonSize = "s") -> "StandardButtonGroupStyle":
         """Create a filled-variant style.
 
         Args:
@@ -194,7 +188,7 @@ class StandardButtonGroupStyle:
         )
 
     @classmethod
-    def tonal(cls, size: ButtonGroupSize = "s") -> "StandardButtonGroupStyle":
+    def tonal(cls, size: ButtonSize = "s") -> "StandardButtonGroupStyle":
         """Create a tonal-variant style.
 
         Args:
@@ -216,7 +210,7 @@ class StandardButtonGroupStyle:
         )
 
     @classmethod
-    def outlined(cls, size: ButtonGroupSize = "s") -> "StandardButtonGroupStyle":
+    def outlined(cls, size: ButtonSize = "s") -> "StandardButtonGroupStyle":
         """Create an outlined-variant style.
 
         Args:
@@ -243,7 +237,7 @@ class StandardButtonGroupStyle:
         cls,
         theme: "Theme | None",
         variant: str,
-        size: ButtonGroupSize = "s",
+        size: ButtonSize = "s",
     ) -> "StandardButtonGroupStyle":
         """Create a style from a theme and variant name.
 
@@ -273,7 +267,7 @@ class ConnectedButtonGroupStyle:
     ``selected_inner_corner_radius``.
 
     Use ``filled()``, ``tonal()``, or ``outlined()`` to create a preset,
-    optionally passing a ``ButtonGroupSize``.
+    optionally passing a ``ButtonSize``.
     """
 
     # Container colours
@@ -316,7 +310,7 @@ class ConnectedButtonGroupStyle:
     # -- Factory classmethods -----------------------------------------------
 
     @classmethod
-    def filled(cls, size: ButtonGroupSize = "s") -> "ConnectedButtonGroupStyle":
+    def filled(cls, size: ButtonSize = "s") -> "ConnectedButtonGroupStyle":
         """Create a filled-variant style.
 
         Args:
@@ -339,7 +333,7 @@ class ConnectedButtonGroupStyle:
         )
 
     @classmethod
-    def tonal(cls, size: ButtonGroupSize = "s") -> "ConnectedButtonGroupStyle":
+    def tonal(cls, size: ButtonSize = "s") -> "ConnectedButtonGroupStyle":
         """Create a tonal-variant style.
 
         Args:
@@ -362,7 +356,7 @@ class ConnectedButtonGroupStyle:
         )
 
     @classmethod
-    def outlined(cls, size: ButtonGroupSize = "s") -> "ConnectedButtonGroupStyle":
+    def outlined(cls, size: ButtonSize = "s") -> "ConnectedButtonGroupStyle":
         """Create an outlined-variant style.
 
         Args:
@@ -391,7 +385,7 @@ class ConnectedButtonGroupStyle:
         cls,
         theme: "Theme | None",
         variant: str,
-        size: ButtonGroupSize = "s",
+        size: ButtonSize = "s",
     ) -> "ConnectedButtonGroupStyle":
         """Create a style from a theme and variant name.
 
@@ -415,7 +409,7 @@ ButtonGroupStyle = Union[StandardButtonGroupStyle, ConnectedButtonGroupStyle]
 """Type alias accepted by ``GroupButton`` — either style variant."""
 
 __all__ = [
-    "ButtonGroupSize",
+    "ButtonSize",
     "StandardButtonGroupStyle",
     "ConnectedButtonGroupStyle",
     "ButtonGroupStyle",

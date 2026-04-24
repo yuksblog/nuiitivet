@@ -1,21 +1,16 @@
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.material.buttons import (
-    ElevatedButton,
-    FilledTonalButton,
-    FloatingActionButton,
-    OutlinedButton,
-    TextButton,
-)
+from nuiitivet.material.buttons import FloatingActionButton, Button
+from nuiitivet.material.styles.button_style import ButtonStyle
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
-def _basic_button_behavior(btn_class):
+def _basic_button_behavior(btn_factory):
     called = []
 
     def on_click():
         called.append(True)
 
-    b = btn_class("ok", on_click=on_click)
+    b = btn_factory("ok", on_click=on_click)
     assert b.preferred_size()[0] > 0
     assert send_pointer_event_for_test(b, PointerEventType.PRESS) is True
     assert called == []
@@ -32,20 +27,23 @@ def _basic_button_behavior(btn_class):
 
 
 def test_outlined():
-    _basic_button_behavior(OutlinedButton)
+    _basic_button_behavior(lambda label, **kw: Button(label, style=ButtonStyle.outlined(), **kw))
 
 
 def test_text():
-    _basic_button_behavior(TextButton)
+    _basic_button_behavior(lambda label, **kw: Button(label, style=ButtonStyle.text(), **kw))
 
 
 def test_elevated():
-    _basic_button_behavior(ElevatedButton)
+    _basic_button_behavior(lambda label, **kw: Button(label, style=ButtonStyle.elevated(), **kw))
 
 
 def test_tonal():
-    _basic_button_behavior(FilledTonalButton)
+    _basic_button_behavior(lambda label, **kw: Button(label, style=ButtonStyle.tonal(), **kw))
 
 
 def test_fab():
-    _basic_button_behavior(FloatingActionButton)
+    def _fab(label, **kw):
+        return FloatingActionButton(icon="add", **kw)
+
+    _basic_button_behavior(_fab)

@@ -13,7 +13,8 @@ from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.material.card import FilledCard, OutlinedCard
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledTonalButton, OutlinedButton
+from nuiitivet.material.buttons import Button
+from nuiitivet.material import ButtonStyle
 
 
 class FlowUniformDemoModel:
@@ -68,8 +69,8 @@ class FlowUniformDemo(ComposableWidget):
     def build(self) -> Widget:
         controls = Row(
             [
-                FilledTonalButton("Add", on_click=self.model.add_tile),
-                OutlinedButton("Remove", on_click=self.model.remove_tile),
+                Button("Add", on_click=self.model.add_tile, style=ButtonStyle.tonal()),
+                Button("Remove", on_click=self.model.remove_tile, style=ButtonStyle.outlined()),
             ],
             gap=8,
             cross_alignment="start",

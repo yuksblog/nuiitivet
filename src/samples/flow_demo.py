@@ -12,9 +12,10 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
 from nuiitivet.material.card import OutlinedCard
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import FilledTonalButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles import TextStyle
 from nuiitivet.runtime.title_bar import DefaultTitleBar
+from nuiitivet.material import ButtonStyle
 
 
 class FlowDemoModel:
@@ -70,8 +71,8 @@ class FlowDemo(ComposableWidget):
     def build(self) -> Widget:
         controls = Row(
             [
-                FilledTonalButton("Add Tag", on_click=self.model.add_tag),
-                OutlinedButton("Remove Tag", on_click=self.model.remove_tag),
+                Button("Add Tag", on_click=self.model.add_tag, style=ButtonStyle.tonal()),
+                Button("Remove Tag", on_click=self.model.remove_tag, style=ButtonStyle.outlined()),
             ],
             gap=8,
             cross_alignment="center",

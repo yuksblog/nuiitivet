@@ -5,7 +5,7 @@ Shows how to display a standard AlertDialog using Overlay.
 """
 
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
@@ -13,6 +13,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class BasicDialogDemo(ComposableWidget):
@@ -27,14 +28,14 @@ class BasicDialogDemo(ComposableWidget):
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
-                TextButton(
+                Button(
                     "CANCEL",
                     on_click=lambda: overlay.close("Canceled"),
-                ),
-                TextButton(
+                    style=ButtonStyle.text()),
+                Button(
                     "OK",
                     on_click=lambda: overlay.close("Confirmed"),
-                ),
+                    style=ButtonStyle.text()),
             ],
         )
 
@@ -52,10 +53,10 @@ class BasicDialogDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.result_text),
-                    FilledButton(
+                    Button(
                         "Show Alert Dialog",
                         on_click=self._show_dialog,
-                    ),
+                        style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -67,7 +68,7 @@ def main(png_path: str = ""):
         dialog = AlertDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
-            actions=[TextButton("CANCEL"), TextButton("OK")],
+            actions=[Button("CANCEL", style=ButtonStyle.text()), Button("OK", style=ButtonStyle.text())],
         )
         app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)

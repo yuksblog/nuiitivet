@@ -56,7 +56,7 @@ We define default behaviors to match intuitive expectations.
 | **Checkbox** | **`contain`** | **Scales with the rect.** <br> If `width` is default (fixed), it looks standard. If `width="flex"` or large fixed size, the checkbox graphic expands. |
 | **Radio** | **`contain`** | Same as Checkbox. |
 | **Icon** | **`contain`** | **Scales with the rect.** <br> Vector icons are resolution-independent and often resized. |
-| **Button Family** | (Container) | **Includes TextButton, IconButton, FAB.** <br> They act as containers. They fill the Allocated Rect and align their content (Text/Icon) inside. |
+| **Button Family** | (Container) | **Includes Button, IconButton, FAB.** <br> They act as containers. They fill the Allocated Rect and align their content (Text/Icon) inside. |
 | **Image** | `contain` | (Future) Will support explicit `fit` parameter. Default is `contain`. |
 
 ### Rationale for Checkbox `contain`

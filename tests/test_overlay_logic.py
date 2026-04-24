@@ -1,18 +1,11 @@
 import pytest
 
-from nuiitivet.material import (
-    ElevatedButton,
-    FilledButton,
-    FilledTonalButton,
-    FloatingActionButton,
-    OutlinedButton,
-    TextButton,
-)
+from nuiitivet.material import FloatingActionButton, Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 
 
 def test_resolve_overlay_defaults():
-    b = FilledButton(label="lbl")
+    b = Button(label="lbl", style=ButtonStyle.filled())
     # Default filled style has overlay_alpha=0.08 (from ButtonStyle.filled)
     # resolve_button_style_params sets:
     # pressed_opacity = base_alpha (0.08)
@@ -26,12 +19,12 @@ def test_resolve_overlay_defaults():
 @pytest.mark.parametrize(
     ("factory", "expected_pressed", "expected_hover"),
     [
-        (lambda: FilledButton(label="lbl"), 0.08, 0.04),
-        (lambda: OutlinedButton(label="lbl"), 0.08, 0.04),
-        (lambda: FilledTonalButton(label="lbl"), 0.08, 0.04),
+        (lambda: Button(label="lbl", style=ButtonStyle.filled()), 0.08, 0.04),
+        (lambda: Button(label="lbl", style=ButtonStyle.outlined()), 0.08, 0.04),
+        (lambda: Button(label="lbl", style=ButtonStyle.tonal()), 0.08, 0.04),
         (lambda: FloatingActionButton(icon="add"), 0.08, 0.04),
-        (lambda: TextButton(label="lbl"), 0.12, 0.06),
-        (lambda: ElevatedButton(label="lbl"), 0.06, 0.03),
+        (lambda: Button(label="lbl", style=ButtonStyle.text()), 0.08, 0.04),
+        (lambda: Button(label="lbl", style=ButtonStyle.elevated()), 0.08, 0.04),
     ],
 )
 def test_resolve_overlay_defaults_for_variants(factory, expected_pressed: float, expected_hover: float):
@@ -54,7 +47,7 @@ def test_resolve_overlay_with_style_alpha_scaled():
         overlay_color="#112233",
         overlay_alpha=0.2,
     )
-    b = FilledButton(label="lbl", style=style)
+    b = Button(label="lbl", style=style)
 
     # Check that params were correctly passed to ButtonBase
     assert b.state_layer_color == "#112233"

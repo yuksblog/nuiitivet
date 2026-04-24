@@ -50,10 +50,10 @@ class TodoView:
         return nv.Column(
             children=[
                 material.Text(text=self.vm.item_count.map(lambda c: f"Items: {c}")),
-                material.FilledButton(
+                material.Button(
                     text="Add",
                     on_click=lambda: self.vm.add_item("New item")
-                ),
+                , style=material.ButtonStyle.filled()),
             ]
         )
 ```

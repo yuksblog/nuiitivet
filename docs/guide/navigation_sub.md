@@ -11,7 +11,7 @@ You can create a nested navigation area by placing a `MaterialNavigator` widget 
 ```python
 import nuiitivet as nv
 
-from nuiitivet.material import Text, FilledButton
+from nuiitivet.material import Text, Button
 from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -19,6 +19,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
+from nuiitivet.material import ButtonStyle
 
 class NestedHome(ComposableWidget):
     def build(self):
@@ -27,7 +28,7 @@ class NestedHome(ComposableWidget):
             gap=12,
             children=[
                 Text("Nested Home"),
-                FilledButton("Go Deeper (Nested)", on_click=lambda: Navigator.of(self).push(NestedDetails())),
+                Button("Go Deeper (Nested)", on_click=lambda: Navigator.of(self).push(NestedDetails()), style=ButtonStyle.filled()),
             ],
         )
 
@@ -42,7 +43,7 @@ class NestedDetails(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Nested Details"),
-                    FilledButton("Back (Nested)", on_click=lambda: Navigator.of(self).pop()),
+                    Button("Back (Nested)", on_click=lambda: Navigator.of(self).pop(), style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -58,7 +59,7 @@ class FullScreenDetails(ComposableWidget):
                 gap=12,
                 children=[
                     Text("Full Screen Details"),
-                    FilledButton("Back (Full Screen)", on_click=lambda: Navigator.root().pop()),
+                    Button("Back (Full Screen)", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -80,7 +81,7 @@ class MainScreen(ComposableWidget):
                         gap=10,
                         children=[
                             Text("Sidebar Menu"),
-                            FilledButton("Open Full Screen", on_click=lambda: Navigator.root().push(FullScreenDetails())),
+                            Button("Open Full Screen", on_click=lambda: Navigator.root().push(FullScreenDetails()), style=ButtonStyle.filled()),
                         ],
                     ),
                 ),

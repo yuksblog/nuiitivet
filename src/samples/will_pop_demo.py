@@ -20,10 +20,11 @@ from nuiitivet.observable import Observable
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import App
 from nuiitivet.material import Overlay
-from nuiitivet.material.buttons import FilledButton, TextButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material import Text
 from nuiitivet.material.text_fields import OutlinedTextField
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 _logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class HomeScreen(ComposableWidget):
                 children=[
                     Text("will_pop Demo"),
                     Text("Open the editor, type something, then press Esc."),
-                    FilledButton("Open editor", on_click=_open_editor),
+                    Button("Open editor", on_click=_open_editor, style=ButtonStyle.filled()),
                 ],
                 gap=16,
                 cross_alignment="start",
@@ -124,8 +125,8 @@ class EditScreen(ComposableWidget):
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[
-                    TextButton("Cancel", on_click=_cancel),
-                    FilledButton("Discard", on_click=_discard),
+                    Button("Cancel", on_click=_cancel, style=ButtonStyle.text()),
+                    Button("Discard", on_click=_discard, style=ButtonStyle.filled()),
                 ],
             ),
             dismiss_on_outside_tap=False,
@@ -159,8 +160,8 @@ class EditScreen(ComposableWidget):
                     ),
                     Row(
                         children=[
-                            TextButton("Back", on_click=self._try_pop),
-                            FilledButton("Save", on_click=self._save),
+                            Button("Back", on_click=self._try_pop, style=ButtonStyle.text()),
+                            Button("Save", on_click=self._save, style=ButtonStyle.filled()),
                         ],
                         gap=12,
                     ),

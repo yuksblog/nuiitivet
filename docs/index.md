@@ -17,10 +17,11 @@ layout: default
 
 ```python
 from nuiitivet.material.app import MaterialApp
-from nuiitivet.material import Text, FilledButton
+from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget
+from nuiitivet.material import ButtonStyle
 
 
 class CounterApp(ComposableWidget):
@@ -35,7 +36,7 @@ class CounterApp(ComposableWidget):
     return Column(
       [
         Text(f"count: {self.count.value}"),
-        FilledButton("Increment", on_click=self.handle_increment),
+        Button("Increment", on_click=self.handle_increment, style=ButtonStyle.filled()),
       ],
       gap=12,
       padding=16,

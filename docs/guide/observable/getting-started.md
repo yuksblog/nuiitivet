@@ -40,10 +40,10 @@ class CounterApp:
         return nv.Column(
             children=[
                 material.Text(text=self.count.map(lambda c: f"Count: {c}")),
-                material.FilledButton(
+                material.Button(
                     text="Increment",
                     on_click=lambda: self.increment()
-                )
+                , style=material.ButtonStyle.filled())
             ]
         )
 

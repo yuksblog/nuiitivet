@@ -6,7 +6,7 @@ close itself without requiring the caller to pass an Overlay reference.
 """
 
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FilledButton, OutlinedButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.material.card import Card
@@ -17,6 +17,7 @@ from nuiitivet.layout.spacer import Spacer
 from nuiitivet.observable import Observable
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.material import ButtonStyle
 
 
 class CounterDialog(ComposableWidget, OverlayAware[int]):
@@ -49,9 +50,9 @@ class CounterDialog(ComposableWidget, OverlayAware[int]):
                                 Text(self.counter.map(str)),
                             ],
                         ),
-                        FilledButton("Increment", on_click=self._increment),
+                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
                         Spacer(height=8),
-                        OutlinedButton("Close & Return Count", on_click=self._close),
+                        Button("Close & Return Count", on_click=self._close, style=ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -78,10 +79,10 @@ class OverlayAwareDialogDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.last_count),
-                    FilledButton(
+                    Button(
                         "Open Self-Closing Dialog",
                         on_click=self._show_custom_dialog,
-                    ),
+                        style=ButtonStyle.filled()),
                 ],
             ),
         )

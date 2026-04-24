@@ -11,9 +11,10 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.card import FilledCard
 from nuiitivet.material.styles.card_style import CardStyle
-from nuiitivet.material.buttons import FilledButton
+from nuiitivet.material.buttons import Button
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.material import ButtonStyle
 
 
 class ViewMode(IntEnum):
@@ -40,18 +41,18 @@ class DeckDemo(ComposableWidget):
         # Tab buttons
         tab_buttons = Row(
             [
-                FilledButton(
+                Button(
                     "Home",
                     on_click=lambda: setattr(self.current_tab, "value", ViewMode.HOME),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     "Profile",
                     on_click=lambda: setattr(self.current_tab, "value", ViewMode.PROFILE),
-                ),
-                FilledButton(
+                    style=ButtonStyle.filled()),
+                Button(
                     "Settings",
                     on_click=lambda: setattr(self.current_tab, "value", ViewMode.SETTINGS),
-                ),
+                    style=ButtonStyle.filled()),
             ],
             gap=8,
             padding=12,

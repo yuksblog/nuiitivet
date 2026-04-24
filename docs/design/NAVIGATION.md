@@ -268,6 +268,7 @@ Custom handling, such as confirmation before a back transition, is implemented a
 
 ```python
 from nuiitivet.modifiers import will_pop
+from nuiitivet.material import ButtonStyle
 
 EditScreen().modifier(will_pop(on_will_pop=self._on_will_pop))
 
@@ -280,8 +281,8 @@ async def _on_will_pop(self) -> bool:
                 title=Text("Confirmation"),
                 content=Text("Go back without saving?"),
                 actions=[
-                    TextButton("Cancel", on_pressed=lambda: False),
-                    TextButton("Back", on_pressed=lambda: True),
+                    Button("Cancel", on_pressed=lambda: False, style=ButtonStyle.text()),
+                    Button("Back", on_pressed=lambda: True, style=ButtonStyle.text()),
                 ],
             )
         )

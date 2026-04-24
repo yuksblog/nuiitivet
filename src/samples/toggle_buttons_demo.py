@@ -6,13 +6,9 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
 from nuiitivet.material import App
-from nuiitivet.material.buttons import (
-    FilledToggleButton,
-    OutlinedToggleButton,
-    TextToggleButton,
-    TonalToggleButton,
-)
+from nuiitivet.material.buttons import ToggleButton
 from nuiitivet.observable import Observable
+from nuiitivet.material import ToggleButtonStyle
 
 
 class ToggleButtonsDemoWidget:
@@ -46,76 +42,84 @@ class ToggleButtonsDemoWidget:
                 ),
                 Row(
                     [
-                        FilledToggleButton(
+                        ToggleButton(
                             "Filled",
                             icon="check",
                             selected=self.filled_selected,
                             on_change=self._on_changed,
                             width=170,
+                            style=ToggleButtonStyle.filled(),
                         ),
-                        FilledToggleButton(
+                        ToggleButton(
                             "Filled Disabled",
                             icon="check",
                             selected=True,
                             disabled=True,
                             width=170,
+                            style=ToggleButtonStyle.filled(),
                         ),
                     ],
                     gap=16,
                 ),
                 Row(
                     [
-                        OutlinedToggleButton(
+                        ToggleButton(
                             "Outlined",
                             icon="check",
                             selected=self.outlined_selected,
                             on_change=self._on_changed,
                             width=170,
+                            style=ToggleButtonStyle.outlined(),
                         ),
-                        OutlinedToggleButton(
+                        ToggleButton(
                             "Outlined Disabled",
                             icon="check",
                             selected=False,
                             disabled=True,
                             width=170,
+                            style=ToggleButtonStyle.outlined(),
                         ),
                     ],
                     gap=16,
                 ),
                 Row(
                     [
-                        TextToggleButton(
+                        ToggleButton(
                             "Text",
                             icon="check",
                             selected=self.text_selected,
                             on_change=self._on_changed,
                             width=170,
+                            style=ToggleButtonStyle.outlined(),
                         ),
-                        TextToggleButton(
+                        ToggleButton(
                             "Text Disabled",
                             icon="check",
                             selected=True,
                             disabled=True,
                             width=170,
+                            style=ToggleButtonStyle.outlined(),
                         ),
                     ],
                     gap=16,
                 ),
                 Row(
                     [
-                        TonalToggleButton(
+                        ToggleButton(
                             "Tonal",
                             icon="check",
                             selected=self.tonal_selected,
                             on_change=self._on_changed,
                             width=170,
+                            style=ToggleButtonStyle.tonal(),
                         ),
-                        TonalToggleButton(
+                        ToggleButton(
                             "Tonal Disabled",
                             icon="check",
                             selected=False,
                             disabled=True,
                             width=170,
+                            style=ToggleButtonStyle.tonal(),
                         ),
                     ],
                     gap=16,

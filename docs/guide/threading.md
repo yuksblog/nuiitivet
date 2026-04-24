@@ -46,7 +46,6 @@ class MyState:
             # Safe to update from background thread
             # The framework will coalesce updates and dispatch to UI thread
             self.progress.value = i / 100.0
-
 ```
 
 ### Coalescing
