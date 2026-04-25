@@ -6,10 +6,10 @@ M3 Button Text Color Specifications:
 - TextButton: PRIMARY
 - ElevatedButton: ON_SURFACE
 - FilledTonalButton: ON_SURFACE_VARIANT
-- FloatingActionButton (FAB): ON_PRIMARY
+- Fab (FAB): ON_PRIMARY
 """
 
-from nuiitivet.material.buttons import FloatingActionButton, Button
+from nuiitivet.material.buttons import Fab, Button
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialTheme
@@ -70,14 +70,14 @@ def test_filled_tonal_button_text_color():
 
 
 def test_fab_text_color():
-    """FloatingActionButton should use ON_PRIMARY for text per M3 spec."""
-    btn = FloatingActionButton("Test")
+    """Fab should use ON_PRIMARY_CONTAINER for the icon per MD3 spec."""
+    btn = Fab("Test")
     assert len(btn.children) == 1
     child = btn.children[0]
     from nuiitivet.material.icon import Icon
 
     assert isinstance(child, Icon)
-    assert child.style.color == ColorRole.ON_PRIMARY
+    assert child.style.color == ColorRole.ON_PRIMARY_CONTAINER
 
 
 def test_text_widget_default_color():

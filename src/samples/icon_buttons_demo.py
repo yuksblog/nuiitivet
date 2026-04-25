@@ -6,7 +6,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Text
 from nuiitivet.material import App
-from nuiitivet.material.buttons import FloatingActionButton, IconButton, IconToggleButton
+from nuiitivet.material.buttons import Fab, IconButton, IconToggleButton
 from nuiitivet.material.styles import IconButtonStyle, IconToggleButtonStyle
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.box import Box
@@ -92,9 +92,9 @@ class IconButtonsDemoWidget:
                     Text("FAB (shape + expressive press)"),
                     Row(
                         [
-                            FloatingActionButton("add"),
-                            FloatingActionButton("edit"),
-                            FloatingActionButton("delete", disabled=True),
+                            Fab("add"),
+                            Fab("edit"),
+                            Fab("delete", disabled=True),
                         ],
                         gap=12,
                     ),

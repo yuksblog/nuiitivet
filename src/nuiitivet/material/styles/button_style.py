@@ -4,16 +4,23 @@
 for all visual variants).  Variant-specific styling is delivered through
 size-aware factory methods: :meth:`ButtonStyle.filled`,
 :meth:`ButtonStyle.outlined`, :meth:`ButtonStyle.text`,
-:meth:`ButtonStyle.elevated`, :meth:`ButtonStyle.tonal`.
+:meth:`ButtonStyle.elevated`, and :meth:`ButtonStyle.tonal`.
 
 The companion :class:`IconButtonStyle` / :class:`IconToggleButtonStyle`
-presets remain for the icon-only button family (out of scope for Issue #77).
+presets share the same ``ButtonSize`` token set as Button, but pull
+container / icon / spacing values from
+:data:`ICON_BUTTON_SIZE_TOKENS`.  FAB styling lives in
+:mod:`nuiitivet.material.styles.fab_style`.
 """
 
 from dataclasses import dataclass, replace
 from typing import Optional, Union, TYPE_CHECKING
 
-from .button_size import BUTTON_SIZE_TOKENS, ButtonSize
+from .button_size import (
+    BUTTON_SIZE_TOKENS,
+    ButtonSize,
+    ICON_BUTTON_SIZE_TOKENS,
+)
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
@@ -223,174 +230,138 @@ class ButtonStyle:
             overlay_alpha=0.08,
         )
 
-    # -- Non-size-aware factories (retained out of #77 scope) ---------------
-
-    @classmethod
-    def fab(cls) -> "ButtonStyle":
-        """Return the style used by :class:`FloatingActionButton`.
-
-        FAB is out of scope for the Issue #77 refactor and keeps a single
-        preset for now.
-        """
-        return cls(
-            background=ColorRole.PRIMARY,
-            foreground=ColorRole.ON_PRIMARY,
-            border_width=0.0,
-            corner_radius=16,
-            padding=(8, 8, 8, 8),
-            container_height=56,
-            min_width=56,
-            min_height=56,
-            label_font_size=14,
-            icon_size=24,
-            elevation=6.0,
-            overlay_color=ColorRole.ON_SURFACE,
-            overlay_alpha=0.08,
-        )
-
 
 class IconButtonStyle:
-    """Preset factories for icon-only button styles."""
+    """Preset factories for icon-only button styles.
+
+    Each factory accepts a :data:`ButtonSize` argument that drives container
+    size, icon size, corner radius, and outline width from
+    :data:`ICON_BUTTON_SIZE_TOKENS`.  Defaults to ``"s"`` (40dp).
+    """
+
+    @staticmethod
+    def _base(size: ButtonSize) -> dict:
+        """Return common size-driven keyword arguments for IconButton styles."""
+        t = ICON_BUTTON_SIZE_TOKENS[size]
+        h = t["container_height"]
+        return dict(
+            corner_radius=t["corner_radius"],
+            container_height=h,
+            padding=0,
+            min_width=max(48, h),
+            min_height=max(48, h),
+            icon_size=t["icon_size"],
+        )
 
     @classmethod
-    def standard(cls) -> ButtonStyle:
-        """Return the standard icon-button style."""
+    def standard(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the standard icon-button style at the given M3 size."""
         return ButtonStyle(
             background=None,
             foreground=ColorRole.ON_SURFACE_VARIANT,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_SURFACE,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def filled(cls) -> ButtonStyle:
-        """Return the filled icon-button style."""
+    def filled(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the filled icon-button style at the given M3 size."""
         return ButtonStyle(
             background=ColorRole.PRIMARY,
             foreground=ColorRole.ON_PRIMARY,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_PRIMARY,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def outlined(cls) -> ButtonStyle:
-        """Return the outlined icon-button style."""
+    def outlined(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the outlined icon-button style at the given M3 size."""
+        t = ICON_BUTTON_SIZE_TOKENS[size]
         return ButtonStyle(
             background=None,
             foreground=ColorRole.ON_SURFACE_VARIANT,
             border_color=ColorRole.OUTLINE,
-            border_width=1.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
+            border_width=t["outline_width"],
             elevation=0.0,
             overlay_color=ColorRole.ON_SURFACE,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def tonal(cls) -> ButtonStyle:
-        """Return the tonal icon-button style."""
+    def tonal(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the tonal icon-button style at the given M3 size."""
         return ButtonStyle(
             background=ColorRole.SECONDARY_CONTAINER,
             foreground=ColorRole.ON_SECONDARY_CONTAINER,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def vibrant(cls) -> ButtonStyle:
-        """Return the vibrant icon-button style.
+    def vibrant(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the vibrant icon-button style at the given M3 size.
 
-        This is intended for use on vibrant containers such as a vibrant toolbar.
+        Intended for use on vibrant containers such as a vibrant toolbar.
         """
         return ButtonStyle(
             background=None,
             foreground=ColorRole.ON_PRIMARY_CONTAINER,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_PRIMARY_CONTAINER,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def filled_vibrant(cls) -> ButtonStyle:
-        """Return the filled vibrant icon-button style."""
+    def filled_vibrant(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the filled vibrant icon-button style at the given M3 size."""
         return ButtonStyle(
             background=ColorRole.PRIMARY,
             foreground=ColorRole.ON_PRIMARY,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_PRIMARY,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def outlined_vibrant(cls) -> ButtonStyle:
-        """Return the outlined vibrant icon-button style."""
+    def outlined_vibrant(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the outlined vibrant icon-button style at the given M3 size."""
+        t = ICON_BUTTON_SIZE_TOKENS[size]
         return ButtonStyle(
             background=None,
             foreground=ColorRole.ON_PRIMARY_CONTAINER,
             border_color=ColorRole.ON_PRIMARY_CONTAINER,
-            border_width=1.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
+            border_width=t["outline_width"],
             elevation=0.0,
             overlay_color=ColorRole.ON_PRIMARY_CONTAINER,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
     @classmethod
-    def tonal_vibrant(cls) -> ButtonStyle:
-        """Return the tonal vibrant icon-button style."""
+    def tonal_vibrant(cls, size: ButtonSize = "s") -> ButtonStyle:
+        """Return the tonal vibrant icon-button style at the given M3 size."""
         return ButtonStyle(
             background=ColorRole.SURFACE_CONTAINER_HIGHEST,
             foreground=ColorRole.ON_SURFACE,
             border_width=0.0,
-            corner_radius=20,
-            container_height=40,
-            padding=0,
-            min_width=48,
-            min_height=48,
             elevation=0.0,
             overlay_color=ColorRole.ON_SURFACE,
             overlay_alpha=0.12,
+            **cls._base(size),
         )
 
 
@@ -402,95 +373,80 @@ class IconToggleButtonStyle:
     unselected: ButtonStyle
 
     @classmethod
-    def standard(cls) -> "IconToggleButtonStyle":
+    def standard(cls, size: ButtonSize = "s") -> "IconToggleButtonStyle":
         """Return styles for the standard icon-toggle button variant."""
+        base = IconButtonStyle._base(size)
         return cls(
             selected=ButtonStyle(
                 background=ColorRole.SECONDARY_CONTAINER,
                 foreground=ColorRole.ON_SECONDARY_CONTAINER,
                 border_width=0.0,
-                corner_radius=20,
-                container_height=40,
-                padding=0,
-                min_width=48,
-                min_height=48,
                 elevation=0.0,
                 overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
                 overlay_alpha=0.12,
+                **base,
             ),
-            unselected=IconButtonStyle.standard(),
+            unselected=IconButtonStyle.standard(size),
         )
 
     @classmethod
-    def filled(cls) -> "IconToggleButtonStyle":
+    def filled(cls, size: ButtonSize = "s") -> "IconToggleButtonStyle":
         """Return styles for the filled icon-toggle button variant."""
+        base = IconButtonStyle._base(size)
         return cls(
-            selected=IconButtonStyle.filled(),
+            selected=IconButtonStyle.filled(size),
             unselected=ButtonStyle(
                 background=ColorRole.SURFACE_CONTAINER_HIGHEST,
                 foreground=ColorRole.ON_SURFACE_VARIANT,
                 border_width=0.0,
-                corner_radius=20,
-                container_height=40,
-                padding=0,
-                min_width=48,
-                min_height=48,
                 elevation=0.0,
                 overlay_color=ColorRole.ON_SURFACE,
                 overlay_alpha=0.12,
+                **base,
             ),
         )
 
     @classmethod
-    def outlined(cls) -> "IconToggleButtonStyle":
+    def outlined(cls, size: ButtonSize = "s") -> "IconToggleButtonStyle":
         """Return styles for the outlined icon-toggle button variant."""
+        t = ICON_BUTTON_SIZE_TOKENS[size]
+        base = IconButtonStyle._base(size)
         return cls(
             selected=ButtonStyle(
                 background=ColorRole.INVERSE_SURFACE,
                 foreground=ColorRole.INVERSE_ON_SURFACE,
                 border_color=ColorRole.INVERSE_SURFACE,
-                border_width=1.0,
-                corner_radius=20,
-                container_height=40,
-                padding=0,
-                min_width=48,
-                min_height=48,
+                border_width=t["outline_width"],
                 elevation=0.0,
                 overlay_color=ColorRole.INVERSE_ON_SURFACE,
                 overlay_alpha=0.12,
+                **base,
             ),
-            unselected=IconButtonStyle.outlined(),
+            unselected=IconButtonStyle.outlined(size),
         )
 
     @classmethod
-    def tonal(cls) -> "IconToggleButtonStyle":
+    def tonal(cls, size: ButtonSize = "s") -> "IconToggleButtonStyle":
         """Return styles for the tonal icon-toggle button variant."""
+        base = IconButtonStyle._base(size)
         return cls(
             selected=ButtonStyle(
                 background=ColorRole.TERTIARY_CONTAINER,
                 foreground=ColorRole.ON_TERTIARY_CONTAINER,
                 border_width=0.0,
-                corner_radius=20,
-                container_height=40,
-                padding=0,
-                min_width=48,
-                min_height=48,
                 elevation=0.0,
                 overlay_color=ColorRole.ON_TERTIARY_CONTAINER,
                 overlay_alpha=0.12,
+                **base,
             ),
             unselected=ButtonStyle(
                 background=ColorRole.SECONDARY_CONTAINER,
                 foreground=ColorRole.ON_SECONDARY_CONTAINER,
                 border_width=0.0,
-                corner_radius=20,
-                container_height=40,
-                padding=0,
-                min_width=48,
-                min_height=48,
                 elevation=0.0,
                 overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
                 overlay_alpha=0.12,
+                **base,
             ),
         )
 

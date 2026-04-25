@@ -9,7 +9,7 @@ This module contains the unified Material Design 3 button widgets:
   :class:`ToggleButtonStyle` that carries both selected and unselected
   state tokens.
 - :class:`IconButton`, :class:`IconToggleButton` -- icon-only variants.
-- :class:`FloatingActionButton` -- FAB.
+- :class:`Fab` -- Floating Action Button.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
+from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -740,7 +741,6 @@ class IconButton(MaterialButtonBase):
         *,
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: int = 40,
         style: Optional[ButtonStyle] = None,
     ):
         """Initialize IconButton.
@@ -749,35 +749,30 @@ class IconButton(MaterialButtonBase):
             icon: Icon glyph source.
             on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
-            size: Visual container size in pixels.
-            style: Icon button style preset or custom style.
+            style: Icon button style preset or custom style.  Defaults to
+                :meth:`IconButtonStyle.standard` (size ``"s"``, 40dp).  Use
+                size-aware factories such as ``IconButtonStyle.filled("m")``
+                to control container/icon sizing.
         """
-        resolved_size = max(1, int(size))
-        base_style = style if style is not None else IconButtonStyle.standard()
-        effective_style = base_style.copy_with(
-            container_height=resolved_size,
-            corner_radius=resolved_size // 2,
-            min_width=max(int(getattr(base_style, "min_width", 48) or 48), 48, resolved_size),
-            min_height=max(int(getattr(base_style, "min_height", 48) or 48), 48, resolved_size),
-        )
+        effective_style = style if style is not None else IconButtonStyle.standard()
 
         self._user_style = effective_style
         self._user_padding = None
-        self._user_height = resolved_size
+        self._user_height = effective_style.container_height
 
         child_widget = build_button_child(
             label=None,
             icon=icon,
             foreground=effective_style.foreground if effective_style else ColorRole.ON_SURFACE,
-            button_height=resolved_size,
+            button_height=effective_style.container_height,
             style=effective_style,
         )
 
-        params = resolve_button_style_params(effective_style, None, resolved_size, disabled)
+        params = resolve_button_style_params(effective_style, None, effective_style.container_height, disabled)
         super().__init__(
             child=child_widget,
             on_click=on_click,
-            width=resolved_size,
+            width=effective_style.container_height,
             disabled=disabled,
             **params,
         )
@@ -1016,7 +1011,6 @@ class IconToggleButton(ToggleButtonBase):
         selected: bool | ObservableProtocol[bool] = False,
         on_change: Optional[Callable[[bool], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: int = 40,
         style: Optional[IconToggleButtonStyle] = None,
     ):
         """Initialize IconToggleButton.
@@ -1026,11 +1020,14 @@ class IconToggleButton(ToggleButtonBase):
             selected: Selected state value or observable.
             on_change: Callback invoked with the new selected state.
             disabled: Whether the button is disabled.
-            size: Visual container size in pixels.
             style: Toggle style pair for selected and unselected states.
+                Defaults to :meth:`IconToggleButtonStyle.standard` (size
+                ``"s"``).  Use size-aware factories such as
+                ``IconToggleButtonStyle.filled("m")`` to control sizing.
         """
-        self._icon_size = max(1, int(size))
         self._icon_toggle_style = style if style is not None else IconToggleButtonStyle.standard()
+        # Both selected/unselected share container_height per factory contract.
+        self._icon_size = self._icon_toggle_style.unselected.container_height
 
         super().__init__(
             label=None,
@@ -1044,18 +1041,11 @@ class IconToggleButton(ToggleButtonBase):
         )
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
-        base_style = self._icon_toggle_style.selected if selected else self._icon_toggle_style.unselected
-        return base_style.copy_with(
-            container_height=self._icon_size,
-            corner_radius=self._icon_size // 2,
-            min_width=max(int(getattr(base_style, "min_width", 48) or 48), 48, self._icon_size),
-            min_height=max(int(getattr(base_style, "min_height", 48) or 48), 48, self._icon_size),
-            padding=0,
-        )
+        return self._icon_toggle_style.selected if selected else self._icon_toggle_style.unselected
 
 
-class FloatingActionButton(MaterialButtonBase):
-    """Minimal Floating Action Button (rectangular for now)."""
+class Fab(MaterialButtonBase):
+    """Material Design 3 Floating Action Button (FAB)."""
 
     def __init__(
         self,
@@ -1063,26 +1053,30 @@ class FloatingActionButton(MaterialButtonBase):
         *,
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: int = 56,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[ButtonStyle] = None,
+        style: Optional[FabStyle] = None,
     ):
-        """Initialize FloatingActionButton.
+        """Initialize Fab.
 
         Args:
             icon: Icon for the button.
             on_click: Callback to be invoked when the button is clicked.
             disabled: Whether the button is disabled.
-            size: Size of the FAB (width and height).
-            padding: Padding specification.
-            style: Custom ButtonStyle.
+            padding: Padding specification.  When ``None``, ``style.padding``
+                is used.
+            style: FAB style preset.  Defaults to :meth:`FabStyle.primary`
+                (size ``"s"``, 56dp).  Use ``FabStyle.primary("m")`` /
+                ``FabStyle.primary("l")`` for the 80dp / 96dp variants, or
+                ``FabStyle.secondary`` / ``FabStyle.tertiary`` for alternative
+                tonal colour sets.
         """
-        self._user_style = style if style is not None else ButtonStyle.fab()
+        self._user_style: FabStyle = style if style is not None else FabStyle.primary()
         self._user_padding = padding
+        size = self._user_style.container_height
         self._user_height = size
 
         effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY
+        text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
 
         child_widget = build_button_child(
             None,

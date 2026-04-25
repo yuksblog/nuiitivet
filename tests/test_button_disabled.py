@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.observable.value import _ObservableValue
-from nuiitivet.material.buttons import (FloatingActionButton, Button)
+from nuiitivet.material.buttons import (Fab, Button)
 from nuiitivet.widgets.interaction import FocusNode
 from tests.helpers.pointer import send_pointer_event_for_test
 from nuiitivet.material import ButtonStyle
@@ -90,9 +90,9 @@ def test_tonal_button_disabled():
 
 
 def test_fab_disabled():
-    """FloatingActionButton should support disabled state."""
+    """Fab should support disabled state."""
     clicked = []
-    button = FloatingActionButton(icon="add", disabled=True, on_click=lambda: clicked.append(1))
+    button = Fab(icon="add", disabled=True, on_click=lambda: clicked.append(1))
     result = send_pointer_event_for_test(button, PointerEventType.PRESS)
     assert result is False
     assert len(clicked) == 0
