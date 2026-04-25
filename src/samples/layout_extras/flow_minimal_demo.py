@@ -19,7 +19,7 @@ def main(png: str = ""):
         cross_gap=8,
         padding=12,
         children=[
-            md.OutlinedCard(md.Text(tag, padding=8)) for tag in tags
+            md.Card(md.Text(tag, padding=8), style=md.CardStyle.outlined()) for tag in tags
         ],
         width=320,  # Limit width to show wrapping
     )

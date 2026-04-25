@@ -10,12 +10,13 @@ from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
-from nuiitivet.material.card import OutlinedCard
+from nuiitivet.material.card import Card
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles import TextStyle
 from nuiitivet.runtime.title_bar import DefaultTitleBar
 from nuiitivet.material import ButtonStyle
+from nuiitivet.material.styles.card_style import CardStyle
 
 
 class FlowDemoModel:
@@ -62,10 +63,11 @@ class FlowDemo(ComposableWidget):
 
     def _build_tag(self, label: str, idx: int) -> Widget:
         # Variable width implied by text content
-        return OutlinedCard(
+        return Card(
             Text(label),
             padding=(16, 8, 16, 8),
             alignment="center",
+            style=CardStyle.outlined(),
         )
 
     def build(self) -> Widget:
@@ -94,7 +96,7 @@ class FlowDemo(ComposableWidget):
                 Text("Flow Layout (Wrapping)", style=TextStyle(font_size=24)),
                 Text("Resize window to see wrapping behavior."),
                 controls,
-                OutlinedCard(flow, padding=0, width="100%", height="auto"),
+                Card(flow, padding=0, width="100%", height="auto", style=CardStyle.outlined()),
             ],
             gap=16,
             padding=24,

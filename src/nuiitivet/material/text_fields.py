@@ -1,9 +1,9 @@
-"""Material Design 3 Text Fields.
+"""Material Design 3 Text Field.
 
-This module contains the implementation of Material Design 3 text fields:
-- TextField (base class)
-- FilledTextField
-- OutlinedTextField
+This module provides the unified :class:`TextField` widget. The visual
+variant (filled, outlined) is expressed entirely through the ``style``
+argument; use :meth:`TextFieldStyle.filled` or :meth:`TextFieldStyle.outlined`
+to obtain the standard M3 presets.
 """
 
 from __future__ import annotations
@@ -248,9 +248,6 @@ class TextField(InteractiveWidget):
             raise ValueError("on_tap_trailing_icon requires trailing_icon to be provided")
 
         self._user_style = style
-        # Default variant for base class is filled
-        if not hasattr(self, "_variant"):
-            self._variant = "filled"
 
         self._on_change = on_change
 
@@ -325,7 +322,7 @@ class TextField(InteractiveWidget):
     def corner_radii_pixels(self, width: float, height: float) -> Tuple[float, float, float, float]:
         style = self.style
         r = style.border_radius
-        if self._variant == "filled":
+        if style.mode == "filled":
             return (r, r, 0, 0)
         return (r, r, r, r)
 
@@ -434,14 +431,13 @@ class TextField(InteractiveWidget):
 
     @property
     def style(self) -> TextFieldStyle:
-        if hasattr(self, "_user_style") and self._user_style is not None:
+        if self._user_style is not None:
             return self._user_style
 
         from nuiitivet.theme.manager import manager
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        variant = getattr(self, "_variant", "filled")
-        return TextFieldStyle.from_theme(manager.current, variant)
+        return TextFieldStyle.from_theme(manager.current)
 
     @property
     def value(self) -> str:
@@ -723,7 +719,28 @@ class TextField(InteractiveWidget):
         self._editable.paint(canvas, cx, cy, w, h)
 
     def _draw_container(self, canvas, cx, cy, cw, ch):
-        pass
+        style = self.style
+
+        container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
+        paint_container = make_paint(color=container_color)
+        rect = make_rect(cx, cy, cw, ch)
+
+        indicator_color = self._anim_indicator_color.value
+        indicator_width = self._anim_indicator_width.value
+
+        if style.mode == "filled":
+            if rect is not None and paint_container is not None:
+                draw_round_rect(canvas, rect, [style.border_radius, style.border_radius, 0, 0], paint_container)
+            paint_indicator = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
+            canvas.drawLine(cx, cy + ch, cx + cw, cy + ch, paint_indicator)
+            return
+
+        # outlined
+        if rect is not None and paint_container is not None:
+            draw_round_rect(canvas, rect, style.border_radius, paint_container)
+        paint_border = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
+        if rect is not None and paint_border is not None:
+            draw_round_rect(canvas, rect, style.border_radius, paint_border)
 
     def _draw_label(self, canvas, text_x, text_y, text_h, cy):
         if not self.label:
@@ -790,180 +807,3 @@ class TextField(InteractiveWidget):
 
     def _get_from_clipboard(self) -> str:
         return get_system_clipboard().get_text() or ""
-
-
-class FilledTextField(TextField):
-    """M3 Filled TextField.
-
-    Note:
-        The constructor `FilledTextField(value=observable)` establishes a **one-way binding**.
-        Changes in the observable will update the text field, but user input will NOT
-        update the observable automatically.
-
-        For **two-way binding**, use the `FilledTextField.two_way(observable)` factory method.
-    """
-
-    def __init__(
-        self,
-        value: Union[str, ObservableProtocol[str]] = "",
-        on_change: Optional[Callable[[str], None]] = None,
-        *,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
-        on_tap_leading_icon: Optional[Callable[[], None]] = None,
-        trailing_icon: (
-            Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
-        ) = None,
-        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
-        obscure_text: bool = False,
-        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ObservableProtocol[bool] | None = None,
-        error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = 200,
-        height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        style: Optional[TextFieldStyle] = None,
-    ):
-        """Initialize FilledTextField.
-
-        Args:
-            value: Initial text value or observable.
-            on_change: Callback when value changes.
-            label: Floating label text.
-            leading_icon: Icon displayed before the text.
-            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
-            trailing_icon: Icon displayed after the text.
-            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
-            obscure_text: Whether to mask text display (password-style).
-            supporting_text: Supporting text displayed below the field.
-            is_error: Whether to use error colors for the field.
-            error_text: Deprecated alias for supporting_text.
-            disabled: Whether the text field is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding around the text field.
-            style: Custom style configuration.
-        """
-        self._variant = "filled"
-        super().__init__(
-            value=value,
-            on_change=on_change,
-            label=label,
-            leading_icon=leading_icon,
-            on_tap_leading_icon=on_tap_leading_icon,
-            trailing_icon=trailing_icon,
-            on_tap_trailing_icon=on_tap_trailing_icon,
-            obscure_text=obscure_text,
-            supporting_text=supporting_text,
-            is_error=is_error,
-            error_text=error_text,
-            disabled=disabled,
-            width=width,
-            height=height,
-            padding=padding,
-            style=style,
-        )
-
-    def _draw_container(self, canvas, cx, cy, cw, ch):
-        style = self.style
-
-        container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
-        paint_container = make_paint(color=container_color)
-        rect = make_rect(cx, cy, cw, ch)
-        if rect is not None and paint_container is not None:
-            draw_round_rect(canvas, rect, [style.border_radius, style.border_radius, 0, 0], paint_container)
-
-        indicator_color = self._anim_indicator_color.value
-        indicator_width = self._anim_indicator_width.value
-        paint_indicator = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
-        canvas.drawLine(cx, cy + ch, cx + cw, cy + ch, paint_indicator)
-
-
-class OutlinedTextField(TextField):
-    """M3 Outlined TextField.
-
-    Note:
-        The constructor `OutlinedTextField(value=observable)` establishes a **one-way binding**.
-        Changes in the observable will update the text field, but user input will NOT
-        update the observable automatically.
-
-        For **two-way binding**, use the `OutlinedTextField.two_way(observable)` factory method.
-    """
-
-    def __init__(
-        self,
-        value: Union[str, ObservableProtocol[str]] = "",
-        on_change: Optional[Callable[[str], None]] = None,
-        *,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
-        on_tap_leading_icon: Optional[Callable[[], None]] = None,
-        trailing_icon: (
-            Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
-        ) = None,
-        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
-        obscure_text: bool = False,
-        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ObservableProtocol[bool] | None = None,
-        error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = 200,
-        height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        style: Optional[TextFieldStyle] = None,
-    ):
-        """Initialize OutlinedTextField.
-
-        Args:
-            value: Initial text value or observable.
-            on_change: Callback when value changes.
-            label: Floating label text.
-            leading_icon: Icon displayed before the text.
-            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
-            trailing_icon: Icon displayed after the text.
-            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
-            obscure_text: Whether to mask text display (password-style).
-            supporting_text: Supporting text displayed below the field.
-            is_error: Whether to use error colors for the field.
-            error_text: Deprecated alias for supporting_text.
-            disabled: Whether the text field is disabled.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding around the text field.
-            style: Custom style configuration.
-        """
-        self._variant = "outlined"
-        super().__init__(
-            value=value,
-            on_change=on_change,
-            label=label,
-            leading_icon=leading_icon,
-            on_tap_leading_icon=on_tap_leading_icon,
-            trailing_icon=trailing_icon,
-            on_tap_trailing_icon=on_tap_trailing_icon,
-            obscure_text=obscure_text,
-            supporting_text=supporting_text,
-            is_error=is_error,
-            error_text=error_text,
-            disabled=disabled,
-            width=width,
-            height=height,
-            padding=padding,
-            style=style,
-        )
-
-    def _draw_container(self, canvas, cx, cy, cw, ch):
-        style = self.style
-
-        container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
-        paint_container = make_paint(color=container_color)
-        rect = make_rect(cx, cy, cw, ch)
-        if rect is not None and paint_container is not None:
-            draw_round_rect(canvas, rect, style.border_radius, paint_container)
-
-        indicator_color = self._anim_indicator_color.value
-        indicator_width = self._anim_indicator_width.value
-        paint_border = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
-        if rect is not None and paint_border is not None:
-            draw_round_rect(canvas, rect, style.border_radius, paint_border)

@@ -20,16 +20,16 @@ def main(png: str = ""):
             children=[_bar("H=32", 32), _bar("H=64", 64), _bar("H=96", 96)],
         )
 
-    def _bar(label: str, height: int) -> md.FilledCard:
-        return md.FilledCard(
+    def _bar(label: str, height: int) -> md.Card:
+        return md.Card(
             md.Text(label),
             width=88,
             height=height,
             alignment="center",
         )
 
-    def _panel(alignment: str) -> md.OutlinedCard:
-        return md.OutlinedCard(
+    def _panel(alignment: str) -> md.Card:
+        return md.Card(
             nv.Column(
                 children=[md.Text(alignment), _demo_row(alignment)],
                 gap=8,
@@ -38,6 +38,7 @@ def main(png: str = ""):
             ),
             width=560,
             padding=12,
+            style=md.CardStyle.outlined(),
         )
 
     content = nv.Column(

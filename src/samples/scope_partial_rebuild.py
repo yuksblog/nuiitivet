@@ -10,7 +10,7 @@ from nuiitivet.material import App
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import Button
@@ -64,7 +64,7 @@ class ScopedCountersDemo(ComposableWidget):
         return self._build_panel("Right", self.right_count.value, self._right_builds)
 
     def _build_panel(self, label: str, value: int, builds: int) -> Widget:
-        return FilledCard(
+        return Card(
             child=Column(
                 [
                     Text(f"{label} scope value: {value}", padding=(0, 0, 0, 4)),

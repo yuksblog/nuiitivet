@@ -4,16 +4,17 @@ from enum import IntEnum
 
 from nuiitivet.material import App
 from nuiitivet.material import Text
-from nuiitivet.material.text_fields import OutlinedTextField
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
 
 class Section(IntEnum):
@@ -75,17 +76,18 @@ class DesktopAppDemo(ComposableWidget):
 
     def _build_dashboard_section(self) -> Widget:
         """Dashboard section with preserved state."""
-        return FilledCard(
+        return Card(
             Column(
                 [
                     Text("Dashboard"),
                     Text(""),
                     Text("Welcome to your dashboard!"),
                     Text("Enter notes below (state preserved when navigating):"),
-                    OutlinedTextField(
+                    TextField(
                         value=self.dashboard_note,
                         label="Type dashboard notes...",
                         width=Sizing.fixed(400),
+                        style=TextFieldStyle.outlined(),
                     ),
                 ],
                 gap=12,
@@ -99,17 +101,18 @@ class DesktopAppDemo(ComposableWidget):
 
     def _build_analytics_section(self) -> Widget:
         """Analytics section with preserved state."""
-        return FilledCard(
+        return Card(
             Column(
                 [
                     Text("Analytics"),
                     Text(""),
                     Text("View and analyze your data"),
                     Text("Filter (state preserved):"),
-                    OutlinedTextField(
+                    TextField(
                         value=self.analytics_filter,
                         label="Enter time range...",
                         width=Sizing.fixed(300),
+                        style=TextFieldStyle.outlined(),
                     ),
                 ],
                 gap=12,
@@ -123,17 +126,18 @@ class DesktopAppDemo(ComposableWidget):
 
     def _build_users_section(self) -> Widget:
         """Users section with preserved state."""
-        return FilledCard(
+        return Card(
             Column(
                 [
                     Text("Users"),
                     Text(""),
                     Text("Manage your users"),
                     Text("Search users (state preserved):"),
-                    OutlinedTextField(
+                    TextField(
                         value=self.users_search,
                         label="Search by name...",
                         width=Sizing.fixed(300),
+                        style=TextFieldStyle.outlined(),
                     ),
                 ],
                 gap=12,
@@ -147,17 +151,18 @@ class DesktopAppDemo(ComposableWidget):
 
     def _build_settings_section(self) -> Widget:
         """Settings section with preserved state."""
-        return FilledCard(
+        return Card(
             Column(
                 [
                     Text("Settings"),
                     Text(""),
                     Text("Configure your application"),
                     Text("App name (state preserved):"),
-                    OutlinedTextField(
+                    TextField(
                         value=self.settings_name,
                         label="Enter app name...",
                         width=Sizing.fixed(300),
+                        style=TextFieldStyle.outlined(),
                     ),
                     Text(""),
                     Text("Note: All section states are independently preserved."),

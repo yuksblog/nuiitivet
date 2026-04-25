@@ -10,7 +10,7 @@ from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.material.card import FilledCard, OutlinedCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import Button
@@ -59,7 +59,7 @@ class FlowUniformDemo(ComposableWidget):
 
     def _build_tile(self, label: str, idx: int) -> Widget:
         del idx
-        return FilledCard(
+        return Card(
             Column([Text(label), Text("Tap to edit")], gap=4, cross_alignment="start"),
             padding=12,
             style=CardStyle.filled().copy_with(border_radius=12),
@@ -95,7 +95,7 @@ class FlowUniformDemo(ComposableWidget):
                     "Flow layout demo (uniform tiles)",
                 ),
                 controls,
-                OutlinedCard(flow, padding=12, alignment="start"),
+                Card(flow, padding=12, alignment="start", style=CardStyle.outlined()),
             ],
             gap=12,
             padding=12,

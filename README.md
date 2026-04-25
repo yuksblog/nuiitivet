@@ -16,15 +16,17 @@ For example, a login form can be written like this:
 login_form = Column(
     [
         # Username and Password fields
-        OutlinedTextField(
+        TextField(
             value="",
             label="Username",
             width=300,
+            style=TextFieldStyle.outlined(),
         ),
-        OutlinedTextField(
+        TextField(
             value="",
             label="Password",
             width=300,
+            style=TextFieldStyle.outlined(),
         ),
         # Login Button
         FilledButton(

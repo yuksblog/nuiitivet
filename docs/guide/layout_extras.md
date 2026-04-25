@@ -24,17 +24,17 @@ nv.Stack(
     height=200,
     alignment="center",  # Default alignment position
     children=[
-        md.FilledCard(
+        md.Card(
             md.Text(""),
             width="100%",
             height="100%",
         ).modifier(mod.background("#BBDEFB")),
-        md.FilledCard(
+        md.Card(
             md.Text(""),
             width="80%",
             height="80%",
         ).modifier(mod.background("#90CAF9")),
-        md.FilledCard(
+        md.Card(
             md.Text("Overlay Text"),
             width="60%",
             height="60%",
@@ -123,7 +123,7 @@ nv.Flow(
     cross_gap=8,
     padding=8,
     children=[
-        md.OutlinedCard(md.Text(tag)) for tag in tags
+        md.Card(md.Text(tag), style=md.CardStyle.outlined()) for tag in tags
     ],
 )
 ```
@@ -148,7 +148,7 @@ nv.UniformFlow(
     padding=8,
     aspect_ratio=1.0,
     children=[
-        md.FilledCard(md.Text(t), alignment="center", padding=12)
+        md.Card(md.Text(t), alignment="center", padding=12)
         for t in tiles
     ],
 )

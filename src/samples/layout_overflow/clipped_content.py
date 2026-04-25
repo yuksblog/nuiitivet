@@ -4,15 +4,16 @@ import nuiitivet.modifiers as mod
 
 
 def main(png: str = ""):
-    widget = md.OutlinedCard(
+    widget = md.Card(
         width=150,
         height=150,
         padding=10,
-        child=md.FilledCard(
+        child=md.Card(
             width=200,
             height=200,
             child=md.Text("Clipped Content"),
         ),
+        style=md.CardStyle.outlined(),
     ).modifier(
         mod.clip()
     )  # 枠からはみ出た部分は描画されない

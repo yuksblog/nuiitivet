@@ -3,7 +3,7 @@ import nuiitivet.material as md
 
 
 def main(png: str = ""):
-    widget = md.FilledCard(
+    widget = md.Card(
         width=200,  # 幅を 200px に固定
         height=100,  # 高さを 100px に固定
         child=md.Text("Fixed Size Box"),

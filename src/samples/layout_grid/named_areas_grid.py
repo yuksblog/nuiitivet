@@ -5,8 +5,8 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 
-def _card(label: str, width="100%", height="100%") -> md.FilledCard:
-    return md.FilledCard(
+def _card(label: str, width="100%", height="100%") -> md.Card:
+    return md.Card(
         md.Text(label),
         padding=12,
         alignment="center",

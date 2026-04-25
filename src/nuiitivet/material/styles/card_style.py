@@ -44,7 +44,7 @@ class CardStyle:
 
     @classmethod
     def elevated(cls) -> "CardStyle":
-        """Create a default style for ElevatedCard."""
+        """Create a default style for an elevated card."""
         return cls(
             background=ColorRole.SURFACE,
             elevation=1.0,
@@ -54,7 +54,7 @@ class CardStyle:
 
     @classmethod
     def filled(cls) -> "CardStyle":
-        """Create a default style for FilledCard."""
+        """Create a default style for a filled card."""
         return cls(
             background=ColorRole.SURFACE_CONTAINER_HIGHEST,
             elevation=0.0,
@@ -63,7 +63,7 @@ class CardStyle:
 
     @classmethod
     def outlined(cls) -> "CardStyle":
-        """Create a default style for OutlinedCard."""
+        """Create a default style for an outlined card."""
         return cls(
             background=ColorRole.SURFACE,
             elevation=0.0,
@@ -73,26 +73,15 @@ class CardStyle:
         )
 
     @classmethod
-    def from_theme(cls, theme: "Theme", variant: str = "filled") -> "CardStyle":
+    def from_theme(cls, theme: "Theme") -> "CardStyle":
+        """Resolve the default :class:`CardStyle` for the given theme.
+
+        Returns the theme's filled card style if a Material theme extension
+        is present, otherwise a fresh :meth:`filled` preset.
+        """
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
         theme_data = theme.extension(MaterialThemeData)
-        v = (variant or "").lower()
-
         if theme_data:
-            if v == "filled":
-                return theme_data.filled_card_style
-            if v == "outlined":
-                return theme_data.outlined_card_style
-            if v == "elevated":
-                return theme_data.elevated_card_style
-
-        # Fallback
-        if v == "filled":
-            return cls.filled()
-        if v == "outlined":
-            return cls.outlined()
-        if v == "elevated":
-            return cls.elevated()
-
+            return theme_data.filled_card_style
         return cls.filled()

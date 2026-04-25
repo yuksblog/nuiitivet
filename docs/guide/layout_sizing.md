@@ -20,7 +20,7 @@ Specify a number like `100`.
 import nuiitivet as nv
 import nuiitivet.material as md
 
-md.FilledCard(
+md.Card(
     width=200,   # Fix width to 200px
     height=100,  # Fix height to 100px
     child=md.Text("Fixed Size Box"),
@@ -38,7 +38,7 @@ Specify `"auto"`.
 
 ```python
 # The box grows to fit the text size inside
-md.FilledCard(
+md.Card(
     width="auto",
     height="auto",
     child=md.Text("This box fits the content"),
@@ -58,7 +58,7 @@ Since it is a ratio, it is not a problem if the total exceeds 100%.
 
 ```python
 # Expands to full width (100%)
-md.FilledCard(
+md.Card(
     width="100%", 
     child=md.Text("Full Width Box"),
     padding=16,

@@ -12,7 +12,7 @@ from nuiitivet.observable import Observable
 from nuiitivet.material import App
 from nuiitivet.material import Text
 from nuiitivet.material.buttons import Button
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -63,7 +63,7 @@ class RowBuilderDemo(ComposableWidget):
     def build(self) -> Widget:
         return Column(
             [
-                FilledCard(
+                Card(
                     Column(
                         [
                             Text("Row.builder with plain list (cannot update)"),
@@ -99,7 +99,7 @@ class RowBuilderDemo(ComposableWidget):
                     style=CardStyle.filled().copy_with(border_radius=8),
                     alignment="start",
                 ),
-                FilledCard(
+                Card(
                     Column(
                         [
                             Text("Row.builder with Observable list (can update)"),

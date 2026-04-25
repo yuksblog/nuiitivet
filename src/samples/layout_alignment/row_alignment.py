@@ -2,8 +2,8 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 
-def _tile(label: str) -> md.FilledCard:
-    return md.FilledCard(
+def _tile(label: str) -> md.Card:
+    return md.Card(
         md.Text(label),
         width=56,
         height=40,
@@ -34,7 +34,7 @@ def main(png: str = ""):
     content = nv.Column(
         # Render all variants so differences are easy to compare.
         children=[
-            md.OutlinedCard(
+            md.Card(
                 nv.Column(
                     children=[md.Text(a), _demo_row(a)],
                     gap=8,
@@ -43,6 +43,7 @@ def main(png: str = ""):
                 ),
                 width=560,
                 padding=12,
+                style=md.CardStyle.outlined(),
             )
             for a in main_alignments
         ],

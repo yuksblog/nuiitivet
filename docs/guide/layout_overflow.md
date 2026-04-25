@@ -16,16 +16,17 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 # Parent frame (150x150)
-md.OutlinedCard(
+md.Card(
     width=150,
     height=150,
     padding=10,
     # Child is larger (200x200) -> Displayed as overflowing
-    child=md.FilledCard(
+    child=md.Card(
         width=200,
         height=200,
         child=md.Text("Overflow Content"),
-    ),
+    ),,
+    style=md.CardStyle.outlined(),
 )
 ```
 
@@ -42,15 +43,16 @@ import nuiitivet as nv
 import nuiitivet.material as md
 import nuiitivet.modifiers as mod
 
-md.OutlinedCard(
+md.Card(
     width=150,
     height=150,
     padding=10,
-    child=md.FilledCard(
+    child=md.Card(
         width=200,
         height=200,
         child=md.Text("Clipped Content"),
-    ),
+    ),,
+    style=md.CardStyle.outlined(),
 ).modifier(mod.clip())  # Parts sticking out of the frame are not drawn
 ```
 

@@ -19,7 +19,7 @@ from nuiitivet.layout.column import Column
 
 # flow removed
 from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroller import Scroller
@@ -154,7 +154,7 @@ class MyWidget(ComposableWidget):
                 gap=8,
                 cross_alignment="center",
             ),
-            FilledCard(
+            Card(
                 Row(
                     [
                         Icon(Symbols.home, size=24),
@@ -169,7 +169,7 @@ class MyWidget(ComposableWidget):
                 style=CardStyle.filled().copy_with(border_radius=8),
                 alignment="center",
             ),
-            FilledCard(
+            Card(
                 Row([Text("Last click:"), Text(self.model.click_log)], gap=8, cross_alignment="center"),
                 padding=6,
                 alignment="center",
@@ -183,7 +183,7 @@ class MyWidget(ComposableWidget):
                 gap=8,
                 cross_alignment="center",
             ),
-            FilledCard(
+            Card(
                 Column(
                     [
                         Text("Column demo:"),
@@ -221,7 +221,7 @@ class MyWidget(ComposableWidget):
                 style=CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
-            FilledCard(
+            Card(
                 Column(
                     [
                         Text("Row demo:"),
@@ -252,7 +252,7 @@ class MyWidget(ComposableWidget):
                 style=CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
-            FilledCard(
+            Card(
                 Column(
                     [
                         Text("Grid demo:"),
@@ -283,7 +283,7 @@ class MyWidget(ComposableWidget):
                 style=CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
-            FilledCard(
+            Card(
                 Column(
                     [
                         Text("Checkbox demo:"),

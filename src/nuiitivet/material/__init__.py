@@ -18,7 +18,8 @@ if TYPE_CHECKING:
     from .styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
     from .styles.button_size import ButtonSize
     from .styles.toggle_button_style import ToggleButtonStyle
-    from .card import Card, ElevatedCard, FilledCard, OutlinedCard
+    from .card import Card
+    from .styles.card_style import CardStyle
     from .chip import AssistChip, FilterChip, InputChip, SuggestionChip
     from .dialogs import AlertDialog
     from .loading_indicator import LoadingIndicator
@@ -35,7 +36,8 @@ if TYPE_CHECKING:
     from .selection_controls import Checkbox, RadioButton, RadioGroup, Switch
     from .slider import CenteredSlider, Orientation, RangeSlider, Slider
     from .symbols import Symbol, Symbols
-    from .text_fields import FilledTextField, OutlinedTextField, TextField
+    from .text_fields import TextField
+    from .styles.text_field_style import TextFieldStyle
     from .text import Text
     from .overlay import MaterialOverlay
     from .overlay import MaterialOverlay as Overlay
@@ -82,9 +84,7 @@ __all__ = [
     "RangeSlider",
     "Orientation",
     "Card",
-    "ElevatedCard",
-    "FilledCard",
-    "OutlinedCard",
+    "CardStyle",
     "AssistChip",
     "FilterChip",
     "InputChip",
@@ -100,8 +100,7 @@ __all__ = [
     "IconToggleButtonStyle",
     "ButtonSize",
     "TextField",
-    "FilledTextField",
-    "OutlinedTextField",
+    "TextFieldStyle",
     "NavigationRail",
     "RailItem",
     "MaterialOverlay",
@@ -166,9 +165,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RangeSlider": ("slider", "RangeSlider"),
     "Orientation": ("slider", "Orientation"),
     "Card": ("card", "Card"),
-    "ElevatedCard": ("card", "ElevatedCard"),
-    "FilledCard": ("card", "FilledCard"),
-    "OutlinedCard": ("card", "OutlinedCard"),
+    "CardStyle": ("styles.card_style", "CardStyle"),
     "AssistChip": ("chip", "AssistChip"),
     "FilterChip": ("chip", "FilterChip"),
     "InputChip": ("chip", "InputChip"),
@@ -184,8 +181,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ToggleButtonStyle": ("styles.toggle_button_style", "ToggleButtonStyle"),
     "ButtonSize": ("styles.button_size", "ButtonSize"),
     "TextField": ("text_fields", "TextField"),
-    "FilledTextField": ("text_fields", "FilledTextField"),
-    "OutlinedTextField": ("text_fields", "OutlinedTextField"),
+    "TextFieldStyle": ("styles.text_field_style", "TextFieldStyle"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),
     "MaterialOverlay": ("overlay", "MaterialOverlay"),

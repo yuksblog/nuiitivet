@@ -8,15 +8,17 @@ import argparse
 def build_login_form():
     return nv.Column(
         [
-            md.OutlinedTextField(
+            md.TextField(
                 value="",
                 label="Username",
                 width=300,
+                style=md.TextFieldStyle.outlined(),
             ),
-            md.OutlinedTextField(
+            md.TextField(
                 value="",
                 label="Password",
                 width=300,
+                style=md.TextFieldStyle.outlined(),
             ),
             md.FilledButton(
                 "Login",

@@ -12,7 +12,7 @@ from nuiitivet.material import App
 from nuiitivet.rendering import Sizing
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material import Text
 from nuiitivet.material.theme.color_role import ColorRole
@@ -38,7 +38,7 @@ def build_demo_container(overflow_mode: Literal["visible", "clip", "scroll"]):
         height=Sizing.auto(),
     )
 
-    demo_container = FilledCard(
+    demo_container = Card(
         child=large_content,
         width=Sizing.fixed(300),
         height=Sizing.fixed(150),

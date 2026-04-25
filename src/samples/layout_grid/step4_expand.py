@@ -5,13 +5,13 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 
-def _card(label: str, expand: bool = True) -> md.FilledCard:
+def _card(label: str, expand: bool = True) -> md.Card:
     # expand=True -> width/height="100%" (Fills grid cell)
     # expand=False -> width/height=default (Fits content)
     w = "100%" if expand else None
     h = "100%" if expand else None
 
-    return md.FilledCard(
+    return md.Card(
         md.Text(label),
         padding=12,
         alignment="center",
