@@ -4,16 +4,17 @@ import nuiitivet.material as md
 
 def main(png: str = ""):
     # 親の枠（150x150）
-    widget = md.OutlinedCard(
+    widget = md.Card(
         width=150,
         height=150,
         padding=10,
         # 子が大きい（200x200）-> そのままはみ出して表示される
-        child=md.FilledCard(
+        child=md.Card(
             width=200,
             height=200,
             child=md.Text("Overflow Content"),
         ),
+        style=md.CardStyle.outlined(),
     )
 
     # Center it so we can see the overflow clearly

@@ -5,8 +5,8 @@ import nuiitivet.material as md
 def main(png: str = ""):
     content = nv.Column(
         children=[
-            md.FilledTextField(label="Email"),
-            md.FilledTextField(label="Password"),
+            md.TextField(label="Email"),
+            md.TextField(label="Password"),
             md.FilledButton("Login"),
         ],
         gap=16,

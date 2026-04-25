@@ -18,8 +18,8 @@ import nuiitivet.material as md
 
 content = nv.Column(
     children=[
-        md.FilledTextField(label="Email"),
-        md.FilledTextField(label="Password"),
+        md.TextField(label="Email"),
+        md.TextField(label="Password"),
         md.Button("Login", style=md.ButtonStyle.filled()),
     ],
     gap=16,
@@ -67,14 +67,14 @@ form = nv.Column(
         # Row 1: Name (Horizontal)
         nv.Row(
             children=[
-                md.FilledTextField(label="First Name"),
-                md.FilledTextField(label="Last Name"),
+                md.TextField(label="First Name"),
+                md.TextField(label="Last Name"),
             ],
             gap=8,
         ),
 
         # Row 2: Address
-        md.FilledTextField(label="Address", width=nv.Sizing.flex(1)),
+        md.TextField(label="Address", width=nv.Sizing.flex(1)),
 
         # Row 3: Buttons (Horizontal)
         nv.Row(

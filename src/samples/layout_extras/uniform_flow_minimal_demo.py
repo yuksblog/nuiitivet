@@ -12,7 +12,7 @@ def main(png: str = ""):
         padding=12,
         aspect_ratio=1.0,
         children=[
-            md.FilledCard(md.Text(t), alignment="center", padding=12) for t in tiles
+            md.Card(md.Text(t), alignment="center", padding=12) for t in tiles
         ],
         width=320,
     )

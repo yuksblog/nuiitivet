@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Tuple, TYPE_CHECKING
+from typing import Literal, Tuple, TYPE_CHECKING
 
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
@@ -10,9 +10,21 @@ if TYPE_CHECKING:
     from ...theme import Theme
 
 
+TextFieldMode = Literal["filled", "outlined"]
+
+
 @dataclass(frozen=True)
 class TextFieldStyle:
-    """Style configuration for TextField (M3-compliant)."""
+    """Style configuration for :class:`TextField` (M3-compliant).
+
+    The visual variant is captured by the :attr:`mode` field: ``"filled"``
+    draws an underline indicator with top-rounded container corners while
+    ``"outlined"`` draws a full rectangular border. Use the :meth:`filled`
+    and :meth:`outlined` factory methods to obtain the standard presets.
+    """
+
+    # Visual mode (drives container shape and indicator drawing)
+    mode: TextFieldMode = "filled"
 
     # Container
     container_color: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
@@ -51,6 +63,7 @@ class TextFieldStyle:
     def filled(cls) -> "TextFieldStyle":
         """Default M3 Filled TextField style."""
         return cls(
+            mode="filled",
             container_color=ColorRole.SURFACE_CONTAINER_HIGHEST,
             indicator_color=ColorRole.ON_SURFACE_VARIANT,
             border_radius=4.0,
@@ -61,6 +74,7 @@ class TextFieldStyle:
     def outlined(cls) -> "TextFieldStyle":
         """Default M3 Outlined TextField style."""
         return cls(
+            mode="outlined",
             container_color=(0, 0, 0, 0),  # Transparent
             indicator_color=ColorRole.OUTLINE,
             border_radius=4.0,
@@ -68,22 +82,15 @@ class TextFieldStyle:
         )
 
     @classmethod
-    def from_theme(cls, theme: "Theme", variant: str = "filled") -> "TextFieldStyle":
+    def from_theme(cls, theme: "Theme") -> "TextFieldStyle":
+        """Resolve the default :class:`TextFieldStyle` for the given theme.
+
+        Returns the theme's filled text field style if a Material theme
+        extension is present, otherwise a fresh :meth:`filled` preset.
+        """
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
         theme_data = theme.extension(MaterialThemeData)
-        v = (variant or "").lower()
-
         if theme_data:
-            if v == "filled":
-                return theme_data.filled_text_field_style
-            if v == "outlined":
-                return theme_data.outlined_text_field_style
-
-        # Fallback
-        if v == "filled":
-            return cls.filled()
-        if v == "outlined":
-            return cls.outlined()
-
+            return theme_data.filled_text_field_style
         return cls.filled()

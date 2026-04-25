@@ -1,4 +1,11 @@
-"""Material Design Card widgets."""
+"""Material Design Card widget.
+
+The :class:`Card` widget is unified across all visual variants. The visual
+variant (filled, outlined, elevated) is expressed entirely through the
+``style`` argument. Use :class:`CardStyle` factory methods to obtain
+variant presets: ``CardStyle.filled()``, ``CardStyle.outlined()``,
+``CardStyle.elevated()``.
+"""
 
 from __future__ import annotations
 
@@ -21,18 +28,26 @@ _logger = logging.getLogger(__name__)
 
 
 class Card(ComposableWidget, Box):
-    """Base class for Material Design cards."""
+    """Unified Material Design 3 card.
+
+    The visual variant (filled, outlined, elevated) is expressed entirely
+    through the ``style`` argument, which accepts any :class:`CardStyle`
+    instance. Use the :class:`CardStyle` factory methods to obtain
+    variant presets: ``CardStyle.filled()``, ``CardStyle.outlined()``,
+    ``CardStyle.elevated()``.
+
+    When ``style`` is not provided, the theme's filled card style is used
+    as the default.
+    """
 
     @property
     def style(self) -> CardStyle:
-        if hasattr(self, "_user_style") and self._user_style is not None:
+        if self._user_style is not None:
             return self._user_style
 
         from nuiitivet.theme.manager import manager
-        from nuiitivet.material.styles.card_style import CardStyle
 
-        variant = getattr(self, "_variant", "filled")
-        return CardStyle.from_theme(manager.current, variant)
+        return CardStyle.from_theme(manager.current)
 
     def __init__(
         self,
@@ -52,13 +67,12 @@ class Card(ComposableWidget, Box):
             height: Height specification.
             padding: Padding around the content.
             alignment: Alignment of the content.
-            style: Optional CardStyle override.
+            style: Visual style preset. Defaults to the theme's filled card
+                style. Use :meth:`CardStyle.filled`, :meth:`CardStyle.outlined`,
+                or :meth:`CardStyle.elevated` for the standard M3 variants.
         """
         self._child_spec: ChildSpec = child
-        self._user_style = style
-
-        if not hasattr(self, "_variant"):
-            self._variant = "filled"
+        self._user_style: Optional[CardStyle] = style
 
         # Resolve style
         final_style = self.style
@@ -168,105 +182,3 @@ class Card(ComposableWidget, Box):
     def _invalidate_content_scope(self) -> None:
         if self._content_scope_id:
             self.invalidate_scope_id(self._content_scope_id)
-
-
-class ElevatedCard(Card):
-    """Elevated Card implementation."""
-
-    def __init__(
-        self,
-        child: ChildSpec,
-        *,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: PaddingLike = 0,
-        alignment: AlignmentLike = "start",
-        style: Optional[CardStyle] = None,
-    ) -> None:
-        """Initialize ElevatedCard.
-
-        Args:
-            child: The child widget or factory.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding around the content.
-            alignment: Alignment of the content.
-            style: Optional CardStyle override.
-        """
-        self._variant = "elevated"
-        super().__init__(
-            child=child,
-            width=width,
-            height=height,
-            padding=padding,
-            alignment=alignment,
-            style=style,
-        )
-
-
-class FilledCard(Card):
-    """Filled Card implementation."""
-
-    def __init__(
-        self,
-        child: ChildSpec,
-        *,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: PaddingLike = 0,
-        alignment: AlignmentLike = "start",
-        style: Optional[CardStyle] = None,
-    ) -> None:
-        """Initialize FilledCard.
-
-        Args:
-            child: The child widget or factory.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding around the content.
-            alignment: Alignment of the content.
-            style: Optional CardStyle override.
-        """
-        self._variant = "filled"
-        super().__init__(
-            child=child,
-            width=width,
-            height=height,
-            padding=padding,
-            alignment=alignment,
-            style=style,
-        )
-
-
-class OutlinedCard(Card):
-    """Outlined Card implementation."""
-
-    def __init__(
-        self,
-        child: ChildSpec,
-        *,
-        width: SizingLike = None,
-        height: SizingLike = None,
-        padding: PaddingLike = 0,
-        alignment: AlignmentLike = "start",
-        style: Optional[CardStyle] = None,
-    ) -> None:
-        """Initialize OutlinedCard.
-
-        Args:
-            child: The child widget or factory.
-            width: Width specification.
-            height: Height specification.
-            padding: Padding around the content.
-            alignment: Alignment of the content.
-            style: Optional CardStyle override.
-        """
-        self._variant = "outlined"
-        super().__init__(
-            child=child,
-            width=width,
-            height=height,
-            padding=padding,
-            alignment=alignment,
-            style=style,
-        )

@@ -3,17 +3,15 @@ from collections.abc import Iterator
 
 from nuiitivet.material import (
     Checkbox,
-    FilledTextField,
+    TextField,
     Icon,
     NavigationRail,
-    OutlinedTextField,
     RadioButton,
     RailItem,
     Switch,
     Text,
-    TextField,
 )
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.theme.color_role import ColorRole
@@ -74,21 +72,21 @@ def test_text_field_defaults_to_default_text_field_style() -> None:
 
 
 def test_filled_text_field_defaults_to_filled_style() -> None:
-    tf = FilledTextField()
+    tf = TextField()
     assert tf.style == TextFieldStyle.filled()
 
 
 def test_outlined_text_field_defaults_to_outlined_style() -> None:
-    tf = OutlinedTextField()
+    tf = TextField(style=TextFieldStyle.outlined())
     assert tf.style == TextFieldStyle.outlined()
 
 
 def test_card_defaults() -> None:
-    c1 = FilledCard(Text(""), style=CardStyle.filled().copy_with(border_width=0))
-    # FilledCard default background is SURFACE_CONTAINER_HIGHEST
+    c1 = Card(Text(""), style=CardStyle.filled().copy_with(border_width=0))
+    # Card default background is SURFACE_CONTAINER_HIGHEST
     assert c1.bgcolor == ColorRole.SURFACE_CONTAINER_HIGHEST
 
-    _ = FilledCard(Text(""), style=CardStyle.filled().copy_with(border_width=1, border_color=None))
+    _ = Card(Text(""), style=CardStyle.filled().copy_with(border_width=1, border_color=None))
     # If border_color is None but width > 0, it should default to OUTLINE
     # However, CardStyle.filled() has no border by default.
     # If we explicitly set border_width=1 and border_color=None, Card logic might resolve it.

@@ -33,8 +33,8 @@ alignments = [
 ]
 
 
-def _tile(alignment: str) -> md.FilledCard:
-    return md.FilledCard(
+def _tile(alignment: str) -> md.Card:
+    return md.Card(
         md.Text(alignment, padding=8),
         width=160,
         height=96,
@@ -95,8 +95,8 @@ def _demo_row(alignment: str) -> nv.Row:
     )
 
 
-def _tile(label: str) -> md.FilledCard:
-    return md.FilledCard(
+def _tile(label: str) -> md.Card:
+    return md.Card(
         md.Text(label),
         width=56,
         height=40,
@@ -108,7 +108,7 @@ nv.Column(
     gap=12,
     cross_alignment="start",
     children=[
-        md.OutlinedCard(
+        md.Card(
             nv.Column(
                 children=[
                     md.Text(a),
@@ -118,7 +118,8 @@ nv.Column(
                 cross_alignment="start",
                 width="100%",
             ),
-            padding=12,
+            padding=12,,
+            style=md.CardStyle.outlined(),
         )
         for a in main_alignments
     ],
@@ -152,8 +153,8 @@ def _demo_row(alignment: str) -> nv.Row:
     )
 
 
-def _bar(label: str, h: int) -> md.FilledCard:
-    return md.FilledCard(
+def _bar(label: str, h: int) -> md.Card:
+    return md.Card(
         md.Text(label),
         width=72,
         height=h,
@@ -161,15 +162,16 @@ def _bar(label: str, h: int) -> md.FilledCard:
     )
 
 
-def _panel(alignment: str) -> md.OutlinedCard:
-    return md.OutlinedCard(
+def _panel(alignment: str) -> md.Card:
+    return md.Card(
         nv.Column(
             children=[md.Text(alignment), _demo_row(alignment)],
             gap=8,
             cross_alignment="start",
             width="100%",
         ),
-        padding=12,
+        padding=12,,
+        style=md.CardStyle.outlined(),
     )
 
 
@@ -221,8 +223,8 @@ def _demo_column(alignment: str) -> nv.Column:
     )
 
 
-def _tile(label: str, *, width: int = 72, height: int = 32) -> md.FilledCard:
-    return md.FilledCard(
+def _tile(label: str, *, width: int = 72, height: int = 32) -> md.Card:
+    return md.Card(
         md.Text(label),
         width=width,
         height=height,
@@ -230,8 +232,8 @@ def _tile(label: str, *, width: int = 72, height: int = 32) -> md.FilledCard:
     )
 
 
-def _panel(alignment: str) -> md.OutlinedCard:
-    return md.OutlinedCard(
+def _panel(alignment: str) -> md.Card:
+    return md.Card(
         nv.Column(
             children=[md.Text(alignment), _demo_column(alignment)],
             gap=8,
@@ -239,7 +241,8 @@ def _panel(alignment: str) -> md.OutlinedCard:
             width="100%",
         ),
         width=150,
-        padding=12,
+        padding=12,,
+        style=md.CardStyle.outlined(),
     )
 
 
@@ -284,8 +287,8 @@ def _demo_column(alignment: str) -> nv.Column:
     )
 
 
-def _tile(label: str, *, width: int = 72, height: int = 32) -> md.FilledCard:
-    return md.FilledCard(
+def _tile(label: str, *, width: int = 72, height: int = 32) -> md.Card:
+    return md.Card(
         md.Text(label),
         width=width,
         height=height,
@@ -293,8 +296,8 @@ def _tile(label: str, *, width: int = 72, height: int = 32) -> md.FilledCard:
     )
 
 
-def _panel(alignment: str) -> md.OutlinedCard:
-    return md.OutlinedCard(
+def _panel(alignment: str) -> md.Card:
+    return md.Card(
         nv.Column(
             children=[md.Text(alignment), _demo_column(alignment)],
             gap=8,
@@ -302,7 +305,8 @@ def _panel(alignment: str) -> md.OutlinedCard:
             width="100%",
         ),
         width=200,
-        padding=12,
+        padding=12,,
+        style=md.CardStyle.outlined(),
     )
 
 

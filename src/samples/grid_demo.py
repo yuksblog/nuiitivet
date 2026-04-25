@@ -5,13 +5,13 @@ from __future__ import annotations
 from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.material import Text
 from nuiitivet.material import App
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
-def _card(label: str, width=Sizing.flex(1), height=Sizing.flex(1)) -> FilledCard:
-    return FilledCard(
+def _card(label: str, width=Sizing.flex(1), height=Sizing.flex(1)) -> Card:
+    return Card(
         Text(label),
         padding=12,
         alignment="center",

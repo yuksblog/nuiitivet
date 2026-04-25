@@ -21,16 +21,16 @@ def main(png: str = ""):
             children=[_tile("A"), _tile("B"), _tile("C")],
         )
 
-    def _tile(label: str, *, width: int = 72, height: int = 32) -> md.FilledCard:
-        return md.FilledCard(
+    def _tile(label: str, *, width: int = 72, height: int = 32) -> md.Card:
+        return md.Card(
             md.Text(label),
             width=width,
             height=height,
             alignment="center",
         )
 
-    def _panel(alignment: str) -> md.OutlinedCard:
-        return md.OutlinedCard(
+    def _panel(alignment: str) -> md.Card:
+        return md.Card(
             nv.Column(
                 children=[md.Text(alignment), _demo_column(alignment)],
                 gap=8,
@@ -39,6 +39,7 @@ def main(png: str = ""):
             ),
             width=150,
             padding=12,
+            style=md.CardStyle.outlined(),
         )
 
     content = nv.Column(

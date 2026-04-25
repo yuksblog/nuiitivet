@@ -3,7 +3,7 @@
 from nuiitivet.material import App
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material import Text
 from nuiitivet.material.buttons import Button
@@ -14,11 +14,11 @@ from nuiitivet.material import ButtonStyle
 def main():
     """Show various padding configurations for Column and Row."""
     app = App(
-        content=FilledCard(
+        content=Card(
             child=Column(
                 [
                     Text("Column and Row Padding Demo"),
-                    FilledCard(
+                    Card(
                         child=Column(
                             [Text("Column with padding=20"), Text("Second item"), Text("Third item")],
                             gap=5,
@@ -26,7 +26,7 @@ def main():
                         ),
                         style=CardStyle.filled().copy_with(background=ColorRole.SURFACE_VARIANT),
                     ),
-                    FilledCard(
+                    Card(
                         child=Row(
                             [Text("Row"), Text("with"), Text("padding=15")],
                             gap=10,
@@ -34,7 +34,7 @@ def main():
                         ),
                         style=CardStyle.filled().copy_with(background=ColorRole.SECONDARY_CONTAINER),
                     ),
-                    FilledCard(
+                    Card(
                         child=Column(
                             [
                                 Text("Asymmetric padding:"),
@@ -44,7 +44,7 @@ def main():
                         ),
                         style=CardStyle.filled().copy_with(background=ColorRole.TERTIARY_CONTAINER),
                     ),
-                    FilledCard(
+                    Card(
                         child=Column(
                             [
                                 Text("Nested: Row in Column, both with padding"),
@@ -65,7 +65,7 @@ def main():
                             border_width=2,
                         ),
                     ),
-                    FilledCard(
+                    Card(
                         child=Row(
                             [Text("No padding"), Button("Button", style=ButtonStyle.outlined())],
                             gap=10,

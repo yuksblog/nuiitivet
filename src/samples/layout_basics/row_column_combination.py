@@ -9,13 +9,13 @@ def main(png: str = ""):
             # 1行目: 名前（横並び）
             nv.Row(
                 children=[
-                    md.FilledTextField(label="First Name"),
-                    md.FilledTextField(label="Last Name"),
+                    md.TextField(label="First Name"),
+                    md.TextField(label="Last Name"),
                 ],
                 gap=8,
             ),
             # 2行目: 住所
-            md.FilledTextField(label="Address", width=nv.Sizing.flex(1)),
+            md.TextField(label="Address", width=nv.Sizing.flex(1)),
             # 3行目: ボタン（横並び）
             nv.Row(
                 children=[

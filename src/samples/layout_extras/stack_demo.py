@@ -11,17 +11,17 @@ def main(png: str = ""):
         alignment="center",  # デフォルトの配置位置
         children=[
             # 1. 背景（奥）
-            md.FilledCard(
+            md.Card(
                 md.Text(""),
                 width="100%",
                 height="100%",
             ).modifier(mod.background("#BBDEFB")),
-            md.FilledCard(
+            md.Card(
                 md.Text(""),
                 width="80%",
                 height="80%",
             ).modifier(mod.background("#90CAF9")),
-            md.FilledCard(
+            md.Card(
                 md.Text("Overlay md.Text"),
                 width="60%",
                 height="60%",
@@ -30,7 +30,7 @@ def main(png: str = ""):
         ],
     )
 
-    root = md.FilledCard(
+    root = md.Card(
         widget,
         alignment="center",
         style=CardStyle(background=None, border_radius=0),

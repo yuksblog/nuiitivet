@@ -3,7 +3,7 @@ import nuiitivet.material as md
 
 
 def main(png: str = ""):
-    widget = md.FilledCard(
+    widget = md.Card(
         # width/height 指定なし -> auto
         width="auto",
         height="auto",

@@ -1,5 +1,5 @@
 from nuiitivet.layout.container import Container
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.widgets import TextBase as Text
 from nuiitivet.widgeting.widget import Widget
@@ -13,7 +13,7 @@ def test_preferred_size_single_child_no_skia():
 
 
 def test_paint_no_skia_does_not_raise():
-    c = FilledCard(
+    c = Card(
         Text("hello"),
         padding=4,
         style=CardStyle.filled().copy_with(background="#E7E0EC"),

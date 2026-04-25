@@ -3,7 +3,7 @@ import nuiitivet as nv
 
 
 def main(png: str = ""):
-    widget = md.FilledCard(
+    widget = md.Card(
         width="100%",
         child=md.Text("Full Width Box"),
         padding=16,

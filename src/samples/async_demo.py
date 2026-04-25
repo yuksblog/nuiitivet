@@ -92,7 +92,7 @@ class AsyncDemoApp(nv.ComposableWidget):
         )
 
     def build(self) -> nv.Widget:
-        status_card = md.FilledCard(
+        status_card = md.Card(
             padding=16,
             child=nv.Column(
                 gap=8,

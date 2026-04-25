@@ -2,7 +2,7 @@
 
 from nuiitivet.material import App
 from nuiitivet.layout.column import Column
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroller import Scroller
@@ -18,7 +18,7 @@ def main():
     items = []
     for i in range(100):
         items.append(
-            FilledCard(
+            Card(
                 child=Text(f"Item {i + 1}"),
                 padding=12,
                 style=CardStyle.filled().copy_with(
@@ -35,7 +35,7 @@ def main():
     cards = []
     for i in range(1, 21):
         cards.append(
-            FilledCard(
+            Card(
                 child=Text(f"Card {i:02} — swipe horizontally"),
                 padding=(16, 24),
                 style=CardStyle.filled().copy_with(
@@ -65,7 +65,7 @@ def main_auto_hide():
     items = []
     for i in range(100):
         items.append(
-            FilledCard(
+            Card(
                 child=Text(f"Item {i + 1}"),
                 padding=12,
                 style=CardStyle.filled().copy_with(
@@ -119,7 +119,7 @@ def main_horizontal():
     cards = []
     for i in range(1, 21):
         cards.append(
-            FilledCard(
+            Card(
                 child=Text(f"Card {i:02} — swipe horizontally"),
                 padding=(16, 24),
                 style=CardStyle.filled().copy_with(

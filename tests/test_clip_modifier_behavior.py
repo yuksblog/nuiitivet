@@ -10,7 +10,7 @@ Verifies that:
 from unittest.mock import MagicMock
 import unittest
 from nuiitivet.layout.column import Column
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
 from nuiitivet.widgets import TextBase as Text
@@ -92,9 +92,9 @@ def test_row_with_clip_modifier():
 
 
 def test_container_default_no_clip():
-    """FilledCard does not clip by default (if radius is 0)."""
+    """Card does not clip by default (if radius is 0)."""
     t = Text("Large", width=Sizing.fixed(120), height=Sizing.fixed(60))
-    c = FilledCard(
+    c = Card(
         child=t,
         width=Sizing.fixed(100),
         height=Sizing.fixed(50),
@@ -111,17 +111,17 @@ def test_container_default_no_clip():
 
 
 def test_container_with_clip_modifier():
-    """FilledCard with .clip() modifier applies clipping."""
+    """Card with .clip() modifier applies clipping."""
     _skip_if_no_skia(unittest.TestCase())
     t = Text("Large", width=Sizing.fixed(120), height=Sizing.fixed(60))
-    c_inner = FilledCard(
+    c_inner = Card(
         child=t,
         width=Sizing.fixed(100),
         height=Sizing.fixed(50),
         style=CardStyle.filled().copy_with(border_radius=0),
     )
     c = c_inner.modifier(clip())
-    # FilledCard returns a Box, and ClipModifier modifies Box in-place
+    # Card returns a Box, and ClipModifier modifies Box in-place
     # so c is the Box itself, not a wrapper.
 
     canvas = MagicMock()

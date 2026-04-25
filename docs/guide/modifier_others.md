@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import Overlay
-from nuiitivet.material.text_fields import OutlinedTextField
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator, PageRoute
 from nuiitivet.observable import Observable
@@ -110,7 +110,7 @@ class EditScreen(nv.ComposableWidget):
             child=nv.Column(
                 children=[
                     md.Text("Edit text. Back/Esc asks confirmation when unsaved."),
-                    OutlinedTextField.two_way(
+                    TextField.two_way(
                         self.text,
                         width=420,
                         height=52,

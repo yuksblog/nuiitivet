@@ -8,7 +8,7 @@ from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
@@ -78,7 +78,7 @@ class NavigationRailDemo(ComposableWidget):
         )
 
         # Content area - shows which section is selected
-        content = FilledCard(
+        content = Card(
             Column(
                 [
                     Text(section_label),

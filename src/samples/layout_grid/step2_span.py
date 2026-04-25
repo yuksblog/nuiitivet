@@ -5,9 +5,9 @@ import nuiitivet as nv
 import nuiitivet.material as md
 
 
-def _card(label: str) -> md.FilledCard:
+def _card(label: str) -> md.Card:
     # Step 2: 単純なカード（サイズ指定なし）
-    return md.FilledCard(
+    return md.Card(
         md.Text(label),
         padding=12,
         alignment="center",

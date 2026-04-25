@@ -4,17 +4,18 @@ from enum import IntEnum
 
 from nuiitivet.material import App
 from nuiitivet.material import Text
-from nuiitivet.material.text_fields import OutlinedTextField
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.card import FilledCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material.buttons import Button
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.material import ButtonStyle
+from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
 
 class ViewMode(IntEnum):
@@ -73,11 +74,11 @@ class DeckDemo(ComposableWidget):
 
         return Column(
             [
-                FilledCard(
+                Card(
                     tab_buttons,
                     style=CardStyle.filled().copy_with(border_radius=0),
                 ),
-                FilledCard(
+                Card(
                     tab_content,
                     style=CardStyle.filled().copy_with(border_radius=0),
                     width=Sizing.flex(1),
@@ -94,10 +95,11 @@ class DeckDemo(ComposableWidget):
             [
                 Text("Home Tab"),
                 Text("Enter text below and switch tabs to see state preservation:"),
-                OutlinedTextField(
+                TextField(
                     value=self.home_text,
                     label="Type something...",
                     width=Sizing.fixed(400),
+                    style=TextFieldStyle.outlined(),
                 ),
             ],
             gap=12,
@@ -110,10 +112,11 @@ class DeckDemo(ComposableWidget):
             [
                 Text("Profile Tab"),
                 Text("This tab has its own text field with preserved state:"),
-                OutlinedTextField(
+                TextField(
                     value=self.profile_text,
                     label="Type something...",
                     width=Sizing.fixed(400),
+                    style=TextFieldStyle.outlined(),
                 ),
             ],
             gap=12,
@@ -126,10 +129,11 @@ class DeckDemo(ComposableWidget):
             [
                 Text("Settings Tab"),
                 Text("All tabs maintain their state independently:"),
-                OutlinedTextField(
+                TextField(
                     value=self.settings_text,
                     label="Type something...",
                     width=Sizing.fixed(400),
+                    style=TextFieldStyle.outlined(),
                 ),
                 Text("Note: Deck keeps all children mounted,"),
                 Text("so their state (text, scroll position, etc.) is preserved."),

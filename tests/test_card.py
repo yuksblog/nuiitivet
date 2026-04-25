@@ -1,4 +1,4 @@
-from nuiitivet.material.card import Card, FilledCard, ElevatedCard
+from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.rendering.sizing import Sizing
@@ -26,8 +26,8 @@ def test_border_radius_tuple_normalization():
 
 
 def test_default_border_radius():
-    # FilledCard defaults to 12.0
-    mc = FilledCard(None)
+    # Card defaults to 12.0
+    mc = Card(None)
     assert mc.corner_radii == (12.0, 12.0, 12.0, 12.0)
     assert mc.corner_radius == 12.0
 
@@ -92,9 +92,9 @@ def test_callable_child_spec_is_evaluated_per_build():
 
 
 def test_elevated_card_reports_shadow_outsets():
-    container = ElevatedCard(None)
+    container = Card(None, style=CardStyle.elevated())
     left, top, right, bottom = container.paint_outsets()
-    # Default shadow for ElevatedCard (elevation 1.0) should reserve bounds
+    # Default shadow for Card(elevation 1.0, style=CardStyle.elevated()) should reserve bounds
     assert left > 0
     assert top > 0
     assert right > 0
@@ -102,6 +102,6 @@ def test_elevated_card_reports_shadow_outsets():
 
 
 def test_filled_card_no_shadow():
-    container = FilledCard(None)
+    container = Card(None)
     left, top, right, bottom = container.paint_outsets()
     assert (left, top, right, bottom) == (0, 0, 0, 0)

@@ -9,7 +9,7 @@ def main(png: str = ""):
         columns=[200],
         children=[
             nv.GridItem(
-                child=md.FilledCard(
+                child=md.Card(
                     # カードをセルのサイズいっぱいに広げる
                     width="100%",
                     height="100%",

@@ -15,8 +15,8 @@ def main(png: str = ""):
         "bottom-right",
     ]
 
-    def _tile(alignment: str) -> md.FilledCard:
-        return md.FilledCard(
+    def _tile(alignment: str) -> md.Card:
+        return md.Card(
             md.Text(alignment, padding=8),
             width=160,
             height=96,

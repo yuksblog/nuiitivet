@@ -33,8 +33,8 @@ The `TextField` widget follows the Material Design 3 specification and is struct
   - Defines abstract/hook methods for variant-specific rendering (e.g., `_draw_container`).
 
 - **Concrete Classes**:
-  - **`FilledTextField`**: Implements the M3 "Filled" style with a background container and bottom indicator.
-  - **`OutlinedTextField`**: Implements the M3 "Outlined" style with a border and transparent background.
+  - **`TextField`**: Implements the M3 "Filled" style with a background container and bottom indicator.
+  - **`TextField`**: Implements the M3 "Outlined" style with a border and transparent background.
 
 - **Styling (`TextFieldStyle`)**:
   - An immutable dataclass (`frozen=True`) defining all visual properties (colors, dimensions, fonts).

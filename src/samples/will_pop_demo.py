@@ -22,7 +22,7 @@ from nuiitivet.material import App
 from nuiitivet.material import Overlay
 from nuiitivet.material.buttons import Button
 from nuiitivet.material import Text
-from nuiitivet.material.text_fields import OutlinedTextField
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.material import ButtonStyle
 
@@ -152,7 +152,7 @@ class EditScreen(ComposableWidget):
                 children=[
                     Text("Editor"),
                     Text(self.vm.dirty.map(lambda v: "Dirty" if v else "Clean")),
-                    OutlinedTextField.two_way(
+                    TextField.two_way(
                         self.vm.text,
                         width=420,
                         height=52,
