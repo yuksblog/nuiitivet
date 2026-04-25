@@ -25,7 +25,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroller import Scroller
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.material.symbols import Symbols
-from nuiitivet.material.buttons import FloatingActionButton, Button
+from nuiitivet.material.buttons import Fab, Button
 from nuiitivet.theme import manager as theme_manager
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior
@@ -265,7 +265,7 @@ class MyWidget(ComposableWidget):
                         ),
                         Row(
                             [
-                                FloatingActionButton(Symbols.add, on_click=self.model.add_grid_item),
+                                Fab(Symbols.add, on_click=self.model.add_grid_item),
                                 Button(
                                     "Remove (Grid)",
                                     on_click=self.model.remove_grid_item,

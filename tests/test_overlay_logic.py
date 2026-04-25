@@ -1,6 +1,6 @@
 import pytest
 
-from nuiitivet.material import FloatingActionButton, Button
+from nuiitivet.material import Fab, Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 
 
@@ -22,7 +22,7 @@ def test_resolve_overlay_defaults():
         (lambda: Button(label="lbl", style=ButtonStyle.filled()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.outlined()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.tonal()), 0.08, 0.04),
-        (lambda: FloatingActionButton(icon="add"), 0.08, 0.04),
+        (lambda: Fab(icon="add"), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.text()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.elevated()), 0.08, 0.04),
     ],

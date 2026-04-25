@@ -109,7 +109,7 @@ TARGETS = [
     ("nuiitivet.material.buttons", "ElevatedButton", ("preferred_size", "paint")),
     ("nuiitivet.material.buttons", "TextButton", ("preferred_size", "paint")),
     ("nuiitivet.material.buttons", "OutlinedButton", ("preferred_size", "paint")),
-    ("nuiitivet.material.buttons", "FloatingActionButton", ("preferred_size", "paint")),
+    ("nuiitivet.material.buttons", "Fab", ("preferred_size", "paint")),
 ]
 
 

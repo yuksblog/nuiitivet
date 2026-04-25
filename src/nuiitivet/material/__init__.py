@@ -10,13 +10,14 @@ if TYPE_CHECKING:
     from .divider import Divider
     from .buttons import (
         Button,
-        FloatingActionButton,
+        Fab,
         IconButton,
         IconToggleButton,
         ToggleButton,
     )
     from .styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
-    from .styles.button_size import ButtonSize
+    from .styles.button_size import ButtonSize, FabSize
+    from .styles.fab_style import FabStyle
     from .styles.toggle_button_style import ToggleButtonStyle
     from .card import Card
     from .styles.card_style import CardStyle
@@ -91,7 +92,7 @@ __all__ = [
     "SuggestionChip",
     "Button",
     "ToggleButton",
-    "FloatingActionButton",
+    "Fab",
     "IconButton",
     "IconToggleButton",
     "ButtonStyle",
@@ -99,6 +100,8 @@ __all__ = [
     "IconButtonStyle",
     "IconToggleButtonStyle",
     "ButtonSize",
+    "FabStyle",
+    "FabSize",
     "TextField",
     "TextFieldStyle",
     "NavigationRail",
@@ -172,7 +175,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SuggestionChip": ("chip", "SuggestionChip"),
     "Button": ("buttons", "Button"),
     "ToggleButton": ("buttons", "ToggleButton"),
-    "FloatingActionButton": ("buttons", "FloatingActionButton"),
+    "Fab": ("buttons", "Fab"),
     "IconButton": ("buttons", "IconButton"),
     "IconToggleButton": ("buttons", "IconToggleButton"),
     "ButtonStyle": ("styles.button_style", "ButtonStyle"),
@@ -180,6 +183,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "IconToggleButtonStyle": ("styles.button_style", "IconToggleButtonStyle"),
     "ToggleButtonStyle": ("styles.toggle_button_style", "ToggleButtonStyle"),
     "ButtonSize": ("styles.button_size", "ButtonSize"),
+    "FabStyle": ("styles.fab_style", "FabStyle"),
+    "FabSize": ("styles.button_size", "FabSize"),
     "TextField": ("text_fields", "TextField"),
     "TextFieldStyle": ("styles.text_field_style", "TextFieldStyle"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),

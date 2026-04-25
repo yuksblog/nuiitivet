@@ -1,5 +1,5 @@
 import pytest
-from nuiitivet.material.buttons import FloatingActionButton, Button
+from nuiitivet.material.buttons import Fab, Button
 from nuiitivet.material.text import Text
 from nuiitivet.material.icon import Icon
 from nuiitivet.layout.row import Row
@@ -34,7 +34,7 @@ def test_filled_button_label_and_icon():
 
 
 def test_fab_icon_only():
-    fab = FloatingActionButton(icon="add")
+    fab = Fab(icon="add")
     assert len(fab.children) == 1
     child = fab.children[0]
     assert isinstance(child, Icon)

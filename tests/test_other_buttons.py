@@ -1,5 +1,5 @@
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.material.buttons import FloatingActionButton, Button
+from nuiitivet.material.buttons import Fab, Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from tests.helpers.pointer import send_pointer_event_for_test
 
@@ -44,6 +44,6 @@ def test_tonal():
 
 def test_fab():
     def _fab(label, **kw):
-        return FloatingActionButton(icon="add", **kw)
+        return Fab(icon="add", **kw)
 
     _basic_button_behavior(_fab)

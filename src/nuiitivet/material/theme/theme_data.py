@@ -10,6 +10,7 @@ from nuiitivet.theme.types import ThemeExtension
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.button_style import ButtonStyle
+    from nuiitivet.material.styles.fab_style import FabStyle
     from nuiitivet.material.styles.card_style import CardStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
     from nuiitivet.material.styles.chip_style import ChipStyle
@@ -42,7 +43,7 @@ class MaterialThemeData(ThemeExtension):
     _text_button_style: "ButtonStyle | None" = None
     _elevated_button_style: "ButtonStyle | None" = None
     _tonal_button_style: "ButtonStyle | None" = None
-    _fab_style: "ButtonStyle | None" = None
+    _fab_style: "FabStyle | None" = None
 
     # Card variants
     _filled_card_style: "CardStyle | None" = None
@@ -120,13 +121,13 @@ class MaterialThemeData(ThemeExtension):
         return ButtonStyle.tonal()
 
     @property
-    def fab_style(self) -> "ButtonStyle":
-        """Get FAB ButtonStyle for this theme."""
+    def fab_style(self) -> "FabStyle":
+        """Get FAB style for this theme."""
         if self._fab_style is not None:
             return self._fab_style
-        from nuiitivet.material.styles.button_style import ButtonStyle
+        from nuiitivet.material.styles.fab_style import FabStyle
 
-        return ButtonStyle.fab()
+        return FabStyle.primary()
 
     @property
     def filled_card_style(self) -> "CardStyle":
