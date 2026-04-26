@@ -1,8 +1,8 @@
-"""Tests for badge widgets and BadgeValue."""
+"""Tests for badge widgets."""
 
 import pytest
 
-from nuiitivet.material.badge import BadgeValue, LargeBadge, SmallBadge
+from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -16,41 +16,14 @@ class _FixedWidget(Widget):
         return (self._pref_w, self._pref_h)
 
 
-def test_large_badge_format_count_within_max() -> None:
-    assert LargeBadge.format_count(9, 999) == "9"
+def test_large_badge_creates_with_text() -> None:
+    badge = LargeBadge("42")
+    assert badge.text == "42"
 
 
-def test_large_badge_format_count_over_max() -> None:
-    assert LargeBadge.format_count(1000, 999) == "999+"
-
-
-def test_large_badge_validates_count() -> None:
+def test_large_badge_validates_empty_text() -> None:
     with pytest.raises(ValueError):
-        LargeBadge(0)
-
-
-def test_badge_value_none_to_widget() -> None:
-    assert BadgeValue.none().to_widget() is None
-    assert BadgeValue.none().to_widget() is None
-
-
-def test_badge_value_small_to_widget() -> None:
-    widget = BadgeValue.small().to_widget()
-    assert isinstance(widget, SmallBadge)
-
-
-def test_badge_value_large_to_widget() -> None:
-    widget = BadgeValue.large(1200, max=999).to_widget()
-    assert isinstance(widget, LargeBadge)
-    assert widget.count == 1200
-    assert widget.max == 999
-
-
-def test_badge_value_large_validates() -> None:
-    with pytest.raises(ValueError):
-        BadgeValue.large(0)
-    with pytest.raises(ValueError):
-        BadgeValue.large(1, max=0)
+        LargeBadge("")
 
 
 def test_small_badge_stick_modifier_defaults() -> None:
@@ -61,7 +34,7 @@ def test_small_badge_stick_modifier_defaults() -> None:
 
 
 def test_large_badge_stick_modifier_defaults() -> None:
-    modifier = LargeBadge(1).stick_modifier()
+    modifier = LargeBadge("1").stick_modifier()
     assert modifier.alignment == "top-right"
     assert modifier.anchor == "bottom-left"
     assert modifier.offset == (-12.0, 14.0)
@@ -86,7 +59,7 @@ def test_small_badge_stick_modifier_layout_matches_spec_vector() -> None:
 
 def test_large_badge_stick_modifier_layout_matches_spec_vector() -> None:
     target = _FixedWidget(24, 24)
-    badge = LargeBadge(12)
+    badge = LargeBadge("12")
     wrapped = target.modifier(badge.stick_modifier())
 
     wrapped.layout(24, 24)

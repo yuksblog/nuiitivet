@@ -1,10 +1,11 @@
 """Test NavigationRail widget."""
 
 from enum import IntEnum
+from typing import Optional
 
 import pytest
 
-from nuiitivet.material.badge import BadgeValue, LargeBadge, SmallBadge
+from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.widgets.interaction import FocusNode
@@ -317,17 +318,25 @@ def test_rail_item_selection_state():
 # ---------------------------------------------------------------------------
 
 
-def test_rail_item_badge_observable_is_none_by_default():
-    """RailItem should have no badge observable by default."""
+def test_rail_item_badge_observables_are_none_by_default():
+    """RailItem should have no badge observables by default."""
     item = RailItem(icon="home", label="Home")
-    assert item.badge_observable is None
+    assert item.small_badge_observable is None
+    assert item.large_badge_observable is None
 
 
-def test_rail_item_badge_observable_stored():
-    """RailItem should store the provided badge observable."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    item = RailItem(icon="home", label="Home", badge=badge_obs)
-    assert item.badge_observable is badge_obs
+def test_rail_item_small_badge_observable_stored():
+    """RailItem should store the provided small_badge observable."""
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    item = RailItem(icon="home", label="Home", small_badge=small_obs)
+    assert item.small_badge_observable is small_obs
+
+
+def test_rail_item_large_badge_observable_stored():
+    """RailItem should store the provided large_badge observable."""
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("5")
+    item = RailItem(icon="home", label="Home", large_badge=large_obs)
+    assert item.large_badge_observable is large_obs
 
 
 def test_rail_item_button_no_badge_when_not_provided():
@@ -340,9 +349,9 @@ def test_rail_item_button_no_badge_when_not_provided():
 
 
 def test_rail_item_button_small_badge_created():
-    """_RailItemButton should create SmallBadge for BadgeValue.small()."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+    """_RailItemButton should create SmallBadge when small_badge is True."""
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
@@ -350,47 +359,58 @@ def test_rail_item_button_small_badge_created():
 
 
 def test_rail_item_button_large_badge_created():
-    """_RailItemButton should create LargeBadge for BadgeValue.large()."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.large(5))
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+    """_RailItemButton should create LargeBadge when large_badge has text."""
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("5")
+    items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
     assert isinstance(button._badge_widget, LargeBadge)
-    assert button._badge_widget.count == 5
+    assert button._badge_widget.text == "5"
 
 
-def test_rail_item_button_none_badge_hides_widget():
-    """_RailItemButton should clear badge widget when BadgeValue.none() is set."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+def test_rail_item_button_small_badge_false_hides_widget():
+    """_RailItemButton should clear badge widget when small_badge becomes False."""
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
     assert button._badge_widget is not None
 
-    badge_obs.value = BadgeValue.none()
+    small_obs.value = False
     assert button._badge_widget is None
 
 
-def test_rail_item_badge_updates_from_small_to_large():
-    """_RailItemButton should switch from SmallBadge to LargeBadge on value change."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+def test_rail_item_button_large_badge_none_hides_widget():
+    """_RailItemButton should clear badge widget when large_badge becomes None."""
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("3")
+    items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
-    assert isinstance(button._badge_widget, SmallBadge)
+    assert button._badge_widget is not None
 
-    badge_obs.value = BadgeValue.large(42)
+    large_obs.value = None
+    assert button._badge_widget is None
+
+
+def test_rail_item_large_badge_takes_precedence():
+    """large_badge takes precedence over small_badge when both are provided."""
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("42")
+    items = [RailItem(icon="home", label="Home", small_badge=small_obs, large_badge=large_obs)]
+    rail = NavigationRail(children=items)
+
+    button = rail._item_buttons[0]
     assert isinstance(button._badge_widget, LargeBadge)
-    assert button._badge_widget.count == 42
+    assert button._badge_widget.text == "42"
 
 
 def test_rail_item_badge_layout_small():
     """Badge rect is computed using MD3 small badge stick offsets (top-right of icon)."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
@@ -404,8 +424,8 @@ def test_rail_item_badge_layout_small():
 
 def test_rail_item_badge_layout_large():
     """Badge rect is computed using MD3 large badge stick offsets (top-right of icon)."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.large(3))
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("3")
+    items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
@@ -417,13 +437,16 @@ def test_rail_item_badge_layout_large():
 
 
 def test_rail_item_badge_subscription_disposed():
-    """Badge subscription should be cleaned up on button dispose."""
-    badge_obs: _ObservableValue[BadgeValue] = _ObservableValue(BadgeValue.small())
-    items = [RailItem(icon="home", label="Home", badge=badge_obs)]
+    """Badge subscriptions should be cleaned up on button dispose."""
+    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("1")
+    items = [RailItem(icon="home", label="Home", small_badge=small_obs, large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
     button = rail._item_buttons[0]
-    assert button._badge_subscription is not None
+    assert button._small_badge_subscription is not None
+    assert button._large_badge_subscription is not None
 
     button._dispose_badge()
-    assert button._badge_subscription is None
+    assert button._small_badge_subscription is None
+    assert button._large_badge_subscription is None

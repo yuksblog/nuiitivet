@@ -20,7 +20,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.theme.resolver import resolve_color_to_rgba
-from nuiitivet.material.badge import BadgeValue, LargeBadge
+from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
 
@@ -40,7 +40,8 @@ class RailItem(Widget):
         icon: str,
         label: str,
         *,
-        badge: Optional[ReadOnlyObservableProtocol[BadgeValue]] = None,
+        small_badge: Optional[ReadOnlyObservableProtocol[bool]] = None,
+        large_badge: Optional[ReadOnlyObservableProtocol[Optional[str]]] = None,
         style: Optional[NavigationRailStyle] = None,
     ) -> None:
         """Initialize RailItem.
@@ -48,8 +49,10 @@ class RailItem(Widget):
         Args:
             icon: The icon name to display.
             label: The label text to display.
-            badge: Optional Observable badge value. Use ``BadgeValue.small()``,
-                ``BadgeValue.large(count)`` or ``BadgeValue.none()``.
+            small_badge: Optional Observable controlling small dot badge visibility.
+            large_badge: Optional Observable with badge text. ``None`` or ``""`` hides the badge.
+                When both ``small_badge`` and ``large_badge`` are provided,
+                ``large_badge`` takes precedence.
             style: Optional style override for this item.
         """
         super().__init__()
@@ -61,7 +64,8 @@ class RailItem(Widget):
 
         self.icon_spec = icon
         self.label_spec = label
-        self._badge_observable: Optional[ReadOnlyObservableProtocol[BadgeValue]] = badge
+        self._small_badge_observable: Optional[ReadOnlyObservableProtocol[bool]] = small_badge
+        self._large_badge_observable: Optional[ReadOnlyObservableProtocol[Optional[str]]] = large_badge
         self._style = style
 
         self._icon_widget: Widget
@@ -108,9 +112,14 @@ class RailItem(Widget):
         return self._label_widget
 
     @property
-    def badge_observable(self) -> Optional[ReadOnlyObservableProtocol[BadgeValue]]:
-        """Get the optional badge observable."""
-        return self._badge_observable
+    def small_badge_observable(self) -> Optional[ReadOnlyObservableProtocol[bool]]:
+        """Get the optional small badge observable."""
+        return self._small_badge_observable
+
+    @property
+    def large_badge_observable(self) -> Optional[ReadOnlyObservableProtocol[Optional[str]]]:
+        """Get the optional large badge observable."""
+        return self._large_badge_observable
 
 
 def _clamp01(value: float) -> float:
@@ -190,7 +199,10 @@ class _RailItemButton(InteractiveWidget):
         # Badge state
         self._badge_widget: Optional[Widget] = None
         self._badge_rect: Optional[Tuple[int, int, int, int]] = None
-        self._badge_subscription = None
+        self._small_badge_value: bool = False
+        self._large_badge_value: Optional[str] = None
+        self._small_badge_subscription = None
+        self._large_badge_subscription = None
 
         super().__init__(
             child=None,
@@ -211,31 +223,51 @@ class _RailItemButton(InteractiveWidget):
         # Sync interaction state
         self.state.selected = selected
 
-        # Subscribe to badge observable if provided.
-        badge_observable = rail_item.badge_observable
-        if badge_observable is not None:
-            self._update_badge_widget(badge_observable.value)
-            self._badge_subscription = badge_observable.subscribe(self._on_badge_changed)
+        # Subscribe to badge observables if provided.
+        small_badge_obs = rail_item.small_badge_observable
+        large_badge_obs = rail_item.large_badge_observable
+        if small_badge_obs is not None:
+            self._small_badge_value = small_badge_obs.value
+            self._small_badge_subscription = small_badge_obs.subscribe(self._on_small_badge_changed)
+        if large_badge_obs is not None:
+            self._large_badge_value = large_badge_obs.value
+            self._large_badge_subscription = large_badge_obs.subscribe(self._on_large_badge_changed)
+        self._refresh_badge_widget()
 
         self.on_dispose(self._dispose_badge)
 
     # Bindings are automatically disposed by BindingHostMixin/observe.
 
     def _dispose_badge(self) -> None:
-        if self._badge_subscription is not None:
-            self._badge_subscription.dispose()
-            self._badge_subscription = None
+        if self._small_badge_subscription is not None:
+            self._small_badge_subscription.dispose()
+            self._small_badge_subscription = None
+        if self._large_badge_subscription is not None:
+            self._large_badge_subscription.dispose()
+            self._large_badge_subscription = None
 
-    def _on_badge_changed(self, value: BadgeValue) -> None:
-        """React to badge observable changes."""
-        self._update_badge_widget(value)
-        # Request layout so _place_badge() runs in the layout phase before paint.
+    def _on_small_badge_changed(self, value: bool) -> None:
+        """React to small_badge observable changes."""
+        self._small_badge_value = value
+        self._refresh_badge_widget()
         self.mark_needs_layout()
         self.invalidate()
 
-    def _update_badge_widget(self, value: BadgeValue) -> None:
-        """Create or clear the badge widget from a BadgeValue."""
-        self._badge_widget = value.to_widget()
+    def _on_large_badge_changed(self, value: Optional[str]) -> None:
+        """React to large_badge observable changes."""
+        self._large_badge_value = value
+        self._refresh_badge_widget()
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def _refresh_badge_widget(self) -> None:
+        """Compute current badge widget. large_badge takes precedence over small_badge."""
+        if self._large_badge_value:
+            self._badge_widget = LargeBadge(self._large_badge_value)
+        elif self._small_badge_value:
+            self._badge_widget = SmallBadge()
+        else:
+            self._badge_widget = None
         self._badge_rect = None
 
     def _apply_colors(self, *, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:

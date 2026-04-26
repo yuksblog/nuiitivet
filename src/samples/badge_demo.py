@@ -21,8 +21,8 @@ def main() -> None:
 
     plain = Icon(icon_base, size=32)
     small = Icon(icon_base, size=32).modifier(SmallBadge().stick_modifier())
-    large = Icon(icon_base, size=32).modifier(LargeBadge(12).stick_modifier())
-    overflow = Icon(icon_base, size=32).modifier(LargeBadge(1200, max=999).stick_modifier())
+    large = Icon(icon_base, size=32).modifier(LargeBadge("12").stick_modifier())
+    overflow = Icon(icon_base, size=32).modifier(LargeBadge("999+").stick_modifier())
 
     content = Column(
         children=[
