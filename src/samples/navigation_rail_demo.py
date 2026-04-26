@@ -1,9 +1,10 @@
 """NavigationRail sample demonstrating basic usage and mode toggling."""
 
 from enum import IntEnum
+from typing import Optional
 
 from nuiitivet.material import App
-from nuiitivet.material import BadgeValue, Text, Button
+from nuiitivet.material import Text, Button
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.column import Column
@@ -31,43 +32,37 @@ class NavigationRailDemo(ComposableWidget):
         super().__init__()
         self.selected_section = _ObservableValue(Section.HOME)
         self.rail_expanded = _ObservableValue(False)
-        self.home_badge = _ObservableValue(BadgeValue.small())
-        self.search_badge = _ObservableValue(BadgeValue.large(3))
-        self.library_badge = _ObservableValue(BadgeValue.large(1))
+        self.home_small_badge = _ObservableValue(True)
+        self.search_large_badge: _ObservableValue[Optional[str]] = _ObservableValue("3")
+        self.library_large_badge: _ObservableValue[Optional[str]] = _ObservableValue("1")
         self.library_count = 1
 
     def _increment_library_badge(self) -> None:
         self.library_count += 1
-        self.library_badge.value = BadgeValue.large(self.library_count)
+        self.library_large_badge.value = str(self.library_count)
 
     def _clear_library_badge(self) -> None:
         self.library_count = 0
-        self.library_badge.value = BadgeValue.none()
+        self.library_large_badge.value = None
 
     def _toggle_home_badge(self) -> None:
-        if self.home_badge.value.kind == "none":
-            self.home_badge.value = BadgeValue.small()
-            return
-        self.home_badge.value = BadgeValue.none()
+        self.home_small_badge.value = not self.home_small_badge.value
 
     def _toggle_search_badge(self) -> None:
-        if self.search_badge.value.kind == "none":
-            self.search_badge.value = BadgeValue.large(3)
-            return
-        self.search_badge.value = BadgeValue.none()
+        self.search_large_badge.value = None if self.search_large_badge.value else "3"
 
     def build(self) -> Widget:
         section_label = self.selected_section.map(lambda idx: f"Section: {Section(int(idx)).name}")
-        library_badge_label = self.library_badge.map(
-            lambda b: "Library badge: none" if b.kind == "none" else f"Library badge: {b.kind}"
+        library_badge_label = self.library_large_badge.map(
+            lambda b: "Library badge: none" if not b else f"Library badge: {b}"
         )
 
         # Navigation rail
         rail = NavigationRail(
             children=[
-                RailItem(icon="home", label="Home", badge=self.home_badge),
-                RailItem(icon="search", label="Search Results", badge=self.search_badge),
-                RailItem(icon="library_books", label="Library Collection", badge=self.library_badge),
+                RailItem(icon="home", label="Home", small_badge=self.home_small_badge),
+                RailItem(icon="search", label="Search Results", large_badge=self.search_large_badge),
+                RailItem(icon="library_books", label="Library Collection", large_badge=self.library_large_badge),
                 RailItem(icon="settings", label="Settings"),
             ],
             index=self.selected_section,

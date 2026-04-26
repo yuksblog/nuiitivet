@@ -4,7 +4,7 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .badge import BadgeValue, LargeBadge, SmallBadge
+    from .badge import LargeBadge, SmallBadge
     from .app import MaterialApp
     from .app import MaterialApp as App
     from .divider import Divider
@@ -70,7 +70,6 @@ __all__ = [
     "ThemeFactory",
     "SmallBadge",
     "LargeBadge",
-    "BadgeValue",
     "Divider",
     "Text",
     "Icon",
@@ -153,7 +152,6 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ThemeFactory": ("theme", "MaterialTheme"),
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),
-    "BadgeValue": ("badge", "BadgeValue"),
     "Divider": ("divider", "Divider"),
     "Text": ("text", "Text"),
     "Icon": ("icon", "Icon"),

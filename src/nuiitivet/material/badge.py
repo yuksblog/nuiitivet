@@ -1,9 +1,8 @@
-"""Material Design 3 badge widgets and value objects."""
+"""Material Design 3 badge widgets."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 from nuiitivet.material.styles.badge_style import LargeBadgeStyle, SmallBadgeStyle
 from nuiitivet.material.styles.text_style import TextStyle
@@ -65,13 +64,12 @@ class SmallBadge(Box):
 
 
 class LargeBadge(Box):
-    """Large text/count badge widget."""
+    """Large text badge widget."""
 
     def __init__(
         self,
-        count: int,
+        text: str,
         *,
-        max: int = 999,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int], None] = None,
@@ -80,27 +78,23 @@ class LargeBadge(Box):
         """Initialize LargeBadge.
 
         Args:
-            count: Badge count. Must be >= 1.
-            max: Overflow threshold. When count > max, shows ``"{max}+"``.
+            text: Badge text to display. Must be non-empty.
             width: Badge width sizing.
             height: Badge height sizing. Defaults to style height.
             padding: External badge padding. Defaults to style padding.
             style: Optional style override.
         """
-        if int(count) < 1:
-            raise ValueError("count must be >= 1")
-        if int(max) < 1:
-            raise ValueError("max must be >= 1")
+        if not text:
+            raise ValueError("text must be non-empty")
 
-        self.count = int(count)
-        self.max = int(max)
+        self.text = text
 
         effective_style = style or LargeBadgeStyle()
         resolved_height = height if height is not None else Sizing.fixed(effective_style.height)
         resolved_padding = effective_style.padding if padding is None else padding
 
         label = Text(
-            self.format_count(self.count, self.max),
+            text,
             style=TextStyle(
                 color=effective_style.content_color,
                 font_size=effective_style.font_size,
@@ -135,63 +129,3 @@ class LargeBadge(Box):
             anchor="bottom-left",
             offset=(-12.0, 14.0),
         )
-
-    @staticmethod
-    def format_count(count: int, max_value: int) -> str:
-        """Format badge count with overflow cap.
-
-        Args:
-            count: Raw count value.
-            max_value: Overflow threshold.
-
-        Returns:
-            Formatted count string.
-        """
-        return f"{max_value}+" if int(count) > int(max_value) else str(int(count))
-
-
-@dataclass(frozen=True, slots=True)
-class BadgeValue:
-    """Value object representing badge state for declarative APIs."""
-
-    kind: Literal["none", "small", "large"]
-    count: Optional[int] = None
-    max: int = 999
-
-    @classmethod
-    def none(cls) -> "BadgeValue":
-        """Create the hidden badge state."""
-        return cls(kind="none")
-
-    @classmethod
-    def small(cls) -> "BadgeValue":
-        """Create the small dot badge state."""
-        return cls(kind="small")
-
-    @classmethod
-    def large(cls, count: int, *, max: int = 999) -> "BadgeValue":
-        """Create the large count badge state.
-
-        Args:
-            count: Badge count. Must be >= 1.
-            max: Overflow threshold. Must be >= 1.
-        """
-        if int(count) < 1:
-            raise ValueError("count must be >= 1")
-        if int(max) < 1:
-            raise ValueError("max must be >= 1")
-        return cls(kind="large", count=int(count), max=int(max))
-
-    def to_widget(self) -> Optional[Widget]:
-        """Create a concrete badge widget from this value.
-
-        Returns:
-            Badge widget instance, or None when kind is ``none``.
-        """
-        if self.kind == "none":
-            return None
-        if self.kind == "small":
-            return SmallBadge()
-        if self.count is None:
-            raise ValueError("large badge requires count")
-        return LargeBadge(self.count, max=self.max)
