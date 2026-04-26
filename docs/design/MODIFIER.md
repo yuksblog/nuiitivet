@@ -78,17 +78,32 @@ For details on the node-based interaction system, see [INTERACTION_ARCHITECTURE.
 
 ### Visibility
 
-* **`visible(condition, transition=None)`**: Toggles a widget's *presence* in the layout tree.
+* **`visible(condition, transition=None)`**: Toggles a widget's *visibility* via paint and input.
+* **`ignore_pointer(condition=True)`**: Blocks hit-testing for the wrapped subtree.
+
+#### `visible()` is a Thin Composition
+
+`visible()` is a lightweight convenience that composes two existing primitives:
+
+* `opacity()` — drives the visual fade between hidden (`0.0`) and shown (`1.0`).
+* `ignore_pointer()` — blocks hit-testing while the widget is logically hidden.
+
+When `transition` is omitted, `visible(condition)` expands to literally
+`opacity(condition_as_float) | ignore_pointer(not condition)`. With a
+`transition` provided, an internal animation driver retargets an
+`Animatable` on each condition change to drive `opacity` (and any
+pattern-driven `scale` / `translate`) on enter / exit.
 
 #### Semantics
 
-* When `condition` is `True`, the child is mounted, laid out, painted, and receives input normally.
-* When `condition` is `False`, the child is removed from layout (zero width and height — "gone" semantics, equivalent to CSS `display: none`) and ignores all input events (click, hover, focus, keyboard, tab traversal).
+* When `condition` is `True`, the child is fully opaque and receives input normally.
+* When `condition` is `False`, the child is rendered fully transparent and
+  ignores all input events (click, hover, focus, keyboard, tab traversal).
+* The child **continues to occupy its normal layout space** in both states.
+  `visible()` does not collapse layout to zero size.
+* The child is **always eagerly mounted**; widget-local state is preserved
+  across hide / show cycles.
 * `condition` accepts a static `bool` or an `Observable[bool]` for reactive toggling.
-
-#### Lazy Mount
-
-When `condition` starts as `False`, the child is *not* built or mounted until the first transition to `True`. Subsequent hides fully unmount the child, so widget-local state is **not** preserved across hide/show cycles. If state preservation is required, keep the widget mounted and use `opacity()` instead.
 
 #### Animated Visibility
 
@@ -106,22 +121,23 @@ widget.modifier(
 )
 ```
 
-The widget is mounted immediately on show and runs the enter animation. On hide, the exit animation runs first; the widget is unmounted only after the animation completes. **Input is blocked from the moment `condition` flips to `False`**, even while the exit animation is still playing.
+The pattern's resolved `TransitionVisuals` (`opacity`, `scale_x` / `scale_y`,
+`translate_x` / `translate_y`, `translate_x_fraction` / `translate_y_fraction`)
+are applied during paint; **input is blocked from the moment `condition`
+flips to `False`**, even while the exit animation is still playing.
 
-#### `visible()` vs `opacity(0.0)`
+#### `visible(False)` vs `opacity(0.0)` vs `ignore_pointer()`
 
-| Behavior | `visible(False)` | `opacity(0.0)` |
-|----------|------------------|----------------|
-| Layout space | None (zero size) | Reserved (full size) |
-| Receives input | No | Yes |
-| Child mounted | No (lazy) | Yes |
-| State preservation | No (remount on show) | Yes |
+| Behavior | `opacity(0.0)` | `ignore_pointer()` | `visible(False)` |
+|----------|----------------|--------------------|------------------|
+| Visually hidden | Yes | No | Yes |
+| Receives input | Yes | No | No |
+| Layout space | Reserved | Reserved | Reserved |
 
-Choose `visible()` to remove a widget entirely; choose `opacity()` to make it invisible while keeping its layout slot and interactivity.
-
-#### Layout Caveat
-
-Although the project's general rule is that *modifiers do not handle layout*, `visible()` is a deliberate exception: it does not deform layout, but conditionally *includes* a widget. Conceptually it is closer to `ForEach` (presence toggling) than to `padding` (geometry deformation), and it remains the only modifier permitted to influence presence in the layout tree.
+`visible()` is essentially the union of the other two columns: hidden *and*
+non-interactive, while still occupying its layout slot. For animated
+layout-size changes (e.g. collapsing a side sheet to zero width), use a
+dedicated layout-aware Widget.
 
 ### Layout
 

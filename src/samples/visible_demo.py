@@ -6,9 +6,10 @@ Demonstrates the three core usages of the visible() modifier:
 2. Observable toggle   - reactive show/hide driven by Observable[bool]
 3. Animated visibility - enter/exit animation via TransitionDefinition
 
-When hidden, the widget is removed from layout (zero size) and ignores input
-("gone" semantics). Use opacity(0.0) instead when the widget should remain
-laid out and interactive while invisible.
+When hidden, the widget is rendered fully transparent and ignores input, but
+it continues to occupy its normal layout space (visible() is a thin
+composition of opacity() + ignore_pointer()). For layout-size animations,
+use a dedicated layout-aware Widget instead.
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ class _ObservableToggleDemo(ComposableWidget):
 
         return Column(
             children=[
-                _section_label("Observable toggle (no animation, gone semantics)"),
+                _section_label("Observable toggle (no animation, layout space preserved)"),
                 Button("Toggle", on_click=toggle, style=ButtonStyle.filled()),
                 _panel("Hello", "#2196F3").modifier(visible(self.is_visible)),
                 Text("Below sibling", style=TextStyle(font_size=12)),
@@ -74,7 +75,7 @@ class _AnimatedToggleDemo(ComposableWidget):
 
         return Column(
             children=[
-                _section_label("Animated toggle (fade + scale, gone after exit)"),
+                _section_label("Animated toggle (fade + scale, layout space preserved)"),
                 Button("Toggle", on_click=toggle, style=ButtonStyle.filled()),
                 _panel("Animated", "#4CAF50").modifier(visible(self.is_visible, transition=_FADE_SCALE)),
                 Text("Below sibling", style=TextStyle(font_size=12)),
@@ -114,7 +115,7 @@ def main(png: str = "") -> None:
         cross_alignment="start",
     )
 
-    app = App(content=content, width=520, height=520)
+    app = App(content=content, width=680, height=520)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

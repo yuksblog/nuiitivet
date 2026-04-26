@@ -1,4 +1,4 @@
-"""Tests for visible() modifier."""
+"""Tests for visible() modifier (composition of opacity + ignore_pointer)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from typing import Callable
 from nuiitivet.animation import LinearMotion
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern
-from nuiitivet.modifiers.visible import VisibleBox, visible
+from nuiitivet.modifiers.ignore_pointer import IgnorePointerBox
+from nuiitivet.modifiers.transform import TransformBox
+from nuiitivet.modifiers.visible import _AnimatedVisibleBox, visible
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.rendering.sizing import Sizing
@@ -47,75 +49,106 @@ def _make_child() -> Box:
     return Box(width=Sizing.fixed(100), height=Sizing.fixed(50))
 
 
-def test_visible_static_true_mounts_child() -> None:
+# ---------------------------------------------------------------------------
+# Static (non-animated) composition
+# ---------------------------------------------------------------------------
+
+
+def test_visible_static_true_composes_opacity_and_ignore_pointer() -> None:
     child = _make_child()
-    box = child.modifier(visible(True))
+    wrapped = child.modifier(visible(True))
 
-    assert isinstance(box, VisibleBox)
-    assert box._physical_present is True
-    assert box._logical_visible is True
-    assert box.preferred_size() == (100, 50)
+    # Outer wrapper is IgnorePointerBox; inside is a TransformBox (opacity).
+    assert isinstance(wrapped, IgnorePointerBox)
+    assert wrapped._active is False
+    inner = wrapped.children[0]
+    assert isinstance(inner, TransformBox)
+    assert inner._opacity == 1.0
 
 
-def test_visible_static_false_does_not_mount_child() -> None:
+def test_visible_static_false_keeps_layout_and_blocks_input() -> None:
     child = _make_child()
-    box = child.modifier(visible(False))
+    wrapped = child.modifier(visible(False))
 
-    assert isinstance(box, VisibleBox)
-    assert box._physical_present is False
-    assert box._logical_visible is False
-    assert box.preferred_size() == (0, 0)
-    # Sizing collapses to 0 so parents allocate no space.
-    assert box.width_sizing.kind == "fixed"
-    assert box.width_sizing.value == 0
-    assert box.height_sizing.kind == "fixed"
-    assert box.height_sizing.value == 0
+    assert isinstance(wrapped, IgnorePointerBox)
+    assert wrapped._active is True
+    inner = wrapped.children[0]
+    assert isinstance(inner, TransformBox)
+    assert inner._opacity == 0.0
 
+    # Layout space is preserved (no zero collapse).
+    assert wrapped.preferred_size() == (100, 50)
 
-def test_visible_observable_show_then_hide_no_transition() -> None:
-    cond = _ObservableValue(False)
-    child = _make_child()
-    box = child.modifier(visible(cond))
-    assert isinstance(box, VisibleBox)
-
-    app = _DummyApp()
-    box.mount(app)
-
-    assert box._physical_present is False
-    assert box.preferred_size() == (0, 0)
-
-    cond.value = True
-    assert box._physical_present is True
-    assert box._logical_visible is True
-    assert box.preferred_size() == (100, 50)
-
-    cond.value = False
-    assert box._physical_present is False
-    assert box._logical_visible is False
-    assert box.preferred_size() == (0, 0)
+    # Hit-test is blocked while hidden.
+    wrapped.layout(100, 50)
+    assert wrapped.hit_test(50, 25) is None
 
 
-def test_visible_initial_true_observable_is_mounted() -> None:
+def test_visible_observable_toggles_input_blocking_and_opacity() -> None:
     cond = _ObservableValue(True)
     child = _make_child()
-    box = child.modifier(visible(cond))
-    assert isinstance(box, VisibleBox)
+    wrapped = child.modifier(visible(cond))
+    assert isinstance(wrapped, IgnorePointerBox)
+    inner = wrapped.children[0]
+    assert isinstance(inner, TransformBox)
 
-    assert box._physical_present is True
-    assert box.preferred_size() == (100, 50)
+    app = _DummyApp()
+    wrapped.mount(app)
+
+    assert wrapped._active is False
+    assert inner._opacity == 1.0
+
+    cond.value = False
+    assert wrapped._active is True
+    assert inner._opacity == 0.0
+
+    cond.value = True
+    assert wrapped._active is False
+    assert inner._opacity == 1.0
 
 
-def test_visible_hidden_blocks_hit_test() -> None:
+def test_visible_observable_layout_space_preserved_when_hidden() -> None:
     cond = _ObservableValue(False)
     child = _make_child()
-    box = child.modifier(visible(cond))
-    assert isinstance(box, VisibleBox)
+    wrapped = child.modifier(visible(cond))
 
-    box.layout(0, 0)
-    assert box.hit_test(0, 0) is None
+    app = _DummyApp()
+    wrapped.mount(app)
+
+    # Layout space stays at child's natural size in both states.
+    assert wrapped.preferred_size() == (100, 50)
+    cond.value = True
+    assert wrapped.preferred_size() == (100, 50)
+    cond.value = False
+    assert wrapped.preferred_size() == (100, 50)
 
 
-def test_visible_with_transition_keeps_mounted_during_exit() -> None:
+def test_visible_child_stays_mounted_across_hide_show_cycles() -> None:
+    cond = _ObservableValue(True)
+    child = _make_child()
+    wrapped = child.modifier(visible(cond))
+
+    app = _DummyApp()
+    wrapped.mount(app)
+
+    inner = wrapped.children[0]
+    assert isinstance(inner, TransformBox)
+    # The original child is the inner-most descendant.
+    assert child in inner.children
+
+    cond.value = False
+    cond.value = True
+
+    # Same child instance is still mounted (state preserved).
+    assert child in inner.children
+
+
+# ---------------------------------------------------------------------------
+# Animated path
+# ---------------------------------------------------------------------------
+
+
+def test_visible_with_transition_initial_visible_animates_exit() -> None:
     prev_clock = observable_runtime.clock
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
@@ -126,42 +159,39 @@ def test_visible_with_transition_keeps_mounted_during_exit() -> None:
             motion=LinearMotion(1.0),
             pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
         )
-        box = child.modifier(visible(cond, transition=transition))
-        assert isinstance(box, VisibleBox)
+        wrapped = child.modifier(visible(cond, transition=transition))
+
+        # Outer wrapper is IgnorePointerBox; inside is _AnimatedVisibleBox.
+        assert isinstance(wrapped, IgnorePointerBox)
+        paint_box = wrapped.children[0]
+        assert isinstance(paint_box, _AnimatedVisibleBox)
 
         app = _DummyApp()
-        box.mount(app)
+        wrapped.mount(app)
 
-        # Initially visible: progress=1.0, child mounted.
-        assert box._physical_present is True
-        assert box._progress == 1.0
+        assert paint_box._progress == 1.0
+        assert wrapped._active is False
 
-        # Trigger hide.
+        # Trigger hide. Hit-test is blocked immediately (ignore_pointer toggles).
         cond.value = False
+        assert wrapped._active is True
+        wrapped.layout(100, 50)
+        assert wrapped.hit_test(50, 25) is None
 
-        # Logical visibility flipped immediately, but child remains mounted
-        # while exit animation runs.
-        assert box._logical_visible is False
-        assert box._physical_present is True
-
-        # Hit-testing is blocked even before animation completes.
-        box.layout(100, 50)
-        assert box.hit_test(50, 25) is None
-
-        # Halfway through: progress should be ~0.5, still mounted.
+        # Halfway through exit: progress ~0.5, child still mounted.
         fake_clock.advance(0.5)
-        assert 0.4 <= box._progress <= 0.6
-        assert box._physical_present is True
+        assert 0.4 <= paint_box._progress <= 0.6
+        assert child in paint_box.children
 
-        # Animation completes: progress hits 0.0 -> child unmounted.
+        # Animation completes: progress reaches 0.0; child remains mounted.
         fake_clock.advance(0.5)
-        assert box._progress == 0.0
-        assert box._physical_present is False
+        assert paint_box._progress == 0.0
+        assert child in paint_box.children
     finally:
         observable_runtime.set_clock(prev_clock)
 
 
-def test_visible_with_transition_enter_animates_progress() -> None:
+def test_visible_with_transition_enter_animates_progress_up() -> None:
     prev_clock = observable_runtime.clock
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
@@ -172,52 +202,36 @@ def test_visible_with_transition_enter_animates_progress() -> None:
             motion=LinearMotion(1.0),
             pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
         )
-        box = child.modifier(visible(cond, transition=transition))
-        assert isinstance(box, VisibleBox)
+        wrapped = child.modifier(visible(cond, transition=transition))
+        assert isinstance(wrapped, IgnorePointerBox)
+        paint_box = wrapped.children[0]
+        assert isinstance(paint_box, _AnimatedVisibleBox)
 
         app = _DummyApp()
-        box.mount(app)
+        wrapped.mount(app)
 
-        # Trigger show.
+        assert paint_box._progress == 0.0
+        assert wrapped._active is True
+
         cond.value = True
-
-        # Mounted immediately; progress starts at 0 and animates up.
-        assert box._physical_present is True
-        assert box._logical_visible is True
+        assert wrapped._active is False
 
         fake_clock.advance(0.5)
-        assert 0.4 <= box._progress <= 0.6
+        assert 0.4 <= paint_box._progress <= 0.6
 
         fake_clock.advance(0.5)
-        assert box._progress == 1.0
-        assert box._physical_present is True
+        assert paint_box._progress == 1.0
     finally:
         observable_runtime.set_clock(prev_clock)
 
 
-def test_visible_show_after_hide_remounts_child() -> None:
-    cond = _ObservableValue(True)
-    child = _make_child()
-    box = child.modifier(visible(cond))
-    assert isinstance(box, VisibleBox)
-
-    app = _DummyApp()
-    box.mount(app)
-
-    cond.value = False
-    assert box._physical_present is False
-
-    cond.value = True
-    assert box._physical_present is True
-    assert box.preferred_size() == (100, 50)
-
-
-def test_visible_modifier_chains_with_other_modifiers() -> None:
+def test_visible_chains_with_other_modifiers() -> None:
     from nuiitivet.modifiers import opacity
 
     cond = _ObservableValue(True)
     child = _make_child()
-    # Apply visible after opacity. Result should be a VisibleBox at the top.
+    # Apply opacity first, then visible. visible() expands to opacity|ignore_pointer
+    # so the outer-most wrapper is IgnorePointerBox.
     wrapped = child.modifier(opacity(0.5) | visible(cond))
-    assert isinstance(wrapped, VisibleBox)
-    assert wrapped._physical_present is True
+    assert isinstance(wrapped, IgnorePointerBox)
+    assert wrapped._active is False
