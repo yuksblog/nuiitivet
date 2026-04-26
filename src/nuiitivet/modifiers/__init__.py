@@ -11,6 +11,7 @@ from .scroll import scrollable
 from .shadow import shadow
 from .stick import stick
 from .transform import opacity, rotate, scale, translate
+from .visible import visible
 from .will_pop import will_pop
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "shadow",
     "stick",
     "translate",
+    "visible",
     "will_pop",
 ]

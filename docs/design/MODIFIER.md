@@ -76,6 +76,53 @@ For details on the node-based interaction system, see [INTERACTION_ARCHITECTURE.
 * **Callback**: `on_will_pop` is an `async` function that returns `True` (allow pop) or `False` (cancel pop).
 * **Usage**: Commonly used to show an `AlertDialog` for confirming unsaved changes before leaving a screen. For more details on navigation flow, see [NAVIGATION.md](NAVIGATION.md).
 
+### Visibility
+
+* **`visible(condition, transition=None)`**: Toggles a widget's *presence* in the layout tree.
+
+#### Semantics
+
+* When `condition` is `True`, the child is mounted, laid out, painted, and receives input normally.
+* When `condition` is `False`, the child is removed from layout (zero width and height — "gone" semantics, equivalent to CSS `display: none`) and ignores all input events (click, hover, focus, keyboard, tab traversal).
+* `condition` accepts a static `bool` or an `Observable[bool]` for reactive toggling.
+
+#### Lazy Mount
+
+When `condition` starts as `False`, the child is *not* built or mounted until the first transition to `True`. Subsequent hides fully unmount the child, so widget-local state is **not** preserved across hide/show cycles. If state preservation is required, keep the widget mounted and use `opacity()` instead.
+
+#### Animated Visibility
+
+Pass an optional `transition: TransitionDefinition` to animate enter and exit:
+
+```python
+widget.modifier(
+    visible(
+        self.vm.is_open,
+        transition=TransitionDefinition(
+            motion=LinearMotion(0.2),
+            pattern=FadePattern() | ScalePattern(),
+        ),
+    )
+)
+```
+
+The widget is mounted immediately on show and runs the enter animation. On hide, the exit animation runs first; the widget is unmounted only after the animation completes. **Input is blocked from the moment `condition` flips to `False`**, even while the exit animation is still playing.
+
+#### `visible()` vs `opacity(0.0)`
+
+| Behavior | `visible(False)` | `opacity(0.0)` |
+|----------|------------------|----------------|
+| Layout space | None (zero size) | Reserved (full size) |
+| Receives input | No | Yes |
+| Child mounted | No (lazy) | Yes |
+| State preservation | No (remount on show) | Yes |
+
+Choose `visible()` to remove a widget entirely; choose `opacity()` to make it invisible while keeping its layout slot and interactivity.
+
+#### Layout Caveat
+
+Although the project's general rule is that *modifiers do not handle layout*, `visible()` is a deliberate exception: it does not deform layout, but conditionally *includes* a widget. Conceptually it is closer to `ForEach` (presence toggling) than to `padding` (geometry deformation), and it remains the only modifier permitted to influence presence in the layout tree.
+
 ### Layout
 
 Modifiers do not handle layout in `nuiitivet`.
