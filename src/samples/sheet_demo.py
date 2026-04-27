@@ -14,14 +14,13 @@ from __future__ import annotations
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.material import (Divider, App, Overlay, Text, Button)
+from nuiitivet.material import Divider, App, Overlay, Text, Button
 from nuiitivet.material.sheet import BottomSheet, SideSheet
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
-
 
 # ---------------------------------------------------------------------------
 # Sheet content builders
