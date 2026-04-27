@@ -17,7 +17,15 @@ from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
-from nuiitivet.rendering.skia import draw_round_rect, make_font, make_paint, make_rect, make_text_blob, get_typeface
+from nuiitivet.rendering.skia import (
+    draw_round_rect,
+    get_skia,
+    make_font,
+    make_paint,
+    make_rect,
+    make_text_blob,
+    get_typeface,
+)
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.widgets.editable_text import EditableText
@@ -542,6 +550,17 @@ class TextField(InteractiveWidget):
 
         pl, pt, pr, pb = style.content_padding
 
+        # When the floating label is shown inside the container (filled mode),
+        # reserve a 16dp band at the top for the populated label text. This
+        # matches MD3 spec: container 56dp = 8 (top) + 16 (floating label) + 24
+        # (input text) + 8 (bottom). The rest-state (large) label still uses
+        # the full content area; this offset only affects the input text and
+        # populated label position.
+        self._label_band = 0
+        if self.label and style.mode == "filled":
+            self._label_band = 16
+            pt = pt + self._label_band
+
         # Leading Icon
         leading_w = 0
         if self.leading_icon:
@@ -694,7 +713,7 @@ class TextField(InteractiveWidget):
             text_x, text_y, _, text_h = cx, cy, cw, ch
             error_h = 0
 
-        self._draw_container(canvas, cx, cy, cw, ch)
+        self._draw_container(canvas, cx, cy, cw, ch, text_x_abs=text_x)
 
         if not self.disabled:
             self.draw_state_layer(canvas, cx, cy, cw, ch)
@@ -718,7 +737,7 @@ class TextField(InteractiveWidget):
         self._editable.set_last_rect(cx, cy, w, h)
         self._editable.paint(canvas, cx, cy, w, h)
 
-    def _draw_container(self, canvas, cx, cy, cw, ch):
+    def _draw_container(self, canvas, cx, cy, cw, ch, *, text_x_abs: int | None = None):
         style = self.style
 
         container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
@@ -739,8 +758,84 @@ class TextField(InteractiveWidget):
         if rect is not None and paint_container is not None:
             draw_round_rect(canvas, rect, style.border_radius, paint_container)
         paint_border = make_paint(color=indicator_color, style="stroke", stroke_width=indicator_width)
-        if rect is not None and paint_border is not None:
-            draw_round_rect(canvas, rect, style.border_radius, paint_border)
+        if paint_border is None:
+            return
+
+        notch = self._compute_outline_notch(cx, cw, text_x_abs) if text_x_abs is not None else None
+        if notch is None:
+            if rect is not None:
+                draw_round_rect(canvas, rect, style.border_radius, paint_border)
+            return
+
+        path = self._build_outlined_notched_path(cx, cy, cw, ch, style.border_radius, notch)
+        if path is None:
+            if rect is not None:
+                draw_round_rect(canvas, rect, style.border_radius, paint_border)
+            return
+        canvas.drawPath(path, paint_border)
+
+    def _compute_outline_notch(self, cx: int, cw: int, text_x_abs: int) -> Optional[Tuple[float, float]]:
+        """Compute the outline notch range (absolute x) for the floating label.
+
+        Returns None when no notch should be drawn (no label, rest state, or
+        the resulting gap would be smaller than the corner radii).
+        """
+        if not self.label:
+            return None
+        progress = self._label_progress.value
+        if progress <= 0.0:
+            return None
+        font = self._get_font()
+        if font is None:
+            return None
+        font.setSize(12)
+        label_w = font.measureText(self.label)
+        if label_w <= 0:
+            return None
+        gap_pad = 4.0
+        full_w = label_w + gap_pad * 2
+        animated_w = full_w * progress
+        center_x = text_x_abs + label_w / 2
+        notch_left = center_x - animated_w / 2
+        notch_right = center_x + animated_w / 2
+        # Clamp inside corner radii so we don't cut into the rounded corners.
+        r = self.style.border_radius
+        min_x = cx + r + 1
+        max_x = cx + cw - r - 1
+        notch_left = max(min_x, notch_left)
+        notch_right = min(max_x, notch_right)
+        if notch_right - notch_left < 2:
+            return None
+        return (notch_left, notch_right)
+
+    def _build_outlined_notched_path(
+        self, cx: int, cy: int, cw: int, ch: int, r: float, notch: Tuple[float, float]
+    ) -> Optional[Any]:
+        """Build a Skia Path of the outlined border with a top-edge notch."""
+        skia = get_skia()
+        if skia is None:
+            return None
+        notch_left, notch_right = notch
+        d = 2 * r
+        path = skia.Path()
+        # Top edge starts after the top-left corner arc.
+        path.moveTo(cx + r, cy)
+        path.lineTo(notch_left, cy)
+        # Skip the notch.
+        path.moveTo(notch_right, cy)
+        path.lineTo(cx + cw - r, cy)
+        # Top-right corner.
+        path.arcTo(skia.Rect.MakeXYWH(cx + cw - d, cy, d, d), 270, 90, False)
+        path.lineTo(cx + cw, cy + ch - r)
+        # Bottom-right corner.
+        path.arcTo(skia.Rect.MakeXYWH(cx + cw - d, cy + ch - d, d, d), 0, 90, False)
+        path.lineTo(cx + r, cy + ch)
+        # Bottom-left corner.
+        path.arcTo(skia.Rect.MakeXYWH(cx, cy + ch - d, d, d), 90, 90, False)
+        path.lineTo(cx, cy + r)
+        # Top-left corner.
+        path.arcTo(skia.Rect.MakeXYWH(cx, cy, d, d), 180, 90, False)
+        return path
 
     def _draw_label(self, canvas, text_x, text_y, text_h, cy):
         if not self.label:
@@ -758,8 +853,20 @@ class TextField(InteractiveWidget):
             label_metrics = label_font.getMetrics()
             label_h = -label_metrics.fAscent + label_metrics.fDescent
 
-            start_y = text_y + (text_h + label_h) / 2 - label_metrics.fDescent
-            end_y = cy + 8 + label_h
+            # Rest-state label is vertically centered in the full inner area
+            # (i.e. as if the floating-label band were not reserved).
+            band = getattr(self, "_label_band", 0)
+            rest_text_y = text_y - band
+            rest_text_h = text_h + band
+            start_y = rest_text_y + (rest_text_h + label_h) / 2 - label_metrics.fDescent
+            style = self.style
+            if style.mode == "outlined":
+                # MD3 outlined: floating label is centered on the top outline,
+                # i.e. visually overlaps the border line.
+                end_y = cy - (label_metrics.fAscent + label_metrics.fDescent) / 2
+            else:
+                # MD3 filled: floating label sits in the cy+8..cy+24 band.
+                end_y = cy + 8 + (-label_metrics.fAscent)
 
             current_label_y = start_y - (start_y - end_y) * label_progress
 
