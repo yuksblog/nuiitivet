@@ -89,12 +89,11 @@ def main() -> None:
         )
 
     def open_non_dismissible_sheet() -> None:
-        """Right-side sheet — dismiss_on_outside_tap=False, close via on_close callback."""
-        handle = Overlay.root().side_sheet(
+        """Right-side sheet — dismiss_on_outside_tap=False; close button auto-closes via OverlayAware."""
+        Overlay.root().side_sheet(
             SideSheet(
                 _sheet_content("Non-Dismissible Sheet"),
                 headline="Edit",
-                on_close=lambda: handle.close(None),
             ),
             dismiss_on_outside_tap=False,
         )

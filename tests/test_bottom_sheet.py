@@ -152,3 +152,47 @@ def test_bottom_sheet_transition_fallback_for_string_height():
     spec = MaterialTransitions.bottom_sheet()
     visuals_mid = spec.enter.pattern.resolve(0.5)
     assert visuals_mid.translate_y_fraction == pytest.approx(0.5)
+
+
+def test_bottom_sheet_resolve_on_close_uses_explicit_callback():
+    """Explicit on_close takes precedence over the injected overlay handle."""
+    calls = []
+    sheet = BottomSheet(Box(), headline="Filters", on_close=lambda: calls.append("explicit"))
+
+    class _FakeHandle:
+        def close(self, value=None) -> None:
+            calls.append("handle")
+
+        def done(self) -> bool:
+            return False
+
+    sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
+    handler = sheet._resolve_on_close()
+    assert handler is not None
+    handler()
+    assert calls == ["explicit"]
+
+
+def test_bottom_sheet_resolve_on_close_uses_overlay_handle():
+    """Without explicit on_close, falls back to overlay_handle.close(None)."""
+    closed = []
+
+    class _FakeHandle:
+        def close(self, value=None) -> None:
+            closed.append(value)
+
+        def done(self) -> bool:
+            return False
+
+    sheet = BottomSheet(Box(), headline="Filters")
+    sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
+    handler = sheet._resolve_on_close()
+    assert handler is not None
+    handler()
+    assert closed == [None]
+
+
+def test_bottom_sheet_resolve_on_close_returns_none_when_standalone():
+    """No on_close, no overlay handle → close button stays inert."""
+    sheet = BottomSheet(Box(), headline="Filters")
+    assert sheet._resolve_on_close() is None
