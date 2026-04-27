@@ -203,6 +203,50 @@ def test_side_sheet_transition_fallback_for_non_int_width():
     assert visuals_end.translate_x_fraction == pytest.approx(1.0)
 
 
+def test_side_sheet_resolve_on_close_uses_explicit_callback():
+    """Explicit on_close takes precedence over the injected overlay handle."""
+    calls = []
+    sheet = SideSheet(Box(), headline="Settings", on_close=lambda: calls.append("explicit"))
+
+    class _FakeHandle:
+        def close(self, value=None) -> None:
+            calls.append("handle")
+
+        def done(self) -> bool:
+            return False
+
+    sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
+    handler = sheet._resolve_on_close()
+    assert handler is not None
+    handler()
+    assert calls == ["explicit"]
+
+
+def test_side_sheet_resolve_on_close_uses_overlay_handle():
+    """Without explicit on_close, falls back to overlay_handle.close(None)."""
+    closed = []
+
+    class _FakeHandle:
+        def close(self, value=None) -> None:
+            closed.append(value)
+
+        def done(self) -> bool:
+            return False
+
+    sheet = SideSheet(Box(), headline="Settings")
+    sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
+    handler = sheet._resolve_on_close()
+    assert handler is not None
+    handler()
+    assert closed == [None]
+
+
+def test_side_sheet_resolve_on_close_returns_none_when_standalone():
+    """No on_close, no overlay handle → close button stays inert."""
+    sheet = SideSheet(Box(), headline="Settings")
+    assert sheet._resolve_on_close() is None
+
+
 def test_side_sheet_back_button_suppressed_without_on_back():
     """Back button is silently suppressed when show_back_button=True but on_back is None.
 
