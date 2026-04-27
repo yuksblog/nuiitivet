@@ -77,6 +77,7 @@ class TextFieldStyle:
             mode="outlined",
             container_color=(0, 0, 0, 0),  # Transparent
             indicator_color=ColorRole.OUTLINE,
+            focused_indicator_width=3.0,  # MD3: focused outline width = 3dp
             border_radius=4.0,
             content_padding=(16, 16, 16, 16),
         )
