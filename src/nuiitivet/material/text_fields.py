@@ -19,6 +19,7 @@ from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import (
     draw_round_rect,
+    get_default_font_fallbacks,
     get_skia,
     make_font,
     make_paint,
@@ -186,9 +187,19 @@ class TextField(InteractiveWidget):
             width=width,
             height=height,
             padding=padding,
-            on_click=lambda: self.focus(),
             state_layer_color=ColorRole.ON_SURFACE,
             disabled=False,  # Set initial disabled state below
+            # The TextField itself does not host a FocusNode. The focus
+            # subject is the inner EditableText; mirroring it here would
+            # cause focus ping-pong between two FocusNodes during pointer
+            # press handling and produce stale ``_focus_from_pointer``
+            # state. The visual focus indicator (ring / state layer) reads
+            # the editable's focus state directly via
+            # ``should_show_focus_ring``. Pointer presses are routed to the
+            # editable in ``_handle_press`` below; keyboard Tab traversal
+            # collects the editable's FocusNode directly because the
+            # TextField has none.
+            focusable=False,
         )
 
         self._label_source: ReadOnlyObservableProtocol[str] | None = None
@@ -324,8 +335,14 @@ class TextField(InteractiveWidget):
 
     @property
     def should_show_focus_ring(self) -> bool:
-        """Override to check internal editable focus interaction."""
-        return self._editable.state.focused and not self._focus_from_pointer
+        """Show the focus ring only when focus arrived via keyboard navigation.
+
+        The actual focus subject is ``self._editable``; the host TextField
+        does not own a FocusNode (see ``focusable=False`` in __init__).
+        ``EditableText`` exposes ``is_focus_from_pointer`` so that, per
+        MD3 spec, the ring is suppressed for clicks.
+        """
+        return self._editable.state.focused and not self._editable.is_focus_from_pointer
 
     def corner_radii_pixels(self, width: float, height: float) -> Tuple[float, float, float, float]:
         style = self.style
@@ -431,11 +448,6 @@ class TextField(InteractiveWidget):
                 self._apply_disabled(bool(self._disabled_source.value))
             except Exception:
                 exception_once(_logger, "text_field_bind_disabled_exc", "TextField failed to bind disabled")
-
-    def _handle_focus_change(self, focused: bool) -> None:
-        super()._handle_focus_change(focused)
-        if focused and hasattr(self, "_editable"):
-            self._editable.focus()
 
     @property
     def style(self) -> TextFieldStyle:
@@ -594,23 +606,37 @@ class TextField(InteractiveWidget):
         self._text_rect = (text_x, text_y, text_w, text_h)
 
     def focus(self) -> None:
+        """Programmatically focus the TextField (keyboard-style focus).
+
+        Delegates to the inner EditableText. This path does NOT mark the
+        focus as pointer-driven, so the focus ring will be shown — use
+        this for keyboard / API-initiated focus only. Pointer presses go
+        through ``_handle_press`` which calls
+        ``EditableText.request_focus_from_pointer`` to suppress the ring
+        per MD3 spec.
+        """
         self._editable.focus()
 
     def _handle_press(self, event: PointerEvent) -> None:
         if self.disabled:
             return
 
+        # All press paths route focus through the editable's pointer-focus
+        # entry point so that ``EditableText._focus_from_pointer`` is set
+        # consistently regardless of where the press lands (icons, padding,
+        # or the editable area itself). This avoids the focus ring showing
+        # for clicks per MD3 spec.
         if self._is_point_in_icon_rect(event, self.leading_icon):
             self._invoke_icon_tap_callback(self._on_tap_leading_icon, key="leading")
-            self.focus()
+            self._editable.request_focus_from_pointer()
             return
 
         if self._is_point_in_icon_rect(event, self.trailing_icon):
             self._invoke_icon_tap_callback(self._on_tap_trailing_icon, key="trailing")
-            self.focus()
+            self._editable.request_focus_from_pointer()
             return
 
-        self.focus()
+        self._editable.request_focus_from_pointer()
 
     def _is_point_in_icon_rect(self, event: PointerEvent, icon: Optional[Widget]) -> bool:
         if icon is None:
@@ -636,9 +662,12 @@ class TextField(InteractiveWidget):
             )
 
     def _get_font(self):
+        # Use locale-aware fallbacks so that label / supporting text written
+        # in non-Latin scripts (e.g. Japanese) renders without mojibake or
+        # missing glyphs.
         tf = get_typeface(
             candidate_files=None,
-            family_candidates=("DejaVu Sans", "Arial", "Helvetica", "Liberation Sans"),
+            family_candidates=get_default_font_fallbacks(),
             pkg_font_dir=None,
             fallback_to_default=True,
         )

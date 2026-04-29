@@ -4,6 +4,7 @@ from nuiitivet.material.text import Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.layout.column import Column
 import nuiitivet as nv
+from nuiitivet.material.text_fields import TextField
 
 
 def main():
@@ -17,7 +18,14 @@ def main():
     text2 = Text("日本語フォント指定 (Hiragino Sans)", style=TextStyle(font_size=24, font_family="Hiragino Sans"))
 
     column = Column(
-        children=[text1, text2],
+        children=[
+            text1,
+            text2,
+            TextField(
+                label="入力してください",
+                supporting_text="日本語のテキストフィールドです",
+            ),
+        ],
         gap=20,
         padding=20,
         cross_alignment="center",

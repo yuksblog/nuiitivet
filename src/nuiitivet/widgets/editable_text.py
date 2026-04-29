@@ -18,9 +18,16 @@ from nuiitivet.input.codes import (
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol
 from nuiitivet.platform import IMEManager, get_system_clipboard
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.interaction import InteractionHostMixin, FocusNode
+from nuiitivet.widgets.interaction import InteractionHostMixin, FocusNode, DraggableNode
 from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
-from nuiitivet.rendering.skia import make_font, make_paint, make_text_blob, get_typeface, get_default_font_fallbacks
+from nuiitivet.rendering.skia import (
+    make_font,
+    make_paint,
+    make_rect,
+    make_text_blob,
+    get_typeface,
+    get_default_font_fallbacks,
+)
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.common.logging_once import exception_once
@@ -65,6 +72,17 @@ class EditableText(InteractionHostMixin, Widget):
         self._external_str_obs: ObservableProtocol[str] | None = None
         self._external_sub: Optional[Disposable] = None
 
+        # Horizontal scroll offset (pixels) used to keep the cursor visible
+        # when the text exceeds the available width.
+        self._scroll_x: float = 0.0
+        # Track whether the current pointer interaction is in drag mode so
+        # that pointer MOVE events extend the selection from the press anchor.
+        self._drag_anchor: Optional[int] = None
+        # Whether the current focus arrived from a pointer interaction. Used
+        # by the host (e.g. TextField) to suppress the keyboard-only focus
+        # ring per MD3 spec.
+        self._focus_from_pointer: bool = False
+
         # Initialize state
         initial_text = ""
         if hasattr(value, "subscribe") and hasattr(value, "value"):
@@ -84,6 +102,15 @@ class EditableText(InteractionHostMixin, Widget):
                 on_text=self._handle_text,
                 on_text_motion=self._handle_text_motion,
                 on_ime_composition=self._handle_ime_composition,
+            )
+        )
+
+        # Drag handling for pointer-based range selection.
+        self.add_node(
+            DraggableNode(
+                on_drag_start=self._handle_drag_start,
+                on_drag_update=self._handle_drag_update,
+                on_drag_end=self._handle_drag_end,
             )
         )
 
@@ -164,6 +191,21 @@ class EditableText(InteractionHostMixin, Widget):
                 new_val = TextEditingValue(text=new_text, selection=TextRange(len(new_text), len(new_text)))
                 self._state_internal.value = new_val
                 self.invalidate()
+                # Notify listeners so that decorators (e.g. floating label
+                # state in TextField) can synchronize with externally-driven
+                # value changes. The ``current.text == new_text`` early-return
+                # above guards against write-back loops in two-way bound
+                # scenarios: an Observable -> on_change -> observable.value
+                # cycle terminates because the second delivery is a no-op.
+                if self._on_change:
+                    try:
+                        self._on_change(new_text)
+                    except Exception:
+                        exception_once(
+                            _logger,
+                            "editable_text_external_on_change_exc",
+                            "EditableText external on_change raised",
+                        )
 
             self._external_sub = self._external_str_obs.subscribe(_on_external_change)
 
@@ -228,19 +270,59 @@ class EditableText(InteractionHostMixin, Widget):
         except Exception:
             exception_once(_logger, "editable_text_focus_exc", "EditableText.focus failed")
 
+    def request_focus_from_pointer(self) -> None:
+        # Mark this focus acquisition as pointer-driven so the host can
+        # suppress the keyboard-only focus ring (MD3 spec). Reset is handled
+        # in ``_handle_focus_change`` when focus is released.
+        self._focus_from_pointer = True
+        super().request_focus_from_pointer()
+
+    @property
+    def is_focus_from_pointer(self) -> bool:
+        """Whether the current focus was acquired from a pointer interaction.
+
+        Hosts (e.g. ``TextField``) read this to suppress the keyboard-only
+        focus ring per MD3 spec. The flag is set by
+        ``request_focus_from_pointer`` and cleared on blur.
+        """
+        return self._focus_from_pointer
+
     def _handle_press(self, event: PointerEvent) -> None:
         self.focus()
 
-        # Simple hit testing for cursor position
-        local_x = event.x
-        if self.global_layout_rect:
-            local_x -= self.global_layout_rect[0]
-
-        index = self._get_index_at(local_x)
+        index = self._index_at_event(event)
+        self._drag_anchor = index
 
         current = self._state_internal.value
         if current.selection.start != index or current.selection.end != index:
             self._update_value(current.copy_with(selection=TextRange(index, index), composing=TextRange(-1, -1)))
+
+    def _handle_drag_start(self, event: PointerEvent) -> None:
+        # Selection anchor is set on press; the fallback below covers the
+        # rare case where a drag is observed without a preceding press
+        # (e.g. capture transferred mid-gesture). Without it the first
+        # drag-update would have nothing to extend the selection from.
+        if self._drag_anchor is None:
+            self._drag_anchor = self._index_at_event(event)
+
+    def _handle_drag_update(self, event: PointerEvent, dx: float, dy: float) -> None:
+        if self._drag_anchor is None:
+            return
+        index = self._index_at_event(event)
+        anchor = self._drag_anchor
+        current = self._state_internal.value
+        new_selection = TextRange(anchor, index)
+        if new_selection != current.selection:
+            self._update_value(current.copy_with(selection=new_selection, composing=TextRange(-1, -1)))
+
+    def _handle_drag_end(self, event: PointerEvent) -> None:
+        self._drag_anchor = None
+
+    def _index_at_event(self, event: PointerEvent) -> int:
+        local_x = event.x
+        if self.global_layout_rect:
+            local_x -= self.global_layout_rect[0]
+        return self._get_index_at(local_x)
 
     def _get_font(self):
         fallbacks = get_default_font_fallbacks()
@@ -265,21 +347,28 @@ class EditableText(InteractionHostMixin, Widget):
 
         display_text = self._get_display_text(text)
 
-        if x < 0:
+        # Translate viewport-local x into text-coordinate space.
+        text_x = x + self._scroll_x
+
+        if text_x < 0:
             return 0
 
         for i in range(len(text) + 1):
             sub = display_text[:i]
             w = font.measureText(sub)
-            if w > x:
+            if w > text_x:
                 prev_w = font.measureText(display_text[: i - 1]) if i > 0 else 0
-                if x - prev_w < w - x:
+                if text_x - prev_w < w - text_x:
                     return i - 1
                 return i
 
         return len(text)
 
     def _handle_focus_change(self, focused: bool):
+        if not focused:
+            # Clear the pointer-origin marker so the next keyboard focus
+            # acquisition correctly shows the focus ring.
+            self._focus_from_pointer = False
         self.invalidate()
         if self._on_focus_change_callback:
             self._on_focus_change_callback(focused)
@@ -469,26 +558,88 @@ class EditableText(InteractionHostMixin, Widget):
         selection = current_value.selection
 
         font = self._get_font()
-        if font:
-            font_metrics = font.getMetrics()
-            # Align text vertically centered in the available height
-            text_height = -font_metrics.fAscent + font_metrics.fDescent
-            ty = y + (height + text_height) / 2 - font_metrics.fDescent
+        if not font:
+            return
+
+        font_metrics = font.getMetrics()
+        # Align text vertically centered in the available height
+        text_height = -font_metrics.fAscent + font_metrics.fDescent
+        ty = y + (height + text_height) / 2 - font_metrics.fDescent
+
+        # Compute scroll offset so that the cursor remains within the visible
+        # viewport, mirroring the behavior of single-line text inputs in the
+        # platform: long values are not truncated mid-glyph but are scrolled
+        # horizontally as the cursor moves.
+        cursor_x_in_text = font.measureText(display_text[: selection.end])
+        total_text_width = font.measureText(display_text) if display_text else 0.0
+        margin = 2.0  # Padding so the caret is not flush against the edge.
+        scroll = self._scroll_x
+        if total_text_width <= max(0.0, width - margin):
+            scroll = 0.0
+        else:
+            # Keep the caret visible.
+            if cursor_x_in_text - scroll < 0:
+                scroll = cursor_x_in_text
+            elif cursor_x_in_text - scroll > width - margin:
+                scroll = cursor_x_in_text - (width - margin)
+            # Avoid leaving empty space at the right edge.
+            max_scroll = max(0.0, total_text_width - (width - margin))
+            scroll = max(0.0, min(scroll, max_scroll))
+        self._scroll_x = scroll
+
+        # Clip drawing to the layout viewport so long text never bleeds
+        # outside the field. Use a save/restore scope to avoid disturbing
+        # parent clip state.
+        clip_rect = make_rect(x, y, width, height)
+        save_count = None
+        if clip_rect is not None:
+            try:
+                save_count = canvas.save()
+                canvas.clipRect(clip_rect)
+            except Exception:
+                exception_once(
+                    _logger,
+                    "editable_text_clip_rect_exc",
+                    "EditableText canvas clipRect raised",
+                )
+                save_count = None
+
+        try:
+            from nuiitivet.theme.manager import manager as theme_manager
+
+            # Draw selection highlight (behind the text).
+            if display_text and not selection.is_collapsed:
+                sel_start = max(0, min(selection.min, len(display_text)))
+                sel_end = max(0, min(selection.max, len(display_text)))
+                if sel_end > sel_start:
+                    sx0 = font.measureText(display_text[:sel_start]) - scroll
+                    sx1 = font.measureText(display_text[:sel_end]) - scroll
+                    sel_top = ty + font_metrics.fAscent
+                    sel_bottom = ty + font_metrics.fDescent
+                    sel_color = resolve_color_to_rgba(self.selection_color, theme=theme_manager.current)
+                    paint_sel = make_paint(color=sel_color)
+                    sel_rect = make_rect(int(x + sx0), int(sel_top), int(sx1 - sx0), int(sel_bottom - sel_top))
+                    if sel_rect is not None and paint_sel is not None:
+                        try:
+                            canvas.drawRect(sel_rect, paint_sel)
+                        except Exception:
+                            exception_once(
+                                _logger,
+                                "editable_text_draw_selection_exc",
+                                "EditableText selection draw raised",
+                            )
 
             # Draw Text
             if display_text:
-                from nuiitivet.theme.manager import manager as theme_manager
-
                 text_color = resolve_color_to_rgba(self.text_color, theme=theme_manager.current)
                 paint_text = make_paint(color=text_color)
                 blob = make_text_blob(display_text, font)
                 if blob:
-                    canvas.drawTextBlob(blob, x, ty, paint_text)
+                    canvas.drawTextBlob(blob, x - scroll, ty, paint_text)
 
             # Draw Cursor
             if is_focused and selection.is_collapsed:
-                cursor_text = display_text[: selection.end]
-                cursor_x = font.measureText(cursor_text)
+                cursor_x = cursor_x_in_text - scroll
 
                 cursor_top = ty + font_metrics.fAscent
                 cursor_bottom = ty + font_metrics.fDescent
@@ -500,8 +651,6 @@ class EditableText(InteractionHostMixin, Widget):
                     cursor_bottom - cursor_top,
                 )
 
-                from nuiitivet.theme.manager import manager as theme_manager
-
                 cursor_color = resolve_color_to_rgba(self.cursor_color, theme=theme_manager.current)
                 paint_cursor = make_paint(color=cursor_color, style="stroke", stroke_width=2)
                 if paint_cursor is not None:
@@ -512,6 +661,19 @@ class EditableText(InteractionHostMixin, Widget):
                         cursor_bottom,
                         paint_cursor,
                     )
+        finally:
+            if save_count is not None:
+                try:
+                    canvas.restoreToCount(save_count)
+                except Exception:
+                    try:
+                        canvas.restore()
+                    except Exception:
+                        exception_once(
+                            _logger,
+                            "editable_text_canvas_restore_exc",
+                            "EditableText canvas restore raised",
+                        )
 
     def _get_display_text(self, text: str) -> str:
         if not self._obscure_text:
