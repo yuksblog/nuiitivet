@@ -5,7 +5,7 @@ import pytest
 from nuiitivet.material.sheet import BottomSheet
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.transition_spec import MaterialBottomSheetTransitionSpec, MaterialTransitions
+from nuiitivet.material.transition_spec import MaterialTransitionSpec, MaterialTransitions
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.widgets.box import Box
@@ -43,19 +43,20 @@ def test_bottom_sheet_style_is_immutable():
 
 
 # ---------------------------------------------------------------------------
-# MaterialBottomSheetTransitionSpec tests
+# MaterialTransitionSpec (bottom sheet) tests
 # ---------------------------------------------------------------------------
 
 
 def test_bottom_sheet_transition_spec_defaults():
-    spec = MaterialBottomSheetTransitionSpec()
+    spec = MaterialTransitions.bottom_sheet()
     assert spec.enter is not None
-    assert spec.exit is not None
+    assert spec.exit_ is not None
+    assert spec.barrier_mode == "fade"
 
 
 def test_material_transitions_bottom_sheet():
     spec = MaterialTransitions.bottom_sheet()
-    assert isinstance(spec, MaterialBottomSheetTransitionSpec)
+    assert isinstance(spec, MaterialTransitionSpec)
     # Enter pattern should slide from positive y fraction (bottom)
     visuals = spec.enter.pattern.resolve(0.0)
     assert visuals.translate_y_fraction is not None
@@ -65,8 +66,8 @@ def test_material_transitions_bottom_sheet():
 def test_material_transitions_bottom_sheet_exit_direction():
     spec = MaterialTransitions.bottom_sheet()
     # Exit pattern should slide to positive y fraction (back down)
-    visuals_start = spec.exit.pattern.resolve(0.0)
-    visuals_end = spec.exit.pattern.resolve(1.0)
+    visuals_start = spec.exit_.pattern.resolve(0.0)
+    visuals_end = spec.exit_.pattern.resolve(1.0)
     assert visuals_start.translate_y_fraction == pytest.approx(0.0)
     assert visuals_end.translate_y_fraction == pytest.approx(1.0)
 
@@ -80,8 +81,8 @@ def test_material_transitions_bottom_sheet_custom_exit():
         motion=EXPRESSIVE_DEFAULT_EFFECTS,
         pattern=FadePattern(start_alpha=1.0, end_alpha=0.0),
     )
-    spec = MaterialTransitions.bottom_sheet(exit=custom_exit)
-    assert spec.exit is custom_exit
+    spec = MaterialTransitions.bottom_sheet(exit_=custom_exit)
+    assert spec.exit_ is custom_exit
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +144,7 @@ def test_bottom_sheet_transition_auto_uses_height():
 def test_bottom_sheet_transition_fallback_for_none_height():
     """Fractional slide is dimension-independent: works regardless of height value."""
     spec = MaterialTransitions.bottom_sheet()
-    visuals_end = spec.exit.pattern.resolve(1.0)
+    visuals_end = spec.exit_.pattern.resolve(1.0)
     assert visuals_end.translate_y_fraction == pytest.approx(1.0)
 
 

@@ -58,10 +58,7 @@ if TYPE_CHECKING:
         StandardButtonGroupStyle,
         ConnectedButtonGroupStyle,
     )
-    from .transition_spec import (
-        MaterialSideSheetTransitionSpec,
-        MaterialBottomSheetTransitionSpec,
-    )
+    from .transition_spec import MaterialTransitionSpec
 
 __all__ = [
     "MaterialApp",
@@ -124,8 +121,7 @@ __all__ = [
     "Tooltip",
     "RichTooltip",
     "MaterialTransitions",
-    "MaterialSideSheetTransitionSpec",
-    "MaterialBottomSheetTransitionSpec",
+    "MaterialTransitionSpec",
     "SideSheetStyle",
     "BottomSheetStyle",
     "SideSheet",
@@ -207,8 +203,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RichTooltip": ("tooltip", "RichTooltip"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
-    "MaterialSideSheetTransitionSpec": ("transition_spec", "MaterialSideSheetTransitionSpec"),
-    "MaterialBottomSheetTransitionSpec": ("transition_spec", "MaterialBottomSheetTransitionSpec"),
+    "MaterialTransitionSpec": ("transition_spec", "MaterialTransitionSpec"),
     "SideSheetStyle": ("styles.sheet_style", "SideSheetStyle"),
     "BottomSheetStyle": ("styles.sheet_style", "BottomSheetStyle"),
     "SideSheet": ("sheet", "SideSheet"),

@@ -1,7 +1,15 @@
 import nuiitivet as nv
 
-from nuiitivet.material import (FadeIn, FadeOut, App, MaterialTransitions,
-                                SlideInVertically, SlideOutVertically, Text, Button)
+from nuiitivet.material import (
+    FadeIn,
+    FadeOut,
+    App,
+    MaterialTransitions,
+    SlideInVertically,
+    SlideOutVertically,
+    Text,
+    Button,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.navigation import Navigator, PageRoute, Transitions
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -34,7 +42,7 @@ class HomeScreen(ComposableWidget):
         def navigate_with_custom_animation() -> None:
             custom_transition = MaterialTransitions.page(
                 enter=FadeIn() | SlideInVertically(initial_offset_y=50.0),
-                exit=FadeOut() | SlideOutVertically(target_offset_y=50.0),
+                exit_=FadeOut() | SlideOutVertically(target_offset_y=50.0),
             )
             route = PageRoute(
                 builder=lambda: DetailsScreen(),
@@ -54,8 +62,11 @@ class HomeScreen(ComposableWidget):
             gap=12,
             children=[
                 Text("Home Screen"),
-                Button("Go to Details (Custom Animation)",
-                       on_click=navigate_with_custom_animation, style=ButtonStyle.filled()),
+                Button(
+                    "Go to Details (Custom Animation)",
+                    on_click=navigate_with_custom_animation,
+                    style=ButtonStyle.filled(),
+                ),
                 Button("Go to Details (Instant)", on_click=navigate_instantly, style=ButtonStyle.filled()),
             ],
         )

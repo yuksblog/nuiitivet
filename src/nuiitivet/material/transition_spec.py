@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from typing import Literal
 
@@ -58,18 +58,21 @@ def _default_snackbar_exit() -> TransitionDefinition:
     )
 
 
-def _default_side_sheet_enter() -> TransitionDefinition:
-    # Default: right-side sheet slides in from right edge (1.0 = full width)
+def _default_side_sheet_enter(side: Literal["right", "left"] = "right") -> TransitionDefinition:
+    # Default: right-side sheet slides in from right edge (1.0 = full width).
+    # `side="left"` slides in from the left edge instead.
+    sign = 1.0 if side == "right" else -1.0
     return TransitionDefinition(
         motion=EXPRESSIVE_DEFAULT_EFFECTS,
-        pattern=FractionalSlidePattern(start_x=1.0, end_x=0.0),
+        pattern=FractionalSlidePattern(start_x=sign, end_x=0.0),
     )
 
 
-def _default_side_sheet_exit() -> TransitionDefinition:
+def _default_side_sheet_exit(side: Literal["right", "left"] = "right") -> TransitionDefinition:
+    sign = 1.0 if side == "right" else -1.0
     return TransitionDefinition(
         motion=EXPRESSIVE_DEFAULT_EFFECTS,
-        pattern=FractionalSlidePattern(start_x=0.0, end_x=1.0),
+        pattern=FractionalSlidePattern(start_x=0.0, end_x=sign),
     )
 
 
@@ -88,43 +91,19 @@ def _default_bottom_sheet_exit() -> TransitionDefinition:
 
 
 @dataclass(frozen=True, slots=True)
-class MaterialPageTransitionSpec:
-    """Material default transition token for page navigation."""
+class MaterialTransitionSpec:
+    """Material transition token for overlay/page lifecycle.
 
-    enter: TransitionDefinition = field(default_factory=_default_page_enter)
-    exit: TransitionDefinition = field(default_factory=_default_page_exit)
+    Carries `enter` / `exit_` `TransitionDefinition`s plus a `barrier_mode`
+    that controls scrim opacity behavior:
 
+    - ``"none"``  : no scrim (page, snackbar)
+    - ``"fade"``  : scrim fades in/out following progress (dialog, sheets)
+    """
 
-@dataclass(frozen=True, slots=True)
-class MaterialDialogTransitionSpec:
-    """Material default transition token for dialog overlays."""
-
-    enter: TransitionDefinition = field(default_factory=_default_dialog_enter)
-    exit: TransitionDefinition = field(default_factory=_default_dialog_exit)
-
-
-@dataclass(frozen=True, slots=True)
-class MaterialSnackbarTransitionSpec:
-    """Material default transition token for snackbars."""
-
-    enter: TransitionDefinition = field(default_factory=_default_snackbar_enter)
-    exit: TransitionDefinition = field(default_factory=_default_snackbar_exit)
-
-
-@dataclass(frozen=True, slots=True)
-class MaterialSideSheetTransitionSpec:
-    """Material transition token for modal side sheets."""
-
-    enter: TransitionDefinition = field(default_factory=_default_side_sheet_enter)
-    exit: TransitionDefinition = field(default_factory=_default_side_sheet_exit)
-
-
-@dataclass(frozen=True, slots=True)
-class MaterialBottomSheetTransitionSpec:
-    """Material transition token for modal bottom sheets."""
-
-    enter: TransitionDefinition = field(default_factory=_default_bottom_sheet_enter)
-    exit: TransitionDefinition = field(default_factory=_default_bottom_sheet_exit)
+    enter: TransitionDefinition
+    exit_: TransitionDefinition
+    barrier_mode: Literal["none", "fade"] = "none"
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,85 +111,73 @@ class _MaterialTransitionPresets:
     def page(
         self,
         enter: TransitionDefinition | None = None,
-        exit: TransitionDefinition | None = None,
-    ) -> MaterialPageTransitionSpec:
+        exit_: TransitionDefinition | None = None,
+    ) -> MaterialTransitionSpec:
         """Create a Material page transition token."""
-        return MaterialPageTransitionSpec(
-            enter=enter or _default_page_enter(),
-            exit=exit or _default_page_exit(),
+        return MaterialTransitionSpec(
+            enter=enter if enter is not None else _default_page_enter(),
+            exit_=exit_ if exit_ is not None else _default_page_exit(),
+            barrier_mode="none",
         )
 
     def dialog(
         self,
         enter: TransitionDefinition | None = None,
-        exit: TransitionDefinition | None = None,
-    ) -> MaterialDialogTransitionSpec:
+        exit_: TransitionDefinition | None = None,
+    ) -> MaterialTransitionSpec:
         """Create a Material dialog transition token."""
-        return MaterialDialogTransitionSpec(
-            enter=enter or _default_dialog_enter(),
-            exit=exit or _default_dialog_exit(),
+        return MaterialTransitionSpec(
+            enter=enter if enter is not None else _default_dialog_enter(),
+            exit_=exit_ if exit_ is not None else _default_dialog_exit(),
+            barrier_mode="fade",
         )
 
     def snackbar(
         self,
         enter: TransitionDefinition | None = None,
-        exit: TransitionDefinition | None = None,
-    ) -> MaterialSnackbarTransitionSpec:
+        exit_: TransitionDefinition | None = None,
+    ) -> MaterialTransitionSpec:
         """Create a Material snackbar transition token."""
-        return MaterialSnackbarTransitionSpec(
-            enter=enter or _default_snackbar_enter(),
-            exit=exit or _default_snackbar_exit(),
+        return MaterialTransitionSpec(
+            enter=enter if enter is not None else _default_snackbar_enter(),
+            exit_=exit_ if exit_ is not None else _default_snackbar_exit(),
+            barrier_mode="none",
         )
 
     def side_sheet(
         self,
         side: Literal["right", "left"] = "right",
         enter: TransitionDefinition | None = None,
-        exit: TransitionDefinition | None = None,
-    ) -> MaterialSideSheetTransitionSpec:
+        exit_: TransitionDefinition | None = None,
+    ) -> MaterialTransitionSpec:
         """Create a Material side sheet transition token.
 
         Args:
             side: Which edge the sheet slides in from.
             enter: Custom enter transition definition.
-            exit: Custom exit transition definition.
+            exit_: Custom exit transition definition.
         """
-        sign = 1.0 if side == "right" else -1.0
-        return MaterialSideSheetTransitionSpec(
-            enter=enter
-            or TransitionDefinition(
-                motion=EXPRESSIVE_DEFAULT_EFFECTS,
-                pattern=FractionalSlidePattern(start_x=sign, end_x=0.0),
-            ),
-            exit=exit
-            or TransitionDefinition(
-                motion=EXPRESSIVE_DEFAULT_EFFECTS,
-                pattern=FractionalSlidePattern(start_x=0.0, end_x=sign),
-            ),
+        return MaterialTransitionSpec(
+            enter=enter if enter is not None else _default_side_sheet_enter(side),
+            exit_=exit_ if exit_ is not None else _default_side_sheet_exit(side),
+            barrier_mode="fade",
         )
 
     def bottom_sheet(
         self,
         enter: TransitionDefinition | None = None,
-        exit: TransitionDefinition | None = None,
-    ) -> MaterialBottomSheetTransitionSpec:
+        exit_: TransitionDefinition | None = None,
+    ) -> MaterialTransitionSpec:
         """Create a Material bottom sheet transition token.
 
         Args:
             enter: Custom enter transition definition.
-            exit: Custom exit transition definition.
+            exit_: Custom exit transition definition.
         """
-        return MaterialBottomSheetTransitionSpec(
-            enter=enter
-            or TransitionDefinition(
-                motion=EXPRESSIVE_DEFAULT_EFFECTS,
-                pattern=FractionalSlidePattern(start_y=1.0, end_y=0.0),
-            ),
-            exit=exit
-            or TransitionDefinition(
-                motion=EXPRESSIVE_DEFAULT_EFFECTS,
-                pattern=FractionalSlidePattern(start_y=0.0, end_y=1.0),
-            ),
+        return MaterialTransitionSpec(
+            enter=enter if enter is not None else _default_bottom_sheet_enter(),
+            exit_=exit_ if exit_ is not None else _default_bottom_sheet_exit(),
+            barrier_mode="fade",
         )
 
 
@@ -218,10 +185,6 @@ MaterialTransitions = _MaterialTransitionPresets()
 
 
 __all__ = [
-    "MaterialBottomSheetTransitionSpec",
-    "MaterialDialogTransitionSpec",
-    "MaterialPageTransitionSpec",
-    "MaterialSideSheetTransitionSpec",
-    "MaterialSnackbarTransitionSpec",
+    "MaterialTransitionSpec",
     "MaterialTransitions",
 ]
