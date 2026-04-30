@@ -27,6 +27,7 @@ from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
+from nuiitivet.rendering.elevation import resolve_shadow_params
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
@@ -97,6 +98,22 @@ def _resolve_color_rgba(value: ColorSpec) -> Tuple[int, int, int, int]:
     from nuiitivet.theme.resolver import resolve_color_to_rgba
 
     return resolve_color_to_rgba(value, theme=manager.current)
+
+
+def _shadow_from_elevation(elevation_val: Optional[float]) -> tuple[ColorSpec, float, tuple[float, float]]:
+    shadow_color = None
+    shadow_blur = 0.0
+    shadow_offset: tuple[float, float] = (0.0, 0.0)
+
+    if elevation_val is None or elevation_val <= 0.0:
+        return shadow_color, shadow_blur, shadow_offset
+
+    shadow = resolve_shadow_params(float(elevation_val))
+    shadow_color = (ColorRole.SHADOW, shadow.alpha)
+    shadow_offset = shadow.offset
+    shadow_blur = shadow.blur
+
+    return shadow_color, shadow_blur, shadow_offset
 
 
 _RGBA_CONVERTER = RgbaTupleConverter()
@@ -229,7 +246,7 @@ def resolve_button_style_params(
     # Elevation -> Shadow
     shadow_color = None
     shadow_blur = 0.0
-    shadow_offset = (0, 0)
+    shadow_offset: tuple[float, float] = (0.0, 0.0)
 
     elevation_val = None
     if style and getattr(style, "elevation", None) is not None:
@@ -243,19 +260,7 @@ def resolve_button_style_params(
             )
 
     if elevation_val is not None and elevation_val > 0.0:
-        try:
-            from nuiitivet.rendering.elevation import Elevation
-
-            elev = Elevation.from_level(elevation_val)
-            shadow_color = (ColorRole.SHADOW, elev.alpha)
-            shadow_offset = elev.offset
-            shadow_blur = elev.blur
-        except Exception as exc:
-            exception_once(
-                logger,
-                f"button_resolve_elevation_shadow_exc_{type(exc).__name__}",
-                "Failed to resolve button shadow",
-            )
+        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(elevation_val)
 
     # Overlay
     overlay_color = None
@@ -1095,6 +1100,7 @@ class Fab(MaterialButtonBase):
             disabled=disabled,
             **params,
         )
+        self._sync_state_tokens()
 
         self._press_scale_x_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
         self._press_scale_y_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
@@ -1122,6 +1128,48 @@ class Fab(MaterialButtonBase):
             self.disabled,
         )
         self._apply_style_params(params)
+        self._sync_state_tokens()
+
+    def _container_elevation(self) -> float:
+        style = self.style
+        if self.state.dragging or self.state.pressed:
+            return float(getattr(style, "pressed_elevation", style.elevation) or 0.0)
+        if self.state.hovered:
+            return float(getattr(style, "hovered_elevation", style.elevation) or 0.0)
+        if self.state.focused:
+            return float(getattr(style, "focused_elevation", style.elevation) or 0.0)
+        return float(getattr(style, "elevation", 0.0) or 0.0)
+
+    def _sync_state_tokens(self) -> None:
+        style = self.style
+
+        focus_opacity = float(getattr(style, "focus_opacity", 0.1) or 0.0)
+        hover_opacity = float(getattr(style, "hover_opacity", self._HOVER_OPACITY) or 0.0)
+        pressed_opacity = float(getattr(style, "pressed_opacity", self._PRESS_OPACITY) or 0.0)
+
+        self._FOCUS_OPACITY = focus_opacity
+        self._HOVER_OPACITY = hover_opacity
+        self._PRESS_OPACITY = pressed_opacity
+
+        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(self._container_elevation())
+        if self.shadow_color != shadow_color:
+            self.shadow_color = shadow_color
+        if abs(float(self.shadow_blur) - float(shadow_blur)) > 1e-6:
+            self.shadow_blur = shadow_blur
+        if self.shadow_offset != shadow_offset:
+            self.shadow_offset = shadow_offset
+
+    def _get_state_layer_target_opacity(self) -> float:
+        state = self.state
+        if state.dragging:
+            return float(self._DRAG_OPACITY)
+        if state.pressed:
+            return float(self._PRESS_OPACITY)
+        if state.hovered:
+            return float(self._HOVER_OPACITY)
+        if state.focused:
+            return float(self._FOCUS_OPACITY)
+        return 0.0
 
     def _expressive_press_scale(self) -> tuple[float, float]:
         target = (0.94, 0.9) if self.state.pressed and not self.disabled else (1.0, 1.0)
@@ -1132,6 +1180,7 @@ class Fab(MaterialButtonBase):
         return float(self._press_scale_x_anim.value), float(self._press_scale_y_anim.value)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
+        self._sync_state_tokens()
         sx, sy = self._expressive_press_scale()
         if abs(sx - 1.0) < 1e-6 and abs(sy - 1.0) < 1e-6:
             super().paint(canvas, x, y, width, height)

@@ -12,7 +12,7 @@ from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
-from nuiitivet.rendering.elevation import Elevation
+from nuiitivet.rendering.elevation import resolve_shadow_params
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.manager import manager
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -22,7 +22,7 @@ from nuiitivet.widgets.box import Box
 def _resolve_shadow(elevation: float, color_spec):
     if elevation <= 0.0:
         return None, (0.0, 0.0), 0.0
-    resolved = Elevation.from_level(float(elevation))
+    resolved = resolve_shadow_params(float(elevation))
     return color_spec, resolved.offset, resolved.blur
 
 

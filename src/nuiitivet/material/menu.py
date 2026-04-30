@@ -20,7 +20,7 @@ from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
 from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
-from nuiitivet.rendering.elevation import Elevation
+from nuiitivet.rendering.elevation import resolve_shadow_params
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode
@@ -456,10 +456,10 @@ class Menu(InteractiveWidget):
         except Exception:
             elevation_value = 0.0
         if elevation_value > 0.0:
-            elev = Elevation.from_level(elevation_value)
-            shadow_color = _with_opacity(self.style.elevation_color, elev.alpha)
-            shadow_blur = elev.blur
-            shadow_offset = elev.offset
+            shadow = resolve_shadow_params(elevation_value)
+            shadow_color = _with_opacity(self.style.elevation_color, shadow.alpha)
+            shadow_blur = shadow.blur
+            shadow_offset = shadow.offset
 
         children = self._materialize_children()
         self._column = Column(children=children, width=Sizing.flex(), gap=0, cross_alignment="start")
