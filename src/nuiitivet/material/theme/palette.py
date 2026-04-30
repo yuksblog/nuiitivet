@@ -22,7 +22,6 @@ from ...colors.utils import (
 )
 from .color_role import ColorRole
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -80,7 +79,10 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                 ColorRole.INVERSE_ON_SURFACE: "inverse_on_surface",
                 ColorRole.SURFACE_VARIANT: "surface_variant",
                 ColorRole.ON_SURFACE_VARIANT: "on_surface_variant",
+                ColorRole.SURFACE_CONTAINER_LOWEST: "surface_container_lowest",
                 ColorRole.SURFACE_CONTAINER_LOW: "surface_container_low",
+                ColorRole.SURFACE_CONTAINER: "surface_container",
+                ColorRole.SURFACE_CONTAINER_HIGH: "surface_container_high",
                 ColorRole.SURFACE_CONTAINER_HIGHEST: "surface_container_highest",
                 ColorRole.OUTLINE: "outline",
                 ColorRole.OUTLINE_VARIANT: "outline_variant",
@@ -123,14 +125,26 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
                     dark_roles[role] = "#{:02X}{:02X}{:02X}".format(*vals)
 
             # Fallback for missing roles
+            if ColorRole.SURFACE_CONTAINER_LOWEST not in light_roles:
+                light_roles[ColorRole.SURFACE_CONTAINER_LOWEST] = light_roles.get(ColorRole.SURFACE, "#FFFFFF")
+            if ColorRole.SURFACE_CONTAINER_LOWEST not in dark_roles:
+                dark_roles[ColorRole.SURFACE_CONTAINER_LOWEST] = dark_roles.get(ColorRole.SURFACE, "#0F0D13")
             if ColorRole.SURFACE_CONTAINER_LOW not in light_roles:
                 light_roles[ColorRole.SURFACE_CONTAINER_LOW] = light_roles.get(ColorRole.SURFACE, "#F7F2FA")
             if ColorRole.SURFACE_CONTAINER_LOW not in dark_roles:
                 dark_roles[ColorRole.SURFACE_CONTAINER_LOW] = dark_roles.get(ColorRole.SURFACE, "#1D1B20")
+            if ColorRole.SURFACE_CONTAINER not in light_roles:
+                light_roles[ColorRole.SURFACE_CONTAINER] = light_roles.get(ColorRole.SURFACE, "#F3EDF7")
+            if ColorRole.SURFACE_CONTAINER not in dark_roles:
+                dark_roles[ColorRole.SURFACE_CONTAINER] = dark_roles.get(ColorRole.SURFACE, "#211F26")
+            if ColorRole.SURFACE_CONTAINER_HIGH not in light_roles:
+                light_roles[ColorRole.SURFACE_CONTAINER_HIGH] = light_roles.get(ColorRole.SURFACE_VARIANT, "#ECE6F0")
+            if ColorRole.SURFACE_CONTAINER_HIGH not in dark_roles:
+                dark_roles[ColorRole.SURFACE_CONTAINER_HIGH] = dark_roles.get(ColorRole.SURFACE_VARIANT, "#2B2930")
             if ColorRole.SURFACE_CONTAINER_HIGHEST not in light_roles:
-                light_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = light_roles.get(ColorRole.SURFACE_VARIANT, "#E7E0EC")
+                light_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = light_roles.get(ColorRole.SURFACE_VARIANT, "#E6E0E9")
             if ColorRole.SURFACE_CONTAINER_HIGHEST not in dark_roles:
-                dark_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = dark_roles.get(ColorRole.SURFACE_VARIANT, "#49454F")
+                dark_roles[ColorRole.SURFACE_CONTAINER_HIGHEST] = dark_roles.get(ColorRole.SURFACE_VARIANT, "#36343B")
             if ColorRole.INVERSE_SURFACE not in light_roles:
                 light_roles[ColorRole.INVERSE_SURFACE] = light_roles.get(ColorRole.ON_SURFACE, "#1C1B1F")
             if ColorRole.INVERSE_SURFACE not in dark_roles:
@@ -237,7 +251,10 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
             (ColorRole.ON_SURFACE, (cp.neutral, 10)),
             (ColorRole.SURFACE_VARIANT, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 94)),
             (ColorRole.ON_SURFACE_VARIANT, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 30)),
+            (ColorRole.SURFACE_CONTAINER_LOWEST, (cp.neutral, 100)),
             (ColorRole.SURFACE_CONTAINER_LOW, (cp.neutral, 96)),
+            (ColorRole.SURFACE_CONTAINER, (cp.neutral, 94)),
+            (ColorRole.SURFACE_CONTAINER_HIGH, (cp.neutral, 92)),
             (ColorRole.SURFACE_CONTAINER_HIGHEST, (cp.neutral, 90)),
             (ColorRole.OUTLINE, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 60)),
             (ColorRole.OUTLINE_VARIANT, (cp.neutral_variant if hasattr(cp, "neutral_variant") else cp.neutral, 80)),
@@ -257,8 +274,14 @@ def _use_mcu_corepalette(seed_hex: str) -> Optional[Tuple[Dict[ColorRole, str], 
         for role, (pal, tonev) in mapping:
             try:
                 # map some tones differently for dark
-                if role == ColorRole.SURFACE_CONTAINER_LOW:
+                if role == ColorRole.SURFACE_CONTAINER_LOWEST:
+                    dark_tone = 4
+                elif role == ColorRole.SURFACE_CONTAINER_LOW:
                     dark_tone = 10
+                elif role == ColorRole.SURFACE_CONTAINER:
+                    dark_tone = 12
+                elif role == ColorRole.SURFACE_CONTAINER_HIGH:
+                    dark_tone = 17
                 elif role == ColorRole.SURFACE_CONTAINER_HIGHEST:
                     dark_tone = 22
                 elif role == ColorRole.OUTLINE_VARIANT:
@@ -344,7 +367,10 @@ def _hsl_roles_from_seed(seed_hex: str) -> Tuple[Dict[ColorRole, str], Dict[Colo
         ColorRole.ON_SURFACE: 0.10,
         ColorRole.SURFACE_VARIANT: 0.94,
         ColorRole.ON_SURFACE_VARIANT: 0.30,
+        ColorRole.SURFACE_CONTAINER_LOWEST: 1.00,
         ColorRole.SURFACE_CONTAINER_LOW: 0.96,
+        ColorRole.SURFACE_CONTAINER: 0.94,
+        ColorRole.SURFACE_CONTAINER_HIGH: 0.92,
         ColorRole.SURFACE_CONTAINER_HIGHEST: 0.90,
         ColorRole.OUTLINE: 0.60,
         ColorRole.OUTLINE_VARIANT: 0.80,
@@ -373,7 +399,10 @@ def _hsl_roles_from_seed(seed_hex: str) -> Tuple[Dict[ColorRole, str], Dict[Colo
         ColorRole.ON_SURFACE: 0.94,
         ColorRole.SURFACE_VARIANT: 0.24,
         ColorRole.ON_SURFACE_VARIANT: 0.88,
+        ColorRole.SURFACE_CONTAINER_LOWEST: 0.04,
         ColorRole.SURFACE_CONTAINER_LOW: 0.10,
+        ColorRole.SURFACE_CONTAINER: 0.12,
+        ColorRole.SURFACE_CONTAINER_HIGH: 0.17,
         ColorRole.SURFACE_CONTAINER_HIGHEST: 0.22,
         ColorRole.OUTLINE: 0.72,
         ColorRole.OUTLINE_VARIANT: 0.30,

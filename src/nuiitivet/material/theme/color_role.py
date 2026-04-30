@@ -55,7 +55,10 @@ class ColorRole(Enum):
     INVERSE_ON_SURFACE = "inverseOnSurface"
     SURFACE_VARIANT = "surfaceVariant"
     ON_SURFACE_VARIANT = "onSurfaceVariant"
+    SURFACE_CONTAINER_LOWEST = "surfaceContainerLowest"
     SURFACE_CONTAINER_LOW = "surfaceContainerLow"
+    SURFACE_CONTAINER = "surfaceContainer"
+    SURFACE_CONTAINER_HIGH = "surfaceContainerHigh"
     SURFACE_CONTAINER_HIGHEST = "surfaceContainerHighest"
 
     OUTLINE = "outline"

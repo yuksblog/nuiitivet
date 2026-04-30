@@ -118,3 +118,54 @@ def test_alert_dialog_with_icon():
     dialog.build()
     # Verification of built tree structure is hard without deep inspection
     # but at least it builds.
+
+
+def test_alert_dialog_default_background_is_surface_container_high():
+    """MD3 Basic Dialog uses surface-container-high (not highest)."""
+    from nuiitivet.material.theme.color_role import ColorRole
+
+    style = DialogStyle()
+    assert style.background == ColorRole.SURFACE_CONTAINER_HIGH
+
+
+def test_alert_dialog_default_width_is_md3_min():
+    """AlertDialog default width is the MD3 minimum (280dp)."""
+    dialog = AlertDialog(title="t")
+    assert dialog.width == 280.0
+
+
+def test_alert_dialog_custom_width_propagates_to_box():
+    """AlertDialog forwards custom width to the underlying Box."""
+    from nuiitivet.widgets.box import Box
+
+    dialog = AlertDialog(title="t", width=420.0)
+    assert dialog.width == 420.0
+
+    built = dialog.build()
+    assert isinstance(built, Box)
+    # Box stores width as a Sizing("fixed", value) on width_sizing.
+    sizing = built.width_sizing
+    assert sizing.kind == "fixed"
+    assert float(sizing.value) == 420.0
+
+
+def test_color_role_includes_md3_surface_containers():
+    """ColorRole exposes the full MD3 surface container ladder."""
+    from nuiitivet.material.theme.color_role import ColorRole
+
+    assert ColorRole.SURFACE_CONTAINER_LOWEST.value == "surfaceContainerLowest"
+    assert ColorRole.SURFACE_CONTAINER_LOW.value == "surfaceContainerLow"
+    assert ColorRole.SURFACE_CONTAINER.value == "surfaceContainer"
+    assert ColorRole.SURFACE_CONTAINER_HIGH.value == "surfaceContainerHigh"
+    assert ColorRole.SURFACE_CONTAINER_HIGHEST.value == "surfaceContainerHighest"
+
+
+def test_material_theme_resolves_surface_container_high():
+    """A MaterialTheme resolves SURFACE_CONTAINER_HIGH to a concrete color."""
+    from nuiitivet.material.theme.color_role import ColorRole
+    from nuiitivet.theme.resolver import resolve_color_to_rgba
+
+    theme = MaterialTheme.light("#6750A4")
+    rgba = resolve_color_to_rgba(ColorRole.SURFACE_CONTAINER_HIGH, theme=theme)
+    assert isinstance(rgba, tuple)
+    assert len(rgba) == 4

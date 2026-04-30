@@ -22,7 +22,7 @@ class DialogStyle:
     """Immutable style for Dialog widgets (MD3 Basic Dialog)."""
 
     # Container properties
-    background: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
+    background: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGH
     elevation: float = 6.0
 
     # Shape
