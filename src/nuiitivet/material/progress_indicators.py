@@ -7,6 +7,7 @@ from typing import Any, Callable, Tuple, TypeGuard, cast
 
 from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.observable import ObservableProtocol, runtime
+from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, make_paint, make_rect
 from nuiitivet.theme.manager import manager as theme_manager
@@ -93,16 +94,6 @@ def _circular_geometry(
     cx = float(content_x) + (float(content_w) / 2.0)
     cy = float(content_y) + (float(content_h) / 2.0)
     return stroke_w, radius, cx, cy
-
-
-def _clamp_square_size(size: int, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
-    """Clamp square widget size to layout constraints."""
-    clamped = int(size)
-    if max_width is not None:
-        clamped = min(clamped, int(max_width))
-    if max_height is not None:
-        clamped = min(clamped, int(max_height))
-    return (clamped, clamped)
 
 
 def _cubic_bezier_transform(t: float, x1: float, y1: float, x2: float, y2: float) -> float:
@@ -484,12 +475,14 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         """
         self._style = style
         style_for_layout = style or LinearProgressIndicatorStyle.default()
+        track_h = max(1, int(round(style_for_layout.track_thickness)))
+        pad_l, pad_t, pad_r, pad_b = parse_padding(padding)
         super().__init__(
             value=value,
             disabled=disabled,
             width=width,
-            height=max(1, int(round(style_for_layout.track_thickness))),
-            padding=padding,
+            height=track_h + pad_t + pad_b,
+            padding=(pad_l, pad_t, pad_r, pad_b),
         )
 
     @property
@@ -503,6 +496,21 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         if mat is not None:
             return mat.linear_progress_indicator_style
         return LinearProgressIndicatorStyle.default()
+
+    def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
+        w_dim = self.width_sizing
+        pad_l, pad_t, pad_r, pad_b = self.padding
+        track_h = max(1, int(round(self.style.track_thickness)))
+        if w_dim.kind == "fixed":
+            pref_w = int(w_dim.value)
+        else:
+            pref_w = int(max_width) if max_width is not None else 0
+        pref_h = track_h + pad_t + pad_b
+        if max_width is not None:
+            pref_w = min(pref_w, int(max_width))
+        if max_height is not None:
+            pref_h = min(pref_h, int(max_height))
+        return (pref_w, pref_h)
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int], tuple[int, int, int, int]]:
         style = self.style
@@ -615,11 +623,13 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         self._style = style
         style_for_layout = style or LinearProgressIndicatorStyle.default()
         self._animation_motion = LinearMotion(self._animation_motion_duration())
+        track_h = max(1, int(round(style_for_layout.track_thickness)))
+        pad_l, pad_t, pad_r, pad_b = parse_padding(padding)
         super().__init__(
             disabled=disabled,
             width=width,
-            height=max(1, int(round(style_for_layout.track_thickness))),
-            padding=padding,
+            height=track_h + pad_t + pad_b,
+            padding=(pad_l, pad_t, pad_r, pad_b),
         )
 
     @property
@@ -633,6 +643,21 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         if mat is not None:
             return mat.linear_progress_indicator_style
         return LinearProgressIndicatorStyle.default()
+
+    def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
+        w_dim = self.width_sizing
+        pad_l, pad_t, pad_r, pad_b = self.padding
+        track_h = max(1, int(round(self.style.track_thickness)))
+        if w_dim.kind == "fixed":
+            pref_w = int(w_dim.value)
+        else:
+            pref_w = int(max_width) if max_width is not None else 0
+        pref_h = track_h + pad_t + pad_b
+        if max_width is not None:
+            pref_w = min(pref_w, int(max_width))
+        if max_height is not None:
+            pref_h = min(pref_h, int(max_height))
+        return (pref_w, pref_h)
 
     def _animation_motion_duration(self) -> float:
         return _LINEAR_ANIMATION_DURATION_MS / 1000.0
@@ -718,12 +743,13 @@ class CircularProgressIndicator(_DeterminateProgressBase):
         self._style = style
         style_for_layout = style or CircularProgressIndicatorStyle.default()
         self._size = int(size) if size is not None else max(1, int(round(style_for_layout.size)))
+        pad_l, pad_t, pad_r, pad_b = parse_padding(padding)
         super().__init__(
             value=value,
             disabled=disabled,
-            width=self._size,
-            height=self._size,
-            padding=padding,
+            width=self._size + pad_l + pad_r,
+            height=self._size + pad_t + pad_b,
+            padding=(pad_l, pad_t, pad_r, pad_b),
         )
 
     @property
@@ -742,7 +768,14 @@ class CircularProgressIndicator(_DeterminateProgressBase):
         return _resolve_active_track_colors(style=self.style, disabled=self.disabled)
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
-        return _clamp_square_size(self._size, max_width=max_width, max_height=max_height)
+        pad_l, pad_t, pad_r, pad_b = self.padding
+        w = self._size + pad_l + pad_r
+        h = self._size + pad_t + pad_b
+        if max_width is not None:
+            w = min(w, int(max_width))
+        if max_height is not None:
+            h = min(h, int(max_height))
+        return (w, h)
 
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
@@ -837,11 +870,12 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         style_for_motion = style or CircularProgressIndicatorStyle.default()
         self._size = int(size) if size is not None else max(1, int(round(style_for_motion.size)))
         self._animation_motion = LinearMotion(self._animation_motion_duration())
+        pad_l, pad_t, pad_r, pad_b = parse_padding(padding)
         super().__init__(
             disabled=disabled,
-            width=self._size,
-            height=self._size,
-            padding=padding,
+            width=self._size + pad_l + pad_r,
+            height=self._size + pad_t + pad_b,
+            padding=(pad_l, pad_t, pad_r, pad_b),
         )
 
     @property
@@ -860,7 +894,14 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         return _CIRCULAR_ANIMATION_DURATION_MS / 1000.0
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
-        return _clamp_square_size(self._size, max_width=max_width, max_height=max_height)
+        pad_l, pad_t, pad_r, pad_b = self.padding
+        w = self._size + pad_l + pad_r
+        h = self._size + pad_t + pad_b
+        if max_width is not None:
+            w = min(w, int(max_width))
+        if max_height is not None:
+            h = min(h, int(max_height))
+        return (w, h)
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
         return _resolve_active_track_colors(style=self.style, disabled=self.disabled)
