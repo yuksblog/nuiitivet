@@ -38,6 +38,9 @@ class AlertDialog(ComposableWidget):
         icon: Optional icon (str, Symbol, or Observable).
         actions: list of action widgets (typically TextButtons).
         style: Optional DialogStyle. If None, uses theme default.
+        width: Container width in dp. Per MD3 the basic dialog width is between
+            ``min_width`` (280) and ``max_width`` (560). Defaults to 280 (MD3 minimum).
+            Note: viewport-aware dynamic sizing is tracked as a separate enhancement.
     """
 
     def __init__(
@@ -55,6 +58,7 @@ class AlertDialog(ComposableWidget):
         ] = None,
         actions: Optional[List[Widget]] = None,
         style: Optional[DialogStyle] = None,
+        width: float = 280.0,
     ):
         """Initialize AlertDialog.
 
@@ -64,6 +68,7 @@ class AlertDialog(ComposableWidget):
             icon: Optional icon source.
             actions: Optional action widgets (typically buttons).
             style: Optional dialog style override.
+            width: Container width in dp (MD3 range: 280-560). Defaults to 280.
         """
         super().__init__()
         self.title = title
@@ -71,6 +76,7 @@ class AlertDialog(ComposableWidget):
         self.icon = icon
         self.actions = actions or []
         self._user_style = style
+        self.width = float(width)
 
     @property
     def style(self) -> DialogStyle:
@@ -157,7 +163,7 @@ class AlertDialog(ComposableWidget):
             background_color=style.background,
             corner_radius=style.corner_radius,
             padding=style.padding,
-            width=312.0,  # Fixed width for Basic Dialog (until constraints supported)
+            width=self.width,
             # Elevation mapping (simplified)
             shadow_blur=style.elevation,
             shadow_color=ColorRole.SHADOW,
