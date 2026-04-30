@@ -724,8 +724,8 @@ class App:
         _dispatch_mouse_motion_fn(self, x, y)
 
     # --- Keyboard / focus helpers ---------------------------------
-    def request_focus(self, node: FocusNode) -> None:
-        """Set focus to the given FocusNode."""
+    def request_focus(self, node: Optional[FocusNode]) -> None:
+        """Set focus to the given FocusNode. Pass ``None`` to clear focus."""
         if self._focused_node is node:
             return
 
@@ -740,6 +740,8 @@ class App:
             # Also update legacy target if the node belongs to a widget
             if node.region:
                 self._focused_target = node.region
+        else:
+            self._focused_target = None
 
     def _collect_focus_nodes(self) -> list[FocusNode]:
         """Return a list of FocusNodes in tree order."""
