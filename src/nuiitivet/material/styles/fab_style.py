@@ -27,6 +27,13 @@ class FabStyle(ButtonStyle):
     the shared ``resolve_button_style_params`` machinery without changes.
     """
 
+    focus_opacity: float = 0.1
+    hover_opacity: float = 0.08
+    pressed_opacity: float = 0.1
+    focused_elevation: float = 6.0
+    hovered_elevation: float = 8.0
+    pressed_elevation: float = 6.0
+
     @staticmethod
     def _base(size: FabSize) -> dict:
         t = FAB_SIZE_TOKENS[size]
@@ -41,6 +48,12 @@ class FabStyle(ButtonStyle):
             icon_size=t["icon_size"],
             elevation=6.0,
             overlay_alpha=0.08,
+            focus_opacity=0.1,
+            hover_opacity=0.08,
+            pressed_opacity=0.1,
+            focused_elevation=6.0,
+            hovered_elevation=8.0,
+            pressed_elevation=6.0,
         )
 
     @classmethod

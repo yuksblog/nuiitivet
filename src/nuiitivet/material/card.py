@@ -14,6 +14,7 @@ from typing import Callable, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from ..widgeting.widget import ComposableWidget, Widget
+from ..rendering.elevation import resolve_shadow_params
 from ..rendering.sizing import SizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.color_role import ColorRole
@@ -114,18 +115,16 @@ class Card(ComposableWidget, Box):
             return None, (0.0, 0.0), 0.0
 
         try:
-            from ..rendering.elevation import Elevation
-
-            e = Elevation.from_level(elevation)
+            shadow = resolve_shadow_params(elevation)
 
             # Use provided shadow color or default to SHADOW role with alpha from Elevation
             if shadow_color_spec:
                 shadow_color = shadow_color_spec
             else:
-                shadow_color = (ColorRole.SHADOW, e.alpha)
+                shadow_color = (ColorRole.SHADOW, shadow.alpha)
 
-            shadow_offset = e.offset
-            shadow_blur = e.blur
+            shadow_offset = shadow.offset
+            shadow_blur = shadow.blur
         except Exception:
             exception_once(_logger, "card_resolve_shadow_exc", "Failed to resolve elevation shadow")
             shadow_color = None

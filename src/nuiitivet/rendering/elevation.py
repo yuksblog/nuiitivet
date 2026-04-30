@@ -6,7 +6,6 @@ from typing import Tuple
 
 from nuiitivet.common.logging_once import exception_once
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +73,20 @@ class Elevation:
         return cls(level=lv, offset=(0, int(round(dy))), blur=float(blur), alpha=float(alpha))
 
 
-def compute_shadow_params(elevation: float):
-    e = Elevation.from_level(elevation)
-    return e.offset, e.blur, e.alpha
+@dataclass(frozen=True)
+class ShadowParams:
+    """Shadow paint parameters derived from an elevation level."""
+
+    offset: Tuple[int, int]
+    blur: float
+    alpha: float
+
+
+def resolve_shadow_params(elevation: float) -> ShadowParams:
+    """Resolve shadow paint parameters for the given elevation."""
+    elevation_spec = Elevation.from_level(elevation)
+    return ShadowParams(
+        offset=elevation_spec.offset,
+        blur=elevation_spec.blur,
+        alpha=elevation_spec.alpha,
+    )

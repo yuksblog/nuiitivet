@@ -13,6 +13,8 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.material import App
 from nuiitivet.material import Checkbox, Icon, Text
 from nuiitivet.material.styles import IconStyle
+from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.modifiers import shadow
 from nuiitivet.observable import Observable
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.layout.column import Column
@@ -280,9 +282,11 @@ class MyWidget(ComposableWidget):
                     cross_alignment="start",
                 ),
                 padding=8,
-                style=CardStyle.filled().copy_with(border_radius=6),
+                style=CardStyle.outlined().copy_with(border_radius=6),
                 alignment="start",
-            ),
+            ).modifier(
+                shadow((ColorRole.SHADOW, 0.12), blur=12.0, offset=(0, 6))
+            ),  # Test that modifiers work on Cards
             Card(
                 Column(
                     [

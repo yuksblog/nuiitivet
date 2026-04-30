@@ -1,7 +1,9 @@
 import pytest
 
 from nuiitivet.material import Fab, Button
+from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.button_style import ButtonStyle
+from nuiitivet.rendering.elevation import Elevation
 
 
 def test_resolve_overlay_defaults():
@@ -22,7 +24,7 @@ def test_resolve_overlay_defaults():
         (lambda: Button(label="lbl", style=ButtonStyle.filled()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.outlined()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.tonal()), 0.08, 0.04),
-        (lambda: Fab(icon="add"), 0.08, 0.04),
+        (lambda: Fab(icon="add"), 0.1, 0.08),
         (lambda: Button(label="lbl", style=ButtonStyle.text()), 0.08, 0.04),
         (lambda: Button(label="lbl", style=ButtonStyle.elevated()), 0.08, 0.04),
     ],
@@ -31,6 +33,39 @@ def test_resolve_overlay_defaults_for_variants(factory, expected_pressed: float,
     b = factory()
     assert abs(b._PRESS_OPACITY - expected_pressed) < 1e-6
     assert abs(b._HOVER_OPACITY - expected_hover) < 1e-6
+
+
+def test_fab_focus_opacity_matches_md3_spec() -> None:
+    fab = Fab(icon="add")
+
+    fab.state.focused = True
+
+    assert abs(fab._get_state_layer_target_opacity() - 0.1) < 1e-6
+
+
+def test_fab_hover_elevation_matches_md3_spec() -> None:
+    fab = Fab(icon="add")
+    enabled = Elevation.from_level(6.0)
+    hovered = Elevation.from_level(8.0)
+
+    assert fab.shadow_color == (ColorRole.SHADOW, enabled.alpha)
+    assert fab.shadow_offset == enabled.offset
+    assert fab.shadow_blur == enabled.blur
+
+    fab.state.hovered = True
+    fab._sync_state_tokens()
+
+    assert fab.shadow_color == (ColorRole.SHADOW, hovered.alpha)
+    assert fab.shadow_offset == hovered.offset
+    assert fab.shadow_blur == hovered.blur
+
+    fab.state.hovered = False
+    fab.state.focused = True
+    fab._sync_state_tokens()
+
+    assert fab.shadow_color == (ColorRole.SHADOW, enabled.alpha)
+    assert fab.shadow_offset == enabled.offset
+    assert fab.shadow_blur == enabled.blur
 
 
 def test_resolve_overlay_with_style_alpha_scaled():
