@@ -5,7 +5,7 @@ import pytest
 from nuiitivet.material.sheet import SideSheet
 from nuiitivet.material.styles.sheet_style import SideSheetStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.transition_spec import MaterialSideSheetTransitionSpec, MaterialTransitions
+from nuiitivet.material.transition_spec import MaterialTransitionSpec, MaterialTransitions
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.widgets.box import Box
@@ -43,19 +43,20 @@ def test_side_sheet_style_is_immutable():
 
 
 # ---------------------------------------------------------------------------
-# MaterialSideSheetTransitionSpec tests
+# MaterialTransitionSpec (side sheet) tests
 # ---------------------------------------------------------------------------
 
 
 def test_side_sheet_transition_spec_defaults():
-    spec = MaterialSideSheetTransitionSpec()
+    spec = MaterialTransitions.side_sheet()
     assert spec.enter is not None
-    assert spec.exit is not None
+    assert spec.exit_ is not None
+    assert spec.barrier_mode == "fade"
 
 
 def test_material_transitions_side_sheet_right():
     spec = MaterialTransitions.side_sheet(side="right")
-    assert isinstance(spec, MaterialSideSheetTransitionSpec)
+    assert isinstance(spec, MaterialTransitionSpec)
     visuals = spec.enter.pattern.resolve(0.0)
     assert visuals.translate_x_fraction is not None
     assert visuals.translate_x_fraction > 0
@@ -63,7 +64,7 @@ def test_material_transitions_side_sheet_right():
 
 def test_material_transitions_side_sheet_left():
     spec = MaterialTransitions.side_sheet(side="left")
-    assert isinstance(spec, MaterialSideSheetTransitionSpec)
+    assert isinstance(spec, MaterialTransitionSpec)
     visuals = spec.enter.pattern.resolve(0.0)
     assert visuals.translate_x_fraction is not None
     assert visuals.translate_x_fraction < 0
@@ -199,7 +200,7 @@ def test_side_sheet_transition_auto_uses_width():
 def test_side_sheet_transition_fallback_for_non_int_width():
     """Fractional slide is dimension-independent: no fallback calculation needed."""
     spec = MaterialTransitions.side_sheet(side="right")
-    visuals_end = spec.exit.pattern.resolve(1.0)
+    visuals_end = spec.exit_.pattern.resolve(1.0)
     assert visuals_end.translate_x_fraction == pytest.approx(1.0)
 
 

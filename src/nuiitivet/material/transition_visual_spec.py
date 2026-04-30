@@ -10,13 +10,7 @@ from nuiitivet.navigation.transition_spec import (
     TransitionSpec,
 )
 
-from .transition_spec import (
-    MaterialDialogTransitionSpec,
-    MaterialPageTransitionSpec,
-    MaterialSnackbarTransitionSpec,
-    MaterialSideSheetTransitionSpec,
-    MaterialBottomSheetTransitionSpec,
-)
+from .transition_spec import MaterialTransitionSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,45 +42,35 @@ def resolve_material_transition_visual_spec(
             barrier_opacity=None,
         )
 
-    # Common logic for Material specs that use TransitionDefinition
-    definition = None
-    barrier: float | None = None
+    if not isinstance(transition_spec, MaterialTransitionSpec):
+        # Unknown spec kind: pass-through active state.
+        return MaterialTransitionVisualSpec(
+            content_opacity=1.0,
+            content_scale=(1.0, 1.0),
+            content_translation=(0.0, 0.0),
+            content_translation_fraction=(0.0, 0.0),
+            barrier_opacity=None,
+        )
 
-    if isinstance(transition_spec, MaterialPageTransitionSpec):
-        if phase is TransitionPhase.ENTER:
-            definition = transition_spec.enter
-        elif phase is TransitionPhase.EXIT:
-            definition = transition_spec.exit
-        # Page transitions don't have a barrier
-        barrier = None
+    # Resolve enter/exit definition
+    if phase is TransitionPhase.ENTER:
+        definition = transition_spec.enter
+    elif phase is TransitionPhase.EXIT:
+        definition = transition_spec.exit_
+    else:
+        definition = None
 
-    elif isinstance(transition_spec, MaterialDialogTransitionSpec):
+    # Resolve barrier opacity from barrier_mode
+    barrier: float | None
+    if transition_spec.barrier_mode == "fade":
         if phase is TransitionPhase.ENTER:
-            definition = transition_spec.enter
-            barrier = p  # Default linear fade for barrier
-        elif phase is TransitionPhase.EXIT:
-            definition = transition_spec.exit
-            barrier = 1.0 - p
-        else:
-            barrier = 1.0
-
-    elif isinstance(transition_spec, MaterialSnackbarTransitionSpec):
-        if phase is TransitionPhase.ENTER:
-            definition = transition_spec.enter
-        elif phase is TransitionPhase.EXIT:
-            definition = transition_spec.exit
-        # Snakebars don't have a barrier (or pass-through)
-        barrier = None
-
-    elif isinstance(transition_spec, (MaterialSideSheetTransitionSpec, MaterialBottomSheetTransitionSpec)):
-        if phase is TransitionPhase.ENTER:
-            definition = transition_spec.enter
             barrier = p
         elif phase is TransitionPhase.EXIT:
-            definition = transition_spec.exit
             barrier = 1.0 - p
         else:
             barrier = 1.0
+    else:  # "none"
+        barrier = None
 
     if definition is not None:
         visuals = definition.pattern.resolve(p)

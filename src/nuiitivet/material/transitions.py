@@ -6,7 +6,7 @@ Users should prefer this module over constructing raw definitions.
 Example:
     MaterialTransitions.dialog(
         enter=FadeIn() | ScaleIn(),
-        exit=FadeOut(duration=0.2),
+        exit_=FadeOut(duration=0.2),
     )
 """
 

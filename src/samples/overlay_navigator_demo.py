@@ -64,7 +64,7 @@ class HomePage(ComposableWidget):
             # Demonstrate custom transition: ScaleIn + FadeIn -> FadeOut + SlideDown
             transition = MaterialTransitions.dialog(
                 enter=FadeIn() | ScaleIn(initial_scale=0.5),
-                exit=SlideOutVertically(target_offset_y=50, duration=0.4),
+                exit_=SlideOutVertically(target_offset_y=50, duration=0.4),
             )
             result = await Overlay.root().dialog(HelloDialogIntent(), transition=transition)
             if result.value == "OK":

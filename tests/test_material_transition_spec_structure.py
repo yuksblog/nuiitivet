@@ -1,8 +1,7 @@
 """Test structure and defaults of Material transition specs."""
 
 from nuiitivet.material.transition_spec import (
-    MaterialDialogTransitionSpec,
-    MaterialPageTransitionSpec,
+    MaterialTransitionSpec,
     MaterialTransitions,
 )
 from nuiitivet.animation.transition_definition import TransitionDefinition
@@ -18,9 +17,10 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 def test_dialog_spec_defaults():
     spec = MaterialTransitions.dialog()
 
-    assert isinstance(spec, MaterialDialogTransitionSpec)
+    assert isinstance(spec, MaterialTransitionSpec)
+    assert spec.barrier_mode == "fade"
     assert isinstance(spec.enter, TransitionDefinition)
-    assert isinstance(spec.exit, TransitionDefinition)
+    assert isinstance(spec.exit_, TransitionDefinition)
 
     # Check default Dialog Enter: Fade | Scale
     assert isinstance(spec.enter.pattern, CompositePattern)
@@ -42,16 +42,17 @@ def test_dialog_spec_custom():
         pattern=ScalePattern(start_scale_x=0.5),
     )
 
-    spec = MaterialTransitions.dialog(enter=custom_enter, exit=custom_exit)
+    spec = MaterialTransitions.dialog(enter=custom_enter, exit_=custom_exit)
 
     assert spec.enter is custom_enter
-    assert spec.exit is custom_exit
+    assert spec.exit_ is custom_exit
 
 
 def test_page_spec_defaults():
     spec = MaterialTransitions.page()
 
-    assert isinstance(spec, MaterialPageTransitionSpec)
+    assert isinstance(spec, MaterialTransitionSpec)
+    assert spec.barrier_mode == "none"
 
     # Page Default Enter is just Fade
     # Wait, check implementation: Is it FadePattern or Composite?
@@ -71,5 +72,5 @@ def test_page_spec_custom():
 
     assert spec.enter is custom
     # Exit should be default
-    assert isinstance(spec.exit.pattern, FadePattern)
-    assert spec.exit.pattern.start_alpha == 1.0
+    assert isinstance(spec.exit_.pattern, FadePattern)
+    assert spec.exit_.pattern.start_alpha == 1.0

@@ -21,10 +21,7 @@ from .overlay_visual_state import MaterialOverlayLayerComposer
 from .sheet import BottomSheet, SideSheet
 from .transition_spec import (
     MaterialTransitions,
-    MaterialBottomSheetTransitionSpec,
-    MaterialDialogTransitionSpec,
-    MaterialSideSheetTransitionSpec,
-    MaterialSnackbarTransitionSpec,
+    MaterialTransitionSpec,
 )
 
 from .intents import AlertDialogIntent, LoadingIntent
@@ -112,7 +109,7 @@ class MaterialOverlay(Overlay):
         dismiss_on_outside_tap: bool | None = None,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
-        transition: MaterialDialogTransitionSpec | None = None,
+        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         if dismiss_on_outside_tap is None:
             dismiss_on_outside_tap = True
@@ -135,7 +132,7 @@ class MaterialOverlay(Overlay):
         dialog: Widget | Route | Any,
         *,
         dismiss_on_outside_tap: bool,
-        transition: MaterialDialogTransitionSpec | None = None,
+        transition: MaterialTransitionSpec | None = None,
     ) -> Route:
         """Normalize dialog input to a Route.
 
@@ -165,7 +162,7 @@ class MaterialOverlay(Overlay):
         message: str,
         *,
         duration: float = 3.0,
-        transition: MaterialSnackbarTransitionSpec | None = None,
+        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[None]:
         return self.show_modeless(
             Snackbar(str(message)),
@@ -219,7 +216,7 @@ class MaterialOverlay(Overlay):
         sheet: SideSheet,
         *,
         dismiss_on_outside_tap: bool = True,
-        transition: MaterialSideSheetTransitionSpec | None = None,
+        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Display a modal side sheet.
 
@@ -256,7 +253,7 @@ class MaterialOverlay(Overlay):
         sheet: BottomSheet,
         *,
         dismiss_on_outside_tap: bool = True,
-        transition: MaterialBottomSheetTransitionSpec | None = None,
+        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Display a modal bottom sheet sliding up from the bottom edge.
 
