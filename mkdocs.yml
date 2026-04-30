@@ -3,30 +3,109 @@
 
 site_name: Nuiitivet Documentation
 site_url: https://yuksblog.github.io/nuiitivet/
+site_description: A declarative, reactive Python UI framework.
+site_author: Yukinobu Imai
 repo_url: https://github.com/yuksblog/nuiitivet
+repo_name: yuksblog/nuiitivet
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2026 Yukinobu Imai
 
 theme:
   name: material
+  language: en
   features:
+    # Navigation
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.indexes
     - navigation.top
+    - navigation.tracking
+    - navigation.path
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.footer
+    # Table of contents
+    - toc.follow
+    # Search
     - search.suggest
     - search.highlight
+    - search.share
+    # Content
     - content.code.copy
-  palette: 
-    - scheme: default
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Roboto
+    code: Roboto Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: teal
       accent: purple
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: teal
       accent: lime
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yuksblog/nuiitivet
+
+extra_css:
+  - assets/extra.css
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  # PyMdown Extensions
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.keys
+  - pymdownx.smartsymbols
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - search
@@ -36,11 +115,24 @@ plugins:
           paths: [src]
           options:
             docstring_style: google
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_source: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            docstring_section_style: table
+            heading_level: 2
+            filters: ["!^_"]
 
 nav:
   - Home: index.md
   - Guide:
-      - Introduction: guide/index.md
+      - guide/index.md
       - Layout:
           - Overview: guide/layout.md
           - Basics: guide/layout_basics.md
@@ -50,7 +142,8 @@ nav:
           - Grid: guide/layout_grid.md
           - Overflow: guide/layout_overflow.md
           - Extras: guide/layout_extras.md
-      - Dialogs: guide/dialogs.md
+      - Dialogs:
+          - guide/dialogs.md
       - Navigation:
           - Overview: guide/navigation.md
           - PageRoute & Animations: guide/navigation_route.md
@@ -75,9 +168,12 @@ nav:
           - Practical Controls: guide/observable/practical-controls.md
           - Thread Safety: guide/observable/thread-safety.md
           - Patterns and Recipes: guide/observable/patterns-and-recipes.md
-      - Async & Threading: guide/threading.md
-      - Interaction: guide/interaction_region.md
-      - Packaging: guide/packaging.md
+      - Async & Threading:
+          - guide/threading.md
+      - Interaction:
+          - guide/interaction_region.md
+      - Packaging:
+          - guide/packaging.md
   - API Reference:
       - Core: api/nuiitivet.md
       - Material Components: api/material.md
