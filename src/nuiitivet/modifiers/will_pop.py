@@ -10,7 +10,6 @@ from ..rendering.sizing import SizingLike
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -34,6 +33,7 @@ class WillPopScope(Widget):
     ) -> None:
         super().__init__(width=width, height=height, padding=padding, max_children=1, overflow_policy="replace_last")
         self._on_will_pop = on_will_pop
+        self._handling: bool = False
         self.add_child(child)
 
     def _child(self) -> Optional[Widget]:
@@ -59,11 +59,21 @@ class WillPopScope(Widget):
                     exception_once(_logger, "will_pop_child_handle_back_exc", "Child handle_back_event raised")
                     return True
 
+        if self._handling:
+            return False
+
+        self._handling = True
         try:
             return bool(self._on_will_pop())
         except Exception:
             exception_once(_logger, "will_pop_callback_exc", "on_will_pop callback raised")
             return True
+        finally:
+            self._handling = False
+
+    def on_unmount(self) -> None:
+        self._handling = False
+        super().on_unmount()
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         child = self._child()
