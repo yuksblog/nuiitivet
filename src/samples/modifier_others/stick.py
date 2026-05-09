@@ -2,9 +2,10 @@ import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material import LargeBadge, SmallBadge, Text
 from nuiitivet.modifiers import background, corner_radius, stick
+from nuiitivet.widgeting.widget import Widget
 
 
-def _icon_box() -> nv.Container:
+def _icon_box() -> Widget:
     return nv.Container(
         width=56,
         height=56,
