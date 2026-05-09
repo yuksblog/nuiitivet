@@ -268,14 +268,11 @@ pip install nuiitivet
 To create an application with Nuiitivet, follow these two steps:
 
 - Inherit from `ComposableWidget` to create a UI component
-- Pass the UI component to `MaterialApp` and start the application
+- Pass the UI component to `App` and start the application
 
 ```python
-from nuiitivet.material.app import MaterialApp
-from nuiitivet.material import Text, Button
-from nuiitivet.layout.column import Column
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget
+from nuiitivet import Column, ComposableWidget, Observable
+from nuiitivet.material import App, Text, Button
 
 class CounterApp(ComposableWidget):
     def __init__(self):
@@ -308,8 +305,8 @@ def main():
     # Create counter app
     counter_app = CounterApp()
     
-    # Start with MaterialApp
-    app = MaterialApp(content=counter_app)
+    # Start with App
+    app = App(content=counter_app)
     app.run()
 
 if __name__ == "__main__":
