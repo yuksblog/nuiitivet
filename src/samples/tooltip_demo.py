@@ -1,4 +1,16 @@
-"""Tooltip demo for Material Tooltip/RichTooltip and tooltip() modifier."""
+"""Tooltip demo for Material Tooltip/RichTooltip and tooltip() modifier.
+
+Issue #82 verification guide
+------------------------------
+4) Coexistence with existing handler
+   - "Click me + tooltip" ボタンをクリックすると "click count: N" が更新されること
+   - ツールチップも通常通り表示されること (on_press が上書きされていない)
+
+5) Listener cleanup on unmount/remount
+   - "Toggle tooltip" ボタンで tooltip() の付け外しを繰り返す
+   - ホバーで開く回数が 1 回だけ (N 回繰り返しても重複しない)
+   - アンマウント後はツールチップが表示されないこと
+"""
 
 from __future__ import annotations
 
@@ -19,9 +31,14 @@ class TooltipDemo(ComposableWidget):
     """Demo screen for tooltip widgets and tooltip modifier behavior."""
 
     last_action: Observable[str] = Observable("none")
+    # Issue #82 – section 4
+    click_count: Observable[int] = Observable(0)
 
     def _set_action(self, action_name: str) -> None:
         self.last_action.value = action_name
+
+    def _on_click_coexist(self) -> None:
+        self.click_count.value += 1
 
     def build(self) -> Widget:
         plain_targets = Row(
@@ -65,6 +82,13 @@ class TooltipDemo(ComposableWidget):
             )
         )
 
+        # --- Issue #82 – Section 4: coexistence with on_click ---
+        coexist_btn = Button(
+            "Click me + tooltip",
+            style=ButtonStyle.filled(),
+            on_click=self._on_click_coexist,
+        ).modifier(tooltip(Tooltip("Tooltip coexists with on_click"), delay=0.0))
+
         return Box(
             child=Column(
                 children=[
@@ -77,6 +101,11 @@ class TooltipDemo(ComposableWidget):
                     Text("3) Custom timing and placement"),
                     custom_target,
                     Text("Desktop: hover/focus to open. Touch: long-press to open."),
+                    Text("─" * 40),
+                    Text("4) [Issue #82] Coexistence with existing on_click handler"),
+                    Text("   → Click the button and confirm the count increments"),
+                    coexist_btn,
+                    Text(self.click_count.map(lambda n: f"   click count: {n}")),
                 ],
                 gap=12,
                 cross_alignment="start",
@@ -97,5 +126,5 @@ class TooltipStyleCustom:
 
 
 if __name__ == "__main__":
-    app = App(content=TooltipDemo(), width=760, height=520)
+    app = App(content=TooltipDemo(), width=760, height=700)
     app.run()
