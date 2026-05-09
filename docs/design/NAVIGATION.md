@@ -281,8 +281,8 @@ async def _on_will_pop(self) -> bool:
                 title=Text("Confirmation"),
                 content=Text("Go back without saving?"),
                 actions=[
-                    Button("Cancel", on_pressed=lambda: False, style=ButtonStyle.text()),
-                    Button("Back", on_pressed=lambda: True, style=ButtonStyle.text()),
+                    Button("Cancel", on_click=lambda: False, style=ButtonStyle.text()),
+                    Button("Back", on_click=lambda: True, style=ButtonStyle.text()),
                 ],
             )
         )

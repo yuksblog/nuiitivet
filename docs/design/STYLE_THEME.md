@@ -361,35 +361,29 @@ src/nuiitivet/
 - Defines component tokens (container, label, etc.)
 - Our `Style` classes map directly to M3 component tokens
 
-## Example: Complete Button Styles in Theme
+## Example: Button Style Presets (Factory-Driven)
+
+Button styles are not stored as separate fields in `Theme`. Instead, `ButtonStyle` provides factory methods that generate M3-compliant presets, and the optional size variant is passed as an argument:
 
 ```python
-@dataclass(frozen=True)
-class Theme:
-    # ...existing fields...
-    
-    # Button style variants (M3)
-    filled_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
-        background=ColorRole.PRIMARY,
-        foreground=ColorRole.ON_PRIMARY,
-    ))
-    
-    text_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
-        background=None,
-        foreground=ColorRole.PRIMARY,
-        padding=10,
-        min_size=(64, 40),
-    ))
-    
-    outlined_button_style: ButtonStyle = field(default_factory=lambda: ButtonStyle(
-        background=None,
-        foreground=ColorRole.PRIMARY,
-        border_color=ColorRole.OUTLINE,
-        border_width=1.5,
-    ))
-    
-    # Helper method
-    def button_style_for(self, variant: str) -> ButtonStyle:
-        """Get button style for variant name."""
-        return getattr(self, f"{variant}_button_style", self.filled_button_style)
+# Filled button (M3 default)
+style = ButtonStyle.filled()
+
+# Text button
+style = ButtonStyle.text()
+
+# Outlined button
+style = ButtonStyle.outlined()
+
+# Size variant (e.g., small)
+style = ButtonStyle.filled("s")
 ```
+
+Usage at the call site:
+
+```python
+Button("OK", on_click=handler, style=ButtonStyle.filled())
+Button("Cancel", on_click=handler, style=ButtonStyle.text())
+```
+
+> **Historical note**: An earlier proposal stored per-variant fields (`filled_button_style`, `text_button_style`, `outlined_button_style`) directly on `Theme` and provided a `button_style_for(variant)` helper. This approach was replaced by the factory-driven design above to keep `Theme` focused on color/typography tokens.

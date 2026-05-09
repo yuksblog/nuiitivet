@@ -24,26 +24,22 @@ A simple structure holding `start` and `end` indices. It provides helper methods
 
 ### TextField Architecture (M3)
 
-The `TextField` widget follows the Material Design 3 specification and is structured to support multiple visual variants while sharing core logic.
+The `TextField` widget follows the Material Design 3 specification and uses a single class driven by a `TextFieldStyle` preset to support multiple visual variants.
 
-- **Base Class (`TextField`)**:
+- **Single Class (`TextField`)**:
   - Handles all interaction logic (focus, keyboard, mouse, IME).
   - Manages the internal state (`TextEditingValue`).
-  - Implements the core rendering pipeline (Template Method pattern).
-  - Defines abstract/hook methods for variant-specific rendering (e.g., `_draw_container`).
-
-- **Concrete Classes**:
-  - **`TextField`**: Implements the M3 "Filled" style with a background container and bottom indicator.
-  - **`TextField`**: Implements the M3 "Outlined" style with a border and transparent background.
+  - Implements the full rendering pipeline.
+  - Visual variant (filled / outlined) is determined by `TextFieldStyle.mode`.
 
 - **Styling (`TextFieldStyle`)**:
   - An immutable dataclass (`frozen=True`) defining all visual properties (colors, dimensions, fonts).
+  - `mode` field (`"filled"` | `"outlined"`) controls the visual variant.
   - Provides factory methods `TextFieldStyle.filled()` and `TextFieldStyle.outlined()` for default M3 configurations.
-  - Subclasses initialize their default style using these factories if no custom style is provided.
 
 - **Rendering Pipeline**:
-  The `paint` method in the base class orchestrates the drawing order:
-  1. `_draw_container` (Subclass responsibility)
+  The `paint` method orchestrates the drawing order based on `style.mode`:
+  1. `_draw_container` (filled background or outlined border)
   2. `_draw_label` (Floating label animation)
   3. `_draw_text_and_cursor` (Content)
   4. `_draw_icons` (Leading/Trailing icons)
