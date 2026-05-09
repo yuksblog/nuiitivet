@@ -2,8 +2,6 @@ from __future__ import annotations
 import nuiitivet as nv
 import nuiitivet.material as md
 
-import argparse
-
 
 def build_login_form():
     return nv.Column(
@@ -12,15 +10,13 @@ def build_login_form():
                 value="",
                 label="Username",
                 width=300,
-                style=md.TextFieldStyle.outlined(),
             ),
             md.TextField(
                 value="",
                 label="Password",
                 width=300,
-                style=md.TextFieldStyle.outlined(),
             ),
-            md.FilledButton(
+            md.Button(
                 "Login",
                 on_click=lambda: print("Login clicked"),
                 width=300,
@@ -31,20 +27,12 @@ def build_login_form():
     )
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="README login form sample")
-    parser.add_argument("--png", type=str, default="", help="Render to PNG instead of opening a window")
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = _parse_args()
-
+def main(png: str = "") -> None:
     app = md.App(content=build_login_form(), title_bar=nv.DefaultTitleBar(title="Login Form"))
 
-    if args.png:
-        app.render_to_png(args.png)
-        print(f"Rendered {args.png}")
+    if png:
+        app.render_to_png(png)
+        print(f"Rendered {png}")
         return
 
     app.run()

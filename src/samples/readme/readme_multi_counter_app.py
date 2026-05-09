@@ -2,8 +2,6 @@ from __future__ import annotations
 import nuiitivet as nv
 import nuiitivet.material as md
 
-import argparse
-
 
 class MultiCounterApp(nv.ComposableWidget):
     def __init__(self) -> None:
@@ -24,14 +22,14 @@ class MultiCounterApp(nv.ComposableWidget):
                 nv.Row(
                     [
                         md.Text(self.count_a),
-                        md.FilledButton("+", on_click=self.increment_a),
+                        md.Button("+", on_click=self.increment_a),
                     ],
                     gap=12,
                 ),
                 nv.Row(
                     [
                         md.Text(self.count_b),
-                        md.FilledButton("+", on_click=self.increment_b),
+                        md.Button("+", on_click=self.increment_b),
                     ],
                     gap=12,
                 ),
@@ -42,20 +40,20 @@ class MultiCounterApp(nv.ComposableWidget):
         )
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="README MultiCounterApp sample")
-    parser.add_argument("--png", type=str, default="", help="Render to PNG instead of opening a window")
-    return parser.parse_args()
+def main(png: str = "") -> None:
+    app_widget = MultiCounterApp()
+    if png:
+        app_widget.count_a.value = 3
+        app_widget.count_b.value = 5
+    app = md.App(
+        content=app_widget,
+        title_bar=nv.DefaultTitleBar(title="Multi Counter Demo"),
+        width=250,
+    )
 
-
-def main() -> None:
-    args = _parse_args()
-
-    app = md.App(content=MultiCounterApp())
-
-    if args.png:
-        app.render_to_png(args.png)
-        print(f"Rendered {args.png}")
+    if png:
+        app.render_to_png(png)
+        print(f"Rendered {png}")
         return
 
     app.run()

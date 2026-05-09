@@ -84,6 +84,10 @@ SAMPLES = [
     ("src/samples/navigation/route.py", "navigation_route.png"),
     ("src/samples/navigation/intent.py", "navigation_intent.png"),
     ("src/samples/navigation/sub.py", "navigation_sub.png"),
+    # README samples
+    ("src/samples/readme/readme_login_form.py", "readme_login_form.png"),
+    ("src/samples/readme/readme_counter_app.py", "readme_counter.png"),
+    ("src/samples/readme/readme_multi_counter_app.py", "readme_multi_counter.png"),
 ]
 
 

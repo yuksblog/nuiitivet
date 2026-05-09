@@ -26,16 +26,14 @@ login_form = Column(
             value="",
             label="Username",
             width=300,
-            style=TextFieldStyle.outlined(),
         ),
         TextField(
             value="",
             label="Password",
             width=300,
-            style=TextFieldStyle.outlined(),
         ),
         # Login Button
-        FilledButton(
+        Button(
             "Login",
             on_click=lambda: print("Login clicked"),
             width=300,
@@ -135,7 +133,7 @@ class CounterApp(ComposableWidget):
                 # Count display
                 Text(self.count),
                 # Increment button
-                FilledButton(
+                Button(
                     "Increment",
                     on_click=self.increment,
                 )
@@ -176,14 +174,14 @@ You can read from the code that `total` is defined as the sum of `count_a` and `
                 Row(
                     [
                         Text(self.count_a.value),
-                        FilledButton("+", on_click=self.increment_a),
+                        Button("+", on_click=self.increment_a),
                     ],
                 ),
                 # Counter B
                 Row(
                     [
                         Text(self.count_b.value),
-                        FilledButton("+", on_click=self.increment_b),
+                        Button("+", on_click=self.increment_b),
                     ],
                 ),
                 # Just specify total!
@@ -222,7 +220,7 @@ class CounterApp(ComposableWidget):
         return Column(
             [
                 Text(f"count: {self.count.value}"),
-                FilledButton(
+                Button(
                     "Increment",
                     on_click=self.handle_increment,  # Execute on click
                 )
@@ -274,7 +272,7 @@ To create an application with Nuiitivet, follow these two steps:
 
 ```python
 from nuiitivet.material.app import MaterialApp
-from nuiitivet.material import Text, FilledButton
+from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -297,7 +295,7 @@ class CounterApp(ComposableWidget):
         return Column(
             [
                 Text(self.count),
-                FilledButton(
+                Button(
                     "Increment",
                     on_click=self.handle_increment,
                 )
