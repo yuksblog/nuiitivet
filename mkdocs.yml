@@ -159,6 +159,7 @@ nav:
           - Decoration: guide/modifier_decoration.md
           - Interaction: guide/modifier_interaction.md
           - Transform: guide/modifier_transform.md
+          - Popup: guide/modifier_popup.md
           - Others: guide/modifier_others.md
       - State Management:
           - Overview: guide/observable.md

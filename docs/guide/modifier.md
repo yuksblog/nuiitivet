@@ -29,4 +29,5 @@ Modifiers are categorized into the following types:
 - **[Decoration](modifier_decoration.md)**: Add visual decorations like background, border, corner radius, clip, and shadow.
 - **[Interaction](modifier_interaction.md)**: Add interaction capabilities like clickable, hoverable, and focusable.
 - **[Transform](modifier_transform.md)**: Apply paint-only transformations like opacity, rotate, scale, and translate.
-- **[Others](modifier_others.md)**: Other functionalities like scrollable and will_pop.
+- **[Popup](modifier_popup.md)**: Attach anchored transient overlays like menus, dropdowns, and tooltips.
+- **[Others](modifier_others.md)**: Other functionalities like scrollable, will_pop, and stick.

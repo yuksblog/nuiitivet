@@ -141,3 +141,39 @@ def main() -> None:
 ```
 
 ![Will Pop](../assets/modifier_others_will_pop.png)
+
+## Stick
+
+The `stick` modifier overlays any widget on top of a target widget at a specified anchor point. Unlike popup modifiers, the overlaid widget is always visible — it is not transient. Typical uses include notification badges, status dots, and custom decorations.
+
+The following example uses `SmallBadge` and `LargeBadge` as the overlaid widget, but any widget can be passed.
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+from nuiitivet.material import LargeBadge, SmallBadge
+from nuiitivet.modifiers import background, corner_radius, stick
+
+def _icon_box() -> nv.Container:
+    return nv.Container(
+        width=56,
+        height=56,
+        child=md.Text("Icon"),
+        alignment="center",
+    ).modifier(background("#E0E0E0") | corner_radius(8))
+
+# Small badge at the top-right corner (default)
+icon_with_dot = _icon_box().modifier(stick(SmallBadge()))
+
+# Large badge with a count
+icon_with_count = _icon_box().modifier(stick(LargeBadge("3")))
+
+# Custom placement: bottom-right corner
+icon_with_badge_br = _icon_box().modifier(
+    stick(LargeBadge("99+"), alignment="bottom-right", anchor="center")
+)
+```
+
+![Stick Modifier](../assets/modifier_others_stick.png)
+
+The `alignment` parameter sets the reference point on the **target widget**, and `anchor` sets the reference point on the **overlaid widget** that aligns to it. An optional `offset` tuple provides additional pixel adjustment.
