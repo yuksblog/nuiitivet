@@ -74,6 +74,11 @@ SAMPLES = [
     ("src/samples/modifier_transform/translate.py", "modifier_transform_translate.png"),
     ("src/samples/modifier_others/scrollable.py", "modifier_others_scrollable.png"),
     ("src/samples/modifier_others/will_pop.py", "modifier_others_will_pop.png"),
+    ("src/samples/modifier_others/stick.py", "modifier_others_stick.png"),
+    # Popup modifiers
+    ("src/samples/modifier_popup/modeless_basic.py", "modifier_popup_modeless.png"),
+    ("src/samples/modifier_popup/light_dismiss_menu.py", "modifier_popup_light_dismiss.png"),
+    ("src/samples/modifier_popup/tooltip_basic.py", "modifier_popup_tooltip.png"),
     # Navigation
     ("src/samples/navigation/basic.py", "navigation_basic.png"),
     ("src/samples/navigation/route.py", "navigation_route.png"),
