@@ -10,7 +10,6 @@ from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.callbacks import invoke_event_handler
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -116,6 +115,45 @@ class PointerInputNode(InteractionNode):
             self._press_callbacks = [on_press]
         if on_release is not None:
             self._release_callbacks = [on_release]
+
+    def add_hover_listener(self, callback: Callable[[bool], None]) -> None:
+        """Add a hover listener without replacing existing ones."""
+        self._hover_enabled = True
+        if callback not in self._hover_callbacks:
+            self._hover_callbacks.append(callback)
+
+    def remove_hover_listener(self, callback: Callable[[bool], None]) -> None:
+        """Remove a previously added hover listener. No-op if not found."""
+        try:
+            self._hover_callbacks.remove(callback)
+        except ValueError:
+            pass
+
+    def add_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Additively register a press listener without replacing existing ones."""
+        self._click_enabled = True
+        if callback not in self._press_callbacks:
+            self._press_callbacks.append(callback)
+
+    def remove_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Remove a previously added press listener. No-op if not found."""
+        try:
+            self._press_callbacks.remove(callback)
+        except ValueError:
+            pass
+
+    def add_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Additively register a release listener without replacing existing ones."""
+        self._click_enabled = True
+        if callback not in self._release_callbacks:
+            self._release_callbacks.append(callback)
+
+    def remove_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Remove a previously added release listener. No-op if not found."""
+        try:
+            self._release_callbacks.remove(callback)
+        except ValueError:
+            pass
 
     def _invoke_callback(self, cb: Callable[..., Any], *args: Any, error_key: str, error_msg: str) -> None:
         owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
@@ -622,6 +660,30 @@ class InteractionHostMixin:
         on_release: Optional[Callable[[PointerEvent], None]] = None,
     ) -> None:
         self._pointer_node.enable_click(on_click=on_click, on_press=on_press, on_release=on_release)
+
+    def add_hover_listener(self, callback: Callable[[bool], None]) -> None:
+        """Add a hover listener without replacing existing ones."""
+        self._pointer_node.add_hover_listener(callback)
+
+    def remove_hover_listener(self, callback: Callable[[bool], None]) -> None:
+        """Remove a previously added hover listener. No-op if not found."""
+        self._pointer_node.remove_hover_listener(callback)
+
+    def add_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Additively register a press listener without replacing existing ones."""
+        self._pointer_node.add_press_listener(callback)
+
+    def remove_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Remove a previously added press listener. No-op if not found."""
+        self._pointer_node.remove_press_listener(callback)
+
+    def add_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Additively register a release listener without replacing existing ones."""
+        self._pointer_node.add_release_listener(callback)
+
+    def remove_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+        """Remove a previously added release listener. No-op if not found."""
+        self._pointer_node.remove_release_listener(callback)
 
     def request_focus_from_pointer(self) -> None:
         """Called by PointerInputNode when a click occurs."""

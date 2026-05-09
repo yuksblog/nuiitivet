@@ -235,3 +235,59 @@ def test_tooltip_widgets_exported_from_material() -> None:
     assert hasattr(m, "RichTooltip")
     assert "Tooltip" in m.__all__
     assert "RichTooltip" in m.__all__
+
+
+def test_tooltip_does_not_suppress_existing_press_handler() -> None:
+    """Applying tooltip() must not override existing on_press/on_release handlers."""
+    press_calls: list[PointerEvent] = []
+    release_calls: list[PointerEvent] = []
+
+    anchor = Clickable(
+        child=_FixedWidget(10, 10),
+        on_press=lambda e: press_calls.append(e),
+        on_release=lambda e: release_calls.append(e),
+    )
+    tooltip(_FixedWidget(20, 20), delay=0.0, dismiss_delay=0.0).apply(anchor)
+
+    press = PointerEvent(id=1, type=PointerEventType.PRESS, x=5.0, y=5.0, pointer_type=PointerType.MOUSE)
+    release = PointerEvent(id=1, type=PointerEventType.RELEASE, x=5.0, y=5.0, pointer_type=PointerType.MOUSE)
+
+    anchor.on_pointer_event(press)
+    anchor.on_pointer_event(release)
+
+    assert len(press_calls) == 1
+    assert len(release_calls) == 1
+
+
+def test_tooltip_hover_listener_not_accumulated_across_mount_unmount() -> None:
+    """Repeated mount/unmount must not cause duplicate hover callback executions."""
+    anchor = Clickable(child=_FixedWidget(10, 10))
+    content = _FixedWidget(20, 20)
+
+    result1 = tooltip(content, delay=0.0, dismiss_delay=0.0).apply(anchor)
+    assert isinstance(result1, TooltipBox)
+    result1.on_unmount()
+
+    result2 = tooltip(content, delay=0.0, dismiss_delay=0.0).apply(anchor)
+    assert isinstance(result2, TooltipBox)
+
+    # Trigger hover; only result2's callback should fire (result1 was unsubscribed)
+    enter = PointerEvent(id=1, type=PointerEventType.ENTER, x=0.0, y=0.0, pointer_type=PointerType.MOUSE)
+    anchor.on_pointer_event(enter)
+
+    assert result1._is_open.value is False
+    assert result2._is_open.value is True
+
+
+def test_tooltip_uninstall_stops_hover_after_unmount() -> None:
+    """After on_unmount, hover events must not trigger tooltip open."""
+    anchor = Clickable(child=_FixedWidget(10, 10))
+    result = tooltip(_FixedWidget(20, 20), delay=0.0, dismiss_delay=0.0).apply(anchor)
+    assert isinstance(result, TooltipBox)
+
+    result.on_unmount()
+
+    enter = PointerEvent(id=1, type=PointerEventType.ENTER, x=0.0, y=0.0, pointer_type=PointerType.MOUSE)
+    anchor.on_pointer_event(enter)
+
+    assert result._is_open.value is False

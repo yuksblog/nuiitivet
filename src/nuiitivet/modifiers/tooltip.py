@@ -81,6 +81,7 @@ class TooltipBox(PopupBox):
         self._cancel_open()
         self._cancel_close()
         self._restore_focus_callback()
+        self._uninstall_interactions()
         super().on_unmount()
 
     def _install_interactions(self) -> None:
@@ -89,8 +90,9 @@ class TooltipBox(PopupBox):
             # This guard prevents wiring callbacks to a detached wrapper.
             return
         region = self._child
-        region.enable_hover(on_change=self._on_hover_change)
-        region.enable_click(on_press=self._on_press, on_release=self._on_release)
+        region.add_hover_listener(self._on_hover_change)
+        region.add_press_listener(self._on_press)
+        region.add_release_listener(self._on_release)
 
         focus_node = region.get_node(FocusNode)
         if focus_node is None:
@@ -113,6 +115,14 @@ class TooltipBox(PopupBox):
         self._prev_focus_callback = prev_callback
         self._focus_callback_wrapper = _chained
         focus_node._on_focus_change = _chained
+
+    def _uninstall_interactions(self) -> None:
+        if not isinstance(self._child, InteractionHostMixin):
+            return
+        region = self._child
+        region.remove_hover_listener(self._on_hover_change)
+        region.remove_press_listener(self._on_press)
+        region.remove_release_listener(self._on_release)
 
     def _restore_focus_callback(self) -> None:
         focus_node = self._focus_node
