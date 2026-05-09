@@ -16,12 +16,8 @@ layout: default
 ## Quick Example
 
 ```python
-from nuiitivet.material.app import MaterialApp
-from nuiitivet.material import Text, Button
-from nuiitivet.layout.column import Column
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.material import ButtonStyle
+from nuiitivet import Column, ComposableWidget, Observable
+from nuiitivet.material import App, Text, Button, ButtonStyle
 
 
 class CounterApp(ComposableWidget):
@@ -43,5 +39,5 @@ class CounterApp(ComposableWidget):
     )
 
 
-MaterialApp(home=CounterApp()).run()
+App(content=CounterApp()).run()
 ```
