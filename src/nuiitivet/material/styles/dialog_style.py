@@ -23,7 +23,7 @@ class DialogStyle:
 
     # Container properties
     background: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGH
-    elevation: float = 6.0
+    elevation: int = 3  # MD3 elevation level (0–5); level 3 = 6 dp
 
     # Shape
     corner_radius: float = 28.0

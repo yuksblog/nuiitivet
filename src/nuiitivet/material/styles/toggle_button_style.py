@@ -42,7 +42,7 @@ class ToggleButtonStyle:
     label_font_size: int = 14
     icon_size: int = 20
     border_width: float = 0.0
-    elevation: float = 0.0
+    elevation: int = 0
 
     # Unselected-state colours
     unselected_background: Optional[ColorSpec] = None
@@ -121,7 +121,7 @@ class ToggleButtonStyle:
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,
-            elevation=0.0,
+            elevation=0,
             unselected_background=ColorRole.SURFACE_CONTAINER_HIGHEST,
             unselected_foreground=ColorRole.ON_SURFACE_VARIANT,
             unselected_border_color=None,
@@ -148,7 +148,7 @@ class ToggleButtonStyle:
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=t["outline_width"],
-            elevation=0.0,
+            elevation=0,
             unselected_background=None,
             unselected_foreground=ColorRole.ON_SURFACE_VARIANT,
             unselected_border_color=ColorRole.OUTLINE_VARIANT,
@@ -175,7 +175,7 @@ class ToggleButtonStyle:
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,
-            elevation=1.0,
+            elevation=1,
             unselected_background=ColorRole.SURFACE_CONTAINER_LOW,
             unselected_foreground=ColorRole.PRIMARY,
             unselected_border_color=None,
@@ -202,7 +202,7 @@ class ToggleButtonStyle:
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,
-            elevation=0.0,
+            elevation=0,
             unselected_background=ColorRole.SECONDARY_CONTAINER,
             unselected_foreground=ColorRole.ON_SECONDARY_CONTAINER,
             unselected_border_color=None,

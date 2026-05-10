@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from nuiitivet.material.styles.menu_style import MenuStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.rendering.elevation import Elevation
+from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
 
@@ -25,8 +25,7 @@ def test_menu_style_defaults() -> None:
     assert style.corner_radius == 16
     assert style.item_horizontal_inset == 4
     assert style.state_layer_corner_radius == 8
-    assert style.elevation == 3.0
-    assert style.elevation_color == ColorRole.SHADOW
+    assert style.elevation == 2
     assert style.min_width == 112
     assert style.max_width == 280
     assert style.item_height == 44
@@ -224,13 +223,13 @@ def test_menu_item_uses_state_layer_corner_radius() -> None:
 
 
 def test_menu_uses_style_elevation() -> None:
-    style = MenuStyle().copy_with(elevation=6.0, elevation_color=ColorRole.SCRIM)
+    style = MenuStyle().copy_with(elevation=3)
     menu = Menu(items=[MenuItem("One")], style=style)
-    elev = Elevation.from_level(6.0)
+    shadow = md3_elevation_to_shadow(3)
 
-    assert menu.shadow_blur == elev.blur
-    assert menu.shadow_offset == elev.offset
-    assert menu.shadow_color == (ColorRole.SCRIM, elev.alpha)
+    assert menu.shadow_blur == shadow.sigma
+    assert menu.shadow_offset == shadow.offset
+    assert menu.shadow_color == shadow.color
 
 
 def test_menu_preferred_size_passes_effective_max_width_to_measurement() -> None:

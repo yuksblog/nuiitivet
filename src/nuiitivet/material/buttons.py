@@ -27,7 +27,7 @@ from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
-from nuiitivet.rendering.elevation import resolve_shadow_params
+from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
@@ -100,20 +100,11 @@ def _resolve_color_rgba(value: ColorSpec) -> Tuple[int, int, int, int]:
     return resolve_color_to_rgba(value, theme=manager.current)
 
 
-def _shadow_from_elevation(elevation_val: Optional[float]) -> tuple[ColorSpec, float, tuple[float, float]]:
-    shadow_color = None
-    shadow_blur = 0.0
-    shadow_offset: tuple[float, float] = (0.0, 0.0)
-
-    if elevation_val is None or elevation_val <= 0.0:
-        return shadow_color, shadow_blur, shadow_offset
-
-    shadow = resolve_shadow_params(float(elevation_val))
-    shadow_color = (ColorRole.SHADOW, shadow.alpha)
-    shadow_offset = shadow.offset
-    shadow_blur = shadow.blur
-
-    return shadow_color, shadow_blur, shadow_offset
+def _shadow_from_elevation(level: int) -> tuple[ColorSpec, float, tuple[float, float]]:
+    shadow = md3_elevation_to_shadow(level)
+    if shadow.sigma <= 0.0:
+        return None, 0.0, (0.0, 0.0)
+    return shadow.color, shadow.sigma, shadow.offset
 
 
 _RGBA_CONVERTER = RgbaTupleConverter()
@@ -248,19 +239,8 @@ def resolve_button_style_params(
     shadow_blur = 0.0
     shadow_offset: tuple[float, float] = (0.0, 0.0)
 
-    elevation_val = None
-    if style and getattr(style, "elevation", None) is not None:
-        try:
-            elevation_val = float(style.elevation)
-        except Exception as e:
-            exception_once(
-                logger,
-                f"button_resolve_elevation_value_exc_{type(e).__name__}",
-                "Failed to resolve button elevation",
-            )
-
-    if elevation_val is not None and elevation_val > 0.0:
-        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(elevation_val)
+    if style and getattr(style, "elevation", 0) != 0:
+        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(style.elevation)
 
     # Overlay
     overlay_color = None
@@ -1130,15 +1110,15 @@ class Fab(MaterialButtonBase):
         self._apply_style_params(params)
         self._sync_state_tokens()
 
-    def _container_elevation(self) -> float:
+    def _container_elevation(self) -> int:
         style = self.style
         if self.state.dragging or self.state.pressed:
-            return float(getattr(style, "pressed_elevation", style.elevation) or 0.0)
+            return int(getattr(style, "pressed_elevation", style.elevation) or 0)
         if self.state.hovered:
-            return float(getattr(style, "hovered_elevation", style.elevation) or 0.0)
+            return int(getattr(style, "hovered_elevation", style.elevation) or 0)
         if self.state.focused:
-            return float(getattr(style, "focused_elevation", style.elevation) or 0.0)
-        return float(getattr(style, "elevation", 0.0) or 0.0)
+            return int(getattr(style, "focused_elevation", style.elevation) or 0)
+        return int(getattr(style, "elevation", 0) or 0)
 
     def _sync_state_tokens(self) -> None:
         style = self.style

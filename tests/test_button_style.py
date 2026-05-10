@@ -38,7 +38,7 @@ def test_button_style_copy_with():
     button = Button(label="Styled", style=custom_style)
     assert button._user_style.background == ColorRole.SECONDARY
     assert button._user_style.foreground == ColorRole.ON_SECONDARY
-    assert button._user_style.elevation == 0.0
+    assert button._user_style.elevation == 0
 
 
 def test_button_without_explicit_style_uses_filled_default():

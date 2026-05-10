@@ -12,12 +12,9 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional, Tuple, Union
 
-from nuiitivet.common.logging_once import exception_once
 from ..widgeting.widget import ComposableWidget, Widget
-from ..rendering.elevation import resolve_shadow_params
+from .theme.elevation import md3_elevation_to_shadow
 from ..rendering.sizing import SizingLike
-from nuiitivet.theme.types import ColorSpec
-from nuiitivet.material.theme.color_role import ColorRole
 from ..widgets.box import Box
 from nuiitivet.material.styles.card_style import CardStyle
 
@@ -79,7 +76,7 @@ class Card(ComposableWidget, Box):
         final_style = self.style
 
         # Resolve shadow
-        shadow_col, shadow_off, shadow_blur = self._resolve_shadow(final_style.elevation, final_style.shadow_color)
+        _shadow = md3_elevation_to_shadow(final_style.elevation)
 
         # Pass raw colors to Box; it will resolve them lazily via BackgroundRenderer
         super().__init__(
@@ -91,9 +88,9 @@ class Card(ComposableWidget, Box):
             border_width=final_style.border_width,
             border_color=final_style.border_color,
             corner_radius=final_style.border_radius,
-            shadow_blur=shadow_blur,
-            shadow_color=shadow_col,
-            shadow_offset=shadow_off,
+            shadow_blur=_shadow.sigma,
+            shadow_color=_shadow.color,
+            shadow_offset=_shadow.offset,
             alignment=alignment,
         )
 
@@ -102,34 +99,6 @@ class Card(ComposableWidget, Box):
 
         if isinstance(child, Widget):
             super().add_child(child)
-
-    @staticmethod
-    def _resolve_shadow(
-        elevation: float, shadow_color_spec: Optional[ColorSpec]
-    ) -> Tuple[Optional[ColorSpec], Tuple[float, float], float]:
-        shadow_color: Optional[ColorSpec] = None
-        shadow_offset: Tuple[float, float] = (0.0, 0.0)
-        shadow_blur: float = 0.0
-
-        if elevation <= 0:
-            return None, (0.0, 0.0), 0.0
-
-        try:
-            shadow = resolve_shadow_params(elevation)
-
-            # Use provided shadow color or default to SHADOW role with alpha from Elevation
-            if shadow_color_spec:
-                shadow_color = shadow_color_spec
-            else:
-                shadow_color = (ColorRole.SHADOW, shadow.alpha)
-
-            shadow_offset = shadow.offset
-            shadow_blur = shadow.blur
-        except Exception:
-            exception_once(_logger, "card_resolve_shadow_exc", "Failed to resolve elevation shadow")
-            shadow_color = None
-
-        return shadow_color, shadow_offset, shadow_blur
 
     # --- Build / scope integration (Same as MaterialContainer) ----------------
     def build(self) -> Widget:

@@ -97,7 +97,7 @@ def test_button_style_defaults():
     assert style.padding == (16, 0, 16, 0)
     assert style.min_width == 64
     assert style.min_height == 48
-    assert style.elevation == 0.0
+    assert style.elevation == 0
 
 
 def test_button_style_filled():
@@ -109,7 +109,7 @@ def test_button_style_filled():
     assert style.background == ColorRole.PRIMARY
     assert style.foreground == ColorRole.ON_PRIMARY
     assert style.border_width == 0.0
-    assert style.elevation == 0.0
+    assert style.elevation == 0
 
 
 def test_button_style_outlined():
@@ -142,7 +142,7 @@ def test_button_style_elevated():
     style = ButtonStyle.elevated()
     assert style.background == ColorRole.SURFACE_CONTAINER_LOW
     assert style.foreground == ColorRole.PRIMARY
-    assert style.elevation == 1.0
+    assert style.elevation == 1
 
 
 def test_button_style_tonal():

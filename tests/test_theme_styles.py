@@ -157,7 +157,7 @@ def test_theme_style_button_variants():
     assert filled.background is not None
     assert outlined.border_width == 1.0
     assert text.padding == (16, 0, 16, 0)
-    assert elevated.elevation == 1.0
+    assert elevated.elevation == 1
     assert tonal.background is not None
 
     mat = light.extension(MaterialThemeData)

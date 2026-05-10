@@ -23,8 +23,7 @@ class TooltipStyle:
     vertical_padding: int = 4
     min_height: int = 24
     max_width: int = 320
-    elevation: float = 0.0
-    elevation_color: ColorSpec = ColorRole.SHADOW
+    elevation: int = 0
     text_size: int = 12
     line_height: int = 16
 
@@ -67,8 +66,7 @@ class RichTooltipStyle:
     bottom_padding: int = 8
     min_width: int = 160
     max_width: int = 320
-    elevation: float = 2.0
-    elevation_color: ColorSpec = ColorRole.SHADOW
+    elevation: int = 1
     subhead_text_size: int = 14
     supporting_text_size: int = 14
 

@@ -12,18 +12,11 @@ from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
-from nuiitivet.rendering.elevation import resolve_shadow_params
+from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.manager import manager
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
-
-
-def _resolve_shadow(elevation: float, color_spec):
-    if elevation <= 0.0:
-        return None, (0.0, 0.0), 0.0
-    resolved = resolve_shadow_params(float(elevation))
-    return color_spec, resolved.offset, resolved.blur
 
 
 class Tooltip(ComposableWidget):
@@ -58,7 +51,10 @@ class Tooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        shadow_color, shadow_offset, shadow_blur = _resolve_shadow(style.elevation, style.elevation_color)
+        _shadow = md3_elevation_to_shadow(style.elevation)
+        shadow_color = _shadow.color if _shadow.sigma > 0.0 else None
+        shadow_offset = _shadow.offset
+        shadow_blur = _shadow.sigma
         label = Text(
             self.message,
             style=TextStyle(
@@ -137,7 +133,10 @@ class RichTooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        shadow_color, shadow_offset, shadow_blur = _resolve_shadow(style.elevation, style.elevation_color)
+        _shadow = md3_elevation_to_shadow(style.elevation)
+        shadow_color = _shadow.color if _shadow.sigma > 0.0 else None
+        shadow_offset = _shadow.offset
+        shadow_blur = _shadow.sigma
 
         children: list[Widget] = []
         if self.subhead is not None:

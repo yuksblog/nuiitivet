@@ -159,14 +159,18 @@ class AlertDialog(ComposableWidget):
                 )
             )
 
+        from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+
+        _shadow = md3_elevation_to_shadow(style.elevation)
+
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
             padding=style.padding,
             width=self.width,
-            # Elevation mapping (simplified)
-            shadow_blur=style.elevation,
-            shadow_color=ColorRole.SHADOW,
+            shadow_blur=_shadow.sigma,
+            shadow_color=_shadow.color,
+            shadow_offset=_shadow.offset,
             child=Column(
                 children=children,
                 gap=0,

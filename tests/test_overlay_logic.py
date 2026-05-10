@@ -1,9 +1,8 @@
 import pytest
 
 from nuiitivet.material import Fab, Button
-from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.rendering.elevation import Elevation
+from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 
 
 def test_resolve_overlay_defaults():
@@ -45,34 +44,34 @@ def test_fab_focus_opacity_matches_md3_spec() -> None:
 
 def test_fab_hover_elevation_matches_md3_spec() -> None:
     fab = Fab(icon="add")
-    enabled = Elevation.from_level(6.0)
-    hovered = Elevation.from_level(8.0)
+    enabled = md3_elevation_to_shadow(3)
+    hovered = md3_elevation_to_shadow(4)
 
-    assert fab.shadow_color == (ColorRole.SHADOW, enabled.alpha)
+    assert fab.shadow_color == enabled.color
     assert fab.shadow_offset == enabled.offset
-    assert fab.shadow_blur == enabled.blur
+    assert fab.shadow_blur == enabled.sigma
 
     fab.state.hovered = True
     fab._sync_state_tokens()
 
-    assert fab.shadow_color == (ColorRole.SHADOW, hovered.alpha)
+    assert fab.shadow_color == hovered.color
     assert fab.shadow_offset == hovered.offset
-    assert fab.shadow_blur == hovered.blur
+    assert fab.shadow_blur == hovered.sigma
 
     fab.state.hovered = False
     fab.state.focused = True
     fab._sync_state_tokens()
 
-    assert fab.shadow_color == (ColorRole.SHADOW, enabled.alpha)
+    assert fab.shadow_color == enabled.color
     assert fab.shadow_offset == enabled.offset
-    assert fab.shadow_blur == enabled.blur
+    assert fab.shadow_blur == enabled.sigma
 
 
 def test_resolve_overlay_with_style_alpha_scaled():
     style = ButtonStyle(
         background="#ffffff",
         foreground="#000000",
-        elevation=0.0,
+        elevation=0,
         border_color=None,
         border_width=0.0,
         corner_radius=8,

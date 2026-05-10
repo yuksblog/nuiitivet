@@ -41,8 +41,7 @@ class MenuStyle:
     selected_disabled_background_opacity: float | None = 0.38
     interactive_icon_color: ColorSpec | None = None
 
-    elevation: float = 3.0
-    elevation_color: ColorSpec = ColorRole.SHADOW
+    elevation: int = 2  # MD3 elevation level (0–5); menu = level 2 = 3 dp
 
     selected_background: ColorSpec = ColorRole.TERTIARY_CONTAINER
     selected_foreground: ColorSpec = ColorRole.ON_TERTIARY_CONTAINER
