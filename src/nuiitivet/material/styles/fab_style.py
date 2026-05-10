@@ -30,9 +30,9 @@ class FabStyle(ButtonStyle):
     focus_opacity: float = 0.1
     hover_opacity: float = 0.08
     pressed_opacity: float = 0.1
-    focused_elevation: float = 6.0
-    hovered_elevation: float = 8.0
-    pressed_elevation: float = 6.0
+    focused_elevation: int = 3
+    hovered_elevation: int = 4
+    pressed_elevation: int = 3
 
     @staticmethod
     def _base(size: FabSize) -> dict:
@@ -46,14 +46,14 @@ class FabStyle(ButtonStyle):
             min_height=t["container_height"],
             label_font_size=14,
             icon_size=t["icon_size"],
-            elevation=6.0,
+            elevation=3,
             overlay_alpha=0.08,
             focus_opacity=0.1,
             hover_opacity=0.08,
             pressed_opacity=0.1,
-            focused_elevation=6.0,
-            hovered_elevation=8.0,
-            pressed_elevation=6.0,
+            focused_elevation=3,
+            hovered_elevation=4,
+            pressed_elevation=3,
         )
 
     @classmethod

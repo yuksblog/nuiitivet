@@ -20,7 +20,7 @@ from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
 from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
-from nuiitivet.rendering.elevation import resolve_shadow_params
+from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode
@@ -448,18 +448,7 @@ class Menu(InteractiveWidget):
         self._focus_index = -1
         self._focusable_items: list[MenuItem] = []
 
-        shadow_color: ColorSpec | None = None
-        shadow_blur = 0.0
-        shadow_offset = (0, 0)
-        try:
-            elevation_value = float(self.style.elevation)
-        except Exception:
-            elevation_value = 0.0
-        if elevation_value > 0.0:
-            shadow = resolve_shadow_params(elevation_value)
-            shadow_color = _with_opacity(self.style.elevation_color, shadow.alpha)
-            shadow_blur = shadow.blur
-            shadow_offset = shadow.offset
+        _shadow = md3_elevation_to_shadow(self.style.elevation)
 
         children = self._materialize_children()
         self._column = Column(children=children, width=Sizing.flex(), gap=0, cross_alignment="start")
@@ -471,9 +460,9 @@ class Menu(InteractiveWidget):
             padding=(0, self.style.container_vertical_padding, 0, self.style.container_vertical_padding),
             background_color=self.style.background,
             corner_radius=self.style.corner_radius,
-            shadow_blur=shadow_blur,
-            shadow_color=shadow_color,
-            shadow_offset=shadow_offset,
+            shadow_blur=_shadow.sigma,
+            shadow_color=_shadow.color,
+            shadow_offset=_shadow.offset,
         )
 
         # Menu surface itself should not paint state layers.

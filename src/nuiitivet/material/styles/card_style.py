@@ -25,8 +25,7 @@ class CardStyle:
     border_radius: Union[float, tuple[float, float, float, float]] = 12.0
 
     # Elevation
-    elevation: float = 0.0
-    shadow_color: Optional[ColorSpec] = None
+    elevation: int = 0  # MD3 elevation level (0–5)
 
     def copy_with(self, **changes) -> "CardStyle":
         """Create a new style instance with specified fields changed."""
@@ -39,7 +38,6 @@ class CardStyle:
         return {
             "background": resolve_color_to_rgba(self.background, theme=theme) if self.background else None,
             "border_color": resolve_color_to_rgba(self.border_color, theme=theme) if self.border_color else None,
-            "shadow_color": resolve_color_to_rgba(self.shadow_color, theme=theme) if self.shadow_color else None,
         }
 
     @classmethod
@@ -47,8 +45,7 @@ class CardStyle:
         """Create a default style for an elevated card."""
         return cls(
             background=ColorRole.SURFACE,
-            elevation=1.0,
-            shadow_color=ColorRole.SHADOW,
+            elevation=1,  # MD3 level 1 = 1 dp
             border_radius=12.0,
         )
 
@@ -57,7 +54,7 @@ class CardStyle:
         """Create a default style for a filled card."""
         return cls(
             background=ColorRole.SURFACE_CONTAINER_HIGHEST,
-            elevation=0.0,
+            elevation=0,
             border_radius=12.0,
         )
 
@@ -66,7 +63,7 @@ class CardStyle:
         """Create a default style for an outlined card."""
         return cls(
             background=ColorRole.SURFACE,
-            elevation=0.0,
+            elevation=0,
             border_width=1.0,
             border_color=ColorRole.OUTLINE,
             border_radius=12.0,
