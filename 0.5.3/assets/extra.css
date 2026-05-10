@@ -1,0 +1,29 @@
+/* Sidebar: emphasize section labels so they are clearly distinguishable
+   from leaf page links. Applies to "navigation.sections" layout. */
+
+/* Top-level section labels (e.g. "Layout", "Navigation", "Window") */
+.md-nav--primary .md-nav__item--section>.md-nav__link,
+.md-nav--primary .md-nav__item--section>label.md-nav__link {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--md-default-fg-color);
+    opacity: 0.75;
+    margin-top: 0.9em;
+    margin-bottom: 0.2em;
+}
+
+/* Nested section labels (one level deeper) get a softer emphasis
+   so the visual hierarchy remains readable. */
+.md-nav--primary .md-nav .md-nav .md-nav__item--nested>.md-nav__link,
+.md-nav--primary .md-nav .md-nav .md-nav__item--nested>label.md-nav__link {
+    font-weight: 600;
+    color: var(--md-primary-fg-color);
+}
+
+/* Slightly tighten leaf links so the contrast with section labels
+   feels intentional rather than accidental. */
+.md-nav--primary .md-nav__item:not(.md-nav__item--section):not(.md-nav__item--nested)>.md-nav__link {
+    font-weight: 400;
+}
