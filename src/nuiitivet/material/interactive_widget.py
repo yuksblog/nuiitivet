@@ -8,7 +8,7 @@ handling the State Layer visualization (hover, focus, press states).
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union, Any, TYPE_CHECKING
+from typing import Optional, Tuple, Union, Any, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia.geometry import make_rect, draw_round_rect
@@ -18,6 +18,7 @@ from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgets.interaction import VoidCallback
 
 if TYPE_CHECKING:
     from nuiitivet.widgeting.widget import Widget
@@ -53,7 +54,7 @@ class InteractiveWidget(Clickable):
     def __init__(
         self,
         child: Optional["Widget"] = None,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         state_layer_color: ColorSpec = ColorRole.ON_SURFACE,
         width: SizingLike = None,
         height: SizingLike = None,

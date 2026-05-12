@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union, cast
+from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback, BoolCallback
 from nuiitivet.input.codes import (
     MOD_CTRL,
     MOD_META,
@@ -46,8 +47,8 @@ class EditableText(InteractionHostMixin, Widget):
     def __init__(
         self,
         value: Union[str, ObservableProtocol[str]] = "",
-        on_change: Optional[Callable[[str], None]] = None,
-        on_focus_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[StrCallback] = None,
+        on_focus_change: Optional[BoolCallback] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
         selection_color: ColorSpec = "#B3D7FF",  # Default selection color
@@ -198,14 +199,13 @@ class EditableText(InteractionHostMixin, Widget):
                 # scenarios: an Observable -> on_change -> observable.value
                 # cycle terminates because the second delivery is a no-op.
                 if self._on_change:
-                    try:
-                        self._on_change(new_text)
-                    except Exception:
-                        exception_once(
-                            _logger,
-                            "editable_text_external_on_change_exc",
-                            "EditableText external on_change raised",
-                        )
+                    invoke_event_handler(
+                        self._on_change,
+                        new_text,
+                        error_key="editable_text_external_on_change",
+                        error_msg="EditableText external on_change raised",
+                        owner_name=type(self).__name__,
+                    )
 
             self._external_sub = self._external_str_obs.subscribe(_on_external_change)
 
@@ -237,7 +237,13 @@ class EditableText(InteractionHostMixin, Widget):
         self.invalidate()
 
         if current.text != new_value.text and self._on_change:
-            self._on_change(new_value.text)
+            invoke_event_handler(
+                self._on_change,
+                new_value.text,
+                error_key="editable_text_on_change",
+                error_msg="EditableText on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         font = self._get_font()
@@ -371,7 +377,13 @@ class EditableText(InteractionHostMixin, Widget):
             self._focus_from_pointer = False
         self.invalidate()
         if self._on_focus_change_callback:
-            self._on_focus_change_callback(focused)
+            invoke_event_handler(
+                self._on_focus_change_callback,
+                focused,
+                error_key="editable_text_on_focus_change",
+                error_msg="EditableText on_focus_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _handle_text(self, text: str) -> bool:
         current_value = self._state_internal.value

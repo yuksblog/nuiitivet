@@ -15,10 +15,11 @@ This module contains the unified Material Design 3 button widgets:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
@@ -304,7 +305,7 @@ class MaterialButtonBase(InteractiveWidget):
         self,
         child: Widget,
         *,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -649,7 +650,7 @@ class Button(MaterialButtonBase):
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
         *,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -724,7 +725,7 @@ class IconButton(MaterialButtonBase):
         self,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
         *,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         style: Optional[ButtonStyle] = None,
     ):
@@ -822,7 +823,7 @@ class ToggleButtonBase(MaterialButtonBase):
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
         *,
         selected: bool | ObservableProtocol[bool] = False,
-        on_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -930,7 +931,13 @@ class ToggleButtonBase(MaterialButtonBase):
         self._sync_selected_state()
 
         if self.on_change is not None:
-            self.on_change(new_value)
+            invoke_event_handler(
+                self.on_change,
+                new_value,
+                error_key="toggle_button_on_change",
+                error_msg="ToggleButton on_change raised",
+                owner_name=type(self).__name__,
+            )
 
 
 class ToggleButton(ToggleButtonBase):
@@ -949,7 +956,7 @@ class ToggleButton(ToggleButtonBase):
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
         *,
         selected: bool | ObservableProtocol[bool] = False,
-        on_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -994,7 +1001,7 @@ class IconToggleButton(ToggleButtonBase):
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
         *,
         selected: bool | ObservableProtocol[bool] = False,
-        on_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         style: Optional[IconToggleButtonStyle] = None,
     ):
@@ -1036,7 +1043,7 @@ class Fab(MaterialButtonBase):
         self,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
         *,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[FabStyle] = None,

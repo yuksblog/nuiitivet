@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Union, cast
+from typing import Optional, Union, cast
 
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.observable import Observable, ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgeting.callbacks import invoke_event_handler, OptionalBoolCallback
 
 
 class Toggleable(Clickable):
@@ -19,7 +20,7 @@ class Toggleable(Clickable):
     def __init__(
         self,
         value: Union[bool, None, ObservableProtocol[Optional[bool]]] = False,
-        on_change: Optional[Callable[[Optional[bool]], None]] = None,
+        on_change: Optional[OptionalBoolCallback] = None,
         tristate: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         # Clickable args
@@ -90,7 +91,13 @@ class Toggleable(Clickable):
         self.value = new_val
 
         if self.on_change:
-            self.on_change(new_val)
+            invoke_event_handler(
+                self.on_change,
+                new_val,
+                error_key="toggleable_on_change",
+                error_msg="Toggleable on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _on_value_change(self, new_val: Optional[bool]):
         # Update InteractionState

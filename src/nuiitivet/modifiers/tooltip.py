@@ -16,6 +16,7 @@ from nuiitivet.widgets.interaction import (
     FocusNode,
     InteractionHostMixin,
     ensure_interaction_region,
+    BoolCallback,
 )
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class TooltipBox(PopupBox):
         self._is_focused = False
         self._active_touch_pointer_id: Optional[int] = None
         self._focus_node: Optional[FocusNode] = None
-        self._prev_focus_callback: Optional[Callable[[bool], None]] = None
+        self._prev_focus_callback: Optional[BoolCallback] = None
         self._focus_callback_wrapper: Optional[Callable[[bool], None]] = None
         self._install_interactions()
 

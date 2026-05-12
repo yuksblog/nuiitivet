@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 from typing import (
-    Callable,
     List,
     Literal,
     Optional,
@@ -31,6 +30,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorSpec
+from nuiitivet.widgeting.callbacks import invoke_event_handler, BoolCallback
 from nuiitivet.widgets.box import Box
 
 if TYPE_CHECKING:
@@ -113,7 +113,7 @@ class GroupButton(InteractiveWidget):
         icon: "Symbol | str | ReadOnlyObservableProtocol | None" = None,
         *,
         selected: "bool | ObservableProtocol[bool]" = False,
-        on_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[BoolCallback] = None,
         disabled: "bool | ObservableProtocol[bool]" = False,
         width: SizingLike = None,
         style: "Optional[ButtonGroupStyle]" = None,
@@ -140,7 +140,7 @@ class GroupButton(InteractiveWidget):
         self._icon = icon
 
         # on_change is interceptable by the containing group
-        self._on_change: Optional[Callable[[bool], None]] = on_change
+        self._on_change: Optional[BoolCallback] = on_change
 
         # Selected state
         self._selected_external: "Optional[ObservableProtocol[bool]]" = None
@@ -336,7 +336,13 @@ class GroupButton(InteractiveWidget):
         new_selected = not self._selected
         self._set_selected(new_selected)
         if self._on_change is not None:
-            self._on_change(new_selected)
+            invoke_event_handler(
+                self._on_change,
+                new_selected,
+                error_key="group_button_on_change",
+                error_msg="GroupButton on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     # ------------------------------------------------------------------
     # State management
@@ -793,12 +799,18 @@ class ConnectedButtonGroup(_ButtonGroupBase):
 
             def _make_wrapper(
                 item_idx: int,
-                orig_cb: Optional[Callable[[bool], None]],
-            ) -> Callable[[bool], None]:
+                orig_cb: Optional[BoolCallback],
+            ) -> BoolCallback:
                 def _wrapper(selected: bool) -> None:
                     # 1. Item-level callback fires first
                     if orig_cb is not None:
-                        orig_cb(selected)
+                        invoke_event_handler(
+                            orig_cb,
+                            selected,
+                            error_key="group_button_item_on_change",
+                            error_msg="GroupButton item on_change raised",
+                            owner_name=type(item).__name__,
+                        )
                     # 2. Group selection logic
                     self._handle_group_selection_change(item_idx, selected)
 
