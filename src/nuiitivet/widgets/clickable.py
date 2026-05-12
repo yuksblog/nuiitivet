@@ -4,13 +4,19 @@ import logging
 from typing import Callable, Optional, Tuple, Union, cast
 
 from nuiitivet.widgets.box import Box
-from nuiitivet.widgets.interaction import InteractionHostMixin, InteractionState, FocusNode
+from nuiitivet.widgets.interaction import (
+    InteractionHostMixin,
+    InteractionState,
+    FocusNode,
+    VoidCallback,
+    BoolCallback,
+    PointerEventCallback,
+)
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +30,10 @@ class Clickable(InteractionHostMixin, Box):
     def __init__(
         self,
         child: Optional[Widget] = None,
-        on_click: Optional[Callable[[], None]] = None,
-        on_hover: Optional[Callable[[bool], None]] = None,
-        on_press: Optional[Callable[[PointerEvent], None]] = None,
-        on_release: Optional[Callable[[PointerEvent], None]] = None,
+        on_click: Optional[VoidCallback] = None,
+        on_hover: Optional[BoolCallback] = None,
+        on_press: Optional[PointerEventCallback] = None,
+        on_release: Optional[PointerEventCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         focusable: bool = True,
         width: SizingLike = None,

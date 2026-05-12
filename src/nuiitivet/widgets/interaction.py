@@ -2,13 +2,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Any, Callable, Optional, Sequence, Tuple, cast
+from collections.abc import Awaitable
+from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.widgeting.callbacks import invoke_event_handler
+from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
+
+# PointerEvent-specific callback aliases (defined here to avoid circular imports).
+PointerEventCallback = Union[
+    Callable[[PointerEvent], None],
+    Callable[[PointerEvent], Awaitable[None]],
+]
+DragUpdateCallback = Union[
+    Callable[[PointerEvent, float, float], None],
+    Callable[[PointerEvent, float, float], Awaitable[None]],
+]
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +90,10 @@ class PointerInputNode(InteractionNode):
             self.attach(owner)
         self._explicit_state = state
         self._hit_test = hit_test
-        self._hover_callbacks: list[Callable[[bool], None]] = []
-        self._click_callbacks: list[Callable[[], None]] = []
-        self._press_callbacks: list[Callable[[PointerEvent], None]] = []
-        self._release_callbacks: list[Callable[[PointerEvent], None]] = []
+        self._hover_callbacks: list[BoolCallback] = []
+        self._click_callbacks: list[VoidCallback] = []
+        self._press_callbacks: list[PointerEventCallback] = []
+        self._release_callbacks: list[PointerEventCallback] = []
         self._hover_enabled = False
         self._click_enabled = False
         self._active_pointer_id: Optional[int] = None
@@ -93,7 +104,7 @@ class PointerInputNode(InteractionNode):
             return self._explicit_state
         return super().state
 
-    def enable_hover(self, *, on_change: Optional[Callable[[bool], None]] = None) -> None:
+    def enable_hover(self, *, on_change: Optional[BoolCallback] = None) -> None:
         self._hover_enabled = True
         if on_change is not None:
             self._hover_callbacks.append(on_change)
@@ -101,9 +112,9 @@ class PointerInputNode(InteractionNode):
     def enable_click(
         self,
         *,
-        on_click: Optional[Callable[[], None]] = None,
-        on_press: Optional[Callable[[PointerEvent], None]] = None,
-        on_release: Optional[Callable[[PointerEvent], None]] = None,
+        on_click: Optional[VoidCallback] = None,
+        on_press: Optional[PointerEventCallback] = None,
+        on_release: Optional[PointerEventCallback] = None,
     ) -> None:
         self._click_enabled = True
         # Treat enable_click as a setter.
@@ -116,39 +127,39 @@ class PointerInputNode(InteractionNode):
         if on_release is not None:
             self._release_callbacks = [on_release]
 
-    def add_hover_listener(self, callback: Callable[[bool], None]) -> None:
+    def add_hover_listener(self, callback: BoolCallback) -> None:
         """Add a hover listener without replacing existing ones."""
         self._hover_enabled = True
         if callback not in self._hover_callbacks:
             self._hover_callbacks.append(callback)
 
-    def remove_hover_listener(self, callback: Callable[[bool], None]) -> None:
+    def remove_hover_listener(self, callback: BoolCallback) -> None:
         """Remove a previously added hover listener. No-op if not found."""
         try:
             self._hover_callbacks.remove(callback)
         except ValueError:
             pass
 
-    def add_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def add_press_listener(self, callback: PointerEventCallback) -> None:
         """Additively register a press listener without replacing existing ones."""
         self._click_enabled = True
         if callback not in self._press_callbacks:
             self._press_callbacks.append(callback)
 
-    def remove_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def remove_press_listener(self, callback: PointerEventCallback) -> None:
         """Remove a previously added press listener. No-op if not found."""
         try:
             self._press_callbacks.remove(callback)
         except ValueError:
             pass
 
-    def add_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def add_release_listener(self, callback: PointerEventCallback) -> None:
         """Additively register a release listener without replacing existing ones."""
         self._click_enabled = True
         if callback not in self._release_callbacks:
             self._release_callbacks.append(callback)
 
-    def remove_release_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def remove_release_listener(self, callback: PointerEventCallback) -> None:
         """Remove a previously added release listener. No-op if not found."""
         try:
             self._release_callbacks.remove(callback)
@@ -310,9 +321,9 @@ class DraggableNode(InteractionNode):
     def __init__(
         self,
         *,
-        on_drag_start: Optional[Callable[[PointerEvent], None]] = None,
-        on_drag_update: Optional[Callable[[PointerEvent, float, float], None]] = None,
-        on_drag_end: Optional[Callable[[PointerEvent], None]] = None,
+        on_drag_start: Optional[PointerEventCallback] = None,
+        on_drag_update: Optional[DragUpdateCallback] = None,
+        on_drag_end: Optional[PointerEventCallback] = None,
         hit_test: Optional[Callable[[float, float], bool]] = None,
     ) -> None:
         super().__init__()
@@ -322,6 +333,10 @@ class DraggableNode(InteractionNode):
         self._hit_test = hit_test
         self._active_pointer_id: Optional[int] = None
         self._last_pos: Optional[Tuple[float, float]] = None
+
+    def _invoke_callback(self, cb: Callable[..., Any], *args: Any, error_key: str, error_msg: str) -> None:
+        owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+        invoke_event_handler(cb, *args, error_key=error_key, error_msg=error_msg, owner_name=owner_name)
 
     def activate(self, event: PointerEvent) -> None:
         """Programmatically start a drag session.
@@ -354,16 +369,12 @@ class DraggableNode(InteractionNode):
             self.owner.invalidate()
 
         if self._on_drag_start:
-            try:
-                self._on_drag_start(event)
-            except Exception:
-                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
-                exception_once(
-                    logger,
-                    f"draggable_activate_on_drag_start_exc:{owner_name}",
-                    "on_drag_start raised during activate (owner=%s)",
-                    owner_name,
-                )
+            self._invoke_callback(
+                self._on_drag_start,
+                event,
+                error_key="draggable_activate_on_drag_start",
+                error_msg="on_drag_start raised during activate",
+            )
 
     def handle_pointer_event(self, event: PointerEvent, bounds: Optional[Sequence[float]] = None) -> bool:
         if self.state.disabled:
@@ -407,16 +418,12 @@ class DraggableNode(InteractionNode):
             self.owner.invalidate()
 
         if self._on_drag_start:
-            try:
-                self._on_drag_start(event)
-            except Exception:
-                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
-                exception_once(
-                    logger,
-                    f"draggable_on_drag_start_exc:{owner_name}",
-                    "on_drag_start raised (owner=%s)",
-                    owner_name,
-                )
+            self._invoke_callback(
+                self._on_drag_start,
+                event,
+                error_key="draggable_on_drag_start",
+                error_msg="on_drag_start raised",
+            )
         return True
 
     def _handle_move(self, event: PointerEvent) -> bool:
@@ -428,16 +435,14 @@ class DraggableNode(InteractionNode):
             dy = event.y - self._last_pos[1]
             self._last_pos = (event.x, event.y)
             if self._on_drag_update:
-                try:
-                    self._on_drag_update(event, dx, dy)
-                except Exception:
-                    owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
-                    exception_once(
-                        logger,
-                        f"draggable_on_drag_update_exc:{owner_name}",
-                        "on_drag_update raised (owner=%s)",
-                        owner_name,
-                    )
+                self._invoke_callback(
+                    self._on_drag_update,
+                    event,
+                    dx,
+                    dy,
+                    error_key="draggable_on_drag_update",
+                    error_msg="on_drag_update raised",
+                )
             if self.owner:
                 self.owner.invalidate()
         return True
@@ -476,16 +481,12 @@ class DraggableNode(InteractionNode):
             self.owner.invalidate()
 
         if self._on_drag_end:
-            try:
-                self._on_drag_end(event)
-            except Exception:
-                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
-                exception_once(
-                    logger,
-                    f"draggable_on_drag_end_exc:{owner_name}",
-                    "on_drag_end raised (owner=%s)",
-                    owner_name,
-                )
+            self._invoke_callback(
+                self._on_drag_end,
+                event,
+                error_key="draggable_on_drag_end",
+                error_msg="on_drag_end raised",
+            )
 
     def _point_inside(self, bounds: Optional[Sequence[float]], x: float, y: float) -> bool:
         if self._hit_test:
@@ -505,7 +506,7 @@ class FocusNode(InteractionNode):
     def __init__(
         self,
         *,
-        on_focus_change: Optional[Callable[[bool], None]] = None,
+        on_focus_change: Optional[BoolCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
         on_text: Optional[Callable[[str], bool]] = None,
         on_text_motion: Optional[Callable[[int, bool], bool]] = None,
@@ -568,7 +569,14 @@ class FocusNode(InteractionNode):
         if self.region:
             cast(Widget, self.region).invalidate()
         if self._on_focus_change:
-            self._on_focus_change(value)
+            owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+            invoke_event_handler(
+                self._on_focus_change,
+                value,
+                error_key="focus_change_callback",
+                error_msg="Focus change callback raised",
+                owner_name=owner_name,
+            )
 
     def handle_key_event(self, key: str, modifiers: int) -> bool:
         if self._on_key:
@@ -649,31 +657,31 @@ class InteractionHostMixin:
     def state(self) -> InteractionState:
         return self._state
 
-    def enable_hover(self, *, on_change: Optional[Callable[[bool], None]] = None) -> None:
+    def enable_hover(self, *, on_change: Optional[BoolCallback] = None) -> None:
         self._pointer_node.enable_hover(on_change=on_change)
 
     def enable_click(
         self,
         *,
-        on_click: Optional[Callable[[], None]] = None,
-        on_press: Optional[Callable[[PointerEvent], None]] = None,
-        on_release: Optional[Callable[[PointerEvent], None]] = None,
+        on_click: Optional[VoidCallback] = None,
+        on_press: Optional[PointerEventCallback] = None,
+        on_release: Optional[PointerEventCallback] = None,
     ) -> None:
         self._pointer_node.enable_click(on_click=on_click, on_press=on_press, on_release=on_release)
 
-    def add_hover_listener(self, callback: Callable[[bool], None]) -> None:
+    def add_hover_listener(self, callback: BoolCallback) -> None:
         """Add a hover listener without replacing existing ones."""
         self._pointer_node.add_hover_listener(callback)
 
-    def remove_hover_listener(self, callback: Callable[[bool], None]) -> None:
+    def remove_hover_listener(self, callback: BoolCallback) -> None:
         """Remove a previously added hover listener. No-op if not found."""
         self._pointer_node.remove_hover_listener(callback)
 
-    def add_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def add_press_listener(self, callback: PointerEventCallback) -> None:
         """Additively register a press listener without replacing existing ones."""
         self._pointer_node.add_press_listener(callback)
 
-    def remove_press_listener(self, callback: Callable[[PointerEvent], None]) -> None:
+    def remove_press_listener(self, callback: PointerEventCallback) -> None:
         """Remove a previously added press listener. No-op if not found."""
         self._pointer_node.remove_press_listener(callback)
 

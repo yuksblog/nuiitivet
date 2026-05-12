@@ -3,12 +3,32 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from typing import Any, Callable
+from collections.abc import Awaitable
+from typing import Any, Callable, Optional, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import detach_batch
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Shared type aliases for user-facing event handler parameters.
+# Each alias accepts both a synchronous and an async callable so that
+# users can write either ``def on_click(): ...`` or
+# ``async def on_click(): ...`` without mypy errors.
+# ---------------------------------------------------------------------------
+
+#: No-arg, fire-and-forget callback (e.g. on_click).
+VoidCallback = Union[Callable[[], None], Callable[[], Awaitable[None]]]
+#: Single ``bool`` argument callback (e.g. on_hover, on_focus_change).
+BoolCallback = Union[Callable[[bool], None], Callable[[bool], Awaitable[None]]]
+#: Optional ``bool`` argument callback (e.g. on_change for tristate toggles).
+OptionalBoolCallback = Union[
+    Callable[[Optional[bool]], None],
+    Callable[[Optional[bool]], Awaitable[None]],
+]
+#: Single ``str`` argument callback (e.g. on_change for text inputs).
+StrCallback = Union[Callable[[str], None], Callable[[str], Awaitable[None]]]
 
 
 def invoke_event_handler(

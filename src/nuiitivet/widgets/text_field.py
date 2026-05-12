@@ -17,7 +17,7 @@ from nuiitivet.widgets.interaction import InteractionHostMixin
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
-
+from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
 
 _logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
         cls: type[TTextFieldBase],
         value: ObservableProtocol[str],
         *,
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
         **kwargs,
     ) -> TTextFieldBase:
         """Create a two-way bound TextField."""
@@ -62,19 +62,19 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
                     _logger, "text_field_base_two_way_set_value_exc", "TextFieldBase.two_way failed to set value"
                 )
             if on_change is not None:
-                try:
-                    on_change(new_text)
-                except Exception:
-                    exception_once(
-                        _logger, "text_field_base_two_way_on_change_exc", "TextFieldBase.two_way on_change raised"
-                    )
+                invoke_event_handler(
+                    on_change,
+                    new_text,
+                    error_key="text_field_base_two_way_on_change",
+                    error_msg="TextFieldBase.two_way on_change raised",
+                )
 
         return cls(value=value, on_change=_bound_on_change, **kwargs)
 
     def __init__(
         self,
         value: Union[str, ObservableProtocol[str]] = "",
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
         text_color: str = "#000000",
         cursor_color: str = "#000000",
         selection_color: str = "#0000FF",
@@ -119,7 +119,13 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     def _handle_editable_change(self, new_text: str) -> None:
         """Called when the editable text changes."""
         if self._on_change:
-            self._on_change(new_text)
+            invoke_event_handler(
+                self._on_change,
+                new_text,
+                error_key="text_field_on_change",
+                error_msg="TextField on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _on_editable_focus_change(self, focused: bool) -> None:
         """Called when the editable text focus changes."""
