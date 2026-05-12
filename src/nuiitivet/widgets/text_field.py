@@ -7,7 +7,7 @@ without any specific design system styling.
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, TypeVar, Union
+from typing import Optional, Tuple, TypeVar, Union
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import ComposableWidget, Widget

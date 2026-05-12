@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union, cast
+from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import (
@@ -15,7 +15,6 @@ from nuiitivet.widgets.interaction import (
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.theme.types import ColorSpec
-from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)

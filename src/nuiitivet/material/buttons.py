@@ -15,7 +15,7 @@ This module contains the unified Material Design 3 button widgets:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol

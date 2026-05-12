@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget

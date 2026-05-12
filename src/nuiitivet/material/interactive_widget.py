@@ -8,7 +8,7 @@ handling the State Layer visualization (hover, focus, press states).
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union, Any, TYPE_CHECKING
+from typing import Optional, Tuple, Union, Any, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia.geometry import make_rect, draw_round_rect
