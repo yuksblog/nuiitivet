@@ -204,7 +204,9 @@ Scenario-specific APIs are moved to subclasses.
     - Default is `False` for `LoadingDialogIntent`.
     - Default is `True` for others.
 - `MaterialOverlay.snackbar(message, *, duration=3.0)`
-  - Implemented using `Snackbar`.
+  - `message` accepts `str`, `Snackbar`, or `OverlayRoute`.
+    - `str` / `Snackbar`: displayed using the default snackbar transition.
+    - `OverlayRoute`: used as-is (transition is specified inside the route).
   - Background input remains interactive (modeless).
   - Automatically dismisses after `timeout=duration`.
   - Default position: `OverlayPosition.alignment("bottom-center", offset=(0, -24))`.

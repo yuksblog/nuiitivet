@@ -21,7 +21,6 @@ from .overlay_visual_state import MaterialOverlayLayerComposer
 from .sheet import BottomSheet, SideSheet
 from .transition_spec import (
     MaterialTransitions,
-    MaterialTransitionSpec,
 )
 
 from .intents import BasicDialogIntent, LoadingIntent
@@ -108,8 +107,6 @@ class MaterialOverlay(Overlay):
         *,
         dismiss_on_outside_tap: bool | None = None,
         timeout: float | None = None,
-        position: OverlayPosition | None = None,
-        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         if dismiss_on_outside_tap is None:
             dismiss_on_outside_tap = True
@@ -117,14 +114,12 @@ class MaterialOverlay(Overlay):
         route = self._normalize_dialog_to_route(
             dialog,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
-            transition=transition,
         )
 
         return self.show_modal(
             route,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             timeout=timeout,
-            position=position,
         )
 
     def _normalize_dialog_to_route(
@@ -132,7 +127,6 @@ class MaterialOverlay(Overlay):
         dialog: Widget | Route | Any,
         *,
         dismiss_on_outside_tap: bool,
-        transition: MaterialTransitionSpec | None = None,
     ) -> Route:
         """Normalize dialog input to a Route.
 
@@ -145,30 +139,34 @@ class MaterialOverlay(Overlay):
             resolved = self._intent_resolver.resolve(dialog)
 
         if isinstance(resolved, Route):
-            # Route.transition_spec is a plain dataclass field; assignment is valid.
-            if transition is not None:
-                resolved.transition_spec = transition
             return resolved
 
         widget = resolved
         return OverlayRoute(
             builder=lambda: widget,
-            transition_spec=transition or MaterialTransitions.dialog(),
+            transition_spec=MaterialTransitions.dialog(),
             barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
     def snackbar(
         self,
-        message: str,
+        message: str | Snackbar | OverlayRoute,
         *,
         duration: float = 3.0,
-        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[None]:
+        if isinstance(message, OverlayRoute):
+            route: Route = message
+            return self.show_modeless(
+                route,
+                timeout=float(duration),
+                position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
+            )
+        widget: Widget = message if isinstance(message, Snackbar) else Snackbar(str(message))
         return self.show_modeless(
-            Snackbar(str(message)),
+            widget,
             timeout=float(duration),
             position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
-            transition_spec=transition or MaterialTransitions.snackbar(),
+            transition_spec=MaterialTransitions.snackbar(),
         )
 
     class _LoadingContext(AbstractContextManager[None], AbstractAsyncContextManager[None]):
@@ -216,7 +214,6 @@ class MaterialOverlay(Overlay):
         sheet: SideSheet,
         *,
         dismiss_on_outside_tap: bool = True,
-        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Display a modal side sheet.
 
@@ -228,17 +225,12 @@ class MaterialOverlay(Overlay):
             sheet: SideSheet widget that defines content, headline, and styling.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
-            transition: Custom slide transition.
-                Defaults to ``MaterialTransitions.side_sheet(side=sheet.side)``.
         """
-        if transition is None:
-            transition = MaterialTransitions.side_sheet(side=sheet.side)
-
         alignment = "top-right" if sheet.side == "right" else "top-left"
 
         route = OverlayRoute(
             builder=lambda: sheet,
-            transition_spec=transition,
+            transition_spec=MaterialTransitions.side_sheet(side=sheet.side),
             barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
@@ -253,7 +245,6 @@ class MaterialOverlay(Overlay):
         sheet: BottomSheet,
         *,
         dismiss_on_outside_tap: bool = True,
-        transition: MaterialTransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Display a modal bottom sheet sliding up from the bottom edge.
 
@@ -264,15 +255,10 @@ class MaterialOverlay(Overlay):
             sheet: BottomSheet widget that defines content, headline, and styling.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
-            transition: Custom slide transition.
-                Defaults to ``MaterialTransitions.bottom_sheet()``.
         """
-        if transition is None:
-            transition = MaterialTransitions.bottom_sheet()
-
         route = OverlayRoute(
             builder=lambda: sheet,
-            transition_spec=transition,
+            transition_spec=MaterialTransitions.bottom_sheet(),
             barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
