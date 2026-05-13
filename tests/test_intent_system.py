@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from nuiitivet.navigation import Navigator, PageRoute, Route
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.overlay import Overlay
 from nuiitivet.widgeting.widget import Widget
@@ -43,7 +43,7 @@ def test_navigator_push_intent_resolves_to_route() -> None:
     nav = Navigator.intents(
         initial_route=_PushIntent(label="home"),
         routes={
-            _PushIntent: lambda i: PageRoute(builder=lambda: _FlagWidget(label=i.label)),
+            _PushIntent: lambda i: Route(builder=lambda: _FlagWidget(label=i.label)),
         },
     )
 
@@ -55,7 +55,7 @@ def test_navigator_push_intent_resolves_to_route() -> None:
 
 
 def test_navigator_push_intent_raises_when_unregistered() -> None:
-    nav = Navigator(PageRoute(builder=_FlagWidget))
+    nav = Navigator(Route(builder=_FlagWidget))
 
     with pytest.raises(RuntimeError, match=r"No route is registered for intent"):
         nav.push(_PushIntent(label="x"))
@@ -113,7 +113,7 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
             return self
 
     route_widget = _UnmountCountWidget()
-    route: Route = PageRoute(builder=lambda: route_widget)
+    route: Route = Route(builder=lambda: route_widget)
 
     handle = overlay.show_modal(route)
 
@@ -129,7 +129,7 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
 
 def test_overlay_normalize_to_route_passes_route_through() -> None:
     overlay = Overlay()
-    route = PageRoute(builder=_FlagWidget)
+    route = Route(builder=_FlagWidget)
 
     normalized = overlay._normalize_to_route(route)
 

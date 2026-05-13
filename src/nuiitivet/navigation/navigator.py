@@ -9,7 +9,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
-from .route import PageRoute, Route
+from .route import Route
 from .stack_runtime import RouteStackRuntime
 from .transition_engine import TransitionEngine, TransitionHandle
 from .transition_spec import EmptyTransitionSpec, TransitionPhase
@@ -201,7 +201,7 @@ class Navigator(ComposableWidget):
 
     def _route_from_widget(self, widget: Widget) -> Route:
         """Wrap a widget into a page route for navigator runtime."""
-        return PageRoute(builder=lambda: widget)
+        return Route(builder=lambda: widget)
 
     def _resolve_intent_to_route(self, intent: Any) -> Route:
         """Resolve an intent and normalize the result to a Route."""

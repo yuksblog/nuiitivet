@@ -5,7 +5,7 @@ import asyncio
 from nuiitivet.layout.stack import Stack
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.overlay.dialog_route import DialogRoute
+from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayDismissReason
 from nuiitivet.overlay.result import OverlayResult
@@ -103,7 +103,7 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
     assert clicked == [True]
 
 
-def test_overlay_dialog_dialogroute_barrier_dismissible_true_closes_on_barrier_click() -> None:
+def test_overlay_dialog_overlayroute_barrier_dismissible_true_closes_on_barrier_click() -> None:
     overlay = Overlay()
     overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=True)
 
@@ -210,9 +210,9 @@ def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
     assert result.reason is OverlayDismissReason.CLOSED
 
 
-def test_overlay_dialogroute_uses_barrier_dismissible_default_true() -> None:
+def test_overlay_overlayroute_uses_barrier_dismissible_default_true() -> None:
     overlay = Overlay()
-    route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=True)
+    route = OverlayRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=True)
     overlay.show_modal(route)
 
     root = Stack(children=[overlay], alignment="center")
@@ -225,9 +225,9 @@ def test_overlay_dialogroute_uses_barrier_dismissible_default_true() -> None:
     assert overlay.has_entries() is False
 
 
-def test_overlay_dialogroute_uses_barrier_dismissible_default_false() -> None:
+def test_overlay_overlayroute_uses_barrier_dismissible_default_false() -> None:
     overlay = Overlay()
-    route = DialogRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=False)
+    route = OverlayRoute(builder=lambda: AlertDialog(title="Route Dialog"), barrier_dismissible=False)
     overlay.show_modal(route)
 
     root = Stack(children=[overlay], alignment="center")
@@ -263,7 +263,7 @@ def test_overlay_show_modal_widget_and_route_have_disposal_parity() -> None:
 
     overlay_route = Overlay()
     route_widget = _UnmountCountWidget()
-    route_input = DialogRoute(builder=lambda: route_widget, barrier_dismissible=False)
+    route_input = OverlayRoute(builder=lambda: route_widget, barrier_dismissible=False)
     overlay_route.show_modal(route_input, dismiss_on_outside_tap=False)
     overlay_route.close_topmost()
 

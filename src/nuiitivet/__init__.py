@@ -18,7 +18,7 @@ from nuiitivet.layout.deck import Deck
 # Primitives / Widgets
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import Widget, ComposableWidget
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator
 
 # State Management
 from nuiitivet.observable import Observable, batch
@@ -45,7 +45,6 @@ __all__: list[str] = [
     "Widget",
     "ComposableWidget",
     "Navigator",
-    "PageRoute",
     "Observable",
     "batch",
     "set_default_font_family",

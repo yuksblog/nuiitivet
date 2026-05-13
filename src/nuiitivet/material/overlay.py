@@ -11,7 +11,7 @@ from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.navigation.route import Route
-from nuiitivet.overlay.dialog_route import DialogRoute
+from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver
 from nuiitivet.overlay.overlay_handle import OverlayHandle
@@ -54,7 +54,7 @@ class MaterialOverlay(Overlay):
 
         if intent_resolver is None:
             defaults: dict[type[Any], Callable[[Any], Widget | Route]] = {
-                AlertDialogIntent: lambda i: DialogRoute(
+                AlertDialogIntent: lambda i: OverlayRoute(
                     builder=lambda: AlertDialog(
                         title=i.title,
                         message=i.message,
@@ -70,7 +70,7 @@ class MaterialOverlay(Overlay):
                     ),
                     transition_spec=MaterialTransitions.dialog(),
                 ),
-                LoadingIntent: lambda _: DialogRoute(
+                LoadingIntent: lambda _: OverlayRoute(
                     builder=lambda: LoadingIndicator(),
                     transition_spec=MaterialTransitions.dialog(),
                     barrier_dismissible=False,
@@ -151,7 +151,7 @@ class MaterialOverlay(Overlay):
             return resolved
 
         widget = resolved
-        return DialogRoute(
+        return OverlayRoute(
             builder=lambda: widget,
             transition_spec=transition or MaterialTransitions.dialog(),
             barrier_dismissible=bool(dismiss_on_outside_tap),
@@ -236,7 +236,7 @@ class MaterialOverlay(Overlay):
 
         alignment = "top-right" if sheet.side == "right" else "top-left"
 
-        route = DialogRoute(
+        route = OverlayRoute(
             builder=lambda: sheet,
             transition_spec=transition,
             barrier_dismissible=bool(dismiss_on_outside_tap),
@@ -270,7 +270,7 @@ class MaterialOverlay(Overlay):
         if transition is None:
             transition = MaterialTransitions.bottom_sheet()
 
-        route = DialogRoute(
+        route = OverlayRoute(
             builder=lambda: sheet,
             transition_spec=transition,
             barrier_dismissible=bool(dismiss_on_outside_tap),

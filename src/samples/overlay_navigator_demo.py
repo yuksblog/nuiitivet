@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import App
 from nuiitivet.material import Overlay
@@ -179,9 +179,9 @@ def main() -> None:
         Navigator.intents(
             initial_route=HomeIntent(),
             routes={
-                HomeIntent: lambda _i: PageRoute(builder=HomePage),
-                DetailsIntent: lambda _i: PageRoute(builder=DetailsPage),
-                SettingsIntent: lambda _i: PageRoute(builder=SettingsPage),
+                HomeIntent: lambda _i: Route(builder=HomePage),
+                DetailsIntent: lambda _i: Route(builder=DetailsPage),
+                SettingsIntent: lambda _i: Route(builder=SettingsPage),
             },
         ),
         overlay_routes={

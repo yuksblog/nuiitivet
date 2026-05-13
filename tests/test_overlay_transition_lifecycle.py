@@ -7,7 +7,7 @@ from nuiitivet.layout.stack import Stack
 from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.overlay import Overlay
-from nuiitivet.overlay.dialog_route import DialogRoute
+from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.overlay.overlay_entry import OverlayEntry
 from nuiitivet.overlay.overlay import _OverlayEntryRoute
 from nuiitivet.navigation.transition_spec import TransitionPhase
@@ -53,7 +53,7 @@ def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
         root.mount(_DummyApp())
         root.layout(800, 600)
 
-        route = DialogRoute(
+        route = OverlayRoute(
             builder=lambda: AlertDialog(title="Lifecycle"),
             transition_spec=_AnimatedTransitionSpec(),
             barrier_dismissible=False,
@@ -99,7 +99,7 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
         root.layout(800, 600)
 
         for _ in range(10):
-            route = DialogRoute(
+            route = OverlayRoute(
                 builder=lambda: AlertDialog(title="Perf"),
                 transition_spec=_AnimatedTransitionSpec(),
                 barrier_dismissible=False,
@@ -137,7 +137,7 @@ def test_overlay_on_disposed_runs_once_after_exit_complete() -> None:
             callback_calls.append(has_modal)
 
         entry = OverlayEntry(builder=_build, on_dispose=_on_disposed)
-        route = DialogRoute(
+        route = OverlayRoute(
             builder=entry.build_widget,
             transition_spec=_AnimatedTransitionSpec(),
             barrier_dismissible=False,
