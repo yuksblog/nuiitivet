@@ -1,8 +1,8 @@
-"""Overlay Demo - Snackbar and AlertDialog examples.
+"""Overlay Demo - Snackbar and BasicDialog examples.
 
 This demo shows how to use the Overlay system:
 - Snackbar messages with auto-removal
-- AlertDialog with custom content and actions
+- BasicDialog with custom content and actions
 """
 
 import logging
@@ -12,12 +12,11 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable
 from nuiitivet.material import Overlay
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.buttons import Button
 from nuiitivet.material import Text
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.material import ButtonStyle
-
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class OverlayDemo(ComposableWidget):
             overlay.close_topmost()
 
         overlay.dialog(
-            AlertDialog(
+            BasicDialog(
                 title="Information",
                 message="This is an information dialog.",
                 actions=[
@@ -83,7 +82,7 @@ class OverlayDemo(ComposableWidget):
             overlay.close_topmost()
 
         overlay.dialog(
-            AlertDialog(
+            BasicDialog(
                 title="Confirm Action",
                 message="Are you sure you want to proceed?",
                 actions=[
@@ -107,7 +106,7 @@ class OverlayDemo(ComposableWidget):
         from nuiitivet.material.styles.dialog_style import DialogStyle
 
         overlay.dialog(
-            AlertDialog(
+            BasicDialog(
                 title="Custom Dialog",
                 message="This dialog has custom content.\nMultiple lines are supported.",
                 actions=[

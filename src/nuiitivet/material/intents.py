@@ -10,8 +10,8 @@ from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
-class AlertDialogIntent:
-    """Intent for showing a Material Alert Dialog.
+class BasicDialogIntent:
+    """Intent for showing a Material Basic Dialog.
 
     Attributes:
         title (str | None): The title of the dialog.

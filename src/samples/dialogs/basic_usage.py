@@ -1,12 +1,12 @@
 """
 Basic Dialog Usage
 
-Shows how to display a standard AlertDialog using Overlay.
+Shows how to display a standard BasicDialog using Overlay.
 """
 
 from nuiitivet.material import App
 from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
@@ -24,18 +24,12 @@ class BasicDialogDemo(ComposableWidget):
         overlay = Overlay.root()
 
         # Create the dialog widget
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
-                Button(
-                    "CANCEL",
-                    on_click=lambda: overlay.close("Canceled"),
-                    style=ButtonStyle.text()),
-                Button(
-                    "OK",
-                    on_click=lambda: overlay.close("Confirmed"),
-                    style=ButtonStyle.text()),
+                Button("CANCEL", on_click=lambda: overlay.close("Canceled"), style=ButtonStyle.text()),
+                Button("OK", on_click=lambda: overlay.close("Confirmed"), style=ButtonStyle.text()),
             ],
         )
 
@@ -53,10 +47,7 @@ class BasicDialogDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.result_text),
-                    Button(
-                        "Show Alert Dialog",
-                        on_click=self._show_dialog,
-                        style=ButtonStyle.filled()),
+                    Button("Show Basic Dialog", on_click=self._show_dialog, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -65,7 +56,7 @@ class BasicDialogDemo(ComposableWidget):
 def main(png_path: str = ""):
     if png_path:
         # For screenshot, render the dialog directly
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[Button("CANCEL", style=ButtonStyle.text()), Button("OK", style=ButtonStyle.text())],

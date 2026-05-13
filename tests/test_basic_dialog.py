@@ -1,6 +1,6 @@
-"""Tests for AlertDialog widget."""
+"""Tests for BasicDialog widget."""
 
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
@@ -13,9 +13,9 @@ def material_theme():
     manager.set_theme(MaterialTheme.light("#6750A4"))
 
 
-def test_alert_dialog_creation():
-    """Test creating an AlertDialog."""
-    dialog = AlertDialog(
+def test_basic_dialog_creation():
+    """Test creating a BasicDialog."""
+    dialog = BasicDialog(
         title="Test Title",
         message="Test Content",
     )
@@ -25,8 +25,8 @@ def test_alert_dialog_creation():
     assert dialog.actions == []
 
 
-def test_alert_dialog_with_actions():
-    """Test AlertDialog with action buttons."""
+def test_basic_dialog_with_actions():
+    """Test BasicDialog with action buttons."""
     from nuiitivet.material.buttons import Button
 
     actions = [
@@ -34,7 +34,7 @@ def test_alert_dialog_with_actions():
         Button("OK", style=ButtonStyle.text()),
     ]
 
-    dialog = AlertDialog(
+    dialog = BasicDialog(
         title="Confirm",
         message="Are you sure?",
         actions=actions,
@@ -43,9 +43,9 @@ def test_alert_dialog_with_actions():
     assert len(dialog.actions) == 2
 
 
-def test_alert_dialog_build():
-    """Test building an AlertDialog."""
-    dialog = AlertDialog(
+def test_basic_dialog_build():
+    """Test building a BasicDialog."""
+    dialog = BasicDialog(
         title="Title",
         message="Content",
     )
@@ -65,9 +65,9 @@ def test_alert_dialog_build():
     # Or just ensure it built.
 
 
-def test_alert_dialog_minimal():
-    """Test minimal AlertDialog (no title, content, or actions)."""
-    dialog = AlertDialog()
+def test_basic_dialog_minimal():
+    """Test minimal BasicDialog (no title, content, or actions)."""
+    dialog = BasicDialog()
 
     assert dialog.title is None
     assert dialog.message is None
@@ -78,20 +78,20 @@ def test_alert_dialog_minimal():
     assert built is not None
 
 
-def test_alert_dialog_style_override():
-    """Test AlertDialog with custom style."""
+def test_basic_dialog_style_override():
+    """Test BasicDialog with custom style."""
     custom_style = DialogStyle(corner_radius=16.0, min_width=400.0, padding=32)
 
-    dialog = AlertDialog(title="Props", style=custom_style)
+    dialog = BasicDialog(title="Props", style=custom_style)
 
     assert dialog.style.corner_radius == 16.0
     assert dialog.style.min_width == 400.0
     assert dialog.style.padding == 32
 
 
-def test_alert_dialog_only_title():
-    """Test AlertDialog with only title."""
-    dialog = AlertDialog(
+def test_basic_dialog_only_title():
+    """Test BasicDialog with only title."""
+    dialog = BasicDialog(
         title="Title only",
     )
 
@@ -100,9 +100,9 @@ def test_alert_dialog_only_title():
     assert dialog.actions == []
 
 
-def test_alert_dialog_only_content():
-    """Test AlertDialog with only content."""
-    dialog = AlertDialog(
+def test_basic_dialog_only_content():
+    """Test BasicDialog with only content."""
+    dialog = BasicDialog(
         message="Content only",
     )
 
@@ -110,9 +110,9 @@ def test_alert_dialog_only_content():
     assert dialog.message is not None
 
 
-def test_alert_dialog_with_icon():
-    """Test AlertDialog with icon."""
-    dialog = AlertDialog(icon="home", title="With Icon")
+def test_basic_dialog_with_icon():
+    """Test BasicDialog with icon."""
+    dialog = BasicDialog(icon="home", title="With Icon")
     assert dialog.icon == "home"
 
     dialog.build()
@@ -120,7 +120,7 @@ def test_alert_dialog_with_icon():
     # but at least it builds.
 
 
-def test_alert_dialog_default_background_is_surface_container_high():
+def test_basic_dialog_default_background_is_surface_container_high():
     """MD3 Basic Dialog uses surface-container-high (not highest)."""
     from nuiitivet.material.theme.color_role import ColorRole
 
@@ -128,17 +128,17 @@ def test_alert_dialog_default_background_is_surface_container_high():
     assert style.background == ColorRole.SURFACE_CONTAINER_HIGH
 
 
-def test_alert_dialog_default_width_is_md3_min():
-    """AlertDialog default width is the MD3 minimum (280dp)."""
-    dialog = AlertDialog(title="t")
+def test_basic_dialog_default_width_is_md3_min():
+    """BasicDialog default width is the MD3 minimum (280dp)."""
+    dialog = BasicDialog(title="t")
     assert dialog.width == 280.0
 
 
-def test_alert_dialog_custom_width_propagates_to_box():
-    """AlertDialog forwards custom width to the underlying Box."""
+def test_basic_dialog_custom_width_propagates_to_box():
+    """BasicDialog forwards custom width to the underlying Box."""
     from nuiitivet.widgets.box import Box
 
-    dialog = AlertDialog(title="t", width=420.0)
+    dialog = BasicDialog(title="t", width=420.0)
     assert dialog.width == 420.0
 
     built = dialog.build()

@@ -1,12 +1,12 @@
 ## Introduction
 
-nuiitivet offers a robust dialog system built on top of the Overlay architecture. While `AlertDialog` is the most common use case, the system is flexible enough to display any widget as a modal dialog and supports advanced architectural patterns like MVVM.
+nuiitivet offers a robust dialog system built on top of the Overlay architecture. While `BasicDialog` is the most common use case, the system is flexible enough to display any widget as a modal dialog and supports advanced architectural patterns like MVVM.
 
 ![Overlay System](../assets/overlay_dialog_toast.png)
 
 ## Basic Usage
 
-The most straightforward way to show a dialog is to create an `AlertDialog` widget and pass it to `Overlay.root().dialog()`.
+The most straightforward way to show a dialog is to create an `BasicDialog` widget and pass it to `Overlay.root().dialog()`.
 
 The `dialog()` method is **awaitable**, meaning you can wait for the user to close the dialog and receive a result.
 
@@ -22,7 +22,7 @@ class BasicDialogDemo(ComposableWidget):
         overlay = Overlay.root()
 
         # Create the dialog widget
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
@@ -71,7 +71,7 @@ class BasicDialogDemo(ComposableWidget):
 
 ## Custom Dialogs
 
-You are not limited to `AlertDialog`. Any Widget can be shown in the overlay. This is useful for custom forms, interactive tools, or specialized prompts.
+You are not limited to `BasicDialog`. Any Widget can be shown in the overlay. This is useful for custom forms, interactive tools, or specialized prompts.
 
 ```python
 from nuiitivet.material import ButtonStyle
@@ -196,7 +196,7 @@ from nuiitivet.material import ButtonStyle
 
 class CoupledViewModel:
     """
-    This ViewModel knows about types like AlertDialog.
+    This ViewModel knows about types like BasicDialog.
     It imports widgets which ties it to the UI layer.
     """
     
@@ -207,7 +207,7 @@ class CoupledViewModel:
         self.status.value = "Processing..."
         
         # Logic creates UI components directly
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
@@ -229,12 +229,12 @@ class DirectViewModelDemo(ComposableWidget):
 
 For those who prefer a stricter separation of concerns, nuiitivet supports **Intents**. An Intent is a plain data class that describes *what* needs to happen, not *how* it looks. The ViewModel emits an Intent, and the View (or Overlay system) decides how to render it.
 
-By using `AlertDialogIntent`, the ViewModel remains pure logic.
+By using `BasicDialogIntent`, the ViewModel remains pure logic.
 
 ```python
 # src/samples/dialogs/view_model_intent.py (Excerpt)
 
-from nuiitivet.material.intents import AlertDialogIntent
+from nuiitivet.material.intents import BasicDialogIntent
 
 class DecoupledViewModel:
     """
@@ -249,7 +249,7 @@ class DecoupledViewModel:
         self.status.value = "Processing..."
         
         # We just create a data description of what we want
-        intent = AlertDialogIntent(
+        intent = BasicDialogIntent(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle"

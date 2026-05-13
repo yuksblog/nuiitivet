@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from nuiitivet.common.logging_once import exception_once
 
-
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -23,7 +22,7 @@ class OverlayEntry:
 
     Example:
         def build_dialog():
-            return AlertDialog(
+            return BasicDialog(
                 title="Confirm",
                 content="Are you sure?",
                 actions=[

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from nuiitivet.layout.stack import Stack
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.overlay_route import OverlayRoute
@@ -54,7 +54,7 @@ def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
         root.layout(800, 600)
 
         route = OverlayRoute(
-            builder=lambda: AlertDialog(title="Lifecycle"),
+            builder=lambda: BasicDialog(title="Lifecycle"),
             transition_spec=_AnimatedTransitionSpec(),
             barrier_dismissible=False,
         )
@@ -100,7 +100,7 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
 
         for _ in range(10):
             route = OverlayRoute(
-                builder=lambda: AlertDialog(title="Perf"),
+                builder=lambda: BasicDialog(title="Perf"),
                 transition_spec=_AnimatedTransitionSpec(),
                 barrier_dismissible=False,
             )
@@ -128,8 +128,8 @@ def test_overlay_on_disposed_runs_once_after_exit_complete() -> None:
 
         callback_calls: list[bool] = []
 
-        def _build() -> AlertDialog:
-            return AlertDialog(title="Dispose ordering")
+        def _build() -> BasicDialog:
+            return BasicDialog(title="Dispose ordering")
 
         def _on_disposed() -> None:
             routes = overlay._modal_navigator._routes  # type: ignore[attr-defined]

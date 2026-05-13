@@ -8,7 +8,7 @@ from typing import Any, Callable, Literal, Mapping
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.navigation.route import Route
 from nuiitivet.overlay.overlay_route import OverlayRoute
@@ -24,7 +24,7 @@ from .transition_spec import (
     MaterialTransitionSpec,
 )
 
-from .intents import AlertDialogIntent, LoadingIntent
+from .intents import BasicDialogIntent, LoadingIntent
 
 
 class _MappingIntentResolver(IntentResolver):
@@ -54,8 +54,8 @@ class MaterialOverlay(Overlay):
 
         if intent_resolver is None:
             defaults: dict[type[Any], Callable[[Any], Widget | Route]] = {
-                AlertDialogIntent: lambda i: OverlayRoute(
-                    builder=lambda: AlertDialog(
+                BasicDialogIntent: lambda i: OverlayRoute(
+                    builder=lambda: BasicDialog(
                         title=i.title,
                         message=i.message,
                         icon=i.icon,

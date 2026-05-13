@@ -1,7 +1,6 @@
 """Material Design Basic Dialog implementation.
 
-This module contains the implementation of the Material Design 3 Basic Dialog,
-specifically AlertDialog.
+This module contains the implementation of the Material Design 3 Basic Dialog.
 """
 
 from __future__ import annotations
@@ -26,8 +25,8 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-class AlertDialog(ComposableWidget):
-    """Material Alert dialog widget (Basic Dialog).
+class BasicDialog(ComposableWidget):
+    """Material dialog widget (Basic Dialog).
 
     Displays a modal dialog with optional icon, title, content, and action buttons.
     Follows Material Design 3 dialog guidelines.
@@ -60,7 +59,7 @@ class AlertDialog(ComposableWidget):
         style: Optional[DialogStyle] = None,
         width: float = 280.0,
     ):
-        """Initialize AlertDialog.
+        """Initialize BasicDialog.
 
         Args:
             title: Optional title text source.
@@ -89,7 +88,7 @@ class AlertDialog(ComposableWidget):
 
         theme_data = manager.current.extension(MaterialThemeData)
         if theme_data:
-            return theme_data.alert_dialog_style
+            return theme_data.basic_dialog_style
 
         return DialogStyle.basic()
 

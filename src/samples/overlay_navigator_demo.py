@@ -16,7 +16,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
 from nuiitivet.navigation import Navigator, Route
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import App
 from nuiitivet.material import Overlay
 from nuiitivet.material.buttons import Button
@@ -149,7 +149,7 @@ def main() -> None:
         def on_ok() -> None:
             Overlay.root().close("OK", target=dialog)
 
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="Hello",
             message="This dialog is rendered via Overlay (Intent).",
             actions=[_filled("OK", on_click=on_ok)],
@@ -165,7 +165,7 @@ def main() -> None:
         def on_reset() -> None:
             Overlay.root().close(True, target=dialog)
 
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="Confirm",
             message="Reset settings?",
             actions=[

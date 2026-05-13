@@ -193,7 +193,7 @@ Scenario-specific APIs are moved to subclasses.
 - `MaterialOverlay` allows for `IntentResolver` injection.
   - Alternatively, pass `intents: Mapping[type[Any], Callable[[Any], Widget | Route]]` (internally builds a mapping resolver).
 - Register standard intents by default:
-  - `AlertDialogIntent`
+  - `BasicDialogIntent`
   - `LoadingDialogIntent`
 
 #### Provided APIs (v1)
@@ -237,7 +237,7 @@ In the Material implementation, `MaterialApp` sets `overlay_factory` internally 
 ### 2.8 Note: Scope of core APIs
 
 - `Overlay.show_modal()` / `Overlay.show_modeless()` / `Overlay.show_light_dismiss()` are not responsible for intent registration or providing standard dialog/widgets.
-- Standard UI components (e.g., `AlertDialog`, `LoadingDialog`) and intents are provided by `MaterialOverlay`.
+- Standard UI components (e.g., `BasicDialog`, `LoadingDialog`) and intents are provided by `MaterialOverlay`.
 
 ## 3. Asynchronous Processing and Lifecycle
 

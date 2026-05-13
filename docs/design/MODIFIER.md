@@ -74,7 +74,7 @@ For details on the node-based interaction system, see [INTERACTION_ARCHITECTURE.
 
 * **`will_pop(on_will_pop)`**: Intercepts and potentially cancels a back-navigation (pop) request.
 * **Callback**: `on_will_pop` is an `async` function that returns `True` (allow pop) or `False` (cancel pop).
-* **Usage**: Commonly used to show an `AlertDialog` for confirming unsaved changes before leaving a screen. For more details on navigation flow, see [NAVIGATION.md](NAVIGATION.md).
+* **Usage**: Commonly used to show a `BasicDialog` for confirming unsaved changes before leaving a screen. For more details on navigation flow, see [NAVIGATION.md](NAVIGATION.md).
 
 ### Visibility
 

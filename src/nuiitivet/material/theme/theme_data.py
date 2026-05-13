@@ -63,7 +63,7 @@ class MaterialThemeData(ThemeExtension):
     _radio_button_style: "RadioButtonStyle | None" = None
     _switch_style: "SwitchStyle | None" = None
     _slider_style: "SliderStyle | None" = None
-    _alert_dialog_style: "DialogStyle | None" = None
+    _basic_dialog_style: "DialogStyle | None" = None
     _icon_style: "IconStyle | None" = None
     _text_style: "TextStyle | None" = None
 
@@ -247,10 +247,10 @@ class MaterialThemeData(ThemeExtension):
         return SliderStyle.xs()
 
     @property
-    def alert_dialog_style(self) -> "DialogStyle":
+    def basic_dialog_style(self) -> "DialogStyle":
         """Get DialogStyle for this theme."""
-        if self._alert_dialog_style is not None:
-            return self._alert_dialog_style
+        if self._basic_dialog_style is not None:
+            return self._basic_dialog_style
         from nuiitivet.material.styles.dialog_style import DialogStyle
 
         return DialogStyle.basic()
