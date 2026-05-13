@@ -43,11 +43,22 @@ async def test_overlay_dialog_await():
 
 
 @pytest.mark.asyncio
-async def test_overlay_loading_async_with():
+async def test_overlay_loading_returns_handle():
     overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i.message)})
     Overlay.set_root(overlay)
 
-    async with overlay.loading():
+    handle = overlay.loading()
+    assert overlay.has_entries()
+    handle.close(None)
+    assert not overlay.has_entries()
+
+
+@pytest.mark.asyncio
+async def test_overlay_while_loading_async_with():
+    overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i.message)})
+    Overlay.set_root(overlay)
+
+    async with overlay.while_loading():
         assert overlay.has_entries()
         await asyncio.sleep(0.1)
 

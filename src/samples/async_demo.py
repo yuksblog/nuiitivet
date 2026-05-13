@@ -2,7 +2,7 @@
 
 This sample demonstrates:
 1. Using `async` event handlers (on_click).
-2. Using `async with Overlay.loading()` while awaiting.
+2. Using `async with Overlay.while_loading()` while awaiting.
 3. Updating UI (Observable) from within an async handler without blocking.
 4. Awaiting `Overlay.dialog` results directly.
 """
@@ -36,7 +36,7 @@ class AsyncDemoApp(nv.ComposableWidget):
         """Handler for the 'Start Task' button."""
 
         # 1. Show loading dialog using async context manager
-        async with md.Overlay.root().loading():
+        async with md.Overlay.root().while_loading():
             await self._heavy_task()
 
         # 2. Show confirmation dialog and await result
@@ -45,8 +45,8 @@ class AsyncDemoApp(nv.ComposableWidget):
                 title="Task Finished",
                 message=f"Count reached {self.counter.value}. Reset?",
                 actions=[
-                    md.TextButton("No", on_click=lambda: md.Overlay.root().close(False)),
-                    md.TextButton("Yes", on_click=lambda: md.Overlay.root().close(True)),
+                    md.Button("No", on_click=lambda: md.Overlay.root().close(False), style=md.ButtonStyle.text()),
+                    md.Button("Yes", on_click=lambda: md.Overlay.root().close(True), style=md.ButtonStyle.text()),
                 ],
             )
         )
@@ -115,17 +115,20 @@ class AsyncDemoApp(nv.ComposableWidget):
                     children=[
                         md.Text("Async/Await Demo"),
                         status_card,
-                        md.TextButton(
+                        md.Button(
                             "Start Heavy Task (with Overlay.loading)",
                             on_click=self.on_start_task_click,
+                            style=md.ButtonStyle.text(),
                         ),
-                        md.TextButton(
+                        md.Button(
                             "Test Non-blocking Wait (3s)",
                             on_click=self.on_concurrent_test_click,
+                            style=md.ButtonStyle.text(),
                         ),
-                        md.TextButton(
+                        md.Button(
                             "Increment Counter Manually",
                             on_click=lambda: setattr(self.counter, "value", self.counter.value + 1),
+                            style=md.ButtonStyle.text(),
                         ),
                         md.Text(
                             "Try clicking 'Increment Counter Manually' while 'Test Non-blocking Wait' is running.\n"

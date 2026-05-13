@@ -170,18 +170,13 @@ class MaterialOverlay(Overlay):
         )
 
     class _LoadingContext(AbstractContextManager[None], AbstractAsyncContextManager[None]):
-        def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Route) -> None:
+        def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Route | Any | None) -> None:
             self._overlay = overlay
             self._indicator = indicator
             self._handle: OverlayHandle[Any] | None = None
 
         def __enter__(self) -> None:
-            self._handle = self._overlay.show_modal(
-                self._indicator,
-                dismiss_on_outside_tap=False,
-                timeout=None,
-                position=OverlayPosition.alignment("center"),
-            )
+            self._handle = self._overlay.loading(self._indicator)
             return None
 
         def __exit__(self, exc_type, exc, tb) -> Literal[False]:
@@ -200,14 +195,53 @@ class MaterialOverlay(Overlay):
     def loading(
         self,
         indicator: Widget | Route | Any | None = None,
-    ) -> "MaterialOverlay._LoadingContext":
+    ) -> OverlayHandle[Any]:
+        """Show a loading indicator overlay and return a handle for manual dismissal.
+
+        Args:
+            indicator: Widget, Route, or intent to display as the loading indicator.
+                Defaults to the built-in :class:`LoadingIndicator`.
+
+        Returns:
+            An :class:`OverlayHandle` that can be closed via ``handle.close(None)``.
+        """
         if indicator is None:
             resolved: Widget | Route = self._intent_resolver.resolve(LoadingIntent())
         elif isinstance(indicator, (Widget, Route)):
             resolved = indicator
         else:
             resolved = self._intent_resolver.resolve(indicator)
-        return MaterialOverlay._LoadingContext(self, resolved)
+        return self.show_modal(
+            resolved,
+            dismiss_on_outside_tap=False,
+            timeout=None,
+            position=OverlayPosition.alignment("center"),
+        )
+
+    def while_loading(
+        self,
+        indicator: Widget | Route | Any | None = None,
+    ) -> "_LoadingContext":
+        """Return a context manager that shows a loading indicator for the duration of a block.
+
+        Use this form when the loading state is scoped to a ``with`` or ``async with`` block::
+
+            with MaterialOverlay.of(self).while_loading():
+                do_work()
+
+            async with MaterialOverlay.of(self).while_loading():
+                await fetch_data()
+
+        Internally delegates show/close to :meth:`loading`.
+
+        Args:
+            indicator: Widget, Route, or intent to display as the loading indicator.
+                Defaults to the built-in :class:`LoadingIndicator`.
+
+        Returns:
+            A context manager that shows the indicator on entry and closes it on exit.
+        """
+        return MaterialOverlay._LoadingContext(self, indicator)
 
     def side_sheet(
         self,

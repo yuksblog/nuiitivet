@@ -86,21 +86,30 @@ def test_material_overlay_dialog_accepts_custom_route_without_wrapping() -> None
     assert overlay.has_entries() is True
 
 
-def test_overlay_loading_context_closes_on_exit() -> None:
+def test_overlay_loading_returns_handle() -> None:
     overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i)})
 
-    with overlay.loading():
+    handle = overlay.loading()
+    assert overlay.has_entries() is True
+    handle.close(None)
+    assert overlay.has_entries() is False
+
+
+def test_overlay_while_loading_context_closes_on_exit() -> None:
+    overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i)})
+
+    with overlay.while_loading():
         assert overlay.has_entries() is True
 
     assert overlay.has_entries() is False
 
 
-def test_overlay_loading_async_context_closes_on_exception() -> None:
+def test_overlay_while_loading_async_context_closes_on_exception() -> None:
     overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i)})
 
     async def run() -> None:
         with pytest.raises(RuntimeError, match="boom"):
-            async with overlay.loading():
+            async with overlay.while_loading():
                 assert overlay.has_entries() is True
                 raise RuntimeError("boom")
 

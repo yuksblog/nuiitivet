@@ -210,8 +210,11 @@ Scenario-specific APIs are moved to subclasses.
   - Background input remains interactive (modeless).
   - Automatically dismisses after `timeout=duration`.
   - Default position: `OverlayPosition.alignment("bottom-center", offset=(0, -24))`.
-- `MaterialOverlay.loading(message="Loading...")`
-  - Displays `LoadingDialogIntent` and ensures it closes upon exiting a context manager.
+- `MaterialOverlay.loading(indicator=None)` → `OverlayHandle[Any]`
+  - Displays the loading indicator and returns a handle for manual dismissal.
+  - `handle.close(None)` dismisses the overlay.
+- `MaterialOverlay.while_loading(indicator=None)` → context manager
+  - Displays `LoadingIntent` and ensures it closes upon exiting the block (sync or async).
 
 ### 2.7 Swapping the Root Overlay: `overlay_factory`
 

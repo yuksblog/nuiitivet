@@ -97,7 +97,7 @@ Async handlers and awaited workflows tend to outlive synchronous scopes.
 
 See `src/samples/async_demo.py` for an end-to-end demonstration:
 
-- `async with MaterialOverlay.root().loading(...)` while awaiting work.
+- `async with MaterialOverlay.root().while_loading(...)` while awaiting work.
 - Awaiting `MaterialOverlay.root().dialog(...)`.
 - Updating `Observable` values from async code without `dispatch_to_ui()`.
 
