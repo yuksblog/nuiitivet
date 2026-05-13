@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
 from tests.helpers.layer_composer import (
     RecordingNavigationComposer,
@@ -22,7 +22,7 @@ class _FlagWidget(Widget):
 
 def test_navigator_delegates_static_paint_to_layer_composer() -> None:
     spy = RecordingNavigationComposer()
-    nav = Navigator(PageRoute(builder=_FlagWidget), layer_composer=spy)
+    nav = Navigator(Route(builder=_FlagWidget), layer_composer=spy)
 
     nav.paint(canvas=None, x=0, y=0, width=100, height=100)
 
@@ -33,12 +33,12 @@ def test_navigator_delegates_static_paint_to_layer_composer() -> None:
 def test_navigator_delegates_transition_paint_to_layer_composer() -> None:
     spy = RecordingNavigationComposer()
     nav = Navigator(
-        PageRoute(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec()),
+        Route(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec()),
         layer_composer=spy,
     )
     nav._app = object()  # type: ignore[attr-defined]
 
-    nav.push(PageRoute(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec()))
+    nav.push(Route(builder=_FlagWidget, transition_spec=_AnimatedTransitionSpec()))
     nav.paint(canvas=None, x=0, y=0, width=100, height=100)
 
     assert spy.transition_paints == 1

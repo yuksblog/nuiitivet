@@ -9,7 +9,7 @@ from nuiitivet.navigation.layer_composer import (
     NavigationLayerCompositionContext,
     NavigationTransitionKind,
 )
-from nuiitivet.navigation.route import PageRoute, Route
+from nuiitivet.navigation.route import Route
 from nuiitivet.navigation.stack_runtime import EntryLifecycle, RouteStackEntry, RouteStackRuntime
 from nuiitivet.navigation.transition_state import TransitionLifecycle, TransitionState
 from nuiitivet.navigation.transition_engine import TransitionEngine, TransitionMotionPreset, TransitionMotions
@@ -25,7 +25,6 @@ __all__ = [
     "NavigationLayerComposer",
     "NavigationLayerCompositionContext",
     "NavigationTransitionKind",
-    "PageRoute",
     "EmptyTransitionSpec",
     "Route",
     "EntryLifecycle",

@@ -1,4 +1,4 @@
-"""DialogRoute for modal overlay dialogs."""
+"""OverlayRoute for modal overlay layers."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from nuiitivet.navigation.route import Route
 from nuiitivet.widgeting.widget import Widget
 
 
-class DialogRoute(Route):
+class OverlayRoute(Route):
     """A modal route shown on the Overlay layer."""
 
     def __init__(

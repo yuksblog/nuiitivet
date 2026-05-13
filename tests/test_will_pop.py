@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from nuiitivet.modifiers import will_pop
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -47,8 +47,8 @@ def test_navigator_pop_respects_will_pop_cancel() -> None:
 
     nav = Navigator.routes(
         [
-            PageRoute(builder=lambda: _FlagWidget(label="root")),
-            PageRoute(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
+            Route(builder=lambda: _FlagWidget(label="root")),
+            Route(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
         ]
     )
 
@@ -70,8 +70,8 @@ def test_navigator_pop_respects_will_pop_allow() -> None:
 
     nav = Navigator.routes(
         [
-            PageRoute(builder=lambda: _FlagWidget(label="root")),
-            PageRoute(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
+            Route(builder=lambda: _FlagWidget(label="root")),
+            Route(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
         ]
     )
 
@@ -107,8 +107,8 @@ def test_navigator_pop_calls_will_pop_inside_build() -> None:
     outgoing = Outgoing()
     nav = Navigator.routes(
         [
-            PageRoute(builder=lambda: _FlagWidget(label="root")),
-            PageRoute(builder=lambda: outgoing),
+            Route(builder=lambda: _FlagWidget(label="root")),
+            Route(builder=lambda: outgoing),
         ]
     )
 
@@ -200,8 +200,8 @@ def test_normal_pop_allowed_works_after_previous_cancel() -> None:
 
     nav = Navigator.routes(
         [
-            PageRoute(builder=lambda: _FlagWidget(label="root")),
-            PageRoute(builder=lambda: _FlagWidget(label="outgoing").modifier(will_pop(on_will_pop))),
+            Route(builder=lambda: _FlagWidget(label="root")),
+            Route(builder=lambda: _FlagWidget(label="outgoing").modifier(will_pop(on_will_pop))),
         ]
     )
     nav.rebuild()

@@ -33,10 +33,3 @@ class Route:
 
         self._widget.unmount()
         self._widget = None
-
-
-class PageRoute(Route):
-    """Route for a page widget."""
-
-    def __init__(self, builder: Callable[[], Widget], transition_spec: TransitionSpec | None = None) -> None:
-        super().__init__(builder=builder, transition_spec=transition_spec or Transitions.empty())

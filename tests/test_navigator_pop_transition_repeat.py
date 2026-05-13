@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -37,7 +37,7 @@ class _Handle:
 
 
 def test_pop_finishes_when_pop_transition_running() -> None:
-    nav = Navigator.routes([PageRoute(builder=_FlagWidget), PageRoute(builder=_FlagWidget)])
+    nav = Navigator.routes([Route(builder=_FlagWidget), Route(builder=_FlagWidget)])
 
     # Simulate an in-flight pop transition without requiring App.animate.
     handle = _Handle()

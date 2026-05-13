@@ -7,7 +7,7 @@ from nuiitivet.material.dialogs import AlertDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers import will_pop
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.observable import Observable
 from nuiitivet.material import ButtonStyle
 
@@ -20,7 +20,7 @@ class HomeIntent:
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def _open_editor() -> None:
-            Navigator.root().push(PageRoute(builder=lambda: EditScreen()))
+            Navigator.root().push(Route(builder=lambda: EditScreen()))
 
         return nv.Container(
             padding=24,
@@ -106,7 +106,7 @@ def main(png: str = ""):
         Navigator.intents(
             initial_route=HomeIntent(),
             routes={
-                HomeIntent: lambda _i: PageRoute(builder=HomeScreen),
+                HomeIntent: lambda _i: Route(builder=HomeScreen),
             },
         ),
         width=400,

@@ -11,7 +11,7 @@ from nuiitivet.material import (
     Button,
 )
 from nuiitivet.layout.column import Column
-from nuiitivet.navigation import Navigator, PageRoute, Transitions
+from nuiitivet.navigation import Navigator, Route, Transitions
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
@@ -44,14 +44,14 @@ class HomeScreen(ComposableWidget):
                 enter=FadeIn() | SlideInVertically(initial_offset_y=50.0),
                 exit_=FadeOut() | SlideOutVertically(target_offset_y=50.0),
             )
-            route = PageRoute(
+            route = Route(
                 builder=lambda: DetailsScreen(),
                 transition_spec=custom_transition,
             )
             Navigator.root().push(route)
 
         def navigate_instantly() -> None:
-            route = PageRoute(
+            route = Route(
                 builder=lambda: DetailsScreen(),
                 transition_spec=Transitions.empty(),
             )

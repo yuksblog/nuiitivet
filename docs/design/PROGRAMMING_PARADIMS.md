@@ -88,7 +88,7 @@ if __name__ == "__main__":
     overlay = Overlay(
         # Register Intent (standard intents available by default)
         dialogs={
-            ConfirmIntent: lambda intent: DialogRoute(
+            ConfirmIntent: lambda intent: OverlayRoute(
                 builder=lambda: AlertDialog(
                     title=Text(intent.title),
                     content=Text(intent.message),
@@ -264,11 +264,11 @@ class CartViewModel:
 
 # 3. View (Bind Intent to Widget via Navigator configuration)
 Navigator(
-    initial_routes=[PageRoute(builder=lambda: ProductListScreen())],
+    initial_routes=[Route(builder=lambda: ProductListScreen())],
     routes={
-        ProductListIntent: lambda _: PageRoute(builder=lambda: ProductListScreen()),
-        CartIntent: lambda _: PageRoute(builder=lambda: CartScreen()),
-        OrderCompleteIntent: lambda _: PageRoute(builder=lambda: OrderCompleteScreen()),
+        ProductListIntent: lambda _: Route(builder=lambda: ProductListScreen()),
+        CartIntent: lambda _: Route(builder=lambda: CartScreen()),
+        OrderCompleteIntent: lambda _: Route(builder=lambda: OrderCompleteScreen()),
     }
 )
 ```
@@ -291,22 +291,22 @@ class MainScreen(Widget):
                     # This Navigator manages transitions within this tab
                     Navigator(
                         key="home_nav",
-                        initial_routes=[PageRoute(builder=lambda: ProductListScreen())],
+                        initial_routes=[Route(builder=lambda: ProductListScreen())],
                         routes={
-                            ProductListIntent: lambda _: PageRoute(builder=lambda: ProductListScreen()),
-                            CartIntent: lambda _: PageRoute(builder=lambda: CartScreen()),
+                            ProductListIntent: lambda _: Route(builder=lambda: ProductListScreen()),
+                            CartIntent: lambda _: Route(builder=lambda: CartScreen()),
                             # ...
                         }
                     ),
                     # Tab 2: Search (Standard Navigation)
                     Navigator(
                         key="search_nav",
-                        initial_routes=[PageRoute(builder=lambda: SearchScreen())]
+                        initial_routes=[Route(builder=lambda: SearchScreen())]
                     ),
                     # Tab 3: Profile
                     Navigator(
                         key="profile_nav",
-                        initial_routes=[PageRoute(builder=lambda: ProfileScreen())]
+                        initial_routes=[Route(builder=lambda: ProfileScreen())]
                     ),
                 ]
             ),

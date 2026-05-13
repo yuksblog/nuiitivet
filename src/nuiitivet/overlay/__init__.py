@@ -1,6 +1,6 @@
 """Overlay system for transient layers."""
 
-from .dialog_route import DialogRoute
+from .overlay_route import OverlayRoute
 from .intent_resolver import IntentResolver
 from .overlay_aware import OverlayAware
 from .overlay_handle import OverlayHandle
@@ -16,7 +16,7 @@ from .intents import PlainDialogIntent, LoadingDialogIntent
 __all__ = [
     "AnchoredOverlayPosition",
     "PlainDialogIntent",
-    "DialogRoute",
+    "OverlayRoute",
     "IntentResolver",
     "LoadingDialogIntent",
     "Overlay",

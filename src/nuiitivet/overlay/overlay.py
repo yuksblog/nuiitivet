@@ -14,7 +14,7 @@ from nuiitivet.modifiers.background import background
 from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
-from nuiitivet.navigation import PageRoute, Route
+from nuiitivet.navigation import Route
 from nuiitivet.navigation.stack_runtime import RouteStackRuntime
 from nuiitivet.navigation.transition_engine import TransitionEngine
 from nuiitivet.navigation.transition_spec import EmptyTransitionSpec, TransitionPhase, TransitionSpec, Transitions
@@ -289,7 +289,7 @@ class Overlay(ComposableWidget):
 
         # Overlay entries are implemented as routes on a private modal navigator.
         # A base route keeps the navigator mounted even when empty.
-        self._base_route: Route = PageRoute(builder=lambda: Container(), transition_spec=Transitions.empty())
+        self._base_route: Route = Route(builder=lambda: Container(), transition_spec=Transitions.empty())
         self._modal_navigator: _ModalNavigator = _ModalNavigator(base_route=self._base_route)
         self._entry_to_route: Dict[OverlayEntry, _OverlayEntryRoute] = {}
         self._entry_to_future: Dict[OverlayEntry, asyncio.Future[OverlayResult[Any]]] = {}
@@ -376,7 +376,7 @@ class Overlay(ComposableWidget):
             return content
 
         widget = content
-        return PageRoute(builder=lambda: widget, transition_spec=Transitions.empty())
+        return Route(builder=lambda: widget, transition_spec=Transitions.empty())
 
     def _to_overlay_entry_route(
         self,
@@ -606,7 +606,7 @@ class Overlay(ComposableWidget):
         return self._modal_navigator
 
     def insert_entry(self, entry: OverlayEntry) -> None:
-        route = PageRoute(builder=entry.build_widget, transition_spec=Transitions.empty())
+        route = Route(builder=entry.build_widget, transition_spec=Transitions.empty())
         self._insert_entry_with_route(entry, route)
         self.rebuild()
 
