@@ -62,8 +62,3 @@ class DialogStyle:
     def basic(cls) -> "DialogStyle":
         """Default Basic Dialog style."""
         return cls()
-
-    @classmethod
-    def alert(cls) -> "DialogStyle":
-        """Alert Dialog style (alias for basic, can be customized)."""
-        return cls()

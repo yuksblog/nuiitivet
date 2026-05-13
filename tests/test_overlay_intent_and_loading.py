@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
@@ -30,7 +30,7 @@ class _ConfirmIntent:
 def test_overlay_dialog_intent_resolves_to_widget() -> None:
     overlay = MaterialOverlay(
         intents={
-            _ConfirmIntent: lambda i: AlertDialog(title="Confirm", message=i.message),
+            _ConfirmIntent: lambda i: BasicDialog(title="Confirm", message=i.message),
         }
     )
 
@@ -46,7 +46,7 @@ def test_overlay_dialog_intent_resolves_to_route() -> None:
 
     overlay = MaterialOverlay(
         intents={
-            _ConfirmIntent: lambda i: Route(builder=lambda: AlertDialog(title=i.message)),
+            _ConfirmIntent: lambda i: Route(builder=lambda: BasicDialog(title=i.message)),
         }
     )
 
@@ -63,7 +63,7 @@ def test_overlay_dialog_unknown_intent_raises() -> None:
 
 def test_material_overlay_dialog_accepts_widget_without_manual_dialog_route() -> None:
     overlay = MaterialOverlay(intents={})
-    widget = AlertDialog(title="Widget dialog")
+    widget = BasicDialog(title="Widget dialog")
 
     route = overlay._normalize_dialog_to_route(widget, dismiss_on_outside_tap=False)
 
@@ -76,7 +76,7 @@ def test_material_overlay_dialog_accepts_widget_without_manual_dialog_route() ->
 
 def test_material_overlay_dialog_accepts_custom_route_without_wrapping() -> None:
     overlay = MaterialOverlay(intents={})
-    route = OverlayRoute(builder=lambda: AlertDialog(title="Custom route"), barrier_dismissible=False)
+    route = OverlayRoute(builder=lambda: BasicDialog(title="Custom route"), barrier_dismissible=False)
 
     normalized = overlay._normalize_dialog_to_route(route, dismiss_on_outside_tap=False)
 

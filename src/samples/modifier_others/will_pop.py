@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers import will_pop
@@ -63,7 +63,7 @@ class EditScreen(nv.ComposableWidget):
             Navigator.root().pop()
 
         Overlay.root().dialog(
-            AlertDialog(
+            BasicDialog(
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[

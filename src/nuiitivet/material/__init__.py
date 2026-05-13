@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .card import Card
     from .styles.card_style import CardStyle
     from .chip import AssistChip, FilterChip, InputChip, SuggestionChip
-    from .dialogs import AlertDialog
+    from .dialogs import BasicDialog
     from .loading_indicator import LoadingIndicator
     from .progress_indicators import (
         CircularProgressIndicator,
@@ -104,7 +104,7 @@ __all__ = [
     "RailItem",
     "MaterialOverlay",
     "Overlay",
-    "AlertDialog",
+    "BasicDialog",
     "LoadingIndicator",
     "LinearProgressIndicator",
     "IndeterminateLinearProgressIndicator",
@@ -185,7 +185,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RailItem": ("navigation_rail", "RailItem"),
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "Overlay": ("overlay", "MaterialOverlay"),
-    "AlertDialog": ("dialogs", "AlertDialog"),
+    "BasicDialog": ("dialogs", "BasicDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
     "LinearProgressIndicator": ("progress_indicators", "LinearProgressIndicator"),
     "IndeterminateLinearProgressIndicator": ("progress_indicators", "IndeterminateLinearProgressIndicator"),

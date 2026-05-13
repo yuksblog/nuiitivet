@@ -273,7 +273,7 @@ class Overlay(ComposableWidget):
 
         # Show a dialog
         def build_dialog():
-            return AlertDialog(...)
+            return BasicDialog(...)
 
         entry = OverlayEntry(builder=build_dialog)
         overlay.insert_entry(entry)

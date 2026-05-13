@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayResult
 from nuiitivet.overlay.result import OverlayDismissReason
@@ -22,7 +22,7 @@ def material_theme():
 def test_overlay_handle_done_and_result_when_closed_before_await() -> None:
     overlay = Overlay()
 
-    handle = overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
+    handle = overlay.show_modal(BasicDialog(title="Title"), dismiss_on_outside_tap=False)
     handle.close(True)
 
     assert handle.done() is True
@@ -39,7 +39,7 @@ def test_overlay_handle_result_available_after_await_and_close() -> None:
     overlay = Overlay()
 
     async def run() -> OverlayResult[str]:
-        handle = overlay.show_modal(AlertDialog(title="Title"), dismiss_on_outside_tap=False)
+        handle = overlay.show_modal(BasicDialog(title="Title"), dismiss_on_outside_tap=False)
 
         async def _wait() -> OverlayResult[str]:
             return await handle

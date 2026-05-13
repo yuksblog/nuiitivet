@@ -1,13 +1,13 @@
 """
 ViewModel Direct Usage (Coupled)
 
-Shows a ViewModel pattern where the ViewModel depends directly on UI components (AlertDialog).
+Shows a ViewModel pattern where the ViewModel depends directly on UI components (BasicDialog).
 This is simpler but creates strong coupling between Logic and View.
 """
 
 from nuiitivet.material import App
 from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
@@ -26,8 +26,8 @@ class CoupledViewModel:
     async def process_action(self, overlay: Overlay):
         self.status.value = "Processing..."
 
-        # ViewModel creates and configures the View (AlertDialog)
-        dialog = AlertDialog(
+        # ViewModel creates and configures the View (BasicDialog)
+        dialog = BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
@@ -56,10 +56,7 @@ class DirectViewModelDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.vm.status),
-                    Button(
-                        "Run Process",
-                        on_click=self._on_run_click,
-                        style=ButtonStyle.filled()),
+                    Button("Run Process", on_click=self._on_run_click, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -68,7 +65,7 @@ class DirectViewModelDemo(ComposableWidget):
 def main(png_path: str = ""):
     if png_path:
         # Screenshot: Render the dialog that the ViewModel would create
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",

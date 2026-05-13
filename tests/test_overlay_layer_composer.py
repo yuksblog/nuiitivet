@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nuiitivet.material.dialogs import AlertDialog
+from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.overlay_visual_state import MaterialOverlayLayerComposer
 from nuiitivet.overlay import Overlay
@@ -18,7 +18,7 @@ def test_overlay_delegates_layer_composition_to_injected_composer() -> None:
     composer = RecordingOverlayComposer(sentinel)
     overlay = Overlay(layer_composer=composer)
 
-    dialog = AlertDialog(title="Title", message="Body")
+    dialog = BasicDialog(title="Title", message="Body")
     overlay.show_modal(dialog, dismiss_on_outside_tap=False)
 
     entry = next(iter(overlay._entry_to_route.keys()))

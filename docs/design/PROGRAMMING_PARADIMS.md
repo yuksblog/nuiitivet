@@ -36,7 +36,7 @@ Some UI components sit on the boundary between declarative (structure) and imper
 from nuiitivet.material import ButtonStyle
 # Use await within an event handler to wait for result
 result = await Overlay.dialog(
-    child=AlertDialog(
+    child=BasicDialog(
         title=Text("Confirm"),
         content=Text("Are you sure?"),
         actions=[
@@ -56,7 +56,7 @@ The `Overlay` is defined as a layer independent of the root content and is passe
 
 ##### 1. Using Standard Dialogs
 
-The framework provides standard dialog Widgets (e.g., `AlertDialog`) and makes standard Dialog Intents available by default.
+The framework provides standard dialog Widgets (e.g., `BasicDialog`) and makes standard Dialog Intents available by default.
 
 A ViewModel does not create Widgets directly but issues Intents to an abstract interface like `IOverlay`.
 The actual Widget creation is delegated to the View layer (via `dialogs` configuration), allowing for the reuse of dialogs with a standard look and feel.
@@ -67,7 +67,7 @@ class MyViewModel:
         self.overlay = overlay
 
     async def on_error(self, error_msg):
-        await self.overlay.dialog(AlertDialogIntent(title="Error", message=error_msg))
+        await self.overlay.dialog(BasicDialogIntent(title="Error", message=error_msg))
 ```
 
 ##### 2. Using Custom Dialogs
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # Register Intent (standard intents available by default)
         dialogs={
             ConfirmIntent: lambda intent: OverlayRoute(
-                builder=lambda: AlertDialog(
+                builder=lambda: BasicDialog(
                     title=Text(intent.title),
                     content=Text(intent.message),
                     actions=[

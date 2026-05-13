@@ -1,14 +1,14 @@
 """
 ViewModel Intent Usage
 
-Shows how to trigger a standard AlertDialog using an Intent from a ViewModel-like structure.
+Shows how to trigger a standard BasicDialog using an Intent from a ViewModel-like structure.
 This decouples the presentation logic (ViewModel) from the View implementation.
 """
 
 from nuiitivet.material import App
 from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import AlertDialog
-from nuiitivet.material.intents import AlertDialogIntent
+from nuiitivet.material.dialogs import BasicDialog
+from nuiitivet.material.intents import BasicDialogIntent
 from nuiitivet.material import Overlay
 from nuiitivet.material.text import Text
 from nuiitivet.layout.column import Column
@@ -28,7 +28,7 @@ class DecoupledViewModel:
         self.status.value = "Processing..."
 
         # Express the intent to show an operation complete dialog
-        intent = AlertDialogIntent(
+        intent = BasicDialogIntent(
             title="Operation Complete", message="Process finished successfully.", icon="check_circle"
         )
 
@@ -52,10 +52,7 @@ class IntentDemo(ComposableWidget):
                 gap=20,
                 children=[
                     Text(self.vm.status),
-                    Button(
-                        "Run Process",
-                        on_click=self._on_run_click,
-                        style=ButtonStyle.filled()),
+                    Button("Run Process", on_click=self._on_run_click, style=ButtonStyle.filled()),
                 ],
             ),
         )
@@ -63,7 +60,7 @@ class IntentDemo(ComposableWidget):
 
 def main(png_path: str = ""):
     if png_path:
-        dialog = AlertDialog(
+        dialog = BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",

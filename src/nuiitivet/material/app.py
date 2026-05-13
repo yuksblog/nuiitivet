@@ -23,7 +23,7 @@ class MaterialApp(App):
 
     This class configures the App with Material Design defaults:
     - Material Theme (light/dark)
-    - Material Dialogs (Alert, Loading)
+    - Material Overlay (Dialog, Loading)
     - Material Background color
     - Material Navigator (with Material page transitions)
 

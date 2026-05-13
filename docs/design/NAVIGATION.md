@@ -277,7 +277,7 @@ async def _on_will_pop(self) -> bool:
     """Return True to continue pop, False to cancel."""
     if self.has_unsaved_changes.value:
         confirmed = await Overlay.root().dialog(
-            AlertDialog(
+            BasicDialog(
                 title=Text("Confirmation"),
                 content=Text("Go back without saving?"),
                 actions=[
