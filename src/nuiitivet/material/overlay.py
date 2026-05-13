@@ -37,6 +37,42 @@ class _MappingIntentResolver(IntentResolver):
         return factory(intent)
 
 
+class WhileLoading(AbstractContextManager[None], AbstractAsyncContextManager[None]):
+    """Context manager that shows a loading indicator for the duration of a block.
+
+    Returned by :meth:`MaterialOverlay.while_loading`. Supports both ``with`` and
+    ``async with`` usage::
+
+        with MaterialOverlay.of(self).while_loading():
+            do_work()
+
+        async with MaterialOverlay.of(self).while_loading():
+            await fetch_data()
+    """
+
+    def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Route | Any | None) -> None:
+        self._overlay = overlay
+        self._indicator = indicator
+        self._handle: OverlayHandle[Any] | None = None
+
+    def __enter__(self) -> None:
+        self._handle = self._overlay.loading(self._indicator)
+        return None
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> Literal[False]:
+        handle = self._handle
+        self._handle = None
+        if handle is not None:
+            handle.close(None)
+        return False
+
+    async def __aenter__(self) -> None:
+        return self.__enter__()
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return self.__exit__(exc_type, exc, tb)
+
+
 class MaterialOverlay(Overlay):
     """Overlay subclass that provides Material-specific helpers."""
 
@@ -169,29 +205,6 @@ class MaterialOverlay(Overlay):
             transition_spec=MaterialTransitions.snackbar(),
         )
 
-    class _LoadingContext(AbstractContextManager[None], AbstractAsyncContextManager[None]):
-        def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Route | Any | None) -> None:
-            self._overlay = overlay
-            self._indicator = indicator
-            self._handle: OverlayHandle[Any] | None = None
-
-        def __enter__(self) -> None:
-            self._handle = self._overlay.loading(self._indicator)
-            return None
-
-        def __exit__(self, exc_type, exc, tb) -> Literal[False]:
-            handle = self._handle
-            self._handle = None
-            if handle is not None:
-                handle.close(None)
-            return False
-
-        async def __aenter__(self) -> None:
-            return self.__enter__()
-
-        async def __aexit__(self, exc_type, exc, tb) -> bool:
-            return self.__exit__(exc_type, exc, tb)
-
     def loading(
         self,
         indicator: Widget | Route | Any | None = None,
@@ -221,7 +234,7 @@ class MaterialOverlay(Overlay):
     def while_loading(
         self,
         indicator: Widget | Route | Any | None = None,
-    ) -> "_LoadingContext":
+    ) -> WhileLoading:
         """Return a context manager that shows a loading indicator for the duration of a block.
 
         Use this form when the loading state is scoped to a ``with`` or ``async with`` block::
@@ -239,9 +252,9 @@ class MaterialOverlay(Overlay):
                 Defaults to the built-in :class:`LoadingIndicator`.
 
         Returns:
-            A context manager that shows the indicator on entry and closes it on exit.
+            A :class:`LoadingScope` context manager that shows the indicator on entry and closes it on exit.
         """
-        return MaterialOverlay._LoadingContext(self, indicator)
+        return WhileLoading(self, indicator)
 
     def side_sheet(
         self,
