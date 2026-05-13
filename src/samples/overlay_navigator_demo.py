@@ -22,6 +22,7 @@ from nuiitivet.material import Overlay
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material import Text, MaterialTransitions, FadeIn, ScaleIn, SlideOutVertically
+from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -66,7 +67,19 @@ class HomePage(ComposableWidget):
                 enter=FadeIn() | ScaleIn(initial_scale=0.5),
                 exit_=SlideOutVertically(target_offset_y=50, duration=0.4),
             )
-            result = await Overlay.root().dialog(HelloDialogIntent(), transition=transition)
+            dialog_widget: Widget
+
+            def on_ok() -> None:
+                Overlay.root().close("OK", target=dialog_widget)
+
+            dialog_widget = BasicDialog(
+                title="Hello",
+                message="This dialog is rendered via Overlay (Intent).",
+                actions=[_filled("OK", on_click=on_ok)],
+            )
+            result = await Overlay.root().dialog(
+                OverlayRoute(builder=lambda: dialog_widget, transition_spec=transition)
+            )
             if result.value == "OK":
                 Overlay.root().snackbar("Dialog confirmed (OK)")
             else:
