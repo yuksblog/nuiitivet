@@ -11,7 +11,7 @@ The user-facing API should be intuitive and reflect the physical structure, whil
 - `Navigator.push()` to "transition screens"
 - `Overlay.show_modal()` / `Overlay.show_modeless()` / `Overlay.show_light_dismiss()` to "display on the topmost layer"
 
-Internally, the `Navigator` acts as a stack managing `PageRoute` objects, while the `Overlay` maintains an internal `_modal_navigator` that treats Dialogs and Snackbars as routes.
+Internally, the `Navigator` acts as a stack managing `Route` objects, while the `Overlay` maintains an internal `_modal_navigator` that treats Dialogs and Snackbars as routes.
 
 ```text
 ┌─────────────────────────────────────┐
@@ -20,7 +20,7 @@ Internally, the `Navigator` acts as a stack managing `PageRoute` objects, while 
 │  ┌───────────────────────────────┐  │
 │  │ Overlay (Physical Layer)       │  │ ← Always on top
 │  │  Internal: _modal_navigator   │  │
-│  │    ├─ DialogRoute             │  │
+│  │    ├─ OverlayRoute            │  │
 │  │    └─ SnackbarRoute           │  │
 │  └───────────────────────────────┘  │
 │                                      │
@@ -28,8 +28,8 @@ Internally, the `Navigator` acts as a stack managing `PageRoute` objects, while 
 │  │ Content                       │  │
 │  │  ┌──────────────────┐         │  │
 │  │  │ Navigator (Part) │         │  │ ← Placed by user
-│  │  │  ├─ PageRoute    │         │  │
-│  │  │  └─ PageRoute    │         │  │
+│  │  │  ├─ Route         │         │  │
+│  │  │  └─ Route         │         │  │
 │  │  └──────────────────┘         │  │
 │  └───────────────────────────────┘  │
 └─────────────────────────────────────┘
@@ -150,8 +150,8 @@ class ProductDetailIntent:
 
 ```python
 routes: dict[type, callable[[object], "Route"]] = {
-    HomeIntent: lambda intent: PageRoute(builder=lambda: HomeScreen()),
-    ProductDetailIntent: lambda intent: PageRoute(
+    HomeIntent: lambda intent: Route(builder=lambda: HomeScreen()),
+    ProductDetailIntent: lambda intent: Route(
         builder=lambda: ProductDetailScreen(intent.product_id)
     ),
 }
@@ -172,7 +172,7 @@ Navigator.root().push(ProductDetailIntent(product_id=123))
 Navigator.root().push(SettingsScreen())
 
 # Pattern 2: Route
-Navigator.root().push(PageRoute(builder=lambda: SettingsScreen()))
+Navigator.root().push(Route(builder=lambda: SettingsScreen()))
 
 # Pattern 3: Intent
 Navigator.root().push(SettingsIntent())
@@ -197,9 +197,9 @@ App(
     Navigator.intents(
         initial_route=HomeIntent(),
         routes={
-            HomeIntent: lambda intent: PageRoute(builder=...),
-            DetailIntent: lambda intent: PageRoute(builder=...),
-            SettingsIntent: lambda intent: PageRoute(builder=...),
+            HomeIntent: lambda intent: Route(builder=...),
+            DetailIntent: lambda intent: Route(builder=...),
+            SettingsIntent: lambda intent: Route(builder=...),
         },
     ),
     title="My App",

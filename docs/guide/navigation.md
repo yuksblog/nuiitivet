@@ -83,6 +83,6 @@ This stack-based approach makes it easy to manage complex navigation flows and e
 
 ## Next Steps
 
-- Learn how to customize transitions using [PageRoute](navigation_route.md).
+- Learn how to customize transitions using [Route](navigation_route.md).
 - Discover how to decouple navigation logic using [Intents](navigation_intent.md).
 - Explore advanced navigation patterns with [MaterialNavigator](navigation_sub.md).

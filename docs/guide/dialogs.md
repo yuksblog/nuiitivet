@@ -175,7 +175,7 @@ class CounterDialog(ComposableWidget, OverlayAware[int]):
 - `OverlayAware` works with **all** overlay show APIs, including
   `dialog`, `show_modal`, `show_modeless`, `show_light_dismiss`, `side_sheet`,
   `bottom_sheet`, and `loading`. It also works when the widget is wrapped in a
-  `Route` (e.g. `DialogRoute(builder=lambda: CounterDialog())`).
+  `Route` (e.g. `OverlayRoute(builder=lambda: CounterDialog())`).
 - Attempting to display the same `OverlayAware` widget instance while its
   previous handle is still active raises `RuntimeError`. Re-displaying after
   the previous handle has completed is allowed.

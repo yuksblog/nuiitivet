@@ -38,8 +38,8 @@ Note: The `Overlay` core provides only `show_modal()` / `show_modeless()` / `sho
 │  │ Content                       │  │
 │  │  ┌──────────────────┐         │  │
 │  │  │ Navigator (Part) │         │  │ ← Placed by user
-│  │  │  ├─ PageRoute    │         │  │
-│  │  │  └─ PageRoute    │         │  │
+│  │  │  ├─ Route         │         │  │
+│  │  │  └─ Route         │         │  │
 │  │  └──────────────────┘         │  │
 │  └───────────────────────────────┘  │
 └─────────────────────────────────────┘

@@ -1,10 +1,10 @@
-# PageRoute and Animations
+# Route and Animations
 
-While you can push widgets directly to the `Navigator`, using `PageRoute` gives you more control over the transition animations and lifecycle of the screen.
+While you can push widgets directly to the `Navigator`, using `Route` gives you more control over the transition animations and lifecycle of the screen.
 
 ## Customizing Animations
 
-By default, `App` applies a standard Material Design transition when navigating between screens. However, you can customize this behavior by providing a `TransitionSpec` to a `PageRoute`.
+By default, `App` applies a standard Material Design transition when navigating between screens. However, you can customize this behavior by providing a `TransitionSpec` to a `Route`.
 
 Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `ScaleIn`, `ScaleOut`, `SlideInVertically`, and `SlideOutVertically`. You can combine these effects using the `|` operator to create complex animations.
 
@@ -13,7 +13,7 @@ Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `Sca
 ```python
 import nuiitivet as nv
 
-from nuiitivet.navigation import Navigator, PageRoute
+from nuiitivet.navigation import Navigator, Route
 from nuiitivet.material import (Text, MaterialTransitions, FadeIn, SlideInVertically, FadeOut, SlideOutVertically, Button)
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -43,7 +43,7 @@ def navigate_with_custom_animation():
         exit=FadeOut() | SlideOutVertically(target_offset_y=50.0)
     )
 
-    route = PageRoute(
+    route = Route(
         builder=lambda: AnimatedScreen(),
         transition_spec=custom_transition
     )
@@ -57,7 +57,7 @@ If you want to transition to a new screen instantly without any animation, you c
 ```python
 import nuiitivet as nv
 
-from nuiitivet.navigation import Navigator, PageRoute, Transitions
+from nuiitivet.navigation import Navigator, Route, Transitions
 from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -81,11 +81,11 @@ class InstantScreen(ComposableWidget):
         )
 
 def navigate_instantly():
-    route = PageRoute(
+    route = Route(
         builder=lambda: InstantScreen(),
         transition_spec=Transitions.empty()
     )
     Navigator.root().push(route)
 ```
 
-Using `PageRoute` and `TransitionSpec` allows you to create smooth, visually appealing transitions or optimize for speed by disabling them entirely.
+Using `Route` and `TransitionSpec` allows you to create smooth, visually appealing transitions or optimize for speed by disabling them entirely.
