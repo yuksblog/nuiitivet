@@ -1,4 +1,4 @@
-"""Overlay.loading() demo.
+"""Overlay.loading() / while_loading() demo.
 
 Shows how to display a centered loading indicator overlay.
 """
@@ -15,7 +15,6 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import runtime
 from nuiitivet.overlay import OverlayHandle
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -23,7 +22,6 @@ class LoadingDemo(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self._active_handle: OverlayHandle[Any] | None = None
-        self._active_ctx: md.Overlay._LoadingContext | None = None
 
     def show_manual_overlay_loading(self) -> None:
         overlay = md.Overlay.root()
@@ -42,17 +40,16 @@ class LoadingDemo(nv.ComposableWidget):
         runtime.clock.schedule_once(_close, 2.0)
 
     def show_loading_context_non_blocking(self) -> None:
-        """Show Overlay.loading() without blocking the UI thread."""
+        """Show loading indicator using the handle form of loading()."""
         overlay = md.Overlay.root()
-        ctx = overlay.loading()
-        ctx.__enter__()
-        self._active_ctx = ctx
+        handle = overlay.loading()
+        self._active_handle = handle
 
         def _close(_dt: float) -> None:
             try:
-                ctx.__exit__(None, None, None)
+                handle.close(None)
             except Exception:
-                exception_once(_logger, "loading_dialog_demo_ctx_exit_exc", "Overlay loading context __exit__ raised")
+                exception_once(_logger, "loading_dialog_demo_close_exc", "Overlay handle.close raised")
 
         runtime.clock.schedule_once(_close, 10.0)
 
@@ -61,10 +58,10 @@ class LoadingDemo(nv.ComposableWidget):
             padding=32,
             child=nv.Column(
                 children=[
-                    md.Text("Overlay.loading() Demo"),
-                    md.FilledButton("Show Overlay (manual, 2s)", on_click=self.show_manual_overlay_loading),
-                    md.FilledButton(
-                        "Show Overlay.loading() (context, 2s)",
+                    md.Text("Overlay.loading() / while_loading() Demo"),
+                    md.Button("Show Overlay (manual, 2s)", on_click=self.show_manual_overlay_loading),
+                    md.Button(
+                        "Show Overlay.loading() (handle, 10s)",
                         on_click=self.show_loading_context_non_blocking,
                     ),
                     md.Text("Tip: Press Esc to close overlays."),
