@@ -71,7 +71,7 @@ class MaterialOverlay(Overlay):
                 ),
                 LoadingIntent: lambda _: OverlayRoute(
                     builder=lambda: LoadingIndicator(),
-                    transition_spec=MaterialTransitions.dialog(),
+                    transition_spec=None,
                     barrier_dismissible=False,
                 ),
             }
@@ -211,9 +211,8 @@ class MaterialOverlay(Overlay):
             resolved = indicator
         else:
             resolved = self._intent_resolver.resolve(indicator)
-        return self.show_modal(
+        return self.show_modeless(
             resolved,
-            dismiss_on_outside_tap=False,
             timeout=None,
             position=OverlayPosition.alignment("center"),
         )

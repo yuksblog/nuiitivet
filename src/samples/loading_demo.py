@@ -25,9 +25,8 @@ class LoadingDemo(nv.ComposableWidget):
 
     def show_manual_overlay_loading(self) -> None:
         overlay = md.Overlay.root()
-        handle = overlay.show_modal(
+        handle = overlay.show_modeless(
             md.LoadingIndicator(size=48),
-            dismiss_on_outside_tap=False,
         )
         self._active_handle = handle
 
