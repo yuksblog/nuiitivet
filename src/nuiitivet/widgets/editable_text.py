@@ -5,7 +5,7 @@ from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback, BoolCallback
+from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
 from nuiitivet.input.codes import (
     MOD_CTRL,
     MOD_META,

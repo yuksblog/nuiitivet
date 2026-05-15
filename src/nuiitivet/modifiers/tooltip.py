@@ -16,7 +16,6 @@ from nuiitivet.widgets.interaction import (
     FocusNode,
     InteractionHostMixin,
     ensure_interaction_region,
-    BoolCallback,
     FocusChangeCallback,
     FocusSource,
 )

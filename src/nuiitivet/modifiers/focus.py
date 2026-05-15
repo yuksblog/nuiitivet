@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
-from ..widgets.interaction import FocusNode, BoolCallback, ensure_interaction_region, FocusChangeCallback, FocusSource
+from ..widgets.interaction import FocusNode, ensure_interaction_region, FocusChangeCallback
 
 
 class FocusableModifier(ModifierElement):
@@ -47,7 +47,7 @@ class FocusableModifier(ModifierElement):
 
 def focusable(
     enabled: bool = True,
-    on_focus_change: Optional[BoolCallback] = None,
+    on_focus_change: Optional[FocusChangeCallback] = None,
     on_key: Optional[Callable[[str, int], bool]] = None,
 ) -> FocusableModifier:
     """
