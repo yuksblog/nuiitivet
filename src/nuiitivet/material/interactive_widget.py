@@ -94,13 +94,15 @@ class InteractiveWidget(Clickable):
         return False
 
     def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
-        """Handle focus state changes."""
-        if not focused:
-            self._focus_from_pointer = False
+        """Handle focus state changes. Internal — wired to FocusNode._on_focus_change."""
+        self._focus_from_pointer = focused and source == FocusSource.POINTER
+        self._on_focused(focused, source)
+
+    def _on_focused(self, focused: bool, source: FocusSource) -> None:
+        """Called when the focus state changes. Override in subclasses to react."""
 
     def request_focus_from_pointer(self) -> None:
         """Request focus originating from a pointer (e.g. click)."""
-        self._focus_from_pointer = True
         super().request_focus_from_pointer()
 
     @property

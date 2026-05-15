@@ -259,8 +259,7 @@ class MenuItem(InteractiveWidget):
     def _handle_release(self, _event: PointerEvent) -> None:
         self._apply_style(self._menu_style)
 
-    def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
-        super()._handle_focus_change(focused, source)
+    def _on_focused(self, focused: bool, source: FocusSource) -> None:
         self._apply_style(self._menu_style)
 
 
