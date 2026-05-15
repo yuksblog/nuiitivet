@@ -77,11 +77,14 @@ class TooltipBox(PopupBox):
         self._focus_node: Optional[FocusNode] = None
         self._prev_focus_callback: Optional[FocusChangeCallback] = None
         self._focus_callback_wrapper: Optional[FocusChangeCallback] = None
+        self._user_dismissed: bool = False
+        self._dismiss_reset_callback: Optional[Callable[[float], None]] = None
         self._install_interactions()
 
     def on_unmount(self) -> None:
         self._cancel_open()
         self._cancel_close()
+        self._cancel_dismiss_reset()
         self._restore_focus_callback()
         self._uninstall_interactions()
         super().on_unmount()
@@ -136,12 +139,19 @@ class TooltipBox(PopupBox):
         self._prev_focus_callback = None
         self._focus_callback_wrapper = None
 
+    def _on_closed_externally(self) -> None:
+        if self._is_hovered:
+            self._user_dismissed = True
+
     def _on_hover_change(self, hovered: bool) -> None:
         self._is_hovered = bool(hovered)
         if self._is_hovered:
-            self._schedule_open(self.delay)
+            if not self._user_dismissed:
+                self._schedule_open(self.delay)
             return
         self._schedule_close(self.dismiss_delay)
+        if self._user_dismissed:
+            self._schedule_dismiss_reset()
 
     def _on_focus_change(self, focused: bool, source: FocusSource) -> None:
         if source == FocusSource.POINTER:
@@ -179,7 +189,7 @@ class TooltipBox(PopupBox):
         runtime.clock.schedule_once(_open, delay)
 
     def _schedule_close(self, delay: float) -> None:
-        if self._is_hovered or self._is_focused:
+        if self._is_open.value and (self._is_hovered or self._is_focused):
             return
         self._cancel_open()
         self._cancel_close()
@@ -207,6 +217,25 @@ class TooltipBox(PopupBox):
             return
         self._close_callback = None
         runtime.clock.unschedule(callback)
+
+    def _schedule_dismiss_reset(self) -> None:
+        if self._dismiss_reset_callback is not None:
+            return
+
+        def _reset(_dt: float) -> None:
+            self._dismiss_reset_callback = None
+            if not self._is_hovered:
+                self._user_dismissed = False
+
+        self._dismiss_reset_callback = _reset
+        runtime.clock.schedule_once(_reset, 0.0)
+
+    def _cancel_dismiss_reset(self) -> None:
+        cb = self._dismiss_reset_callback
+        if cb is None:
+            return
+        self._dismiss_reset_callback = None
+        runtime.clock.unschedule(cb)
 
     def _set_open(self, open_state: bool) -> None:
         if self._is_open.value == open_state:
