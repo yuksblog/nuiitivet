@@ -291,3 +291,112 @@ def test_tooltip_uninstall_stops_hover_after_unmount() -> None:
     anchor.on_pointer_event(enter)
 
     assert result._is_open.value is False
+
+
+def test_schedule_close_cancels_pending_open_when_externally_closed_and_focused_stale() -> None:
+    """Regression: ESC sets _is_open=False externally; mouse-leave must still cancel pending open.
+
+    Bug #138: When _is_focused is stale True (from pointer-click, see #137),
+    the old guard ``if _is_hovered or _is_focused: return`` would short-circuit
+    _cancel_open(), leaving the pending callback alive. After the timer fires,
+    _set_open(True) re-opens the tooltip even though ESC had dismissed it.
+
+    Fix: guard is now ``if _is_open.value and (_is_hovered or _is_focused)``,
+    so an already-closed tooltip always proceeds to _cancel_open().
+    """
+    box = TooltipBox(_FixedWidget(10, 10), _FixedWidget(20, 20), delay=0.5, dismiss_delay=0.0)
+
+    # Hover starts a pending open (delay=0.5 so it stays scheduled).
+    box._on_hover_change(True)
+    assert box._open_callback is not None
+
+    # Simulate pointer-click setting _is_focused=True (#137 bug).
+    box._is_focused = True
+
+    # ESC dismisses the overlay externally — bypasses _set_open().
+    box._is_open.value = False
+
+    # Mouse leaves the button.
+    box._on_hover_change(False)
+
+    # The pending open callback must be cancelled; tooltip must stay closed.
+    assert box._open_callback is None
+    assert box._is_open.value is False
+
+
+def test_tooltip_esc_suppresses_reopen_while_hovered() -> None:
+    """After ESC dismissal, pointer movement within the button must not reopen the tooltip.
+
+    When the pointer crosses internal sub-widget boundaries the InteractionRegion
+    emits a hover=False then hover=True pair within the same dispatch cycle.
+    The tooltip must ignore the hover=True while _user_dismissed is set.
+
+    This test sets state directly to avoid triggering _schedule_dismiss_reset,
+    which uses a background timer that would introduce a threading race condition.
+    The deferred-reset path is covered by test_tooltip_esc_suppression_clears_after_pointer_leaves.
+    """
+    box = TooltipBox(_FixedWidget(10, 10), _FixedWidget(20, 20), delay=0.5, dismiss_delay=0.5)
+
+    # Simulate: tooltip is open while the pointer hovers over the anchor widget.
+    box._is_hovered = True
+    box._is_open.value = True
+
+    # ESC closes externally — mirrors what the handle monitor does.
+    box._on_closed_externally()
+    box._is_open.value = False
+    assert box._user_dismissed is True
+
+    # ENTER fires again (sub-widget crossing; deferred reset has not yet fired).
+    box._on_hover_change(True)
+
+    # No open should be scheduled while _user_dismissed is still set.
+    assert box._open_callback is None
+    assert box._is_open.value is False
+    assert box._user_dismissed is True
+
+
+def test_tooltip_esc_suppression_clears_after_pointer_leaves() -> None:
+    """_user_dismissed resets once the pointer genuinely leaves the button.
+
+    The reset is deferred to the next frame so that a sub-widget crossing does
+    not clear the flag.  When the pointer truly leaves, the deferred callback
+    fires and clears _user_dismissed so the next re-entry reopens normally.
+
+    The observable runtime clock is replaced with a no-op during the test to
+    prevent _ThreadClock from racing the assertions via background threads.
+    """
+    import types
+    from nuiitivet.observable import runtime as _observable_runtime
+
+    box = TooltipBox(_FixedWidget(10, 10), _FixedWidget(20, 20), delay=0.0, dismiss_delay=0.5)
+
+    # Simulate: ESC dismissed while hovered.
+    box._is_hovered = True
+    box._is_open.value = True
+    box._on_closed_externally()
+    box._is_open.value = False
+
+    # Replace clock with a no-op so that schedule_once never fires in the
+    # background, allowing the assertions below to be deterministic.
+    _prev_clock = _observable_runtime.clock
+    _observable_runtime.set_clock(
+        types.SimpleNamespace(
+            schedule_once=lambda fn, d: None,
+            unschedule=lambda fn: None,
+            schedule_interval=lambda fn, i: None,
+        )
+    )
+    try:
+        # Pointer leaves the button with no subsequent hover=True.
+        box._on_hover_change(False)
+        assert box._dismiss_reset_callback is not None
+
+        # Simulate next-frame deferred callback firing.
+        box._dismiss_reset_callback(0.0)
+        assert box._user_dismissed is False
+
+        # Re-entering the button now opens the tooltip normally.
+        box._on_hover_change(True)
+        assert box._is_open.value is True
+    finally:
+        _observable_runtime.set_clock(_prev_clock)

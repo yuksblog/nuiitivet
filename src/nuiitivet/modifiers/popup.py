@@ -204,10 +204,20 @@ class PopupBox(Widget):
                 self._handle = None
                 self._cancel_handle_monitor()
                 if self._is_open.value:
+                    self._on_closed_externally()
                     self._is_open.value = False
 
         self._handle_monitor_callback = _monitor
         runtime.clock.schedule_interval(_monitor, 1.0 / 60.0)
+
+    def _on_closed_externally(self) -> None:
+        """Hook called when the overlay is closed by an external actor.
+
+        Called while ``is_open`` is still ``True``, immediately before it is
+        set to ``False`` by the handle monitor.  Subclasses may override to
+        react to externally-initiated closes (e.g. ESC, light-dismiss tap).
+        The default implementation is a no-op.
+        """
 
     def _cancel_handle_monitor(self) -> None:
         callback = self._handle_monitor_callback
