@@ -13,11 +13,11 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.interaction import InteractionHostMixin
+from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
+from nuiitivet.widgets.interaction import InteractionHostMixin, FocusSource
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
-from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
 
 _logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
                 owner_name=type(self).__name__,
             )
 
-    def _on_editable_focus_change(self, focused: bool) -> None:
+    def _on_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         """Called when the editable text focus changes."""
         self.invalidate()
 

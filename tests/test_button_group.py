@@ -60,7 +60,7 @@ def _mount_group(group) -> None:
         def invalidate(self) -> None:
             pass
 
-        def request_focus(self, node) -> None:
+        def request_focus(self, node, source=None) -> None:
             pass
 
     group.mount(_FakeApp())

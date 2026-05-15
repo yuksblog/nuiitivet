@@ -2,14 +2,14 @@ from typing import Callable, Optional
 
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
-from ..widgets.interaction import FocusNode, BoolCallback, ensure_interaction_region
+from ..widgets.interaction import FocusNode, BoolCallback, ensure_interaction_region, FocusChangeCallback, FocusSource
 
 
 class FocusableModifier(ModifierElement):
     def __init__(
         self,
         enabled: bool = True,
-        on_focus_change: Optional[BoolCallback] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
     ) -> None:
         self.enabled = enabled

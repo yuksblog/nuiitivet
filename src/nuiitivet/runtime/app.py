@@ -20,7 +20,7 @@ from ..theme import manager as theme_manager
 from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
-from ..widgets.interaction import FocusNode, InteractionHostMixin
+from ..widgets.interaction import FocusNode, InteractionHostMixin, FocusSource
 from nuiitivet.common.logging_once import debug_once, exception_once
 from .app_events import (
     dispatch_mouse_motion as _dispatch_mouse_motion_fn,
@@ -724,7 +724,7 @@ class App:
         _dispatch_mouse_motion_fn(self, x, y)
 
     # --- Keyboard / focus helpers ---------------------------------
-    def request_focus(self, node: Optional[FocusNode]) -> None:
+    def request_focus(self, node: Optional[FocusNode], source: FocusSource = FocusSource.KEYBOARD) -> None:
         """Set focus to the given FocusNode. Pass ``None`` to clear focus."""
         if self._focused_node is node:
             return
@@ -736,7 +736,7 @@ class App:
         # Focus new node
         self._focused_node = node
         if node:
-            node._set_focused(True)
+            node._set_focused(True, source)
             # Also update legacy target if the node belongs to a widget
             if node.region:
                 self._focused_target = node.region
@@ -808,7 +808,7 @@ class App:
                         cur = None
 
                     if cur is None:
-                        self.request_focus(nodes[0])
+                        self.request_focus(nodes[0], FocusSource.KEYBOARD)
                         return True
 
                     # Allow composite widgets to consume Tab internally
@@ -825,7 +825,7 @@ class App:
                         next_idx = (idx - 1) % len(nodes)
                     else:
                         next_idx = (idx + 1) % len(nodes)
-                    self.request_focus(nodes[next_idx])
+                    self.request_focus(nodes[next_idx], FocusSource.KEYBOARD)
                     return True
                 except Exception:
                     exception_once(logger, "app_dispatch_tab_traversal_exc", "Tab focus traversal raised")

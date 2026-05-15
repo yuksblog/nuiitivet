@@ -19,7 +19,13 @@ from nuiitivet.input.codes import (
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol
 from nuiitivet.platform import IMEManager, get_system_clipboard
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.interaction import InteractionHostMixin, FocusNode, DraggableNode
+from nuiitivet.widgets.interaction import (
+    InteractionHostMixin,
+    FocusNode,
+    DraggableNode,
+    FocusChangeCallback,
+    FocusSource,
+)
 from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
 from nuiitivet.rendering.skia import (
     make_font,
@@ -48,7 +54,7 @@ class EditableText(InteractionHostMixin, Widget):
         self,
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
-        on_focus_change: Optional[BoolCallback] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
         selection_color: ColorSpec = "#B3D7FF",  # Default selection color
@@ -370,7 +376,7 @@ class EditableText(InteractionHostMixin, Widget):
 
         return len(text)
 
-    def _handle_focus_change(self, focused: bool):
+    def _handle_focus_change(self, focused: bool, source: FocusSource):
         if not focused:
             # Clear the pointer-origin marker so the next keyboard focus
             # acquisition correctly shows the focus ring.
@@ -380,6 +386,7 @@ class EditableText(InteractionHostMixin, Widget):
             invoke_event_handler(
                 self._on_focus_change_callback,
                 focused,
+                source,
                 error_key="editable_text_on_focus_change",
                 error_msg="EditableText on_focus_change raised",
                 owner_name=type(self).__name__,

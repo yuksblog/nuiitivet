@@ -3,6 +3,7 @@ from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.animation import Animatable
 from nuiitivet.observable import runtime
+from nuiitivet.widgets.interaction import FocusSource
 
 
 class _FakeClock:
@@ -42,7 +43,7 @@ def test_text_field_animates_label_on_focus():
 
         # Focus
         tf._editable.state.focused = True
-        tf._on_editable_focus_change(True)
+        tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
 
         assert tf._label_progress.target == 1.0
         # Start should be 0.0
@@ -80,7 +81,7 @@ def test_text_field_animates_indicator_width_on_focus():
 
         # Focus
         tf._editable.state.focused = True
-        tf._on_editable_focus_change(True)
+        tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
 
         assert tf._anim_indicator_width.target == 2.0
 
