@@ -23,7 +23,7 @@ from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorBase, ColorSpec
-from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -259,8 +259,8 @@ class MenuItem(InteractiveWidget):
     def _handle_release(self, _event: PointerEvent) -> None:
         self._apply_style(self._menu_style)
 
-    def _handle_focus_change(self, focused: bool) -> None:
-        super()._handle_focus_change(focused)
+    def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
+        super()._handle_focus_change(focused, source)
         self._apply_style(self._menu_style)
 
 

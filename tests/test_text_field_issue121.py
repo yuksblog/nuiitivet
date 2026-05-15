@@ -19,6 +19,7 @@ from nuiitivet.runtime.app_events import dispatch_mouse_press
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.widgets.text_editing import TextRange
+from nuiitivet.widgets.interaction import FocusSource
 
 # ---------------------------------------------------------------------------
 # 1. Japanese rendering uses locale-aware font fallback for label/supporting.
@@ -64,7 +65,7 @@ class _FakeApp:
         self.root.hit_test = MagicMock(return_value=hit_target)
         self.invalidate = MagicMock()
 
-    def request_focus(self, node):
+    def request_focus(self, node, source=None):
         if self._focused_node is node:
             return
         if self._focused_node is not None:
@@ -384,7 +385,7 @@ def test_pointer_focus_hides_focus_ring() -> None:
     # editable's pointer-focus entry point, marking it as pointer-origin.
     tf._editable.request_focus_from_pointer()
     tf._editable.state.focused = True
-    tf._on_editable_focus_change(True)
+    tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
 
     # Even though the editable is focused, the ring must stay hidden
     # because focus originated from a pointer interaction.
@@ -399,7 +400,7 @@ def test_keyboard_focus_shows_focus_ring() -> None:
     # collects EditableText's FocusNode since TextField has none).
     tf._editable.focus()
     tf._editable.state.focused = True
-    tf._on_editable_focus_change(True)
+    tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
 
     assert tf._editable.is_focus_from_pointer is False
     assert tf.should_show_focus_ring is True
@@ -410,14 +411,16 @@ def test_blur_resets_pointer_focus_flag() -> None:
 
     tf._editable.request_focus_from_pointer()
     tf._editable.state.focused = True
-    tf._on_editable_focus_change(True)
+    tf._editable.request_focus_from_pointer()
+    tf._editable.state.focused = True
+    tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
     assert tf._editable.is_focus_from_pointer is True
 
     # Releasing focus should clear the pointer-origin flag so that the next
     # keyboard focus correctly shows the ring.
-    tf._editable._handle_focus_change(False)
+    tf._editable._handle_focus_change(False, FocusSource.KEYBOARD)
     tf._editable.state.focused = False
-    tf._on_editable_focus_change(False)
+    tf._on_editable_focus_change(False, FocusSource.KEYBOARD)
     assert tf._editable.is_focus_from_pointer is False
 
 
@@ -429,7 +432,7 @@ def test_pointer_press_on_editable_propagates_to_text_field() -> None:
     # Simulate the path taken when EditableText handles the press itself.
     tf._editable.request_focus_from_pointer()
     tf._editable.state.focused = True
-    tf._on_editable_focus_change(True)
+    tf._on_editable_focus_change(True, FocusSource.KEYBOARD)
 
     assert tf._editable.is_focus_from_pointer is True
     assert tf.should_show_focus_ring is False

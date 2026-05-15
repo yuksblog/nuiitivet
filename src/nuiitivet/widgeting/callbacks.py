@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 #: No-arg, fire-and-forget callback (e.g. on_click).
 VoidCallback = Union[Callable[[], None], Callable[[], Awaitable[None]]]
-#: Single ``bool`` argument callback (e.g. on_hover, on_focus_change).
+#: Single ``bool`` argument callback (e.g. on_hover).
 BoolCallback = Union[Callable[[bool], None], Callable[[bool], Awaitable[None]]]
 #: Optional ``bool`` argument callback (e.g. on_change for tristate toggles).
 OptionalBoolCallback = Union[

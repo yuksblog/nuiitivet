@@ -13,7 +13,7 @@ from typing import Optional, Tuple, Union, Any, TYPE_CHECKING
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia.geometry import make_rect, draw_round_rect
 from nuiitivet.widgets.clickable import Clickable
-from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.resolver import resolve_color_to_rgba
@@ -93,7 +93,7 @@ class InteractiveWidget(Clickable):
             return True
         return False
 
-    def _handle_focus_change(self, focused: bool) -> None:
+    def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
         """Handle focus state changes."""
         if not focused:
             self._focus_from_pointer = False

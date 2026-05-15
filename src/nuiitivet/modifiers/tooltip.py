@@ -16,7 +16,8 @@ from nuiitivet.widgets.interaction import (
     FocusNode,
     InteractionHostMixin,
     ensure_interaction_region,
-    BoolCallback,
+    FocusChangeCallback,
+    FocusSource,
 )
 
 if TYPE_CHECKING:
@@ -74,8 +75,8 @@ class TooltipBox(PopupBox):
         self._is_focused = False
         self._active_touch_pointer_id: Optional[int] = None
         self._focus_node: Optional[FocusNode] = None
-        self._prev_focus_callback: Optional[BoolCallback] = None
-        self._focus_callback_wrapper: Optional[Callable[[bool], None]] = None
+        self._prev_focus_callback: Optional[FocusChangeCallback] = None
+        self._focus_callback_wrapper: Optional[FocusChangeCallback] = None
         self._install_interactions()
 
     def on_unmount(self) -> None:
@@ -107,10 +108,10 @@ class TooltipBox(PopupBox):
                 return
         prev_callback = focus_node._on_focus_change
 
-        def _chained(on: bool) -> None:
+        def _chained(on: bool, source: FocusSource) -> None:
             if prev_callback is not None:
-                prev_callback(on)
-            self._on_focus_change(on)
+                prev_callback(on, source)
+            self._on_focus_change(on, source)
 
         self._focus_node = focus_node
         self._prev_focus_callback = prev_callback
@@ -142,7 +143,9 @@ class TooltipBox(PopupBox):
             return
         self._schedule_close(self.dismiss_delay)
 
-    def _on_focus_change(self, focused: bool) -> None:
+    def _on_focus_change(self, focused: bool, source: FocusSource) -> None:
+        if source == FocusSource.POINTER:
+            return  # pointer-click focus must not keep the tooltip open
         self._is_focused = bool(focused)
         if self._is_focused:
             self._schedule_open(self.delay)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 import logging
 from collections.abc import Awaitable
 from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
@@ -19,6 +20,25 @@ PointerEventCallback = Union[
 DragUpdateCallback = Union[
     Callable[[PointerEvent, float, float], None],
     Callable[[PointerEvent, float, float], Awaitable[None]],
+]
+
+
+class FocusSource(str, Enum):
+    """Indicates how a :class:`FocusNode` acquired focus.
+
+    Args:
+        KEYBOARD: Focus acquired via keyboard navigation (Tab / Shift-Tab).
+        POINTER: Focus acquired via a pointer interaction (click-to-focus).
+    """
+
+    KEYBOARD = "keyboard"
+    POINTER = "pointer"
+
+
+#: Focus-change callback: receives ``(focused: bool, source: FocusSource)``.
+FocusChangeCallback = Union[
+    Callable[[bool, FocusSource], None],
+    Callable[[bool, FocusSource], Awaitable[None]],
 ]
 
 logger = logging.getLogger(__name__)
@@ -506,7 +526,7 @@ class FocusNode(InteractionNode):
     def __init__(
         self,
         *,
-        on_focus_change: Optional[BoolCallback] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
         on_text: Optional[Callable[[str], bool]] = None,
         on_text_motion: Optional[Callable[[int, bool], bool]] = None,
@@ -536,11 +556,11 @@ class FocusNode(InteractionNode):
             return self._wants_tab(modifiers)
         return False
 
-    def request_focus(self) -> None:
+    def request_focus(self, source: FocusSource = FocusSource.KEYBOARD) -> None:
         if self.region and hasattr(self.region, "_app") and self.region._app:
-            self.region._app.request_focus(self)
+            self.region._app.request_focus(self, source)
         else:
-            self._set_focused(True)
+            self._set_focused(True, source)
 
     @property
     def parent(self) -> Optional["FocusNode"]:
@@ -562,7 +582,7 @@ class FocusNode(InteractionNode):
             current = getattr(current, "_parent", None)
         return None
 
-    def _set_focused(self, value: bool) -> None:
+    def _set_focused(self, value: bool, source: FocusSource = FocusSource.KEYBOARD) -> None:
         if self.state.focused == value:
             return
         self.state.focused = value
@@ -573,6 +593,7 @@ class FocusNode(InteractionNode):
             invoke_event_handler(
                 self._on_focus_change,
                 value,
+                source,
                 error_key="focus_change_callback",
                 error_msg="Focus change callback raised",
                 owner_name=owner_name,
@@ -697,7 +718,7 @@ class InteractionHostMixin:
         """Called by PointerInputNode when a click occurs."""
         focus_node = self.get_node(FocusNode)
         if focus_node and isinstance(focus_node, FocusNode):
-            focus_node.request_focus()
+            focus_node.request_focus(FocusSource.POINTER)
 
     def on_pointer_event(self, event: PointerEvent) -> bool:
         # Dispatch to all nodes that can handle pointer events

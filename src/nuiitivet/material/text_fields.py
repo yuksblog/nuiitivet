@@ -15,7 +15,7 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import (
     draw_round_rect,
@@ -480,7 +480,7 @@ class TextField(InteractiveWidget):
         if self._on_change:
             self._on_change(new_text)
 
-    def _on_editable_focus_change(self, focused: bool) -> None:
+    def _on_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self._update_label_state()
         self.invalidate()
 
