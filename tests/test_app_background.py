@@ -6,7 +6,6 @@ import pytest
 
 from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.theme import Theme, manager as theme_manager
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.colors.utils import hex_to_rgba
 
@@ -41,20 +40,21 @@ def test_app_background_uses_resolve_color(monkeypatch):
 
 
 def test_app_background_updates_on_theme_change(monkeypatch):
-    prev_theme = theme_manager.current
+    from nuiitivet.theme.theme import Theme
+    from nuiitivet.material.theme.theme_data import MaterialThemeData
+    from nuiitivet.theme.intents import ThemeModeIntent
+
     app: App | None = None
     try:
         roles = {role: "#FFFFFF" for role in ColorRole}
         roles[ColorRole.SURFACE] = "#222222"
-        from nuiitivet.material.theme.theme_data import MaterialThemeData
-
-        theme_manager.set_theme(Theme(mode="light", extensions=[MaterialThemeData(roles=roles)]))
+        initial_theme = Theme(mode="light", extensions=[MaterialThemeData(roles=roles)])
 
         colors = {"count": 0}
 
         def fake_resolve(value, default=None, role_resolver=None, theme=None):
             colors["count"] += 1
-            mat = theme_manager.current.extension(MaterialThemeData)
+            mat = theme.extension(MaterialThemeData) if theme is not None else None
             assert mat is not None
             hexv = mat.roles.get(ColorRole.SURFACE)
             return hex_to_rgba(hexv)
@@ -62,16 +62,14 @@ def test_app_background_updates_on_theme_change(monkeypatch):
         monkeypatch.setattr("nuiitivet.runtime.app.resolve_color_to_rgba", fake_resolve)
 
         widget = _DummyWidget()
-        # Pass theme explicitly to avoid App overwriting it with default MaterialTheme
-        app = App(content=widget, theme=theme_manager.current)
+        app = App(content=widget, theme=initial_theme)
         app._dirty = False
         initial_color = app._background_clear_color()
 
         new_roles = {role: "#EEEEEE" for role in ColorRole}
         new_roles[ColorRole.SURFACE] = "#101010"
-        from nuiitivet.material.theme.theme_data import MaterialThemeData
-
-        theme_manager.set_theme(Theme(mode="dark", extensions=[MaterialThemeData(roles=new_roles)]))
+        new_theme = Theme(mode="dark", extensions=[MaterialThemeData(roles=new_roles)])
+        app.dispatch(ThemeModeIntent(theme=new_theme))
 
         expected_initial = hex_to_rgba("#222222")
         expected_after = hex_to_rgba("#101010")
@@ -83,7 +81,6 @@ def test_app_background_updates_on_theme_change(monkeypatch):
     finally:
         if app is not None:
             app._unsubscribe_theme_updates()
-        theme_manager.set_theme(prev_theme)
 
 
 def test_app_background_raises_when_unresolved():

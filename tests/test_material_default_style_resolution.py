@@ -1,6 +1,3 @@
-import pytest
-from collections.abc import Iterator
-
 from nuiitivet.material import (
     Checkbox,
     TextField,
@@ -17,51 +14,41 @@ from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.theme_data import MaterialThemeData
-from nuiitivet.theme import manager
 
-
-@pytest.fixture(autouse=True)
-def _set_material_theme() -> Iterator[None]:
-    old_theme = manager.current
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    try:
-        manager.set_theme(light)
-        yield
-    finally:
-        manager.set_theme(old_theme)
+light, _ = MaterialTheme.from_seed_pair("#00FF00")
 
 
 def test_material_text_defaults_to_theme_text_style() -> None:
     t = Text("hello")
-    mat = manager.current.extension(MaterialThemeData)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert t.style == mat.text_style
 
 
 def test_material_icon_defaults_to_theme_icon_style() -> None:
     i = Icon("home")
-    mat = manager.current.extension(MaterialThemeData)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert i.style == mat.icon_style
 
 
 def test_material_checkbox_defaults_to_theme_checkbox_style() -> None:
     c = Checkbox()
-    mat = manager.current.extension(MaterialThemeData)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert c.style == mat.checkbox_style
 
 
 def test_material_radio_button_defaults_to_theme_radio_style() -> None:
     r = RadioButton("a")
-    mat = manager.current.extension(MaterialThemeData)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert r.style == mat.radio_button_style
 
 
 def test_material_switch_defaults_to_theme_switch_style() -> None:
     s = Switch()
-    mat = manager.current.extension(MaterialThemeData)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert s.style == mat.switch_style
 

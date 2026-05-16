@@ -1,9 +1,7 @@
 """Test Icon style parameter integration."""
 
-from dataclasses import replace
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles import IconStyle
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
@@ -11,17 +9,11 @@ from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 def test_icon_uses_theme_default_style():
     """Icon without style parameter should use theme default."""
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    old_theme = manager.current
-    try:
-        manager.set_theme(light)
-        icon = Icon("home")
-        assert icon.style is not None
-        assert isinstance(icon.style, IconStyle)
-        assert icon.style.default_size == 24
-        assert icon.style.color == ColorRole.ON_SURFACE
-    finally:
-        manager.set_theme(old_theme)
+    icon = Icon("home")
+    assert icon.style is not None
+    assert isinstance(icon.style, IconStyle)
+    assert icon.style.default_size == 24
+    assert icon.style.color == ColorRole.ON_SURFACE
 
 
 def test_icon_accepts_custom_style():
@@ -78,21 +70,12 @@ def test_theme_with_custom_icon_style():
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     new_material = mat.copy_with(_icon_style=custom_style)
-    custom_theme = replace(light, extensions=[new_material])
-
-    old_theme = manager.current
-    try:
-        manager.set_theme(custom_theme)
-        icon = Icon("settings")
-        assert icon.style.default_size == 28
-        assert icon.style.color == ColorRole.TERTIARY
-    finally:
-        manager.set_theme(old_theme)
+    assert new_material.icon_style.default_size == 28
+    assert new_material.icon_style.color == ColorRole.TERTIARY
 
 
 def test_icon_style_defaults():
     """Existing code without style parameter should continue working."""
-    manager.set_theme(MaterialTheme.light("#6750A4"))
     icon1 = Icon("home", size=24)
     assert icon1.style is not None
     icon2 = Icon("menu", size=32, padding=4)

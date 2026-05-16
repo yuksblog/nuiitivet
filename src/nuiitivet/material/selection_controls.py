@@ -305,12 +305,14 @@ class Checkbox(Toggleable, InteractiveWidget):
     def style(self):
         if self._style is not None:
             return self._style
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-        theme = manager.current.extension(MaterialThemeData)
+        theme = Theme.of(self).extension(MaterialThemeData)
         if theme is None:
-            raise ValueError("MaterialThemeData not found in current theme")
+            from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
+            return CheckboxStyle()
         return theme.checkbox_style
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
@@ -349,11 +351,11 @@ class Checkbox(Toggleable, InteractiveWidget):
             focus_stroke = max(1.0, float(3.0 * (touch_sz / 48.0)))
             focus_offset = float(2.0 * (touch_sz / 48.0))
 
-            from nuiitivet.theme import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-            mat = theme_manager.current.extension(MaterialThemeData)
+            mat = Theme.of(self).extension(MaterialThemeData)
             roles = mat.roles if mat is not None else {}
 
             fg_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
@@ -606,12 +608,14 @@ class RadioButton(Toggleable, InteractiveWidget):
         """Resolved style for this RadioButton."""
         if self._style is not None:
             return self._style
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-        theme = manager.current.extension(MaterialThemeData)
+        theme = Theme.of(self).extension(MaterialThemeData)
         if theme is None:
-            raise ValueError("MaterialThemeData not found in current theme")
+            from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+
+            return RadioButtonStyle()
         return theme.radio_button_style
 
     def on_mount(self) -> None:
@@ -692,7 +696,7 @@ class RadioButton(Toggleable, InteractiveWidget):
             from nuiitivet.rendering.skia import draw_oval, make_paint, make_rect, skcolor
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
-            from nuiitivet.theme import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
 
             content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
             touch_sz = min(content_w, content_h)
@@ -713,7 +717,7 @@ class RadioButton(Toggleable, InteractiveWidget):
             icon_x = cx + (touch_sz - icon_diameter) / 2.0
             icon_y = cy + (touch_sz - icon_diameter) / 2.0
 
-            mat = theme_manager.current.extension(MaterialThemeData)
+            mat = Theme.of(self).extension(MaterialThemeData)
             roles = mat.roles if mat is not None else {}
 
             selected = bool(self.value)
@@ -863,12 +867,14 @@ class Switch(Toggleable, InteractiveWidget):
         """Resolved style for this Switch."""
         if self._style is not None:
             return self._style
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-        theme = manager.current.extension(MaterialThemeData)
+        theme = Theme.of(self).extension(MaterialThemeData)
         if theme is None:
-            raise ValueError("MaterialThemeData not found in current theme")
+            from nuiitivet.material.styles.switch_style import SwitchStyle
+
+            return SwitchStyle()
         return theme.switch_style
 
     def on_mount(self) -> None:
@@ -928,7 +934,7 @@ class Switch(Toggleable, InteractiveWidget):
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
             from nuiitivet.rendering.skia import draw_oval, draw_round_rect, make_paint, make_rect, skcolor
-            from nuiitivet.theme import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
 
             content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
             touch_sz = min(content_w, content_h)
@@ -952,7 +958,7 @@ class Switch(Toggleable, InteractiveWidget):
             track_x = cx + (touch_sz - track_w) / 2.0
             track_y = cy + (touch_sz - track_h) / 2.0
 
-            mat = theme_manager.current.extension(MaterialThemeData)
+            mat = Theme.of(self).extension(MaterialThemeData)
             roles = mat.roles if mat is not None else {}
 
             progress = self._get_selection_progress()

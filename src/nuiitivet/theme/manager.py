@@ -1,4 +1,4 @@
-"""Theme manager and global state.
+"""Theme manager.
 
 Responsibilities:
 - Keep track of the active ``Theme`` instance and notify subscribers when
@@ -57,6 +57,4 @@ class ThemeManager:
             self._subscribers.discard(fn)
 
 
-manager = ThemeManager()
-
-__all__ = ["ThemeManager", "manager"]
+__all__ = ["ThemeManager"]

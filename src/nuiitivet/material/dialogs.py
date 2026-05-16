@@ -83,10 +83,10 @@ class BasicDialog(ComposableWidget):
         if self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-        theme_data = manager.current.extension(MaterialThemeData)
+        theme_data = Theme.of(self).extension(MaterialThemeData)
         if theme_data:
             return theme_data.basic_dialog_style
 

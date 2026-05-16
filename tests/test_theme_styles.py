@@ -111,35 +111,28 @@ def test_theme_style_lazy_loading():
 
 
 def test_theme_manager_provides_styles():
-    """Theme manager's current theme provides styles via material extension."""
-    from nuiitivet.theme import manager
+    """A theme built from MaterialTheme provides styles via material extension."""
     from nuiitivet.material.theme.material_theme import MaterialTheme
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    old = manager.current
     light, _ = MaterialTheme.from_seed_pair("#6750A4")
-    try:
-        manager.set_theme(light)
-        current = manager.current
-        mat = current.extension(MaterialThemeData)
-        assert mat is not None
-        assert hasattr(mat, "filled_button_style")
-        assert hasattr(mat, "checkbox_style")
-        assert hasattr(mat, "radio_button_style")
-        assert hasattr(mat, "switch_style")
-        assert hasattr(mat, "icon_style")
-        button = mat.filled_button_style
-        checkbox = mat.checkbox_style
-        radio = mat.radio_button_style
-        switch = mat.switch_style
-        icon = mat.icon_style
-        assert button is not None
-        assert checkbox is not None
-        assert radio is not None
-        assert switch is not None
-        assert icon is not None
-    finally:
-        manager.set_theme(old)
+    mat = light.extension(MaterialThemeData)
+    assert mat is not None
+    assert hasattr(mat, "filled_button_style")
+    assert hasattr(mat, "checkbox_style")
+    assert hasattr(mat, "radio_button_style")
+    assert hasattr(mat, "switch_style")
+    assert hasattr(mat, "icon_style")
+    button = mat.filled_button_style
+    checkbox = mat.checkbox_style
+    radio = mat.radio_button_style
+    switch = mat.switch_style
+    icon = mat.icon_style
+    assert button is not None
+    assert checkbox is not None
+    assert radio is not None
+    assert switch is not None
+    assert icon is not None
 
 
 def test_theme_style_button_variants():

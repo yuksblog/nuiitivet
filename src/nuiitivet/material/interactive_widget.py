@@ -177,7 +177,9 @@ class InteractiveWidget(Clickable):
         # Prepare paint
         try:
             # Resolve the base color of the state layer
-            color = resolve_color_to_rgba(self.state_layer_color, self)
+            from nuiitivet.theme.theme import Theme
+
+            color = resolve_color_to_rgba(self.state_layer_color, theme=Theme.of(self))
             if color is None:
                 return
 
@@ -209,7 +211,9 @@ class InteractiveWidget(Clickable):
         """Draws the MD3 Focus Indicator (Ring) when focused."""
         try:
             # Focus ring color is usually Secondary
-            color = resolve_color_to_rgba(self._FOCUS_RING_COLOR, self)
+            from nuiitivet.theme.theme import Theme
+
+            color = resolve_color_to_rgba(self._FOCUS_RING_COLOR, theme=Theme.of(self))
             if color is None:
                 return
 

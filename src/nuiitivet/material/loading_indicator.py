@@ -13,7 +13,6 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, make_paint, make_path, rgba_to_skia_color
 from nuiitivet.animation import Animatable
 from nuiitivet.observable import runtime
-from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.widgeting.widget import Widget
 
 from .shapes import (
@@ -23,7 +22,6 @@ from .shapes import (
     sample_shape_points,
 )
 from .styles.loading_indicator_style import LoadingIndicatorStyle
-
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +114,9 @@ class LoadingIndicator(Widget):
         if self._user_style is not None:
             return self._user_style
 
-        return LoadingIndicatorStyle.from_theme(theme_manager.current, "default")
+        from nuiitivet.theme.theme import Theme
+
+        return LoadingIndicatorStyle.from_theme(Theme.of(self), "default")
 
     def _get_model(self) -> ShapeMorphSequence:
         """Get shape morph sequence from current style."""
@@ -190,11 +190,11 @@ class LoadingIndicator(Widget):
     def _resolve_indicator_color(self) -> int | Any:
         """Resolve indicator foreground color to skia color or RGBA tuple."""
         try:
-            theme = theme_manager.current
+            from nuiitivet.theme.theme import Theme
             from nuiitivet.theme.resolver import resolve_color_to_rgba
 
             foreground = self.style.foreground
-            rgba = resolve_color_to_rgba(foreground, theme=theme)
+            rgba = resolve_color_to_rgba(foreground, theme=Theme.of(self))
             return rgba_to_skia_color(rgba)
         except Exception:
             exception_once(logger, "loading_indicator_resolve_color_exc", "LoadingIndicator color resolution failed")

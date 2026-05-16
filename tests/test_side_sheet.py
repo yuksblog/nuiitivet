@@ -6,15 +6,7 @@ from nuiitivet.material.sheet import SideSheet
 from nuiitivet.material.styles.sheet_style import SideSheetStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.transition_spec import MaterialTransitionSpec, MaterialTransitions
-from nuiitivet.theme.manager import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.widgets.box import Box
-
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
-
 
 # ---------------------------------------------------------------------------
 # SideSheetStyle tests

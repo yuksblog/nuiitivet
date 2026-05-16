@@ -13,13 +13,6 @@ from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
 from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.navigation.transition_spec import EmptyTransitionSpec
-from nuiitivet.theme.manager import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
-
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
 
 
 @dataclass(frozen=True, slots=True)

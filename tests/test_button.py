@@ -3,7 +3,6 @@ import types
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.buttons import Button
 from tests.helpers.pointer import send_pointer_event_for_test
-from nuiitivet.theme import manager
 from nuiitivet.modifiers import background, corner_radius
 from nuiitivet.material import ButtonStyle
 
@@ -83,7 +82,9 @@ def test_button_theme_change_invalidates_cache():
     try:
         callback = getattr(b, "_on_theme_change", None)
         assert callback is not None
-        callback(manager.current)
+        from nuiitivet.material.theme.material_theme import MaterialTheme
+
+        callback(MaterialTheme.light("#6750A4"))
     finally:
         b.on_unmount()
     assert "cache" in calls

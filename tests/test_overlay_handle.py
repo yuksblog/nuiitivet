@@ -10,13 +10,6 @@ from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayResult
 from nuiitivet.overlay.result import OverlayDismissReason
-from nuiitivet.theme.manager import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
-
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
 
 
 def test_overlay_handle_done_and_result_when_closed_before_await() -> None:

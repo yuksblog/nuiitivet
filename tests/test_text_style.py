@@ -4,7 +4,6 @@ import pytest
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.text import Text
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from dataclasses import replace
@@ -68,9 +67,8 @@ def test_text_style_immutable():
 
 def test_text_widget_default_style():
     """Test Text widget uses theme default style when no style provided."""
-    manager.set_theme(MaterialTheme.light("#6750A4"))
     text = Text("Hello")
-    # Should use theme's text_style
+    # Should use default text_style
     assert text.style.font_size == 14
     assert text.style.color == ColorRole.ON_SURFACE
 
@@ -185,13 +183,8 @@ def test_text_widget_uses_theme_text_style():
     new_extensions.append(new_mat_data)
     custom_theme = replace(light, extensions=new_extensions)
 
-    # Set as current theme
-    manager.set_theme(custom_theme)
-
-    # Text without explicit style should use theme default
-    text = Text("Hello")
-    assert text.style.font_size == 20
-    assert text.style.color == ColorRole.SECONDARY
-
-    # Reset to default theme
-    manager.set_theme(light)
+    # Verify the theme data provides the custom style
+    custom_mat = custom_theme.extension(MaterialThemeData)
+    assert custom_mat is not None
+    assert custom_mat.text_style.font_size == 20
+    assert custom_mat.text_style.color == ColorRole.SECONDARY

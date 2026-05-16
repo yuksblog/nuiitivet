@@ -243,9 +243,9 @@ class TextBase(Widget):
 
         # Resolve text color from the theme to an RGBA tuple and convert
         # to a skia color when skia is available.
-        from nuiitivet.theme.manager import manager as theme_manager
+        from nuiitivet.theme.theme import Theme
 
-        rgba = resolve_color_to_rgba(self.style.color, default="#000000", theme=theme_manager.current)
+        rgba = resolve_color_to_rgba(self.style.color, default="#000000", theme=Theme.of(self))
         paint_color = rgba_to_skia_color(rgba)
 
         paint = make_paint(color=paint_color, style="fill", aa=True)

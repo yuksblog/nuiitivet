@@ -21,7 +21,6 @@ from nuiitivet.colors.utils import hex_to_rgba
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, get_skia, make_paint, make_rect, rgba_to_skia_color  # noqa: F401
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgets.interaction import (
     DraggableNode,
@@ -29,7 +28,6 @@ from nuiitivet.widgets.interaction import (
     InteractionState,
     PointerInputNode,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -387,7 +385,9 @@ class Scrollbar(InteractionHostMixin, Widget):
 
     def _derive_colors(self, _unused=None):
         try:
-            theme = theme_manager.current
+            from nuiitivet.theme.theme import Theme
+
+            theme = Theme.of(self)
             base = theme.get(ColorRole.ON_SURFACE)
         except Exception:
             base = "#000000"
@@ -429,7 +429,9 @@ class Scrollbar(InteractionHostMixin, Widget):
         bar_x, bar_y, bar_w, bar_h = x, y, width, height
 
         try:
-            theme = theme_manager.current
+            from nuiitivet.theme.theme import Theme
+
+            theme = Theme.of(self)
             from nuiitivet.material.theme.theme_data import MaterialThemeData
 
             mat = theme.extension(MaterialThemeData)

@@ -18,7 +18,6 @@ from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
 from nuiitivet.widgets.interaction import DraggableNode, PointerInputNode
 from nuiitivet.animation import Animatable
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -138,9 +137,9 @@ class _SliderBase(InteractiveWidget):
             return self._style
         try:
             from nuiitivet.material.theme.theme_data import MaterialThemeData
-            from nuiitivet.theme.manager import manager
+            from nuiitivet.theme.theme import Theme
 
-            theme = manager.current.extension(MaterialThemeData)
+            theme = Theme.of(self).extension(MaterialThemeData)
             if theme is not None:
                 return theme.slider_style
         except Exception:
@@ -320,14 +319,14 @@ class _SliderBase(InteractiveWidget):
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
             from nuiitivet.rendering.skia import draw_oval, draw_round_rect, make_paint, make_rect, skcolor
-            from nuiitivet.theme import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
 
             self.set_last_rect(x, y, width, height)
             self.draw_background(canvas, x, y, width, height)
             self._compute_geometry(float(x), float(y), float(width), float(height))
 
             style = self.style
-            theme = theme_manager.current.extension(MaterialThemeData)
+            theme = Theme.of(self).extension(MaterialThemeData)
             roles = theme.roles if theme is not None else {}
 
             active_track_hex = roles.get(ColorRole.PRIMARY, "#000000")
@@ -566,10 +565,10 @@ class _SliderBase(InteractiveWidget):
             measure_text_ink_bounds,
             skcolor,
         )
-        from nuiitivet.theme import manager as theme_manager
+        from nuiitivet.theme.theme import Theme
 
         style = self.style
-        theme = theme_manager.current.extension(MaterialThemeData)
+        theme = Theme.of(self).extension(MaterialThemeData)
         roles = theme.roles if theme is not None else {}
 
         bg_hex = roles.get(ColorRole.INVERSE_SURFACE, "#1F1F1F")

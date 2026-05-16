@@ -14,18 +14,10 @@ from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.material.buttons import Button
 from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.theme.manager import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.widgeting.widget import Widget
-import pytest
-
-from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 from nuiitivet.material import ButtonStyle
 
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
+from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
 
 def test_overlay_dialog_inserts_entry_with_barrier_and_dialog() -> None:

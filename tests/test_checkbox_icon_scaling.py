@@ -7,12 +7,6 @@ from nuiitivet.rendering.skia import skia_module
 
 
 class TestCheckboxIconScaling(unittest.TestCase):
-    def setUp(self):
-        from nuiitivet.material.theme.material_theme import MaterialTheme
-        from nuiitivet.theme.manager import manager
-
-        manager.set_theme(MaterialTheme.light("#6750A4"))
-
     def tearDown(self):
         skia_module._reset_skia_import_state_for_tests()
 

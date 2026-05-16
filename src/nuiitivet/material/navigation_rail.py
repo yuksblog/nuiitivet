@@ -24,7 +24,6 @@ from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -270,6 +269,16 @@ class _RailItemButton(InteractiveWidget):
             self._badge_widget = None
         self._badge_rect = None
 
+        # Give the badge access to the widget tree so Theme.of() can traverse
+        # up to AppScope and resolve theme-based colors (e.g. ColorRole.ERROR).
+        if self._badge_widget is not None:
+            self._badge_widget._parent = self
+            try:
+                self._badge_widget._remove_box_theme_subscription()
+                self._badge_widget._sync_theme_subscription()
+            except Exception:
+                pass
+
     def _apply_colors(self, *, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
         eff_style = self._eff_style or rail_style or NavigationRailStyle()
         if selected:
@@ -438,7 +447,9 @@ class _RailItemButton(InteractiveWidget):
         if not self._selected or self._indicator_color is None:
             return
 
-        color = resolve_color_to_rgba(self._indicator_color, self)
+        from nuiitivet.theme.theme import Theme
+
+        color = resolve_color_to_rgba(self._indicator_color, theme=Theme.of(self))
         if color is None:
             return
         r, g, b, a = color
@@ -464,7 +475,9 @@ class _RailItemButton(InteractiveWidget):
         if opacity <= 0:
             return
 
-        color = resolve_color_to_rgba(self.state_layer_color, self)
+        from nuiitivet.theme.theme import Theme
+
+        color = resolve_color_to_rgba(self.state_layer_color, theme=Theme.of(self))
         if color is None:
             return
         r, g, b, a = color

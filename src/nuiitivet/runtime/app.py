@@ -16,7 +16,7 @@ from ..widgeting.widget_binding import flush_binding_invalidations
 from ..widgeting.widget_builder import flush_scope_recompositions
 
 from ..rendering.skia import make_raster_surface, require_skia, rgba_to_skia_color, save_png
-from ..theme import manager as theme_manager
+from ..theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
@@ -70,6 +70,7 @@ class AppScope(Widget):
     def __init__(self, app: "App", child: Widget) -> None:
         super().__init__()
         self.app_proxy = AppProxy(app)
+        self.theme_manager = app._theme_manager
         self.add_child(child)
 
     def layout(self, width: int, height: int) -> None:
@@ -170,7 +171,8 @@ class App:
 
         if theme is None:
             theme = PlainTheme.light()
-        theme_manager.set_theme(theme)
+        self._theme_manager = ThemeManager(initial=theme)
+        self._theme_registry: dict[str, Any] = {}
 
         self.root = root
 
@@ -544,7 +546,7 @@ class App:
         if self._background_value is None:
             raise ValueError("App background color could not be resolved")
         try:
-            rgba = resolve_color_to_rgba(self._background_value, theme=theme_manager.current)
+            rgba = resolve_color_to_rgba(self._background_value, theme=self._theme_manager.current)
         except Exception as exc:
             raise ValueError("App background color could not be resolved") from exc
         if rgba is None:
@@ -568,7 +570,7 @@ class App:
             app = app_ref()
             if app is None:
                 try:
-                    theme_manager.unsubscribe(_on_theme)
+                    self._theme_manager.unsubscribe(_on_theme)
                 except Exception:
                     exception_once(logger, "app_theme_unsubscribe_dead_exc", "ThemeManager.unsubscribe raised")
                 return
@@ -579,7 +581,7 @@ class App:
                 exception_once(logger, "app_theme_invalidate_exc", "App.invalidate raised in theme callback")
 
         try:
-            theme_manager.subscribe(_on_theme)
+            self._theme_manager.subscribe(_on_theme)
             self._theme_subscription = _on_theme
         except Exception:
             exception_once(logger, "app_theme_subscribe_exc", "ThemeManager.subscribe raised")
@@ -590,7 +592,7 @@ class App:
         if callback is None:
             return
         try:
-            theme_manager.unsubscribe(callback)
+            self._theme_manager.unsubscribe(callback)
         except Exception:
             exception_once(logger, "app_theme_unsubscribe_exc", "ThemeManager.unsubscribe raised")
         self._theme_subscription = None
@@ -986,6 +988,29 @@ class App:
 
     def dispatch(self, intent: Any) -> None:
         """Dispatch an intent to the application."""
+        from nuiitivet.theme.intents import ThemeModeIntent, ThemeRegistryIntent
+
+        if isinstance(intent, ThemeRegistryIntent):
+            self._theme_registry.update(intent.themes)
+            return
+
+        if isinstance(intent, ThemeModeIntent):
+            from nuiitivet.theme.theme import Theme
+
+            theme_val = intent.theme
+            if isinstance(theme_val, Theme):
+                self._theme_manager.set_theme(theme_val)
+            else:
+                # Look up by name; fall back to light/dark built-ins
+                theme_obj = self._theme_registry.get(str(theme_val))
+                if theme_obj is None:
+                    if str(theme_val) == "dark":
+                        theme_obj = PlainTheme.dark()
+                    else:
+                        theme_obj = PlainTheme.light()
+                self._theme_manager.set_theme(theme_obj)
+            return
+
         from nuiitivet.runtime.intents import (
             ExitAppIntent,
             CenterWindowIntent,

@@ -43,9 +43,9 @@ class Card(ComposableWidget, Box):
         if self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
 
-        return CardStyle.from_theme(manager.current)
+        return CardStyle.from_theme(Theme.of(self))
 
     def __init__(
         self,

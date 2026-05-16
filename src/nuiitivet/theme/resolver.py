@@ -22,13 +22,12 @@ from nuiitivet.colors.utils import (
 from nuiitivet.theme.types import ColorSpec, ColorToken
 from nuiitivet.theme.theme import Theme
 
-
 logger = logging.getLogger(__name__)
 
 
 def _default_role_resolver() -> Callable[[Any], Optional[str]]:
-    def resolver(_: Any) -> Optional[str]:
-        return None
+    def resolver(role: Any) -> Optional[str]:
+        return role.resolve(None) if hasattr(role, "resolve") else None
 
     return resolver
 

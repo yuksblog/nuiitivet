@@ -1,6 +1,6 @@
 import sys
 import types
-import nuiitivet.theme as theme
+import nuiitivet.theme.theme as _theme_module
 from nuiitivet.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.text import Text
@@ -77,7 +77,7 @@ def test_text_uses_theme_color(monkeypatch):
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
     custom = Theme(name="t", mode="light", extensions=[MaterialThemeData(roles={ColorRole.ON_SURFACE: "#112233"})])
-    theme.manager.set_theme(custom)
+    monkeypatch.setattr(_theme_module.Theme, "of", staticmethod(lambda ctx: custom))
     t = Text("hello")
 
     class DummyCanvas:

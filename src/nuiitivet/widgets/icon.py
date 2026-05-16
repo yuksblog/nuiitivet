@@ -38,9 +38,9 @@ class IconBase(Widget):
             return
 
         try:
-            from nuiitivet.theme.manager import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
 
-            rgba = resolve_color_to_rgba(color, theme=theme_manager.current)
+            rgba = resolve_color_to_rgba(color, theme=Theme.of(self))
             paint = make_paint(color=rgba, style="fill", aa=True)
         except Exception:
             exception_once(logger, "icon_base_resolve_color_exc", "Failed to resolve icon color")
