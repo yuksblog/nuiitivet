@@ -3,7 +3,6 @@
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.material.theme.material_theme import MaterialTheme
-import pytest
 from nuiitivet.material import ButtonStyle
 
 

@@ -1,6 +1,3 @@
-import pytest
-from collections.abc import Iterator
-
 from nuiitivet.material import (
     Checkbox,
     TextField,

@@ -6,7 +6,6 @@ import pytest
 
 from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.colors.utils import hex_to_rgba
 

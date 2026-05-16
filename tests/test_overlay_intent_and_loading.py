@@ -13,7 +13,6 @@ from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
 from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.navigation.transition_spec import EmptyTransitionSpec
-from nuiitivet.material.theme.material_theme import MaterialTheme
 
 
 @dataclass(frozen=True, slots=True)

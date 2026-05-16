@@ -1,6 +1,5 @@
 """Test Icon style parameter integration."""
 
-from dataclasses import replace
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles import IconStyle
 from nuiitivet.material.theme.material_theme import MaterialTheme

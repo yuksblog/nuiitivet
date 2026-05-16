@@ -1,6 +1,9 @@
 import math
 import logging
-from typing import Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+
+if TYPE_CHECKING:
+    from nuiitivet.theme.manager import ThemeManager
 
 from nuiitivet.common.logging_once import exception_once
 from ..rendering.skia.paint_cache import CachedPaintMixin
@@ -52,7 +55,7 @@ class Box(CachedPaintMixin, Widget):
         self._border_color: Optional[ColorSpec] = None
         self._shadow_color: Optional[ColorSpec] = None
         self._box_theme_subscription: Optional[Callable[[object], None]] = None
-        self._box_theme_manager: Optional[object] = None
+        self._box_theme_manager: Optional["ThemeManager"] = None
         if child:
             self.add_child(child)
 

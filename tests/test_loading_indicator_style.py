@@ -1,6 +1,5 @@
 """Test LoadingIndicatorStyle integration."""
 
-from dataclasses import replace
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.styles import LoadingIndicatorStyle
 from nuiitivet.material.shapes import MaterialShapeId
