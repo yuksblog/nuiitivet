@@ -2,24 +2,16 @@
 
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles import ButtonStyle
-from nuiitivet.theme import manager
-from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.color_role import ColorRole
 
 
 def test_button_uses_theme_default_style():
     """Button without button_style parameter should use theme default."""
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    old_theme = manager.current
-    try:
-        manager.set_theme(light)
-        button = Button(label="Test", style=ButtonStyle.filled())
-        assert button.style is not None
-        assert isinstance(button.style, ButtonStyle)
-        assert button.style.background == ColorRole.PRIMARY
-        assert button.style.foreground == ColorRole.ON_PRIMARY
-    finally:
-        manager.set_theme(old_theme)
+    button = Button(label="Test", style=ButtonStyle.filled())
+    assert button.style is not None
+    assert isinstance(button.style, ButtonStyle)
+    assert button.style.background == ColorRole.PRIMARY
+    assert button.style.foreground == ColorRole.ON_PRIMARY
 
 
 def test_button_accepts_custom_button_style():

@@ -8,7 +8,6 @@ from typing import Literal, Optional, Tuple, Union
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.rendering.skia import make_paint, make_rect
-from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.widgeting.widget import Widget
 
@@ -113,7 +112,9 @@ class Divider(Widget):
         if dw <= 0 or dh <= 0:
             return
 
-        rgba = resolve_color_to_rgba(style.color, theme=theme_manager.current)
+        from nuiitivet.theme.theme import Theme
+
+        rgba = resolve_color_to_rgba(style.color, theme=Theme.of(self))
         if rgba is None:
             return
         r, g, b, a = rgba

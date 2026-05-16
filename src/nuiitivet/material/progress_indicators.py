@@ -10,7 +10,6 @@ from nuiitivet.observable import ObservableProtocol, runtime
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, make_paint, make_rect
-from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.widgeting.widget import Widget
 
@@ -65,10 +64,9 @@ def _resolve_active_track_colors(
     *,
     style: LinearProgressIndicatorStyle | CircularProgressIndicatorStyle,
     disabled: bool,
+    theme: Any = None,
 ) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     """Resolve active/track colors with disabled alpha handling."""
-    theme = theme_manager.current
-
     active = resolve_color_to_rgba(style.active_indicator_color, theme=theme) or (0, 0, 0, 255)
     track = resolve_color_to_rgba(style.track_color, theme=theme) or (0, 0, 0, 255)
 
@@ -491,8 +489,9 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         if self._style is not None:
             return self._style
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        mat = theme_manager.current.extension(MaterialThemeData)
+        mat = Theme.of(self).extension(MaterialThemeData)
         if mat is not None:
             return mat.linear_progress_indicator_style
         return LinearProgressIndicatorStyle.default()
@@ -513,8 +512,10 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         return (pref_w, pref_h)
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int], tuple[int, int, int, int]]:
+        from nuiitivet.theme.theme import Theme
+
         style = self.style
-        theme = theme_manager.current
+        theme = Theme.of(self)
 
         active = resolve_color_to_rgba(style.active_indicator_color, theme=theme) or (0, 0, 0, 255)
         track = resolve_color_to_rgba(style.track_color, theme=theme) or (0, 0, 0, 255)
@@ -638,8 +639,9 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         if self._style is not None:
             return self._style
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        mat = theme_manager.current.extension(MaterialThemeData)
+        mat = Theme.of(self).extension(MaterialThemeData)
         if mat is not None:
             return mat.linear_progress_indicator_style
         return LinearProgressIndicatorStyle.default()
@@ -663,7 +665,9 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         return _LINEAR_ANIMATION_DURATION_MS / 1000.0
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
-        return _resolve_active_track_colors(style=self.style, disabled=self.disabled)
+        from nuiitivet.theme.theme import Theme
+
+        return _resolve_active_track_colors(style=self.style, disabled=self.disabled, theme=Theme.of(self))
 
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
@@ -758,14 +762,17 @@ class CircularProgressIndicator(_DeterminateProgressBase):
         if self._style is not None:
             return self._style
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        mat = theme_manager.current.extension(MaterialThemeData)
+        mat = Theme.of(self).extension(MaterialThemeData)
         if mat is not None:
             return mat.circular_progress_indicator_style
         return CircularProgressIndicatorStyle.default()
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
-        return _resolve_active_track_colors(style=self.style, disabled=self.disabled)
+        from nuiitivet.theme.theme import Theme
+
+        return _resolve_active_track_colors(style=self.style, disabled=self.disabled, theme=Theme.of(self))
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
         pad_l, pad_t, pad_r, pad_b = self.padding
@@ -884,8 +891,9 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         if self._style is not None:
             return self._style
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        mat = theme_manager.current.extension(MaterialThemeData)
+        mat = Theme.of(self).extension(MaterialThemeData)
         if mat is not None:
             return mat.circular_progress_indicator_style
         return CircularProgressIndicatorStyle.default()
@@ -904,7 +912,9 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         return (w, h)
 
     def _resolve_colors(self) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
-        return _resolve_active_track_colors(style=self.style, disabled=self.disabled)
+        from nuiitivet.theme.theme import Theme
+
+        return _resolve_active_track_colors(style=self.style, disabled=self.disabled, theme=Theme.of(self))
 
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)

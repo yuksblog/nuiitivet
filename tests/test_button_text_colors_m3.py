@@ -13,15 +13,9 @@ from nuiitivet.material.buttons import Fab, Button
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialTheme
-from nuiitivet.theme.manager import manager
 from nuiitivet.material.styles.text_style import TextStyle
 import pytest
 from nuiitivet.material import ButtonStyle
-
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
 
 
 def test_filled_button_text_color():

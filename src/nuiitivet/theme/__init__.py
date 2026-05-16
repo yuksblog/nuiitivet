@@ -6,14 +6,13 @@ from .theme import (
     ColorValue,
     Theme,
 )
-from .manager import ThemeManager, manager
+from .manager import ThemeManager
 from .types import ColorLike, ColorSpec, ColorToken, ThemeExtension
 
 __all__ = [
     "ColorValue",
     "Theme",
     "ThemeManager",
-    "manager",
     "ThemeExtension",
     "ColorLike",
     "ColorSpec",

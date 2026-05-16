@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.theme.manager import manager
 from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.widgets.text import TextBase
 from nuiitivet.widgets.text_style import TextStyleProtocol
@@ -60,11 +59,14 @@ class Text(TextBase):
         if self._style is not None:
             return self._style  # type: ignore
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        theme = manager.current.extension(MaterialThemeData)
-        if theme is None:
-            raise ValueError("MaterialThemeData not found in current theme")
-        return theme.text_style
+        mat = Theme.of(self).extension(MaterialThemeData)
+        if mat is None:
+            from nuiitivet.material.styles.text_style import TextStyle
+
+            return TextStyle()
+        return mat.text_style
 
 
 __all__ = ["Text"]

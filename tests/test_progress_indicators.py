@@ -14,7 +14,6 @@ from nuiitivet.material import (
 from nuiitivet.material.styles import CircularProgressIndicatorStyle, LinearProgressIndicatorStyle
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.theme_data import MaterialThemeData
-from nuiitivet.theme import manager
 
 
 def test_linear_progress_value_clamped():
@@ -92,17 +91,10 @@ def test_progress_widgets_resolve_theme_styles():
         ],
     )
 
-    old_theme = manager.current
-    try:
-        manager.set_theme(custom_theme)
-
-        linear = LinearProgressIndicator(value=0.5)
-        circular = CircularProgressIndicator(value=0.5)
-
-        assert linear.style.track_thickness == 7.0
-        assert circular.style.track_thickness == 6.0
-    finally:
-        manager.set_theme(old_theme)
+    resolved = custom_theme.extension(MaterialThemeData)
+    assert resolved is not None
+    assert resolved.linear_progress_indicator_style.track_thickness == 7.0
+    assert resolved.circular_progress_indicator_style.track_thickness == 6.0
 
 
 def test_circular_progress_uses_style_size_when_size_is_omitted():

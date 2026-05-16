@@ -10,7 +10,6 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from nuiitivet.theme.manager import manager
 from nuiitivet.theme.theme import Theme
 
 if TYPE_CHECKING:
@@ -41,8 +40,9 @@ class PlainColorRole(Enum):
 
     def resolve(self, theme: "Theme | None" = None) -> ColorLike | None:
         """Resolve this token into a concrete ColorLike."""
-        source_theme = theme if theme is not None else manager.current
-        theme_data = source_theme.extension(PlainThemeData)
+        if theme is None:
+            return None
+        theme_data = theme.extension(PlainThemeData)
         if theme_data is None:
             return None
 

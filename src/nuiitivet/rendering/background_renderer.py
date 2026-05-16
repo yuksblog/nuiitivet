@@ -258,10 +258,10 @@ class BackgroundRenderer:
             return
 
         from nuiitivet.theme.resolver import resolve_color_to_rgba
-        from nuiitivet.theme.manager import manager as theme_manager
+        from nuiitivet.theme.theme import Theme
 
         try:
-            stroke_rgba = resolve_color_to_rgba(self.owner.border_color, theme=theme_manager.current)
+            stroke_rgba = resolve_color_to_rgba(self.owner.border_color, theme=Theme.of(self.owner))
             stroke_paint = make_paint(color=stroke_rgba, style="stroke", stroke_width=bw, aa=True)
             if stroke_paint is None:
                 return
@@ -349,10 +349,10 @@ class BackgroundRenderer:
         """Draw shadow and background (but not border)."""
         # draw shadow first if requested
         from nuiitivet.theme.resolver import resolve_color_to_rgba
-        from nuiitivet.theme.manager import manager as theme_manager
+        from nuiitivet.theme.theme import Theme
 
         try:
-            sc = resolve_color_to_rgba(self.owner.shadow_color, theme=theme_manager.current)
+            sc = resolve_color_to_rgba(self.owner.shadow_color, theme=Theme.of(self.owner))
             dx, dy = getattr(self.owner, "shadow_offset", (0, 0))
             sb = float(getattr(self.owner, "shadow_blur", 0.0) or 0.0)
             if sc is not None and (dx != 0 or dy != 0 or sb > 0.0):
@@ -368,7 +368,7 @@ class BackgroundRenderer:
         # draw background if present
         if self.owner.bgcolor is not None:
             try:
-                bg_rgba = resolve_color_to_rgba(self.owner.bgcolor, theme=theme_manager.current)
+                bg_rgba = resolve_color_to_rgba(self.owner.bgcolor, theme=Theme.of(self.owner))
                 paint = make_paint(color=bg_rgba, style="fill", aa=True)
 
                 if paint is not None:

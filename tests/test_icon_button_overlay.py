@@ -1,6 +1,5 @@
 from nuiitivet.material.icon import Icon
 from nuiitivet.rendering.skia import skcolor
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.theme.resolver import resolve_color_to_rgba
@@ -8,11 +7,11 @@ from nuiitivet.material.theme.material_theme import MaterialTheme
 
 
 def test_icon_resolve_color_uses_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
+    light = MaterialTheme.light("#6750A4")
     icon = Icon("home")
-    # _resolve_color is removed, use resolve_color_to_rgba directly
-    rgba = resolve_color_to_rgba(icon.style.color)
-    mat = manager.current.extension(MaterialThemeData)
+    # resolve ON_SURFACE color using the theme directly
+    rgba = resolve_color_to_rgba(icon.style.color, theme=light)
+    mat = light.extension(MaterialThemeData)
     assert mat is not None
     expected_hex = mat.roles.get(ColorRole.ON_SURFACE)
     assert expected_hex is not None

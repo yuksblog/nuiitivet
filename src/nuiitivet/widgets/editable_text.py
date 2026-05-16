@@ -624,7 +624,9 @@ class EditableText(InteractionHostMixin, Widget):
                 save_count = None
 
         try:
-            from nuiitivet.theme.manager import manager as theme_manager
+            from nuiitivet.theme.theme import Theme
+
+            _theme = Theme.of(self)
 
             # Draw selection highlight (behind the text).
             if display_text and not selection.is_collapsed:
@@ -635,7 +637,7 @@ class EditableText(InteractionHostMixin, Widget):
                     sx1 = font.measureText(display_text[:sel_end]) - scroll
                     sel_top = ty + font_metrics.fAscent
                     sel_bottom = ty + font_metrics.fDescent
-                    sel_color = resolve_color_to_rgba(self.selection_color, theme=theme_manager.current)
+                    sel_color = resolve_color_to_rgba(self.selection_color, theme=_theme)
                     paint_sel = make_paint(color=sel_color)
                     sel_rect = make_rect(int(x + sx0), int(sel_top), int(sx1 - sx0), int(sel_bottom - sel_top))
                     if sel_rect is not None and paint_sel is not None:
@@ -650,7 +652,7 @@ class EditableText(InteractionHostMixin, Widget):
 
             # Draw Text
             if display_text:
-                text_color = resolve_color_to_rgba(self.text_color, theme=theme_manager.current)
+                text_color = resolve_color_to_rgba(self.text_color, theme=_theme)
                 paint_text = make_paint(color=text_color)
                 blob = make_text_blob(display_text, font)
                 if blob:
@@ -670,7 +672,7 @@ class EditableText(InteractionHostMixin, Widget):
                     cursor_bottom - cursor_top,
                 )
 
-                cursor_color = resolve_color_to_rgba(self.cursor_color, theme=theme_manager.current)
+                cursor_color = resolve_color_to_rgba(self.cursor_color, theme=_theme)
                 paint_cursor = make_paint(color=cursor_color, style="stroke", stroke_width=2)
                 if paint_cursor is not None:
                     canvas.drawLine(

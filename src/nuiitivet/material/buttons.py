@@ -35,6 +35,7 @@ from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
+    from nuiitivet.theme.manager import ThemeManager
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +95,10 @@ def _coerce_fixed_height_px(height: SizingLike) -> Optional[int]:
     return None
 
 
-def _resolve_color_rgba(value: ColorSpec) -> Tuple[int, int, int, int]:
-    from nuiitivet.theme.manager import manager
+def _resolve_color_rgba(value: ColorSpec, theme=None) -> Tuple[int, int, int, int]:
     from nuiitivet.theme.resolver import resolve_color_to_rgba
 
-    return resolve_color_to_rgba(value, theme=manager.current)
+    return resolve_color_to_rgba(value, theme=theme)
 
 
 def _shadow_from_elevation(level: int) -> tuple[ColorSpec, float, tuple[float, float]]:
@@ -378,6 +378,7 @@ class MaterialButtonBase(InteractiveWidget):
         self._bg_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._border_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._foreground_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
+        self._theme_manager: Optional["ThemeManager"] = None
 
         self._init_foreground_targets()
         self._update_color_targets(
@@ -386,9 +387,26 @@ class MaterialButtonBase(InteractiveWidget):
             foreground_color=foreground_color,
         )
 
+    def on_mount(self) -> None:
+        super().on_mount()
+        from nuiitivet.runtime.app import AppScope
+
+        scope = self.find_ancestor(AppScope)
+        if scope is not None:
+            self._theme_manager = scope.theme_manager
+            self._theme_manager.subscribe(self._on_theme_change)
+            self._on_theme_change(self._theme_manager.current)
+            self._snap_color_animations()
+
     def on_unmount(self) -> None:
+        if self._theme_manager is not None:
+            self._theme_manager.unsubscribe(self._on_theme_change)
+            self._theme_manager = None
         self._dispose_color_animations()
         super().on_unmount()
+
+    def _on_theme_change(self, theme) -> None:
+        raise NotImplementedError
 
     def _init_foreground_targets(self) -> None:
         if self._foreground_targets:
@@ -448,10 +466,11 @@ class MaterialButtonBase(InteractiveWidget):
         background_color: ColorSpec,
         border_color: ColorSpec,
         foreground_color: ColorSpec,
+        theme=None,
     ) -> None:
-        resolved_bg = _resolve_color_rgba(background_color)
-        resolved_border = _resolve_color_rgba(border_color)
-        resolved_fg = _resolve_color_rgba(foreground_color)
+        resolved_bg = _resolve_color_rgba(background_color, theme=theme)
+        resolved_border = _resolve_color_rgba(border_color, theme=theme)
+        resolved_fg = _resolve_color_rgba(foreground_color, theme=theme)
 
         if self._bg_color_anim is None:
             self._bg_color_anim = Animatable.vector(
@@ -487,7 +506,28 @@ class MaterialButtonBase(InteractiveWidget):
         if self._foreground_color_anim is not None:
             self._foreground_color_anim = None
 
-    def _apply_style_params(self, params: dict[str, Any]) -> None:
+    def _snap_color_animations(self) -> None:
+        """Snap colour animations to their current targets without animating.
+
+        Called once at mount time so the button renders immediately with the
+        correct theme colours instead of fading in from the transparent
+        ``(0, 0, 0, 0)`` value that was resolved at construction time
+        (before the app's ThemeManager was reachable).
+        """
+        for anim in (self._bg_color_anim, self._border_color_anim, self._foreground_color_anim):
+            if anim is None:
+                continue
+            target = anim._target
+            anim._stop_ticking()
+            if anim._state is not None:
+                vec = anim._converter.to_vector(target)
+                anim._state.value = vec.copy()
+                anim._state.start = vec.copy()
+                anim._state.target = vec.copy()
+                anim._state.done = True
+            anim._value.value = target
+
+    def _apply_style_params(self, params: dict[str, Any], theme=None) -> None:
         self.padding = params["padding"]
         self.corner_radius = params["corner_radius"]
         self.border_width = params["border_width"]
@@ -504,7 +544,9 @@ class MaterialButtonBase(InteractiveWidget):
             background_color=params["background_color"],
             border_color=params["border_color"],
             foreground_color=params["foreground_color"],
+            theme=theme,
         )
+        self._snap_color_animations()
         self.invalidate()
 
     def _get_state_layer_target_opacity(self) -> float:
@@ -695,19 +737,6 @@ class Button(MaterialButtonBase):
             **params,
         )
 
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
             self.style,
@@ -715,7 +744,7 @@ class Button(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-        self._apply_style_params(params)
+        self._apply_style_params(params, theme=theme)
 
 
 class IconButton(MaterialButtonBase):
@@ -763,19 +792,6 @@ class IconButton(MaterialButtonBase):
             **params,
         )
 
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
             self.style,
@@ -783,7 +799,7 @@ class IconButton(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-        self._apply_style_params(params)
+        self._apply_style_params(params, theme=theme)
 
 
 class ToggleButtonBase(MaterialButtonBase):
@@ -883,20 +899,9 @@ class ToggleButtonBase(MaterialButtonBase):
 
     def on_mount(self) -> None:
         super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
         if self._selected_external is not None:
             self.observe(self._selected_external, self._on_selected_external_change)
             self._sync_selected_state()
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
         """Return the :class:`ButtonStyle` to apply for the given state.
@@ -912,14 +917,16 @@ class ToggleButtonBase(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-        self._apply_style_params(params)
+        self._apply_style_params(params, theme=theme)
 
     def _on_selected_external_change(self, _new_value: bool) -> None:
         self._sync_selected_state()
 
     def _sync_selected_state(self) -> None:
         self.state.checked = self.selected
-        self._on_theme_change(None)
+        from nuiitivet.theme.theme import Theme
+
+        self._on_theme_change(Theme.of(self))
         self.invalidate()
 
     def _handle_toggle(self) -> None:
@@ -1094,19 +1101,6 @@ class Fab(MaterialButtonBase):
         self.bind(self._press_scale_x_anim.subscribe(lambda _: self.invalidate()))
         self.bind(self._press_scale_y_anim.subscribe(lambda _: self.invalidate()))
 
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.theme.manager import manager
-
-        manager.subscribe(self._on_theme_change)
-        self._on_theme_change(manager.current)
-
-    def on_unmount(self) -> None:
-        from nuiitivet.theme.manager import manager
-
-        manager.unsubscribe(self._on_theme_change)
-        super().on_unmount()
-
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
             self.style,
@@ -1114,7 +1108,7 @@ class Fab(MaterialButtonBase):
             self._user_height,
             self.disabled,
         )
-        self._apply_style_params(params)
+        self._apply_style_params(params, theme=theme)
         self._sync_state_tokens()
 
     def _container_elevation(self) -> int:

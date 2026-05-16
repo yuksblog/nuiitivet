@@ -14,7 +14,6 @@ from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipSty
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.theme.manager import manager
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -47,7 +46,9 @@ class Tooltip(ComposableWidget):
         """Return tooltip style resolved from user style or current theme."""
         if self._user_style is not None:
             return self._user_style
-        return TooltipStyle.from_theme(manager.current)
+        from nuiitivet.theme.theme import Theme
+
+        return TooltipStyle.from_theme(Theme.of(self))
 
     def build(self) -> Widget:
         style = self.style
@@ -129,7 +130,9 @@ class RichTooltip(ComposableWidget):
         """Return rich tooltip style resolved from user style or current theme."""
         if self._user_style is not None:
             return self._user_style
-        return RichTooltipStyle.from_theme(manager.current)
+        from nuiitivet.theme.theme import Theme
+
+        return RichTooltipStyle.from_theme(Theme.of(self))
 
     def build(self) -> Widget:
         style = self.style

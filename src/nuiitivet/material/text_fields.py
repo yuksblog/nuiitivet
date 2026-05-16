@@ -28,7 +28,6 @@ from nuiitivet.rendering.skia import (
     get_typeface,
 )
 from nuiitivet.theme.resolver import resolve_color_to_rgba
-from nuiitivet.theme.manager import manager as theme_manager
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
@@ -307,7 +306,7 @@ class TextField(InteractiveWidget):
         )
         self._anim_indicator_width.subscribe(lambda _: self.invalidate())
 
-        init_ind_color = resolve_color_to_rgba(style.indicator_color, theme=theme_manager.current)
+        init_ind_color = resolve_color_to_rgba(style.indicator_color, theme=None)
         self._anim_indicator_color = Animatable.vector(
             init_ind_color,
             converter=RgbaTupleConverter(),
@@ -315,7 +314,7 @@ class TextField(InteractiveWidget):
         )
         self._anim_indicator_color.subscribe(lambda _: self.invalidate())
 
-        init_label_color = resolve_color_to_rgba(style.label_color, theme=theme_manager.current)
+        init_label_color = resolve_color_to_rgba(style.label_color, theme=None)
         self._anim_label_color = Animatable.vector(
             init_label_color,
             converter=RgbaTupleConverter(),
@@ -412,9 +411,25 @@ class TextField(InteractiveWidget):
     def on_mount(self) -> None:
         super().on_mount()
 
+        # Snap animation initial values to the correct theme-resolved colors now
+        # that Theme.of(self) can reach the App's ThemeManager (unavailable at __init__).
+        # This prevents a transparent-to-correct-color flash on first render.
+        style = self.style
+        from nuiitivet.theme.theme import Theme
+
+        def _snap_resolve(c):
+            return resolve_color_to_rgba(c, theme=Theme.of(self))
+
+        if hasattr(self, "_anim_label_color"):
+            correct = _snap_resolve(style.label_color)
+            self._anim_label_color._value.value = correct
+            self._anim_label_color._target = correct
+        if hasattr(self, "_anim_indicator_color"):
+            correct = _snap_resolve(style.indicator_color)
+            self._anim_indicator_color._value.value = correct
+            self._anim_indicator_color._target = correct
+
         # Ensure visual state matches the current theme/focus on mount.
-        # This handles cases where initial theme might have been different or
-        # Animatable needs a kick (if initial values were somehow problematic).
         self._update_label_state()
 
         if self._label_source is not None:
@@ -454,10 +469,10 @@ class TextField(InteractiveWidget):
         if self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        return TextFieldStyle.from_theme(manager.current)
+        return TextFieldStyle.from_theme(Theme.of(self))
 
     @property
     def value(self) -> str:
@@ -686,7 +701,9 @@ class TextField(InteractiveWidget):
         is_error = bool(self.is_error)
 
         def _resolve(c):
-            return resolve_color_to_rgba(c, theme=theme_manager.current)
+            from nuiitivet.theme.theme import Theme
+
+            return resolve_color_to_rgba(c, theme=Theme.of(self))
 
         # 1. Label Color
         if is_error:
@@ -767,9 +784,11 @@ class TextField(InteractiveWidget):
         self._editable.paint(canvas, cx, cy, w, h)
 
     def _draw_container(self, canvas, cx, cy, cw, ch, *, text_x_abs: int | None = None):
+        from nuiitivet.theme.theme import Theme
+
         style = self.style
 
-        container_color = resolve_color_to_rgba(style.container_color, theme=theme_manager.current)
+        container_color = resolve_color_to_rgba(style.container_color, theme=Theme.of(self))
         paint_container = make_paint(color=container_color)
         rect = make_rect(cx, cy, cw, ch)
 
@@ -931,7 +950,9 @@ class TextField(InteractiveWidget):
             supporting_y = cy + ch + 4 - supporting_metrics.fAscent
 
             supporting_color_spec = style.error_supporting_text_color if self.is_error else style.supporting_text_color
-            supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=theme_manager.current)
+            from nuiitivet.theme.theme import Theme
+
+            supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=Theme.of(self))
             paint_supporting = make_paint(color=supporting_color)
 
             blob = make_text_blob(self.supporting_text, supporting_font)

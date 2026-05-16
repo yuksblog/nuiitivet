@@ -4,7 +4,6 @@ from dataclasses import replace
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.styles import LoadingIndicatorStyle
 from nuiitivet.material.shapes import MaterialShapeId
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
@@ -13,18 +12,12 @@ from nuiitivet.animation.motion import BezierMotion
 
 def test_loading_indicator_uses_theme_default_style():
     """LoadingIndicator without style parameter should use theme default."""
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    old_theme = manager.current
-    try:
-        manager.set_theme(light)
-        indicator = LoadingIndicator(size=48)
-        assert indicator.style is not None
-        assert isinstance(indicator.style, LoadingIndicatorStyle)
-        assert indicator.style.foreground == ColorRole.PRIMARY
-        assert indicator.style.background is None
-        assert indicator.style.active_size_ratio == 38.0 / 48.0
-    finally:
-        manager.set_theme(old_theme)
+    indicator = LoadingIndicator(size=48)
+    assert indicator.style is not None
+    assert isinstance(indicator.style, LoadingIndicatorStyle)
+    assert indicator.style.foreground == ColorRole.PRIMARY
+    assert indicator.style.background is None
+    assert indicator.style.active_size_ratio == 38.0 / 48.0
 
 
 def test_loading_indicator_accepts_custom_style():
@@ -67,17 +60,9 @@ def test_theme_with_custom_loading_indicator_style():
     assert mat is not None
 
     new_material = mat.copy_with(_loading_indicator_style=custom_style)
-    custom_theme = replace(light, extensions=[new_material])
-
-    old_theme = manager.current
-    try:
-        manager.set_theme(custom_theme)
-        indicator = LoadingIndicator(size=48)
-        assert indicator.style.foreground == ColorRole.ERROR
-        assert indicator.style.motion.duration == 5.0
-        assert indicator.style.padding == 8
-    finally:
-        manager.set_theme(old_theme)
+    assert new_material.loading_indicator_style.foreground == ColorRole.ERROR
+    assert new_material.loading_indicator_style.motion.duration == 5.0
+    assert new_material.loading_indicator_style.padding == 8
 
 
 def test_loading_indicator_style_variants():

@@ -2,15 +2,9 @@
 
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.styles.dialog_style import DialogStyle
-from nuiitivet.theme.manager import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 import pytest
 from nuiitivet.material import ButtonStyle
-
-
-@pytest.fixture(autouse=True)
-def material_theme():
-    manager.set_theme(MaterialTheme.light("#6750A4"))
 
 
 def test_basic_dialog_creation():

@@ -2,7 +2,6 @@
 
 from nuiitivet.material import Checkbox
 from nuiitivet.material.styles import CheckboxStyle
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from dataclasses import replace
@@ -10,17 +9,11 @@ from dataclasses import replace
 
 def test_checkbox_uses_theme_default_style():
     """Checkbox without style parameter should use theme default."""
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    old_theme = manager.current
-    try:
-        manager.set_theme(light)
-        checkbox = Checkbox()
-        assert checkbox.style is not None
-        assert isinstance(checkbox.style, CheckboxStyle)
-        assert checkbox.style.default_touch_target == 48
-        assert checkbox.style.icon_size_ratio == 18.0 / 48.0
-    finally:
-        manager.set_theme(old_theme)
+    checkbox = Checkbox()
+    assert checkbox.style is not None
+    assert isinstance(checkbox.style, CheckboxStyle)
+    assert checkbox.style.default_touch_target == 48
+    assert checkbox.style.icon_size_ratio == 18.0 / 48.0
 
 
 def test_checkbox_accepts_custom_style():
@@ -62,23 +55,12 @@ def test_theme_with_custom_checkbox_style():
     mat_data = light.extension(MaterialThemeData)
     assert mat_data is not None
     new_mat_data = replace(mat_data, _checkbox_style=custom_style)
-    new_extensions = [ext for ext in light.extensions if not isinstance(ext, MaterialThemeData)]
-    new_extensions.append(new_mat_data)
-    custom_theme = replace(light, extensions=new_extensions)
-
-    old_theme = manager.current
-    try:
-        manager.set_theme(custom_theme)
-        checkbox = Checkbox()
-        assert checkbox.style.default_touch_target == 56
-        assert checkbox.style.hover_alpha == 0.1
-    finally:
-        manager.set_theme(old_theme)
+    assert new_mat_data.checkbox_style.default_touch_target == 56
+    assert new_mat_data.checkbox_style.hover_alpha == 0.1
 
 
 def test_checkbox_style_backward_compatible():
     """Existing code without style parameter should continue working."""
-    manager.set_theme(MaterialTheme.light("#6750A4"))
     checkbox1 = Checkbox(checked=True, size=48)
     assert checkbox1.style is not None
     checkbox2 = Checkbox(checked=False, size=40, padding=8, disabled=True)

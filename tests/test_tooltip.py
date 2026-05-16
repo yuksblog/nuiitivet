@@ -42,9 +42,9 @@ def test_tooltip_style_defaults_and_copy_with() -> None:
 
 
 def test_tooltip_style_from_theme_returns_style_instance() -> None:
-    from nuiitivet.theme.manager import manager
+    from nuiitivet.theme.theme import Theme
 
-    resolved = TooltipStyle.from_theme(manager.current)
+    resolved = TooltipStyle.from_theme(Theme(mode="light", extensions=[]))
     assert isinstance(resolved, TooltipStyle)
 
 
@@ -59,9 +59,9 @@ def test_rich_tooltip_style_defaults_and_copy_with() -> None:
 
 
 def test_rich_tooltip_style_from_theme_returns_style_instance() -> None:
-    from nuiitivet.theme.manager import manager
+    from nuiitivet.theme.theme import Theme
 
-    resolved = RichTooltipStyle.from_theme(manager.current)
+    resolved = RichTooltipStyle.from_theme(Theme(mode="light", extensions=[]))
     assert isinstance(resolved, RichTooltipStyle)
 
 

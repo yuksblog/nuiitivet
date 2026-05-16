@@ -28,7 +28,7 @@ from nuiitivet.layout.scroller import Scroller
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.buttons import Fab, Button
-from nuiitivet.theme import manager as theme_manager
+from nuiitivet.theme.intents import ThemeModeIntent
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior
 from nuiitivet.material import ThemeFactory
@@ -37,22 +37,28 @@ from nuiitivet.material import ButtonStyle
 _logger = logging.getLogger(__name__)
 
 
-def _update_theme_seed(seed: str) -> None:
-    mode = theme_manager.current.mode
-    if mode == "dark":
-        theme_manager.set_theme(ThemeFactory.dark(seed))
+def _update_theme_seed(context, seed: str) -> None:
+    from nuiitivet.theme.theme import Theme
+    from nuiitivet.runtime.app import App
+
+    current_mode = Theme.of(context).mode
+    if current_mode == "dark":
+        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.dark(seed)))
     else:
-        theme_manager.set_theme(ThemeFactory.light(seed))
+        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.light(seed)))
 
 
-def _toggle_theme_mode() -> None:
-    mode = theme_manager.current.mode
+def _toggle_theme_mode(context) -> None:
+    from nuiitivet.theme.theme import Theme
+    from nuiitivet.runtime.app import App
+
     # Default seed since we don't track it
     seed = "#6750A4"
-    if mode == "light":
-        theme_manager.set_theme(ThemeFactory.dark(seed))
+    current_mode = Theme.of(context).mode
+    if current_mode == "light":
+        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.dark(seed)))
     else:
-        theme_manager.set_theme(ThemeFactory.light(seed))
+        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.light(seed)))
 
 
 class MyWidgetModel:
@@ -148,10 +154,16 @@ class MyWidget(ComposableWidget):
         children = [
             Row(
                 [
-                    Button("Seed Purple", on_click=lambda: _update_theme_seed("#6750A4"), style=ButtonStyle.filled()),
-                    Button("Seed Teal", on_click=lambda: _update_theme_seed("#00796B"), style=ButtonStyle.filled()),
-                    Button("Seed Amber", on_click=lambda: _update_theme_seed("#FFC107"), style=ButtonStyle.filled()),
-                    Button("Toggle Mode", on_click=_toggle_theme_mode, style=ButtonStyle.filled()),
+                    Button(
+                        "Seed Purple", on_click=lambda: _update_theme_seed(self, "#6750A4"), style=ButtonStyle.filled()
+                    ),
+                    Button(
+                        "Seed Teal", on_click=lambda: _update_theme_seed(self, "#00796B"), style=ButtonStyle.filled()
+                    ),
+                    Button(
+                        "Seed Amber", on_click=lambda: _update_theme_seed(self, "#FFC107"), style=ButtonStyle.filled()
+                    ),
+                    Button("Toggle Mode", on_click=lambda: _toggle_theme_mode(self), style=ButtonStyle.filled()),
                 ],
                 gap=8,
                 cross_alignment="center",

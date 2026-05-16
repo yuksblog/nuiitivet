@@ -1,6 +1,5 @@
 import types
 
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.widgets.box import Box
 
@@ -19,13 +18,7 @@ def test_box_theme_change_invalidates_cache():
 
     box.invalidate_paint_cache = types.MethodType(fake_cache, box)
     box.invalidate = types.MethodType(fake_invalidate, box)
-    box.on_mount()
-    try:
-        callback = getattr(box, "_box_theme_subscription", None)
-        assert callback is not None
-        callback(manager.current)
-    finally:
-        box.on_unmount()
+    box._handle_theme_change(None)
     assert calls == ["cache", "invalidate"]
 
 
@@ -39,13 +32,19 @@ def test_box_literal_colors_do_not_subscribe():
 
 
 def test_box_subscription_updates_when_colors_change():
+    """Without AppScope, no subscription is created regardless of color type.
+    _uses_theme_colors() still tracks whether a subscription would be needed."""
     box = Box(background_color="#FFFFFF")
     box.on_mount()
     try:
+        # No AppScope → no subscription
         assert getattr(box, "_box_theme_subscription", None) is None
         box.bgcolor = ColorRole.PRIMARY
-        assert getattr(box, "_box_theme_subscription", None) is not None
+        # Still None without AppScope, but _uses_theme_colors() is True
+        assert getattr(box, "_box_theme_subscription", None) is None
+        assert box._uses_theme_colors() is True
         box.bgcolor = "#FFFFFF"
         assert getattr(box, "_box_theme_subscription", None) is None
+        assert box._uses_theme_colors() is False
     finally:
         box.on_unmount()

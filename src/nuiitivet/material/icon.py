@@ -206,13 +206,14 @@ class Icon(IconBase):
     def style(self):
         if self._style is not None:
             return self._style
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.material.styles.icon_style import IconStyle
         from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
 
-        theme = manager.current.extension(MaterialThemeData)
-        if theme is None:
-            raise ValueError("MaterialThemeData not found in current theme")
-        return theme.icon_style
+        mat = Theme.of(self).extension(MaterialThemeData)
+        if mat is None:
+            return IconStyle()
+        return mat.icon_style
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> tuple[int, int]:
         """Return preferred size including padding (M3準拠)."""
@@ -599,8 +600,8 @@ class Icon(IconBase):
             return
 
         # Use IconBase to draw the blob
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
 
         color = self.style.color
-        resolved_color = resolve_color_to_rgba(color, theme=manager.current)
+        resolved_color = resolve_color_to_rgba(color, theme=Theme.of(self))
         self.draw_blob(canvas, blob, resolved_color, x, y, width, height)

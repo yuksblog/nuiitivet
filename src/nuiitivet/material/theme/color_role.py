@@ -9,8 +9,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from nuiitivet.theme.manager import manager
-
 if TYPE_CHECKING:
     from nuiitivet.theme.theme import Theme
 
@@ -19,11 +17,12 @@ class ColorRole(Enum):
     """Material 3 Color Roles — canonical 26 roles used by M3."""
 
     def resolve(self, theme: "Theme | None" = None) -> str | None:
+        if theme is None:
+            return None
         try:
             from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-            source_theme = theme if theme is not None else manager.current
-            theme_data = source_theme.extension(MaterialThemeData)
+            theme_data = theme.extension(MaterialThemeData)
             if theme_data is None:
                 return None
             return theme_data.roles.get(self)

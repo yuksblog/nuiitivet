@@ -132,10 +132,10 @@ class MaterialChipBase(InteractiveWidget):
         if self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.manager import manager
+        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.styles.chip_style import ChipStyle
 
-        return ChipStyle.from_theme(manager.current, self._variant)
+        return ChipStyle.from_theme(Theme.of(self), self._variant)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> tuple[int, int]:
         """Return preferred size clamped to style minimum touch-target size."""
@@ -186,23 +186,21 @@ class AssistChip(MaterialChipBase):
             padding: External insets around chip widget.
             style: Optional chip style.
         """
-        effective_style = style
-        if effective_style is None:
-            from nuiitivet.theme.manager import manager
-            from nuiitivet.material.styles.chip_style import ChipStyle
+        from nuiitivet.theme.theme import Theme
+        from nuiitivet.material.styles.chip_style import ChipStyle
 
-            effective_style = ChipStyle.from_theme(manager.current, self._variant)
+        style_for_content = style if style is not None else ChipStyle.from_theme(Theme.of(self), self._variant)
 
         children: list[Widget] = []
         if leading_icon is not None:
-            children.append(_chip_icon(leading_icon, color=effective_style.foreground))
-        children.append(_chip_text(label, effective_style.foreground))
+            children.append(_chip_icon(leading_icon, color=style_for_content.foreground))
+        children.append(_chip_text(label, style_for_content.foreground))
 
         content = _chip_content(
             children,
-            spacing=effective_style.spacing,
+            spacing=style_for_content.spacing,
             has_icon=leading_icon is not None,
-            style=effective_style,
+            style=style_for_content,
         )
 
         super().__init__(
@@ -212,7 +210,7 @@ class AssistChip(MaterialChipBase):
             width=width,
             height=height,
             padding=padding,
-            style=effective_style,
+            style=style,
         )
 
 
@@ -262,14 +260,12 @@ class FilterChip(MaterialChipBase):
         self._on_selected_change = on_selected_change
         self._leading_icon = leading_icon
 
-        effective_style = style
-        if effective_style is None:
-            from nuiitivet.theme.manager import manager
-            from nuiitivet.material.styles.chip_style import ChipStyle
+        from nuiitivet.theme.theme import Theme
+        from nuiitivet.material.styles.chip_style import ChipStyle
 
-            effective_style = ChipStyle.from_theme(manager.current, self._variant)
+        style_for_content = style if style is not None else ChipStyle.from_theme(Theme.of(self), self._variant)
 
-        content = self._build_content(effective_style)
+        content = self._build_content(style_for_content)
 
         super().__init__(
             child=content,
@@ -278,7 +274,7 @@ class FilterChip(MaterialChipBase):
             width=width,
             height=height,
             padding=padding,
-            style=effective_style,
+            style=style,
         )
 
         self._apply_selected_visuals()
@@ -391,18 +387,16 @@ class InputChip(MaterialChipBase):
         self._trailing_icon_widget: Optional[Icon] = None
         self._trailing_icon_tap_target: Optional[Widget] = None
 
-        effective_style = style
-        if effective_style is None:
-            from nuiitivet.theme.manager import manager
-            from nuiitivet.material.styles.chip_style import ChipStyle
+        from nuiitivet.theme.theme import Theme
+        from nuiitivet.material.styles.chip_style import ChipStyle
 
-            effective_style = ChipStyle.from_theme(manager.current, self._variant)
+        style_for_content = style if style is not None else ChipStyle.from_theme(Theme.of(self), self._variant)
 
         children: list[Widget] = []
         if leading_icon is not None:
-            children.append(_chip_icon(leading_icon, color=effective_style.foreground))
-        children.append(_chip_text(label, effective_style.foreground))
-        trailing_icon_widget = _chip_icon(trailing_icon, color=effective_style.foreground)
+            children.append(_chip_icon(leading_icon, color=style_for_content.foreground))
+        children.append(_chip_text(label, style_for_content.foreground))
+        trailing_icon_widget = _chip_icon(trailing_icon, color=style_for_content.foreground)
         self._trailing_icon_widget = trailing_icon_widget
         if on_trailing_icon_click is None:
             self._trailing_icon_tap_target = trailing_icon_widget
@@ -414,12 +408,12 @@ class InputChip(MaterialChipBase):
                 focusable=True,
                 padding=0,
                 corner_radius=999,
-                state_layer_color=effective_style.state_layer_color,
+                state_layer_color=style_for_content.state_layer_color,
             )
             self._trailing_icon_tap_target = trailing_icon_button
             children.append(trailing_icon_button)
 
-        content = _chip_content(children, spacing=effective_style.spacing, has_icon=True, style=effective_style)
+        content = _chip_content(children, spacing=style_for_content.spacing, has_icon=True, style=style_for_content)
 
         super().__init__(
             child=content,
@@ -428,7 +422,7 @@ class InputChip(MaterialChipBase):
             width=width,
             height=height,
             padding=padding,
-            style=effective_style,
+            style=style,
         )
 
 
@@ -463,23 +457,21 @@ class SuggestionChip(MaterialChipBase):
             padding: External insets around chip widget.
             style: Optional chip style.
         """
-        effective_style = style
-        if effective_style is None:
-            from nuiitivet.theme.manager import manager
-            from nuiitivet.material.styles.chip_style import ChipStyle
+        from nuiitivet.theme.theme import Theme
+        from nuiitivet.material.styles.chip_style import ChipStyle
 
-            effective_style = ChipStyle.from_theme(manager.current, self._variant)
+        style_for_content = style if style is not None else ChipStyle.from_theme(Theme.of(self), self._variant)
 
         children: list[Widget] = []
         if leading_icon is not None:
-            children.append(_chip_icon(leading_icon, color=effective_style.foreground))
-        children.append(_chip_text(label, effective_style.foreground))
+            children.append(_chip_icon(leading_icon, color=style_for_content.foreground))
+        children.append(_chip_text(label, style_for_content.foreground))
 
         content = _chip_content(
             children,
-            spacing=effective_style.spacing,
+            spacing=style_for_content.spacing,
             has_icon=leading_icon is not None,
-            style=effective_style,
+            style=style_for_content,
         )
 
         super().__init__(
@@ -489,7 +481,7 @@ class SuggestionChip(MaterialChipBase):
             width=width,
             height=height,
             padding=padding,
-            style=effective_style,
+            style=style,
         )
 
 

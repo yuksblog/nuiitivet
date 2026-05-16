@@ -3,32 +3,26 @@
 from dataclasses import replace
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
-from nuiitivet.theme import manager
 from nuiitivet.material.theme.material_theme import MaterialTheme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 
 def test_text_field_uses_theme_default_style():
-    """TextField without style parameter should use theme default."""
-    light, _ = MaterialTheme.from_seed_pair("#00FF00")
-    old_theme = manager.current
-    try:
-        manager.set_theme(light)
+    """TextField without style parameter falls back to TextFieldStyle.filled() defaults."""
+    # Without an App context, Theme.of() returns a bare Theme with no MaterialThemeData,
+    # so from_theme() returns TextFieldStyle.filled() which has these defaults.
+    filled = TextField()
+    assert filled.style is not None
+    assert isinstance(filled.style, TextFieldStyle)
+    # Filled default
+    assert filled.style.container_color == ColorRole.SURFACE_CONTAINER_HIGHEST
 
-        filled = TextField()
-        assert filled.style is not None
-        assert isinstance(filled.style, TextFieldStyle)
-        # Filled default
-        assert filled.style.container_color == ColorRole.SURFACE_CONTAINER_HIGHEST
-
-        outlined = TextField(style=TextFieldStyle.outlined())
-        assert outlined.style is not None
-        # Outlined default
-        assert outlined.style.container_color == (0, 0, 0, 0)
-        assert outlined.style.indicator_color == ColorRole.OUTLINE
-    finally:
-        manager.set_theme(old_theme)
+    outlined = TextField(style=TextFieldStyle.outlined())
+    assert outlined.style is not None
+    # Outlined default
+    assert outlined.style.container_color == (0, 0, 0, 0)
+    assert outlined.style.indicator_color == ColorRole.OUTLINE
 
 
 def test_text_field_accepts_custom_style():
@@ -40,7 +34,7 @@ def test_text_field_accepts_custom_style():
 
 
 def test_theme_with_custom_text_field_style():
-    """Theme can override the default TextField style."""
+    """TextFieldStyle.from_theme() picks up the theme's custom style."""
     custom_filled = TextFieldStyle.filled().copy_with(border_radius=16.0)
 
     light, _ = MaterialTheme.from_seed_pair("#FF0000")
@@ -50,11 +44,5 @@ def test_theme_with_custom_text_field_style():
     new_material = mat.copy_with(_filled_text_field_style=custom_filled)
     custom_theme = replace(light, extensions=[new_material])
 
-    old_theme = manager.current
-    try:
-        manager.set_theme(custom_theme)
-
-        filled = TextField()
-        assert filled.style.border_radius == 16.0
-    finally:
-        manager.set_theme(old_theme)
+    style = TextFieldStyle.from_theme(custom_theme)
+    assert style.border_radius == 16.0

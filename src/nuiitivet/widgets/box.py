@@ -6,7 +6,6 @@ from nuiitivet.common.logging_once import exception_once
 from ..rendering.skia.paint_cache import CachedPaintMixin
 from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
-from ..theme.manager import manager as theme_manager
 from ..rendering.background_renderer import BackgroundRenderer
 from ..rendering.skia.geometry import clip_round_rect, make_rect
 from ..rendering.sizing import SizingLike
@@ -15,7 +14,6 @@ from ..layout.alignment import normalize_alignment
 from ..layout.measure import preferred_size as measure_preferred_size
 from ..widgeting.modifier import Modifier
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
-
 
 _logger = logging.getLogger(__name__)
 
@@ -54,6 +52,7 @@ class Box(CachedPaintMixin, Widget):
         self._border_color: Optional[ColorSpec] = None
         self._shadow_color: Optional[ColorSpec] = None
         self._box_theme_subscription: Optional[Callable[[object], None]] = None
+        self._box_theme_manager: Optional[object] = None
         if child:
             self.add_child(child)
 
@@ -191,6 +190,10 @@ class Box(CachedPaintMixin, Widget):
             super().on_mount()
         except Exception:
             exception_once(_logger, "box_on_mount_super_exc", "Box on_mount super call failed")
+        # Remove the init-time subscription which may have been bound to the
+        # global ThemeManager (AppScope was unreachable before mount).
+        # Re-subscribe now so we land on AppScope's ThemeManager if available.
+        self._remove_box_theme_subscription()
         self._sync_theme_subscription()
 
     def on_unmount(self) -> None:
@@ -423,25 +426,38 @@ class Box(CachedPaintMixin, Widget):
         if self._box_theme_subscription is not None:
             return
 
+        from nuiitivet.runtime.app import AppScope  # lazy – avoids circular import
+
+        scope = self.find_ancestor(AppScope)
+        if scope is None:
+            return
+
+        tm = scope.theme_manager
+
         def _callback(theme) -> None:
             self._handle_theme_change(theme)
 
         try:
-            theme_manager.subscribe(_callback)
+            tm.subscribe(_callback)
             self._box_theme_subscription = _callback
+            self._box_theme_manager = tm
         except Exception:
             exception_once(_logger, "box_theme_subscribe_exc", "Theme subscribe failed")
             self._box_theme_subscription = None
+            self._box_theme_manager = None
 
     def _remove_box_theme_subscription(self) -> None:
         callback = self._box_theme_subscription
         if callback is None:
             return
-        try:
-            theme_manager.unsubscribe(callback)
-        except Exception:
-            exception_once(_logger, "box_theme_unsubscribe_exc", "Theme unsubscribe failed")
+        tm = self._box_theme_manager
+        if tm is not None:
+            try:
+                tm.unsubscribe(callback)  # type: ignore[union-attr]
+            except Exception:
+                exception_once(_logger, "box_theme_unsubscribe_exc", "Theme unsubscribe failed")
         self._box_theme_subscription = None
+        self._box_theme_manager = None
 
     def _handle_theme_change(self, _theme) -> None:
         try:
