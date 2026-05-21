@@ -11,7 +11,8 @@ Use it as a step-by-step path from fundamentals to common app patterns.
 
 1. [Layout](layout.md)
 2. [Observable](observable.md)
-3. [Packaging](packaging.md)
+3. [UI Design System](ui_design_system.md)
+4. [Packaging](packaging.md)
 
 ## Topics
 

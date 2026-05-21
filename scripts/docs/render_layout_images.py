@@ -88,6 +88,37 @@ SAMPLES = [
     ("src/samples/readme/readme_login_form.py", "readme_login_form.png"),
     ("src/samples/readme/readme_counter_app.py", "readme_counter.png"),
     ("src/samples/readme/readme_multi_counter_app.py", "readme_multi_counter.png"),
+    # Material App
+    ("src/samples/material_app/basic_usage.py", "material_app_basic_usage.png"),
+    # Material Overlay
+    ("src/samples/material_overlay/snackbar.py", "material_overlay_snackbar.png"),
+    ("src/samples/material_overlay/bottom_sheet.py", "material_overlay_bottom_sheet.png"),
+    ("src/samples/material_overlay/side_sheet.py", "material_overlay_side_sheet.png"),
+    ("src/samples/material_overlay/loading.py", "material_overlay_loading.png"),
+    # Material Theme
+    ("src/samples/material_theme/no_theme.py", "material_theme_no_theme.png"),
+    ("src/samples/material_theme/seed_color.py", "material_theme_seed_color.png"),
+    ("src/samples/material_theme/dark_mode.py", "material_theme_dark_mode.png"),
+    # Material Widgets
+    ("src/samples/material_widgets/text.py", "material_widgets_text.png"),
+    ("src/samples/material_widgets/icon.py", "material_widgets_icon.png"),
+    ("src/samples/material_widgets/button.py", "material_widgets_button.png"),
+    ("src/samples/material_widgets/toggle_button.py", "material_widgets_toggle_button.png"),
+    ("src/samples/material_widgets/icon_button.py", "material_widgets_icon_button.png"),
+    ("src/samples/material_widgets/fab.py", "material_widgets_fab.png"),
+    ("src/samples/material_widgets/button_group.py", "material_widgets_button_group.png"),
+    ("src/samples/material_widgets/selection_controls.py", "material_widgets_selection_controls.png"),
+    ("src/samples/material_widgets/slider.py", "material_widgets_slider.png"),
+    ("src/samples/material_widgets/text_field.py", "material_widgets_text_field.png"),
+    ("src/samples/material_widgets/card.py", "material_widgets_card.png"),
+    ("src/samples/material_widgets/chip.py", "material_widgets_chip.png"),
+    ("src/samples/material_widgets/badge.py", "material_widgets_badge.png"),
+    ("src/samples/material_widgets/divider.py", "material_widgets_divider.png"),
+    ("src/samples/material_widgets/progress.py", "material_widgets_progress.png"),
+    ("src/samples/material_widgets/navigation_rail.py", "material_widgets_navigation_rail.png"),
+    ("src/samples/material_widgets/toolbar.py", "material_widgets_toolbar.png"),
+    ("src/samples/material_widgets/menu.py", "material_widgets_menu.png"),
+    ("src/samples/material_widgets/tooltip.py", "material_widgets_tooltip.png"),
 ]
 
 

@@ -51,8 +51,8 @@ Note: The `Overlay` core provides only `show_modal()` / `show_modeless()` / `sho
 
 - `App` provides a root Overlay and a global access API.
 - `IOverlay` is provided to ensure ViewModels do not depend on implementation details.
-  - `Overlay.of(context)`: Nearest Overlay.
-  - `Overlay.root()`: Root Overlay.
+  - `Overlay.root()`: Root Overlay. Use this in the common case.
+  - `Overlay.of(context)`: Nearest ancestor Overlay. Use this only when an `Overlay` is intentionally nested inside the widget tree and the inner instance must be reached instead of the root.
 
 ### 2.2 Overlay Core provides only `show_modal()` / `show_modeless()` / `show_light_dismiss()`
 
@@ -182,8 +182,8 @@ Scenario-specific APIs are moved to subclasses.
 
 - Inheritance: `MaterialOverlay(Overlay)`
 - Retrieval:
-  - `MaterialOverlay.root()` succeeds only if the root overlay is a `MaterialOverlay`.
-  - `MaterialOverlay.of(context)` searches the widget tree for the nearest `MaterialOverlay`.
+  - `MaterialOverlay.root()`: Use this in the common case. Succeeds only if the root overlay is a `MaterialOverlay`.
+  - `MaterialOverlay.of(context)`: Walks up the widget tree and returns the nearest `MaterialOverlay`. Use this only when a `MaterialOverlay` is intentionally nested inside the widget tree.
 
 #### Intent Resolution
 
