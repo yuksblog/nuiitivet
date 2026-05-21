@@ -169,6 +169,13 @@ nav:
           - Practical Controls: guide/observable/practical-controls.md
           - Thread Safety: guide/observable/thread-safety.md
           - Patterns and Recipes: guide/observable/patterns-and-recipes.md
+      - UI Design System:
+          - Overview: guide/ui_design_system.md
+          - Material App: guide/material_app.md
+          - Material Overlay: guide/material_overlay.md
+          - Material Theme: guide/material_theme.md
+          - Material Navigator: guide/material_navigator.md
+          - Material Widgets: guide/material_widgets.md
       - Async & Threading:
           - guide/threading.md
       - Interaction:
