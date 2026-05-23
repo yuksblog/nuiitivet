@@ -8,7 +8,7 @@ from nuiitivet.material.styles import (
     ProgressIndicatorStyle,
 )
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 
@@ -57,7 +57,7 @@ def test_progress_style_copy_with():
 
 
 def test_theme_with_custom_progress_styles():
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
 
@@ -81,7 +81,7 @@ def test_theme_with_custom_progress_styles():
 
 
 def test_progress_style_from_theme_variants():
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
 
     linear_default = LinearProgressIndicatorStyle.from_theme(light)
     linear_flat = LinearProgressIndicatorStyle.from_theme(light, "flat")

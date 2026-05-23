@@ -12,10 +12,10 @@ from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-light, _ = MaterialTheme.from_seed_pair("#00FF00")
+light, _ = MaterialThemeFactory.from_seed_pair("#00FF00")
 
 
 def test_material_text_defaults_to_theme_text_style() -> None:

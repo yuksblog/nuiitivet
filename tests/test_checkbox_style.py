@@ -2,7 +2,7 @@
 
 from nuiitivet.material import Checkbox
 from nuiitivet.material.styles import CheckboxStyle
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from dataclasses import replace
 
@@ -50,7 +50,7 @@ def test_checkbox_style_copy_with():
 def test_theme_with_custom_checkbox_style():
     """Theme can provide custom checkbox style."""
     custom_style = CheckboxStyle(default_touch_target=56, hover_alpha=0.1)
-    light, _ = MaterialTheme.from_seed_pair("#FF0000")
+    light, _ = MaterialThemeFactory.from_seed_pair("#FF0000")
 
     mat_data = light.extension(MaterialThemeData)
     assert mat_data is not None

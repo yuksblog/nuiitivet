@@ -2,7 +2,7 @@
 
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles import IconStyle
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
@@ -65,7 +65,7 @@ def test_theme_with_custom_icon_style():
         default_size=28,
         color=ColorRole.TERTIARY,
     )
-    light, _ = MaterialTheme.from_seed_pair("#FF0000")
+    light, _ = MaterialThemeFactory.from_seed_pair("#FF0000")
 
     mat = light.extension(MaterialThemeData)
     assert mat is not None

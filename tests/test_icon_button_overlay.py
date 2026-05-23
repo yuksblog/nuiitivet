@@ -3,11 +3,11 @@ from nuiitivet.rendering.skia import skcolor
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.theme.resolver import resolve_color_to_rgba
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 
 
 def test_icon_resolve_color_uses_theme():
-    light = MaterialTheme.light("#6750A4")
+    light = MaterialThemeFactory.light("#6750A4")
     icon = Icon("home")
     # resolve ON_SURFACE color using the theme directly
     rgba = resolve_color_to_rgba(icon.style.color, theme=light)

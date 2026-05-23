@@ -1,5 +1,5 @@
 from nuiitivet.theme import Theme
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.colors.utils import passes_wcag
@@ -24,6 +24,6 @@ def _check_theme_contrast(theme: Theme) -> None:
 def test_several_seeds_meet_contrast():
     seeds = ["#6750A4", "#FF0000", "#00FF00", "#0000FF", "#808080"]
     for seed in seeds:
-        light, dark = MaterialTheme.from_seed_pair(seed)
+        light, dark = MaterialThemeFactory.from_seed_pair(seed)
         _check_theme_contrast(light)
         _check_theme_contrast(dark)

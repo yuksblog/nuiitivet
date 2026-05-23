@@ -28,12 +28,12 @@ def test_theme_sample_contrasts():
     # smoke test: ensure the ratio function returns sensible floats and
     # the sample primary/on_primary in the light theme passes AA for large
     # text (3.0) and ideally AA normal (4.5) depending on palette.
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.theme.theme_data import MaterialThemeData
     from nuiitivet.material.theme.color_role import ColorRole
 
     DEFAULT_SEED = "#6750A4"
-    default_theme, _ = MaterialTheme.from_seed_pair(DEFAULT_SEED, name="test-color-utils")
+    default_theme, _ = MaterialThemeFactory.from_seed_pair(DEFAULT_SEED, name="test-color-utils")
 
     mat = default_theme.extension(MaterialThemeData)
     assert mat is not None
