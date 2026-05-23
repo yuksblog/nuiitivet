@@ -2,9 +2,8 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import App, Text, Button
+from nuiitivet.material import App, Text, Button, Navigator
 from nuiitivet.layout.column import Column
-from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle

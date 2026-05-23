@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import background
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.material import Navigator
+from nuiitivet.navigation import Route
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import App
 from nuiitivet.material import Overlay

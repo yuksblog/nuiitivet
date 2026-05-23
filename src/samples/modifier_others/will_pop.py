@@ -4,10 +4,10 @@ import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.material import Overlay
+from nuiitivet.material import Overlay, Navigator
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers import will_pop
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Route
 from nuiitivet.observable import Observable
 from nuiitivet.material import ButtonStyle
 

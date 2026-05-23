@@ -21,8 +21,7 @@ To navigate to a new screen, you use the `push()` method. This adds a new route 
 ```python
 import nuiitivet as nv
 
-from nuiitivet.navigation import Navigator
-from nuiitivet.material import Text, Button
+from nuiitivet.material import Navigator, Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box

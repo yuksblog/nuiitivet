@@ -21,7 +21,6 @@ from nuiitivet.navigation.transition_spec import (
 )
 
 __all__ = [
-    "Navigator",
     "NavigationLayerComposer",
     "NavigationLayerCompositionContext",
     "NavigationTransitionKind",

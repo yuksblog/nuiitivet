@@ -11,7 +11,8 @@ from nuiitivet.material import (
     Button,
 )
 from nuiitivet.layout.column import Column
-from nuiitivet.navigation import Navigator, Route, Transitions
+from nuiitivet.material import Navigator
+from nuiitivet.navigation import Route, Transitions
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle

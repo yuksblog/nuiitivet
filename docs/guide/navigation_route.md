@@ -13,7 +13,8 @@ Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `Sca
 ```python
 import nuiitivet as nv
 
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.material import Navigator
+from nuiitivet.navigation import Route
 from nuiitivet.material import (Text, MaterialTransitions, FadeIn, SlideInVertically, FadeOut, SlideOutVertically, Button)
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
@@ -57,7 +58,8 @@ If you want to transition to a new screen instantly without any animation, you c
 ```python
 import nuiitivet as nv
 
-from nuiitivet.navigation import Navigator, Route, Transitions
+from nuiitivet.material import Navigator
+from nuiitivet.navigation import Route, Transitions
 from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget

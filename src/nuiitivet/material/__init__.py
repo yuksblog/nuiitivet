@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from .text_fields import TextField
     from .styles.text_field_style import TextFieldStyle
     from .text import Text
+    from .navigator import MaterialNavigator as Navigator
     from .overlay import MaterialOverlay
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
@@ -103,6 +104,7 @@ __all__ = [
     "TextFieldStyle",
     "NavigationRail",
     "RailItem",
+    "Navigator",
     "MaterialOverlay",
     "Overlay",
     "WhileLoading",
@@ -185,6 +187,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "TextFieldStyle": ("styles.text_field_style", "TextFieldStyle"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),
+    "Navigator": ("navigator", "MaterialNavigator"),
     "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "Overlay": ("overlay", "MaterialOverlay"),
     "LoadingScope": ("overlay", "LoadingScope"),
