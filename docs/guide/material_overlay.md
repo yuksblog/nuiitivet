@@ -3,12 +3,11 @@
 `MaterialOverlay` is a Material Design 3-flavored subclass of `Overlay` — the framework's system for displaying content above the main widget tree. It is automatically configured by `App`.
 
 !!! note "Import convention"
-    `MaterialApp` and `MaterialOverlay` are exported from `nuiitivet.material` under shorter aliases.
-    Import and use them by their aliases throughout your code.
+    Import `App` and `Overlay` from `nuiitivet.material`.
 
     ```python
-    from nuiitivet.material import App      # MaterialApp aliased as App
-    from nuiitivet.material import Overlay  # MaterialOverlay aliased as Overlay
+    from nuiitivet.material import App
+    from nuiitivet.material import Overlay
     ```
 
     The rest of this guide follows this convention.
