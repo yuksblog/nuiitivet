@@ -5,12 +5,12 @@
 The only difference from the base `Navigator` is the default transition: when you push a plain `Widget`, `MaterialNavigator` wraps it in a `Route` pre-configured with the MD3 page transition. Pushing an explicit `Route` bypasses this default and uses whatever `transition_spec` you provide.
 
 !!! note "Import convention"
-    `MaterialApp` and `MaterialNavigator` are exported from `nuiitivet.material` under shorter aliases.
-    Import and use them by their aliases throughout your code.
+    `App` and `Navigator` are the public names exported from `nuiitivet.material` for these classes.
+    Import and use them by these names throughout your code.
 
     ```python
-    from nuiitivet.material import App       # MaterialApp aliased as App
-    from nuiitivet.material import Navigator # MaterialNavigator aliased as Navigator
+    from nuiitivet.material import App       # MaterialApp
+    from nuiitivet.material import Navigator # MaterialNavigator
     ```
 
     The rest of this guide follows this convention.

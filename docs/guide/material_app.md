@@ -113,4 +113,4 @@ See [Material Overlay](material_overlay.md) for detailed usage.
 
 ---
 
-[API Reference](../api/material.md#nuiitivet.material.MaterialApp)
+[API Reference](../api/material.md#nuiitivet.material.App)

@@ -3,12 +3,12 @@
 `MaterialThemeFactory` is a factory that creates `Theme` objects pre-configured with Material Design 3 color roles derived from a seed color.
 
 !!! note "Import convention"
-     `MaterialApp` and `MaterialThemeFactory` is exported from `nuiitivet.material` under the shorter alias `ThemeFactory`.
-    Import and use them by their aliases throughout your code.
+    `App` and `ThemeFactory` are the public names exported from `nuiitivet.material` for these classes.
+    Import and use them by these names throughout your code.
 
     ```python
-    from nuiitivet.material import App      # MaterialApp aliased as App
-    from nuiitivet.material import ThemeFactory  # MaterialThemeFactory aliased as ThemeFactory
+    from nuiitivet.material import App          # MaterialApp
+    from nuiitivet.material import ThemeFactory  # MaterialThemeFactory
     ```
 
     The rest of this guide follows this convention.

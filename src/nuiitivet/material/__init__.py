@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .badge import LargeBadge, SmallBadge
-    from .app import MaterialApp
     from .app import MaterialApp as App
     from .divider import Divider
     from .buttons import (
@@ -41,7 +40,6 @@ if TYPE_CHECKING:
     from .styles.text_field_style import TextFieldStyle
     from .text import Text
     from .navigator import MaterialNavigator as Navigator
-    from .overlay import MaterialOverlay
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
@@ -62,7 +60,6 @@ if TYPE_CHECKING:
     from .transition_spec import MaterialTransitionSpec
 
 __all__ = [
-    "MaterialApp",
     "App",
     "ThemeFactory",
     "SmallBadge",
@@ -103,7 +100,6 @@ __all__ = [
     "NavigationRail",
     "RailItem",
     "Navigator",
-    "MaterialOverlay",
     "Overlay",
     "WhileLoading",
     "BasicDialog",
@@ -144,7 +140,6 @@ __all__ = [
 
 
 _EXPORTS: dict[str, tuple[str, str]] = {
-    "MaterialApp": ("app", "MaterialApp"),
     "App": ("app", "MaterialApp"),
     "ThemeFactory": ("theme", "MaterialThemeFactory"),
     "SmallBadge": ("badge", "SmallBadge"),
@@ -185,7 +180,6 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),
     "Navigator": ("navigator", "MaterialNavigator"),
-    "MaterialOverlay": ("overlay", "MaterialOverlay"),
     "Overlay": ("overlay", "MaterialOverlay"),
     "LoadingScope": ("overlay", "LoadingScope"),
     "BasicDialog": ("dialogs", "BasicDialog"),
