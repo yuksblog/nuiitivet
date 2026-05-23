@@ -1,6 +1,6 @@
 [project]
 authors = [
-  {name = "Yukinobu Imai", email = "kotatu.kotatu@gmail.com"},
+  {name = "yuksblog", email = "kotatu.kotatu@gmail.com"},
 ]
 classifiers = [
   "Intended Audience :: Developers",

@@ -27,3 +27,9 @@
 .md-nav--primary .md-nav__item:not(.md-nav__item--section):not(.md-nav__item--nested)>.md-nav__link {
     font-weight: 400;
 }
+
+/* Indent leaf page links inside sections so they are visually
+   subordinate to the section (category) label above them. */
+.md-nav--primary .md-nav .md-nav__item:not(.md-nav__item--section):not(.md-nav__item--nested)>.md-nav__link {
+    padding-left: 1.2rem;
+}
