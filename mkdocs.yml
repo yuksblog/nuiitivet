@@ -4,11 +4,11 @@
 site_name: Nuiitivet Documentation
 site_url: https://yuksblog.github.io/nuiitivet/
 site_description: A declarative, reactive Python UI framework.
-site_author: Yukinobu Imai
+site_author: yuksblog
 repo_url: https://github.com/yuksblog/nuiitivet
 repo_name: yuksblog/nuiitivet
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; 2026 Yukinobu Imai
+copyright: Copyright &copy; 2026 yuksblog
 
 theme:
   name: material
