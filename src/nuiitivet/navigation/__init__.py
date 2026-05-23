@@ -3,7 +3,7 @@
 This package provides a minimal Navigator/Route API.
 """
 
-from nuiitivet.navigation.navigator import Navigator
+from nuiitivet.navigation.navigator import Navigator  # noqa: F401
 from nuiitivet.navigation.layer_composer import (
     NavigationLayerComposer,
     NavigationLayerCompositionContext,
