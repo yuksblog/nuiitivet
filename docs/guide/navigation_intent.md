@@ -25,9 +25,7 @@ import nuiitivet as nv
 
 from dataclasses import dataclass
 
-from nuiitivet.material import App, Text, Button
-from nuiitivet.layout.column import Column
-from nuiitivet.navigation import Navigator
+from nuiitivet.material import App, Text, Button, Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
@@ -92,8 +90,7 @@ app = App(
 Once configured, you can navigate by pushing an Intent object to the `Navigator`. The `Navigator` will automatically resolve the Intent to the correct route using the mapping you provided.
 
 ```python
-from nuiitivet.navigation import Navigator
-from nuiitivet.material import Button
+from nuiitivet.material import Navigator, Button
 from nuiitivet.material import ButtonStyle
 
 def go_to_details():
@@ -113,7 +110,7 @@ Intent-based navigation is highly recommended, especially when navigating from a
 Here is an example of how a ViewModel can trigger navigation using `Navigator` and Intents. You can pass `Navigator.root()` to your ViewModel:
 
 ```python
-from nuiitivet.navigation import Navigator
+from nuiitivet.material import Navigator
 
 class ItemViewModel:
     def __init__(self, item_id: int, navigator: Navigator):

@@ -11,12 +11,12 @@ You can create a nested navigation area by placing a `MaterialNavigator` widget 
 ```python
 import nuiitivet as nv
 
-from nuiitivet.material import Text, Button
+from nuiitivet.material import Text, Button, Navigator
 from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.container import Container
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Route
 from nuiitivet.widgeting.widget import ComposableWidget
 from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
