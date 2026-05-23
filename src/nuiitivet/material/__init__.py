@@ -44,8 +44,7 @@ if TYPE_CHECKING:
     from .overlay import MaterialOverlay
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
-    from .theme.material_theme import MaterialTheme
-    from .theme.material_theme import MaterialTheme as ThemeFactory
+    from .theme.material_theme import MaterialThemeFactory as ThemeFactory
     from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
     from .tooltip import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle
@@ -65,7 +64,6 @@ if TYPE_CHECKING:
 __all__ = [
     "MaterialApp",
     "App",
-    "MaterialTheme",
     "ThemeFactory",
     "SmallBadge",
     "LargeBadge",
@@ -148,8 +146,7 @@ __all__ = [
 _EXPORTS: dict[str, tuple[str, str]] = {
     "MaterialApp": ("app", "MaterialApp"),
     "App": ("app", "MaterialApp"),
-    "MaterialTheme": ("theme", "MaterialTheme"),
-    "ThemeFactory": ("theme", "MaterialTheme"),
+    "ThemeFactory": ("theme", "MaterialThemeFactory"),
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),
     "Divider": ("divider", "Divider"),

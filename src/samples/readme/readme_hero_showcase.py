@@ -1,7 +1,7 @@
 """Hero showcase sample for README  E"Pulse" music app.
 
 Visual goals (intended for a hero GIF):
-    * MD3 Expressive look powered by ``MaterialTheme.from_seed``
+    * MD3 Expressive look powered by ``MaterialThemeFactory.from_seed``
     * Persistent ``NavigationRail`` on the left that auto-cycles through
       sections to demonstrate ``Deck``-based navigation
     * Eye-catching "Now Playing" hero card with a continuously rotating
@@ -44,7 +44,7 @@ from nuiitivet.material.styles.progress_indicator_style import (
 )
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.modifiers import background, clip, corner_radius, rotate, scale, shadow
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.observable.value import _ObservableValue
@@ -776,14 +776,14 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Pulse  EREADME hero showcase")
     p.add_argument("--png", type=str, default="", help="Render a single frame to PNG and exit")
     p.add_argument("--no-autoplay", action="store_true", help="Disable section auto-cycling")
-    p.add_argument("--seed", type=str, default="#5B5BFF", help="MaterialTheme seed color")
+    p.add_argument("--seed", type=str, default="#5B5BFF", help="MaterialThemeFactory seed color")
     p.add_argument("--dark", action="store_true", help="Use dark theme")
     return p.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    theme = MaterialTheme.from_seed(args.seed, mode="dark" if args.dark else "light")
+    theme = MaterialThemeFactory.from_seed(args.seed, mode="dark" if args.dark else "light")
 
     app = md.App(
         content=PulseApp(autoplay=not args.no_autoplay),

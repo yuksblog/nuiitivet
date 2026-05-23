@@ -1,13 +1,13 @@
 from nuiitivet.theme.manager import ThemeManager
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 
 
 def test_manager_set_theme_manual_toggle():
     """Test that theme can be manually toggled by setting new Theme instances."""
     mgr = ThemeManager()
     seed = "#6750A4"
-    light_theme = MaterialTheme.light(seed)
-    dark_theme = MaterialTheme.dark(seed)
+    light_theme = MaterialThemeFactory.light(seed)
+    dark_theme = MaterialThemeFactory.dark(seed)
 
     mgr.set_theme(dark_theme)
     assert mgr.current.mode == "dark"
@@ -28,7 +28,7 @@ def test_manager_subscription():
 
     mgr.subscribe(on_theme_change)
 
-    new_theme = MaterialTheme.light("#000000")
+    new_theme = MaterialThemeFactory.light("#000000")
     mgr.set_theme(new_theme)
 
     assert len(notifications) == 1

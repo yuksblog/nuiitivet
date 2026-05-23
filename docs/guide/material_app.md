@@ -83,12 +83,12 @@ See [Title Bar](window_title_bar.md) for detailed usage.
 
 ## Theme
 
-Pass a `MaterialTheme` to change the seed color or switch to dark mode:
+Pass a `ThemeFactory` to change the seed color or switch to dark mode:
 
 ```python
-from nuiitivet.material import App, MaterialTheme
+from nuiitivet.material import App, ThemeFactory
 
-App(HomeScreen(), theme=MaterialTheme.dark("#00639B")).run()
+App(HomeScreen(), theme=ThemeFactory.dark("#00639B")).run()
 ```
 
 See [Material Theme](material_theme.md) for detailed usage.

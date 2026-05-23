@@ -3,7 +3,7 @@
 from dataclasses import replace
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
@@ -37,7 +37,7 @@ def test_theme_with_custom_text_field_style():
     """TextFieldStyle.from_theme() picks up the theme's custom style."""
     custom_filled = TextFieldStyle.filled().copy_with(border_radius=16.0)
 
-    light, _ = MaterialTheme.from_seed_pair("#FF0000")
+    light, _ = MaterialThemeFactory.from_seed_pair("#FF0000")
 
     mat = light.extension(MaterialThemeData)
     assert mat is not None

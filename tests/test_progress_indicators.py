@@ -12,7 +12,7 @@ from nuiitivet.material import (
     LinearProgressIndicator,
 )
 from nuiitivet.material.styles import CircularProgressIndicatorStyle, LinearProgressIndicatorStyle
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 
@@ -74,7 +74,7 @@ def test_indeterminate_api_has_no_value_parameter():
 
 
 def test_progress_widgets_resolve_theme_styles():
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
 

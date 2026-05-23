@@ -1,9 +1,9 @@
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 
 
 def test_theme_from_seed_generates_both_modes():
-    light, dark = MaterialTheme.from_seed_pair("#6750A4")
+    light, dark = MaterialThemeFactory.from_seed_pair("#6750A4")
     # basic checks
     assert light.mode == "light"
     assert dark.mode == "dark"

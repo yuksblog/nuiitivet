@@ -4,7 +4,7 @@ import pytest
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.text import Text
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from dataclasses import replace
 
@@ -127,7 +127,7 @@ def test_text_widget_style_overflow():
 
 def test_theme_default_text_style():
     """Test Theme provides default TextStyle."""
-    light, dark = MaterialTheme.from_seed_pair("#6750A4")
+    light, dark = MaterialThemeFactory.from_seed_pair("#6750A4")
 
     light_mat = light.extension(MaterialThemeData)
     dark_mat = dark.extension(MaterialThemeData)
@@ -145,7 +145,7 @@ def test_theme_default_text_style():
 
 def test_theme_with_custom_text_style():
     """Test Theme.with_styles() with custom TextStyle."""
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
 
     custom_text_style = TextStyle(
         font_size=16,
@@ -173,7 +173,7 @@ def test_theme_with_custom_text_style():
 def test_text_widget_uses_theme_text_style():
     """Test Text widget picks up custom text_style from theme."""
     # Create custom theme with large font
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     custom_style = TextStyle(font_size=20, color=ColorRole.SECONDARY)
 
     mat_data = light.extension(MaterialThemeData)

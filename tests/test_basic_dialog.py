@@ -2,7 +2,7 @@
 
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.styles.dialog_style import DialogStyle
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material import ButtonStyle
 
 
@@ -154,11 +154,11 @@ def test_color_role_includes_md3_surface_containers():
 
 
 def test_material_theme_resolves_surface_container_high():
-    """A MaterialTheme resolves SURFACE_CONTAINER_HIGH to a concrete color."""
+    """A MaterialThemeFactory resolves SURFACE_CONTAINER_HIGH to a concrete color."""
     from nuiitivet.material.theme.color_role import ColorRole
     from nuiitivet.theme.resolver import resolve_color_to_rgba
 
-    theme = MaterialTheme.light("#6750A4")
+    theme = MaterialThemeFactory.light("#6750A4")
     rgba = resolve_color_to_rgba(ColorRole.SURFACE_CONTAINER_HIGH, theme=theme)
     assert isinstance(rgba, tuple)
     assert len(rgba) == 4

@@ -82,9 +82,9 @@ def test_button_theme_change_invalidates_cache():
     try:
         callback = getattr(b, "_on_theme_change", None)
         assert callback is not None
-        from nuiitivet.material.theme.material_theme import MaterialTheme
+        from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 
-        callback(MaterialTheme.light("#6750A4"))
+        callback(MaterialThemeFactory.light("#6750A4"))
     finally:
         b.on_unmount()
     assert "cache" in calls

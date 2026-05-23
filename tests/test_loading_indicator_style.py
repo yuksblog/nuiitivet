@@ -3,7 +3,7 @@
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.styles import LoadingIndicatorStyle
 from nuiitivet.material.shapes import MaterialShapeId
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.animation.motion import BezierMotion
@@ -48,7 +48,7 @@ def test_loading_indicator_style_copy_with():
 
 def test_theme_with_custom_loading_indicator_style():
     """Theme can provide custom loading indicator style."""
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     custom_style = LoadingIndicatorStyle(
         foreground=ColorRole.ERROR,
         motion=BezierMotion(0.34, 0.80, 0.34, 1.00, duration=5.0),
@@ -80,7 +80,7 @@ def test_loading_indicator_style_variants():
 
 def test_loading_indicator_style_from_theme():
     """LoadingIndicatorStyle.from_theme returns appropriate variant."""
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
 
     default = LoadingIndicatorStyle.from_theme(light, "default")
     contained = LoadingIndicatorStyle.from_theme(light, "contained")

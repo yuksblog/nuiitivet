@@ -5,10 +5,10 @@ from dataclasses import replace
 
 def test_theme_has_style_properties():
     """Theme has button_style, checkbox_style, icon_style properties via material extension."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, dark = MaterialTheme.from_seed_pair("#6750A4", name="test")
+    light, dark = MaterialThemeFactory.from_seed_pair("#6750A4", name="test")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert hasattr(mat, "filled_button_style")
@@ -29,8 +29,8 @@ def test_theme_has_style_properties():
 
 
 def test_theme_default_styles():
-    """MaterialTheme.from_seed() creates themes with default M3 styles."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    """MaterialThemeFactory.from_seed() creates themes with default M3 styles."""
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
     from nuiitivet.material.styles.icon_style import IconStyle
@@ -38,7 +38,7 @@ def test_theme_default_styles():
     from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, dark = MaterialTheme.from_seed_pair("#6750A4")
+    light, dark = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     button = mat.filled_button_style
@@ -63,12 +63,12 @@ def test_theme_default_styles():
 
 def test_theme_with_styles():
     """Theme styles can be customized via copy_with on MaterialThemeData."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     custom_button = ButtonStyle.outlined()
     custom_checkbox = CheckboxStyle().copy_with(default_touch_target=56)
 
@@ -111,11 +111,11 @@ def test_theme_style_lazy_loading():
 
 
 def test_theme_manager_provides_styles():
-    """A theme built from MaterialTheme provides styles via material extension."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    """A theme built from MaterialThemeFactory provides styles via material extension."""
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     assert hasattr(mat, "filled_button_style")
@@ -137,11 +137,11 @@ def test_theme_manager_provides_styles():
 
 def test_theme_style_button_variants():
     """Theme can hold different button style variants."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.styles.button_style import ButtonStyle
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     filled = ButtonStyle.filled()
     outlined = ButtonStyle.outlined()
     text = ButtonStyle.text()
@@ -164,10 +164,10 @@ def test_theme_style_button_variants():
 
 def test_theme_immutability_preserved():
     """Theme remains immutable after adding style fields."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     try:
         light.mode = "dark"
         assert False, "Should not be able to modify frozen theme"
@@ -184,10 +184,10 @@ def test_theme_immutability_preserved():
 
 def test_theme_styles_independent_of_mode():
     """Light and dark themes share same style instances by default."""
-    from nuiitivet.material.theme.material_theme import MaterialTheme
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-    light, dark = MaterialTheme.from_seed_pair("#6750A4")
+    light, dark = MaterialThemeFactory.from_seed_pair("#6750A4")
     light_mat = light.extension(MaterialThemeData)
     dark_mat = dark.extension(MaterialThemeData)
     assert light_mat is not None

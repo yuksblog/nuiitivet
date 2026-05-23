@@ -1,5 +1,5 @@
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.rendering.skia import rgba_to_skia_color, skcolor
@@ -7,7 +7,7 @@ from nuiitivet.rendering.skia import rgba_to_skia_color, skcolor
 
 def test_resolve_color_with_colorrole():
     # current theme should provide a hex for PRIMARY
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     hexv = mat.roles.get(ColorRole.PRIMARY)
@@ -16,7 +16,7 @@ def test_resolve_color_with_colorrole():
 
 
 def test_resolve_color_with_colorrole_and_alpha():
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     hexv = mat.roles.get(ColorRole.PRIMARY)
@@ -27,7 +27,7 @@ def test_resolve_color_with_colorrole_and_alpha():
 def test_resolve_default_colorrole_when_val_none():
     # default may be a ColorRole — resolve_color should handle that
     default_role = ColorRole.BACKGROUND
-    light, _ = MaterialTheme.from_seed_pair("#6750A4")
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
     mat = light.extension(MaterialThemeData)
     assert mat is not None
     hexv = mat.roles.get(default_role)

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import nuiitivet
 from nuiitivet import material
-from nuiitivet.material import App, MaterialApp, MaterialOverlay, MaterialTheme, Overlay, ThemeFactory
+from nuiitivet.material import App, MaterialApp, MaterialOverlay, Overlay, ThemeFactory
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 
 
 def test_app_alias_is_material_app() -> None:
@@ -18,8 +19,8 @@ def test_overlay_alias_is_material_overlay() -> None:
     assert Overlay is MaterialOverlay
 
 
-def test_theme_factory_alias_is_material_theme() -> None:
-    assert ThemeFactory is MaterialTheme
+def test_theme_factory_alias_is_material_theme_factory() -> None:
+    assert ThemeFactory is MaterialThemeFactory
 
 
 def test_aliases_in_all() -> None:
@@ -31,7 +32,6 @@ def test_aliases_in_all() -> None:
 def test_original_names_still_exported() -> None:
     assert "MaterialApp" in material.__all__
     assert "MaterialOverlay" in material.__all__
-    assert "MaterialTheme" in material.__all__
 
 
 def test_top_level_does_not_expose_app() -> None:

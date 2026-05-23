@@ -8,7 +8,7 @@ from nuiitivet.material.navigation_visual_state import MaterialNavigationLayerCo
 from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.material_theme import MaterialTheme
+from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
 from nuiitivet.runtime.app import App
@@ -62,13 +62,13 @@ class MaterialApp(App):
             width: Window width specification ("auto", fixed integer, etc.).
             height: Window height specification.
             background: Background color of the window. Defaults to Material Surface color.
-            theme: The MaterialTheme to use. Defaults to Light theme.
+            theme: The MaterialThemeFactory to use. Defaults to Light theme.
             title_bar: Custom window title bar.
             window_position: Initial window position.
             resizable: Whether the window can be resized. Defaults to True.
         """
         if theme is None:
-            theme = MaterialTheme.light("#6750A4")
+            theme = MaterialThemeFactory.light("#6750A4")
 
         def _overlay_factory() -> MaterialOverlay:
             return MaterialOverlay(intents=overlay_routes)

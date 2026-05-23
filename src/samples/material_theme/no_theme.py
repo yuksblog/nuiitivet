@@ -1,7 +1,7 @@
 """Material Theme - No Theme (default).
 
 Demonstrates the default appearance when no theme is passed to App.
-MaterialApp defaults to MaterialTheme.light("#6750A4").
+MaterialApp defaults to MaterialThemeFactory.light("#6750A4").
 """
 
 from __future__ import annotations
