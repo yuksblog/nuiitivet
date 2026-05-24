@@ -151,7 +151,7 @@ nav:
           - Nested Navigation: guide/navigation_sub.md
       - Window:
           - Overview: guide/window.md
-          - Title Bar: guide/window_title_bar.md
+          - Window Chrome: guide/window_chrome.md
           - Size and Position: guide/window_size_position.md
           - Operations: guide/window_operations.md
       - Modifiers:
