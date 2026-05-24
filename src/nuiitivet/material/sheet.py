@@ -35,6 +35,15 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         *on_back* is not ``None``.  Providing ``show_back_button=True`` alone
         without *on_back* will silently suppress the button.
 
+    The Close button always dismisses the sheet through the overlay's unified
+    dismissal pipeline. To intercept the close (for unsaved changes, etc.),
+    attach a ``will_pop`` modifier::
+
+        overlay.side_sheet(
+            SideSheet(content, headline="Settings")
+            .modifier(will_pop(on_will_pop=lambda: not has_unsaved_changes))
+        )
+
     Args:
         content: Widget to display below the header.
         headline: Header title text (str or Observable[str]). Required by M3.
@@ -47,9 +56,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             (e.g. driven by in-sheet navigation state). Defaults to ``False``.
             The button is only rendered when this is truthy **and** *on_back* is
             not ``None``.
-        on_close: Callback invoked when the Close icon button is pressed.
-            If ``None`` and the sheet is shown via an ``Overlay`` API, the
-            button automatically calls ``self.overlay_handle.close(None)``.
         style: Container style. Defaults to :class:`SideSheetStyle`.
     """
 
@@ -61,7 +67,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         side: Literal["right", "left"] = "right",
         on_back: Optional[Callable[[], None]] = None,
         show_back_button: Union[bool, ReadOnlyObservableProtocol[bool]] = False,
-        on_close: Optional[Callable[[], None]] = None,
         style: Optional[SideSheetStyle] = None,
     ) -> None:
         """Initialize SideSheet.
@@ -74,10 +79,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             show_back_button: Back button visibility (bool or Observable[bool]).
                 Defaults to ``False``. Rendered only when truthy **and** *on_back*
                 is not ``None``.
-            on_close: Callback for the Close icon button press. When ``None``
-                and the sheet is shown via an ``Overlay`` API, the button
-                automatically closes the sheet through the injected
-                :class:`OverlayHandle`.
             style: Container style. Defaults to :class:`SideSheetStyle`.
         """
         _style = style if style is not None else SideSheetStyle()
@@ -87,7 +88,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         self.side = side
         self._on_back = on_back
         self._show_back_button = show_back_button
-        self._on_close = on_close
         self._user_style = style
 
     @property
@@ -100,13 +100,11 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             return bool(self._show_back_button.value)
         return bool(self._show_back_button)
 
-    def _resolve_on_close(self) -> Optional[Callable[[], None]]:
-        """Pick the close handler: explicit ``on_close`` > injected overlay handle."""
-        if self._on_close is not None:
-            return self._on_close
-        if self._overlay_handle is not None:
-            return lambda: self.overlay_handle.close(None)
-        return None
+    def _on_close_click(self) -> None:
+        """Close button handler: route through overlay's unified dismissal pipeline."""
+        if self._overlay_handle is None:
+            return
+        self.overlay_handle.request_close(None)
 
     def on_mount(self) -> None:
         """Mount and subscribe to show_back_button observable if provided."""
@@ -141,7 +139,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
                     width="100%",
                     padding=(8, 0, 8, 0),
                 ),
-                IconButton("close", on_click=self._resolve_on_close()),
+                IconButton("close", on_click=self._on_close_click if self._overlay_handle is not None else None),
             ],
             width="100%",
             height=72,
@@ -179,12 +177,13 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
 
         [ Headline ]  [ Close ]
 
+    The Close button always dismisses the sheet through the overlay's unified
+    dismissal pipeline. To intercept the close (for unsaved changes, etc.),
+    attach a ``will_pop`` modifier.
+
     Args:
         content: Widget to display below the header.
         headline: Header title text (str or Observable[str]). Required by M3.
-        on_close: Callback invoked when the Close icon button is pressed.
-            If ``None`` and the sheet is shown via an ``Overlay`` API, the
-            button automatically calls ``self.overlay_handle.close(None)``.
         style: Container size, background, and shape options.
             Defaults to :class:`BottomSheetStyle`.
     """
@@ -194,7 +193,6 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         content: Widget,
         *,
         headline: Union[str, ReadOnlyObservableProtocol[str]],
-        on_close: Optional[Callable[[], None]] = None,
         style: Optional[BottomSheetStyle] = None,
     ) -> None:
         """Initialize BottomSheet.
@@ -202,17 +200,12 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         Args:
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
-            on_close: Callback for the Close icon button press. When ``None``
-                and the sheet is shown via an ``Overlay`` API, the button
-                automatically closes the sheet through the injected
-                :class:`OverlayHandle`.
             style: Container style. Defaults to :class:`BottomSheetStyle`.
         """
         _style = style if style is not None else BottomSheetStyle()
         super().__init__(width=_style.width)
         self._content = content
         self._headline = headline
-        self._on_close = on_close
         self._user_style = style
 
     @property
@@ -220,13 +213,11 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         """Return resolved sheet style."""
         return self._user_style if self._user_style is not None else BottomSheetStyle()
 
-    def _resolve_on_close(self) -> Optional[Callable[[], None]]:
-        """Pick the close handler: explicit ``on_close`` > injected overlay handle."""
-        if self._on_close is not None:
-            return self._on_close
-        if self._overlay_handle is not None:
-            return lambda: self.overlay_handle.close(None)
-        return None
+    def _on_close_click(self) -> None:
+        """Close button handler: route through overlay's unified dismissal pipeline."""
+        if self._overlay_handle is None:
+            return
+        self.overlay_handle.request_close(None)
 
     def build(self) -> Widget:
         """Build the sheet: outer Box with header Row and content Column."""
@@ -242,7 +233,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
                     width="100%",
                     padding=(8, 0, 8, 0),
                 ),
-                IconButton("close", on_click=self._resolve_on_close()),
+                IconButton("close", on_click=self._on_close_click if self._overlay_handle is not None else None),
             ],
             width="100%",
             height=72,

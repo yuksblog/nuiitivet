@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
-from typing import Any, Callable, Literal, Mapping
+from typing import Any, Callable, Literal, Mapping, TypeVar
 
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.buttons import Button
@@ -24,6 +24,20 @@ from .transition_spec import (
 )
 
 from .intents import BasicDialogIntent, LoadingIntent
+
+_T = TypeVar("_T", bound=Widget)
+
+
+def _find_descendant(widget: Widget, target: type[_T]) -> _T | None:
+    """Return the first descendant (or *widget* itself) of type *target*."""
+    if isinstance(widget, target):
+        return widget
+    for child in widget.children:
+        if isinstance(child, Widget):
+            found = _find_descendant(child, target)
+            if found is not None:
+                return found
+    return None
 
 
 class _MappingIntentResolver(IntentResolver):
@@ -257,7 +271,7 @@ class MaterialOverlay(Overlay):
 
     def side_sheet(
         self,
-        sheet: SideSheet,
+        sheet: Widget,
         *,
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
@@ -268,15 +282,20 @@ class MaterialOverlay(Overlay):
         fully owned by the :class:`SideSheet` widget.
 
         Args:
-            sheet: SideSheet widget that defines content, headline, and styling.
+            sheet: SideSheet widget (or a wrapper such as one produced by
+                ``.modifier(will_pop(...))``) that defines content, headline,
+                and styling.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
         """
-        alignment = "top-right" if sheet.side == "right" else "top-left"
+        inner = _find_descendant(sheet, SideSheet)
+        if inner is None:
+            raise TypeError("side_sheet() requires a SideSheet widget (possibly wrapped by modifiers)")
+        alignment = "top-right" if inner.side == "right" else "top-left"
 
         route = OverlayRoute(
             builder=lambda: sheet,
-            transition_spec=MaterialTransitions.side_sheet(side=sheet.side),
+            transition_spec=MaterialTransitions.side_sheet(side=inner.side),
             barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
@@ -288,7 +307,7 @@ class MaterialOverlay(Overlay):
 
     def bottom_sheet(
         self,
-        sheet: BottomSheet,
+        sheet: Widget,
         *,
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
@@ -298,10 +317,14 @@ class MaterialOverlay(Overlay):
         :class:`BottomSheet` widget.
 
         Args:
-            sheet: BottomSheet widget that defines content, headline, and styling.
+            sheet: BottomSheet widget (or a wrapper such as one produced by
+                ``.modifier(will_pop(...))``) that defines content, headline,
+                and styling.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
         """
+        if _find_descendant(sheet, BottomSheet) is None:
+            raise TypeError("bottom_sheet() requires a BottomSheet widget (possibly wrapped by modifiers)")
         route = OverlayRoute(
             builder=lambda: sheet,
             transition_spec=MaterialTransitions.bottom_sheet(),

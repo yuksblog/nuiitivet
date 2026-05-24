@@ -380,8 +380,9 @@ class App:
             try:
                 has_entries = bool(overlay.has_entries())
                 if has_entries:
-                    overlay.close_topmost()
-                    return True
+                    handled = bool(await overlay.async_request_close_topmost())
+                    if handled:
+                        return True
             except Exception:
                 exception_once(logger, "app_overlay_close_topmost_exc", "overlay.close_topmost() failed")
 
