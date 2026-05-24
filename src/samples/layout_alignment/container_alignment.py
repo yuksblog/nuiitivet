@@ -36,7 +36,7 @@ def main(png: str = ""):
 
     app = md.App(
         content=root,
-        title_bar=nv.DefaultTitleBar(title="nv.Container Alignment"),
+        title="nv.Container Alignment",
         width="auto",
         height="auto",
     )

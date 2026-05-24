@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Divider, Text
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.layout.column import Column
@@ -49,7 +48,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="Divider"),
+        title="Divider",
         width=440,
         height=360,
     )

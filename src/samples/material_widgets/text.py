@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.layout.column import Column
@@ -31,7 +30,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="Text"),
+        title="Text",
         width=420,
         height=300,
     )

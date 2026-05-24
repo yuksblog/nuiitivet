@@ -63,7 +63,7 @@ def main(png: str = "") -> None:
         )
         app = md.App(
             content=nv.Column(children=[_anchor, _menu], gap=4, padding=16),
-            title_bar=nv.DefaultTitleBar(title="light_dismiss Modifier"),
+            title="light_dismiss Modifier",
             width=400,
             height=400,
         )
@@ -72,7 +72,7 @@ def main(png: str = "") -> None:
         return
     app = md.App(
         content=nv.Column(children=[anchor], gap=8, padding=16),
-        title_bar=nv.DefaultTitleBar(title="light_dismiss Modifier"),
+        title="light_dismiss Modifier",
         width=400,
         height=400,
     )

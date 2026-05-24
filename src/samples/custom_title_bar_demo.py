@@ -37,7 +37,14 @@ def main():
         ),
         width=600,
         height=400,
-        title_bar=nv.CustomTitleBar(content=title_bar_content),
+        chrome=nv.CustomChrome(
+            header=title_bar_content,
+            corner_radius=8,
+            border=nv.Border(
+                color="#37474f",
+                width=4,
+            ),
+        ),
         background="#ffffff",
     )
     app.run()

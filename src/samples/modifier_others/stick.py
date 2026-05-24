@@ -28,7 +28,7 @@ def main(png: str = "") -> None:
         padding=24,
     )
 
-    app = md.App(content=content, title_bar=nv.DefaultTitleBar(title="stick Modifier"), width=500)
+    app = md.App(content=content, title="stick Modifier", width=500)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

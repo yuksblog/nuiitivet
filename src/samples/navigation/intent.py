@@ -78,7 +78,7 @@ def main(png_path: str | None = None) -> None:
                 DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
             },
         ),
-        title_bar=nv.DefaultTitleBar(title="Navigation Intent"),
+        title="Navigation Intent",
         width=400,
         height=300,
     )

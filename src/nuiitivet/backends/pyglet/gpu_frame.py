@@ -7,7 +7,6 @@ from typing import Any
 
 from nuiitivet.common.logging_once import debug_once, exception_once
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -75,23 +74,81 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
         except Exception:
             exception_once(logger, "gpu_frame_clear_color_convert_exc", "Failed to convert clear color")
             bg_color = getattr(skia, "ColorWHITE", 0)
-    canvas.clear(bg_color)
+    # Detect CustomChrome properties needed for rendering
+    chrome = getattr(app, "chrome", None)
+    chrome_corner_radius = 0.0
+    chrome_border = None
+    if chrome is not None and type(chrome).__name__ == "CustomChrome":
+        chrome_corner_radius = float(getattr(chrome, "corner_radius", 0.0))
+        chrome_border = getattr(chrome, "border", None)
+
+    if chrome_corner_radius > 0:
+        # Clear to transparent so pixels outside the rounded rect are invisible
+        canvas.clear(skia.Color(0, 0, 0, 0))
+    else:
+        canvas.clear(bg_color)
 
     if app.root:
         content_height = max(0, app.height)
+        w = app.width
 
         layout_fn = getattr(app.root, "layout", None)
         clear_needs_layout_fn = getattr(app.root, "clear_needs_layout", None)
         if callable(layout_fn):
             needs_layout = getattr(app.root, "needs_layout", True)
             last_size = getattr(app, "_last_layout_size", None)
-            current_size = (app.width, content_height)
+            current_size = (w, content_height)
             if needs_layout or last_size != current_size:
-                layout_fn(app.width, content_height)
+                layout_fn(w, content_height)
                 app._last_layout_size = current_size
                 if callable(clear_needs_layout_fn):
                     clear_needs_layout_fn()
-        app.root.paint(canvas, 0, 0, app.width, content_height)
+
+        if chrome_corner_radius > 0:
+            rrect = skia.RRect.MakeRectXY(
+                skia.Rect.MakeWH(float(w), float(content_height)),
+                chrome_corner_radius,
+                chrome_corner_radius,
+            )
+            canvas.save()
+            canvas.clipRRect(rrect, doAntiAlias=True)
+            bg_fill = skia.Paint(AntiAlias=True)
+            bg_fill.setColor(bg_color)
+            canvas.drawRRect(rrect, bg_fill)
+
+        app.root.paint(canvas, 0, 0, w, content_height)
+
+        if chrome_corner_radius > 0:
+            canvas.restore()
+
+        if chrome_border is not None:
+            try:
+                from nuiitivet.theme.resolver import resolve_color_to_rgba
+                from nuiitivet.rendering.skia.color import rgba_to_skia_color
+
+                theme = getattr(getattr(app, "_theme_manager", None), "current", None)
+                border_rgba = resolve_color_to_rgba(chrome_border.color, theme=theme)
+                raw = tuple(int(x) for x in border_rgba)
+                border_color = rgba_to_skia_color((raw[0], raw[1], raw[2], raw[3]))
+                border_width = float(chrome_border.width)
+                border_paint = skia.Paint(AntiAlias=True)
+                border_paint.setStyle(skia.Paint.kStroke_Style)
+                border_paint.setStrokeWidth(border_width)
+                border_paint.setColor(border_color)
+                half = border_width / 2.0
+                inset = skia.Rect.MakeXYWH(
+                    half,
+                    half,
+                    float(w) - border_width,
+                    float(content_height) - border_width,
+                )
+                r = max(0.0, chrome_corner_radius - half)
+                if r > 0:
+                    canvas.drawRRect(skia.RRect.MakeRectXY(inset, r, r), border_paint)
+                else:
+                    canvas.drawRect(inset, border_paint)
+            except Exception:
+                exception_once(logger, "gpu_frame_chrome_border_exc", "Failed to draw CustomChrome border")
 
     try:
         gr_context.flush()

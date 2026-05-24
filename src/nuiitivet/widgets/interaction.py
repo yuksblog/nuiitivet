@@ -748,6 +748,15 @@ class InteractionRegion(InteractionHostMixin, Widget):
     # InteractionHostMixin provides add_node, get_node, state property, controller property,
     # enable_hover, enable_click, request_focus_from_pointer, on_pointer_event.
 
+    def layout(self, width: int, height: int) -> None:
+        super().layout(width, height)
+        if not self.children:
+            return
+        l, t, r, b = self.padding
+        cw = max(0, width - l - r)
+        ch = max(0, height - t - b)
+        self.children[0].layout(cw, ch)
+
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
 
         self.set_last_rect(x, y, width, height)

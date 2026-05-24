@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Menu, MenuDivider, MenuItem, SubMenuItem
 from nuiitivet.layout.container import Container
 
@@ -26,7 +25,7 @@ def main(png_path: str = "") -> None:
 
     app = App(
         content=Container(padding=24, child=menu),
-        title_bar=nv.DefaultTitleBar(title="Menu"),
+        title="Menu",
         width=360,
         height=380,
     )

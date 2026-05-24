@@ -25,7 +25,7 @@ from nuiitivet.observable import Observable, batch
 
 # Configuration
 from nuiitivet.rendering.skia.font import set_default_font_family
-from nuiitivet.runtime.title_bar import DefaultTitleBar, CustomTitleBar
+from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
 
 __all__: list[str] = [
     "Column",
@@ -38,8 +38,9 @@ __all__: list[str] = [
     "GridItem",
     "Spacer",
     "CrossAligned",
-    "DefaultTitleBar",
-    "CustomTitleBar",
+    "OSChrome",
+    "CustomChrome",
+    "Border",
     "Deck",
     "Sizing",
     "Widget",

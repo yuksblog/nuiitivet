@@ -3,7 +3,6 @@ from nuiitivet.material import App
 from nuiitivet.material.text import Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.layout.column import Column
-import nuiitivet as nv
 from nuiitivet.material.text_fields import TextField
 
 
@@ -36,7 +35,7 @@ def main():
         content=column,
         width=600,
         height=400,
-        title_bar=nv.DefaultTitleBar(title="Japanese Text Demo"),
+        title="Japanese Text Demo",
     )
 
     app.run()

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Icon, Text
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -49,7 +48,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="Icon"),
+        title="Icon",
         width=560,
         height=280,
     )

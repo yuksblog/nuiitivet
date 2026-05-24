@@ -112,14 +112,39 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     caption = None
     style = None
     try:
-        title_bar = getattr(app, "title_bar", None)
-        if title_bar:
-            if hasattr(title_bar, "title") and title_bar.title:
-                caption = str(title_bar.title)
-            if type(title_bar).__name__ == "CustomTitleBar":
-                style = pyglet.window.Window.WINDOW_STYLE_BORDERLESS
+        title_val = getattr(app, "_title_value", None)
+        if isinstance(title_val, str):
+            caption = title_val
+        elif title_val is not None and hasattr(title_val, "value"):
+            v = title_val.value
+            if v is not None:
+                caption = str(v)
     except Exception:
         exception_once(logger, "pyglet_get_title_exc", "Failed to get window title")
+
+    try:
+        chrome = getattr(app, "chrome", None)
+        if chrome is None:
+            # chrome=None → bare borderless
+            style = pyglet.window.Window.WINDOW_STYLE_BORDERLESS
+        else:
+            chrome_type = type(chrome).__name__
+            if chrome_type == "OSChrome":
+                variant = getattr(chrome, "variant", "default")
+                _variant_map = {
+                    "dialog": pyglet.window.Window.WINDOW_STYLE_DIALOG,
+                    "tool": pyglet.window.Window.WINDOW_STYLE_TOOL,
+                    "borderless": pyglet.window.Window.WINDOW_STYLE_BORDERLESS,
+                    "transparent": pyglet.window.Window.WINDOW_STYLE_TRANSPARENT,
+                }
+                style = _variant_map.get(variant)  # None → OS default
+            elif chrome_type == "CustomChrome":
+                # Always borderless for custom chrome — WINDOW_STYLE_TRANSPARENT
+                # restores OS decorations on macOS and is not needed here.
+                # Corner rounding is applied in the render layer (gpu_frame.py).
+                style = pyglet.window.Window.WINDOW_STYLE_BORDERLESS
+    except Exception:
+        exception_once(logger, "pyglet_get_chrome_exc", "Failed to determine window style from chrome")
 
     window = pyglet.window.Window(
         width=getattr(app, "width", 0),
@@ -147,6 +172,15 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         exception_once(logger, "pyglet_initial_resize_exc", "Failed to adjust initial window size for HiDPI")
 
     setattr(app, "_window", window)
+
+    # Apply Observable title now that the window exists
+    try:
+        title_val = getattr(app, "_title_value", None)
+        if title_val is not None and hasattr(title_val, "value"):
+            v = title_val.value
+            window.set_caption(str(v) if v is not None else "")
+    except Exception:
+        exception_once(logger, "pyglet_apply_obs_title_exc", "Failed to apply Observable title to window")
 
     # Initial window positioning.
     try:
