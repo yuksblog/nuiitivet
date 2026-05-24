@@ -14,7 +14,6 @@ from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
 def _make_basic_scroller():
     controller = ScrollController()
-    controller._update_metrics(max_extent=300.0, viewport_size=200, content_size=500)
     child = Column([Text(f"Item {i}") for i in range(20)])
     scroller = Scroller(
         child=child,
@@ -24,6 +23,11 @@ def _make_basic_scroller():
     )
     scroller.layout(200, 200)
     scroller.set_last_rect(0, 0, 200, 200)
+    # Set metrics after layout so the layout pass does not overwrite them.
+    # On platforms where Text items have no measurable height (e.g. Linux without
+    # matching system fonts), layout would produce content_size=0 and zero out the
+    # scroll metrics needed for these interaction tests.
+    controller._update_metrics(max_extent=300.0, viewport_size=200, content_size=500)
     if scroller._scrollbar:
         scroller._scrollbar.set_last_rect(180, 0, 20, 200)
         scroller._scrollbar.thumb_rect = (180, 80, 20, 40)

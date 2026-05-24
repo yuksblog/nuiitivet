@@ -41,6 +41,18 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install Skia system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            libfontconfig1 \
+            libegl1 \
+            libegl-mesa0 \
+            libgl1 \
+            libgl1-mesa-dri \
+            libglvnd0
+
       - name: Sync locked dependencies
         run: uv sync --locked --dev
 
