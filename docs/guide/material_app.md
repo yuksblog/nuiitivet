@@ -79,7 +79,7 @@ App(
 ).run()
 ```
 
-See [Title Bar](window_title_bar.md) for detailed usage.
+See [Window Chrome](window_chrome.md) for detailed usage.
 
 ## Theme
 

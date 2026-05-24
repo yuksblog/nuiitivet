@@ -88,6 +88,10 @@ SAMPLES = [
     ("src/samples/readme/readme_login_form.py", "readme_login_form.png"),
     ("src/samples/readme/readme_counter_app.py", "readme_counter.png"),
     ("src/samples/readme/readme_multi_counter_app.py", "readme_multi_counter.png"),
+    # Window Chrome
+    ("src/samples/window_chrome/os_chrome_default.py", "window_chrome_os_default.png"),
+    ("src/samples/window_chrome/custom_chrome.py", "window_chrome_custom.png"),
+    ("src/samples/window_chrome/no_chrome.py", "window_chrome_borderless.png"),
     # Material App
     ("src/samples/material_app/basic_usage.py", "material_app_basic_usage.png"),
     # Material Overlay
@@ -377,9 +381,12 @@ def render_all():
                 # 2. Extract title
                 title = extract_title(src_path)
 
-                # 3. Apply window frame
-                apply_window_frame(out_path, title)
-                print(f"Framed {out_path} with title '{title}'")
+                # 3. Apply window frame (skip if sample opts out)
+                if not getattr(mod, "SKIP_WINDOW_FRAME", False):
+                    apply_window_frame(out_path, title)
+                    print(f"Framed {out_path} with title '{title}'")
+                else:
+                    print(f"Rendered {out_path} (no frame)")
             else:
                 raise RuntimeError("module has no main()")
         except Exception as e:
