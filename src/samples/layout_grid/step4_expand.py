@@ -47,7 +47,7 @@ def main(png: str = ""):
 
     app = md.App(
         content=widget,
-        title_bar=nv.DefaultTitleBar(title="Step 4: Expansion"),
+        title="Step 4: Expansion",
         width=400,
         height=400,
     )

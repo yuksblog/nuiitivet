@@ -6,7 +6,6 @@ Click the toggle button to switch between light and dark mode.
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Button, Text, ThemeFactory
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.layout.column import Column
@@ -48,7 +47,7 @@ class HomeScreen(ComposableWidget):
 def main() -> None:
     App(
         content=HomeScreen(),
-        title_bar=nv.DefaultTitleBar(title="Light / Dark Toggle"),
+        title="Light / Dark Toggle",
         theme=light,
         width=400,
         height=320,

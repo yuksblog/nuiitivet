@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Card, CardStyle, NavigationRail, RailItem, Text
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -39,7 +38,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=Row([rail, body], width=Sizing.flex(1), height=Sizing.flex(1)),
-        title_bar=nv.DefaultTitleBar(title="NavigationRail"),
+        title="NavigationRail",
         width=560,
         height=320,
     )

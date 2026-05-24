@@ -28,7 +28,7 @@ def build_login_form():
 
 
 def main(png: str = "") -> None:
-    app = md.App(content=build_login_form(), title_bar=nv.DefaultTitleBar(title="Login Form"))
+    app = md.App(content=build_login_form(), title="Login Form")
 
     if png:
         app.render_to_png(png)

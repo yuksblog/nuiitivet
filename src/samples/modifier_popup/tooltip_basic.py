@@ -22,14 +22,14 @@ def main(png: str = "") -> None:
                 padding=24,
                 cross_alignment="start",
             ),
-            title_bar=nv.DefaultTitleBar(title="tooltip Modifier"),
+            title="tooltip Modifier",
             width=400,
         )
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
     content = nv.Column(children=[nv.Container(height=20), target], gap=16, padding=24)
-    app = md.App(content=content, title_bar=nv.DefaultTitleBar(title="tooltip Modifier"), width=400, height=200)
+    app = md.App(content=content, title="tooltip Modifier", width=400, height=200)
     app.run()
 
 

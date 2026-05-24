@@ -26,7 +26,7 @@ def build_layout_demo():
 
 
 def main(png: str = "") -> None:
-    app = md.App(content=build_layout_demo(), title_bar=nv.DefaultTitleBar(title="Layout Demo"))
+    app = md.App(content=build_layout_demo(), title="Layout Demo")
 
     if png:
         app.render_to_png(png)

@@ -35,7 +35,7 @@ def main(png: str = ""):
     )
 
     app = md.App(
-        content=widget, title_bar=nv.DefaultTitleBar(title="Step 3: nv.Sizing Strategies"), width=400, height=400
+        content=widget, title="Step 3: nv.Sizing Strategies", width=400, height=400
     )
     if png:
         app.render_to_png(png)

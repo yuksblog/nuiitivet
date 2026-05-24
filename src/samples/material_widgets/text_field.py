@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, TextField, TextFieldStyle
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -42,7 +41,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="TextField"),
+        title="TextField",
         width=440,
         height=360,
     )

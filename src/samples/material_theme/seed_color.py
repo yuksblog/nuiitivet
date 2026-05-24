@@ -5,7 +5,6 @@ Demonstrates how passing a custom seed color generates a distinct M3 palette.
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Button, Text, ThemeFactory
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.layout.column import Column
@@ -33,7 +32,7 @@ class HomeScreen(ComposableWidget):
 def main(png_path: str = "") -> None:
     app = App(
         content=HomeScreen(),
-        title_bar=nv.DefaultTitleBar(title="Seed Color"),
+        title="Seed Color",
         theme=ThemeFactory.light("#00639B"),
         width=400,
         height=280,

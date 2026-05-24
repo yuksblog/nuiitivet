@@ -350,13 +350,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     model = MyWidgetModel()
     widget = MyWidget(model)
-    import nuiitivet as nv
 
     app = App(
         content=widget,
         # width=750,
         # height=850,
-        title_bar=nv.DefaultTitleBar(title="MyWidget Demo"),
+        title="MyWidget Demo",
     )
     try:
         app.run()

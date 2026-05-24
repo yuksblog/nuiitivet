@@ -132,10 +132,14 @@ def load_module_from_path(path: Path):
 
 
 def extract_title(source_path: Path) -> str:
-    """Extract title from DefaultTitleBar(title="...") in source code."""
+    """Extract window title from the source code.
+
+    Looks for ``App``/``MaterialApp`` ``title=`` keyword argument first,
+    then falls back to a human-readable form of the filename.
+    """
     try:
         content = source_path.read_text(encoding="utf-8")
-        match = re.search(r'DefaultTitleBar\(.*title=["\']([^"\']+)["\']', content)
+        match = re.search(r'\btitle=["\']([^"\']+)["\']', content)
         if match:
             return match.group(1)
     except Exception:

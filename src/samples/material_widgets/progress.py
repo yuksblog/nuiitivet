@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import (
     App,
     CircularProgressIndicator,
@@ -43,7 +42,7 @@ def main(png_path: str = "") -> None:
     )
     app = App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="Progress Indicators"),
+        title="Progress Indicators",
         width=440,
         height=320,
     )

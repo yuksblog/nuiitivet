@@ -787,7 +787,7 @@ def main() -> None:
 
     app = md.App(
         content=PulseApp(autoplay=not args.no_autoplay),
-        title_bar=nv.DefaultTitleBar(title="Pulse"),
+        title="Pulse",
         width=1150,
         height=720,
         theme=theme,

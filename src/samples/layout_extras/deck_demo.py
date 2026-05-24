@@ -60,7 +60,7 @@ def main(png: str = ""):
 
     app = md.App(
         content=DeckDemo(),
-        title_bar=nv.DefaultTitleBar(title="nv.Deck Demo"),
+        title="nv.Deck Demo",
         width=520,
         height=300,
     )

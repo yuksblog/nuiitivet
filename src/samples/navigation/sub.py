@@ -100,7 +100,7 @@ class MainScreen(ComposableWidget):
 def main(png_path: str | None = None) -> None:
     app = App(
         content=MainScreen(),
-        title_bar=nv.DefaultTitleBar(title="Nested Navigation"),
+        title="Nested Navigation",
         width=400,
         height=300,
     )

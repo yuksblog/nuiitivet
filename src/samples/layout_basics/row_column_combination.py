@@ -32,7 +32,7 @@ def main(png: str = ""):
 
     app = md.App(
         content=form,
-        title_bar=nv.DefaultTitleBar(title="nv.Row/nv.Column Combination"),
+        title="nv.Row/nv.Column Combination",
         width="auto",
     )
     if png:

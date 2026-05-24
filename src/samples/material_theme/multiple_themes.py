@@ -6,7 +6,6 @@ and ThemeModeIntent. Themes are registered on mount and switched by string key.
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Button, Text, ThemeFactory
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.layout.column import Column
@@ -43,7 +42,7 @@ class HomeScreen(ComposableWidget):
 def main() -> None:
     app = App(
         content=HomeScreen(),
-        title_bar=nv.DefaultTitleBar(title="Multiple Themes"),
+        title="Multiple Themes",
         theme=ocean_light,
         width=400,
         height=340,

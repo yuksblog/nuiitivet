@@ -75,7 +75,7 @@ def main(png: str = "") -> None:
         )
         app = md.App(
             content=nv.Column(children=[_anchor, _panel], gap=4, padding=16),
-            title_bar=nv.DefaultTitleBar(title="modeless Modifier"),
+            title="modeless Modifier",
             width=300,
             height=350,
         )
@@ -84,7 +84,7 @@ def main(png: str = "") -> None:
         return
     app = md.App(
         content=nv.Column(children=[anchor], gap=8, padding=16),
-        title_bar=nv.DefaultTitleBar(title="modeless Modifier"),
+        title="modeless Modifier",
         width=300,
         height=250,
     )

@@ -76,7 +76,7 @@ class HomeScreen(ComposableWidget):
 def main(png_path: str | None = None) -> None:
     app = App(
         content=HomeScreen(),
-        title_bar=nv.DefaultTitleBar(title="Navigation Route"),
+        title="Navigation Route",
         width=400,
         height=300,
     )

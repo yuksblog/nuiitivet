@@ -6,7 +6,6 @@ MaterialApp defaults to MaterialThemeFactory.light("#6750A4").
 
 from __future__ import annotations
 
-import nuiitivet as nv
 from nuiitivet.material import App, Button, Text
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.layout.column import Column
@@ -34,7 +33,7 @@ class HomeScreen(ComposableWidget):
 def main(png_path: str = "") -> None:
     app = App(
         content=HomeScreen(),
-        title_bar=nv.DefaultTitleBar(title="No Theme"),
+        title="No Theme",
         width=400,
         height=280,
     )

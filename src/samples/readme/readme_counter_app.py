@@ -31,7 +31,7 @@ def main(png: str = "") -> None:
         app_widget.count.value = 3
     app = md.App(
         content=app_widget,
-        title_bar=nv.DefaultTitleBar(title="Counter Demo"),
+        title="Counter Demo",
         width=250,
     )
 

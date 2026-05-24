@@ -38,9 +38,8 @@ def inspect_for_n(n):
     items = [f"GItem {i+1}" for i in range(n)]
     model.grid_items.set(items)
     widget = MyWidget(model)
-    from nuiitivet.runtime.title_bar import DefaultTitleBar
 
-    app = App(root=widget, width=480, height=600, title_bar=DefaultTitleBar(top_padding=16))
+    app = App(widget, width=480, height=600)
 
     # Normalize root as App.run would
     built = app.root.evaluate_build()

@@ -54,7 +54,7 @@ def main(png: str = ""):
 
     app = md.App(
         content=content,
-        title_bar=nv.DefaultTitleBar(title="nv.Row main_alignment"),
+        title="nv.Row main_alignment",
         width="auto",
         height="auto",
     )

@@ -111,7 +111,7 @@ def main(png: str = ""):
         ),
         width=400,
         height=200,
-        title_bar=nv.DefaultTitleBar(title="Will Pop Modifier"),
+        title="Will Pop Modifier",
     )
     if png:
         app.render_to_png(png)
