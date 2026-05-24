@@ -1,6 +1,6 @@
-"""Title bar configuration for the application."""
+"""Internal window drag-area widget."""
 
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from nuiitivet.widgeting.widget import Widget
@@ -9,47 +9,6 @@ from nuiitivet.widgets.interaction import InteractionRegion, DraggableNode
 
 
 from nuiitivet.rendering.sizing import SizingLike
-
-
-class TitleBar:
-    """Base class for title bar configuration."""
-
-    def __init__(self, title: Optional[str] = None):
-        self.title = title
-
-
-class DefaultTitleBar(TitleBar):
-    """Configuration for the default OS title bar.
-
-    Attributes:
-        title: The window title.
-        icon: Path to the window icon.
-    """
-
-    def __init__(
-        self,
-        title: Optional[str] = None,
-        icon: Optional[str] = None,
-    ):
-        super().__init__(title)
-        self.icon = icon
-
-    def __repr__(self) -> str:
-        return f"DefaultTitleBar(title={self.title!r}, icon={self.icon!r})"
-
-
-class CustomTitleBar(TitleBar):
-    """Configuration for a custom title bar."""
-
-    def __init__(self, content: "Widget", title: Optional[str] = None):
-        """Initialize with custom content.
-
-        Args:
-            content: The widget to render as the title bar.
-            title: The window title (used for taskbar/dock, but not rendered by OS).
-        """
-        super().__init__(title)
-        self.content = content
 
 
 class WindowDragArea(InteractionRegion):

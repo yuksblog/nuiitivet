@@ -28,7 +28,9 @@ from .app_events import (
     dispatch_mouse_release as _dispatch_mouse_release_fn,
     dispatch_mouse_scroll as _dispatch_mouse_scroll_fn,
 )
-from .title_bar import TitleBar, DefaultTitleBar, CustomTitleBar, WindowDragArea
+from .chrome import OSChrome, CustomChrome
+from .title_bar import WindowDragArea
+from nuiitivet.observable.protocols import Disposable, ReadOnlyObservableProtocol
 from .window import WindowSizingLike, WindowPosition, parse_window_sizing
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -39,6 +41,8 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+_UNSET = object()
 
 
 # NOTE: compatibility wrapper removed. Use `resolve_color_to_rgba` from
@@ -159,7 +163,8 @@ class App:
         root: Widget,
         width: WindowSizingLike,
         height: WindowSizingLike,
-        title_bar: Optional[TitleBar],
+        title: "str | None | ReadOnlyObservableProtocol[str | None]",
+        chrome: "OSChrome | CustomChrome | None",
         background: ColorSpec,
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
@@ -203,9 +208,9 @@ class App:
                 except Exception:
                     pass
 
-        # Include custom title bar preferred height for auto sizing.
-        if isinstance(title_bar, CustomTitleBar) and needs_auto_size:
-            title_target: Widget = title_bar.content
+        # Include custom chrome header preferred height for auto sizing.
+        if isinstance(chrome, CustomChrome) and needs_auto_size:
+            title_target: Widget = chrome.header
             built_title_target: Widget | None = None
             if isinstance(title_target, ComposableWidget):
                 try:
@@ -214,7 +219,7 @@ class App:
                         title_target = built
                         built_title_target = built
                 except Exception:
-                    title_target = title_bar.content
+                    title_target = chrome.header
             try:
                 tw, th = title_target.preferred_size()
             except Exception:
@@ -233,12 +238,9 @@ class App:
         self.window_position = window_position
         self.resizable = resizable
 
-        if title_bar is None:
-            title_bar = DefaultTitleBar()
+        self.chrome: OSChrome | CustomChrome | None = chrome
 
-        self.title_bar = title_bar
-
-        if isinstance(self.title_bar, CustomTitleBar):
+        if isinstance(self.chrome, CustomChrome):
             # We need a reference to the drag area to notify it of window moves
             self._window_drag_area: Optional[WindowDragArea] = None
 
@@ -255,10 +257,10 @@ class App:
                         if self._window_drag_area:
                             self._window_drag_area.notify_window_moved(dx, dy)
                     except Exception:
-                        exception_once(logger, "app_custom_title_bar_drag_exc", "Failed to move window")
+                        exception_once(logger, "app_custom_chrome_drag_exc", "Failed to move window")
 
             self._window_drag_area = WindowDragArea(
-                child=self.title_bar.content,
+                child=self.chrome.header,
                 on_drag=on_drag,
                 width="100%",
             )
@@ -274,6 +276,9 @@ class App:
 
         # Wrap the root widget with AppScope to provide access to the App instance
         self.root = AppScope(app=self, child=self.root)
+
+        self._title_value: str | None | ReadOnlyObservableProtocol[str | None] = title
+        self._title_disposable: Optional[Disposable] = None
 
         self._scale = 1.0
         self._dirty = False
@@ -291,6 +296,7 @@ class App:
         self._theme_subscription: Optional[Callable[[Any], None]] = None
         self._update_background_color()
         self._subscribe_theme_updates()
+        self._subscribe_title_updates()
         self._last_layout_size: Optional[tuple[int, int]] = None
         self._saved_window_rect: Optional[tuple[int, int, int, int]] = None
 
@@ -417,7 +423,8 @@ class App:
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
-        title_bar: Optional[TitleBar] = None,
+        title: "str | None | ReadOnlyObservableProtocol[str | None]" = None,
+        chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay_factory: Callable[[], "Overlay"] | None = None,
         theme: Optional[Any] = None,
@@ -436,7 +443,15 @@ class App:
                   out of the box.
             width: Window width specification.
             height: Window height specification.
-            title_bar: Custom window title bar.
+            title: OS window title. Accepts a plain string or a
+                :class:`~nuiitivet.observable.protocols.ReadOnlyObservableProtocol`
+                for dynamic updates (e.g. ``Observable("Untitled")``). Pass
+                ``None`` for no title.
+            chrome: Window decoration. Pass an :class:`OSChrome` instance to
+                use OS-managed decorations with an optional style variant,
+                :class:`CustomChrome` for an app-drawn header, or ``None`` for
+                a bare borderless window. Omitting this parameter (the default)
+                is equivalent to ``OSChrome()``.
             background: Window background color.
             overlay_factory: Optional overlay factory.
             theme: Theme to install.
@@ -457,11 +472,13 @@ class App:
             navigator=navigator,
             overlay_factory=overlay_factory,
         )
+        resolved_chrome: OSChrome | CustomChrome | None = OSChrome() if chrome is _UNSET else chrome
         self._init_common(
             root=root_widget,
             width=width,
             height=height,
-            title_bar=title_bar,
+            title=title,
+            chrome=resolved_chrome,
             background=background,
             theme=theme,
             window_position=window_position,
@@ -527,6 +544,10 @@ class App:
             self._unsubscribe_theme_updates()
         except Exception:
             exception_once(logger, "app_del_unsubscribe_theme_exc", "_unsubscribe_theme_updates raised in __del__")
+        try:
+            self._unsubscribe_title_updates()
+        except Exception:
+            exception_once(logger, "app_del_unsubscribe_title_exc", "_unsubscribe_title_updates raised in __del__")
 
     def render_to_png(self, path: str):
         img = self._render_snapshot(scale=1.0)
@@ -596,6 +617,39 @@ class App:
         except Exception:
             exception_once(logger, "app_theme_unsubscribe_exc", "ThemeManager.unsubscribe raised")
         self._theme_subscription = None
+
+    def _subscribe_title_updates(self) -> None:
+        if not isinstance(self._title_value, ReadOnlyObservableProtocol):
+            return
+        app_ref = weakref.ref(self)
+
+        def _on_title(new_title: "str | None") -> None:
+            app = app_ref()
+            if app is not None:
+                app._apply_window_title(new_title)
+
+        try:
+            self._title_disposable = self._title_value.subscribe(_on_title)
+        except Exception:
+            exception_once(logger, "app_title_subscribe_exc", "Observable title subscribe raised")
+
+    def _apply_window_title(self, title: "str | None") -> None:
+        window = getattr(self, "_window", None)
+        if window is not None:
+            try:
+                window.set_caption(str(title) if title is not None else "")
+            except Exception:
+                exception_once(logger, "app_title_set_caption_exc", "window.set_caption raised")
+
+    def _unsubscribe_title_updates(self) -> None:
+        disp = getattr(self, "_title_disposable", None)
+        if disp is None:
+            return
+        try:
+            disp.dispose()
+        except Exception:
+            exception_once(logger, "app_title_unsubscribe_exc", "title disposable.dispose raised")
+        self._title_disposable = None
 
     def _mount_paint_unmount(self, canvas, x: int, y: int, w: int, h: int) -> None:
         """Temporarily mount the root widget, paint it, then unmount.

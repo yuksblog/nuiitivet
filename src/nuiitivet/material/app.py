@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
 from nuiitivet.material.navigation_visual_state import MaterialNavigationLayerComposer
 from nuiitivet.material.navigator import MaterialNavigator
@@ -11,11 +11,14 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
-from nuiitivet.runtime.app import App
-from nuiitivet.runtime.title_bar import TitleBar
+from nuiitivet.runtime.app import App, _UNSET
 from nuiitivet.runtime.window import WindowPosition, WindowSizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
+
+if TYPE_CHECKING:
+    from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+    from nuiitivet.runtime.chrome import CustomChrome, OSChrome
 
 
 class MaterialApp(App):
@@ -47,7 +50,8 @@ class MaterialApp(App):
         height: WindowSizingLike = "auto",
         background: ColorSpec = ColorRole.SURFACE,
         theme: Optional[Any] = None,
-        title_bar: Optional[TitleBar] = None,
+        title: str | None | ReadOnlyObservableProtocol[str | None] = None,
+        chrome: OSChrome | CustomChrome | None = _UNSET,  # type: ignore[assignment]
         window_position: WindowPosition | None = None,
         resizable: bool = True,
     ) -> None:
@@ -63,7 +67,9 @@ class MaterialApp(App):
             height: Window height specification.
             background: Background color of the window. Defaults to Material Surface color.
             theme: The MaterialThemeFactory to use. Defaults to Light theme.
-            title_bar: Custom window title bar.
+            title: OS window title.
+            chrome: Window decoration (``OSChrome``, ``CustomChrome``, or
+                ``None`` for bare borderless). Omitting defaults to ``OSChrome()``.
             window_position: Initial window position.
             resizable: Whether the window can be resized. Defaults to True.
         """
@@ -77,7 +83,8 @@ class MaterialApp(App):
             content=content,
             width=width,
             height=height,
-            title_bar=title_bar,
+            title=title,
+            chrome=chrome,
             background=background,
             theme=theme,
             overlay_factory=_overlay_factory,
