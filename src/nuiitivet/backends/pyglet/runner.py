@@ -5,6 +5,7 @@ This module owns the pyglet dependency so the core package remains backend-agnos
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import math
@@ -846,7 +847,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         handler = getattr(app, "handle_back_event", None)
         if callable(handler):
             try:
-                handled = bool(handler())
+                # ESC was already captured as handled on key_press; schedule the
+                # async back handler as a task and treat the key as handled.
+                asyncio.create_task(handler())
+                handled = True
             except Exception:
                 exception_once(logger, "pyglet_on_key_release_back_handler_exc", "Back handler raised")
                 handled = False

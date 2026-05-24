@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material.buttons import Button
@@ -7,20 +5,14 @@ from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material import Overlay, Navigator
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers import will_pop
-from nuiitivet.navigation import Route
 from nuiitivet.observable import Observable
 from nuiitivet.material import ButtonStyle
-
-
-@dataclass(frozen=True, slots=True)
-class HomeIntent:
-    pass
 
 
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def _open_editor() -> None:
-            Navigator.root().push(Route(builder=lambda: EditScreen()))
+            Navigator.root().push(EditScreen())
 
         return nv.Container(
             padding=24,
@@ -47,33 +39,22 @@ class EditScreen(nv.ComposableWidget):
     def _save(self) -> None:
         self._initial_text = str(self.text.value)
 
-    def _try_pop(self) -> None:
-        Navigator.root().pop()
-
-    def _on_will_pop(self) -> bool:
+    async def _on_will_pop(self) -> bool:
         if not self._is_dirty():
             return True
 
-        def _cancel() -> None:
-            Overlay.root().close(None)
-
-        def _discard() -> None:
-            self._initial_text = str(self.text.value)
-            Overlay.root().close(None)
-            Navigator.root().pop()
-
-        Overlay.root().dialog(
+        result = await Overlay.root().dialog(
             BasicDialog(
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[
-                    Button("Cancel", on_click=_cancel, style=ButtonStyle.text()),
-                    Button("Discard", on_click=_discard, style=ButtonStyle.filled()),
+                    Button("Cancel", on_click=lambda: Overlay.root().close(False), style=ButtonStyle.text()),
+                    Button("Discard", on_click=lambda: Overlay.root().close(True), style=ButtonStyle.filled()),
                 ],
             ),
             dismiss_on_outside_tap=False,
         )
-        return False
+        return bool(result.value)
 
     def build(self):
         return nv.Container(
@@ -89,7 +70,7 @@ class EditScreen(nv.ComposableWidget):
                     ),
                     nv.Row(
                         children=[
-                            Button("Back", on_click=self._try_pop, style=ButtonStyle.text()),
+                            Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.text()),
                             Button("Save", on_click=self._save, style=ButtonStyle.filled()),
                         ],
                         gap=10,
@@ -103,12 +84,7 @@ class EditScreen(nv.ComposableWidget):
 
 def main(png: str = ""):
     app = md.App(
-        Navigator.intents(
-            initial_route=HomeIntent(),
-            routes={
-                HomeIntent: lambda _i: Route(builder=HomeScreen),
-            },
-        ),
+        HomeScreen(),
         width=400,
         height=200,
         title="Will Pop Modifier",

@@ -7,7 +7,10 @@ current transition immediately and apply queued back requests.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+
+import pytest
 
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
@@ -36,7 +39,8 @@ class _Handle:
         object.__setattr__(self, "cancel_calls", self.cancel_calls + 1)
 
 
-def test_pop_finishes_when_pop_transition_running() -> None:
+@pytest.mark.asyncio
+async def test_pop_finishes_when_pop_transition_running() -> None:
     nav = Navigator.routes([Route(builder=_FlagWidget), Route(builder=_FlagWidget)])
 
     # Simulate an in-flight pop transition without requiring App.animate.
@@ -49,6 +53,7 @@ def test_pop_finishes_when_pop_transition_running() -> None:
     nav._transition = _T()  # type: ignore[attr-defined,assignment]
 
     nav.pop()
+    await asyncio.sleep(0)  # allow pop task (request_back) to run
 
     assert handle.cancel_calls == 1
     assert nav.can_pop() is False

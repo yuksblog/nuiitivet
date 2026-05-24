@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import itertools
 import logging
 import weakref
@@ -10,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TY
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
-
 
 _logger = logging.getLogger(__name__)
 
@@ -511,12 +511,15 @@ class BuilderHostMixin:
                 return hit
         return super().hit_test(x, y)  # type: ignore
 
-    def handle_back_event(self) -> bool:
+    async def handle_back_event(self) -> bool:
         if self._built is not None:
             handler = getattr(self._built, "handle_back_event", None)
             if callable(handler):
                 try:
-                    return bool(handler())
+                    result = handler()
+                    if inspect.isawaitable(result):
+                        return bool(await result)
+                    return bool(result)
                 except Exception:
                     # Fail open to avoid trapping navigation.
                     exception_once(

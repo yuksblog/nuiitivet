@@ -359,7 +359,7 @@ class App:
 
         return False
 
-    def handle_back_event(self) -> bool:
+    async def handle_back_event(self) -> bool:
         """Handle a user back action (e.g. Esc).
 
         Priority:
@@ -398,7 +398,7 @@ class App:
             try:
                 request_back = getattr(navigator, "request_back", None)
                 if callable(request_back):
-                    handled = bool(request_back())
+                    handled = bool(await request_back())
                     return handled
                 if navigator.can_pop():
                     navigator.pop()
@@ -851,7 +851,10 @@ class App:
             kname = None
 
         if kname == "escape":
-            return self.handle_back_event()
+            import asyncio
+
+            asyncio.create_task(self.handle_back_event())
+            return True
 
         if kname == "tab":
             # 1. Try FocusNode traversal (New System)
