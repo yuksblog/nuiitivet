@@ -8,7 +8,6 @@ from typing import Any, Generic, Optional, Protocol, TypeVar
 
 from .result import OverlayResult
 
-
 T = TypeVar("T")
 
 
@@ -22,6 +21,14 @@ class _OverlayHandleHost(Protocol):
     def _get_pending_result_for_entry(self, entry: Any) -> OverlayResult[Any] | None: ...
 
     def _pop_pending_result_for_entry(self, entry: Any) -> OverlayResult[Any] | None: ...
+
+    def _request_dismiss_entry(
+        self,
+        entry: Any,
+        *,
+        value: Any = None,
+        reason: Any,
+    ) -> None: ...
 
 
 class OverlayHandle(Generic[T]):
@@ -41,6 +48,18 @@ class OverlayHandle(Generic[T]):
 
     def close(self, value: T | None = None) -> None:
         self._overlay._close_entry(self._entry, value)
+
+    def request_close(self, value: T | None = None) -> None:
+        """Request close, consulting any ``will_pop`` modifier on the entry.
+
+        If a ``will_pop`` callback returns ``False`` (sync or async), the close
+        is aborted and the entry stays open. With no ``will_pop`` present this
+        behaves like :meth:`close`. Used by the framework for unified dismissal
+        paths (Close button, ESC, scrim tap).
+        """
+        from .result import OverlayDismissReason
+
+        self._overlay._request_dismiss_entry(self._entry, value=value, reason=OverlayDismissReason.CLOSED)
 
     def __await__(self) -> Generator[Any, None, OverlayResult[T]]:
         future: asyncio.Future[OverlayResult[T]] = self._overlay._future_for_entry(self._entry)

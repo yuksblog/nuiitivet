@@ -87,7 +87,6 @@ def test_bottom_sheet_defaults():
     content = Box(width=200, height=100)
     sheet = BottomSheet(content, headline="Filters")
     assert sheet._headline == "Filters"
-    assert sheet._on_close is None
 
 
 def test_bottom_sheet_style_property_default():
@@ -147,45 +146,27 @@ def test_bottom_sheet_transition_fallback_for_string_height():
     assert visuals_mid.translate_y_fraction == pytest.approx(0.5)
 
 
-def test_bottom_sheet_resolve_on_close_uses_explicit_callback():
-    """Explicit on_close takes precedence over the injected overlay handle."""
-    calls = []
-    sheet = BottomSheet(Box(), headline="Filters", on_close=lambda: calls.append("explicit"))
+def test_bottom_sheet_close_button_calls_request_close():
+    """Close button click routes through overlay_handle.request_close(None)."""
+    calls: list[object] = []
 
     class _FakeHandle:
         def close(self, value=None) -> None:
-            calls.append("handle")
+            calls.append(("close", value))
 
-        def done(self) -> bool:
-            return False
-
-    sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
-    handler = sheet._resolve_on_close()
-    assert handler is not None
-    handler()
-    assert calls == ["explicit"]
-
-
-def test_bottom_sheet_resolve_on_close_uses_overlay_handle():
-    """Without explicit on_close, falls back to overlay_handle.close(None)."""
-    closed = []
-
-    class _FakeHandle:
-        def close(self, value=None) -> None:
-            closed.append(value)
+        def request_close(self, value=None) -> None:
+            calls.append(("request_close", value))
 
         def done(self) -> bool:
             return False
 
     sheet = BottomSheet(Box(), headline="Filters")
     sheet._set_overlay_handle(_FakeHandle())  # type: ignore[arg-type]
-    handler = sheet._resolve_on_close()
-    assert handler is not None
-    handler()
-    assert closed == [None]
+    sheet._on_close_click()
+    assert calls == [("request_close", None)]
 
 
-def test_bottom_sheet_resolve_on_close_returns_none_when_standalone():
-    """No on_close, no overlay handle → close button stays inert."""
+def test_bottom_sheet_close_button_inert_when_standalone():
+    """No overlay handle → close click is a no-op (does not raise)."""
     sheet = BottomSheet(Box(), headline="Filters")
-    assert sheet._resolve_on_close() is None
+    sheet._on_close_click()  # should not raise

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from typing import Any, Callable, Dict, Optional
 
@@ -28,6 +29,22 @@ from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .transition_state import OverlayTransitionState
 
 logger = logging.getLogger(__name__)
+
+
+def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
+    """Walk the widget subtree to find the first OverlayAware widget.
+
+    Wrappers added by modifiers (e.g. WillPopScope) sit above the user widget,
+    so the search needs to descend into their children.
+    """
+    if isinstance(widget, OverlayAware):
+        return widget
+    for child in widget.children:
+        if isinstance(child, Widget):
+            found = _find_overlay_aware(child)
+            if found is not None:
+                return found
+    return None
 
 
 class _ModalNavigator(ComposableWidget):
@@ -183,6 +200,7 @@ class _OverlayEntryRoute(Route):
         self.barrier_dismissible = bool(barrier_dismissible)
         self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
+        self._content_widget: Widget | None = None
 
     @property
     def transition_phase_obs(self) -> Observable[TransitionPhase]:
@@ -362,6 +380,126 @@ class Overlay(ComposableWidget):
         self._complete_entry_future(entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED))
         self.remove_entry(entry)
 
+    def _entry_content_widget(self, entry: OverlayEntry) -> Widget | None:
+        route = self._entry_to_route.get(entry)
+        if route is None:
+            return None
+        return getattr(route, "_content_widget", None)
+
+    def _top_entry(self) -> OverlayEntry | None:
+        routes = getattr(self._modal_navigator, "_routes", None)
+        if not isinstance(routes, list) or len(routes) <= 1:
+            return None
+        top = routes[-1]
+        if top is self._base_route:
+            return None
+        for entry, route in reversed(list(self._entry_to_route.items())):
+            if route is top:
+                return entry
+        return None
+
+    async def _consult_will_pop(self, widget: Widget | None) -> bool:
+        """Return True if dismiss should proceed; False if intercepted."""
+        if widget is None:
+            return True
+        handler = getattr(widget, "handle_back_event", None)
+        if not callable(handler):
+            return True
+        try:
+            result = handler()
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:
+            exception_once(logger, "overlay_consult_will_pop_exc", "handle_back_event raised")
+            return True
+
+    def _will_pop_proceed_sync(self, widget: Widget | None) -> bool | None:
+        """Try to evaluate will_pop synchronously.
+
+        Returns True/False if determined synchronously, or None if the handler
+        is async and must be awaited.
+        """
+        if widget is None:
+            return True
+        handler = getattr(widget, "handle_back_event", None)
+        if not callable(handler):
+            return True
+        try:
+            result = handler()
+        except Exception:
+            exception_once(logger, "overlay_consult_will_pop_sync_exc", "handle_back_event raised")
+            return True
+        if inspect.isawaitable(result):
+            # Caller must re-invoke and await; close this throwaway coroutine
+            # so Python does not emit a "never awaited" warning.
+            close = getattr(result, "close", None)
+            if callable(close):
+                close()
+            return None
+        return bool(result)
+
+    def request_close_topmost(self) -> None:
+        """Request dismissal of the topmost entry through the will_pop pipeline."""
+        entry = self._top_entry()
+        if entry is None:
+            return
+        self._request_dismiss_entry(entry, value=None, reason=OverlayDismissReason.CLOSED)
+
+    async def async_request_close_topmost(self) -> bool:
+        """Async variant: returns True if a dismiss was handled (closed or intercepted)."""
+        entry = self._top_entry()
+        if entry is None:
+            return False
+        content = self._entry_content_widget(entry)
+        if not await self._consult_will_pop(content):
+            return True
+        self._dismiss_entry(entry, reason=OverlayDismissReason.CLOSED)
+        return True
+
+    def _request_dismiss_entry(
+        self,
+        entry: OverlayEntry,
+        *,
+        value: Any = None,
+        reason: OverlayDismissReason,
+    ) -> None:
+        """Dismiss an entry after consulting handle_back_event on its content widget.
+
+        Sync path when the handler is synchronous; otherwise schedule an async task
+        and fall back to immediate dismissal if no event loop is running.
+        """
+        content = self._entry_content_widget(entry)
+        sync = self._will_pop_proceed_sync(content)
+        if sync is True:
+            self._dismiss_entry_with_value(entry, value=value, reason=reason)
+            return
+        if sync is False:
+            return
+        # Async handler: schedule resolution.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop; cannot await will_pop. Fall back to immediate dismiss.
+            self._dismiss_entry_with_value(entry, value=value, reason=reason)
+            return
+
+        async def _go() -> None:
+            if await self._consult_will_pop(content):
+                self._dismiss_entry_with_value(entry, value=value, reason=reason)
+
+        loop.create_task(_go())
+
+    def _dismiss_entry_with_value(
+        self,
+        entry: OverlayEntry,
+        *,
+        value: Any,
+        reason: OverlayDismissReason,
+    ) -> None:
+        self._complete_entry_future(entry, OverlayResult(value=value, reason=reason))
+        self.remove_entry(entry)
+
     def _dismiss_entry(self, entry: OverlayEntry, *, reason: OverlayDismissReason) -> None:
         self._complete_entry_future(entry, OverlayResult(value=None, reason=reason))
         self.remove_entry(entry)
@@ -535,7 +673,7 @@ class Overlay(ComposableWidget):
         def build_layer(route: _OverlayEntryRoute) -> Widget:
             def on_barrier_click() -> None:
                 if barrier_dismissible:
-                    self._dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
+                    self._request_dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
 
             context = OverlayLayerCompositionContext(
                 content=content_widget,
@@ -569,12 +707,14 @@ class Overlay(ComposableWidget):
             barrier_dismissible=barrier_dismissible,
         )
         route_holder["route"] = modal_route
+        modal_route._content_widget = content_widget
 
         # Construct the handle first so OverlayAware widgets receive it
         # before the entry is inserted (i.e. before first build / mount).
         handle: OverlayHandle[Any] = OverlayHandle(overlay=self, entry=entry)
-        if isinstance(content_widget, OverlayAware):
-            content_widget._set_overlay_handle(handle)
+        aware = _find_overlay_aware(content_widget)
+        if aware is not None:
+            aware._set_overlay_handle(handle)
 
         self._insert_entry_with_route(entry, modal_route)
 
@@ -651,7 +791,7 @@ class Overlay(ComposableWidget):
         self.invalidate()
 
     def close_topmost(self) -> None:
-        self.close(None)
+        self.request_close_topmost()
 
     def close(self, value: Any = None, target: Widget | Route | None = None) -> None:
         if target is not None:
