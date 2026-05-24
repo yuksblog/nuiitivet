@@ -1,5 +1,9 @@
 """Tests for Navigator (Phase 3 MVP)."""
 
+import asyncio
+
+import pytest
+
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
 
@@ -33,7 +37,8 @@ def test_navigator_push_sets_built_child() -> None:
     assert page in nav.children_snapshot()
 
 
-def test_navigator_pop_disposes_route_widget() -> None:
+@pytest.mark.asyncio
+async def test_navigator_pop_disposes_route_widget() -> None:
     nav = Navigator(Route(builder=_FlagWidget))
 
     page2 = _FlagWidget()
@@ -41,13 +46,16 @@ def test_navigator_pop_disposes_route_widget() -> None:
     assert nav.can_pop() is True
 
     nav.pop()
+    await asyncio.sleep(0)  # allow pop task to run
     assert page2.unmounted is True
 
 
-def test_navigator_pop_noop_when_single_route() -> None:
+@pytest.mark.asyncio
+async def test_navigator_pop_noop_when_single_route() -> None:
     nav = Navigator(Route(builder=_FlagWidget))
     nav.rebuild()
     nav.pop()
+    await asyncio.sleep(0)
     assert nav.can_pop() is False
 
 

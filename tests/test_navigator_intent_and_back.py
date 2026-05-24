@@ -108,7 +108,8 @@ def test_navigator_normalize_to_route_resolves_intent() -> None:
     assert isinstance(normalized, Route)
 
 
-def test_navigator_request_back_is_canceled_by_top_widget_handler() -> None:
+@pytest.mark.asyncio
+async def test_navigator_request_back_is_canceled_by_top_widget_handler() -> None:
     bottom = Route(builder=_FlagWidget)
     top_widget = _BackCancelWidget()
 
@@ -117,19 +118,20 @@ def test_navigator_request_back_is_canceled_by_top_widget_handler() -> None:
 
     assert nav.can_pop() is True
 
-    handled = nav.request_back()
+    handled = await nav.request_back()
     assert handled is True
     assert nav.can_pop() is True
     assert top_widget.back_called is True
 
 
-def test_navigator_push_widget_and_route_have_same_pop_behavior() -> None:
+@pytest.mark.asyncio
+async def test_navigator_push_widget_and_route_have_same_pop_behavior() -> None:
     nav_widget = Navigator(Route(builder=_FlagWidget))
     top_widget = _FlagWidget()
     nav_widget.push(top_widget)
 
     assert nav_widget.can_pop() is True
-    assert nav_widget.request_back() is True
+    assert await nav_widget.request_back() is True
     assert nav_widget.can_pop() is False
     assert top_widget.unmounted is True
 
@@ -138,6 +140,6 @@ def test_navigator_push_widget_and_route_have_same_pop_behavior() -> None:
     nav_route.push(Route(builder=lambda: top_route_widget))
 
     assert nav_route.can_pop() is True
-    assert nav_route.request_back() is True
+    assert await nav_route.request_back() is True
     assert nav_route.can_pop() is False
     assert top_route_widget.unmounted is True

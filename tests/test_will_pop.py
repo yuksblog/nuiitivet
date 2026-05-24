@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+from typing import Any
+
+import pytest
+
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
@@ -19,7 +24,8 @@ class _FlagWidget(Widget):
         return self
 
 
-def test_will_pop_modifier_chains_inner_to_outer() -> None:
+@pytest.mark.asyncio
+async def test_will_pop_modifier_chains_inner_to_outer() -> None:
     calls: list[str] = []
 
     def inner() -> bool:
@@ -33,11 +39,13 @@ def test_will_pop_modifier_chains_inner_to_outer() -> None:
     w = _FlagWidget().modifier(will_pop(inner) | will_pop(outer))
     handler = getattr(w, "handle_back_event", None)
     assert callable(handler)
-    assert bool(handler()) is True
+    result = await handler()
+    assert result is True
     assert calls == ["inner", "outer"]
 
 
-def test_navigator_pop_respects_will_pop_cancel() -> None:
+@pytest.mark.asyncio
+async def test_navigator_pop_respects_will_pop_cancel() -> None:
     calls: list[str] = []
     outgoing = _FlagWidget(label="outgoing")
 
@@ -56,13 +64,15 @@ def test_navigator_pop_respects_will_pop_cancel() -> None:
     assert nav.can_pop() is True
 
     nav.pop()
+    await asyncio.sleep(0)  # allow pop task to run
 
     assert nav.can_pop() is True
     assert outgoing.unmounted is False
     assert calls == ["called"]
 
 
-def test_navigator_pop_respects_will_pop_allow() -> None:
+@pytest.mark.asyncio
+async def test_navigator_pop_respects_will_pop_allow() -> None:
     outgoing = _FlagWidget(label="outgoing")
 
     def on_will_pop() -> bool:
@@ -79,11 +89,13 @@ def test_navigator_pop_respects_will_pop_allow() -> None:
     assert nav.can_pop() is True
 
     nav.pop()
+    await asyncio.sleep(0)  # allow pop task to run
 
     assert nav.can_pop() is False
 
 
-def test_navigator_pop_calls_will_pop_inside_build() -> None:
+@pytest.mark.asyncio
+async def test_navigator_pop_calls_will_pop_inside_build() -> None:
     calls: list[str] = []
 
     from nuiitivet.widgeting.widget import ComposableWidget
@@ -116,6 +128,7 @@ def test_navigator_pop_calls_will_pop_inside_build() -> None:
     assert nav.can_pop() is True
 
     nav.pop()
+    await asyncio.sleep(0)  # allow pop task to run
 
     assert calls == ["called"]
     assert nav.can_pop() is True
@@ -127,18 +140,19 @@ def test_navigator_pop_calls_will_pop_inside_build() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_reentrant_back_is_dropped_while_handler_is_active() -> None:
-    """A second back request while on_will_pop is executing must be dropped."""
+@pytest.mark.asyncio
+async def test_reentrant_back_is_dropped_while_handler_is_active() -> None:
+    """A re-entrant await handle_back_event during async on_will_pop is blocked."""
     calls: list[str] = []
-    scope_ref: list[object] = []
+    scope_ref: list[Any] = []
 
-    def on_will_pop() -> bool:
+    async def on_will_pop() -> bool:
         calls.append("enter")
-        # Simulate re-entrant call (e.g. rapid Esc).
+        # Simulate re-entrant call while _handling is True.
         scope = scope_ref[0]
         handler = getattr(scope, "handle_back_event", None)
         assert callable(handler)
-        result = handler()
+        result = await handler()
         calls.append(f"reentrant={result}")
         return False
 
@@ -148,15 +162,16 @@ def test_reentrant_back_is_dropped_while_handler_is_active() -> None:
 
     handler = getattr(scoped, "handle_back_event", None)
     assert callable(handler)
-    result = handler()
+    result = await handler()
 
     assert result is False
     assert calls == ["enter", "reentrant=False"]
 
 
-def test_handling_flag_is_released_after_normal_return() -> None:
+@pytest.mark.asyncio
+async def test_handling_flag_is_released_after_normal_return() -> None:
     """_handling must be False after a successful callback invocation."""
-    scope_ref: list[object] = []
+    scope_ref: list[Any] = []
 
     def on_will_pop() -> bool:
         return False
@@ -167,12 +182,13 @@ def test_handling_flag_is_released_after_normal_return() -> None:
 
     handler = getattr(scoped, "handle_back_event", None)
     assert callable(handler)
-    handler()
+    await handler()
 
     assert getattr(scoped, "_handling", True) is False
 
 
-def test_handling_flag_is_released_after_exception() -> None:
+@pytest.mark.asyncio
+async def test_handling_flag_is_released_after_exception() -> None:
     """_handling must be False even when the callback raises."""
 
     def on_will_pop() -> bool:
@@ -183,13 +199,14 @@ def test_handling_flag_is_released_after_exception() -> None:
 
     handler = getattr(scoped, "handle_back_event", None)
     assert callable(handler)
-    result = handler()  # fail-open → True
+    result = await handler()  # fail-open → True
 
     assert result is True
     assert getattr(scoped, "_handling", True) is False
 
 
-def test_normal_pop_allowed_works_after_previous_cancel() -> None:
+@pytest.mark.asyncio
+async def test_normal_pop_allowed_works_after_previous_cancel() -> None:
     """After a cancelled pop, a subsequent allow should still propagate."""
     call_count = 0
 
@@ -207,7 +224,9 @@ def test_normal_pop_allowed_works_after_previous_cancel() -> None:
     nav.rebuild()
 
     nav.pop()
+    await asyncio.sleep(0)  # allow first pop task to run
     assert nav.can_pop() is True  # first pop was cancelled
 
     nav.pop()
+    await asyncio.sleep(0)  # allow second pop task to run
     assert nav.can_pop() is False  # second pop was allowed

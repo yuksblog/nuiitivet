@@ -29,6 +29,8 @@ OptionalBoolCallback = Union[
 ]
 #: Single ``str`` argument callback (e.g. on_change for text inputs).
 StrCallback = Union[Callable[[str], None], Callable[[str], Awaitable[None]]]
+#: Back-navigation guard callback — returns ``True`` to allow pop, ``False`` to cancel.
+WillPopCallback = Union[Callable[[], bool], Callable[[], Awaitable[bool]]]
 
 
 def invoke_event_handler(

@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 import logging
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 
 from ..rendering.sizing import SizingLike
+from ..widgeting.callbacks import WillPopCallback
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
 
 _logger = logging.getLogger(__name__)
-
-
-WillPopCallback = Callable[[], bool]
 
 
 class WillPopScope(Widget):
@@ -44,7 +43,7 @@ class WillPopScope(Widget):
             return child
         return None
 
-    def handle_back_event(self) -> bool:
+    async def handle_back_event(self) -> bool:
         """Return True to continue back action, False to cancel."""
 
         child = self._child()
@@ -52,7 +51,10 @@ class WillPopScope(Widget):
             handler = getattr(child, "handle_back_event", None)
             if callable(handler):
                 try:
-                    if not bool(handler()):
+                    result = handler()
+                    if inspect.isawaitable(result):
+                        result = await result
+                    if not bool(result):
                         return False
                 except Exception:
                     # Fail open to avoid trapping navigation.
@@ -64,7 +66,10 @@ class WillPopScope(Widget):
 
         self._handling = True
         try:
-            return bool(self._on_will_pop())
+            result = self._on_will_pop()
+            if inspect.isawaitable(result):
+                return bool(await result)
+            return bool(result)
         except Exception:
             exception_once(_logger, "will_pop_callback_exc", "on_will_pop callback raised")
             return True

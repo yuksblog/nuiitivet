@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
+import inspect
 import logging
 from typing import Any, Callable, ClassVar, Literal, Mapping
 
@@ -279,9 +281,9 @@ class Navigator(ComposableWidget):
         self.invalidate()
 
     def pop(self) -> None:
-        self.request_back()
+        asyncio.create_task(self.request_back())
 
-    def request_back(self) -> bool:
+    async def request_back(self) -> bool:
         """Request a single back action.
 
         This API is designed for user back inputs (Esc/back button).
@@ -308,7 +310,7 @@ class Navigator(ComposableWidget):
             # Finish push quickly, then pop once.
             self._force_finish_push_transition()
 
-        did_pop = self._pop_once(skip_animation=False)
+        did_pop = await self._pop_once(skip_animation=False)
         if not did_pop:
             # will_pop canceled; treat as handled.
             return True
@@ -348,11 +350,11 @@ class Navigator(ComposableWidget):
                 exception_once(_logger, "navigator_force_finish_pop_cancel_exc", "Failed to cancel pop transition")
         self._finish_pop()
 
-    def _drain_pending_pops(self) -> None:
+    async def _drain_pending_pops(self) -> None:
         while self._pending_pop_requests > 0 and self.can_pop():
             self._pending_pop_requests -= 1
             skip_animation = self._pending_pop_requests > 0
-            did = self._pop_once(skip_animation=skip_animation)
+            did = await self._pop_once(skip_animation=skip_animation)
             if not did:
                 self._pending_pop_requests = 0
                 return
@@ -364,7 +366,7 @@ class Navigator(ComposableWidget):
         if not self.can_pop():
             self._pending_pop_requests = 0
 
-    def _pop_once(self, *, skip_animation: bool) -> bool:
+    async def _pop_once(self, *, skip_animation: bool) -> bool:
         if not self.can_pop():
             return False
 
@@ -379,7 +381,10 @@ class Navigator(ComposableWidget):
         back_handler = getattr(outgoing_widget, "handle_back_event", None)
         if callable(back_handler):
             try:
-                if not bool(back_handler()):
+                result = back_handler()
+                if inspect.isawaitable(result):
+                    result = await result
+                if not bool(result):
                     self._pending_pop_requests = 0
                     return False
             except Exception:
@@ -412,7 +417,7 @@ class Navigator(ComposableWidget):
         self._stack.mark_exiting(outgoing)
         self._exiting_route = outgoing
         self._finish_pop_once()
-        self._drain_pending_pops()
+        await self._drain_pending_pops()
         return True
 
     def _finish_transition(self) -> None:
@@ -443,7 +448,7 @@ class Navigator(ComposableWidget):
 
     def _finish_pop(self) -> None:
         self._finish_pop_once()
-        self._drain_pending_pops()
+        asyncio.create_task(self._drain_pending_pops())
 
     def layout(self, width: int, height: int) -> None:
         self.clear_needs_layout()
