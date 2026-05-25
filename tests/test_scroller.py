@@ -386,10 +386,10 @@ def test_scroller_horizontal_scroll_wheel_direction():
     controller._update_metrics(max_extent=400.0, viewport_size=300, content_size=700)
     child = Row([Text(f"Item {i}") for i in range(10)], gap=8)
     scroller = Scroller(child=child, direction=ScrollDirection.HORIZONTAL, scroll_controller=controller)
-    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=-2) is True
+    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=2) is True
     assert controller.get_offset(axis=ScrollDirection.HORIZONTAL) > 0.0
     prev = controller.get_offset(axis=ScrollDirection.HORIZONTAL)
-    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=2) is True
+    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=-2) is True
     assert controller.get_offset(axis=ScrollDirection.HORIZONTAL) < prev
 
 

@@ -736,6 +736,20 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         y_conv = int(getattr(app, "height", 0)) - y_log
         return x_log, y_conv
 
+    def _normalize_scroll_delta(scroll_x: float, scroll_y: float) -> tuple[float, float]:
+        """Normalize Pyglet raw scroll values to the app convention.
+
+        Convention: positive scroll_y = move content downward (offset increases).
+        On macOS the OS already adjusts values for the Natural Scrolling
+        preference, so pass through unchanged.  On Windows and Linux, Pyglet
+        reports scroll_y > 0 for wheel-forward (up), which is opposite to the
+        app convention.
+        """
+        if sys.platform == "darwin":
+            return scroll_x, scroll_y
+        # Windows and Linux: negate to match app convention
+        return -scroll_x, -scroll_y
+
     @window.event
     def on_mouse_press(x, y, button, modifiers):
         x_log, y_conv = _to_logical(x, y)
@@ -771,8 +785,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     @window.event
     def on_mouse_scroll(x, y, scroll_x, scroll_y):
         x_log, y_conv = _to_logical(x, y)
+        scroll_x_n, scroll_y_n = _normalize_scroll_delta(scroll_x, scroll_y)
         try:
-            app._dispatch_mouse_scroll(x_log, y_conv, scroll_x, scroll_y)
+            app._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_scroll_dispatch_exc", "Mouse scroll dispatch raised")
 
