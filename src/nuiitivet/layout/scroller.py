@@ -14,7 +14,6 @@ from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import Scrollbar, ScrollbarBehavior
 from .scroll_viewport import ScrollViewport
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -418,9 +417,7 @@ class Scroller(Widget):
         elif self.direction is ScrollDirection.HORIZONTAL:
             delta = event.scroll_x
             if abs(delta) < 1e-6:
-                delta = -event.scroll_y
-            else:
-                delta = -delta
+                delta = event.scroll_y
         else:
             return False
 
