@@ -12,7 +12,7 @@ Sizing (stretching/shrinking) is the role of `Sizing`, while `Alignment` is resp
 - The content's own size is determined by `width` / `height`.
 - Where to place it within the parent is determined by `alignment`.
 
-## Positioning a Single Element (Container)
+## Positioning a Single Element
 
 When there is only one child element inside a parent, you can specify 9 positions using the `alignment` property.
 
@@ -60,15 +60,15 @@ nv.UniformFlow(
 > **Note**: "Expanding to full width" is not the job of alignment.
 > In that case, specify `"100%"` or `Sizing.flex(...)` in the child's `width`.
 
-## Arranging Multiple Elements (Row / Column)
+## Arranging Multiple Elements
 
 When arranging multiple elements, different properties are used for the "arranging direction (Main axis)" and "other direction (Cross axis)".
 
-### Horizontal Arrangement (Row)
+### Row
 
 `Row` uses different values for the arranging direction (Horizontal=Main) and the crossing direction (Vertical=Cross).
 
-#### Examples of `main_alignment` (6 patterns)
+#### Examples of `main_alignment`
 
 ```python
 import nuiitivet as nv
@@ -118,7 +118,7 @@ nv.Column(
                 cross_alignment="start",
                 width="100%",
             ),
-            padding=12,,
+            padding=12,
             style=md.CardStyle.outlined(),
         )
         for a in main_alignments
@@ -128,7 +128,7 @@ nv.Column(
 
 ![Row main_alignment examples](../assets/layout_alignment_row.png)
 
-#### Examples of `cross_alignment` (3 patterns)
+#### Examples of `cross_alignment`
 
 ```python
 import nuiitivet as nv
@@ -170,7 +170,7 @@ def _panel(alignment: str) -> md.Card:
             cross_alignment="start",
             width="100%",
         ),
-        padding=12,,
+        padding=12,
         style=md.CardStyle.outlined(),
     )
 
@@ -193,11 +193,11 @@ nv.Column(
 | `main_alignment` | Horizontal placement | `start` (Left), `center`, `end` (Right), `space-between` (Both ends), `space-around`, `space-evenly` |
 | `cross_alignment` | Vertical alignment | `start` (Top), `center`, `end` (Bottom) |
 
-### Vertical Arrangement (Column)
+### Column
 
 `Column` uses different values for the arranging direction (Vertical=Main) and the crossing direction (Horizontal=Cross).
 
-#### Column `main_alignment` Examples (4 patterns)
+#### `main_alignment` Examples
 
 ```python
 import nuiitivet as nv
@@ -241,7 +241,7 @@ def _panel(alignment: str) -> md.Card:
             width="100%",
         ),
         width=150,
-        padding=12,,
+        padding=12,
         style=md.CardStyle.outlined(),
     )
 
@@ -263,7 +263,7 @@ nv.Column(
 
 ![Column main_alignment examples](../assets/layout_alignment_column.png)
 
-#### Column `cross_alignment` Examples (3 patterns)
+#### `cross_alignment` Examples
 
 ```python
 import nuiitivet as nv
@@ -305,7 +305,7 @@ def _panel(alignment: str) -> md.Card:
             width="100%",
         ),
         width=200,
-        padding=12,,
+        padding=12,
         style=md.CardStyle.outlined(),
     )
 
@@ -331,6 +331,42 @@ nv.Column(
 | --- | --- | --- |
 | `main_alignment` | Vertical placement | `start` (Top), `center`, `end` (Bottom), `space-between` (Both ends) |
 | `cross_alignment` | Horizontal alignment | `start` (Left), `center`, `end` (Right) |
+
+## CrossAligned
+
+`cross_alignment` on `Row` / `Column` applies the same alignment to **all** children.
+Use `CrossAligned` to override the cross-axis alignment of **one specific child** without changing the rest.
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+
+# Column with cross_alignment="start", but the middle tile is centered.
+content = nv.Column(
+    width=240,
+    gap=8,
+    cross_alignment="start",
+    children=[
+        md.Card(md.Text("start (default)"), width=160, height=40),
+        nv.CrossAligned(
+            md.Card(md.Text("center (override)"), width=160, height=40),
+            "center",
+        ),
+        md.Card(md.Text("start (default)"), width=160, height=40),
+        nv.CrossAligned(
+            md.Card(md.Text("end (override)"), width=160, height=40),
+            "end",
+        ),
+    ],
+)
+```
+
+![CrossAligned examples](../assets/layout_alignment_cross_aligned.png)
+
+| Parameter | Meaning | Available Values |
+| --- | --- | --- |
+| `child` | The widget to wrap | Any widget |
+| `alignment` | Cross-axis alignment for this child only | `start`, `center`, `end` |
 
 ## Next Steps
 

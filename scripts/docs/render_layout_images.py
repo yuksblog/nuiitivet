@@ -29,6 +29,7 @@ SAMPLES = [
     ("src/samples/layout_alignment/row_cross_alignment.py", "layout_alignment_row_cross.png"),
     ("src/samples/layout_alignment/column_alignment.py", "layout_alignment_column.png"),
     ("src/samples/layout_alignment/column_cross_alignment.py", "layout_alignment_column_cross.png"),
+    ("src/samples/layout_alignment/cross_aligned_widget.py", "layout_alignment_cross_aligned.png"),
     ("src/samples/layout_basics/basic_column.py", "layout_basics_column.png"),
     ("src/samples/layout_basics/basic_row.py", "layout_basics_row.png"),
     ("src/samples/layout_basics/row_column_combination.py", "layout_basics_form.png"),
