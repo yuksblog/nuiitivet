@@ -154,3 +154,117 @@ icon_with_badge_br = _icon_box().modifier(
 ![Stick Modifier](../assets/modifier_others_stick.png)
 
 The `alignment` parameter sets the reference point on the **target widget**, and `anchor` sets the reference point on the **overlaid widget** that aligns to it. An optional `offset` tuple provides additional pixel adjustment.
+
+## Visible
+
+The `visible()` modifier conditionally shows or hides a widget.
+It is a thin composition of `opacity()` and `ignore_pointer()`:
+while hidden the widget is rendered fully transparent and ignores all pointer input,
+but it **retains its normal layout space** — the surrounding layout is not affected.
+
+### Basic usage
+
+Pass a `bool` or an `Observable[bool]` as the condition:
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+from nuiitivet.material import Card, CardStyle
+from nuiitivet.modifiers import visible
+from nuiitivet.material.styles.text_style import TextStyle
+
+
+def _panel(label: str) -> nv.Widget:
+    return Card(
+        child=md.Text(label, style=TextStyle(font_size=14)),
+        padding=16,
+        width=180,
+        style=CardStyle.filled(),
+    )
+
+
+content = nv.Column(
+    children=[
+        md.Text("visible(True) — always shown", style=TextStyle(font_size=12)),
+        _panel("Always shown").modifier(visible(True)),
+        md.Text("visible(False) — hidden, but layout space preserved", style=TextStyle(font_size=12)),
+        _panel("Never shown").modifier(visible(False)),
+        md.Text("Sibling below: layout space of hidden widget is reserved", style=TextStyle(font_size=12)),
+    ],
+    gap=12,
+    cross_alignment="start",
+    padding=24,
+)
+```
+
+![Visible Static](../assets/modifier_others_visible_static.png)
+
+To make visibility reactive, pass an `Observable[bool]`:
+
+```python
+from nuiitivet.observable import Observable
+
+is_visible: Observable[bool] = Observable(True)
+
+widget.modifier(visible(is_visible))
+```
+
+Whenever `is_visible.value` changes, the widget instantly appears or disappears (no animation).
+
+### Animated usage
+
+Pass a `TransitionDefinition` to animate the transition between hidden and shown states.
+The example below combines a fade and a scale animation:
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+from nuiitivet.animation import LinearMotion
+from nuiitivet.animation.transition_definition import TransitionDefinition
+from nuiitivet.animation.transition_pattern import FadePattern, ScalePattern
+from nuiitivet.material import Card, CardStyle
+from nuiitivet.modifiers import visible
+from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.observable import Observable
+from nuiitivet.widgeting.widget import ComposableWidget
+
+_FADE_SCALE = TransitionDefinition(
+    motion=LinearMotion(0.25),
+    pattern=FadePattern(start_alpha=0.0, end_alpha=1.0)
+    | ScalePattern(start_scale_x=0.9, start_scale_y=0.9, end_scale_x=1.0, end_scale_y=1.0),
+)
+
+
+class MyWidget(ComposableWidget):
+    is_visible: Observable[bool] = Observable(True)
+
+    def build(self) -> nv.Widget:
+        from nuiitivet.material.buttons import Button
+        from nuiitivet.material import ButtonStyle
+
+        def toggle() -> None:
+            self.is_visible.value = not self.is_visible.value
+
+        panel = Card(
+            child=md.Text("Animated widget", style=TextStyle(font_size=14)),
+            padding=16,
+            width=220,
+            style=CardStyle.filled(),
+        )
+
+        return nv.Column(
+            children=[
+                Button("Toggle visibility", on_click=toggle, style=ButtonStyle.filled()),
+                panel.modifier(visible(self.is_visible, transition=_FADE_SCALE)),
+                md.Text("↑ Layout space is always reserved", style=TextStyle(font_size=12)),
+            ],
+            gap=12,
+            cross_alignment="start",
+        )
+```
+
+![Visible Animated](../assets/modifier_others_visible_animated.png)
+
+> **Note:** `visible()` never collapses the widget's layout size.
+> If you need the widget to also shrink or grow in the layout during the animation,
+> use a layout-aware widget instead.
