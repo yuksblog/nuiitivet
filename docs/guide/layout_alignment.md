@@ -341,22 +341,21 @@ Use `CrossAligned` to override the cross-axis alignment of **one specific child*
 import nuiitivet as nv
 import nuiitivet.material as md
 
+
+def _tile(label: str) -> md.Card:
+    return md.Card(md.Text(label), width=160, height=40, alignment="center")
+
+
 # Column with cross_alignment="start", but the middle tile is centered.
 content = nv.Column(
     width=240,
     gap=8,
     cross_alignment="start",
     children=[
-        md.Card(md.Text("start (default)"), width=160, height=40),
-        nv.CrossAligned(
-            md.Card(md.Text("center (override)"), width=160, height=40),
-            "center",
-        ),
-        md.Card(md.Text("start (default)"), width=160, height=40),
-        nv.CrossAligned(
-            md.Card(md.Text("end (override)"), width=160, height=40),
-            "end",
-        ),
+        _tile("start (default)"),
+        nv.CrossAligned(_tile("center (override)"), "center"),
+        _tile("start (default)"),
+        nv.CrossAligned(_tile("end (override)"), "end"),
     ],
 )
 ```
