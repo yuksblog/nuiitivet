@@ -8,6 +8,7 @@ def main(png: str = "") -> None:
             md.Text(label),
             width=width,
             height=height,
+            alignment="center",
         )
 
     # Column with cross_alignment="start"; individual children override via CrossAligned.
