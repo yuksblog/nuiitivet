@@ -25,7 +25,7 @@ age.value = 21
 
 ```python
 subscription = age.subscribe(lambda value: print(value))
-subscription.unsubscribe()
+subscription.dispose()
 ```
 
 In most UI cases, cleanup is handled automatically by the framework lifecycle.
@@ -46,7 +46,7 @@ always_notify = Observable(0, compare=lambda a, b: False)
 def compare_users(a, b):
     if a is None or b is None:
         return a is b
-    return a.id == b.id
+    return a.uid == b.uid
 
 user = Observable(None, compare=compare_users)
 ```
