@@ -76,6 +76,8 @@ SAMPLES = [
     ("src/samples/modifier_others/scrollable.py", "modifier_others_scrollable.png"),
     ("src/samples/modifier_others/will_pop.py", "modifier_others_will_pop.png"),
     ("src/samples/modifier_others/stick.py", "modifier_others_stick.png"),
+    ("src/samples/modifier_others/visible_static.py", "modifier_others_visible_static.png"),
+    ("src/samples/modifier_others/visible_animated.py", "modifier_others_visible_animated.png"),
     # Popup modifiers
     ("src/samples/modifier_popup/modeless_basic.py", "modifier_popup_modeless.png"),
     ("src/samples/modifier_popup/light_dismiss_menu.py", "modifier_popup_light_dismiss.png"),
