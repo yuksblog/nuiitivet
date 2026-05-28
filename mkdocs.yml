@@ -178,6 +178,7 @@ nav:
           - Material Theme: guide/material_theme.md
           - Material Navigator: guide/material_navigator.md
           - Material Widgets: guide/material_widgets.md
+          - Theme Extensions: guide/theme_extensions.md
       - Async & Threading:
           - guide/threading.md
       - Interaction:
