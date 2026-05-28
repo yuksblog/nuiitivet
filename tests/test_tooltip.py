@@ -400,3 +400,61 @@ def test_tooltip_esc_suppression_clears_after_pointer_leaves() -> None:
         assert box._is_open.value is True
     finally:
         _observable_runtime.set_clock(_prev_clock)
+
+
+# ---------------------------------------------------------------------------
+# Issue #169: RichTooltip default width should be auto (fit-to-content)
+# ---------------------------------------------------------------------------
+
+
+def test_rich_tooltip_build_box_has_auto_width_by_default() -> None:
+    """Box returned by build() must have auto width_sizing when no explicit width is given."""
+    from nuiitivet.rendering.sizing import Sizing
+
+    widget = RichTooltip("Supporting text")
+    box = widget.build()
+    assert isinstance(box, Box)
+    assert box.width_sizing == Sizing.auto()
+
+
+def test_rich_tooltip_build_box_has_fixed_width_when_explicit() -> None:
+    """Box returned by build() must have fixed width_sizing when an explicit width is given."""
+    from nuiitivet.rendering.sizing import Sizing
+
+    widget = RichTooltip("Supporting text", width=240)
+    box = widget.build()
+    assert isinstance(box, Box)
+    assert box.width_sizing == Sizing.fixed(240)
+
+
+def test_rich_tooltip_preferred_size_clamps_to_min_width() -> None:
+    """preferred_size() must return at least min_width even for very short content."""
+    style = RichTooltipStyle.standard().copy_with(min_width=500, max_width=1000)
+    widget = RichTooltip("A", style=style)
+    w, _h = widget.preferred_size()
+    assert w >= 500
+
+
+def test_rich_tooltip_preferred_size_respects_max_width_from_style() -> None:
+    """preferred_size() must not exceed max_width from style."""
+    style = RichTooltipStyle.standard().copy_with(min_width=0, max_width=50)
+    widget = RichTooltip("A very long supporting text that would exceed the max width", style=style)
+    w, _h = widget.preferred_size()
+    assert w <= 50
+
+
+def test_rich_tooltip_preferred_size_respects_parent_max_width_constraint() -> None:
+    """preferred_size(max_width=...) must cap width at the given parent constraint."""
+    style = RichTooltipStyle.standard().copy_with(min_width=0, max_width=1000)
+    widget = RichTooltip("Some text", style=style)
+    w, _h = widget.preferred_size(max_width=80)
+    assert w <= 80
+
+
+def test_rich_tooltip_explicit_width_bypasses_auto_clamp() -> None:
+    """When explicit width is set, preferred_size() must reflect the fixed size (no min/max clamping)."""
+    style = RichTooltipStyle.standard().copy_with(min_width=500, max_width=1000)
+    widget = RichTooltip("A", width=200, style=style)
+    w, _h = widget.preferred_size()
+    # Fixed width = 200, which is below min_width=500, but clamping does not apply.
+    assert w == 200

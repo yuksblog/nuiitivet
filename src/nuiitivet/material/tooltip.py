@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Optional, Tuple
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -13,7 +13,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
-from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -134,6 +134,21 @@ class RichTooltip(ComposableWidget):
 
         return RichTooltipStyle.from_theme(Theme.of(self))
 
+    def preferred_size(
+        self,
+        max_width: Optional[int] = None,
+        max_height: Optional[int] = None,
+    ) -> Tuple[int, int]:
+        """Return preferred size clamped to [min_width, max_width] when auto-sized."""
+        if self.width_sizing.kind != "fixed":
+            style = self.style
+            effective_max = style.max_width
+            if max_width is not None:
+                effective_max = min(effective_max, max_width)
+            w, h = super().preferred_size(max_width=effective_max, max_height=max_height)
+            return max(w, style.min_width), h
+        return super().preferred_size(max_width=max_width, max_height=max_height)
+
     def build(self) -> Widget:
         style = self.style
         _shadow = md3_elevation_to_shadow(style.elevation)
@@ -194,7 +209,7 @@ class RichTooltip(ComposableWidget):
             gap=8,
             cross_alignment="start",
         )
-        content_width = self.width_sizing if self.width_sizing.kind == "fixed" else style.min_width
+        content_width = self.width_sizing if self.width_sizing.kind == "fixed" else Sizing.auto()
         return Box(
             child=body,
             width=content_width,

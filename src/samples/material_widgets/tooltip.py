@@ -22,7 +22,6 @@ def main(png_path: str = "") -> None:
                     subhead="Save changes",
                     action_label="Learn more",
                     action_label_2="Dismiss",
-                    width=340,
                 ),
             ],
         ),
