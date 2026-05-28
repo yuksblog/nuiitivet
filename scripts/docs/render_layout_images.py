@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 import skia
 
@@ -126,15 +127,25 @@ SAMPLES = [
     ("src/samples/material_widgets/toolbar.py", "material_widgets_toolbar.png"),
     ("src/samples/material_widgets/menu.py", "material_widgets_menu.png"),
     ("src/samples/material_widgets/tooltip.py", "material_widgets_tooltip.png"),
+    # Theme Extensions
+    ("src/samples/theme_extensions/custom_widget.py", "theme_extensions_custom_widget.png"),
+    ("src/samples/theme_extensions/custom_color_token.py", "theme_extensions_light_dark.png"),
 ]
 
 
 def load_module_from_path(path: Path):
     spec = importlib.util.spec_from_file_location(path.stem, str(path))
     module = importlib.util.module_from_spec(spec)
+    # Register in sys.modules so that @dataclass and other class machinery
+    # can resolve the module by name (sys.modules.get(cls.__module__)).
+    sys.modules[spec.name] = module
     loader = spec.loader
     assert loader is not None
-    loader.exec_module(module)
+    try:
+        loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(spec.name, None)
+        raise
     return module
 
 
