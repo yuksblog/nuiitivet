@@ -142,8 +142,10 @@ nav:
           - Grid: guide/layout_grid.md
           - Overflow: guide/layout_overflow.md
           - Extras: guide/layout_extras.md
-      - Dialogs:
-          - guide/dialogs.md
+      - Overlay:
+          - Overview: guide/overlay.md
+          - Primitives: guide/overlay_primitives.md
+          - Dialogs: guide/dialogs.md
       - Navigation:
           - Overview: guide/navigation.md
           - Route & Animations: guide/navigation_route.md

@@ -12,7 +12,7 @@
 
     The rest of this guide follows this convention.
 
-The base `Overlay` exposes three primitives: `show_modal`, `show_modeless`, and `show_light_dismiss`. `Overlay` wraps these with two additions:
+The base `Overlay` exposes three primitives: `show_modal`, `show_modeless`, and `show_light_dismiss` — see [Primitives](overlay_primitives.md) for details. `MaterialOverlay` wraps these with two additions:
 
 1. **Shortcut methods** — `dialog()`, `snackbar()`, `bottom_sheet()`, `side_sheet()`, `loading()` — each pre-configured with the correct MD3 position and transition.
 2. **Intent resolution** — shortcuts accept plain data objects (intents) in addition to widgets, decoupling business logic from the widget layer.
