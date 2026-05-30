@@ -127,6 +127,7 @@ SAMPLES = [
     ("samples/material_widgets/toolbar.py", "material_widgets_toolbar.png"),
     ("samples/material_widgets/menu.py", "material_widgets_menu.png"),
     ("samples/material_widgets/tooltip.py", "material_widgets_tooltip.png"),
+    ("samples/material_widgets/image.py", "material_widgets_image.png"),
     # Theme Extensions
     ("samples/theme_extensions/custom_widget.py", "theme_extensions_custom_widget.png"),
     ("samples/theme_extensions/custom_color_token.py", "theme_extensions_light_dark.png"),

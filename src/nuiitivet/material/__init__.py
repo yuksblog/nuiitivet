@@ -58,6 +58,7 @@ if TYPE_CHECKING:
         ConnectedButtonGroupStyle,
     )
     from .transition_spec import MaterialTransitionSpec
+    from nuiitivet.widgets.image import Image
 
 __all__ = [
     "App",
@@ -136,6 +137,7 @@ __all__ = [
     "ScaleOut",
     "SlideInVertically",
     "SlideOutVertically",
+    "Image",
 ]
 
 
@@ -217,6 +219,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ScaleOut": ("transitions", "ScaleOut"),
     "SlideInVertically": ("transitions", "SlideInVertically"),
     "SlideOutVertically": ("transitions", "SlideOutVertically"),
+    "Image": ("..widgets.image", "Image"),
 }
 
 
@@ -225,7 +228,10 @@ def __getattr__(name: str) -> Any:
     if spec is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     module_name, attr_name = spec
-    module = importlib.import_module(f"{__name__}.{module_name}")
+    if module_name.startswith("."):
+        module = importlib.import_module(module_name, package=__name__)
+    else:
+        module = importlib.import_module(f"{__name__}.{module_name}")
     return getattr(module, attr_name)
 
 
