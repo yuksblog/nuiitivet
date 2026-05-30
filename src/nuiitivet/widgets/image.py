@@ -8,7 +8,7 @@ from nuiitivet.layout.alignment import AlignmentLike, normalize_alignment
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.rendering.fit import Fit
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.rendering.skia import make_rect
+from nuiitivet.rendering.skia import clip_rect, make_rect
 from nuiitivet.rendering.skia.skia_module import get_skia
 from nuiitivet.widgeting.widget import Widget
 
@@ -156,18 +156,24 @@ class Image(Widget):
             draw_w = float(img_w)
             draw_h = float(img_h)
 
-        dx = float(cx) + max(0.0, float(cw) - draw_w) * fx
-        dy = float(cy) + max(0.0, float(ch) - draw_h) * fy
+        if fit == "none":
+            # Allow negative offsets so alignment works even when the image is
+            # larger than the container (image is centered/aligned and clipped).
+            dx = float(cx) + (float(cw) - draw_w) * fx
+            dy = float(cy) + (float(ch) - draw_h) * fy
+        else:
+            dx = float(cx) + max(0.0, float(cw) - draw_w) * fx
+            dy = float(cy) + max(0.0, float(ch) - draw_h) * fy
 
         if fit == "none" and (draw_w > float(cw) or draw_h > float(ch)):
-            save = getattr(canvas, "save", None)
-            restore = getattr(canvas, "restore", None)
-            clip = getattr(canvas, "clipRect", None)
-            if callable(save) and callable(restore) and callable(clip):
-                save()
-                clip((float(cx), float(cy), float(cx + cw), float(cy + ch)))
+            clip_r = make_rect(cx, cy, cw, ch)
+            save_fn = getattr(canvas, "save", None)
+            restore_fn = getattr(canvas, "restore", None)
+            if callable(save_fn) and callable(restore_fn) and clip_r is not None:
+                save_fn()
+                clip_rect(canvas, clip_r)
                 self._draw_image_rect(canvas, image, (0.0, 0.0, float(img_w), float(img_h)), (dx, dy, draw_w, draw_h))
-                restore()
+                restore_fn()
                 return
 
         self._draw_image_rect(canvas, image, (0.0, 0.0, float(img_w), float(img_h)), (dx, dy, draw_w, draw_h))

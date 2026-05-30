@@ -198,3 +198,13 @@ Contextual hint shown next to a target. `Tooltip` is a plain text label; `RichTo
 ![Tooltip](../assets/material_widgets_tooltip.png)
 
 API References: [Tooltip](../api/material.md#nuiitivet.material.Tooltip) ・ [RichTooltip](../api/material.md#nuiitivet.material.RichTooltip)
+
+---
+
+## Image
+
+`Image` is a primitive widget that is not part of Material Design. Displays a raster image from in-memory bytes. Supports `contain`, `cover`, `fill`, and `none` fit modes.
+
+![Image](../assets/material_widgets_image.png)
+
+[API Reference](../api/widgets.md#nuiitivet.widgets.image.Image)

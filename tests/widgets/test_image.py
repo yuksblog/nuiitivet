@@ -126,13 +126,35 @@ def test_image_fit_none_uses_intrinsic_size(monkeypatch) -> None:
     monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
     monkeypatch.setattr(image_mod, "make_rect", lambda x, y, w, h: (x, y, w, h))
 
+    # Image(200x100) > container(100x100): center alignment offsets dx by -50.
     w = Image(b"ok", fit="none", width=100, height=100)
     canvas = MagicMock()
     w.paint(canvas, 0, 0, 100, 100)
 
+    canvas.save.assert_called_once()
+    canvas.restore.assert_called_once()
     _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
     assert src_rect == (0.0, 0.0, 200.0, 100.0)
-    assert dst_rect == (0.0, 0.0, 200.0, 100.0)
+    assert dst_rect == (-50.0, 0.0, 200.0, 100.0)
+
+
+def test_image_fit_none_no_clip_when_image_fits(monkeypatch) -> None:
+    import nuiitivet.widgets.image as image_mod
+
+    monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
+    monkeypatch.setattr(image_mod, "make_rect", lambda x, y, w, h: (x, y, w, h))
+
+    # Image(200x100) fits inside container(300x200): no save/restore needed.
+    w = Image(b"ok", fit="none", width=300, height=200)
+    canvas = MagicMock()
+    w.paint(canvas, 0, 0, 300, 200)
+
+    canvas.save.assert_not_called()
+    canvas.restore.assert_not_called()
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    assert src_rect == (0.0, 0.0, 200.0, 100.0)
+    # Image centered in 300x200: dx = (300-200)*0.5 = 50, dy = (200-100)*0.5 = 50
+    assert dst_rect == (50.0, 50.0, 200.0, 100.0)
 
 
 def test_image_invalid_source_type_ignored() -> None:
