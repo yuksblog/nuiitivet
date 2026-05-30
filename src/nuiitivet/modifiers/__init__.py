@@ -8,7 +8,6 @@ from .hover import hoverable
 from .ignore_pointer import ignore_pointer
 from .popup import modeless, light_dismiss
 from .tooltip import tooltip
-from .scroll import scrollable
 from .shadow import shadow
 from .stick import stick
 from .transform import opacity, rotate, scale, translate
@@ -30,7 +29,6 @@ __all__ = [
     "tooltip",
     "rotate",
     "scale",
-    "scrollable",
     "shadow",
     "stick",
     "translate",

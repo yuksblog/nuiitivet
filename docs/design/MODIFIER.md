@@ -58,17 +58,10 @@ Many visual Modifiers (such as background, border, padding, etc.) are internally
 * **`clickable(on_click)`**: Processes click events.
 * **`hoverable(on_hover_change)`**: Detects changes in hover state.
 * **`focusable()`**: Makes a widget focusable.
-* **`scrollable(axis)`**: Adds scroll functionality.
 
 Similar to `ModifierBox`, interaction-related Modifiers are aggregated into an `InteractionRegion` wrapper. This widget hosts specialized **Interaction Nodes** (such as `PointerInputNode` or `FocusNode`) that manage input logic and shared interaction states.
 
 For details on the node-based interaction system, see [INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md).
-
-### Scrolling
-
-* **`scrollable(axis, show_scrollbar)`**: Adds scroll functionality to a widget.
-* **Mechanism**: Internally wraps the target widget with a `Scroller` widget.
-* **Integration**: The `Scroller` manages viewport clipping, scroll offsets, and optional scrollbar rendering based on the specified axis (`x` or `y`).
 
 ### WillPop
 

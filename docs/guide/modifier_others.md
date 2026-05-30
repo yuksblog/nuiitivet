@@ -1,28 +1,6 @@
 # Other Modifiers
 
-Other modifiers provide additional functionalities to Widgets, such as scrollability and handling back navigation.
-
-## Scrollable
-
-You can make a Widget scrollable using the `scrollable` modifier. It takes an `axis` parameter that specifies the scroll direction (`"x"`, `"y"`, or `"both"`).
-
-```python
-from nuiitivet.modifiers import background, scrollable
-
-items = [
-    Container(child=Text(f"Item {i}")).modifier(background("#E0E0E0"))
-    for i in range(10)
-]
-
-# Scrollable list
-content = Container(
-    width=250,
-    height=200,
-    child=Column(children=items, gap=8),
-).modifier(scrollable(axis="y"))
-```
-
-![Scrollable](../assets/modifier_others_scrollable.png)
+Other modifiers provide additional functionalities to Widgets, such as handling back navigation.
 
 ## Will Pop
 
