@@ -141,7 +141,7 @@ def test_typeface_from_file_fallback_and_cache(monkeypatch: pytest.MonkeyPatch, 
 
 
 def test_widgets_have_no_direct_skia_imports_or_symbol_usage() -> None:
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     widgets_dir = root / "src" / "nuiitivet" / "widgets"
 
     py_files = sorted(widgets_dir.rglob("*.py"))
