@@ -60,7 +60,7 @@ jobs:
         run: uv run mypy
 
       - name: Run flake8
-        run: uv run flake8 src tests --max-line-length=120 --extend-ignore=E203
+        run: uv run flake8 src tests samples --max-line-length=120 --extend-ignore=E203
 
       - name: Run pytest
         run: uv run pytest

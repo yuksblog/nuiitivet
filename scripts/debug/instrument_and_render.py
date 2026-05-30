@@ -2,7 +2,7 @@
 
 This script monkey-patches common widget classes to log CALL/RETURN for
 `paint` and `preferred_size` (and ForEach._rebuild), then executes the
-sample at `src/samples/my_widget.py` as `__main__` to capture runtime
+sample at `samples/my_widget.py` as `__main__` to capture runtime
 behavior and produce a headless PNG.
 """
 
@@ -118,7 +118,7 @@ def main() -> int:
     apply_wraps(TARGETS)
 
     # Execute the sample as __main__ so its top-level behavior runs here.
-    sample_path = "src/samples/my_widget.py"
+    sample_path = "samples/my_widget.py"
     print(f"Running sample: {sample_path}", flush=True)
     try:
         ns = runpy.run_path(sample_path, run_name="__main__")

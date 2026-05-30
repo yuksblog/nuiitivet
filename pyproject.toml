@@ -59,7 +59,7 @@ docs = [
 ]
 
 [tool.mypy]
-files = ["src", "tests"]
+files = ["src", "tests", "samples"]
 mypy_path = "stubs"
 
 [tool.setuptools.packages.find]
