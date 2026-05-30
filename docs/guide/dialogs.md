@@ -12,7 +12,7 @@ The `dialog()` method is **awaitable**, meaning you can wait for the user to clo
 
 ```python
 from nuiitivet.material import ButtonStyle
-# src/samples/dialogs/basic_usage.py (Excerpt)
+# samples/dialogs/basic_usage.py (Excerpt)
 
 class BasicDialogDemo(ComposableWidget):
     result_text: Observable[str] = Observable("Ready")
@@ -75,7 +75,7 @@ You are not limited to `BasicDialog`. Any Widget can be shown in the overlay. Th
 
 ```python
 from nuiitivet.material import ButtonStyle
-# src/samples/dialogs/custom_dialog.py (Excerpt)
+# samples/dialogs/custom_dialog.py (Excerpt)
 
 class CustomDialogContent(ComposableWidget):
     """A completely custom widget to be used as a dialog."""
@@ -130,7 +130,7 @@ The type parameter `T` describes the result type returned from
 `handle.close(value)` / `await handle`.
 
 ```python
-# src/samples/dialogs/custom_dialog_overlay_aware.py (Excerpt)
+# samples/dialogs/custom_dialog_overlay_aware.py (Excerpt)
 
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.material import ButtonStyle
@@ -192,7 +192,7 @@ One approach is to have the ViewModel create Widgets directly. While simple to i
 
 ```python
 from nuiitivet.material import ButtonStyle
-# src/samples/dialogs/view_model_direct.py (Excerpt)
+# samples/dialogs/view_model_direct.py (Excerpt)
 
 class CoupledViewModel:
     """
@@ -232,7 +232,7 @@ For those who prefer a stricter separation of concerns, nuiitivet supports **Int
 By using `BasicDialogIntent`, the ViewModel remains pure logic.
 
 ```python
-# src/samples/dialogs/view_model_intent.py (Excerpt)
+# samples/dialogs/view_model_intent.py (Excerpt)
 
 from nuiitivet.material.intents import BasicDialogIntent
 
@@ -271,7 +271,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 1. **Define the Intent**: A simple data class.
 
    ```python
-   # src/samples/dialogs/custom_intent.py (Excerpt)
+   # samples/dialogs/custom_intent.py (Excerpt)
 
    @dataclass(frozen=True)
    class CounterIntent:

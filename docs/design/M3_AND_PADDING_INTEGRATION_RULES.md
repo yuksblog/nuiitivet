@@ -424,7 +424,7 @@ Specify whether "the size changes" or "only the rendering changes" for each stat
 - Ensure `hit_test` follows the `allocated rect`.
 - Ensure visible region constraints of clip/viewport are not broken.
 
-If possible, prepare visual verification samples in `src/samples/*_demo.py` simultaneously.
+If possible, prepare visual verification samples in `samples/*_demo.py` simultaneously.
 
 ## Template: From Specification to Implementation
 

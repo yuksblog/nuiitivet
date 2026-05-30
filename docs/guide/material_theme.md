@@ -77,7 +77,7 @@ class HomeScreen(ComposableWidget):
 App(HomeScreen(), theme=light).run()
 ```
 
-See the full runnable demo: `src/samples/material_theme/light_dark_toggle.py`
+See the full runnable demo: `samples/material_theme/light_dark_toggle.py`
 
 ### Multiple Themes
 
@@ -107,7 +107,7 @@ app.run()
 App.of(self).dispatch(ThemeModeIntent(theme="forest-dark"))
 ```
 
-See the full runnable demo: `src/samples/material_theme/multiple_themes.py`
+See the full runnable demo: `samples/material_theme/multiple_themes.py`
 
 !!! note "Registry keys and `from_seed_pair` names"
     `from_seed_pair` accepts an optional `name` argument, but it assigns the **same** label to both the light and dark `Theme` — no `-light` / `-dark` suffix is appended automatically. The dictionary keys in `ThemeRegistryIntent` are the actual lookup keys; choose them freely.
