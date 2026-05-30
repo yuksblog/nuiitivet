@@ -58,24 +58,28 @@ md.Card(
 
 ![Clipped overflow example](../assets/layout_overflow_clipped.png)
 
-## Making Scrollable (Scrollable)
+## Making Scrollable (Scroller)
 
-To view the overflowing part by scrolling, use `.modifier(scrollable(...))`.
-This is the easiest way to wrap `Column` or `Row` and make it a scrollable area.
+To view the overflowing part by scrolling, use the `Scroller` widget.
+Wrap `Column` or `Row` with `Scroller` to create a scrollable area.
 
 ```python
 import nuiitivet as nv
 import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+from nuiitivet.layout.scroller import Scroller
 
 # Even with many items, you can scroll within the specified height (300px)
 nv.Container(
     height=300,
-    child=nv.Column(
-        children=[md.Text(f"Item {i}") for i in range(50)],
-        gap=8,
-        padding=16,
-    ).modifier(mod.scrollable(axis="y", show_scrollbar=True)),
+    child=Scroller(
+        child=nv.Column(
+            children=[md.Text(f"Item {i}") for i in range(50)],
+            gap=8,
+            padding=16,
+        ),
+        direction="vertical",
+        scrollbar_enabled=True,
+    ),
 )
 ```
 
@@ -83,8 +87,8 @@ nv.Container(
 
 | Argument | Description |
 | --- | --- |
-| `axis` | Scroll direction (`"x"`, `"y"`, `"xy"`, `"auto"`) |
-| `show_scrollbar` | Whether to display scrollbar (`True`/`False`) |
+| `direction` | Scroll direction (`"vertical"` or `"horizontal"`) |
+| `scrollbar_enabled` | Whether to display scrollbar (`True`/`False`) |
 
 ## Next Steps
 

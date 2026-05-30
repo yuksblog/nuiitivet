@@ -41,7 +41,7 @@ Refer to the following guides based on what you want to create.
 | Partitioning like header/sidebar | [layout_grid.md](layout_grid.md) | `Grid` |
 | Overlay elements (Badges, backgrounds, etc.) | [layout_extras.md](layout_extras.md) | `Stack` |
 | Create wrapping lists (Tag lists, etc.) | [layout_extras.md](layout_extras.md) | `Flow` |
-| Make scrollable | [layout_overflow.md](layout_overflow.md) | `scrollable` |
+| Make scrollable | [layout_overflow.md](layout_overflow.md) | `Scroller` |
 | Create tab switching | [layout_extras.md](layout_extras.md) | `Deck` |
 
 ## More Details
