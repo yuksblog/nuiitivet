@@ -116,9 +116,6 @@ class Icon(IconBase):
         self._apply_name(resolved_name)
 
         self._size = _pixel_size_from_sizing(size)
-
-        # Optional font_file path or filename (relative to package symbols/)
-        self.font_file: Optional[str] = None
         self._font_file_candidates: Tuple[str, ...] = ("MaterialIcons-Regular.ttf",)
         # Cache typeface to avoid repeated _load_typeface calls on every paint
         self._cached_typeface: Optional[object] = None
@@ -157,29 +154,6 @@ class Icon(IconBase):
             return str(self.style.family)
         except Exception:
             return "outlined"
-
-    @classmethod
-    def file(
-        cls,
-        name: Symbol | str,
-        file: str,
-        *,
-        size: SizingLike = 24,
-        padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = None,
-        style: Optional["IconStyle"] = None,
-    ) -> "Icon":
-        """Create an icon using a specific font file.
-
-        Args:
-            name: Ligature name or Symbol.
-            file: Path to the font file.
-            size: Icon size.
-            padding: Padding around the icon.
-            style: IconStyle for customization.
-        """
-        icon = cls(name, size=size, padding=padding, style=style)
-        icon.font_file = file
-        return icon
 
     def on_mount(self) -> None:
         super().on_mount()
@@ -412,13 +386,6 @@ class Icon(IconBase):
         # Always include any discovered legacy/common fallback (already covered by combined_files)
 
         # If caller specified a font_file, try it first (absolute or relative)
-        if self.font_file:
-            if os.path.isabs(self.font_file):
-                add_candidate(self.font_file)
-            else:
-                for font_dir in font_dirs:
-                    add_candidate(os.path.join(font_dir, self.font_file))
-
         # Add any other ttf/otf in the directory as fallbacks
         for font_dir in font_dirs:
             try:
@@ -433,13 +400,6 @@ class Icon(IconBase):
         # name before attempting filesystem lookups. This covers the case
         # where fonts are bundled inside the package (wheel/zip).
         if symbols_root is not None:
-            # Try explicit font_file first
-            if self.font_file:
-                fname = os.path.basename(self.font_file)
-                tf = _try_load_from_resources(fname)
-                if tf is not None:
-                    return tf
-
             # Try style-specific files
             for fn in combined_files:
                 tf = _try_load_from_resources(fn)
@@ -451,8 +411,14 @@ class Icon(IconBase):
             if tf is not None:
                 return tf
 
-        # Family candidates from _candidate_families()
-        family_candidates = tuple(self._candidate_families())
+        # Family candidates: style.custom_font_family takes priority
+        _base_families = self._candidate_families()
+        _custom = self.style.custom_font_family
+        if _custom:
+            _seen: set[str] = {_custom}
+            family_candidates = tuple([_custom] + [f for f in _base_families if f not in _seen])
+        else:
+            family_candidates = tuple(_base_families)
 
         # Use get_typeface: it returns a Typeface or None
         try:

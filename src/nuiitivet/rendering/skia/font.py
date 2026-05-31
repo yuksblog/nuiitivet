@@ -14,7 +14,6 @@ from nuiitivet.common.logging_once import debug_once, exception_once
 
 from .skia_module import get_skia
 
-
 logger = logging.getLogger(__name__)
 
 # Simple typeface cache to avoid repeated disk/API calls
@@ -28,6 +27,9 @@ _TYPEFACE_ID_REGISTRY: "weakref.WeakValueDictionary[int, object]" = weakref.Weak
 # User defined default font family
 _USER_DEFAULT_FONT_FAMILY: Optional[str] = None
 
+# Registry mapping custom family names to font file paths (populated by register_font)
+_FONT_REGISTRY: dict[str, str] = {}
+
 
 def set_default_font_family(family_name: Optional[str]) -> None:
     """Set the system-wide default font family.
@@ -37,6 +39,22 @@ def set_default_font_family(family_name: Optional[str]) -> None:
     """
     global _USER_DEFAULT_FONT_FAMILY
     _USER_DEFAULT_FONT_FAMILY = family_name
+
+
+def register_font(path: str, family_name: str) -> None:
+    """Register a font file under a custom family name.
+
+    Call this at application startup before any rendering. Once registered,
+    the family name can be used wherever a ``font_family`` is accepted (e.g.
+    ``TextStyle(font_family=...)``, ``Icon(..., font_family=...)``).
+
+    Fonts are loaded lazily on first use and cached for subsequent calls.
+
+    Args:
+        path: Absolute or relative path to a ``.ttf`` or ``.otf`` font file.
+        family_name: The name to associate with this font.
+    """
+    _FONT_REGISTRY[family_name] = path
 
 
 def get_default_font_fallbacks() -> Tuple[str, ...]:
@@ -269,6 +287,24 @@ def get_typeface(
                     "Unexpected error while scanning candidate font files",
                 )
                 continue
+
+    # Check user-registered fonts before system font matching.
+    if family_candidates:
+        for family in family_candidates:
+            registered_path = _FONT_REGISTRY.get(family)
+            if registered_path is not None:
+                try:
+                    tf = typeface_from_file(registered_path)
+                    if tf is not None:
+                        _TYPEFACE_CACHE[key] = tf
+                        return tf
+                except Exception:
+                    exception_once(
+                        logger,
+                        "get_typeface_registry_exc",
+                        "typeface_from_file failed for registered font (family=%s)",
+                        family,
+                    )
 
     try:
         font_mgr = skia.FontMgr.RefDefault()
@@ -565,6 +601,7 @@ def _clear_typeface_caches_for_tests() -> None:
     try:
         _TYPEFACE_CACHE.clear()
         _TYPEFACE_DIRECT_CACHE.clear()
+        _FONT_REGISTRY.clear()
     except Exception:
         exception_once(logger, "clear_typeface_caches_exc", "Failed to clear typeface caches")
 
@@ -573,6 +610,7 @@ __all__ = [
     "get_typeface",
     "get_default_font_fallbacks",
     "set_default_font_family",
+    "register_font",
     "typeface_from_bytes",
     "typeface_from_file",
     "make_font",
