@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import base64
-import os
-import sys
+from pathlib import Path
 
 import pytest
 
@@ -109,7 +108,7 @@ class TestGetTypefaceWithRegistry:
     def teardown_method(self) -> None:
         _reset_state()
 
-    def test_registered_family_resolves_typeface(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_registered_family_resolves_typeface(self, tmp_path: Path) -> None:
         font_path = tmp_path / "TestFont.ttf"
         font_path.write_bytes(_minimal_ttf_bytes())
 
@@ -123,7 +122,7 @@ class TestGetTypefaceWithRegistry:
         # but should never raise.
         assert tf is None or tf is not None  # resolves without error
 
-    def test_unregistered_family_falls_through(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_unregistered_family_falls_through(self, tmp_path: Path) -> None:
         from nuiitivet.rendering.skia.font import get_typeface
 
         # No registration — should not raise, just return None or a system font.
@@ -132,7 +131,7 @@ class TestGetTypefaceWithRegistry:
         except Exception as exc:  # pragma: no cover
             pytest.fail(f"get_typeface raised unexpectedly: {exc}")
 
-    def test_registered_family_cached_on_second_call(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_registered_family_cached_on_second_call(self, tmp_path: Path) -> None:
         font_path = tmp_path / "TestFont.ttf"
         font_path.write_bytes(_minimal_ttf_bytes())
 
@@ -149,7 +148,7 @@ class TestGetTypefaceWithRegistry:
         assert key in _TYPEFACE_CACHE
 
     def test_typeface_from_file_used_for_registered_font(
-        self, tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Verify get_typeface resolves via typeface_from_file for registry entries."""
         font_path = tmp_path / "TestFont.ttf"
