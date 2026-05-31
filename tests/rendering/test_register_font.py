@@ -147,9 +147,7 @@ class TestGetTypefaceWithRegistry:
         # After the first call the result (whatever it is) must be cached.
         assert key in _TYPEFACE_CACHE
 
-    def test_typeface_from_file_used_for_registered_font(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_typeface_from_file_used_for_registered_font(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verify get_typeface resolves via typeface_from_file for registry entries."""
         font_path = tmp_path / "TestFont.ttf"
         font_path.write_bytes(_minimal_ttf_bytes())
