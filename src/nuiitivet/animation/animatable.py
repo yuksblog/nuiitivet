@@ -88,6 +88,47 @@ class Animatable(Generic[T]):
 
         self._start_ticking()
 
+    def snap_to(self, value: T) -> None:
+        """Immediately set both value and target without animating.
+
+        Stops any active motion and resets the resolved value and target to
+        ``value``. Useful for establishing an initial state before the first
+        animated transition.
+
+        Args:
+            value: New current and target value.
+        """
+        self._stop_ticking()
+        self._target = value
+        self._value.value = value
+        if self._motion is not None:
+            vector = self._converter.to_vector(value)
+            if self._state is None:
+                self._state = self._motion.create_state(vector, vector)
+            else:
+                self._state.value = vector.copy()
+                self._state.start = vector.copy()
+                self._state.target = vector.copy()
+                self._state.velocity = [0.0 for _ in vector]
+                self._state.done = True
+
+    def set_motion(self, motion: Motion) -> None:
+        """Replace the active motion model.
+
+        Useful when the same animatable must switch motions depending on
+        direction (e.g. distinct enter/exit timing). Any in-flight motion
+        continues from its current value/velocity using the new motion on the
+        next ``target`` assignment.
+
+        Args:
+            motion: New motion model to drive subsequent retargets.
+        """
+        self._motion = motion
+        if self._state is None:
+            current_vector = self._converter.to_vector(self.value)
+            target_vector = self._converter.to_vector(self._target)
+            self._state = motion.create_state(current_vector, target_vector)
+
     def stop(self) -> None:
         """Stop any active motion and keep the current value."""
         self._stop_ticking()
