@@ -89,6 +89,7 @@ class _AnimatedVisibleBox(Widget):
         child: Widget,
         condition: VisibleConditionLike,
         transition: TransitionDefinition,
+        transition_out: Optional[TransitionDefinition] = None,
     ) -> None:
         super().__init__(
             width=child.width_sizing,
@@ -97,8 +98,12 @@ class _AnimatedVisibleBox(Widget):
             overflow_policy="replace_last",
         )
         self._condition: VisibleConditionLike = condition
-        self._transition: TransitionDefinition = transition
+        self._transition_in: TransitionDefinition = transition
+        self._transition_out: TransitionDefinition = transition_out if transition_out is not None else transition
         self._logical_visible: bool = _read_initial_condition(condition)
+        self._active_transition: TransitionDefinition = (
+            self._transition_in if self._logical_visible else self._transition_out
+        )
         self._progress: float = 1.0 if self._logical_visible else 0.0
         self._animatable: Optional[Animatable[float]] = None
         self._animatable_subscription: Optional["Disposable"] = None
@@ -118,14 +123,16 @@ class _AnimatedVisibleBox(Widget):
         if next_visible == self._logical_visible:
             return
         self._logical_visible = next_visible
+        self._active_transition = self._transition_in if next_visible else self._transition_out
         animatable = self._ensure_animatable()
+        animatable.set_motion(self._active_transition.motion)
         animatable.target = 1.0 if next_visible else 0.0
         self.invalidate()
 
     def _ensure_animatable(self) -> Animatable[float]:
         if self._animatable is not None:
             return self._animatable
-        animatable: Animatable[float] = Animatable(self._progress, motion=self._transition.motion)
+        animatable: Animatable[float] = Animatable(self._progress, motion=self._active_transition.motion)
         self._animatable = animatable
 
         def _on_progress(value: float) -> None:
@@ -161,7 +168,7 @@ class _AnimatedVisibleBox(Widget):
 
     def _resolve_visuals(self) -> Optional[TransitionVisuals]:
         try:
-            return self._transition.pattern.resolve(self._progress)
+            return self._active_transition.pattern.resolve(self._progress)
         except Exception:
             exception_once(
                 logger,
@@ -322,9 +329,10 @@ class _AnimatedVisibleModifier(ModifierElement):
 
     condition: VisibleConditionLike
     transition: TransitionDefinition
+    transition_out: Optional[TransitionDefinition] = None
 
     def apply(self, widget: Widget) -> Widget:
-        paint_box = _AnimatedVisibleBox(widget, self.condition, self.transition)
+        paint_box = _AnimatedVisibleBox(widget, self.condition, self.transition, self.transition_out)
         return IgnorePointerBox(paint_box, _hidden_observable(self.condition))
 
 
@@ -332,6 +340,7 @@ def visible(
     condition: VisibleConditionLike,
     *,
     transition: Optional[TransitionDefinition] = None,
+    transition_out: Optional[TransitionDefinition] = None,
 ) -> ModifierElement:
     """Toggle a widget's visibility as a thin composition of ``opacity()`` + ``ignore_pointer()``.
 
@@ -345,6 +354,9 @@ def visible(
         transition: Optional :class:`TransitionDefinition` whose pattern drives
             the ``opacity`` (and optional ``scale`` / ``translate``) animation
             on enter / exit. When omitted, visibility flips instantly.
+        transition_out: Optional :class:`TransitionDefinition` applied only on
+            exit (becoming hidden). When omitted, *transition* is used for both
+            directions. Has no effect unless *transition* is also provided.
 
     Returns:
         A :class:`ModifierElement` to apply via ``widget.modifier(...)``. With
@@ -361,7 +373,11 @@ def visible(
         composed = composed.then(opacity(_opacity_observable(condition)))
         composed = composed.then(ignore_pointer(_hidden_observable(condition)))
         return composed
-    return _AnimatedVisibleModifier(condition=condition, transition=transition)
+    return _AnimatedVisibleModifier(
+        condition=condition,
+        transition=transition,
+        transition_out=transition_out,
+    )
 
 
 __all__ = [

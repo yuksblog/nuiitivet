@@ -225,6 +225,69 @@ def test_visible_with_transition_enter_animates_progress_up() -> None:
         observable_runtime.set_clock(prev_clock)
 
 
+def test_visible_transition_out_used_on_exit() -> None:
+    prev_clock = observable_runtime.clock
+    fake_clock = _FakeClock()
+    observable_runtime.set_clock(fake_clock)
+    try:
+        cond = _ObservableValue(True)
+        child = _make_child()
+        # Slow enter (1.0s), fast exit (0.1s) with distinct definitions.
+        transition = TransitionDefinition(
+            motion=LinearMotion(1.0),
+            pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
+        )
+        transition_out = TransitionDefinition(
+            motion=LinearMotion(0.1),
+            pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
+        )
+        wrapped = child.modifier(visible(cond, transition=transition, transition_out=transition_out))
+        assert isinstance(wrapped, IgnorePointerBox)
+        paint_box = wrapped.children[0]
+        assert isinstance(paint_box, _AnimatedVisibleBox)
+
+        app = _DummyApp()
+        wrapped.mount(app)
+        assert paint_box._progress == 1.0
+
+        # Trigger exit: motion_out is fast (0.1s); after ~0.12s fully hidden.
+        cond.value = False
+        fake_clock.advance(0.12)
+        assert paint_box._progress == 0.0
+    finally:
+        observable_runtime.set_clock(prev_clock)
+
+
+def test_visible_transition_out_omitted_falls_back_to_transition() -> None:
+    prev_clock = observable_runtime.clock
+    fake_clock = _FakeClock()
+    observable_runtime.set_clock(fake_clock)
+    try:
+        cond = _ObservableValue(True)
+        child = _make_child()
+        transition = TransitionDefinition(
+            motion=LinearMotion(1.0),
+            pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
+        )
+        wrapped = child.modifier(visible(cond, transition=transition))
+        paint_box = wrapped.children[0]
+        assert isinstance(paint_box, _AnimatedVisibleBox)
+        # transition_out falls back to transition for the exit direction.
+        assert paint_box._transition_out is paint_box._transition_in
+
+        app = _DummyApp()
+        wrapped.mount(app)
+
+        # Exit uses the same 1.0s motion: halfway at 0.5s.
+        cond.value = False
+        fake_clock.advance(0.5)
+        assert 0.4 <= paint_box._progress <= 0.6
+        fake_clock.advance(0.5)
+        assert paint_box._progress == 0.0
+    finally:
+        observable_runtime.set_clock(prev_clock)
+
+
 def test_visible_chains_with_other_modifiers() -> None:
     from nuiitivet.modifiers import opacity
 
