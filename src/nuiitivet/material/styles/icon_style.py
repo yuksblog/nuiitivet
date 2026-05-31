@@ -6,7 +6,7 @@ reorg.
 """
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
@@ -43,6 +43,9 @@ class IconStyle:
         "Material Symbols Sharp",
         "Material Icons",
     )
+
+    # Custom icon font registered via register_font(); overrides built-in font lookup.
+    custom_font_family: Optional[str] = None
 
     # Material style mapping (for font family selection)
     style_to_family: dict[str, str] = None  # type: ignore[assignment]

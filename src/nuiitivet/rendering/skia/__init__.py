@@ -20,6 +20,7 @@ from .font import (
     typeface_from_bytes,
     typeface_from_file,
     get_default_font_fallbacks,
+    register_font,
 )
 from .geometry import (
     make_rect,
@@ -65,6 +66,7 @@ __all__ = [
     "typeface_from_bytes",
     "typeface_from_file",
     "get_default_font_fallbacks",
+    "register_font",
     "make_font",
     "make_text_blob",
     "measure_text_ink_bounds",

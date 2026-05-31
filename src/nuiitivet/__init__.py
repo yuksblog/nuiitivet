@@ -24,7 +24,7 @@ from nuiitivet.navigation import Navigator
 from nuiitivet.observable import Observable, batch
 
 # Configuration
-from nuiitivet.rendering.skia.font import set_default_font_family
+from nuiitivet.rendering.skia.font import set_default_font_family, register_font
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
 
 __all__: list[str] = [
@@ -49,4 +49,5 @@ __all__: list[str] = [
     "Observable",
     "batch",
     "set_default_font_family",
+    "register_font",
 ]
