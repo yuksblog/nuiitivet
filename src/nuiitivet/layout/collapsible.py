@@ -1,34 +1,29 @@
-"""SizeTransition - animate a child's layout size as it changes.
+"""Collapsible - animate a child's layout size as it opens and closes.
 
-``SizeTransition`` participates in the *layout* phase: it interpolates the
+``Collapsible`` participates in the *layout* phase: it interpolates the
 allocated width/height it reports to its parent so that a child growing or
-shrinking (or being collapsed via ``condition``) does so smoothly instead of
-snapping.
+collapsing does so smoothly instead of snapping.
 
 This is the layout-aware counterpart of the paint-only ``visible()`` modifier.
 Use ``visible()`` for opacity/scale fades that keep their layout space; use
-``SizeTransition`` when the layout footprint itself must animate (side sheets,
+``Collapsible`` when the layout footprint itself must animate (side sheets,
 expandable panels, etc.).
 
-Following the framework's overflow philosophy (see ``docs/design/LAYOUT.md``),
-``SizeTransition`` does **not** clip its child: clipping is the responsibility
-of the ``clip()`` modifier. While the animated rectangle is smaller than the
-child's natural size the child overflows by default; wrap the widget in
-``clip()`` when the overflow must be hidden::
+Clipping is applied internally at all times; no ``clip()`` modifier is needed::
 
-    SizeTransition(panel, condition=vm.is_open).modifier(clip())
+    Collapsible(panel, opened=vm.is_open)
 
 Usage::
 
-    # Follow the child's natural size changes.
-    SizeTransition(my_panel)
+    # Simple vertical expand/collapse driven by an observable.
+    Collapsible(my_panel, opened=vm.is_open)
 
-    # Open / close along the horizontal axis with distinct exit timing.
-    SizeTransition(
+    # Horizontal axis with distinct exit timing.
+    Collapsible(
         my_panel,
-        condition=vm.is_open,
+        opened=vm.is_open,
         axis="horizontal",
-        motion=EXPRESSIVE_DEFAULT_SPATIAL,   # design-layer curve (optional)
+        motion=EXPRESSIVE_DEFAULT_SPATIAL,
         motion_out=EXPRESSIVE_FAST_SPATIAL,
     )
 """
@@ -44,6 +39,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import normalize_alignment
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.rendering.skia.geometry import clip_rect, make_rect
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -53,61 +49,58 @@ logger = logging.getLogger(__name__)
 
 
 Axis = Literal["both", "horizontal", "vertical"]
-ConditionLike = Union[bool, ReadOnlyObservableProtocol[bool]]
 
 # Sub-pixel changes below this threshold do not trigger a retarget.
 _EPSILON = 0.5
 
 # Default size motion. Defined locally so this widget depends only on the
-# animation layer (avoids a widgets -> material cross dependency). Design
+# animation layer (avoids a layout -> material cross dependency). Design
 # layers may pass an explicit ``motion`` to apply M3 expressive curves.
 _DEFAULT_MOTION: Motion = BezierMotion(0.38, 1.21, 0.22, 1.00, 0.50)
 
 
-def _read_condition(condition: ConditionLike) -> bool:
-    if isinstance(condition, ReadOnlyObservableProtocol):
+def _read_opened(opened: Union[bool, ReadOnlyObservableProtocol[bool]]) -> bool:
+    if isinstance(opened, ReadOnlyObservableProtocol):
         try:
-            return bool(condition.value)
+            return bool(opened.value)
         except Exception:
             exception_once(
                 logger,
-                "size_transition_condition_read_exc",
-                "Failed to read SizeTransition condition observable",
+                "collapsible_opened_read_exc",
+                "Failed to read Collapsible opened observable",
             )
             return True
-    return bool(condition)
+    return bool(opened)
 
 
-class SizeTransition(Widget):
-    """Single-child widget that animates its layout size.
+class Collapsible(Widget):
+    """Single-child widget that animates its layout size open and closed.
 
     The child is always mounted and laid out at its own natural size; the
-    *allocated* rectangle reported to the parent is interpolated per axis. While
-    the size is smaller than the child's natural size, the child overflows the
-    allocated rectangle (positioned by ``alignment``) and is not clipped. Wrap
-    the widget in the ``clip()`` modifier to hide the overflow.
+    *allocated* rectangle reported to the parent is interpolated per axis.
+    The animated rectangle is clipped internally, so the child never overflows
+    its allocated bounds.
     """
 
     def __init__(
         self,
         child: Optional[Widget] = None,
         *,
-        condition: Optional[ConditionLike] = None,
+        opened: Union[bool, ReadOnlyObservableProtocol[bool]] = True,
         motion: Motion = _DEFAULT_MOTION,
         motion_out: Optional[Motion] = None,
         axis: Axis = "both",
         alignment: Union[str, Tuple[str, str]] = "top_left",
     ) -> None:
-        """Initialize a SizeTransition.
+        """Initialize a Collapsible.
 
         Args:
             child: The ``Widget`` whose layout size is animated.
-            condition: Optional ``bool`` / ``Observable[bool]``. When ``False``
-                the child collapses to zero size along the animated axes; when
-                ``True`` it expands to the child's natural size. When omitted,
-                the widget simply follows the child's natural size changes.
-            motion: Base motion used for both grow (enter) and shrink (exit).
-            motion_out: Optional motion that overrides only the shrink (exit)
+            opened: ``bool`` / ``Observable[bool]``. When ``False`` the child
+                collapses to zero size along the animated axes; when ``True``
+                it expands to the child's natural size.
+            motion: Base motion used for both open (enter) and close (exit).
+            motion_out: Optional motion that overrides only the close (exit)
                 direction. When omitted, ``motion`` is used for both.
             axis: Which axis/axes to animate (``"both"``, ``"horizontal"``,
                 ``"vertical"``). Axes that are not animated pass the child's
@@ -115,7 +108,7 @@ class SizeTransition(Widget):
             alignment: Alignment of the child within the animated rectangle.
         """
         super().__init__(max_children=1, overflow_policy="replace_last")
-        self._condition = condition
+        self._opened: Union[bool, ReadOnlyObservableProtocol[bool]] = opened
         self._motion_in = motion
         self._motion_out = motion_out if motion_out is not None else motion
         self._axis: Axis = axis
@@ -148,8 +141,8 @@ class SizeTransition(Widget):
         super().on_mount()
         self._width_sub = self._width_anim.subscribe(self._on_tick)
         self._height_sub = self._height_anim.subscribe(self._on_tick)
-        if isinstance(self._condition, ReadOnlyObservableProtocol):
-            self.observe(self._condition, self._on_condition_changed)
+        if isinstance(self._opened, ReadOnlyObservableProtocol):
+            self.observe(self._opened, self._on_opened_changed)
 
     def on_unmount(self) -> None:
         self._dispose_subscription(self._width_sub)
@@ -162,8 +155,8 @@ class SizeTransition(Widget):
         except Exception:
             exception_once(
                 logger,
-                "size_transition_stop_exc",
-                "SizeTransition failed to stop animatables on unmount",
+                "collapsible_stop_exc",
+                "Collapsible failed to stop animatables on unmount",
             )
         super().on_unmount()
 
@@ -177,15 +170,15 @@ class SizeTransition(Widget):
             except Exception:
                 exception_once(
                     logger,
-                    "size_transition_unsubscribe_exc",
-                    "SizeTransition failed to dispose subscription",
+                    "collapsible_unsubscribe_exc",
+                    "Collapsible failed to dispose subscription",
                 )
 
     def _on_tick(self, _: float) -> None:
         self.mark_needs_layout()
         self.invalidate()
 
-    def _on_condition_changed(self, _: bool) -> None:
+    def _on_opened_changed(self, _: bool) -> None:
         # Re-measure and retarget on the next layout pass.
         self.mark_needs_layout()
         self.invalidate()
@@ -200,8 +193,8 @@ class SizeTransition(Widget):
         except Exception:
             exception_once(
                 logger,
-                "size_transition_measure_exc",
-                "SizeTransition failed to measure child preferred size",
+                "collapsible_measure_exc",
+                "Collapsible failed to measure child preferred size",
             )
             return (0, 0)
 
@@ -213,11 +206,11 @@ class SizeTransition(Widget):
         anim.target = target
 
     def _sync_targets(self, natural_w: int, natural_h: int) -> Tuple[int, int]:
-        """Sync animation targets to current natural size / condition.
+        """Sync animation targets to current natural size / opened state.
 
         Returns the resolved (possibly animating) outer size.
         """
-        open_ = True if self._condition is None else _read_condition(self._condition)
+        open_ = _read_opened(self._opened)
 
         width_target = float(natural_w) if open_ else 0.0
         height_target = float(natural_h) if open_ else 0.0
@@ -259,7 +252,7 @@ class SizeTransition(Widget):
 
         # Child is always laid out at its natural size; only the outer
         # allocation animates. The child is then aligned within `width`/
-        # `height` (and overflows when the allocation is smaller).
+        # `height` and clipped to those bounds.
         natural_w, natural_h = self._natural_size(None, None)
         self._sync_targets(natural_w, natural_h)
 
@@ -270,8 +263,8 @@ class SizeTransition(Widget):
         except Exception:
             exception_once(
                 logger,
-                "size_transition_child_layout_exc",
-                "SizeTransition child layout raised",
+                "collapsible_child_layout_exc",
+                "Collapsible child layout raised",
             )
             return
 
@@ -294,15 +287,41 @@ class SizeTransition(Widget):
             rx, ry, rw, rh = rect
             cx, cy, cw, ch = x + rx, y + ry, rw, rh
 
+        clip_saved = False
+        if canvas is not None and width > 0 and height > 0:
+            clip_area = make_rect(x, y, width, height)
+            try:
+                canvas.save()
+                if clip_area is not None and clip_rect(canvas, clip_area, True):
+                    clip_saved = True
+                else:
+                    canvas.restore()
+            except Exception:
+                exception_once(
+                    logger,
+                    "collapsible_clip_save_exc",
+                    "Collapsible clip save failed",
+                )
+
         try:
             child.set_last_rect(cx, cy, cw, ch)
             child.paint(canvas, cx, cy, cw, ch)
         except Exception:
             exception_once(
                 logger,
-                "size_transition_child_paint_exc",
-                "SizeTransition child paint raised",
+                "collapsible_child_paint_exc",
+                "Collapsible child paint raised",
             )
+        finally:
+            if clip_saved:
+                try:
+                    canvas.restore()
+                except Exception:
+                    exception_once(
+                        logger,
+                        "collapsible_clip_restore_exc",
+                        "Collapsible clip restore failed",
+                    )
 
 
-__all__ = ["SizeTransition"]
+__all__ = ["Collapsible"]
