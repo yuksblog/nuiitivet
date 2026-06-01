@@ -7,10 +7,8 @@ from __future__ import annotations
 
 from .text import TextBase
 from .icon import IconBase
-from .size_transition import SizeTransition
 
 __all__ = [
     "TextBase",
     "IconBase",
-    "SizeTransition",
 ]

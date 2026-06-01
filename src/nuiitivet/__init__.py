@@ -14,6 +14,7 @@ from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.deck import Deck
+from nuiitivet.layout.collapsible import Collapsible
 
 # Primitives / Widgets
 from nuiitivet.rendering.sizing import Sizing
@@ -42,6 +43,7 @@ __all__: list[str] = [
     "CustomChrome",
     "Border",
     "Deck",
+    "Collapsible",
     "Sizing",
     "Widget",
     "ComposableWidget",

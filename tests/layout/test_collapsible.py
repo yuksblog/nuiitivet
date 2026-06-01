@@ -1,13 +1,13 @@
-"""Tests for SizeTransition widget."""
+"""Tests for Collapsible widget."""
 
 from contextlib import contextmanager
 from typing import Callable, Generator
 
 from nuiitivet.animation.motion import LinearMotion
+from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.widgets import SizeTransition
 from nuiitivet.widgets.box import Box
 
 # ---------------------------------------------------------------------------
@@ -75,25 +75,25 @@ def _make_child(w: int = 100, h: int = 50) -> Box:
 
 def test_initial_size_snaps_to_natural_without_animation() -> None:
     with _fake_clock():
-        widget = SizeTransition(_make_child(100, 50))
+        widget = Collapsible(_make_child(100, 50))
         widget.mount(_DummyApp())
         assert widget.preferred_size() == (100, 50)
 
 
-def test_condition_false_collapses_initial_size() -> None:
+def test_opened_false_collapses_initial_size() -> None:
     with _fake_clock():
-        widget = SizeTransition(_make_child(100, 50), condition=False)
+        widget = Collapsible(_make_child(100, 50), opened=False)
         widget.mount(_DummyApp())
         assert widget.preferred_size() == (0, 0)
 
 
 def test_axis_horizontal_only_animates_width() -> None:
     with _fake_clock():
-        cond = _ObservableValue(True)
-        widget = SizeTransition(_make_child(100, 50), condition=cond, axis="horizontal")
+        opened = _ObservableValue(True)
+        widget = Collapsible(_make_child(100, 50), opened=opened, axis="horizontal")
         widget.mount(_DummyApp())
         # Height passes through unchanged immediately even mid-animation.
-        cond.value = False
+        opened.value = False
         widget.preferred_size()
         _, h = widget.preferred_size()
         assert h == 50
@@ -104,19 +104,19 @@ def test_axis_horizontal_only_animates_width() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_condition_toggle_animates_width_to_zero() -> None:
+def test_opened_toggle_animates_width_to_zero() -> None:
     with _fake_clock() as clock:
-        cond = _ObservableValue(True)
-        widget = SizeTransition(
+        opened = _ObservableValue(True)
+        widget = Collapsible(
             _make_child(100, 50),
-            condition=cond,
+            opened=opened,
             axis="horizontal",
             motion=LinearMotion(0.2),
         )
         widget.mount(_DummyApp())
         assert widget.preferred_size()[0] == 100
 
-        cond.value = False
+        opened.value = False
         widget.preferred_size()  # triggers retarget to 0
         clock.advance_frames(6)  # ~0.1s of 0.2s
         mid_w = widget.preferred_size()[0]
@@ -126,12 +126,12 @@ def test_condition_toggle_animates_width_to_zero() -> None:
         assert widget.preferred_size()[0] == 0
 
 
-def test_distinct_motion_out_used_on_shrink() -> None:
+def test_distinct_motion_out_used_on_close() -> None:
     with _fake_clock() as clock:
-        cond = _ObservableValue(True)
-        widget = SizeTransition(
+        opened = _ObservableValue(True)
+        widget = Collapsible(
             _make_child(100, 50),
-            condition=cond,
+            opened=opened,
             axis="horizontal",
             motion=LinearMotion(1.0),
             motion_out=LinearMotion(0.1),
@@ -139,7 +139,7 @@ def test_distinct_motion_out_used_on_shrink() -> None:
         widget.mount(_DummyApp())
         widget.preferred_size()
 
-        cond.value = False
+        opened.value = False
         widget.preferred_size()
         # motion_out is fast (0.1s); after ~0.12s it should be fully collapsed.
         clock.advance_frames(8)
@@ -147,14 +147,14 @@ def test_distinct_motion_out_used_on_shrink() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Follow natural size changes (no condition)
+# Follow natural size changes (opened=True always)
 # ---------------------------------------------------------------------------
 
 
 def test_follows_child_natural_size_change() -> None:
     with _fake_clock() as clock:
         child = _make_child(100, 50)
-        widget = SizeTransition(child, motion=LinearMotion(0.2))
+        widget = Collapsible(child, motion=LinearMotion(0.2))
         widget.mount(_DummyApp())
         assert widget.preferred_size() == (100, 50)
 
@@ -171,16 +171,16 @@ def test_follows_child_natural_size_change() -> None:
 
 def test_unmount_stops_ticking_and_disposes() -> None:
     with _fake_clock() as clock:
-        cond = _ObservableValue(True)
-        widget = SizeTransition(
+        opened = _ObservableValue(True)
+        widget = Collapsible(
             _make_child(100, 50),
-            condition=cond,
+            opened=opened,
             axis="horizontal",
             motion=LinearMotion(0.5),
         )
         widget.mount(_DummyApp())
         widget.preferred_size()
-        cond.value = False
+        opened.value = False
         widget.preferred_size()
         clock.advance_frames(2)
         assert clock.active > 0
