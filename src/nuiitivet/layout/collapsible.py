@@ -280,6 +280,12 @@ class Collapsible(Widget):
         if child is None:
             return
 
+        # When the allocated rect has zero area the child is fully hidden.
+        # Skip painting entirely; do not rely on the clip below because the
+        # clip is only established when width > 0 and height > 0.
+        if width <= 0 or height <= 0:
+            return
+
         rect = child.layout_rect
         if rect is None:
             cx, cy, cw, ch = x, y, width, height

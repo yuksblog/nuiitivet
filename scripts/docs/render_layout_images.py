@@ -57,6 +57,7 @@ SAMPLES = [
     ("samples/layout_extras/deck_demo.py", "layout_extras_deck.png"),
     ("samples/layout_extras/spacer_flex_demo.py", "layout_extras_spacer.png"),
     ("samples/layout_extras/container_demo.py", "layout_extras_container.png"),
+    ("samples/layout_extras/collapsible.py", "layout_extras_collapsible.png"),
     # Dialogs
     ("samples/dialogs/basic_usage.py", "dialogs_basic_usage.png"),
     ("samples/dialogs/custom_dialog.py", "dialogs_custom_dialog.png"),

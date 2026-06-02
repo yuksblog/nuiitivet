@@ -205,3 +205,41 @@ nv.Row(
 ```
 
 ![Spacer example](../assets/layout_extras_spacer.png)
+
+## Collapsible (Animated Expand/Collapse)
+
+Smoothly expands or collapses a child widget, shifting the surrounding layout as it animates.
+Use this for expandable panels, side sheets, and accordion-style sections.
+
+- When `opened` is `False`, the child shrinks to zero size along the animated axis.
+- When `opened` is `True`, it expands back to the child's natural size.
+
+```python
+import nuiitivet as nv
+import nuiitivet.material as md
+
+nv.Collapsible(
+    md.Card(
+        nv.Column(
+            padding=16,
+            gap=8,
+            children=[
+                md.Text("Format: PDF / EPUB / HTML"),
+                md.Text("Size: 4.2 MB"),
+                md.Text("License: MIT"),
+            ],
+        ),
+    ),
+    opened=self.opened,
+)
+```
+
+![Collapsible example](../assets/layout_extras_collapsible.png)
+
+### visible() vs Collapsible
+
+| | `visible()` modifier | `Collapsible` |
+|---|---|---|
+| Layout space | Always occupied | Shrinks to zero when closed |
+| Animation | Opacity / scale fade | Smooth expand/collapse with layout reflow |
+| Use case | Fade in/out without shifting siblings | Accordion panels, side sheets |
