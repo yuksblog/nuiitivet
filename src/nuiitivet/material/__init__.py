@@ -45,8 +45,8 @@ if TYPE_CHECKING:
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
     from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
     from .tooltip import Tooltip, RichTooltip
-    from .styles.sheet_style import SideSheetStyle, BottomSheetStyle
-    from .sheet import SideSheet, BottomSheet
+    from .styles.sheet_style import SideSheetStyle, BottomSheetStyle, StandardSideSheetStyle
+    from .sheet import SideSheet, BottomSheet, StandardSideSheet
     from .button_group import (
         GroupButton,
         ButtonGroupPosition,
@@ -123,8 +123,10 @@ __all__ = [
     "MaterialTransitionSpec",
     "SideSheetStyle",
     "BottomSheetStyle",
+    "StandardSideSheetStyle",
     "SideSheet",
     "BottomSheet",
+    "StandardSideSheet",
     "GroupButton",
     "ButtonGroupPosition",
     "StandardButtonGroupStyle",
@@ -205,8 +207,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "MaterialTransitionSpec": ("transition_spec", "MaterialTransitionSpec"),
     "SideSheetStyle": ("styles.sheet_style", "SideSheetStyle"),
     "BottomSheetStyle": ("styles.sheet_style", "BottomSheetStyle"),
+    "StandardSideSheetStyle": ("styles.sheet_style", "StandardSideSheetStyle"),
     "SideSheet": ("sheet", "SideSheet"),
     "BottomSheet": ("sheet", "BottomSheet"),
+    "StandardSideSheet": ("sheet", "StandardSideSheet"),
     "GroupButton": ("button_group", "GroupButton"),
     "ButtonGroupPosition": ("button_group", "ButtonGroupPosition"),
     "StandardButtonGroupStyle": ("styles.button_group_style", "StandardButtonGroupStyle"),

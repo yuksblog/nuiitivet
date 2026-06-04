@@ -8,12 +8,14 @@ from typing import Callable, Literal, Optional, Union
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import IconButton
-from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle
+from nuiitivet.material.divider import Divider
+from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle, StandardSideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.overlay import OverlayAware
+from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -257,4 +259,129 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         )
 
 
-__all__ = ["SideSheet", "BottomSheet"]
+class StandardSideSheet(ComposableWidget):
+    """Material Design 3 standard (docked) side sheet.
+
+    A standard side sheet is a permanent part of the layout, sitting beside
+    the main content.  It does **not** manage its own open/close animation;
+    wrap it in :class:`~nuiitivet.layout.collapsible.Collapsible` when
+    animated expand/collapse is needed::
+
+        Row([
+            main_content,
+            Collapsible(
+                StandardSideSheet(
+                    panel_content,
+                    headline="Filters",
+                    on_close=vm.close_panel,
+                ),
+                opened=vm.panel_open,
+                axis="horizontal",
+                alignment="top_right",
+            ),
+        ])
+
+    Args:
+        content: Widget to display inside the sheet.
+        headline: Optional header title text (``str`` or
+            ``Observable[str]``).  When provided, an M3-compliant header row
+            is rendered above *content*.
+        side: Edge the sheet is attached to (``"right"`` or ``"left"``).
+            Defaults to ``"right"``.
+        on_close: Callback invoked when the close icon button is pressed.
+            When ``None``, no close button is rendered in the header.
+        style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
+    """
+
+    def __init__(
+        self,
+        content: Widget,
+        *,
+        headline: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
+        side: Literal["right", "left"] = "right",
+        on_close: Optional[Callable[[], None]] = None,
+        style: Optional[StandardSideSheetStyle] = None,
+    ) -> None:
+        """Initialize StandardSideSheet.
+
+        Args:
+            content: Widget to display inside the sheet.
+            headline: Optional header title (str or Observable[str]).
+            side: Attachment edge (``"right"`` or ``"left"``).
+                Defaults to ``"right"``.
+            on_close: Callback for the close icon button.  No button is shown
+                when ``None``.
+            style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
+        """
+        super().__init__()
+        self._content = content
+        self._headline = headline
+        self.side = side
+        self._on_close = on_close
+        self._user_style = style
+
+    @property
+    def style(self) -> StandardSideSheetStyle:
+        """Return the resolved sheet style."""
+        return self._user_style if self._user_style is not None else StandardSideSheetStyle()
+
+    def on_mount(self) -> None:
+        """Mount and subscribe to headline observable if provided."""
+        super().on_mount()
+        if isinstance(self._headline, ReadOnlyObservableProtocol):
+            sub = self._headline.subscribe(lambda _: self.rebuild())
+            self.bind(sub)
+
+    def build(self) -> Widget:
+        """Build the sheet: outer Box with optional header Row and content."""
+        resolved_style = self.style
+
+        # Optionally build the header row (headline + close button).
+        body_parts: list[Widget] = []
+        if self._headline is not None or self._on_close is not None:
+            header_children: list[Widget] = []
+            if self._headline is not None:
+                header_children.append(
+                    Box(
+                        Text(
+                            self._headline,
+                            style=TextStyle(font_size=22, color=ColorRole.ON_SURFACE_VARIANT),
+                        ),
+                        width=Sizing.flex(1),
+                        padding=(8, 0, 8, 0),
+                    )
+                )
+            if self._on_close is not None:
+                header_children.append(IconButton("close", on_click=self._on_close))
+            body_parts.append(
+                Row(
+                    header_children,
+                    width="100%",
+                    height=72,
+                    padding=(4, 0, 4, 0),
+                    cross_alignment="center",
+                )
+            )
+        body_parts.append(self._content)
+
+        content_col = Column(body_parts, width=Sizing.flex(1))
+
+        # Optionally add a vertical Divider on the edge facing the main content.
+        if resolved_style.show_divider:
+            divider = Divider(orientation="vertical")
+            if self.side == "right":
+                inner: Widget = Row([divider, content_col], width="100%", height="100%")
+            else:
+                inner = Row([content_col, divider], width="100%", height="100%")
+        else:
+            inner = content_col
+
+        return Box(
+            inner,
+            width=resolved_style.width,
+            height=resolved_style.height,
+            background_color=resolved_style.background_color,
+        )
+
+
+__all__ = ["SideSheet", "BottomSheet", "StandardSideSheet"]

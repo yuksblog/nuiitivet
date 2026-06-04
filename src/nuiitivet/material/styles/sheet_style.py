@@ -50,4 +50,34 @@ class BottomSheetStyle:
         return replace(self, **changes)
 
 
-__all__ = ["SideSheetStyle", "BottomSheetStyle"]
+@dataclass(frozen=True)
+class StandardSideSheetStyle:
+    """Immutable container style for a standard (docked) side sheet.
+
+    A standard side sheet is part of the layout and sits beside main content.
+    It does not use an overlay or scrim.
+
+    ``width`` defaults to ``256`` per M3 token ``md.comp.sheet.side.docked.container.width``.
+    ``height`` defaults to ``"100%"`` so the sheet spans the full content area height.
+    ``corner_radius`` defaults to ``0.0`` per M3 token
+    ``md.comp.sheet.side.docked.container.shape`` (``corner.none``).
+    ``background_color`` defaults to ``ColorRole.SURFACE`` per M3 token
+    ``md.comp.sheet.side.docked.standard.container.color`` (elevation level 0).
+    ``show_divider`` defaults to ``True``.  When ``True``, a vertical
+    ``Divider`` is rendered on the edge facing the main content area.
+    The divider color is governed by the theme's ``outlineVariant`` role
+    per M3 token ``md.comp.sheet.side.docked.divider.color``.
+    """
+
+    width: SizingLike = 256
+    height: SizingLike = "100%"
+    corner_radius: float = 0.0
+    background_color: ColorSpec = ColorRole.SURFACE
+    show_divider: bool = True
+
+    def copy_with(self, **changes) -> "StandardSideSheetStyle":
+        """Return a copy with the given fields replaced."""
+        return replace(self, **changes)
+
+
+__all__ = ["SideSheetStyle", "BottomSheetStyle", "StandardSideSheetStyle"]
