@@ -201,6 +201,29 @@ API References: [Tooltip](../api/material.md#nuiitivet.material.Tooltip) ・ [Ri
 
 ---
 
+## StandardSideSheet
+
+Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Wrap it in `Collapsible` (with `axis="horizontal"`) to animate it open and closed without any additional API on the sheet itself.
+
+```python
+Collapsible(
+    StandardSideSheet(
+        panel_content,
+        headline="Filters",
+        on_close=vm.close_panel,
+    ),
+    opened=vm.panel_open,
+    axis="horizontal",
+    alignment="top_right",
+)
+```
+
+![StandardSideSheet](../assets/material_widgets_standard_side_sheet.png)
+
+[API Reference](../api/material.md#nuiitivet.material.StandardSideSheet)
+
+---
+
 ## Image
 
 `Image` is a primitive widget that is not part of Material Design. Displays a raster image from in-memory bytes. Supports `contain`, `cover`, `fill`, and `none` fit modes.
