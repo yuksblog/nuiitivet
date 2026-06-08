@@ -57,6 +57,8 @@ if TYPE_CHECKING:
         StandardButtonGroupStyle,
         ConnectedButtonGroupStyle,
     )
+    from .split_button import SplitButton
+    from .styles.split_button_style import SplitButtonStyle
     from .transition_spec import MaterialTransitionSpec
     from nuiitivet.widgets.image import Image
 
@@ -133,6 +135,8 @@ __all__ = [
     "ConnectedButtonGroupStyle",
     "StandardButtonGroup",
     "ConnectedButtonGroup",
+    "SplitButton",
+    "SplitButtonStyle",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -217,6 +221,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ConnectedButtonGroupStyle": ("styles.button_group_style", "ConnectedButtonGroupStyle"),
     "StandardButtonGroup": ("button_group", "StandardButtonGroup"),
     "ConnectedButtonGroup": ("button_group", "ConnectedButtonGroup"),
+    "SplitButton": ("split_button", "SplitButton"),
+    "SplitButtonStyle": ("styles.split_button_style", "SplitButtonStyle"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),
