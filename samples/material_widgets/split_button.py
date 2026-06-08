@@ -8,6 +8,8 @@ Demonstrates the M3 Expressive SplitButton with:
 
 from __future__ import annotations
 
+from typing import Callable
+
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
@@ -48,10 +50,14 @@ def _make_interactive_split_button() -> SplitButton:
     )
 
 
+def _make_action_callback(action: str) -> Callable[[], None]:
+    return lambda: _select_action(action)
+
+
 def _make_menu() -> Menu:
     """Build the dropdown menu for the interactive split button."""
     return Menu(
-        items=[MenuItem(a, on_click=lambda a=a: _select_action(a)) for a in _ACTIONS],
+        items=[MenuItem(a, on_click=_make_action_callback(a)) for a in _ACTIONS],
         on_dismiss=_close_menu,
     )
 

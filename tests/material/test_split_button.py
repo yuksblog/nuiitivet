@@ -8,6 +8,7 @@ import pytest
 
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.split_button import SplitButton
+from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.styles.split_button_style import SplitButtonStyle, SPLIT_BUTTON_SIZE_TOKENS
 from nuiitivet.observable import Observable
 from tests.helpers.pointer import send_pointer_event_for_test
@@ -220,7 +221,7 @@ class TestSplitButtonObservable:
 
 
 class TestCornerAnimation:
-    def _make_btn(self, size: str = "s") -> SplitButton:
+    def _make_btn(self, size: ButtonSize = "s") -> SplitButton:
         btn = SplitButton("Action", style=SplitButtonStyle.filled(size))
         _mount(btn)
         return btn
