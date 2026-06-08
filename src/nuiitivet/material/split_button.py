@@ -112,10 +112,6 @@ class _SplitLeadingButton(InteractiveWidget):
         # Interaction state
         self._own_hovered: bool = False
         self._own_pressed: bool = False
-        self._neighbor_pressed: bool = False
-
-        # Neighbor reference — set by SplitButton.on_mount()
-        self._neighbor: Optional["_SplitTrailingButton"] = None
 
         outer = style.outer_corner_radius
         inner = style.inner_corner_radius
@@ -174,26 +170,13 @@ class _SplitLeadingButton(InteractiveWidget):
         self._update_corner_target()
 
     def _handle_press_down(self, event: PointerEvent) -> None:
-        """Start press shape animation and notify trailing neighbor."""
+        """Start press shape animation."""
         self._own_pressed = True
         self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_press(True)
 
     def _handle_press_up(self, event: PointerEvent) -> None:
-        """Restore shape on release and notify trailing neighbor."""
+        """Restore shape on release."""
         self._own_pressed = False
-        self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_press(False)
-
-    def _on_neighbor_press(self, pressed: bool) -> None:
-        """Called by the trailing button when its press state changes.
-
-        Args:
-            pressed: Whether the trailing button is now pressed.
-        """
-        self._neighbor_pressed = pressed
         self._update_corner_target()
 
     # ------------------------------------------------------------------
@@ -222,7 +205,7 @@ class _SplitLeadingButton(InteractiveWidget):
         Returns:
             Inner corner radius in logical pixels.
         """
-        if self._own_pressed or self._neighbor_pressed:
+        if self._own_pressed:
             return self._style.inner_corner_pressed_radius
         if self._own_hovered:
             return self._style.inner_corner_hovered_radius
@@ -271,7 +254,6 @@ class _SplitTrailingButton(InteractiveWidget):
         # Interaction state
         self._own_hovered: bool = False
         self._own_pressed: bool = False
-        self._neighbor_pressed: bool = False
 
         # Selected state (menu open)
         self._selected_external: "Optional[ObservableProtocol[bool]]" = None
@@ -281,9 +263,6 @@ class _SplitTrailingButton(InteractiveWidget):
             self._selected: bool = bool(ext_obs.value)
         else:
             self._selected = bool(menu_open)
-
-        # Neighbor reference — set by SplitButton.on_mount()
-        self._neighbor: Optional["_SplitLeadingButton"] = None
 
         outer = style.outer_corner_radius
         inner = style.inner_corner_radius
@@ -359,18 +338,14 @@ class _SplitTrailingButton(InteractiveWidget):
         self._update_corner_target()
 
     def _handle_press_down(self, event: PointerEvent) -> None:
-        """Start press animation and notify leading neighbor."""
+        """Start press animation."""
         self._own_pressed = True
         self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_press(True)
 
     def _handle_press_up(self, event: PointerEvent) -> None:
-        """Restore shape on release and notify leading neighbor."""
+        """Restore shape on release."""
         self._own_pressed = False
         self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_press(False)
 
     def _handle_click(self) -> None:
         """Toggle menu open state and fire on_menu_toggle callback."""
@@ -386,15 +361,6 @@ class _SplitTrailingButton(InteractiveWidget):
                 error_msg="SplitButton on_menu_toggle raised",
                 owner_name=type(self).__name__,
             )
-
-    def _on_neighbor_press(self, pressed: bool) -> None:
-        """Called by the leading button when its press state changes.
-
-        Args:
-            pressed: Whether the leading button is now pressed.
-        """
-        self._neighbor_pressed = pressed
-        self._update_corner_target()
 
     # ------------------------------------------------------------------
     # State management
@@ -457,7 +423,7 @@ class _SplitTrailingButton(InteractiveWidget):
         Returns:
             Inner corner radius in logical pixels.
         """
-        if self._own_pressed or self._neighbor_pressed:
+        if self._own_pressed:
             return self._style.inner_corner_pressed_radius
         if self._own_hovered:
             return self._style.inner_corner_hovered_radius
@@ -615,16 +581,6 @@ class SplitButton(Box):
         )
 
         super().__init__(child=row, width=width)
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
-    def on_mount(self) -> None:
-        """Wire neighbor references between leading and trailing buttons."""
-        super().on_mount()
-        self._leading_btn._neighbor = self._trailing_btn
-        self._trailing_btn._neighbor = self._leading_btn
 
     # ------------------------------------------------------------------
     # Content builder (leading button)

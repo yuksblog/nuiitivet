@@ -294,19 +294,20 @@ class TestCornerAnimation:
         assert tr == pytest.approx(hovered_r)
         assert br == pytest.approx(hovered_r)
 
-    def test_neighbor_press_propagation(self):
+    def test_neighbor_press_does_not_propagate(self):
+        # Pressing one button must NOT animate the neighbor's corners.
         btn = self._make_btn()
         style = btn._leading_btn._style
-        pressed_r = style.inner_corner_pressed_radius
-        # Simulate trailing button press notification to leading button
-        btn._leading_btn._on_neighbor_press(True)
-        tl, tr, br, bl = btn._leading_btn._compute_target_corners()
-        assert tr == pytest.approx(pressed_r)
-        assert br == pytest.approx(pressed_r)
+        inner_idle = style.inner_corner_radius
+        # Simulate leading button press — trailing should stay at idle inner radius
+        btn._leading_btn._own_pressed = True
+        btn._leading_btn._update_corner_target()
+        tl, tr, br, bl = btn._trailing_btn._compute_target_corners()
+        assert tl == pytest.approx(inner_idle)
+        assert bl == pytest.approx(inner_idle)
 
     def test_neighbor_hover_does_not_propagate(self):
         # Hovering one button must NOT animate the neighbor's corners.
-        # Only press events propagate to the neighbor.
         btn = self._make_btn()
         style = btn._trailing_btn._style
         inner_idle = style.inner_corner_radius
@@ -370,13 +371,13 @@ class TestIconRotation:
 
 
 # ===========================================================================
-# Neighbor wiring (on_mount)
+# Both halves are independent — no cross-propagation
 # ===========================================================================
 
 
-class TestNeighborWiring:
-    def test_neighbor_set_after_mount(self):
+class TestIndependentHalves:
+    def test_leading_and_trailing_mount_independently(self):
         btn = SplitButton("Action")
         _mount(btn)
-        assert btn._leading_btn._neighbor is btn._trailing_btn
-        assert btn._trailing_btn._neighbor is btn._leading_btn
+        assert btn._leading_btn is not None
+        assert btn._trailing_btn is not None
