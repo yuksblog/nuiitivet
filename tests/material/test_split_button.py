@@ -304,15 +304,18 @@ class TestCornerAnimation:
         assert tr == pytest.approx(pressed_r)
         assert br == pytest.approx(pressed_r)
 
-    def test_neighbor_hover_propagation(self):
+    def test_neighbor_hover_does_not_propagate(self):
+        # Hovering one button must NOT animate the neighbor's corners.
+        # Only press events propagate to the neighbor.
         btn = self._make_btn()
         style = btn._trailing_btn._style
-        hovered_r = style.inner_corner_hovered_radius
-        # Simulate leading button hover notification to trailing button
-        btn._trailing_btn._on_neighbor_hover(True)
+        inner_idle = style.inner_corner_radius
+        # Simulate leading button hover — trailing should stay at idle inner radius
+        btn._leading_btn._own_hovered = True
+        btn._leading_btn._update_corner_target()
         tl, tr, br, bl = btn._trailing_btn._compute_target_corners()
-        assert tl == pytest.approx(hovered_r)
-        assert bl == pytest.approx(hovered_r)
+        assert tl == pytest.approx(inner_idle)
+        assert bl == pytest.approx(inner_idle)
 
     def test_pressed_takes_priority_over_hovered(self):
         btn = self._make_btn()

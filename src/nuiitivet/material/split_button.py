@@ -112,7 +112,6 @@ class _SplitLeadingButton(InteractiveWidget):
         # Interaction state
         self._own_hovered: bool = False
         self._own_pressed: bool = False
-        self._neighbor_hovered: bool = False
         self._neighbor_pressed: bool = False
 
         # Neighbor reference — set by SplitButton.on_mount()
@@ -173,8 +172,6 @@ class _SplitLeadingButton(InteractiveWidget):
         """React to own hover state changes."""
         self._own_hovered = hovered
         self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_hover(hovered)
 
     def _handle_press_down(self, event: PointerEvent) -> None:
         """Start press shape animation and notify trailing neighbor."""
@@ -189,15 +186,6 @@ class _SplitLeadingButton(InteractiveWidget):
         self._update_corner_target()
         if self._neighbor is not None:
             self._neighbor._on_neighbor_press(False)
-
-    def _on_neighbor_hover(self, hovered: bool) -> None:
-        """Called by the trailing button when its hover state changes.
-
-        Args:
-            hovered: Whether the trailing button is now hovered.
-        """
-        self._neighbor_hovered = hovered
-        self._update_corner_target()
 
     def _on_neighbor_press(self, pressed: bool) -> None:
         """Called by the trailing button when its press state changes.
@@ -236,7 +224,7 @@ class _SplitLeadingButton(InteractiveWidget):
         """
         if self._own_pressed or self._neighbor_pressed:
             return self._style.inner_corner_pressed_radius
-        if self._own_hovered or self._neighbor_hovered:
+        if self._own_hovered:
             return self._style.inner_corner_hovered_radius
         return self._style.inner_corner_radius
 
@@ -283,7 +271,6 @@ class _SplitTrailingButton(InteractiveWidget):
         # Interaction state
         self._own_hovered: bool = False
         self._own_pressed: bool = False
-        self._neighbor_hovered: bool = False
         self._neighbor_pressed: bool = False
 
         # Selected state (menu open)
@@ -370,8 +357,6 @@ class _SplitTrailingButton(InteractiveWidget):
         """React to own hover state changes."""
         self._own_hovered = hovered
         self._update_corner_target()
-        if self._neighbor is not None:
-            self._neighbor._on_neighbor_hover(hovered)
 
     def _handle_press_down(self, event: PointerEvent) -> None:
         """Start press animation and notify leading neighbor."""
@@ -401,15 +386,6 @@ class _SplitTrailingButton(InteractiveWidget):
                 error_msg="SplitButton on_menu_toggle raised",
                 owner_name=type(self).__name__,
             )
-
-    def _on_neighbor_hover(self, hovered: bool) -> None:
-        """Called by the leading button when its hover state changes.
-
-        Args:
-            hovered: Whether the leading button is now hovered.
-        """
-        self._neighbor_hovered = hovered
-        self._update_corner_target()
 
     def _on_neighbor_press(self, pressed: bool) -> None:
         """Called by the leading button when its press state changes.
@@ -483,7 +459,7 @@ class _SplitTrailingButton(InteractiveWidget):
         """
         if self._own_pressed or self._neighbor_pressed:
             return self._style.inner_corner_pressed_radius
-        if self._own_hovered or self._neighbor_hovered:
+        if self._own_hovered:
             return self._style.inner_corner_hovered_radius
         return self._style.inner_corner_radius
 
