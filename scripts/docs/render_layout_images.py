@@ -116,6 +116,7 @@ SAMPLES = [
     ("samples/material_widgets/icon_button.py", "material_widgets_icon_button.png"),
     ("samples/material_widgets/fab.py", "material_widgets_fab.png"),
     ("samples/material_widgets/button_group.py", "material_widgets_button_group.png"),
+    ("samples/material_widgets/split_button.py", "material_widgets_split_button.png"),
     ("samples/material_widgets/selection_controls.py", "material_widgets_selection_controls.png"),
     ("samples/material_widgets/slider.py", "material_widgets_slider.png"),
     ("samples/material_widgets/text_field.py", "material_widgets_text_field.png"),
