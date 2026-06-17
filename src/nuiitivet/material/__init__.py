@@ -60,6 +60,14 @@ if TYPE_CHECKING:
     from .split_button import SplitButton
     from .styles.split_button_style import SplitButtonStyle
     from .transition_spec import MaterialTransitionSpec
+    from .date_picker import DockedDatePicker, ModalDatePicker, ModalDateRangePicker, ModalDateInput
+    from .styles.date_picker_style import (
+        DatePickerStyle,
+        DockedDatePickerStyle,
+        ModalDatePickerStyle,
+        ModalDateRangePickerStyle,
+        ModalDateInputStyle,
+    )
     from nuiitivet.widgets.image import Image
 
 __all__ = [
@@ -137,6 +145,15 @@ __all__ = [
     "ConnectedButtonGroup",
     "SplitButton",
     "SplitButtonStyle",
+    "DockedDatePicker",
+    "ModalDatePicker",
+    "ModalDateRangePicker",
+    "ModalDateInput",
+    "DatePickerStyle",
+    "DockedDatePickerStyle",
+    "ModalDatePickerStyle",
+    "ModalDateRangePickerStyle",
+    "ModalDateInputStyle",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -223,6 +240,15 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ConnectedButtonGroup": ("button_group", "ConnectedButtonGroup"),
     "SplitButton": ("split_button", "SplitButton"),
     "SplitButtonStyle": ("styles.split_button_style", "SplitButtonStyle"),
+    "DockedDatePicker": ("date_picker", "DockedDatePicker"),
+    "ModalDatePicker": ("date_picker", "ModalDatePicker"),
+    "ModalDateRangePicker": ("date_picker", "ModalDateRangePicker"),
+    "ModalDateInput": ("date_picker", "ModalDateInput"),
+    "DatePickerStyle": ("styles.date_picker_style", "DatePickerStyle"),
+    "DockedDatePickerStyle": ("styles.date_picker_style", "DockedDatePickerStyle"),
+    "ModalDatePickerStyle": ("styles.date_picker_style", "ModalDatePickerStyle"),
+    "ModalDateRangePickerStyle": ("styles.date_picker_style", "ModalDateRangePickerStyle"),
+    "ModalDateInputStyle": ("styles.date_picker_style", "ModalDateInputStyle"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),
