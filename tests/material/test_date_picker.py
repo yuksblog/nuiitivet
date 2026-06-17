@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from nuiitivet.material.date_picker import (
     DockedDatePicker,
     ModalDateInput,

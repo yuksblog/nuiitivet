@@ -95,6 +95,19 @@ def _fill_six_weeks(year: int, month: int) -> list[list[_Date]]:
     return [[start + _TimeDelta(days=w * 7 + d) for d in range(7)] for w in range(6)]
 
 
+def _make_day_tap(day: _Date, callback: Callable[[_Date], None]) -> VoidCallback:
+    """Bind ``day`` to ``callback`` as a zero-argument tap handler.
+
+    Defined at module scope so the captured ``day`` is bound per call rather
+    than leaking the loop variable from the calendar grid builder.
+    """
+
+    def _tap() -> None:
+        callback(day)
+
+    return _tap
+
+
 # ---------------------------------------------------------------------------
 # Internal: _DayCell
 # ---------------------------------------------------------------------------
@@ -925,7 +938,10 @@ class _MonthYearHeader(ComposableWidget):
                     ),
                 )
 
-            def _dropdown(on_tap: Optional[VoidCallback], rotation: Optional[ReadOnlyObservableProtocol[float]]) -> Widget:
+            def _dropdown(
+                on_tap: Optional[VoidCallback],
+                rotation: Optional[ReadOnlyObservableProtocol[float]],
+            ) -> Widget:
                 btn: Widget = IconButton("arrow_drop_down", on_click=on_tap, style=dropdown_style)
                 if rotation is not None:
                     btn = btn.modifier(rotate(rotation))
@@ -1159,9 +1175,7 @@ class _CalendarGrid(ComposableWidget):
 
                 on_tap: Optional[VoidCallback] = None
                 if self._on_day_tap is not None and not is_disabled:
-                    _d = d
-                    _cb = self._on_day_tap
-                    on_tap = lambda _day=_d, _callback=_cb: _callback(_day)
+                    on_tap = _make_day_tap(d, self._on_day_tap)
 
                 # The cell fills the full 48dp column slot (not just the 40dp
                 # circle) so the range band is continuous across adjacent
