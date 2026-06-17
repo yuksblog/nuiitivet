@@ -30,3 +30,7 @@ site/
 
 # VS Code settings
 .vscode/mcp.json
+
+# Claude AI configuration files
+CLAUDE.md
+.claude/

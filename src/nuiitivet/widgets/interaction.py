@@ -328,7 +328,9 @@ class PointerInputNode(InteractionNode):
             return self._hit_test(x, y)
         rect = bounds
         if rect is None and self.owner:
-            rect = getattr(self.owner, "global_layout_rect", None)
+            # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
+            # over global_layout_rect (layout-time coords, ignores scroll).
+            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
         if rect is None:
             return False
         rx, ry, rw, rh = rect
@@ -513,7 +515,9 @@ class DraggableNode(InteractionNode):
             return self._hit_test(x, y)
         rect = bounds
         if rect is None and self.owner:
-            rect = getattr(self.owner, "global_layout_rect", None)
+            # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
+            # over global_layout_rect (layout-time coords, ignores scroll).
+            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
         if rect is None:
             return False
         rx, ry, rw, rh = rect
@@ -723,7 +727,9 @@ class InteractionHostMixin:
     def on_pointer_event(self, event: PointerEvent) -> bool:
         # Dispatch to all nodes that can handle pointer events
         consumed = False
-        bounds = getattr(self, "global_layout_rect", None)
+        # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
+        # over global_layout_rect (layout-time coords, ignores scroll).
+        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
         for node in self._nodes:
             consumed = node.handle_pointer_event(event, bounds) or consumed
         return consumed

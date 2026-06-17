@@ -6,6 +6,7 @@ import logging
 from typing import Literal, Optional, Tuple, Union
 
 from nuiitivet.material.styles.divider_style import DividerStyle
+from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.rendering.skia import make_paint, make_rect
 from nuiitivet.theme.resolver import resolve_color_to_rgba
@@ -47,16 +48,26 @@ class Divider(Widget):
         effective_style = style or DividerStyle()
         thickness = effective_style.thickness
 
+        # The cross-axis (thickness) sizing must include the padding on that
+        # axis: Row/Column size fixed-dimension children directly from their
+        # sizing value (not ``preferred_size``), so padding baked only into
+        # ``preferred_size`` would be ignored and produce no visible margin.
+        pad_l, pad_t, pad_r, pad_b = parse_padding(padding)
+
         resolved_width: SizingLike
         resolved_height: SizingLike
 
         if width is None:
-            resolved_width = Sizing.fixed(thickness) if orientation == "vertical" else Sizing.flex()
+            resolved_width = (
+                Sizing.fixed(thickness + pad_l + pad_r) if orientation == "vertical" else Sizing.flex()
+            )
         else:
             resolved_width = width
 
         if height is None:
-            resolved_height = Sizing.fixed(thickness) if orientation == "horizontal" else Sizing.flex()
+            resolved_height = (
+                Sizing.fixed(thickness + pad_t + pad_b) if orientation == "horizontal" else Sizing.flex()
+            )
         else:
             resolved_height = height
 
@@ -77,6 +88,11 @@ class Divider(Widget):
         w_dim = self.width_sizing
         h_dim = self.height_sizing
 
+        # The fixed cross-axis sizing already bakes in this-axis padding (see
+        # ``__init__``), so it is returned as-is — adding padding again here
+        # would double-count it and over-report the size to parent layouts.
+        # Flex dimensions fill the available constraint; the line is then inset
+        # within the padded box via ``content_rect`` at paint time.
         pref_w = int(w_dim.value) if w_dim.kind == "fixed" else (int(max_width) if max_width is not None else 0)
         pref_h = int(h_dim.value) if h_dim.kind == "fixed" else (int(max_height) if max_height is not None else 0)
 
@@ -97,17 +113,25 @@ class Divider(Widget):
             return
 
         style = self._style
+        thickness = style.thickness
+
+        # Draw inside the padded content rect so that padding produces real
+        # margins around the line (the line keeps its 1dp thickness and is
+        # centred on the cross axis if the content box is taller/wider).
+        cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
         if self._orientation == "horizontal":
-            dx = x + style.inset_left
-            dy = y
-            dw = max(0, width - style.inset_left - style.inset_right)
-            dh = height
+            line_h = min(thickness, ch) if ch > 0 else thickness
+            dx = cx + style.inset_left
+            dy = cy + max(0, (ch - line_h) // 2)
+            dw = max(0, cw - style.inset_left - style.inset_right)
+            dh = line_h
         else:
-            dx = x
-            dy = y + style.inset_left
-            dw = width
-            dh = max(0, height - style.inset_left - style.inset_right)
+            line_w = min(thickness, cw) if cw > 0 else thickness
+            dx = cx + max(0, (cw - line_w) // 2)
+            dy = cy + style.inset_left
+            dw = line_w
+            dh = max(0, ch - style.inset_left - style.inset_right)
 
         if dw <= 0 or dh <= 0:
             return
