@@ -1477,6 +1477,12 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
 
     MD3 container: 360×524dp, Extra large corner rounding (28dp).
 
+    .. note::
+        **Experimental implementation.**  This class does not yet fully comply with the
+        MD3 Expressive specification.  Known limitation: the icon button that toggles
+        between :class:`ModalDatePicker` and :class:`ModalDateInput` is not implemented.
+        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
+
     Args:
         init_value: Pre-selected date shown when the picker opens.
         supporting_text: Small label shown at the top of the header (14pt).
@@ -1716,6 +1722,14 @@ class ModalDateRangePicker(
         - First tap sets the **start** date.
         - Second tap sets the **end** date (must be ≥ start; tapping before
           the start resets and begins a new selection from that date).
+
+    .. note::
+        **Experimental implementation.**  This class does not yet fully comply with the
+        MD3 Expressive specification.  Known limitations: the icon button that toggles
+        between :class:`ModalDateRangePicker` and a range-input variant
+        (``ModalDateRangeInput``) is not implemented, and ``ModalDateRangeInput``
+        does not yet exist.
+        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
 
     Args:
         init_value: Pre-selected date range as ``(start, end)`` tuple.
@@ -1987,6 +2001,13 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
             entered: datetime.date = result.value
 
     MD3 container: 328×512dp, Extra large corner rounding (28dp).
+
+    .. note::
+        **Experimental implementation.**  This class does not yet fully comply with the
+        MD3 Expressive specification.  Known limitations: the icon button that toggles
+        between :class:`ModalDateInput` and :class:`ModalDatePicker` is not implemented,
+        and the range-input variant (``ModalDateRangeInput``) does not yet exist.
+        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
 
     Args:
         init_value: Optional initial date used to pre-populate the text field.
