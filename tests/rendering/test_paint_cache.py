@@ -92,7 +92,7 @@ class _FakeHiDPICanvas:
 
     def __init__(self, scale: float):
         self._scale = scale
-        self.rect_draws = []
+        self.rect_draws: list = []
 
     def getTotalMatrix(self):
         return _FakeMatrix(self._scale, self._scale)
