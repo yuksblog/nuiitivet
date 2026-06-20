@@ -48,6 +48,8 @@ from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.modifiers import background, clip, corner_radius, rotate, scale, shadow
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.runtime.app import App
+from nuiitivet.runtime.intents import CloseWindowIntent, MinimizeWindowIntent
 
 # ---------------------------- Typography presets -------------------------
 # Small wrappers around ``TextStyle`` to keep the build code dense and
@@ -61,6 +63,54 @@ LABEL = TextStyle(font_size=12)
 BODY_LG = TextStyle(font_size=16)
 BODY_MD = TextStyle(font_size=14)
 BODY_SM = TextStyle(font_size=12)
+TITLE_BAR_APP = TextStyle(font_size=14, color=ColorRole.ON_PRIMARY_CONTAINER)
+
+
+# ------------------------------ Title bar --------------------------------
+
+
+class PulseTitleBar(nv.ComposableWidget):
+    """Custom Material-styled title bar for the Pulse showcase window."""
+
+    def build(self) -> nv.Widget:
+        branding = nv.Row(
+            [
+                md.Icon(
+                    "music_note",
+                    size=16,
+                    style=IconStyle(color=ColorRole.ON_PRIMARY_CONTAINER),
+                ),
+                md.Text("Pulse", style=TITLE_BAR_APP),
+            ],
+            gap=6,
+            cross_alignment="center",
+        )
+
+        controls = nv.Row(
+            [
+                md.IconButton(
+                    "remove",
+                    style=IconButtonStyle.standard("s"),
+                    on_click=lambda: App.of(self).dispatch(MinimizeWindowIntent()),
+                ),
+                md.IconButton(
+                    "close",
+                    style=IconButtonStyle.standard("s"),
+                    on_click=lambda: App.of(self).dispatch(CloseWindowIntent()),
+                ),
+            ],
+            gap=2,
+            cross_alignment="center",
+        )
+
+        return nv.Row(
+            [branding, controls],
+            main_alignment="space-between",
+            cross_alignment="center",
+            padding=(16, 0, 8, 0),
+            width=nv.Sizing.flex(1),
+            height=44,
+        ).modifier(background(ColorRole.PRIMARY_CONTAINER))
 
 
 # ----------------------------- Section model -----------------------------
@@ -791,6 +841,9 @@ def main() -> None:
         width=1150,
         height=720,
         theme=theme,
+        chrome=nv.CustomChrome(
+            header=PulseTitleBar(),
+        ),
     )
 
     if args.png:
