@@ -75,12 +75,40 @@ class _FakeDestCanvas:
         self.draws.append((image.width(), image.height(), x, y))
 
 
+class _FakeMatrix:
+    def __init__(self, sx: float, sy: float):
+        self._sx = sx
+        self._sy = sy
+
+    def getScaleX(self):
+        return self._sx
+
+    def getScaleY(self):
+        return self._sy
+
+
+class _FakeHiDPICanvas:
+    """Dest canvas carrying a HiDPI scale transform, recording rect blits."""
+
+    def __init__(self, scale: float):
+        self._scale = scale
+        self.rect_draws: list = []
+
+    def getTotalMatrix(self):
+        return _FakeMatrix(self._scale, self._scale)
+
+    def drawImageRect(self, image, rect_src, rect_dst):
+        self.rect_draws.append((image.width(), image.height(), rect_src, rect_dst))
+
+
 class _FakeSkia(types.SimpleNamespace):
     def __init__(self):
         super().__init__()
         self.Rect = types.SimpleNamespace(MakeXYWH=lambda *args: args)
+        self.created_sizes = []
 
     def Surface(self, w: int, h: int):
+        self.created_sizes.append((w, h))
         return _FakeSurface(w, h)
 
     def Color4f(self, r: float, g: float, b: float, a: float):  # pragma: no cover - simple tuple
@@ -124,3 +152,35 @@ def test_cached_paint_mixin_size_change_forces_repaint(monkeypatch):
 
     assert widget.render_count == 2
     assert len(canvas.draws) == 2
+
+
+def test_cached_paint_mixin_hidpi_uses_physical_surface(monkeypatch):
+    fake_skia = _install_fake_skia()
+    monkeypatch.setitem(sys.modules, "skia", fake_skia)
+
+    widget = _CachedDummy()
+    canvas = _FakeHiDPICanvas(scale=2.0)
+
+    widget.paint(canvas, 10, 12, 40, 20)
+
+    # Offscreen surface is allocated at physical (2x) pixel dimensions.
+    assert fake_skia.created_sizes == [(80, 40)]
+    # The physical snapshot is blitted into the logical destination rect so the
+    # canvas's own 2x scale restores a 1:1 physical mapping.
+    assert len(canvas.rect_draws) == 1
+    img_w, img_h, _rect_src, rect_dst = canvas.rect_draws[0]
+    assert (img_w, img_h) == (80, 40)
+    assert rect_dst == (10.0, 12.0, 40.0, 20.0)
+
+
+def test_cached_paint_mixin_scale_change_forces_repaint(monkeypatch):
+    fake_skia = _install_fake_skia()
+    monkeypatch.setitem(sys.modules, "skia", fake_skia)
+
+    widget = _CachedDummy()
+
+    widget.paint(_FakeHiDPICanvas(scale=1.0), 0, 0, 40, 20)
+    assert widget.render_count == 1
+    # Same geometry but a different device scale must invalidate the snapshot.
+    widget.paint(_FakeHiDPICanvas(scale=2.0), 0, 0, 40, 20)
+    assert widget.render_count == 2
