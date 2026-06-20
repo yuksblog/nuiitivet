@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import logging
+import math
 from typing import Any, Optional, Tuple, cast
 
 from nuiitivet.common.logging_once import debug_once, exception_once
@@ -27,6 +28,7 @@ class CachedPaintMixin:
         self._paint_cache_snapshot: Any = None
         self._paint_cache_snapshot_size: Optional[Tuple[int, int]] = None
         self._paint_cache_snapshot_outsets: Optional[Tuple[int, int, int, int]] = None
+        self._paint_cache_snapshot_scale: Optional[float] = None
         super().__init__(*args, **kwargs)
 
     @contextmanager
@@ -44,22 +46,24 @@ class CachedPaintMixin:
             yield canvas
             return
 
-        if self._try_draw_paint_cache(canvas, origin_x, origin_y, extended_w, extended_h, outsets):
+        scale = self._resolve_device_scale(canvas)
+
+        if self._try_draw_paint_cache(canvas, origin_x, origin_y, extended_w, extended_h, outsets, scale):
             yield self.PAINT_CACHE_SKIP
             return
 
-        recorder = self._begin_paint_cache(canvas, extended_w, extended_h)
+        recorder = self._begin_paint_cache(canvas, extended_w, extended_h, scale)
         if recorder is None:
             yield canvas
             return
 
-        translated = self._apply_recording_transform(recorder, origin_x, origin_y)
+        translated = self._apply_recording_transform(recorder, origin_x, origin_y, scale)
         try:
             yield recorder
         finally:
             if translated:
                 self._restore_recording_transform(recorder)
-            self._finalize_paint_cache(canvas, origin_x, origin_y, extended_w, extended_h, outsets)
+            self._finalize_paint_cache(canvas, origin_x, origin_y, extended_w, extended_h, outsets, scale)
 
     def invalidate_paint_cache(self) -> None:
         """Explicitly clear cached visuals and request a repaint if mounted."""
@@ -83,6 +87,7 @@ class CachedPaintMixin:
         self._paint_cache_snapshot = None
         self._paint_cache_snapshot_size = None
         self._paint_cache_snapshot_outsets = None
+        self._paint_cache_snapshot_scale = None
         try:
             super()._invalidate_paint_cache()  # type: ignore[misc]
         except AttributeError:
@@ -93,13 +98,45 @@ class CachedPaintMixin:
                 type(self).__name__,
             )
 
-    def _begin_paint_cache(self, canvas: Any, width: int, height: int):
+    def _resolve_device_scale(self, canvas: Any) -> float:
+        """Infer the device pixel scale baked into the canvas transform.
+
+        The HiDPI scale (and any enclosing transform-modifier scale) is applied to
+        the canvas before painting, so reading it back from the total matrix avoids
+        threading a scale argument through every ``paint()`` signature.
+        """
+
+        if canvas is None:
+            return 1.0
+        getter = getattr(canvas, "getTotalMatrix", None)
+        if not callable(getter):
+            return 1.0
+        try:
+            matrix = getter()
+            sx = abs(float(matrix.getScaleX()))
+            sy = abs(float(matrix.getScaleY()))
+        except Exception:
+            exception_once(
+                _logger,
+                "paint_cache_device_scale_exc",
+                "Failed to read device scale from canvas matrix; assuming 1.0",
+            )
+            return 1.0
+        scale = max(sx, sy)
+        if not math.isfinite(scale) or scale <= 0.0:
+            return 1.0
+        # Guard against pathological matrices blowing up offscreen allocations.
+        return min(scale, 8.0)
+
+    def _begin_paint_cache(self, canvas: Any, width: int, height: int, scale: float = 1.0):
         if canvas is None:
             return None
         skia = get_skia(raise_if_missing=False)
         if skia is None:
             return None
-        target_size = (max(1, width), max(1, height))
+        phys_w = max(1, int(math.ceil(width * scale)))
+        phys_h = max(1, int(math.ceil(height * scale)))
+        target_size = (phys_w, phys_h)
         surface = self._paint_cache_surface
         if surface is None or self._paint_cache_surface_size != target_size:
             try:
@@ -149,11 +186,15 @@ class CachedPaintMixin:
                 "Failed to clear cache canvas using integer clear",
             )
 
-    def _apply_recording_transform(self, recorder: Any, x: int, y: int) -> bool:
+    def _apply_recording_transform(self, recorder: Any, x: int, y: int, scale: float = 1.0) -> bool:
         if recorder is None:
             return False
         try:
             recorder.save()
+            # Scale first so the widget paints in logical coordinates while the
+            # offscreen surface captures detail at physical pixel density.
+            if scale != 1.0:
+                recorder.scale(float(scale), float(scale))
             recorder.translate(-float(x), -float(y))
             return True
         except Exception:
@@ -182,12 +223,14 @@ class CachedPaintMixin:
         width: int,
         height: int,
         outsets: Tuple[int, int, int, int],
+        scale: float = 1.0,
     ) -> None:
         surface = self._paint_cache_surface
         if surface is None:
             self._paint_cache_snapshot = None
             self._paint_cache_snapshot_size = None
             self._paint_cache_snapshot_outsets = None
+            self._paint_cache_snapshot_scale = None
             return
         try:
             snapshot = surface.makeImageSnapshot()
@@ -200,11 +243,13 @@ class CachedPaintMixin:
             self._paint_cache_snapshot = None
             self._paint_cache_snapshot_size = None
             self._paint_cache_snapshot_outsets = None
+            self._paint_cache_snapshot_scale = None
             return
         self._paint_cache_snapshot = snapshot
         self._paint_cache_snapshot_size = (width, height)
         self._paint_cache_snapshot_outsets = outsets
-        self._blit_cached_image(canvas, snapshot, origin_x, origin_y)
+        self._paint_cache_snapshot_scale = scale
+        self._blit_cached_image(canvas, snapshot, origin_x, origin_y, width, height)
 
     def _try_draw_paint_cache(
         self,
@@ -214,6 +259,7 @@ class CachedPaintMixin:
         width: int,
         height: int,
         outsets: Tuple[int, int, int, int],
+        scale: float = 1.0,
     ) -> bool:
         if canvas is None:
             return False
@@ -223,28 +269,51 @@ class CachedPaintMixin:
             return False
         if self._paint_cache_snapshot_outsets != outsets:
             return False
-        return self._blit_cached_image(canvas, self._paint_cache_snapshot, origin_x, origin_y)
+        if self._paint_cache_snapshot_scale != scale:
+            return False
+        return self._blit_cached_image(canvas, self._paint_cache_snapshot, origin_x, origin_y, width, height)
 
-    def _blit_cached_image(self, canvas: Any, image: Any, x: int, y: int) -> bool:
+    def _blit_cached_image(
+        self,
+        canvas: Any,
+        image: Any,
+        x: int,
+        y: int,
+        logical_w: Optional[int] = None,
+        logical_h: Optional[int] = None,
+    ) -> bool:
         if canvas is None or image is None:
             return False
-        draw = getattr(canvas, "drawImage", None)
-        if callable(draw):
-            try:
-                draw(image, float(x), float(y))
-                return True
-            except Exception:
-                exception_once(
-                    _logger,
-                    "paint_cache_draw_image_exc",
-                    "Failed to draw cached image using drawImage; falling back",
-                )
+        try:
+            img_w = int(image.width())
+            img_h = int(image.height())
+        except Exception:
+            img_w = int(logical_w) if logical_w is not None else 0
+            img_h = int(logical_h) if logical_h is not None else 0
+        dst_w = int(logical_w) if logical_w is not None else img_w
+        dst_h = int(logical_h) if logical_h is not None else img_h
+
+        # Fast path: the snapshot is already at logical (1x) resolution, so it can
+        # be blitted 1:1. On HiDPI the snapshot is larger than the logical rect and
+        # must be down-mapped via drawImageRect (the canvas scale restores density).
+        if img_w == dst_w and img_h == dst_h:
+            draw = getattr(canvas, "drawImage", None)
+            if callable(draw):
+                try:
+                    draw(image, float(x), float(y))
+                    return True
+                except Exception:
+                    exception_once(
+                        _logger,
+                        "paint_cache_draw_image_exc",
+                        "Failed to draw cached image using drawImage; falling back",
+                    )
         skia = get_skia(raise_if_missing=False)
         if skia is None:
             return False
         try:
-            rect_src = skia.Rect.MakeXYWH(0, 0, image.width(), image.height())
-            rect_dst = skia.Rect.MakeXYWH(float(x), float(y), float(image.width()), float(image.height()))
+            rect_src = skia.Rect.MakeXYWH(0, 0, float(img_w), float(img_h))
+            rect_dst = skia.Rect.MakeXYWH(float(x), float(y), float(dst_w), float(dst_h))
             canvas.drawImageRect(image, rect_src, rect_dst)
             return True
         except Exception:
