@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .divider import Divider
     from .buttons import (
         Button,
+        ExtendedFab,
         Fab,
         IconButton,
         IconToggleButton,
@@ -97,6 +98,7 @@ __all__ = [
     "Button",
     "ToggleButton",
     "Fab",
+    "ExtendedFab",
     "IconButton",
     "IconToggleButton",
     "ButtonStyle",
@@ -191,6 +193,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "Button": ("buttons", "Button"),
     "ToggleButton": ("buttons", "ToggleButton"),
     "Fab": ("buttons", "Fab"),
+    "ExtendedFab": ("buttons", "ExtendedFab"),
     "IconButton": ("buttons", "IconButton"),
     "IconToggleButton": ("buttons", "IconToggleButton"),
     "ButtonStyle": ("styles.button_style", "ButtonStyle"),

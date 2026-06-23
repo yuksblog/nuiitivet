@@ -1,11 +1,15 @@
 """Style preset for the Material Design 3 :class:`Fab` widget.
 
-``FabStyle`` is a thin :class:`ButtonStyle` subclass that exposes the three
-*tonal* color variants defined by the current MD3 spec:
+``FabStyle`` is a thin :class:`ButtonStyle` subclass that exposes the six
+active color mappings defined by the current MD3 spec -- three *tonal*
+container variants and three *solid* variants:
 
 - :meth:`FabStyle.primary` -- ``primary container`` / ``on primary container``
 - :meth:`FabStyle.secondary` -- ``secondary container`` / ``on secondary container``
 - :meth:`FabStyle.tertiary` -- ``tertiary container`` / ``on tertiary container``
+- :meth:`FabStyle.primary_solid` -- ``primary`` / ``on primary``
+- :meth:`FabStyle.secondary_solid` -- ``secondary`` / ``on secondary``
+- :meth:`FabStyle.tertiary_solid` -- ``tertiary`` / ``on tertiary``
 
 Each factory accepts a :data:`FabSize` (``"s"`` / ``"m"`` / ``"l"``) that
 selects container / icon / corner-radius tokens from
@@ -83,6 +87,36 @@ class FabStyle(ButtonStyle):
             background=ColorRole.TERTIARY_CONTAINER,
             foreground=ColorRole.ON_TERTIARY_CONTAINER,
             overlay_color=ColorRole.ON_TERTIARY_CONTAINER,
+            **cls._base(size),
+        )
+
+    @classmethod
+    def primary_solid(cls, size: FabSize = "s") -> "FabStyle":
+        """Return the solid-primary FAB style at the given size."""
+        return cls(
+            background=ColorRole.PRIMARY,
+            foreground=ColorRole.ON_PRIMARY,
+            overlay_color=ColorRole.ON_PRIMARY,
+            **cls._base(size),
+        )
+
+    @classmethod
+    def secondary_solid(cls, size: FabSize = "s") -> "FabStyle":
+        """Return the solid-secondary FAB style at the given size."""
+        return cls(
+            background=ColorRole.SECONDARY,
+            foreground=ColorRole.ON_SECONDARY,
+            overlay_color=ColorRole.ON_SECONDARY,
+            **cls._base(size),
+        )
+
+    @classmethod
+    def tertiary_solid(cls, size: FabSize = "s") -> "FabStyle":
+        """Return the solid-tertiary FAB style at the given size."""
+        return cls(
+            background=ColorRole.TERTIARY,
+            foreground=ColorRole.ON_TERTIARY,
+            overlay_color=ColorRole.ON_TERTIARY,
             **cls._base(size),
         )
 

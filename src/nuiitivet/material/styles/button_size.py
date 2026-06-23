@@ -99,6 +99,8 @@ __all__ = [
     "FabSize",
     "FabSizeTokens",
     "FAB_SIZE_TOKENS",
+    "ExtendedFabSizeTokens",
+    "EXTENDED_FAB_SIZE_TOKENS",
 ]
 
 
@@ -202,5 +204,53 @@ FAB_SIZE_TOKENS: dict[FabSize, FabSizeTokens] = {
         "container_width": 96,
         "icon_size": 36,
         "corner_radius": 28,
+    },
+}
+
+
+class ExtendedFabSizeTokens(TypedDict):
+    """Typed view over a single :data:`EXTENDED_FAB_SIZE_TOKENS` row."""
+
+    container_height: int
+    icon_size: int
+    corner_radius: int
+    label_font_size: int
+    leading_space: int
+    icon_label_space: int
+    trailing_space: int
+
+
+# Values from https://m3.material.io/components/extended-fab/specs (expressive
+# small / medium / large size sets).  The baseline (legacy) configuration is
+# deprecated and intentionally excluded.  ``label_font_size`` follows the
+# resolved typescale tokens: title-medium (16) / title-large (22) /
+# headline-small (24).
+EXTENDED_FAB_SIZE_TOKENS: dict[FabSize, ExtendedFabSizeTokens] = {
+    "s": {
+        "container_height": 56,
+        "icon_size": 24,
+        "corner_radius": 16,
+        "label_font_size": 16,
+        "leading_space": 16,
+        "icon_label_space": 8,
+        "trailing_space": 16,
+    },
+    "m": {
+        "container_height": 80,
+        "icon_size": 28,
+        "corner_radius": 20,
+        "label_font_size": 22,
+        "leading_space": 26,
+        "icon_label_space": 12,
+        "trailing_space": 26,
+    },
+    "l": {
+        "container_height": 96,
+        "icon_size": 36,
+        "corner_radius": 28,
+        "label_font_size": 24,
+        "leading_space": 28,
+        "icon_label_space": 16,
+        "trailing_space": 28,
     },
 }

@@ -211,8 +211,11 @@ class Box(CachedPaintMixin, Widget):
             rect = self.last_rect
             if rect is None:
                 return None
-            rx, ry, rw, rh = rect
-            if not (rx <= x <= rx + rw and ry <= y <= ry + rh):
+            # ``x``/``y`` arrive in this widget's local coordinate space, so the
+            # clip bounds must be evaluated at the local origin (0, 0) using the
+            # widget's own size -- not ``last_rect``'s parent-relative offset.
+            _, _, rw, rh = rect
+            if not (0 <= x < rw and 0 <= y < rh):
                 return None
         return super().hit_test(x, y)
 

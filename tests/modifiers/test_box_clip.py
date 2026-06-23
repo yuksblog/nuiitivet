@@ -37,6 +37,27 @@ class FakeCanvas:
         self.restored += 1
 
 
+def test_clip_content_hit_test_uses_local_coordinates():
+    """A clipped Box placed at a non-zero offset stays hit-testable.
+
+    ``hit_test`` receives local coordinates, so the clip-bounds check must use
+    the widget's own size at origin (0, 0) -- not ``last_rect``'s parent-relative
+    offset.  Regression test for clipped widgets (e.g. ExtendedFab) becoming
+    unclickable when laid out inside a Row/Column/Container.
+    """
+    box = Box(child=DummyChild(), corner_radius=8)
+    box.clip_content = True
+    # Simulate a layout placing the box far from the origin.
+    box.set_layout_rect(200, 50, 120, 40)
+    box.set_last_rect(200, 50, 120, 40)
+
+    # Local coordinates inside the box must hit; outside must miss.
+    assert box.hit_test(10, 10) is box
+    assert box.hit_test(119, 39) is box
+    assert box.hit_test(-1, 10) is None
+    assert box.hit_test(10, 40) is None
+
+
 def test_box_clip_uses_rrect_for_corner_radius():
     fake_skia = types.SimpleNamespace()
 
