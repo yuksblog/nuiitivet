@@ -10,6 +10,7 @@ This module contains the unified Material Design 3 button widgets:
   state tokens.
 - :class:`IconButton`, :class:`IconToggleButton` -- icon-only variants.
 - :class:`Fab` -- Floating Action Button.
+- :class:`ExtendedFab` -- Extended FAB with collapse/expand (icon + label).
 """
 
 from __future__ import annotations
@@ -21,8 +22,9 @@ from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
-from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
+from nuiitivet.material.styles.button_size import EXTENDED_FAB_SIZE_TOKENS, FabSize
 from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
@@ -1043,59 +1045,22 @@ class IconToggleButton(ToggleButtonBase):
         return self._icon_toggle_style.selected if selected else self._icon_toggle_style.unselected
 
 
-class Fab(MaterialButtonBase):
-    """Material Design 3 Floating Action Button (FAB)."""
+class _FabBase(MaterialButtonBase):
+    """Shared behaviour for the FAB family (:class:`Fab`, :class:`ExtendedFab`).
 
-    def __init__(
-        self,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
-        *,
-        on_click: Optional[VoidCallback] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
-        style: Optional[FabStyle] = None,
-    ):
-        """Initialize Fab.
+    Centralises the elevation/state-layer token resolution and the expressive
+    press-scale animation so the public widgets do not duplicate it.
+    """
 
-        Args:
-            icon: Icon for the button.
-            on_click: Callback to be invoked when the button is clicked.
-            disabled: Whether the button is disabled.
-            padding: Padding specification.  When ``None``, ``style.padding``
-                is used.
-            style: FAB style preset.  Defaults to :meth:`FabStyle.primary`
-                (size ``"s"``, 56dp).  Use ``FabStyle.primary("m")`` /
-                ``FabStyle.primary("l")`` for the 80dp / 96dp variants, or
-                ``FabStyle.secondary`` / ``FabStyle.tertiary`` for alternative
-                tonal colour sets.
+    _user_style: FabStyle
+    _user_padding: Optional[Union[int, Tuple[int, int, int, int]]]
+    _user_height: Union[int, float]
+
+    def _setup_press_scale(self) -> None:
+        """Create and wire the expressive press-scale animations.
+
+        Subclasses must call this once at the end of ``__init__``.
         """
-        self._user_style: FabStyle = style if style is not None else FabStyle.primary()
-        self._user_padding = padding
-        size = self._user_style.container_height
-        self._user_height = size
-
-        effective_style = self.style
-        text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
-
-        child_widget = build_button_child(
-            None,
-            icon,
-            foreground=text_color,
-            button_height=size,
-            style=effective_style,
-        )
-
-        params = resolve_button_style_params(effective_style, padding, size, disabled)
-
-        super().__init__(
-            child=child_widget,
-            on_click=on_click,
-            width=size,
-            disabled=disabled,
-            **params,
-        )
-        self._sync_state_tokens()
-
         self._press_scale_x_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
         self._press_scale_y_anim: Animatable[float] = Animatable(1.0, motion=EXPRESSIVE_FAST_SPATIAL)
         self.bind(self._press_scale_x_anim.subscribe(lambda _: self.invalidate()))
@@ -1186,3 +1151,251 @@ class Fab(MaterialButtonBase):
             super().paint(canvas, x, y, width, height)
         finally:
             canvas.restore()
+
+
+_FAB_HEIGHT_TO_SIZE: dict[int, FabSize] = {56: "s", 80: "m", 96: "l"}
+
+
+def _fab_size_from_height(height: int) -> FabSize:
+    """Map a FAB container height (dp) back to its size literal."""
+    return _FAB_HEIGHT_TO_SIZE.get(int(height), "s")
+
+
+class Fab(_FabBase):
+    """Material Design 3 Floating Action Button (FAB)."""
+
+    def __init__(
+        self,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        *,
+        on_click: Optional[VoidCallback] = None,
+        disabled: bool | ObservableProtocol[bool] = False,
+        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        style: Optional[FabStyle] = None,
+    ):
+        """Initialize Fab.
+
+        Args:
+            icon: Icon for the button.
+            on_click: Callback to be invoked when the button is clicked.
+            disabled: Whether the button is disabled.
+            padding: Padding specification.  When ``None``, ``style.padding``
+                is used.
+            style: FAB style preset.  Defaults to :meth:`FabStyle.primary`
+                (size ``"s"``, 56dp).  Use ``FabStyle.primary("m")`` /
+                ``FabStyle.primary("l")`` for the 80dp / 96dp variants, or
+                ``FabStyle.secondary`` / ``FabStyle.tertiary`` for alternative
+                tonal colour sets.
+        """
+        self._user_style: FabStyle = style if style is not None else FabStyle.primary()
+        self._user_padding = padding
+        size = self._user_style.container_height
+        self._user_height = size
+
+        effective_style = self.style
+        text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
+
+        child_widget = build_button_child(
+            None,
+            icon,
+            foreground=text_color,
+            button_height=size,
+            style=effective_style,
+        )
+
+        params = resolve_button_style_params(effective_style, padding, size, disabled)
+
+        super().__init__(
+            child=child_widget,
+            on_click=on_click,
+            width=size,
+            disabled=disabled,
+            **params,
+        )
+        self._sync_state_tokens()
+        self._setup_press_scale()
+
+
+class ExtendedFab(_FabBase):
+    """Material Design 3 Extended FAB with a collapse/expand state.
+
+    A pill-shaped FAB carrying a required ``label`` and an optional leading
+    ``icon``.  The ``expanded`` observable morphs the button between the
+    extended pill (icon + label) and a collapsed circular FAB (icon only).
+    The width is content-driven when expanded and animates down to the
+    circular container footprint when collapsed.
+
+    When ``icon`` is omitted the collapse is a no-op: the button stays a
+    label pill because there is nothing to show in the circular footprint.
+    """
+
+    @property
+    def expanded(self) -> bool:
+        """Return whether the button is currently expanded (pill) state."""
+        if self._expanded_external is not None:
+            return bool(self._expanded_external.value)
+        return bool(self._expanded_internal)
+
+    @expanded.setter
+    def expanded(self, new_value: bool) -> None:
+        if self._expanded_external is not None:
+            try:
+                self._expanded_external.value = bool(new_value)
+            except Exception:
+                pass
+        else:
+            self._expanded_internal = bool(new_value)
+        self._update_morph_target()
+
+    def __init__(
+        self,
+        label: str | ReadOnlyObservableProtocol[str],
+        *,
+        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        on_click: Optional[VoidCallback] = None,
+        expanded: bool | ObservableProtocol[bool] = True,
+        disabled: bool | ObservableProtocol[bool] = False,
+        style: Optional[FabStyle] = None,
+    ):
+        """Initialize ExtendedFab.
+
+        Args:
+            label: Required text label (string or observable).
+            icon: Optional leading icon.  When present, the collapsed state
+                shows it as a circular FAB; when absent, collapse is a no-op.
+            on_click: Callback invoked when the button is clicked.
+            expanded: Initial expanded state or external observable.  ``True``
+                (default) shows the icon + label pill; ``False`` collapses to
+                the circular FAB footprint.
+            disabled: Whether the button is disabled.
+            style: FAB style preset selecting the colour mapping and size.
+                Defaults to :meth:`FabStyle.primary` (size ``"s"``, 56dp).
+        """
+        base_style = style if style is not None else FabStyle.primary()
+        size = _fab_size_from_height(base_style.container_height)
+        ext = EXTENDED_FAB_SIZE_TOKENS[size]
+        self._container_height = ext["container_height"]
+
+        effective_style: FabStyle = base_style.copy_with(  # type: ignore[assignment]
+            label_font_size=ext["label_font_size"],
+            icon_size=ext["icon_size"],
+            corner_radius=ext["corner_radius"],
+            container_height=ext["container_height"],
+            spacing=ext["icon_label_space"],
+            padding=(ext["leading_space"], 0, ext["trailing_space"], 0),
+            min_width=ext["container_height"],
+            min_height=ext["container_height"],
+        )
+        self._user_style = effective_style
+        self._user_padding = None
+        self._user_height = self._container_height
+        self._has_icon = icon is not None
+
+        self._expanded_external: ObservableProtocol[bool] | None = None
+        if hasattr(expanded, "subscribe") and hasattr(expanded, "value"):
+            self._expanded_external = cast("ObservableProtocol[bool]", expanded)
+            self._expanded_internal = bool(self._expanded_external.value)
+        else:
+            self._expanded_internal = bool(expanded)
+
+        text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
+
+        child_widget = build_button_child(
+            label,
+            icon,
+            foreground=text_color,
+            button_height=self._container_height,
+            icon_position="leading",
+            spacing=ext["icon_label_space"],
+            style=effective_style,
+        )
+
+        params = resolve_button_style_params(effective_style, None, self._container_height, disabled)
+
+        super().__init__(
+            child=child_widget,
+            on_click=on_click,
+            width=None,
+            disabled=disabled,
+            **params,
+        )
+        # Clip the label as the container shrinks toward the circular footprint.
+        self.clip_content = True
+        self._sync_state_tokens()
+        self._setup_press_scale()
+
+        from nuiitivet.widgets.text import TextBase
+
+        self._label_widget: Optional[Widget] = next(
+            (w for w in self._foreground_targets if isinstance(w, TextBase)), None
+        )
+        self._label_base_rgba: Optional[Tuple[int, int, int, int]] = None
+
+        initial_t = 1.0 if self._effective_expanded() else 0.0
+        self._morph_anim: Animatable[float] = Animatable(initial_t, motion=EXPRESSIVE_DEFAULT_SPATIAL)
+        self.bind(self._morph_anim.subscribe(lambda _: self._on_morph_tick()))
+        self._apply_morph_label_alpha()
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._expanded_external is not None:
+            self.observe(self._expanded_external, self._on_expanded_external_change)
+            self._update_morph_target()
+
+    def _on_expanded_external_change(self, _new_value: bool) -> None:
+        self._update_morph_target()
+
+    def _effective_expanded(self) -> bool:
+        """Return the resolved expanded state (collapse is a no-op without an icon)."""
+        return self.expanded or not self._has_icon
+
+    def _update_morph_target(self) -> None:
+        target = 1.0 if self._effective_expanded() else 0.0
+        if abs(self._morph_anim.target - target) > 1e-6:
+            self._morph_anim.target = target
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def _on_morph_tick(self) -> None:
+        self._apply_morph_label_alpha()
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def _apply_foreground_rgba(self, rgba: Tuple[int, int, int, int]) -> None:
+        super()._apply_foreground_rgba(rgba)
+        # Remember the fully-opaque foreground so the morph can re-derive the
+        # faded label colour without compounding the alpha each frame.
+        self._label_base_rgba = rgba
+        self._apply_morph_label_alpha()
+
+    def _apply_morph_label_alpha(self) -> None:
+        """Fade the label colour alpha in step with the collapse/expand morph."""
+        label = getattr(self, "_label_widget", None)
+        base = getattr(self, "_label_base_rgba", None)
+        morph = getattr(self, "_morph_anim", None)
+        if label is None or base is None or morph is None:
+            return
+        t = max(0.0, min(1.0, float(morph.value)))
+        r, g, b, a = base
+        new_color = (int(r), int(g), int(b), int(round(int(a) * t)))
+        try:
+            style: Any = label._style if getattr(label, "_style", None) is not None else label.style
+            label._style = style.copy_with(color=new_color)
+            label.invalidate()
+        except Exception:
+            exception_once(logger, "extended_fab_label_alpha_exc", "Failed to apply ExtendedFab label alpha")
+
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        # Full pill width (icon + label + leading/trailing space), independent of
+        # the current morph progress, then interpolate toward the circle.
+        full_w, _ = super().preferred_size(max_width=None, max_height=None)
+        circle = int(self._container_height)
+        t = max(0.0, min(1.0, float(self._morph_anim.value)))
+        w = int(round(circle + (int(full_w) - circle) * t))
+        w = max(circle, w)
+        h = circle
+        if max_width is not None:
+            w = min(w, int(max_width))
+        if max_height is not None:
+            h = min(h, int(max_height))
+        return w, h
