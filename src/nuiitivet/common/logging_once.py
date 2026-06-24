@@ -42,6 +42,18 @@ def debug_once(logger: logging.Logger, key: str, msg: str, *args: object) -> Non
         return
 
 
+def warning_once(logger: logging.Logger, key: str, msg: str, *args: object) -> None:
+    """Log a WARNING message once per process for the given key."""
+
+    if not _should_log_once(key):
+        return
+    try:
+        logger.warning(msg, *args)
+    except Exception:
+        # Logging must never raise.
+        return
+
+
 def exception_once(logger: logging.Logger, key: str, msg: str, *args: object) -> None:
     """Log an exception once per process for the given key."""
 
