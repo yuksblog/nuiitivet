@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         LinearProgressIndicator,
     )
     from .menu import Menu, MenuDivider, MenuItem, SubMenuItem
+    from .fab_menu import FabMenu, FabMenuItem
     from .intents import LoadingIntent
     from .icon import Icon
     from .navigation_rail import NavigationRail, RailItem
@@ -99,6 +100,8 @@ __all__ = [
     "ToggleButton",
     "Fab",
     "ExtendedFab",
+    "FabMenu",
+    "FabMenuItem",
     "IconButton",
     "IconToggleButton",
     "ButtonStyle",
@@ -194,6 +197,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ToggleButton": ("buttons", "ToggleButton"),
     "Fab": ("buttons", "Fab"),
     "ExtendedFab": ("buttons", "ExtendedFab"),
+    "FabMenu": ("fab_menu", "FabMenu"),
+    "FabMenuItem": ("fab_menu", "FabMenuItem"),
     "IconButton": ("buttons", "IconButton"),
     "IconToggleButton": ("buttons", "IconToggleButton"),
     "ButtonStyle": ("styles.button_style", "ButtonStyle"),
