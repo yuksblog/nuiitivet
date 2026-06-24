@@ -34,3 +34,4 @@ site/
 # Claude AI configuration files
 CLAUDE.md
 .claude/
+.claude/settings.local.json
