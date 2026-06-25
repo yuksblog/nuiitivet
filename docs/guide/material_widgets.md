@@ -71,6 +71,36 @@ Prominent action button. Multiple color variants and three sizes (small / medium
 
 ---
 
+## ExtendedFab
+
+FAB with a label beside the icon. Toggle its `expanded` observable to morph between the extended pill and a circular FAB. Available in tonal and solid color variants across all three sizes.
+
+![ExtendedFab](../assets/material_widgets_extended_fab.png)
+
+[API Reference](../api/material.md#nuiitivet.material.ExtendedFab)
+
+---
+
+## FabMenu
+
+M3 Expressive FAB menu. A single `is_open` observable morphs the FAB between its `add` and `close` icons and reveals a stack of labelled `FabMenuItem` actions, dismissed by tapping outside or selecting an action.
+
+![FabMenu](../assets/material_widgets_fab_menu.png)
+
+API References: [FabMenu](../api/material.md#nuiitivet.material.FabMenu) ・ [FabMenuItem](../api/material.md#nuiitivet.material.FabMenuItem)
+
+---
+
+## SplitButton
+
+M3 Expressive split button — a leading action button joined to a trailing button that opens a menu. Available in Filled, Tonal, Elevated, and Outlined styles across sizes XS–L.
+
+![SplitButton](../assets/material_widgets_split_button.png)
+
+[API Reference](../api/material.md#nuiitivet.material.SplitButton)
+
+---
+
 ## ButtonGroup
 
 Group related actions. `StandardButtonGroup` keeps spacing between buttons; `ConnectedButtonGroup` connects them as a single segmented control.
@@ -221,6 +251,16 @@ Collapsible(
 ![StandardSideSheet](../assets/material_widgets_standard_side_sheet.png)
 
 [API Reference](../api/material.md#nuiitivet.material.StandardSideSheet)
+
+---
+
+## DockedDatePicker
+
+Inline calendar that always stays visible (not a dialog). It writes the selected `datetime.date` back to a shared observable and supports `min_date` / `max_date` bounds.
+
+![DockedDatePicker](../assets/material_widgets_date_picker.png)
+
+[API Reference](../api/material.md#nuiitivet.material.DockedDatePicker)
 
 ---
 

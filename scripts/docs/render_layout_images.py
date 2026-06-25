@@ -115,6 +115,8 @@ SAMPLES = [
     ("samples/material_widgets/toggle_button.py", "material_widgets_toggle_button.png"),
     ("samples/material_widgets/icon_button.py", "material_widgets_icon_button.png"),
     ("samples/material_widgets/fab.py", "material_widgets_fab.png"),
+    ("samples/material_widgets/extended_fab.py", "material_widgets_extended_fab.png"),
+    ("samples/material_widgets/fab_menu.py", "material_widgets_fab_menu.png"),
     ("samples/material_widgets/button_group.py", "material_widgets_button_group.png"),
     ("samples/material_widgets/split_button.py", "material_widgets_split_button.png"),
     ("samples/material_widgets/selection_controls.py", "material_widgets_selection_controls.png"),
@@ -130,6 +132,7 @@ SAMPLES = [
     ("samples/material_widgets/menu.py", "material_widgets_menu.png"),
     ("samples/material_widgets/tooltip.py", "material_widgets_tooltip.png"),
     ("samples/material_widgets/standard_side_sheet.py", "material_widgets_standard_side_sheet.png"),
+    ("samples/material_widgets/date_picker.py", "material_widgets_date_picker.png"),
     ("samples/material_widgets/image.py", "material_widgets_image.png"),
     # Theme Extensions
     ("samples/theme_extensions/custom_widget.py", "theme_extensions_custom_widget.png"),
