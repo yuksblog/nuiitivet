@@ -2,6 +2,8 @@
 
 `Overlay` is the framework's system for displaying content above the main widget tree. It acts as a transparent full-screen layer that sits on top of all other widgets, allowing you to show dialogs, toasts, menus, and other transient UI elements without disturbing the underlying layout.
 
+![Overlay System](../assets/overlay.png)
+
 ## Role in the Widget Tree
 
 `App` creates and mounts an `Overlay` at the root of the widget tree. Content pushed into the overlay is rendered above all other widgets, regardless of their position in the tree.

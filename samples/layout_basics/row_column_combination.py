@@ -19,8 +19,8 @@ def main(png: str = ""):
             # 3行目: ボタン（横並び）
             nv.Row(
                 children=[
-                    md.TextButton("Cancel"),
-                    md.FilledButton("Register"),
+                    md.Button("Cancel", style=md.ButtonStyle.text()),
+                    md.Button("Register", style=md.ButtonStyle.filled()),
                 ],
                 gap=12,
             ),

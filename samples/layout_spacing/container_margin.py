@@ -5,13 +5,13 @@ import nuiitivet.material as md
 def main(png: str = ""):
     content = nv.Column(
         children=[
-            md.FilledButton("Button 1"),
-            md.FilledButton("Button 2"),
+            md.Button("Button 1", style=md.ButtonStyle.filled()),
+            md.Button("Button 2", style=md.ButtonStyle.filled()),
             nv.Container(
-                child=md.OutlinedButton("Button 3"),
+                child=md.Button("Button 3", style=md.ButtonStyle.outlined()),
                 padding=24,  # この要素だけ周囲に24px確保
             ),
-            md.FilledButton("Button 4"),
+            md.Button("Button 4", style=md.ButtonStyle.filled()),
         ],
         gap=12,
         padding=16,

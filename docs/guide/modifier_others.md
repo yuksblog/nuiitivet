@@ -99,7 +99,7 @@ def main() -> None:
 
 ## Stick
 
-The `stick` modifier overlays any widget on top of a target widget at a specified anchor point. Unlike popup modifiers, the overlaid widget is always visible — it is not transient. Typical uses include notification badges, status dots, and custom decorations.
+The `stick` modifier overlays any widget on top of a target widget at a specified anchor point. Unlike popup modifiers, the overlaid widget is always visible — it is not transient. Because it is a static overlay rather than a dynamic one, it is suited to custom decorations rather than transient indicators like notifications or status updates.
 
 The following example uses `SmallBadge` and `LargeBadge` as the overlaid widget, but any widget can be passed.
 

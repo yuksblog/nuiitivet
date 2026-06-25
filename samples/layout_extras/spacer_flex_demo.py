@@ -8,10 +8,10 @@ def main(png: str = ""):
         gap=16,
         width=500,
         children=[
-            md.OutlinedButton("Left 1"),
-            md.OutlinedButton("Left 2"),
+            md.Button("Left 1", style=md.ButtonStyle.outlined()),
+            md.Button("Left 2", style=md.ButtonStyle.outlined()),
             nv.Spacer(width="100%"),
-            md.FilledButton("Right"),
+            md.Button("Right", style=md.ButtonStyle.filled()),
         ],
     )
 
