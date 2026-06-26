@@ -117,17 +117,17 @@ def _overlay_icon(name: str, color: str) -> nv.Widget:
 
 # cloud + upward arrow = "upload to cloud"
 upload = _base_icon("cloud").modifier(
-    stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center", offset=(0, 6))
+    stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center")
 )
 
 # folder + star = "favorite folder"
 favorite_folder = _base_icon("folder").modifier(
-    stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center", offset=(0, 8))
+    stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center")
 )
 
 # photo + pencil = "edit photo"
 edit_photo = _base_icon("photo").modifier(
-    stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center", offset=(0, 6))
+    stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center")
 )
 ```
 

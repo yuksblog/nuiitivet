@@ -25,7 +25,6 @@ def main(png: str = "") -> None:
                     _overlay_icon("arrow_upward", "#1A73E8"),
                     alignment="center",
                     anchor="center",
-                    offset=(0, 6),
                 )
             ),
             # folder + star = "favorite folder"
@@ -34,7 +33,6 @@ def main(png: str = "") -> None:
                     _overlay_icon("star", "#F9AB00"),
                     alignment="center",
                     anchor="center",
-                    offset=(0, 8),
                 )
             ),
             # photo + pencil = "edit photo"
@@ -43,7 +41,6 @@ def main(png: str = "") -> None:
                     _overlay_icon("edit", "#188038"),
                     alignment="center",
                     anchor="center",
-                    offset=(0, 6),
                 )
             ),
         ],
