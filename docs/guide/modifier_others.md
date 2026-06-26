@@ -99,33 +99,35 @@ def main() -> None:
 
 ## Stick
 
-The `stick` modifier overlays any widget on top of a target widget at a specified anchor point. Unlike popup modifiers, the overlaid widget is always visible — it is not transient. Typical uses include notification badges, status dots, and custom decorations.
+The `stick` modifier overlays any widget on top of a target widget at a specified anchor point. Unlike popup modifiers, the overlaid widget is always visible — it is not transient. Because it is a static overlay rather than a dynamic one, it is suited to custom decorations rather than transient indicators like notifications or status updates.
 
-The following example uses `SmallBadge` and `LargeBadge` as the overlaid widget, but any widget can be passed.
+The following example composes a custom symbol by layering a smaller icon over a larger base icon. Because the result is a fixed, decorative composition — not a value that changes at runtime — it is a good fit for `stick`. (Avoid using it for dynamic indicators such as badges or status dots; those represent changing state and belong in transient UI instead.) Any widget can be passed as the overlay.
 
 ```python
 import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import LargeBadge, SmallBadge
-from nuiitivet.modifiers import background, corner_radius, stick
+from nuiitivet.material import Icon
+from nuiitivet.material.styles.icon_style import IconStyle
+from nuiitivet.modifiers import stick
 
-def _icon_box() -> nv.Container:
-    return nv.Container(
-        width=56,
-        height=56,
-        child=md.Text("Icon"),
-        alignment="center",
-    ).modifier(background("#E0E0E0") | corner_radius(8))
+def _base_icon(name: str) -> nv.Widget:
+    return Icon(name, size=64, style=IconStyle(color="#5F6368"))
 
-# Small badge at the top-right corner (default)
-icon_with_dot = _icon_box().modifier(stick(SmallBadge()))
+def _overlay_icon(name: str, color: str) -> nv.Widget:
+    return Icon(name, size=30, style=IconStyle(color=color))
 
-# Large badge with a count
-icon_with_count = _icon_box().modifier(stick(LargeBadge("3")))
+# cloud + upward arrow = "upload to cloud"
+upload = _base_icon("cloud").modifier(
+    stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center")
+)
 
-# Custom placement: bottom-right corner
-icon_with_badge_br = _icon_box().modifier(
-    stick(LargeBadge("99+"), alignment="bottom-right", anchor="center")
+# folder + star = "favorite folder"
+favorite_folder = _base_icon("folder").modifier(
+    stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center")
+)
+
+# photo + pencil = "edit photo"
+edit_photo = _base_icon("photo").modifier(
+    stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center")
 )
 ```
 

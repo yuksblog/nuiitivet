@@ -7,7 +7,7 @@ def main(png: str = ""):
         children=[
             md.TextField(label="Email"),
             md.TextField(label="Password"),
-            md.FilledButton("Login"),
+            md.Button("Login", style=md.ButtonStyle.filled()),
         ],
         gap=16,
         padding=16,

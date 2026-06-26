@@ -15,9 +15,21 @@ class DeckDemo(nv.ComposableWidget):
             padding=8,
             gap=8,
             children=[
-                md.FilledButton("Tab1", on_click=lambda: self.set_index(0)),
-                md.FilledButton("Tab2", on_click=lambda: self.set_index(1)),
-                md.FilledButton("Tab3", on_click=lambda: self.set_index(2)),
+                md.Button(
+                    "Tab1",
+                    on_click=lambda: self.set_index(0),
+                    style=md.ButtonStyle.filled(),
+                ),
+                md.Button(
+                    "Tab2",
+                    on_click=lambda: self.set_index(1),
+                    style=md.ButtonStyle.filled(),
+                ),
+                md.Button(
+                    "Tab3",
+                    on_click=lambda: self.set_index(2),
+                    style=md.ButtonStyle.filled(),
+                ),
             ],
         )
 

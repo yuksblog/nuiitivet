@@ -1,8 +1,8 @@
+# Dialogs
+
 ## Introduction
 
 nuiitivet offers a robust dialog system built on top of the Overlay architecture. While `BasicDialog` is the most common use case, the system is flexible enough to display any widget as a modal dialog and supports advanced architectural patterns like MVVM.
-
-![Overlay System](../assets/overlay_dialog_toast.png)
 
 ## Basic Usage
 

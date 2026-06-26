@@ -1,10 +1,10 @@
-# Nested Navigation with MaterialNavigator
+# Nested Navigation with Navigator
 
 While `Navigator.root()` is useful for full-screen transitions, you might sometimes need to navigate within a specific part of your screen, such as inside a tab or a split pane. This is known as nested navigation.
 
-## Using MaterialNavigator
+## Using Navigator
 
-You can create a nested navigation area by placing a `MaterialNavigator` widget anywhere in your widget tree. You can initialize it with a single initial screen.
+You can create a nested navigation area by placing a `Navigator` widget anywhere in your widget tree. You can initialize it with a single initial screen.
 
 ![Nested Navigation](../assets/navigation_sub.png)
 
@@ -12,7 +12,6 @@ You can create a nested navigation area by placing a `MaterialNavigator` widget 
 import nuiitivet as nv
 
 from nuiitivet.material import Text, Button, Navigator
-from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.container import Container
@@ -89,7 +88,7 @@ class MainScreen(ComposableWidget):
                 Container(
                     width=nv.Sizing.flex(1),
                     height=nv.Sizing.flex(1),
-                    child=MaterialNavigator(
+                    child=Navigator(
                         routes=[Route(builder=lambda: NestedHome())]
                     ),
                 ),
@@ -106,4 +105,4 @@ In the example above:
 - The "Open Full Screen" button uses `Navigator.root().push()` to replace the entire `MainScreen`.
 - The "Go Deeper (Nested)" button uses `Navigator.of(self).push()` to change only the right side of the screen, leaving the sidebar intact.
 
-By using `MaterialNavigator` and `Navigator.of()`, you can create complex, multi-layered navigation structures within your application, allowing for independent navigation flows in different sections of the UI.
+By using `Navigator` and `Navigator.of()`, you can create complex, multi-layered navigation structures within your application, allowing for independent navigation flows in different sections of the UI.

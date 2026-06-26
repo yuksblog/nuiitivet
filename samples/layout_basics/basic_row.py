@@ -5,8 +5,8 @@ import nuiitivet.material as md
 def main(png: str = ""):
     actions = nv.Row(
         children=[
-            md.OutlinedButton("Back"),
-            md.FilledButton("Next"),
+            md.Button("Back", style=md.ButtonStyle.outlined()),
+            md.Button("Next", style=md.ButtonStyle.filled()),
         ],
         gap=12,
         padding=16,
