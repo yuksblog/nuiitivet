@@ -77,7 +77,7 @@ def test_set_child_replaces_scoped_fragment():
     assert second.last_rect == (0, 0, 50, 50)
 
 
-def test_callable_child_spec_is_evaluated_per_build():
+def test_callable_child_spec_cached_until_invalidated():
     builds = []
 
     def builder():
@@ -88,7 +88,45 @@ def test_callable_child_spec_is_evaluated_per_build():
     container = Card(builder, padding=0)
     container.evaluate_build()
     container.evaluate_build()
+    # Idempotent recomposition: re-evaluating build() (e.g. on every measure)
+    # reuses the cached scoped child instead of re-running the factory.
+    assert len(builds) == 1
+
+    # Explicit content invalidation re-evaluates the factory.
+    container.set_child(builder)
     assert len(builds) == 2
+
+
+class TrackingChild(Widget):
+    def __init__(self):
+        super().__init__()
+        self.unmount_count = 0
+
+    def preferred_size(self):
+        return (10, 10)
+
+    def on_unmount(self):
+        self.unmount_count += 1
+        super().on_unmount()
+
+    def paint(self, canvas, x, y, w, h):
+        self.set_last_rect(x, y, w, h)
+
+
+def test_measure_does_not_unmount_live_child():
+    # Regression for issue #244: measuring a mounted Card must not tear down
+    # (unmount) its live child subtree. Doing so cancels in-progress pointer
+    # gestures, so clicks on interactive children inside a Card never fire.
+    child = TrackingChild()
+    card = Card(child, padding=0)
+    card.mount(object())
+    assert child.unmount_count == 0
+
+    # Each measure pass re-evaluates Card.build() (Card._built is always None,
+    # since build() returns self). It must preserve the mounted subtree.
+    card.preferred_size()
+    card.preferred_size()
+    assert child.unmount_count == 0
 
 
 def test_elevated_card_reports_shadow_outsets():

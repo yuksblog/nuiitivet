@@ -192,8 +192,16 @@ class ForEach(ComposableWidget):
                 )
                 self._entries_by_token[info.token] = entry
             else:
+                # Reusing an existing scope (same token). Scoped fragments now
+                # rebuild only when explicitly invalidated, so a changed value
+                # must be signalled rather than relying on unconditional re-entry.
+                # Update the entry first: invalidation may flush synchronously
+                # (unmounted host) and rebuild from entry.value immediately.
+                value_changed = not self._values_equal(entry.value, info.value)
                 entry.index = info.index
                 entry.value = info.value
+                if value_changed and entry.scope_id:
+                    self.invalidate_scope_id(entry.scope_id)
             fragment = self._ensure_fragment(entry)
             if fragment is not None:
                 next_children.append(fragment)

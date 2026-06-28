@@ -75,6 +75,28 @@ def test_value_change_in_place_invalidates_scope():
     assert calls == [(1, 42)]
 
 
+class _FakeApp:
+    def invalidate(self, immediate: bool = False) -> None:
+        pass
+
+
+def test_count_change_with_reused_value_rebuilds_when_mounted():
+    # A reused scope (same token) whose value changed must rebuild even on a
+    # mounted host, where scope invalidation queues instead of flushing. The
+    # in-line render in _sync_entries_from_tokens keeps this synchronous.
+    s = _make_obs([1, 2, 3])
+
+    def builder(item, idx):
+        return DummyWidget(10, 5, tag=item)
+
+    fe = ForEach(s, builder)
+    fe.mount(_FakeApp())
+    assert _child_tags(fe) == [1, 2, 3]
+    # Count shrinks 3 -> 1 and the reused idx0 entry's value changes 1 -> 42.
+    s.value = [42]
+    assert _child_tags(fe) == [42]
+
+
 def test_builder_invalid_entries_fallback_to_spacer():
     items = [1, 2, 3, 4]
 

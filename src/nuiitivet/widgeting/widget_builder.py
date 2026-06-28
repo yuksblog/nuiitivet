@@ -364,6 +364,10 @@ class BuilderHostMixin:
         self._active_scope_ids: Set[str] = set()
         self._scope_metadata: Dict[str, ScopeMetadata] = {}
         self._dependency_scope_index: Dict[str, Set[str]] = {}
+        # Scopes whose inputs were invalidated and must be rebuilt on the next
+        # render. A scope rebuilds only when it is new, unbuilt, or dirty — not
+        # whenever the host's build() re-runs (idempotent recomposition).
+        self._dirty_scopes: Set[str] = set()
 
     @property
     def built_child(self) -> Optional["Widget"]:
@@ -478,6 +482,7 @@ class BuilderHostMixin:
         self._active_scope_ids.clear()
         self._scope_metadata.clear()
         self._dependency_scope_index.clear()
+        self._dirty_scopes.clear()
 
     # --- Lifecycle & Rendering (Mixin overrides) --------------------------
     def on_mount(self) -> None:
@@ -535,9 +540,18 @@ class BuilderHostMixin:
         if self._built:
             return measure_preferred_size(self._built, max_width=max_width, max_height=max_height)
 
-        # Unmounted composables still need intrinsic sizing (e.g. App auto
-        # window sizing before mount). Evaluate build once and measure the
-        # returned subtree directly.
+        # Measuring must be side-effect-free (issue #244). When mounted, the live
+        # subtree already exists — either as ``_built`` (handled above) or, for
+        # widgets whose ``build()`` returns ``self`` (e.g. Card), as mounted
+        # children. Measure those directly; never call ``build()`` here, since
+        # rebuilding a scoped fragment would unmount the subtree and cancel an
+        # in-progress pointer gesture.
+        if getattr(self, "_app", None) is not None:
+            return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
+
+        # Unmounted composables still need intrinsic sizing (e.g. App auto window
+        # sizing before mount). There is no live subtree to harm, so evaluate
+        # build once and measure the returned subtree directly.
         try:
             built = self.evaluate_build()
         except Exception:
@@ -571,6 +585,14 @@ class BuilderHostMixin:
 
     # --- Scope helpers ----------------------------------------------------
     def render_scope(self, name: str, factory: Callable[[], "Widget"]) -> "Widget":
+        """Render ``factory`` inside a named, independently-recomposable scope.
+
+        Recomposition is idempotent: the scope's subtree is rebuilt only when the
+        scope is invalidated (``invalidate_scope_id`` / a tracked dependency), not
+        merely because the host's ``build()`` re-runs. Callers that mutate the
+        factory's inputs must invalidate the scope; relying on a host rebuild to
+        refresh an un-invalidated scope will not work.
+        """
         ctx = self._build_ctx
         if ctx is None:
             return _require_widget_instance(factory())
@@ -600,16 +622,26 @@ class BuilderHostMixin:
         if fragment is None:
             fragment = ScopedFragment(scope_id=scope_id, factory=normalized_factory)
             self._scope_nodes[scope_id] = fragment
+            needs_build = True
         else:
+            # Always refresh the stored factory so a later invalidation rebuilds
+            # against current host state, even when we skip rebuilding now.
             fragment.update_factory(normalized_factory)
-        try:
-            fragment.rebuild()
-        except Exception:
-            exception_once(
-                _logger,
-                "widget_builder_scope_fragment_rebuild_exc",
-                "Scoped fragment rebuild raised",
-            )
+            # Idempotent recomposition (issue #244): rebuild only when the scope
+            # was explicitly invalidated or has no built subtree yet. Re-entering
+            # build() (e.g. on every measure) must not tear down the live subtree.
+            needs_build = scope_id in self._dirty_scopes or fragment.built_child is None
+
+        if needs_build:
+            try:
+                fragment.rebuild()
+            except Exception:
+                exception_once(
+                    _logger,
+                    "widget_builder_scope_fragment_rebuild_exc",
+                    "Scoped fragment rebuild raised",
+                )
+            self._dirty_scopes.discard(scope_id)
         self._capture_scope_metadata(scope_id, factory, fragment)
         return fragment
 
@@ -628,6 +660,7 @@ class BuilderHostMixin:
         stale = [scope_id for scope_id in self._scope_nodes.keys() if scope_id not in active]
         for scope_id in stale:
             fragment = self._scope_nodes.pop(scope_id)
+            self._dirty_scopes.discard(scope_id)
             try:
                 fragment.unmount()
             except Exception:
@@ -673,6 +706,9 @@ class BuilderHostMixin:
     def _schedule_scope_recomposition(self, scope_id: str) -> bool:
         if scope_id not in self._scope_nodes:
             return False
+        # Single funnel for every scope invalidation: mark the scope dirty so the
+        # next render (in-line or via _perform_scope_rebuild) rebuilds it.
+        self._dirty_scopes.add(scope_id)
         first_insert = _queue_scope_recomposition(self, scope_id)
         if first_insert:
             invalidate = getattr(self, "invalidate", None)
@@ -715,6 +751,7 @@ class BuilderHostMixin:
                 "Scoped fragment rebuild raised in _perform_scope_rebuild",
             )
             return False
+        self._dirty_scopes.discard(scope_id)
         factory: Optional[Callable[[], "Widget"]]
         metadata = self._scope_metadata.get(scope_id)
         if metadata is not None:
