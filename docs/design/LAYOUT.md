@@ -60,7 +60,7 @@ How the allocated room is used (intrinsic or full fill) is decided by the child 
 Example: To fill a cell, explicitly specify `Sizing.flex(1)`.
 
 ```python
-cell = MaterialContainer(
+cell = Card(
     Text("Cell"),
     width=Sizing.flex(1),
     height=Sizing.flex(1),
