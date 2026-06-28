@@ -254,8 +254,11 @@ def test_variant_outlined():
 # ===========================================================================
 
 
-def test_standard_no_neighbor_animate_on_press():
-    """Standard group: pressing an item does NOT affect adjacent item corners."""
+def test_standard_neighbor_corners_unaffected_on_press():
+    """Standard group: pressing an item must NOT alter a neighbor's corners.
+
+    Per MD3, the adjacent interaction adjusts neighbor **width**, not shape.
+    """
     items = _make_items(3)
     group = StandardButtonGroup(items)
     _mount_group(group)
@@ -264,21 +267,214 @@ def test_standard_no_neighbor_animate_on_press():
     middle_item = items[1]  # "middle"
     s = middle_item._style
 
-    # Press start item
+    # Press start item — its corners morph, but the middle neighbor's corners
+    # stay at idle.
     send_pointer_event_for_test(start_item, PointerEventType.PRESS)
 
-    # Middle should remain at idle corners
     tl, tr, br, bl = middle_item._corner_anim.target
     assert tl == s.inner_corner_radius
-    assert bl == s.inner_corner_radius
     assert tr == s.inner_corner_radius
     assert br == s.inner_corner_radius
+    assert bl == s.inner_corner_radius
 
-    # Release
+    # Release — still idle.
     send_pointer_event_for_test(start_item, PointerEventType.RELEASE)
-    tl2, tr2, br2, bl2 = middle_item._corner_anim.target
-    assert tl2 == s.inner_corner_radius
-    assert bl2 == s.inner_corner_radius
+    assert middle_item._corner_anim.target == (
+        s.inner_corner_radius,
+        s.inner_corner_radius,
+        s.inner_corner_radius,
+        s.inner_corner_radius,
+    )
+
+
+# ===========================================================================
+# StandardButtonGroup — adjacent width interaction
+# ===========================================================================
+
+
+def _make_wide_items(n: int) -> List[GroupButton]:
+    """Items sharing a wide, identical-width label so their base widths match.
+
+    Equal base widths keep the growth/shrink arithmetic exact: the per-neighbor
+    shrink room equals the active item's growth share, so no capping kicks in.
+    """
+    return [_make_item("Wide Label") for _ in range(n)]
+
+
+def _group_row(group):
+    """Return the group's interaction-aware row (Standard groups only)."""
+    from nuiitivet.material.button_group import _ButtonGroupRow
+
+    for child in group.children:
+        if isinstance(child, _ButtonGroupRow):
+            return child
+    raise AssertionError("interaction row not found")
+
+
+def _computed_widths(group):
+    """Run the parent's single-pass width computation for the current progress."""
+    row = _group_row(group)
+    return row._interaction_widths(list(group._items))
+
+
+def _set_active(item, active: bool = True) -> None:
+    """Force an item's active progress (bypassing animation) to 0 or 1."""
+    item._press_progress.snap_to(1.0 if active else 0.0)
+
+
+def _side_growth(active, neighbor) -> float:
+    """Expected per-side growth: half the multiplier, capped by neighbor padding."""
+    half = active._style.pressed_width_multiplier * active._base_width / 2.0
+    pad = float(getattr(neighbor._style, "inner_padding", 12))
+    return min(half, pad)
+
+
+def test_standard_press_sets_active_progress():
+    """Pressing an item drives its active progress toward 1.0."""
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    item = items[1]  # middle
+    send_pointer_event_for_test(item, PointerEventType.PRESS)
+    assert item._press_progress.target == pytest.approx(1.0)
+    # Releasing without selecting returns toward 0.0 (independent action item).
+
+
+def test_standard_active_item_grows():
+    """An active item's computed width grows by both-side growth."""
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    start, middle, end = items
+    _set_active(middle)
+
+    widths = _computed_widths(group)
+    expected = middle._base_width + _side_growth(middle, start) + _side_growth(middle, end)
+    assert widths[1] == pytest.approx(expected)
+    assert widths[1] > middle._base_width
+
+
+def test_standard_neighbors_compress_to_compensate():
+    """An active middle item compresses both neighbors by its per-side growth."""
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    start, middle, end = items
+    _set_active(middle)
+
+    widths = _computed_widths(group)
+    assert widths[0] == pytest.approx(start._base_width - _side_growth(middle, start))
+    assert widths[2] == pytest.approx(end._base_width - _side_growth(middle, end))
+    # Total width is conserved (no group bulge).
+    assert sum(widths) == pytest.approx(sum(it._base_width for it in items))
+
+
+def test_standard_edge_item_compresses_single_neighbor():
+    """An edge item grows only on its one available side, compressing one neighbor."""
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    start, middle, end = items
+    _set_active(start)
+
+    widths = _computed_widths(group)
+    g = _side_growth(start, middle)
+    assert widths[0] == pytest.approx(start._base_width + g)
+    assert widths[1] == pytest.approx(middle._base_width - g)
+    assert widths[2] == pytest.approx(end._base_width)
+
+
+def test_standard_width_expands_on_press_only():
+    """Width grows only while pressed; on release it returns to idle width.
+
+    MD3 defines only a *pressed* width token — selection is conveyed by colour
+    and corner shape, not by a persistent width change.
+    """
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    item = items[1]
+    # Press → peak expansion.
+    send_pointer_event_for_test(item, PointerEventType.PRESS)
+    assert item._press_progress.target == pytest.approx(1.0)
+    # Release (click) → selected, but width returns to idle.
+    send_pointer_event_for_test(item, PointerEventType.RELEASE)
+    assert item._selected is True
+    assert item._press_progress.target == pytest.approx(0.0)
+
+
+def test_standard_selected_item_rests_at_idle_width():
+    """Selecting / deselecting never leaves a persistent width expansion."""
+    items = _make_wide_items(3)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    middle = items[1]
+    _click(middle)  # select
+    assert middle._selected is True
+    assert middle._press_progress.target == pytest.approx(0.0)
+
+    _click(middle)  # deselect
+    assert middle._selected is False
+    assert middle._press_progress.target == pytest.approx(0.0)
+
+    # With progress settled at 0 (no active item), computed widths equal bases.
+    for it in items:
+        _set_active(it, False)
+    widths = _computed_widths(group)
+    assert widths == pytest.approx([it._base_width for it in items])
+
+
+def test_standard_side_space_reserved_via_centering():
+    """Standard items reserve side space as centred margin, not box padding.
+
+    The MD3 button leading/trailing-space (m → 24dp) is reserved in the item's
+    preferred width and rendered by centring the content (box padding stays 0),
+    so the pressed-width interaction compresses neighbours symmetrically.
+    """
+    items = _make_items(2)
+    group = StandardButtonGroup(items, style=StandardButtonGroupStyle.filled("m"))
+    _mount_group(group)
+
+    item = items[0]
+    # No box padding: the space is centred margin, not an inset inner rect.
+    assert item.padding == (0, 0, 0, 0)
+    # Preferred width reserves 2 × 24dp around the bare content width.
+    content_w = item.children[0].preferred_size()[0]
+    assert item.preferred_size()[0] == content_w + 2 * 24
+
+
+def test_standard_content_centered_in_item():
+    """Content sits centred in the item, with equal left/right margins."""
+    items = _make_items(2)
+    group = StandardButtonGroup(items, style=StandardButtonGroupStyle.filled("m"))
+    _mount_group(group)
+
+    item = items[0]
+    iw, ih = item.preferred_size()
+    item.layout(iw, ih)
+    cx, _cy, cw, _ch = item.children[0].layout_rect
+    left_margin = cx
+    right_margin = iw - (cx + cw)
+    assert left_margin == pytest.approx(right_margin, abs=1)
+
+
+def test_connected_width_interaction_disabled():
+    """Connected group: pressing an item leaves neighbor widths untouched."""
+    items = _make_items(3)
+    group = ConnectedButtonGroup(items)
+    _mount_group(group)
+
+    start, middle, end = items
+    # Connected items keep flex sizing; the width animation must not engage.
+    send_pointer_event_for_test(middle, PointerEventType.PRESS)
+    assert start.width_sizing.kind == "flex"
+    assert end.width_sizing.kind == "flex"
 
 
 def test_standard_item_selected_independent():
@@ -298,7 +494,13 @@ def test_standard_item_selected_independent():
 
 
 def test_standard_selected_keeps_squarer_shape_after_release() -> None:
-    """Standard item keeps selected shape (does not snap back to idle rounded)."""
+    """Standard item keeps the pressed (squared) shape while selected.
+
+    The MD3 button-group spec defines no separate selected shape for standard
+    groups, and the official demo shows a selected segment at the same roundness
+    as a pressed one, so selection reuses the pressed corners (it does not snap
+    back to the idle rounded pill).
+    """
     items = _make_items(3)
     group = StandardButtonGroup(items)
     _mount_group(group)
@@ -339,11 +541,72 @@ def test_standard_unselected_returns_to_idle_rounded_shape() -> None:
 
 
 def test_standard_preferred_size():
-    """Group height matches container_height; item width respects min_item_width."""
-    item = _make_item()
-    _h = item._style.container_height
-    assert item.preferred_size()[1] == _h
+    """Standard item height matches container_height; width is content-fit.
+
+    The 48dp spec value is a tap-target requirement, not a visual width floor,
+    so a Standard item is free to be narrower than ``min_item_width``.
+    """
+    items = _make_items(2)
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+    item = items[0]
+    assert item.preferred_size()[1] == item._style.container_height
+    # Content-fit: a short label may render narrower than min_item_width.
+    assert item.preferred_size()[0] == item._base_width
+
+
+def test_standard_preferred_size_correct_before_mount():
+    """A group reports its sized width before mount (window auto-sizing).
+
+    Window auto-sizing measures the unmounted content tree.  The group must
+    propagate its size-specific style to items at construction so a larger size
+    is not under-measured at the default ("s") size (regression: only width was
+    affected because height comes from container_height).
+    """
+    items = [GroupButton(icon="event", label="Week") for _ in range(3)]
+    group = StandardButtonGroup(items, style=StandardButtonGroupStyle.filled("l"))
+
+    pre = group.preferred_size()
+    _mount_group(group)
+    post = group.preferred_size()
+
+    assert pre == post
+    # Larger size really is wider than the default "s" group of the same labels.
+    s_items = [GroupButton(icon="event", label="Week") for _ in range(3)]
+    s_group = StandardButtonGroup(s_items, style=StandardButtonGroupStyle.filled("s"))
+    assert pre[0] > s_group.preferred_size()[0]
+
+
+def test_connected_preferred_size_enforces_min_width():
+    """Connected items still enforce the 48dp visual minimum width."""
+    items = _make_items(2)
+    group = ConnectedButtonGroup(items)
+    _mount_group(group)
+    item = items[0]
     assert item.preferred_size()[0] >= item._style.min_item_width
+
+
+def test_standard_group_width_preserved_with_short_labels():
+    """Short-label / icon-only segments must not bulge the group on press.
+
+    The parent computes all widths in one pass: the active item's growth is
+    exactly the neighbors' compression, so the summed width is conserved and the
+    rightmost item cannot accumulate jitter.
+    """
+    items = _make_items(3)  # short labels "0","1","2"
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    initial_total = sum(it._base_width for it in items)
+
+    _set_active(items[1])  # middle active
+    widths = _computed_widths(group)
+
+    # Active grows, both neighbors compress, total unchanged (no bulge).
+    assert sum(widths) == pytest.approx(initial_total)
+    assert widths[1] > items[1]._base_width
+    assert widths[0] < items[0]._base_width
+    assert widths[2] < items[2]._base_width
 
 
 # ===========================================================================
