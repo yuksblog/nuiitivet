@@ -19,6 +19,7 @@ from nuiitivet.material.styles.button_group_style import (
     ConnectedButtonGroupStyle,
     StandardButtonGroupStyle,
 )
+from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.layout.column import Column
@@ -31,7 +32,9 @@ _ALIGN_ICONS = ("format_align_left", "format_align_center", "format_align_right"
 # Size scale content: each row varies icons and label presence (icon-only,
 # label-only, icon + label).  Content-fit widths keep the pressed-width
 # interaction working and avoid narrow vertical pills at large sizes.
-_SIZE_CONTENT: dict[str, list[tuple[str | None, str | None]]] = {
+_SIZES: tuple[ButtonSize, ...] = ("xs", "s", "m", "l", "xl")
+
+_SIZE_CONTENT: dict[ButtonSize, list[tuple[str | None, str | None]]] = {
     "xs": [("format_align_left", None), ("format_align_center", None), ("format_align_right", None)],
     "s": [(None, "Day"), (None, "Week"), (None, "Month")],
     "m": [("calendar_today", "Day"), ("event", "Week"), ("schedule", "Month")],
@@ -87,7 +90,7 @@ def _icon_group(style) -> StandardButtonGroup:
     )
 
 
-def _size_group(size: str) -> StandardButtonGroup:
+def _size_group(size: ButtonSize) -> StandardButtonGroup:
     return StandardButtonGroup(
         [GroupButton(icon=icon, label=label) for icon, label in _SIZE_CONTENT[size]],
         style=StandardButtonGroupStyle.filled(size),
@@ -120,7 +123,7 @@ def main(png_path: str = "") -> None:
 
     sizes = _section(
         "Sizes",
-        *[_labeled(size.upper(), _size_group(size)) for size in ("xs", "s", "m", "l", "xl")],
+        *[_labeled(size.upper(), _size_group(size)) for size in _SIZES],
     )
 
     page = Row(
