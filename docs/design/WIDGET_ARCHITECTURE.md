@@ -154,6 +154,10 @@ To achieve high performance in Python, the framework implements caching and scop
   - `RecomposeScope` allows wrapping a subtree in a named scope.
   - `ScopeHandle` provides methods (`invalidate()`, `invalidate_scope_id()`) to trigger rebuilds only for that specific scope.
   - Binding invalidations are routed through `_lookup_scope_ids_for_dependency()`, ensuring that only the affected scopes are rebuilt.
+- **Idempotent Recomposition Contract** (issue #244):
+  - A scope's subtree is rebuilt only when it is **new, unbuilt, or explicitly invalidated**. Invalidation is tracked in `_dirty_scopes`, and `_schedule_scope_recomposition()` is the single funnel through which a scope is marked dirty.
+  - Re-evaluating the host's `build()` does **not** rebuild scopes that were not invalidated. Re-entering `build()` on every measure must never tear down a live subtree (which would discard focus, scroll, animation, and pointer state).
+  - Callers own the responsibility to invalidate a scope when the inputs of its `render_scope` factory change. For example, `ForEach` fires `invalidate_scope_id` for an item's scope when that item's value changes. Relying on a host rebuild to refresh an un-invalidated scope will not work.
 
 ### 2. Layout & Dimension Caching
 

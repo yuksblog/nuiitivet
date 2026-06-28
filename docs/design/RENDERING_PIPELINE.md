@@ -16,9 +16,10 @@ The phase where the Widget tree is constructed and incremental updates are perfo
 ### Scoped Rendering Optimization
 
 * **Fine-grained Updates**: Dynamic child elements are wrapped using `render_scope` blocks to prevent the regeneration of high-cost Widgets when a parent is rebuilt.
-* **Dedicated Scopes**: Core Widgets like `ForEach` and `MaterialContainer` have dedicated scopes to isolate list items or decorative content.
+* **Dedicated Scopes**: Core Widgets like `ForEach` and `Card` have dedicated scopes to isolate list items or decorative content.
 * **Dependency Tracking**: Scope metadata records `_layout_dependencies` and `_paint_dependencies` for each child, ensuring proper routing of binding invalidations.
-* **Batching**: Binding and scope recomposition queues are flushed together, and unmounted Widgets are rebuilt immediately.
+* **Idempotent Recomposition**: A scope is rebuilt only when it is new, unbuilt, or explicitly invalidated (tracked via `_dirty_scopes`); merely re-running the host's `build()` does **not** rebuild un-invalidated scopes. See [Widget Optimization › Recompose Scope API](WIDGET_ARCHITECTURE.md#1-recompose-scope-api).
+* **Batching**: Binding and scope recomposition queues are flushed together. For an unmounted host there is no pending frame to await, so invalidating a scope flushes its rebuild synchronously rather than deferring it.
 
 ## 2. Layout Phase
 
@@ -39,11 +40,15 @@ All `Widget`s adhere to the following protocol:
         4. Clear the `_needs_layout` flag.
     * **Forbidden**: Issuing draw commands or state changes with side effects (except for storing layout results).
 
-2. **`_layout_rect` Property**
+2. **`preferred_size()` Method**
+    * Reports the Widget's intrinsic size so the parent can allocate room during `layout()`.
+    * **Forbidden (measure purity)**: `preferred_size()` must be free of side effects, the same constraint that applies to `layout()`. In particular, measuring a mounted composable must **not** call `build()` and unmount/rebuild the live subtree — doing so discards focus, scroll position, animation state, and pointer capture, and cancels in-progress gestures. Measurement reads the existing subtree only.
+
+3. **`_layout_rect` Property**
     * Holds the relative position and size `(x, y, w, h)` as seen from the parent Widget, calculated during `layout()`.
     * The `paint()` method reads this value to perform rendering.
 
-3. **`mark_needs_layout()` Method**
+4. **`mark_needs_layout()` Method**
     * Called when a property affecting layout (e.g., `width`, `padding`, addition/removal of children) is changed.
     * Sets its own `_needs_layout` flag and propagates it recursively to the parent Widget.
     * This ensures that only necessary parts of the tree are re-laid out in the next frame.
