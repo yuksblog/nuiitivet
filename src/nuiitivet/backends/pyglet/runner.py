@@ -739,14 +739,18 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     def _normalize_scroll_delta(scroll_x: float, scroll_y: float) -> tuple[float, float]:
         """Normalize Pyglet raw scroll values to the app convention.
 
-        Convention: positive scroll_y = move content downward (offset increases).
-        On macOS the OS already adjusts values for the Natural Scrolling
-        preference, so pass through unchanged.  On Windows and Linux, Pyglet
-        reports scroll_y > 0 for wheel-forward (up), which is opposite to the
-        app convention.
+        Convention: positive scroll_y = move content downward (offset increases),
+        positive scroll_x = move content rightward (offset increases).
+
+        On macOS, Pyglet negates AppKit's ``deltaY`` so vertical values already
+        match the app convention, but ``deltaX`` is passed through with AppKit's
+        native sign, which is opposite to the app convention.  Negate scroll_x to
+        compensate while leaving scroll_y unchanged.  On Windows and Linux,
+        Pyglet reports scroll_y > 0 for wheel-forward (up), which is opposite to
+        the app convention, so both axes are negated.
         """
         if sys.platform == "darwin":
-            return scroll_x, scroll_y
+            return -scroll_x, scroll_y
         # Windows and Linux: negate to match app convention
         return -scroll_x, -scroll_y
 
