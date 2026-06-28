@@ -31,32 +31,52 @@ _STANDARD_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "xs": {
         "container_height": 32,
         "item_gap": 18,
+        "inner_padding": 12,
+        "icon_size": 20,
+        "label_size": 14,
+        "icon_label_space": 8,
         "outer_corner_radius": 16.0,
-        "pressed_inner_corner_radius": 8.0,
+        "pressed_corner_radius": 12.0,
     },
     "s": {
         "container_height": 40,
         "item_gap": 12,
+        "inner_padding": 16,
+        "icon_size": 20,
+        "label_size": 14,
+        "icon_label_space": 8,
         "outer_corner_radius": 20.0,
-        "pressed_inner_corner_radius": 8.0,
+        "pressed_corner_radius": 12.0,
     },
     "m": {
         "container_height": 56,
         "item_gap": 8,
+        "inner_padding": 24,
+        "icon_size": 24,
+        "label_size": 16,
+        "icon_label_space": 8,
         "outer_corner_radius": 28.0,
-        "pressed_inner_corner_radius": 8.0,
+        "pressed_corner_radius": 16.0,
     },
     "l": {
         "container_height": 96,
         "item_gap": 8,
+        "inner_padding": 48,
+        "icon_size": 32,
+        "label_size": 24,
+        "icon_label_space": 12,
         "outer_corner_radius": 48.0,
-        "pressed_inner_corner_radius": 8.0,
+        "pressed_corner_radius": 28.0,
     },
     "xl": {
         "container_height": 136,
         "item_gap": 8,
+        "inner_padding": 64,
+        "icon_size": 40,
+        "label_size": 32,
+        "icon_label_space": 16,
         "outer_corner_radius": 68.0,
-        "pressed_inner_corner_radius": 8.0,
+        "pressed_corner_radius": 28.0,
     },
 }
 
@@ -64,6 +84,9 @@ _CONNECTED_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "xs": {
         "container_height": 32,
         "item_gap": 2,
+        "icon_size": 20,
+        "label_size": 14,
+        "icon_label_space": 8,
         "outer_corner_radius": 16.0,
         "inner_corner_radius": 8.0,
         "pressed_inner_corner_radius": 4.0,
@@ -71,6 +94,9 @@ _CONNECTED_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "s": {
         "container_height": 40,
         "item_gap": 2,
+        "icon_size": 20,
+        "label_size": 14,
+        "icon_label_space": 8,
         "outer_corner_radius": 20.0,
         "inner_corner_radius": 8.0,
         "pressed_inner_corner_radius": 4.0,
@@ -78,6 +104,9 @@ _CONNECTED_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "m": {
         "container_height": 56,
         "item_gap": 2,
+        "icon_size": 24,
+        "label_size": 16,
+        "icon_label_space": 8,
         "outer_corner_radius": 28.0,
         "inner_corner_radius": 8.0,
         "pressed_inner_corner_radius": 4.0,
@@ -85,6 +114,9 @@ _CONNECTED_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "l": {
         "container_height": 96,
         "item_gap": 2,
+        "icon_size": 32,
+        "label_size": 24,
+        "icon_label_space": 12,
         "outer_corner_radius": 48.0,
         "inner_corner_radius": 16.0,
         "pressed_inner_corner_radius": 12.0,
@@ -92,6 +124,9 @@ _CONNECTED_SIZE_TOKENS: dict[str, dict[str, int | float]] = {
     "xl": {
         "container_height": 136,
         "item_gap": 2,
+        "icon_size": 40,
+        "label_size": 32,
+        "icon_label_space": 16,
         "outer_corner_radius": 68.0,
         "inner_corner_radius": 20.0,
         "pressed_inner_corner_radius": 16.0,
@@ -128,13 +163,32 @@ class StandardButtonGroupStyle:
 
     # Sizing
     container_height: int = 40
-    item_gap: int = 12
+    item_gap: int = 12  # between-space: gap between adjacent segments
     min_item_width: int = 48
+    # Per-segment horizontal padding.  Sourced from the MD3 *button*
+    # leading-space / trailing-space tokens (xs=12, s=16, m=24, l=48, xl=64),
+    # NOT the group between-space — each segment is a button and keeps the
+    # button's own side padding.
+    inner_padding: int = 16
 
-    # Shape tokens
+    # Content metrics (scale with size, sourced from the MD3 button tokens)
+    icon_size: int = 20
+    label_size: int = 14
+    icon_label_space: int = 8
+
+    # Shape tokens.  The pressed/selected "squared" shape is the MD3 button
+    # square shape (== "selected container shape round"): xs/s=12, m=16, l/xl=28.
+    # Standard pills are uniform, so outer and inner share this value; a selected
+    # segment keeps the same shape as a pressed one (matching the MD3 demo).
     outer_corner_radius: float = 20.0
-    pressed_outer_corner_radius: float = 8.0
-    pressed_inner_corner_radius: float = 8.0
+    pressed_outer_corner_radius: float = 12.0
+    pressed_inner_corner_radius: float = 12.0
+
+    # Adjacent-interaction motion (M3): while an item is *pressed* it grows by
+    # this fraction of its natural width and its direct neighbors shrink to
+    # compensate; on release the width returns to idle (selection is shown by
+    # colour/shape, not width).  Spec value: 15% for all sizes.
+    pressed_width_multiplier: float = 0.15
 
     # State overlay
     overlay_color: Optional[ColorSpec] = None
@@ -183,8 +237,13 @@ class StandardButtonGroupStyle:
             selected_foreground=ColorRole.ON_PRIMARY,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
+            inner_padding=int(t["inner_padding"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
-            pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),
+            pressed_outer_corner_radius=float(t["pressed_corner_radius"]),
+            pressed_inner_corner_radius=float(t["pressed_corner_radius"]),
         )
 
     @classmethod
@@ -205,8 +264,13 @@ class StandardButtonGroupStyle:
             selected_foreground=ColorRole.ON_SECONDARY,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
+            inner_padding=int(t["inner_padding"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
-            pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),
+            pressed_outer_corner_radius=float(t["pressed_corner_radius"]),
+            pressed_inner_corner_radius=float(t["pressed_corner_radius"]),
         )
 
     @classmethod
@@ -228,8 +292,13 @@ class StandardButtonGroupStyle:
             selected_foreground=ColorRole.INVERSE_ON_SURFACE,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
+            inner_padding=int(t["inner_padding"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
-            pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),
+            pressed_outer_corner_radius=float(t["pressed_corner_radius"]),
+            pressed_inner_corner_radius=float(t["pressed_corner_radius"]),
         )
 
     @classmethod
@@ -286,6 +355,11 @@ class ConnectedButtonGroupStyle:
     item_gap: int = 2
     min_item_width: int = 48
 
+    # Content metrics (scale with size, sourced from the MD3 button tokens)
+    icon_size: int = 20
+    label_size: int = 14
+    icon_label_space: int = 8
+
     # Shape tokens (idle)
     outer_corner_radius: float = 20.0
     inner_corner_radius: float = 8.0
@@ -327,6 +401,9 @@ class ConnectedButtonGroupStyle:
             selected_foreground=ColorRole.ON_PRIMARY,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
             inner_corner_radius=float(t["inner_corner_radius"]),
             pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),
@@ -350,6 +427,9 @@ class ConnectedButtonGroupStyle:
             selected_foreground=ColorRole.ON_SECONDARY,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
             inner_corner_radius=float(t["inner_corner_radius"]),
             pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),
@@ -375,6 +455,9 @@ class ConnectedButtonGroupStyle:
             selected_border_color=ColorRole.OUTLINE,
             container_height=int(t["container_height"]),
             item_gap=int(t["item_gap"]),
+            icon_size=int(t["icon_size"]),
+            label_size=int(t["label_size"]),
+            icon_label_space=int(t["icon_label_space"]),
             outer_corner_radius=float(t["outer_corner_radius"]),
             inner_corner_radius=float(t["inner_corner_radius"]),
             pressed_inner_corner_radius=float(t["pressed_inner_corner_radius"]),

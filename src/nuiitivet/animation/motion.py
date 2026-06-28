@@ -154,12 +154,24 @@ class BezierMotion:
 class SpringMotion:
     """Spring-based motion.
 
+    The integrator is sub-stepped so stiff springs stay stable when the frame
+    rate (and thus ``dt``) drops: a single large semi-implicit Euler step can
+    diverge once ``dt`` approaches ``2 / sqrt(stiffness / mass)`` (e.g. a
+    stiffness of 1400 diverges below ~30 fps).  Each ``step`` splits ``dt`` into
+    fixed-size sub-steps so the result is stable and frame-rate independent.
+
     Args:
         stiffness: Spring stiffness constant.
         damping: Damping coefficient.
         mass: Mass attached to the spring.
         initial_velocity: Initial velocity in units per second.
     """
+
+    # Fixed integration sub-step (~240 Hz) — stable for stiffness up to ~57000
+    # at unit mass.  Larger frames are clamped to avoid a long catch-up after a
+    # stall (e.g. a backgrounded window).
+    _MAX_SUBSTEP = 1.0 / 240.0
+    _MAX_FRAME = 0.25
 
     def __init__(
         self,
@@ -210,18 +222,15 @@ class SpringMotion:
         if dt <= 0.0:
             return state.done
 
-        next_velocity: list[float] = []
-        next_value: list[float] = []
-        for value, target, velocity in zip(state.value, state.target, state.velocity, strict=True):
-            displacement = value - target
-            acceleration = (-self.stiffness * displacement - self.damping * velocity) / self.mass
-            velocity = velocity + acceleration * dt
-            value = value + velocity * dt
-            next_velocity.append(velocity)
-            next_value.append(value)
+        # Integrate in fixed-size sub-steps so a large frame delta cannot make
+        # a stiff spring diverge.  Clamp the total advance to avoid a long
+        # catch-up after a stall.
+        remaining = min(dt, self._MAX_FRAME)
+        while remaining > 1e-9:
+            h = self._MAX_SUBSTEP if remaining > self._MAX_SUBSTEP else remaining
+            self._integrate(state, h)
+            remaining -= h
 
-        state.velocity = next_velocity
-        state.value = next_value
         state.elapsed += dt
 
         velocity_stable = all(abs(v) <= self.tolerance for v in state.velocity)
@@ -234,6 +243,20 @@ class SpringMotion:
             state.done = True
 
         return state.done
+
+    def _integrate(self, state: MotionState, dt: float) -> None:
+        """Advance one semi-implicit Euler sub-step of size ``dt``."""
+        next_velocity: list[float] = []
+        next_value: list[float] = []
+        for value, target, velocity in zip(state.value, state.target, state.velocity, strict=True):
+            displacement = value - target
+            acceleration = (-self.stiffness * displacement - self.damping * velocity) / self.mass
+            velocity = velocity + acceleration * dt
+            value = value + velocity * dt
+            next_velocity.append(velocity)
+            next_value.append(value)
+        state.velocity = next_velocity
+        state.value = next_value
 
 
 class _CubicBezier:

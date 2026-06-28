@@ -24,8 +24,11 @@ from typing import (
 from nuiitivet.animation import Animatable
 from nuiitivet.animation.converter import VectorConverter
 from nuiitivet.input.pointer import PointerEvent
+from nuiitivet.layout.layout_utils import expand_layout_children
+from nuiitivet.layout.metrics import align_offset
+from nuiitivet.layout.row import Row
 from nuiitivet.material.interactive_widget import InteractiveWidget
-from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
+from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, STANDARD_BUTTON_GROUP_WIDTH
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike
@@ -152,13 +155,19 @@ class GroupButton(InteractiveWidget):
 
         # Corner animation state
         self._position: ButtonGroupPosition = "only"
-        self._neighbors: Tuple[Optional["GroupButton"], Optional["GroupButton"]] = (None, None)
         self._adjacent_animation: bool = True
         self._persistent_selected_pressed_shape: bool = False
         self._connected_inner_press_only: bool = False
         self._own_pressed: bool = False
-        self._left_neighbor_pressed: bool = False
-        self._right_neighbor_pressed: bool = False
+
+        # Adjacent width-interaction state (Standard groups only).  Each item
+        # exposes only a 0..1 "active" progress and its natural content-fit
+        # width; the parent group layout (``_ButtonGroupRow``) reads these in a
+        # single measure pass to grow the active item and compress its direct
+        # neighbors, keeping the group width conserved (mirrors M3 Compose's
+        # ButtonGroup, which avoids per-child layout jitter).  The width is NOT
+        # animated per item here.
+        self._base_width: float = float(self._style.min_item_width)
 
         # Store child widget refs for colour updates
         self._text_widget: "Optional[Widget]" = None
@@ -182,6 +191,10 @@ class GroupButton(InteractiveWidget):
             motion=None,  # Enabled after first set_position()
         )
 
+        # Active progress 0..1 (motion enabled in set_position()).  Drives the
+        # parent-computed width interaction; ticks only request a re-layout.
+        self._press_progress: "Animatable[float]" = Animatable(0.0, motion=None)
+
         super().__init__(
             child=content,
             on_click=self._handle_click,
@@ -190,7 +203,12 @@ class GroupButton(InteractiveWidget):
             disabled=disabled,
             width=width,
             height=self._style.container_height,
-            padding=(12, 0, 12, 0),
+            # No box padding: the leading/trailing space is reserved via
+            # ``preferred_size`` and rendered by *centering* the content (see
+            # ``_side_space``).  This keeps the icon/label centred so the
+            # pressed-width interaction compresses neighbours symmetrically.
+            padding=0,
+            alignment="center",
             background_color=bg,
             border_color=bc,
             border_width=bw,
@@ -207,7 +225,12 @@ class GroupButton(InteractiveWidget):
     # ------------------------------------------------------------------
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        """Return preferred size, enforcing ``min_item_width``.
+        """Return preferred size.
+
+        Connected groups enforce a visual minimum width (M3: 48dp for XS/S
+        segments).  Standard groups are content-fit: their 48dp spec value is an
+        accessible **tap-target** requirement, not a visual width floor, so it
+        is intentionally not applied to the rendered width here.
 
         Args:
             max_width: Available width constraint.
@@ -216,8 +239,27 @@ class GroupButton(InteractiveWidget):
         Returns:
             ``(width, height)`` in pixels.
         """
+        # Content is centred with zero box padding, so ``super`` returns the
+        # bare content width; add the reserved leading + trailing space here so
+        # the idle width still equals content + 2 × side-space.
         w, _h = super().preferred_size(max_width=max_width, max_height=max_height)
-        return (max(w, self._style.min_item_width), self._style.container_height)
+        w += 2 * self._side_space()
+        if not self._adjacent_animation:  # Connected groups only
+            w = max(w, self._style.min_item_width)
+        return (int(w), self._style.container_height)
+
+    def _side_space(self) -> int:
+        """Return the per-side leading/trailing space reserved around the content.
+
+        Sourced from the style's ``inner_padding`` (the MD3 button
+        leading/trailing-space token).  Connected styles do not expose it; fall
+        back to the historical fixed value so their layout is unchanged.
+
+        This space is *not* applied as box padding — it is reserved width that
+        centring turns into symmetric left/right margins, so the content stays
+        centred while neighbours compress during the pressed-width interaction.
+        """
+        return int(getattr(self._style, "inner_padding", 12))
 
     # ------------------------------------------------------------------
     # Position injection (called by container on_mount)
@@ -226,7 +268,6 @@ class GroupButton(InteractiveWidget):
     def set_position(
         self,
         position: ButtonGroupPosition,
-        neighbors: Tuple[Optional["GroupButton"], Optional["GroupButton"]],
         adjacent_animation: bool = True,
     ) -> None:
         """Configure this item's position within its group.
@@ -238,18 +279,21 @@ class GroupButton(InteractiveWidget):
 
         Args:
             position: One of ``"start"``, ``"middle"``, ``"end"``, ``"only"``.
-            neighbors: ``(left_neighbor, right_neighbor)``; either may be ``None``.
-            adjacent_animation: ``True`` for Standard groups (neighbor corners
-                respond); ``False`` for Connected groups.
+            adjacent_animation: ``True`` for Standard groups (the active item's
+                width grows and neighbors compress); ``False`` for Connected.
         """
         self._position = position
-        self._neighbors = neighbors
         self._adjacent_animation = adjacent_animation
         self._own_pressed = False
-        self._left_neighbor_pressed = False
-        self._right_neighbor_pressed = False
 
-        idle = self._compute_target_corners(False, False, False)
+        # Capture the natural content-fit width (the parent layout grows/
+        # compresses around this base).  Arm the MD3-spec spring on the active
+        # progress so press/select transitions are smooth.
+        self._base_width = float(self.preferred_size()[0])
+        self._press_progress.snap_to(0.0)
+        self._press_progress.set_motion(STANDARD_BUTTON_GROUP_WIDTH)
+
+        idle = self._compute_target_corners(False)
 
         # Snap the animation to idle (no motion for position init)
         self._corner_anim.stop()
@@ -282,6 +326,10 @@ class GroupButton(InteractiveWidget):
         # Subscribe to corner animation ticks
         self.bind(self._corner_anim.subscribe(self._on_corner_value_changed))
 
+        # Subscribe to active-progress ticks: request a parent re-layout so the
+        # group recomputes all widths in a single coordinated pass.
+        self.bind(self._press_progress.subscribe(self._on_progress_changed))
+
         # Subscribe to external selected observable if provided
         if self._selected_external is not None:
             sub = self._selected_external.subscribe(lambda v: self._set_selected(bool(v)))
@@ -292,42 +340,20 @@ class GroupButton(InteractiveWidget):
     # ------------------------------------------------------------------
 
     def _handle_press_down(self, event: PointerEvent) -> None:
-        """Start press shape animation and notify adjacent neighbors."""
+        """Start own press shape animation and drive the adjacent width interaction.
+
+        Only this item's own shape morphs on press; neighbors respond by
+        adjusting their **width** (not their corners), per the MD3 spec.
+        """
         self._own_pressed = True
         self._update_corner_target()
-        if self._adjacent_animation:
-            left, right = self._neighbors
-            if left is not None:
-                left._on_neighbor_pressed("right", True)
-            if right is not None:
-                right._on_neighbor_pressed("left", True)
+        self._update_active_progress()
 
     def _handle_press_up(self, event: PointerEvent) -> None:
-        """Restore shape animation on release and notify adjacent neighbors."""
+        """Restore own shape animation on release and refresh the width interaction."""
         self._own_pressed = False
         self._update_corner_target()
-        if self._adjacent_animation:
-            left, right = self._neighbors
-            if left is not None:
-                left._on_neighbor_pressed("right", False)
-            if right is not None:
-                right._on_neighbor_pressed("left", False)
-
-    def _on_neighbor_pressed(self, side: Literal["left", "right"], pressed: bool) -> None:
-        """React to an adjacent item's press state change.
-
-        Animates the junction corner facing the pressed neighbor.
-        Called exclusively from pointer event handlers; never from ``paint()``.
-
-        Args:
-            side: Which side the pressed neighbor is on.
-            pressed: ``True`` when the neighbor becomes pressed; ``False`` on release.
-        """
-        if side == "left":
-            self._left_neighbor_pressed = pressed
-        else:
-            self._right_neighbor_pressed = pressed
-        self._update_corner_target()
+        self._update_active_progress()
 
     def _handle_click(self) -> None:
         """Toggle selected state, fire change and click callbacks."""
@@ -373,6 +399,7 @@ class GroupButton(InteractiveWidget):
         self._apply_foreground(fg)
         self.state.selected = bool(value)
         self._update_corner_target()
+        self._update_active_progress()
         self.invalidate()
 
     # ------------------------------------------------------------------
@@ -381,25 +408,22 @@ class GroupButton(InteractiveWidget):
 
     def _update_corner_target(self) -> None:
         """Recompute and apply the corner animation target."""
-        left_p = self._left_neighbor_pressed if self._adjacent_animation else False
-        right_p = self._right_neighbor_pressed if self._adjacent_animation else False
-        target = self._compute_target_corners(self._own_pressed, left_p, right_p)
+        target = self._compute_target_corners(self._own_pressed)
         self._corner_anim.target = target
 
     def _compute_target_corners(
         self,
         own_pressed: bool,
-        left_neighbor_pressed: bool,
-        right_neighbor_pressed: bool,
     ) -> Tuple[float, float, float, float]:
         """Compute the 4-corner radius tuple for the given interaction state.
 
-        Corner-tuple order: ``(tl, tr, br, bl)``.
+        Corner-tuple order: ``(tl, tr, br, bl)``.  Only this item's own
+        interaction state drives its corners; a neighbor's press never alters
+        them (the MD3 adjacent interaction adjusts neighbor **width**, not
+        shape — see ``_ButtonGroupRow``).
 
         Args:
             own_pressed: Whether this item is currently pressed.
-            left_neighbor_pressed: Whether the left neighbor is pressed.
-            right_neighbor_pressed: Whether the right neighbor is pressed.
 
         Returns:
             Target ``(tl, tr, br, bl)`` corner radii in logical pixels.
@@ -407,7 +431,7 @@ class GroupButton(InteractiveWidget):
         s = self._style
         kinds = _CORNER_KIND[self._position]  # (tl, tr, br, bl) kinds
 
-        def resolve(kind: str, own: bool, neighbor: bool) -> float:
+        def resolve(kind: str, own: bool) -> float:
             if own:
                 if self._connected_inner_press_only:
                     # Connected groups: keep outer corners stable while pressed.
@@ -420,9 +444,11 @@ class GroupButton(InteractiveWidget):
                         return sel if sel > 0 else s.outer_corner_radius
                     return s.pressed_inner_corner_radius
                 return s.pressed_outer_corner_radius if kind == "outer" else s.pressed_inner_corner_radius
-            if neighbor and kind == "inner":
-                return s.pressed_inner_corner_radius
-            # Standard groups: keep a squarer selected shape after release.
+            # Standard groups: keep the pressed (squared) shape on selection.
+            # The MD3 button-group spec defines no separate selected shape for
+            # standard groups, and the official demo shows the selected segment
+            # at the same roundness as a pressed one — so selection reuses the
+            # pressed corners (selection is otherwise conveyed by colour).
             if self._selected and self._persistent_selected_pressed_shape:
                 return s.pressed_outer_corner_radius if kind == "outer" else s.pressed_inner_corner_radius
             # Selected inner corner: fully rounded on inner edges (Connected groups only).
@@ -431,10 +457,10 @@ class GroupButton(InteractiveWidget):
                 return sel if sel > 0 else s.outer_corner_radius
             return s.outer_corner_radius if kind == "outer" else s.inner_corner_radius
 
-        tl = resolve(kinds[0], own_pressed, left_neighbor_pressed)
-        tr = resolve(kinds[1], own_pressed, right_neighbor_pressed)
-        br = resolve(kinds[2], own_pressed, right_neighbor_pressed)
-        bl = resolve(kinds[3], own_pressed, left_neighbor_pressed)
+        tl = resolve(kinds[0], own_pressed)
+        tr = resolve(kinds[1], own_pressed)
+        br = resolve(kinds[2], own_pressed)
+        bl = resolve(kinds[3], own_pressed)
         return (tl, tr, br, bl)
 
     @staticmethod
@@ -454,6 +480,38 @@ class GroupButton(InteractiveWidget):
         """Animation tick callback: apply animated corners to the Box."""
         # Use Box's setter so paint cache is invalidated with every shape update.
         self.corner_radius = v
+        self.invalidate()
+
+    # ------------------------------------------------------------------
+    # Adjacent width interaction (Standard groups)
+    # ------------------------------------------------------------------
+
+    def _update_active_progress(self) -> None:
+        """Retarget the 0..1 active progress; the parent layout reads the value.
+
+        The width expansion is a **transient press** effect (MD3: the only
+        width token is ``pressed``): the item grows to the 15% peak while held
+        and returns to its idle width on release.  Selection is conveyed by
+        colour and corner shape, not by a persistent width change.
+
+        Only Standard groups (``adjacent_animation=True``) participate; for
+        Connected groups this is a no-op so their flex layout is preserved.
+        """
+        if not self._adjacent_animation:
+            return
+        self._press_progress.target = 1.0 if self._own_pressed else 0.0
+
+    def _on_progress_changed(self, _value: float) -> None:
+        """Active-progress tick: re-layout the group and force a repaint.
+
+        ``mark_needs_layout`` flags the tree as needing layout, but it only
+        schedules a repaint on the first dirtying call (the node stays dirty
+        afterwards, so its guarded ``invalidate`` is skipped).  An animation
+        ticks every frame, so we must invalidate explicitly each tick — mirroring
+        the corner animation — otherwise only the first frame would repaint and
+        the width would appear frozen.
+        """
+        self.mark_needs_layout()
         self.invalidate()
 
     # ------------------------------------------------------------------
@@ -496,7 +554,10 @@ class GroupButton(InteractiveWidget):
         from nuiitivet.material.styles.text_style import TextStyle
         from nuiitivet.layout.row import Row
 
-        icon_size = 20
+        # Icon / label / spacing scale with the group size (MD3 button tokens).
+        icon_size = self._style.icon_size
+        label_size = self._style.label_size
+        icon_label_space = self._style.icon_label_space
 
         icon_w: "Optional[Widget]" = None
         text_w: "Optional[Widget]" = None
@@ -508,7 +569,7 @@ class GroupButton(InteractiveWidget):
         if self._label is not None:
             text_w = Text(
                 self._label,
-                style=TextStyle(color=foreground, font_size=14, text_alignment="center"),
+                style=TextStyle(color=foreground, font_size=label_size, text_alignment="center"),
             )
             self._text_widget = text_w
 
@@ -517,7 +578,21 @@ class GroupButton(InteractiveWidget):
         if text_w is not None and icon_w is None:
             return text_w
         assert icon_w is not None and text_w is not None
-        return Row([icon_w, text_w], gap=8, cross_alignment="center")
+        return Row([icon_w, text_w], gap=icon_label_space, cross_alignment="center")
+
+    def _rebuild_content(self) -> None:
+        """Rebuild the content child from the current style.
+
+        Content metrics (icon size, label size, icon/label spacing) are baked
+        into the Icon/Text widgets at build time, so when the containing group
+        assigns a sized style the content must be regenerated to pick up the
+        new sizes.  Called by ``_ButtonGroupBase.on_mount`` before layout.
+        """
+        _bg, fg, _bc, _bw = self._effective_colors()
+        content = self._build_content(fg)
+        self.clear_children()
+        self.add_child(content)
+        self.mark_needs_layout()
 
     def _apply_foreground(self, foreground: ColorSpec) -> None:
         """Update the colour of child text and icon widgets.
@@ -546,6 +621,91 @@ class GroupButton(InteractiveWidget):
             else:
                 self._icon_widget_ref._style = IconStyle(color=foreground)
             self._icon_widget_ref.invalidate()
+
+
+# ---------------------------------------------------------------------------
+# _ButtonGroupRow
+# ---------------------------------------------------------------------------
+
+
+class _ButtonGroupRow(Row):
+    """Row that runs the M3 Standard button-group width interaction.
+
+    In a single layout pass it reads each child's 0..1 active progress and its
+    natural base width, grows each active item and compresses its direct
+    neighbors (bounded by the neighbor's padding so content never clips), then
+    places the children using rounded *boundary* positions.  Computing all
+    widths together in one pass — rather than animating each item's width
+    independently — keeps the group width conserved and prevents the rightmost
+    item from accumulating per-frame rounding jitter.  This mirrors M3 Compose's
+    ``ButtonGroup`` measure policy.
+    """
+
+    def layout(self, width: int, height: int) -> None:
+        """Lay out children, applying the active/neighbor width interaction."""
+        super().layout(width, height)  # establish own geometry + default pass
+        items = [c for c in expand_layout_children(self.children_snapshot()) if isinstance(c, GroupButton)]
+        if len(items) < 2:
+            return
+
+        widths = self._interaction_widths(items)
+
+        l, t, _r, _b = self.padding
+        gap = max(0, int(self.gap))
+        ch = max(0, height - t - _b)
+
+        # Round boundary positions (not individual widths) so cumulative offsets
+        # never drift: each child width is the gap between rounded boundaries.
+        x = float(l)
+        for i, item in enumerate(items):
+            start_edge = round(x)
+            x += widths[i]
+            end_edge = round(x)
+            w = max(0, end_edge - start_edge)
+            ih = self._item_height(item, ch)
+            y = t + align_offset(ch, ih, "center")
+            item.layout(w, ih)
+            item.set_layout_rect(start_edge, y, w, ih)
+            x += gap
+
+    def _interaction_widths(self, items: List["GroupButton"]) -> List[float]:
+        """Return the per-item widths after applying grow/compress (float, conserved)."""
+        bases = [float(it._base_width) for it in items]
+        widths = list(bases)
+        n = len(items)
+        for i, it in enumerate(items):
+            if not it._adjacent_animation:
+                continue
+            p = it._press_progress.value
+            if p <= 0.0:
+                continue
+            p = min(1.0, p)  # clamp any motion overshoot so content never clips
+            ratio = float(getattr(it._style, "pressed_width_multiplier", 0.0))
+            half = ratio * bases[i] / 2.0
+            # Each side's growth is bounded by the *neighbor's* padding, so a
+            # compressed neighbor never loses more than its padding (content
+            # stays intact).  Edge items grow on their single available side.
+            if i > 0:
+                gl = min(half, self._pad(items[i - 1])) * p
+                widths[i] += gl
+                widths[i - 1] -= gl
+            if i < n - 1:
+                gr = min(half, self._pad(items[i + 1])) * p
+                widths[i] += gr
+                widths[i + 1] -= gr
+        return widths
+
+    @staticmethod
+    def _item_height(item: "GroupButton", content_height: int) -> int:
+        dim = item.height_sizing
+        if dim is not None and dim.kind == "fixed":
+            return int(dim.value)
+        return content_height
+
+    @staticmethod
+    def _pad(item: "GroupButton") -> float:
+        """Horizontal inner padding = the maximum a neighbor may be compressed by."""
+        return float(getattr(item._style, "inner_padding", 12))
 
 
 # ---------------------------------------------------------------------------
@@ -593,9 +753,10 @@ class _ButtonGroupBase(Box):
         self._persistent_selected_pressed_shape = persistent_selected_pressed_shape
         self._connected_inner_press_only = connected_inner_press_only
 
-        from nuiitivet.layout.row import Row
-
-        row = Row(
+        # Standard groups use the interaction-aware row (active grows / neighbors
+        # compress in one coordinated pass); Connected groups use a plain Row.
+        row_cls = _ButtonGroupRow if adjacent_animation else Row
+        row = row_cls(
             list(items),
             gap=style.item_gap,
             cross_alignment="center",
@@ -604,6 +765,37 @@ class _ButtonGroupBase(Box):
         )
 
         super().__init__(child=row, width=group_width)
+
+        # Propagate the group's sized style to items now, so the tree measures
+        # correctly even before mount.  Window auto-sizing calls preferred_size
+        # on the *unmounted* content tree; without this each item would still
+        # carry its default style and report too small a width (the height comes
+        # from the group container_height, so only width is affected).
+        self._apply_item_sizing()
+
+    def _apply_item_sizing(self) -> None:
+        """Propagate the group's sized style + content metrics to every item.
+
+        Covers only the properties that affect measurement (style, fixed item
+        height, rebuilt icon/label content, padding) so it is safe to run before
+        mount.  Idempotent: ``on_mount`` calls it again before wiring colours,
+        positions and corner animation.
+        """
+        size_tokens = self._item_size_tokens()
+        for item in self._items:
+            # Items without a user-provided style inherit the full group style;
+            # items with a custom style only receive size tokens so they keep
+            # their custom colours.
+            if not item._has_user_style:
+                item._style = self._style
+            else:
+                item._style = item._style.copy_with(**size_tokens)
+            item.height_sizing = Sizing.fixed(self._style.container_height)
+            # Rebuild content so icon/label sizes reflect the assigned style.
+            item._rebuild_content()
+            # Leading/trailing space is reserved via preferred_size + centring,
+            # not box padding (see GroupButton._side_space).
+            item.padding = 0
 
     def _item_size_tokens(self) -> dict[str, int | float]:
         """Return size tokens to propagate to items with user-provided styles.
@@ -614,15 +806,21 @@ class _ButtonGroupBase(Box):
         """
         return {
             "container_height": self._style.container_height,
+            "icon_size": self._style.icon_size,
+            "label_size": self._style.label_size,
+            "icon_label_space": self._style.icon_label_space,
             "outer_corner_radius": self._style.outer_corner_radius,
+            "pressed_outer_corner_radius": self._style.pressed_outer_corner_radius,
             "pressed_inner_corner_radius": self._style.pressed_inner_corner_radius,
         }
 
     def on_mount(self) -> None:
         """Assign positions, sync size-layout tokens, and set neighbors for all items."""
         super().on_mount()
+        # Re-sync style + content (also done at construction) so any change is
+        # reflected, then wire up the mount-only visuals and interaction state.
+        self._apply_item_sizing()
         n = len(self._items)
-        _size_tokens = self._item_size_tokens()
         for i, item in enumerate(self._items):
             if n == 1:
                 pos: ButtonGroupPosition = "only"
@@ -633,14 +831,6 @@ class _ButtonGroupBase(Box):
             else:
                 pos = "middle"
 
-            # Propagate group style to items.  Items without a user-provided
-            # style inherit the full group style; items with a custom style
-            # only receive size tokens so they keep their custom colours.
-            if not item._has_user_style:
-                item._style = self._style
-            else:
-                item._style = item._style.copy_with(**_size_tokens)
-            item.height_sizing = Sizing.fixed(self._style.container_height)
             # Refresh visual properties that were baked in during __init__.
             bg, fg, bc, bw = item._effective_colors()
             item.bgcolor = bg
@@ -649,14 +839,11 @@ class _ButtonGroupBase(Box):
             item.state_layer_color = item._style.overlay_color or ColorRole.ON_SURFACE
             item._PRESS_OPACITY = item._style.overlay_alpha
             item._HOVER_OPACITY = item._style.overlay_alpha * 2 / 3
-            item._apply_foreground(fg)
             item.mark_needs_layout()
             item._persistent_selected_pressed_shape = self._persistent_selected_pressed_shape
             item._connected_inner_press_only = self._connected_inner_press_only
 
-            left = self._items[i - 1] if i > 0 else None
-            right = self._items[i + 1] if i < n - 1 else None
-            item.set_position(pos, (left, right), adjacent_animation=self._adjacent_animation)
+            item.set_position(pos, adjacent_animation=self._adjacent_animation)
 
 
 def _validate_items(items: Sequence[object]) -> None:
@@ -686,9 +873,12 @@ def _validate_items(items: Sequence[object]) -> None:
 class StandardButtonGroup(_ButtonGroupBase):
     """A ButtonGroup that organises action or toggle segments horizontally.
 
-    Width fits the combined item widths.  Adjacent segments animate their
-    junction corners in response to a neighbor's press (M3 Expressive motion).
-    Item selected states are independent — no group-level enforcement.
+    Width fits the combined item widths.  When a segment is activated (pressed)
+    or selected, the MD3 adjacent interaction runs: the active segment animates
+    its **width**, **shape**, and (via centered content) **padding**, while its
+    direct neighbors shrink to compensate so the group's overall width stays
+    stable.  All transitions use M3 Expressive (``EXPRESSIVE_FAST_SPATIAL``)
+    motion.  Item selected states are independent — no group-level enforcement.
 
     Args:
         items: Between 2 and 5 ``GroupButton`` instances.
@@ -717,12 +907,19 @@ class StandardButtonGroup(_ButtonGroupBase):
         eff_style = style if style is not None else _Std.filled()
         super().__init__(
             items,
-            adjacent_animation=False,
+            adjacent_animation=True,
             persistent_selected_pressed_shape=True,
             connected_inner_press_only=False,
             group_width=None,  # Fits content
             style=eff_style,
         )
+
+    def _item_size_tokens(self) -> dict[str, int | float]:
+        """Include ``inner_padding`` (a real field on Standard style)."""
+        tokens = super()._item_size_tokens()
+        style = cast("StandardButtonGroupStyle", self._style)
+        tokens["inner_padding"] = style.inner_padding
+        return tokens
 
 
 # ---------------------------------------------------------------------------
