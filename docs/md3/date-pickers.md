@@ -248,7 +248,7 @@ Collected: 2026-03-12
 | Header row       | Month label (month-menu active)                | dropdown icon ▾  | Shows `Month ▾`; grayed-out year label alongside.                                          |
 | Header row       | Year label (year-menu active)                  | dropdown icon ▾  | Shows `Year ▾`; grayed-out month label alongside.                                          |
 | Header row       | Gap between back-chevron and labels            | 16dp             |                                                                                            |
-| Scroller padding | Left, Right                                    | (15, 20)         | `padding=(15, 0, 20, 0)` on the Scroller.                                                  |
+| Scrollable padding | Left, Right                                    | (15, 20)         | `padding=(15, 0, 20, 0)` on the VerticalScrollable.                                                  |
 | List item        | Height                                         | 48dp             | From `md.comp.date-picker.docked.menu.list-item.container.height`.                         |
 | List item        | Padding-start (before check icon)              | 16dp             | `padding=(0, 16, 0, 0)` (left-aligned row with leading space).                             |
 | List item        | Check icon size                                | 24dp             | From `md.comp.date-picker.docked.menu.list-item.selected.leading-icon.size`. Selected only. |
@@ -282,7 +282,7 @@ Collected: 2026-03-12
 | Year chip grid    | UniformFlow main_gap                         | 30dp               |                                                                                            |
 | Year chip grid    | UniformFlow cross_gap                        | 30dp               |                                                                                            |
 | Year chip grid    | UniformFlow inner padding                    | 30dp               |                                                                                            |
-| Year chip grid    | Scroller padding (left, right)               | (15, 4)            | `padding=(15, 12, 4, 12)` on the Scroller.                                                 |
+| Year chip grid    | Scrollable padding (left, right)               | (15, 4)            | `padding=(15, 12, 4, 12)` on the VerticalScrollable.                                                 |
 | Action row        | Padding (left, top, right, bottom)           | (4, 12, 12, 12)    |                                                                                            |
 | Action row        | Button gap                                   | 16dp               |                                                                                            |
 

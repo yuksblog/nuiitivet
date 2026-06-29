@@ -23,7 +23,7 @@ class Column(Widget):
     - overflow: 'visible'|'clip'|'scroll' - how to handle children that overflow the container
         - 'visible' (default): children may extend beyond container (Phase 1 behavior)
         - 'clip': children are clipped to container bounds
-        - 'scroll': requires Scroller wrapper (Phase 3)
+        - 'scroll': requires VerticalScrollable / HorizontalScrollable wrapper (Phase 3)
     """
 
     # Hint for ancestor-based layout resolution (used by ForEach and others)

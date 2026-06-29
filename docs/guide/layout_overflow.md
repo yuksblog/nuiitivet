@@ -58,37 +58,39 @@ md.Card(
 
 ![Clipped overflow example](../assets/layout_overflow_clipped.png)
 
-## Making Scrollable (Scroller)
+## Making Scrollable (VerticalScrollable / HorizontalScrollable)
 
-To view the overflowing part by scrolling, use the `Scroller` widget.
-Wrap `Column` or `Row` with `Scroller` to create a scrollable area.
+To view the overflowing part by scrolling, wrap `Column` or `Row` with an
+axis-specific scrollable: `VerticalScrollable` or `HorizontalScrollable`.
 
 ```python
 import nuiitivet as nv
 import nuiitivet.material as md
-from nuiitivet.layout.scroller import Scroller
 
 # Even with many items, you can scroll within the specified height (300px)
 nv.Container(
     height=300,
-    child=Scroller(
+    child=nv.VerticalScrollable(
         child=nv.Column(
             children=[md.Text(f"Item {i}") for i in range(50)],
             gap=8,
             padding=16,
         ),
-        direction="vertical",
-        scrollbar_enabled=True,
     ),
 )
 ```
 
 ![Scrollable example](../assets/layout_overflow_scrollable.png)
 
+The scroll axis is chosen by the class (`VerticalScrollable` /
+`HorizontalScrollable`) — there is no `direction` argument.
+
 | Argument | Description |
 | --- | --- |
-| `direction` | Scroll direction (`"vertical"` or `"horizontal"`) |
-| `scrollbar_enabled` | Whether to display scrollbar (`True`/`False`) |
+| `scrollbar_visible` | Whether to display the scrollbar (`bool` or `Observable[bool]`) |
+| `style` | Scrollbar appearance via `ScrollbarStyle(thickness, min_thumb_length, inset)` |
+| `behavior` | Scrollbar interaction via `ScrollbarBehavior(auto_hide, …)` |
+| `controller` | A `ScrollController` carrying scroll `physics` and `scroll_multiplier` |
 
 ## Next Steps
 

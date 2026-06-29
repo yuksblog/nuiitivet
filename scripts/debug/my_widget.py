@@ -16,7 +16,6 @@ from nuiitivet.material.styles import IconStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.modifiers import shadow
 from nuiitivet.observable import Observable
-from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.layout.column import Column
 
 # flow removed
@@ -24,7 +23,7 @@ from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.buttons import Fab, Button
@@ -217,7 +216,7 @@ class MyWidget(ComposableWidget):
                             gap=8,
                             cross_alignment="center",
                         ),
-                        Scroller(
+                        VerticalScrollable(
                             Column.builder(
                                 self.model.column_items,
                                 lambda item, idx: Text(item),
@@ -247,15 +246,14 @@ class MyWidget(ComposableWidget):
                             gap=8,
                             cross_alignment="center",
                         ),
-                        Scroller(
+                        HorizontalScrollable(
                             Row.builder(
                                 self.model.row_items,
                                 lambda item, idx: Text(item),
                                 gap=8,
                                 cross_alignment="center",
                             ),
-                            scrollbar=ScrollbarBehavior(auto_hide=False),
-                            direction=ScrollDirection.HORIZONTAL,
+                            behavior=ScrollbarBehavior(auto_hide=False),
                             height=50,
                         ),
                     ],

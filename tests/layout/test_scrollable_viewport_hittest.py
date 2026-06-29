@@ -1,7 +1,7 @@
 """Test that ScrollViewport correctly restricts hit_test to visible region."""
 
 from nuiitivet.layout.column import Column
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -44,7 +44,7 @@ def test_viewport_hittest_only_in_visible_area() -> None:
     """ScrollViewport should only respond to hit_test within visible viewport."""
     widgets = [SimpleWidget() for _ in range(10)]
     col = Column(widgets, gap=10)
-    scroller = Scroller(col, height=100)
+    scroller = VerticalScrollable(col, height=100)
     canvas = MockCanvas()
     scroller.paint(canvas, 0, 0, 200, 100)
     hit = scroller.hit_test(50, 50)
@@ -59,7 +59,7 @@ def test_viewport_hittest_with_scroll_offset() -> None:
     """After scrolling, only visible content should respond to hit_test."""
     widgets = [SimpleWidget() for _ in range(20)]
     col = Column(widgets, gap=10)
-    scroller = Scroller(col, height=100)
+    scroller = VerticalScrollable(col, height=100)
     canvas = MockCanvas()
     scroller.paint(canvas, 0, 0, 200, 100)
     scroller.scroll_to(50)
@@ -76,7 +76,7 @@ def test_viewport_hittest_respects_padding() -> None:
     """ScrollViewport with padding should only hit inside padded viewport."""
     widgets = [SimpleWidget() for _ in range(10)]
     col = Column(widgets, gap=5)
-    scroller = Scroller(col, height=100, padding=10)
+    scroller = VerticalScrollable(col, height=100, padding=10)
     canvas = MockCanvas()
     scroller.paint(canvas, 50, 50, 200, 100)
     hit_inside = scroller.hit_test(99, 99)

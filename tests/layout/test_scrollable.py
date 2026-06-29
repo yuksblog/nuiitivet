@@ -1,14 +1,15 @@
-"""Tests for Scroller widget and ScrollController."""
+"""Tests for VerticalScrollable / HorizontalScrollable and ScrollController."""
 
 import pytest
 from nuiitivet.runtime.app import App
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollPhysics
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.scroll_viewport import ScrollViewport
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
+from nuiitivet.scrolling import ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.scrollbar import Scrollbar, ScrollbarBehavior
 from tests.helpers.pointer import send_pointer_event_for_test
@@ -62,6 +63,19 @@ def test_scroll_controller_supports_multiple_axes():
     assert controller.get_offset() == 25.0
     assert controller.axis_state(ScrollDirection.VERTICAL).offset.value == 0.0
     assert controller.get_offset(ScrollDirection.HORIZONTAL) == 25.0
+
+
+def test_scroll_controller_physics_and_multiplier_defaults():
+    """ScrollController should own physics / scroll_multiplier with sane defaults."""
+    controller = ScrollController()
+    assert controller.physics is ScrollPhysics.CLAMP
+    assert controller.scroll_multiplier == 20.0
+
+
+def test_scroll_controller_physics_and_multiplier_overrides():
+    controller = ScrollController(physics="never", scroll_multiplier=30.0)
+    assert controller.physics is ScrollPhysics.NEVER
+    assert controller.scroll_multiplier == 30.0
 
 
 def test_scroll_controller_scroll_to():
@@ -131,69 +145,67 @@ def test_scroll_controller_update_metrics():
     assert controller.content_size == 600
 
 
-def test_scroller_basic_creation():
-    """Scroller should be created with a child widget."""
+def test_scrollable_basic_creation():
+    """VerticalScrollable should be created with a child widget."""
     child = Column([Text("Item 1"), Text("Item 2")])
-    scroller = Scroller(child=child)
-    assert scroller._child is child
-    assert scroller._controller is not None
-    assert scroller._owns_controller is True
+    scrollable = VerticalScrollable(child=child)
+    assert scrollable._child is child
+    assert scrollable._controller is not None
+    assert scrollable._owns_controller is True
+    assert scrollable.direction is ScrollDirection.VERTICAL
 
 
-def test_scroller_with_external_controller():
-    """Scroller should accept external ScrollController."""
+def test_scrollable_with_external_controller():
+    """VerticalScrollable should accept external ScrollController."""
     controller = ScrollController()
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scroll_controller=controller)
-    assert scroller._controller is controller
-    assert scroller._owns_controller is False
+    scrollable = VerticalScrollable(child=child, controller=controller)
+    assert scrollable._controller is controller
+    assert scrollable._owns_controller is False
 
 
-def test_scroller_requires_child():
-    """Scroller should raise ValueError if child is None."""
+def test_scrollable_requires_child():
+    """Scrollable should raise ValueError if child is None."""
     with pytest.raises(ValueError, match="requires a child"):
-        Scroller(child=None)
+        VerticalScrollable(child=None)
 
 
-def test_scroller_preferred_size():
-    """Scroller preferred_size should include padding."""
+def test_scrollable_preferred_size():
+    """Scrollable preferred_size should include padding."""
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, padding=10)
+    scrollable = VerticalScrollable(child=child, padding=10)
     child_w, child_h = child.preferred_size()
-    scroller_w, scroller_h = scroller.preferred_size()
-    assert scroller_w == child_w + 20
-    assert scroller_h == child_h + 20
+    scrollable_w, scrollable_h = scrollable.preferred_size()
+    assert scrollable_w == child_w + 20
+    assert scrollable_h == child_h + 20
 
 
-def test_scroller_direction():
-    """Scroller should accept direction parameter."""
+def test_scrollable_axis_is_fixed_by_class():
+    """Axis is encoded in the concrete class, not a parameter."""
+    assert VerticalScrollable(child=Column([Text("Item")])).direction is ScrollDirection.VERTICAL
+    assert HorizontalScrollable(child=Row([Text("Item")])).direction is ScrollDirection.HORIZONTAL
+
+
+def test_scrollable_defaults_to_axis_stretch_vertical():
     child = Column([Text("Item")])
-    scroller_v = Scroller(child=child, direction=ScrollDirection.VERTICAL)
-    assert scroller_v.direction is ScrollDirection.VERTICAL
-    scroller_h = Scroller(child=child, direction=ScrollDirection.HORIZONTAL)
-    assert scroller_h.direction is ScrollDirection.HORIZONTAL
+    scrollable = VerticalScrollable(child=child)
+    assert scrollable.height_sizing.kind == "flex"
 
 
-def test_scroller_defaults_to_axis_stretch_vertical():
-    child = Column([Text("Item")])
-    scroller = Scroller(child=child)
-    assert scroller.height_sizing.kind == "flex"
-
-
-def test_scroller_defaults_to_axis_stretch_horizontal():
+def test_scrollable_defaults_to_axis_stretch_horizontal():
     child = Row([Text("Item")])
-    scroller = Scroller(child=child, direction=ScrollDirection.HORIZONTAL)
-    assert scroller.width_sizing.kind == "flex"
+    scrollable = HorizontalScrollable(child=child)
+    assert scrollable.width_sizing.kind == "flex"
 
 
-def test_scroller_respects_explicit_sizing_override():
+def test_scrollable_respects_explicit_sizing_override():
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, height=120)
-    assert scroller.height_sizing.kind == "fixed"
-    assert int(scroller.height_sizing.value) == 120
+    scrollable = VerticalScrollable(child=child, height=120)
+    assert scrollable.height_sizing.kind == "fixed"
+    assert int(scrollable.height_sizing.value) == 120
 
 
-def test_scroller_updates_metrics_without_explicit_height():
+def test_scrollable_updates_metrics_without_explicit_height():
 
     class TallWidget(Widget):
 
@@ -203,16 +215,16 @@ def test_scroller_updates_metrics_without_explicit_height():
         def paint(self, canvas, x, y, w, h):
             del canvas, x, y, w, h
 
-    scroller = Scroller(child=TallWidget())
+    scrollable = VerticalScrollable(child=TallWidget())
     canvas = DummyCanvas()
-    scroller.paint(canvas, 0, 0, 120, 150)
-    axis_state = scroller._controller.axis_state(ScrollDirection.VERTICAL)
+    scrollable.paint(canvas, 0, 0, 120, 150)
+    axis_state = scrollable._controller.axis_state(ScrollDirection.VERTICAL)
     assert axis_state.viewport_size.value == 150
     assert axis_state.content_size.value == 400
     assert axis_state.max_extent.value == 250
 
 
-def test_scroller_updates_horizontal_metrics_without_explicit_width():
+def test_scrollable_updates_horizontal_metrics_without_explicit_width():
 
     class WideWidget(Widget):
 
@@ -222,116 +234,120 @@ def test_scroller_updates_horizontal_metrics_without_explicit_width():
         def paint(self, canvas, x, y, w, h):
             del canvas, x, y, w, h
 
-    scroller = Scroller(child=WideWidget(), direction=ScrollDirection.HORIZONTAL)
+    scrollable = HorizontalScrollable(child=WideWidget())
     canvas = DummyCanvas()
-    scroller.paint(canvas, 0, 0, 180, 80)
-    axis_state = scroller._controller.axis_state(ScrollDirection.HORIZONTAL)
+    scrollable.paint(canvas, 0, 0, 180, 80)
+    axis_state = scrollable._controller.axis_state(ScrollDirection.HORIZONTAL)
     assert axis_state.viewport_size.value == 180
     assert axis_state.content_size.value == 360
     assert axis_state.max_extent.value == 180
 
 
-def test_scroller_rejects_controller_without_required_axis():
+def test_scrollable_rejects_controller_without_required_axis():
     child = Row([Text("Item")])
-    controller = ScrollController()
+    controller = ScrollController()  # vertical-only
     with pytest.raises(ValueError, match="required axis"):
-        Scroller(child=child, direction=ScrollDirection.HORIZONTAL, scroll_controller=controller)
+        HorizontalScrollable(child=child, controller=controller)
 
 
-def test_scroller_scrollbar_config():
-    """Scroller should accept scrollbar configuration."""
+def test_scrollable_accepts_behavior_and_style():
+    """Scrollable should accept behavior + style configuration objects."""
     child = Column([Text("Item")])
     behavior = ScrollbarBehavior(auto_hide=False)
-    scroller = Scroller(child=child, scrollbar=behavior, scrollbar_padding=4, scrollbar_enabled=False)
-    assert scroller.scrollbar_behavior is behavior
-    assert scroller._scrollbar_enabled is False
+    style = ScrollbarStyle(thickness=12, inset=4)
+    scrollable = VerticalScrollable(child=child, behavior=behavior, style=style)
+    assert scrollable.scrollbar_behavior is behavior
+    assert scrollable.scrollbar_style is style
+    assert scrollable._scrollbar.thickness == 12
+    assert scrollable._scrollbar.padding[2] == 4
 
 
-def test_scroller_registers_children_in_store():
+def test_scrollable_registers_children_in_store():
     """Child widget and scrollbar should be registered via ChildContainerMixin."""
     child = Column([Text("Item")])
-    scroller = Scroller(child=child)
-    viewport = next((c for c in scroller.children if isinstance(c, ScrollViewport)), None)
+    scrollable = VerticalScrollable(child=child)
+    viewport = next((c for c in scrollable.children if isinstance(c, ScrollViewport)), None)
     assert viewport is not None
     assert child in viewport.children
-    assert any((isinstance(c, Scrollbar) for c in scroller.children))
+    assert any((isinstance(c, Scrollbar) for c in scrollable.children))
 
 
-def test_scroller_scrollbar_disabled_removes_widget():
-    """ScrollbarConfig.disabled should omit scrollbar child."""
+def test_scrollable_scrollbar_visible_false_suppresses_display():
+    """scrollbar_visible=False keeps the scrollbar from participating in layout/paint."""
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scrollbar_enabled=False)
-    viewport = next((c for c in scroller.children if isinstance(c, ScrollViewport)), None)
-    assert viewport is not None
-    assert child in viewport.children
-    assert all((not isinstance(c, Scrollbar) for c in scroller.children))
+    scrollable = VerticalScrollable(child=child, scrollbar_visible=False)
+    # The scrollbar widget is still mounted as a child...
+    assert any((isinstance(c, Scrollbar) for c in scrollable.children))
+    # ...but it never wants to show.
+    assert scrollable._wants_scrollbar() is False
+    assert scrollable._should_show_scrollbar() is False
 
 
-def test_scroller_physics():
-    """Scroller should accept physics parameter."""
+def test_scrollable_physics_from_controller():
+    """Scrollable.physics is sourced from its controller."""
     child = Column([Text("Item")])
-    scroller_clamp = Scroller(child=child, physics=ScrollPhysics.CLAMP)
-    assert scroller_clamp.physics is ScrollPhysics.CLAMP
-    scroller_never = Scroller(child=child, physics=ScrollPhysics.NEVER)
-    assert scroller_never.physics is ScrollPhysics.NEVER
+    clamp = VerticalScrollable(child=child, controller=ScrollController(physics="clamp"))
+    assert clamp.physics is ScrollPhysics.CLAMP
+    never = VerticalScrollable(child=child, controller=ScrollController(physics="never"))
+    assert never.physics is ScrollPhysics.NEVER
 
 
-def test_scroller_convenience_methods():
-    """Scroller should provide convenience methods that delegate to controller."""
+def test_scrollable_convenience_methods():
+    """Scrollable should provide convenience methods that delegate to controller."""
     controller = ScrollController()
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scroll_controller=controller)
+    scrollable = VerticalScrollable(child=child, controller=controller)
     controller._update_metrics(max_extent=100.0, viewport_size=200, content_size=300)
-    scroller.scroll_to(50.0)
+    scrollable.scroll_to(50.0)
     assert controller.get_offset() == 50.0
-    scroller.scroll_to_start()
+    scrollable.scroll_to_start()
     assert controller.get_offset() == 0.0
-    scroller.scroll_to_end()
+    scrollable.scroll_to_end()
     assert controller.get_offset() == 100.0
-    assert scroller.scroll_offset == 100.0
-    assert scroller.max_scroll_extent == 100.0
+    assert scrollable.scroll_offset == 100.0
+    assert scrollable.max_scroll_extent == 100.0
 
 
-def test_scroller_mount_unmount():
-    """Scroller should subscribe/unsubscribe on mount/unmount."""
+def test_scrollable_mount_unmount():
+    """Scrollable should subscribe/unsubscribe on mount/unmount."""
     controller = ScrollController()
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scroll_controller=controller)
-    assert scroller._scroll_unsubscribe is None
-    app = App(scroller, width=400, height=300)
-    scroller.mount(app)
-    assert scroller._scroll_unsubscribe is not None
-    scroller.unmount()
-    assert scroller._scroll_unsubscribe is None
+    scrollable = VerticalScrollable(child=child, controller=controller)
+    assert scrollable._scroll_unsubscribe is None
+    app = App(scrollable, width=400, height=300)
+    scrollable.mount(app)
+    assert scrollable._scroll_unsubscribe is not None
+    scrollable.unmount()
+    assert scrollable._scroll_unsubscribe is None
 
 
-def test_scroller_handle_scroll_event():
-    """Scroller should handle mouse_scroll event."""
+def test_scrollable_handle_scroll_event():
+    """Scrollable should handle mouse_scroll event."""
     controller = ScrollController()
     controller._update_metrics(max_extent=500.0, viewport_size=200, content_size=700)
     child = Column([Text(f"Item {i}") for i in range(50)])
-    scroller = Scroller(child=child, scroll_controller=controller)
-    handled = send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_y=3)
+    scrollable = VerticalScrollable(child=child, controller=controller)
+    handled = send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_y=3)
     assert handled is True
     assert controller.get_offset() == 60.0
 
 
-def test_scroller_handle_scroll_event_physics_never():
-    """Scroller with physics='never' should not handle scroll events."""
-    controller = ScrollController()
+def test_scrollable_handle_scroll_event_physics_never():
+    """Scrollable with physics='never' should not handle scroll events."""
+    controller = ScrollController(physics="never")
     controller._update_metrics(max_extent=500.0, viewport_size=200, content_size=700)
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scroll_controller=controller, physics=ScrollPhysics.NEVER)
-    handled = send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_y=3)
+    scrollable = VerticalScrollable(child=child, controller=controller)
+    handled = send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_y=3)
     assert handled is False
     assert controller.get_offset() == 0.0
 
 
-def test_scroller_offset_subscription():
-    """Scroller should invalidate when offset changes."""
+def test_scrollable_offset_subscription():
+    """Scrollable should invalidate when offset changes."""
     controller = ScrollController()
     child = Column([Text("Item")])
-    scroller = Scroller(child=child, scroll_controller=controller)
+    scrollable = VerticalScrollable(child=child, controller=controller)
 
     class MockApp:
 
@@ -342,27 +358,27 @@ def test_scroller_offset_subscription():
             self.invalidate_count += 1
 
     app = MockApp()
-    scroller._app = app
-    scroller.on_mount()
+    scrollable._app = app
+    scrollable.on_mount()
     set_axis_offset(controller, 50.0)
     assert app.invalidate_count == 1
     set_axis_offset(controller, 100.0)
     assert app.invalidate_count == 2
-    scroller.on_unmount()
+    scrollable.on_unmount()
 
 
-def test_scroller_drag_updates_offset_via_mouse_move():
+def test_scrollable_drag_updates_offset_via_mouse_move():
     controller = ScrollController()
     controller._update_metrics(max_extent=300.0, viewport_size=200, content_size=500)
     child = Column([Text(f"Item {i}") for i in range(10)])
-    scroller = Scroller(child=child, scroll_controller=controller)
-    scroller.set_last_rect(0, 0, 200, 200)
-    assert send_pointer_event_for_test(scroller, PointerEventType.PRESS, 50, 150) is True
-    assert send_pointer_event_for_test(scroller, PointerEventType.MOVE, 50, 100) is True
+    scrollable = VerticalScrollable(child=child, controller=controller)
+    scrollable.set_last_rect(0, 0, 200, 200)
+    assert send_pointer_event_for_test(scrollable, PointerEventType.PRESS, 50, 150) is True
+    assert send_pointer_event_for_test(scrollable, PointerEventType.MOVE, 50, 100) is True
     assert controller.get_offset() > 0.0
 
 
-def test_scroller_horizontal_drag_updates_offset_via_mouse_move():
+def test_scrollable_horizontal_drag_updates_offset_via_mouse_move():
 
     class WideWidget(Widget):
 
@@ -374,22 +390,22 @@ def test_scroller_horizontal_drag_updates_offset_via_mouse_move():
 
     controller = ScrollController(axes=(ScrollDirection.HORIZONTAL,), primary_axis=ScrollDirection.HORIZONTAL)
     controller._update_metrics(max_extent=500.0, viewport_size=300, content_size=800)
-    scroller = Scroller(child=WideWidget(), direction=ScrollDirection.HORIZONTAL, scroll_controller=controller)
-    scroller.set_last_rect(0, 0, 300, 150)
-    assert send_pointer_event_for_test(scroller, PointerEventType.PRESS, 150, 50) is True
-    assert send_pointer_event_for_test(scroller, PointerEventType.MOVE, 100, 50) is True
+    scrollable = HorizontalScrollable(child=WideWidget(), controller=controller)
+    scrollable.set_last_rect(0, 0, 300, 150)
+    assert send_pointer_event_for_test(scrollable, PointerEventType.PRESS, 150, 50) is True
+    assert send_pointer_event_for_test(scrollable, PointerEventType.MOVE, 100, 50) is True
     assert controller.get_offset(axis=ScrollDirection.HORIZONTAL) > 0.0
 
 
-def test_scroller_horizontal_scroll_wheel_direction():
+def test_scrollable_horizontal_scroll_wheel_direction():
     controller = ScrollController(axes=(ScrollDirection.HORIZONTAL,), primary_axis=ScrollDirection.HORIZONTAL)
     controller._update_metrics(max_extent=400.0, viewport_size=300, content_size=700)
     child = Row([Text(f"Item {i}") for i in range(10)], gap=8)
-    scroller = Scroller(child=child, direction=ScrollDirection.HORIZONTAL, scroll_controller=controller)
-    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=2) is True
+    scrollable = HorizontalScrollable(child=child, controller=controller)
+    assert send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_x=2) is True
     assert controller.get_offset(axis=ScrollDirection.HORIZONTAL) > 0.0
     prev = controller.get_offset(axis=ScrollDirection.HORIZONTAL)
-    assert send_pointer_event_for_test(scroller, PointerEventType.SCROLL, 0, 0, scroll_x=-2) is True
+    assert send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_x=-2) is True
     assert controller.get_offset(axis=ScrollDirection.HORIZONTAL) < prev
 
 

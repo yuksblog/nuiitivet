@@ -2,7 +2,7 @@
 
 This is a minimal, reusable implementation that supports vertical scrollbars.
 It derives colors from the current Theme (ColorRole.ON_SURFACE) and exposes
-handle_event/draw APIs so containers (like Scroller) can delegate behavior.
+handle_event/draw APIs so containers (like Scrollable) can delegate behavior.
 """
 
 from __future__ import annotations

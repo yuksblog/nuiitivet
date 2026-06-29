@@ -1,4 +1,4 @@
-"""ScrollViewport: clipped scrolling surface for Scroller and related widgets."""
+"""ScrollViewport: clipped scrolling surface for Scrollable and related widgets."""
 
 from __future__ import annotations
 

@@ -24,7 +24,7 @@ from nuiitivet.animation import Animatable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.scrolling import ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
@@ -521,14 +521,14 @@ class _YearChipGrid(ComposableWidget):
     Mirrors the docked year list (:class:`_YearList`) continuous-scroll model
     but renders 72×36dp pill chips in a 3-column grid per the MD3 modal
     year-selection measurement: ``UniformFlow`` with 3 columns, 30dp main/cross
-    gaps and 30dp inner padding, wrapped in a ``Scroller`` padded
+    gaps and 30dp inner padding, wrapped in a ``VerticalScrollable`` padded
     ``(12, 15, 12, 4)`` with the scrollbar hidden. The selected year's row is
     centred in the viewport on open.
 
     Args:
         selected_year: Currently selected year.
         on_select: Callback invoked with the selected year.
-        list_height: Pixel height for the :class:`Scroller` viewport.
+        list_height: Pixel height for the :class:`VerticalScrollable` viewport.
         style: DatePickerStyle.
     """
 
@@ -588,10 +588,10 @@ class _YearChipGrid(ComposableWidget):
             viewport_height=self._list_height,
         )
 
-        return Scroller(
+        return VerticalScrollable(
             grid,
-            scroll_controller=controller,
-            scrollbar_enabled=False,
+            controller=controller,
+            scrollbar_visible=False,
             width=int(style.container_width),
             height=self._list_height,
             padding=(12, 15, 12, 4),
@@ -716,7 +716,7 @@ class _MonthList(ComposableWidget):
     Args:
         current_month: Currently selected month (1–12).
         on_select: Callback invoked with the selected month number.
-        list_height: Pixel height for the :class:`Scroller` viewport.
+        list_height: Pixel height for the :class:`VerticalScrollable` viewport.
         item_width: Width of each list item (inner container width).
         style: DatePickerStyle.
     """
@@ -758,9 +758,9 @@ class _MonthList(ComposableWidget):
             item_height=int(style.menu_list_item_height),
             viewport_height=self._list_height,
         )
-        return Scroller(
+        return VerticalScrollable(
             Column(items, gap=0, width=int(item_w)),
-            scroll_controller=controller,
+            controller=controller,
             width=int(item_w),
             height=self._list_height,
         )
@@ -774,7 +774,7 @@ class _YearList(ComposableWidget):
     Args:
         current_year: Currently selected year.
         on_select: Callback invoked with the selected year.
-        list_height: Pixel height for the :class:`Scroller` viewport.
+        list_height: Pixel height for the :class:`VerticalScrollable` viewport.
         item_width: Width of each list item (inner container width).
         style: DatePickerStyle.
     """
@@ -819,9 +819,9 @@ class _YearList(ComposableWidget):
             item_height=int(style.menu_list_item_height),
             viewport_height=self._list_height,
         )
-        return Scroller(
+        return VerticalScrollable(
             Column(items, gap=0, width=int(item_w)),
-            scroll_controller=controller,
+            controller=controller,
             width=int(item_w),
             height=self._list_height,
         )
