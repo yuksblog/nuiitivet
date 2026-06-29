@@ -1,5 +1,5 @@
-# Probe script: inspect Scroller viewport_rect and scrollbar config
-from nuiitivet.layout.scroller import Scroller
+# Probe script: inspect Scrollable viewport_rect and scrollbar config
+from nuiitivet.layout.scrollable import _ScrollableBase
 from nuiitivet.widgets import text as text_mod
 from nuiitivet.layout import scroll_viewport as sv_mod
 from nuiitivet.widgets import scrollbar as sb_mod
@@ -13,7 +13,7 @@ def find_scrollers(widget):
     except Exception:
         children = []
     for c in children:
-        if isinstance(c, Scroller):
+        if isinstance(c, _ScrollableBase):
             out.append(c)
         out.extend(find_scrollers(c))
     return out
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     for i, s in enumerate(scrollers):
         cfg = getattr(s, "_scrollbar_config", None)
         hdim = s.height_sizing.kind if hasattr(s, "height_sizing") else None
-        print(f"Scroller[{i}] direction={s.direction} height={hdim}")
+        print(f"Scrollable[{i}] direction={s.direction} height={hdim}")
         print("  scrollbar_config.auto_hide=", getattr(cfg, "auto_hide", None))
 
     # pick the horizontal scroller (direction HORIZONTAL)

@@ -1,4 +1,4 @@
-"""Tests for Scroller scrollbar display modes (overlay vs reserve-always).
+"""Tests for Scrollable scrollbar display modes (overlay vs reserve-always).
 
 These confirm Phase 1 behaviour:
 - auto_hide=True -> overlay (do not reserve viewport space)
@@ -6,8 +6,9 @@ These confirm Phase 1 behaviour:
 """
 
 from nuiitivet.scrolling import ScrollController
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.column import Column
+from nuiitivet.scrolling import ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior
 
@@ -16,12 +17,11 @@ def test_scroller_overlay_when_auto_hide_true():
     """When auto_hide=True (overlay), viewport area should NOT be reduced by scrollbar thickness."""
     child = Column([Text(f"Item {i}") for i in range(50)])
     controller = ScrollController()
-    scroller = Scroller(
+    scroller = VerticalScrollable(
         child=child,
-        scroll_controller=controller,
-        scrollbar=ScrollbarBehavior(auto_hide=True),
-        scrollbar_thickness=12,
-        scrollbar_padding=2,
+        controller=controller,
+        behavior=ScrollbarBehavior(auto_hide=True),
+        style=ScrollbarStyle(thickness=12, inset=2),
     )
     from nuiitivet.widgets import scrollbar as sb_mod
 
@@ -46,12 +46,11 @@ def test_scroller_reserve_always_when_auto_hide_false():
     child = Column([Text(f"Item {i}") for i in range(50)])
     controller = ScrollController()
     cfg = ScrollbarBehavior(auto_hide=False)
-    scroller = Scroller(
+    scroller = VerticalScrollable(
         child=child,
-        scroll_controller=controller,
-        scrollbar=cfg,
-        scrollbar_thickness=10,
-        scrollbar_padding=3,
+        controller=controller,
+        behavior=cfg,
+        style=ScrollbarStyle(thickness=10, inset=3),
     )
     from nuiitivet.widgets import scrollbar as sb_mod
 
@@ -82,13 +81,11 @@ def test_scroller_reserve_always_horizontal_reduces_height():
 
     cards = [Text(f"Card {i}") for i in range(20)]
     cfg = ScrollbarBehavior(auto_hide=False)
-    scroller = Scroller(
+    scroller = HorizontalScrollable(
         child=Row(cards, gap=4),
-        scrollbar=cfg,
-        direction="horizontal",
+        behavior=cfg,
         height=60,
-        scrollbar_thickness=10,
-        scrollbar_padding=4,
+        style=ScrollbarStyle(thickness=10, inset=4),
     )
     from nuiitivet.widgets import scrollbar as sb_mod
     from nuiitivet.widgets import text as text_mod

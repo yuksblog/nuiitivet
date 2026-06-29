@@ -1,7 +1,7 @@
 """ScrollController: multi-axis scroll state manager.
 
-Jetpack Compose の ScrollState を参考にした設計で、
-単軸だけでなく複数軸のスクロール状態を一元管理できるようにする。
+Inspired by Jetpack Compose's ScrollState, this centralizes scroll state for
+multiple axes, not just a single axis.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Dict, Iterable, Mapping, Tuple
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import Observable
 
-from .types import ScrollDirection
+from .types import ScrollDirection, ScrollPhysics
 
 
 _logger = logging.getLogger(__name__)
@@ -48,25 +48,27 @@ class ScrollAxisState:
 
 
 class ScrollController:
-    """スクロール状態を管理し、操作メソッドを提供する
+    """Manages scroll state and provides scroll operations.
 
-    ScrollController は Scroller widget と組み合わせて使用する。
-    外部から渡さない場合、Scroller が内部で自動生成する。
+    ScrollController is used together with VerticalScrollable /
+    HorizontalScrollable. When one is not supplied, those widgets create one
+    internally. Scroll behavior (``physics``) and wheel sensitivity
+    (``scroll_multiplier``) are held by the controller.
 
     Examples:
-        基本的な使い方（内部生成）:
-            Scroller(child=Column([...] ))
+        Basic usage (auto-created):
+            VerticalScrollable(child=Column([...]))
 
-        外部から制御:
+        Controlled externally:
             controller = ScrollController()
-            Scroller(child=..., scroll_controller=controller)
+            VerticalScrollable(child=..., controller=controller)
             controller.scroll_to_end()
 
-        スクロール位置の監視:
+        Observing the scroll position:
             controller = ScrollController()
             axis = controller.axis_state(controller.primary_axis)
             axis.offset.subscribe(lambda pos: print(f"At {pos}"))
-            Scroller(child=..., scroll_controller=controller)
+            VerticalScrollable(child=..., controller=controller)
     """
 
     def __init__(
@@ -75,13 +77,17 @@ class ScrollController:
         axes: Iterable[ScrollDirection] | None = None,
         primary_axis: ScrollDirection | None = None,
         initial_offsets: Mapping[ScrollDirection, float] | None = None,
+        physics: ScrollPhysics | str = ScrollPhysics.CLAMP,
+        scroll_multiplier: float = 20.0,
     ):
-        """ScrollController を初期化
+        """Initialize the ScrollController.
 
         Args:
-            axes: 管理対象の軸集合（省略時は縦スクロールのみ）
-            primary_axis: get_offset()/is_at_start などの helper が参照する軸
-            initial_offsets: 軸ごとの初期オフセット指定
+            axes: The set of managed axes (defaults to vertical only).
+            primary_axis: The axis referenced by helpers like get_offset()/is_at_start.
+            initial_offsets: Per-axis initial offset overrides.
+            physics: Scroll behavior (clamp / disabled). See :class:`ScrollPhysics`.
+            scroll_multiplier: Scroll amount in pixels per mouse-wheel step.
         """
         axis_list: Tuple[ScrollDirection, ...]
         if axes is None:
@@ -103,6 +109,8 @@ class ScrollController:
 
         self._axes: Tuple[ScrollDirection, ...] = axis_list
         self._primary_axis: ScrollDirection = primary_axis
+        self._physics: ScrollPhysics = physics if isinstance(physics, ScrollPhysics) else ScrollPhysics(physics)
+        self._scroll_multiplier: float = float(scroll_multiplier)
 
         offsets: Dict[ScrollDirection, float] = {}
         if initial_offsets:
@@ -120,6 +128,16 @@ class ScrollController:
     @property
     def primary_axis(self) -> ScrollDirection:
         return self._primary_axis
+
+    @property
+    def physics(self) -> ScrollPhysics:
+        """Scroll behavior (clamp / disabled)."""
+        return self._physics
+
+    @property
+    def scroll_multiplier(self) -> float:
+        """Scroll amount in pixels per mouse-wheel step."""
+        return self._scroll_multiplier
 
     def has_axis(self, axis: ScrollDirection) -> bool:
         return axis in self._axis_states
@@ -140,10 +158,10 @@ class ScrollController:
 
     @property
     def max_extent(self) -> float:
-        """スクロール可能な最大距離（ピクセル）
+        """Maximum scrollable distance in pixels.
 
-        content_size - viewport_size で計算される。
-        Scroller が自動的に更新する。
+        Computed as content_size - viewport_size. Updated automatically by the
+        scrollable widget.
         """
         return self._primary_axis_state().max_extent.value
 
@@ -152,7 +170,7 @@ class ScrollController:
 
     @property
     def viewport_size(self) -> int:
-        """表示領域のサイズ（ピクセル）"""
+        """Viewport size in pixels."""
         return self._primary_axis_state().viewport_size.value
 
     def axis_viewport_size(self, axis: ScrollDirection) -> int:
@@ -160,7 +178,7 @@ class ScrollController:
 
     @property
     def content_size(self) -> int:
-        """コンテンツの全体サイズ（ピクセル）"""
+        """Total content size in pixels."""
         return self._primary_axis_state().content_size.value
 
     def axis_content_size(self, axis: ScrollDirection) -> int:
@@ -178,12 +196,12 @@ class ScrollController:
         return self._resolve_axis(axis).offset.value
 
     def scroll_to(self, offset: float, *, axis: ScrollDirection | None = None) -> None:
-        """指定位置にスクロール
+        """Scroll to the given offset.
 
-        offset は 0 〜 max_extent の範囲にクランプされる。
+        The offset is clamped to the range 0 .. max_extent.
 
         Args:
-            offset: スクロール先の位置（ピクセル）
+            offset: Target scroll position in pixels.
         """
         axis_state = self._resolve_axis(axis)
         max_extent = getattr(axis_state.max_extent, "value", 0.0)
@@ -201,7 +219,7 @@ class ScrollController:
                 )
 
     def scroll_by(self, delta: float, *, axis: ScrollDirection | None = None) -> None:
-        """現在位置から相対的にスクロール"""
+        """Scroll relative to the current position."""
         axis_state = self._resolve_axis(axis)
         self.scroll_to(axis_state.offset.value + delta, axis=axis_state.axis)
 
@@ -244,7 +262,7 @@ class ScrollController:
         *,
         axis: ScrollDirection | None = None,
     ) -> None:
-        """スクロールメトリクスを更新（Scroller 専用）"""
+        """Update scroll metrics (for the scrollable widget only)."""
         state = self._resolve_axis(axis)
         try:
             state.max_extent.value = float(max_extent)

@@ -3,7 +3,7 @@ from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.column import Column
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable
 
 
 class DummyCanvas:
@@ -59,7 +59,7 @@ def test_scroller_reports_extent_with_transient_foreach_items():
         return DummyCell(tag=item)
 
     column = Column.builder(transient, builder, gap=2, cross_alignment="start")
-    scroller = Scroller(column, height=80)
+    scroller = VerticalScrollable(column, height=80)
     app = MockApp()
     scroller.mount(app)
     try:

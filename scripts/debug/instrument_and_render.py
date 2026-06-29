@@ -101,7 +101,7 @@ TARGETS = [
     ("nuiitivet.layout", "Row", ("preferred_size", "paint")),
     ("nuiitivet.layout", "Container", ("preferred_size", "paint")),
     ("nuiitivet.layout.for_each", "ForEach", ("_rebuild", "preferred_size", "paint")),
-    ("nuiitivet.layout.scroller", "Scroller", ("preferred_size", "paint")),
+    ("nuiitivet.layout.scrollable", "VerticalScrollable", ("preferred_size", "paint")),
     ("nuiitivet.widgets.text", "Text", ("preferred_size", "paint")),
     ("nuiitivet.widgets.icon", "Icon", ("preferred_size", "paint")),
     ("nuiitivet.material.selection_controls", "Checkbox", ("preferred_size", "paint")),

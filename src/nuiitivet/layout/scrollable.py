@@ -1,14 +1,28 @@
-"""Scroller: 子widgetをスクロール可能にするレイアウトwidget"""
+"""Scrollable: axis-specific containers that make a child scrollable.
+
+Public API:
+
+* :class:`VerticalScrollable` — scrolls its child along the vertical axis.
+* :class:`HorizontalScrollable` — scrolls its child along the horizontal axis.
+
+Both share :class:`_ScrollableBase`, which holds the direction-parameterized
+layout / paint / gesture logic. The scroll *engine* configuration (``physics``
+and ``scroll_multiplier``) lives on :class:`~nuiitivet.scrolling.ScrollController`;
+scrollbar appearance is configured via
+:class:`~nuiitivet.scrolling.ScrollbarStyle` and scrollbar
+interaction via :class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
+"""
 
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, Union
+from typing import ClassVar, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
 from ..widgeting.widget import Widget
-from ..scrolling import ScrollController, ScrollDirection, ScrollPhysics
+from ..scrolling import ScrollController, ScrollDirection, ScrollPhysics, ScrollbarStyle
 from ..rendering.sizing import Sizing, SizingLike
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import Scrollbar, ScrollbarBehavior
@@ -17,75 +31,83 @@ from .scroll_viewport import ScrollViewport
 logger = logging.getLogger(__name__)
 
 
-class Scroller(Widget):
-    """(Advanced) Low-level scroll container.
+ScrollbarVisibleLike = Union[bool, ReadOnlyObservableProtocol[bool]]
 
-    Warning:
-        This API is **provisional** and subject to change in future versions.
-        Specifically, parameters related to scrollbars may be consolidated or moved.
 
-    Note:
-        Prefer using the `.scroll()` modifier. This widget is exposed for
-        advanced customization.
+def _read_bool(value: ScrollbarVisibleLike) -> bool:
+    if isinstance(value, ReadOnlyObservableProtocol):
+        try:
+            return bool(value.value)
+        except Exception:
+            exception_once(logger, "scrollable_read_visible_exc", "Failed to read scrollbar_visible observable")
+            return True
+    return bool(value)
 
-    Makes a child widget scrollable if it exceeds the viewport.
-    Supports mouse wheel and scrollbar interactions.
+
+class _ScrollableBase(Widget):
+    """(Internal) Direction-parameterized scroll container.
+
+    Not part of the public API. Use :class:`VerticalScrollable` or
+    :class:`HorizontalScrollable`, which fix the scroll axis via ``_direction``.
+
+    Makes a child widget scrollable if it exceeds the viewport. Supports mouse
+    wheel, drag, and scrollbar interactions.
     """
+
+    #: Scroll axis fixed by each concrete subclass.
+    _direction: ClassVar[ScrollDirection]
 
     def __init__(
         self,
         child: Widget,
         *,
-        scroll_controller: Optional[ScrollController] = None,
-        direction: ScrollDirection | str = ScrollDirection.VERTICAL,
-        physics: ScrollPhysics | str = ScrollPhysics.CLAMP,
-        scrollbar: Optional[ScrollbarBehavior] = None,
-        scrollbar_padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 2,
-        scrollbar_enabled: bool = True,
-        scrollbar_thickness: int | None = None,
-        scrollbar_min_thumb_length: int | None = None,
-        scroll_multiplier: float = 20.0,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        controller: Optional[ScrollController] = None,
+        scrollbar_visible: ScrollbarVisibleLike = True,
         width: SizingLike = None,
         height: SizingLike = None,
-    ):
-        """Scroller を初期化
+        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        behavior: Optional[ScrollbarBehavior] = None,
+        style: Optional[ScrollbarStyle] = None,
+    ) -> None:
+        """Initialize the scrollable.
 
         Args:
-            child: スクロール対象のwidget
-            scroll_controller: 外部制御用のScrollController（省略時は自動生成）
-            direction: スクロール方向（:class:`ScrollDirection`）
-            physics: スクロール物理演算（:class:`ScrollPhysics`）
-        scrollbar: スクロールバーの振る舞い設定（動作のみ）。レイアウト系は `scrollbar_padding` で指定します。
-            scroll_multiplier: マウスホイール1ステップあたりのスクロール量（ピクセル）
-            padding: viewport内側の余白
+            child: The widget to make scrollable.
+            controller: External :class:`ScrollController` (auto-created when
+                omitted). ``physics`` and ``scroll_multiplier`` are read from it.
+            scrollbar_visible: Whether the scrollbar is shown. Accepts a ``bool``
+                or an ``Observable[bool]`` for reactive visibility.
+            width: Width sizing override.
+            height: Height sizing override.
+            padding: Inner padding of the viewport (scrolled area).
+            behavior: Scrollbar interaction behavior (auto-hide, track clicks…).
+            style: Scrollbar appearance (thickness, min thumb length, inset).
         """
         super().__init__(width=width, height=height)
 
         if child is None:
-            raise ValueError("Scroller requires a child widget")
+            raise ValueError("Scrollable requires a child widget")
 
         self._child = child
-        self.direction = direction if isinstance(direction, ScrollDirection) else ScrollDirection(direction)
+        self.direction = self._direction
         self._apply_axis_sizing_defaults()
 
-        if scroll_controller is None:
+        if controller is None:
             self._controller = ScrollController(axes=(self.direction,), primary_axis=self.direction)
             self._owns_controller = True
         else:
-            if not scroll_controller.has_axis(self.direction):
+            if not controller.has_axis(self.direction):
                 raise ValueError(f"ScrollController does not support required axis {self.direction}")
-            self._controller = scroll_controller
+            self._controller = controller
             self._owns_controller = False
-        self.physics = physics if isinstance(physics, ScrollPhysics) else ScrollPhysics(physics)
-        self.scroll_multiplier = float(scroll_multiplier)
 
-        # Behavior object (contains interaction/auto-hide settings)
-        from ..widgets.scrollbar import ScrollbarBehavior as _SB
+        # Scroll-engine configuration is owned by the controller.
+        self.physics = self._controller.physics
+        self.scroll_multiplier = self._controller.scroll_multiplier
 
-        self._scrollbar_behavior = scrollbar or _SB()
-        self._scrollbar_enabled = bool(scrollbar_enabled)
-        self._scrollbar_padding = scrollbar_padding
+        self._scrollbar_behavior = behavior or ScrollbarBehavior()
+        self._scrollbar_style = style or ScrollbarStyle()
+        self._scrollbar_visible: ScrollbarVisibleLike = scrollbar_visible
 
         self._viewport = ScrollViewport(
             child=child,
@@ -95,59 +117,42 @@ class Scroller(Widget):
         )
         self.add_child(self._viewport)
 
-        self._scrollbar: Optional[Scrollbar]
-        if not self._scrollbar_enabled:
-            self._scrollbar = None
-        else:
-            # resolve optional thickness/min_thumb overrides (fallback to Scrollbar defaults)
-            thickness_val = int(scrollbar_thickness) if scrollbar_thickness is not None else None
-            min_thumb_val = int(scrollbar_min_thumb_length) if scrollbar_min_thumb_length is not None else None
-            # build kwargs conditionally to avoid passing None to Scrollbar
-            # Pass explicit keyword arguments to keep mypy happy (avoid **dict with Any)
-            if thickness_val is None and min_thumb_val is None:
-                self._scrollbar = Scrollbar(
-                    self._controller,
-                    behavior=self._scrollbar_behavior,
-                    direction=self.direction,
-                    padding=self._scrollbar_padding,
-                )
-            else:
-                self._scrollbar = Scrollbar(
-                    self._controller,
-                    behavior=self._scrollbar_behavior,
-                    direction=self.direction,
-                    thickness=thickness_val or 8,
-                    min_thumb_length=min_thumb_val or 24,
-                    padding=self._scrollbar_padding,
-                )
-            self.add_child(self._scrollbar)
+        self._scrollbar = Scrollbar(
+            self._controller,
+            behavior=self._scrollbar_behavior,
+            direction=self.direction,
+            thickness=self._scrollbar_style.thickness,
+            min_thumb_length=self._scrollbar_style.min_thumb_length,
+            padding=self._scrollbar_style.inset,
+        )
+        self.add_child(self._scrollbar)
 
-            # Allow the scrollbar to coordinate with this container (e.g. cancel
-            # an active content drag when the user begins dragging the thumb).
-            try:
-                setattr(self._scrollbar, "_scroll_container", self)
-            except Exception:
-                exception_once(logger, "scroller_set_scroll_container_exc", "Failed to set scrollbar._scroll_container")
+        # Allow the scrollbar to coordinate with this container (e.g. cancel an
+        # active content drag when the user begins dragging the thumb).
+        try:
+            setattr(self._scrollbar, "_scroll_container", self)
+        except Exception:
+            exception_once(logger, "scrollable_set_scroll_container_exc", "Failed to set scrollbar._scroll_container")
 
-        # ドラッグスクロール用の状態
+        # Drag-scroll state
         self._is_dragging = False
         self._drag_start_pos = 0.0
         self._drag_start_offset = 0.0
         self._content_pointer_id: Optional[int] = None
 
-        # スクロールバーの領域（hit-test用）
+        # Scrollbar regions (for hit-testing)
         self._scrollbar_rect: Optional[Tuple[int, int, int, int]] = None
         self._scrollbar_thumb_rect: Optional[Tuple[int, int, int, int]] = None
 
-        # リスナー解除用 (may be a Disposable or a callable)
+        # Listener disposal handle (may be a Disposable or a callable)
         self._scroll_unsubscribe: Optional[object] = None
 
-    # --- ライフサイクル ---
+    # --- Lifecycle ---
 
     def on_mount(self) -> None:
-        """mount時にスクロール変更をリッスン"""
+        """Listen for scroll changes on mount."""
 
-        # スクロール変更時は App.invalidate() を呼ぶ（tests の MockApp と互換）
+        # Call App.invalidate() on scroll change (compatible with the tests' MockApp)
         def _offset_cb(_val):
             # Notify the app to redraw content positions
             try:
@@ -156,15 +161,23 @@ class Scroller(Widget):
             except Exception:
                 exception_once(
                     logger,
-                    "scroller_offset_invalidate_exc",
+                    "scrollable_offset_invalidate_exc",
                     "App.invalidate failed on scroll offset change",
                 )
 
         axis_state = self._controller.axis_state(self.direction)
         self._scroll_unsubscribe = axis_state.offset.subscribe(_offset_cb)
 
+        # Reactive scrollbar visibility: relayout / repaint when it changes.
+        if isinstance(self._scrollbar_visible, ReadOnlyObservableProtocol):
+            self.observe(self._scrollbar_visible, self._on_scrollbar_visible_changed)
+
+    def _on_scrollbar_visible_changed(self, _value: bool) -> None:
+        self.mark_needs_layout()
+        self.invalidate()
+
     def on_unmount(self) -> None:
-        """unmount時にリスナー解除"""
+        """Dispose listeners on unmount."""
         if self._scroll_unsubscribe:
             try:
                 # Expect a Disposable with dispose(); call it and clear.
@@ -174,13 +187,13 @@ class Scroller(Widget):
                     except Exception:
                         exception_once(
                             logger,
-                            "scroller_scroll_unsubscribe_dispose_exc",
+                            "scrollable_scroll_unsubscribe_dispose_exc",
                             "Failed to dispose scroll subscription",
                         )
             finally:
                 self._scroll_unsubscribe = None
 
-    # --- サイズ計算 ---
+    # --- Sizing ---
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Explicit sizes take priority, otherwise delegate to viewport"""
@@ -225,25 +238,23 @@ class Scroller(Widget):
         viewport_width = int(width)
         viewport_height = int(height)
 
-        wants_scrollbar = (self._scrollbar is not None) and self.physics is not ScrollPhysics.NEVER
+        wants_scrollbar = self._wants_scrollbar()
         reserve_always = bool(wants_scrollbar and (not bool(self._scrollbar_behavior.auto_hide)))
 
         if wants_scrollbar and reserve_always:
             if self.direction is ScrollDirection.VERTICAL:
-                pad_r = self._scrollbar.padding[2] if self._scrollbar is not None else 0
-                thickness = self._scrollbar.thickness if self._scrollbar is not None else 0
+                pad_r = self._scrollbar.padding[2]
+                thickness = self._scrollbar.thickness
                 viewport_width = max(0, viewport_width - thickness - pad_r)
             elif self.direction is ScrollDirection.HORIZONTAL:
-                pad_b = self._scrollbar.padding[3] if self._scrollbar is not None else 0
-                thickness = self._scrollbar.thickness if self._scrollbar is not None else 0
+                pad_b = self._scrollbar.padding[3]
+                thickness = self._scrollbar.thickness
                 viewport_height = max(0, viewport_height - thickness - pad_b)
 
         self._viewport.layout(viewport_width, viewport_height)
         self._viewport.set_layout_rect(0, 0, viewport_width, viewport_height)
 
         scrollbar = self._scrollbar
-        if scrollbar is None:
-            return
 
         if wants_scrollbar and self._should_show_scrollbar():
             if self.direction is ScrollDirection.VERTICAL:
@@ -266,108 +277,86 @@ class Scroller(Widget):
             scrollbar.layout(0, 0)
             scrollbar.set_layout_rect(0, 0, 0, 0)
 
-    # --- 描画 ---
+    # --- Painting ---
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """
-        1. 子のpreferred_sizeを取得し、controllerに記録
-        2. viewport領域をクリップ
-        3. スクロールオフセットを適用して子を描画
-        4. スクロールバーを描画
+        1. Measure the child's preferred size and record it on the controller.
+        2. Clip to the viewport region.
+        3. Apply the scroll offset and paint the child.
+        4. Paint the scrollbar.
         """
         # Auto-layout fallback for tests or direct paint calls.
         try:
             if self._viewport.layout_rect is None:
                 self.layout(width, height)
         except Exception:
-            exception_once(logger, "scroller_auto_layout_exc", "Auto layout failed in paint")
+            exception_once(logger, "scrollable_auto_layout_exc", "Auto layout failed in paint")
 
-        # 描画領域を記録（hit-test用）
+        # Record the painted rect (for hit-testing)
         self.set_last_rect(x, y, width, height)
 
         viewport_width = width
         viewport_height = height
 
-        wants_scrollbar = (self._scrollbar is not None) and self.physics is not ScrollPhysics.NEVER
+        wants_scrollbar = self._wants_scrollbar()
 
         # Phase 1 behaviour:
         # - if scrollbar.auto_hide is True -> overlay: do NOT reserve space (draw on top)
         # - if scrollbar.auto_hide is False -> reserve-always: always reserve space for the scrollbar
-        reserve_always = False
-        if wants_scrollbar:
-            reserve_always = not bool(self._scrollbar_behavior.auto_hide)
+        reserve_always = bool(wants_scrollbar and (not bool(self._scrollbar_behavior.auto_hide)))
 
         # If we must reserve space (auto_hide == False) subtract thickness regardless
         if wants_scrollbar and reserve_always:
             if self.direction is ScrollDirection.VERTICAL:
-                if self._scrollbar is not None:
-                    pad_r = self._scrollbar.padding[2]
-                    viewport_width = max(0, viewport_width - self._scrollbar.thickness - pad_r)
-                else:
-                    viewport_width = viewport_width
+                pad_r = self._scrollbar.padding[2]
+                viewport_width = max(0, viewport_width - self._scrollbar.thickness - pad_r)
             elif self.direction is ScrollDirection.HORIZONTAL:
-                if self._scrollbar is not None:
-                    pad_b = self._scrollbar.padding[3]
-                    viewport_height = max(0, viewport_height - self._scrollbar.thickness - pad_b)
-                else:
-                    viewport_height = viewport_height
+                pad_b = self._scrollbar.padding[3]
+                viewport_height = max(0, viewport_height - self._scrollbar.thickness - pad_b)
 
         self._viewport.paint(canvas, x, y, viewport_width, viewport_height)
 
         # Then: paint other children (e.g., scrollbar) on top
         if wants_scrollbar and self._should_show_scrollbar():
             viewport_rect = self._viewport.viewport_rect or (x, y, viewport_width, viewport_height)
+            scrollbar = self._scrollbar
             if self.direction is ScrollDirection.VERTICAL:
-                if self._scrollbar is not None:
-                    pad_r = self._scrollbar.padding[2]
-                    bar_x = x + width - self._scrollbar.thickness - pad_r
-                    bar_y = viewport_rect[1]
-                    bar_w = self._scrollbar.thickness
-                    bar_h = viewport_rect[3]
-                else:
-                    bar_x = x + width
-                    bar_y = viewport_rect[1]
-                    bar_w = 0
-                    bar_h = viewport_rect[3]
-
-                # set scrollbar last_rect so hit-testing works via Widget.hit_test
-                scrollbar = self._scrollbar
-                if scrollbar is not None:
-                    try:
-                        scrollbar.set_last_rect(bar_x, bar_y, bar_w, bar_h)
-                        # also forward paint to the child via its paint API
-                        scrollbar.paint(canvas, bar_x, bar_y, bar_w, bar_h)
-                        # record rects for backward-compat / tests
-                        self._scrollbar_rect = getattr(scrollbar, "bar_rect", None)
-                        self._scrollbar_thumb_rect = getattr(scrollbar, "thumb_rect", None)
-                    except Exception:
-                        exception_once(logger, "scroller_scrollbar_paint_exc", "Scrollbar paint failed")
+                pad_r = scrollbar.padding[2]
+                bar_x = x + width - scrollbar.thickness - pad_r
+                bar_y = viewport_rect[1]
+                bar_w = scrollbar.thickness
+                bar_h = viewport_rect[3]
+                try:
+                    scrollbar.set_last_rect(bar_x, bar_y, bar_w, bar_h)
+                    scrollbar.paint(canvas, bar_x, bar_y, bar_w, bar_h)
+                    self._scrollbar_rect = getattr(scrollbar, "bar_rect", None)
+                    self._scrollbar_thumb_rect = getattr(scrollbar, "thumb_rect", None)
+                except Exception:
+                    exception_once(logger, "scrollable_scrollbar_paint_exc", "Scrollbar paint failed")
             elif self.direction is ScrollDirection.HORIZONTAL:
-                if self._scrollbar is not None:
-                    pad_b = self._scrollbar.padding[3]
-                    bar_x = viewport_rect[0]
-                    bar_y = y + height - self._scrollbar.thickness - pad_b
-                    bar_w = viewport_rect[2]
-                    bar_h = self._scrollbar.thickness
-                else:
-                    bar_x = viewport_rect[0]
-                    bar_y = y + height
-                    bar_w = viewport_rect[2]
-                    bar_h = 0
+                pad_b = scrollbar.padding[3]
+                bar_x = viewport_rect[0]
+                bar_y = y + height - scrollbar.thickness - pad_b
+                bar_w = viewport_rect[2]
+                bar_h = scrollbar.thickness
+                try:
+                    scrollbar.set_last_rect(bar_x, bar_y, bar_w, bar_h)
+                    scrollbar.paint(canvas, bar_x, bar_y, bar_w, bar_h)
+                    self._scrollbar_rect = getattr(scrollbar, "bar_rect", None)
+                    self._scrollbar_thumb_rect = getattr(scrollbar, "thumb_rect", None)
+                except Exception:
+                    exception_once(logger, "scrollable_scrollbar_paint_h_exc", "Scrollbar paint failed (horizontal)")
 
-                scrollbar = self._scrollbar
-                if scrollbar is not None:
-                    try:
-                        scrollbar.set_last_rect(bar_x, bar_y, bar_w, bar_h)
-                        scrollbar.paint(canvas, bar_x, bar_y, bar_w, bar_h)
-                        self._scrollbar_rect = getattr(scrollbar, "bar_rect", None)
-                        self._scrollbar_thumb_rect = getattr(scrollbar, "thumb_rect", None)
-                    except Exception:
-                        exception_once(logger, "scroller_scrollbar_paint_h_exc", "Scrollbar paint failed (horizontal)")
+    def _wants_scrollbar(self) -> bool:
+        """Whether a scrollbar should participate in layout / paint at all."""
+        return _read_bool(self._scrollbar_visible) and self.physics is not ScrollPhysics.NEVER
 
     def _should_show_scrollbar(self) -> bool:
-        """スクロールバーを表示すべきか判定（確定版）"""
+        """Whether the scrollbar should currently be shown."""
         if self.physics is ScrollPhysics.NEVER:
+            return False
+        if not _read_bool(self._scrollbar_visible):
             return False
         return self._controller.axis_max_extent(self.direction) > 0
 
@@ -375,16 +364,15 @@ class Scroller(Widget):
         etype = event.type
 
         scrollbar = self._scrollbar
-        if scrollbar is not None:
-            dragging_id = getattr(scrollbar, "_active_pointer_id", None)
-            if getattr(scrollbar, "_dragging", False) and dragging_id == event.id:
-                # Fallback: when running without an App (no pointer capture manager),
-                # ensure drag sequences still reach the scrollbar.
-                try:
-                    return bool(scrollbar.dispatch_pointer_event(event))
-                except Exception:
-                    exception_once(logger, "scroller_scrollbar_dispatch_exc", "scrollbar.dispatch_pointer_event failed")
-                    return False
+        dragging_id = getattr(scrollbar, "_active_pointer_id", None)
+        if getattr(scrollbar, "_dragging", False) and dragging_id == event.id:
+            # Fallback: when running without an App (no pointer capture manager),
+            # ensure drag sequences still reach the scrollbar.
+            try:
+                return bool(scrollbar.dispatch_pointer_event(event))
+            except Exception:
+                exception_once(logger, "scrollable_scrollbar_dispatch_exc", "scrollbar.dispatch_pointer_event failed")
+                return False
 
         if etype == PointerEventType.SCROLL:
             return self._handle_scroll(event)
@@ -430,11 +418,11 @@ class Scroller(Widget):
         if not self._point_in_viewport(event.x, event.y):
             return False
         scrollbar = self._scrollbar
-        if scrollbar is not None and getattr(scrollbar, "_dragging", False):
+        if getattr(scrollbar, "_dragging", False):
             try:
                 scrollbar.cancel_drag()
             except Exception:
-                exception_once(logger, "scroller_scrollbar_cancel_drag_exc", "scrollbar.cancel_drag failed")
+                exception_once(logger, "scrollable_scrollbar_cancel_drag_exc", "scrollbar.cancel_drag failed")
         self._is_dragging = True
         self._content_pointer_id = event.id
         self._drag_start_pos = self._pointer_axis_value(event)
@@ -442,7 +430,7 @@ class Scroller(Widget):
         try:
             self.capture_pointer(event)
         except Exception:
-            exception_once(logger, "scroller_capture_pointer_exc", "capture_pointer failed")
+            exception_once(logger, "scrollable_capture_pointer_exc", "capture_pointer failed")
         return True
 
     def _handle_drag(self, event: PointerEvent) -> bool:
@@ -465,7 +453,7 @@ class Scroller(Widget):
                 else:
                     self.release_pointer(pointer_id)
             except Exception:
-                exception_once(logger, "scroller_release_pointer_exc", "release/cancel pointer failed")
+                exception_once(logger, "scrollable_release_pointer_exc", "release/cancel pointer failed")
         return True
 
     def _cancel_content_drag(self) -> None:
@@ -490,34 +478,39 @@ class Scroller(Widget):
             return float(event.x)
         return float(event.y)
 
-    # --- 便利メソッド（widget経由でもアクセス可能） ---
+    # --- Convenience methods (also accessible via the widget) ---
 
     def scroll_to(self, offset: float) -> None:
-        """指定位置にスクロール（内部Controllerに委譲）"""
+        """Scroll to the given offset (delegates to the controller)."""
         self._controller.scroll_to(offset, axis=self.direction)
 
     def scroll_to_end(self) -> None:
-        """末尾にスクロール"""
+        """Scroll to the end."""
         self._controller.scroll_to_end(axis=self.direction)
 
     def scroll_to_start(self) -> None:
-        """先頭にスクロール"""
+        """Scroll to the start."""
         self._controller.scroll_to_start(axis=self.direction)
 
     @property
     def scroll_offset(self) -> float:
-        """現在のスクロール位置"""
+        """Current scroll offset."""
         return self._controller.get_offset(self.direction)
 
     @property
     def max_scroll_extent(self) -> float:
-        """最大スクロール距離"""
+        """Maximum scroll extent."""
         return self._controller.axis_max_extent(self.direction)
 
     @property
     def scrollbar_behavior(self) -> ScrollbarBehavior:
         """Return the immutable scrollbar behavior configuration."""
         return self._scrollbar_behavior
+
+    @property
+    def scrollbar_style(self) -> ScrollbarStyle:
+        """Return the immutable scrollbar visual style."""
+        return self._scrollbar_style
 
     def _apply_axis_sizing_defaults(self) -> None:
         """Ensure the scroll axis stretches to parent constraints by default."""
@@ -527,3 +520,18 @@ class Scroller(Widget):
         elif self.direction is ScrollDirection.HORIZONTAL:
             if self.width_sizing.kind == "auto":
                 self.width_sizing = Sizing.flex()
+
+
+class VerticalScrollable(_ScrollableBase):
+    """Scrolls its child along the vertical axis."""
+
+    _direction = ScrollDirection.VERTICAL
+
+
+class HorizontalScrollable(_ScrollableBase):
+    """Scrolls its child along the horizontal axis."""
+
+    _direction = ScrollDirection.HORIZONTAL
+
+
+__all__ = ["VerticalScrollable", "HorizontalScrollable"]

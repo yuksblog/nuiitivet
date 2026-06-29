@@ -1,4 +1,4 @@
-"""Interaction tests for Scroller + Scrollbar.
+"""Interaction tests for Scrollable + Scrollbar.
 
 These tests exercise mixed interactions such as dragging the scrollbar thumb
 and then performing other pointer actions (e.g., pressing the content /
@@ -13,8 +13,9 @@ help locate the regression.
 
 from nuiitivet.scrolling import ScrollController
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.column import Column
+from nuiitivet.scrolling import ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
@@ -23,11 +24,10 @@ def _make_basic_scroller():
     controller = ScrollController()
     controller._update_metrics(max_extent=300.0, viewport_size=200, content_size=500)
     child = Column([Text(f"Item {i}") for i in range(20)])
-    scroller = Scroller(
+    scroller = VerticalScrollable(
         child=child,
-        scroll_controller=controller,
-        scrollbar_thickness=20,
-        scrollbar_padding=0,
+        controller=controller,
+        style=ScrollbarStyle(thickness=20, inset=0),
     )
     scroller.layout(200, 200)
     scroller.set_last_rect(0, 0, 200, 200)

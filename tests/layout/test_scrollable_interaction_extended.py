@@ -1,4 +1,4 @@
-"""Extended interaction tests for Scroller + Scrollbar.
+"""Extended interaction tests for Scrollable + Scrollbar.
 
 These tests exercise additional mixed interactions to catch ordering and
 state-transition bugs when multiple input sequences occur.
@@ -6,8 +6,9 @@ state-transition bugs when multiple input sequences occur.
 
 from nuiitivet.scrolling import ScrollController
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.layout.scroller import Scroller
+from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.column import Column
+from nuiitivet.scrolling import ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
@@ -15,11 +16,10 @@ from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 def _make_basic_scroller():
     controller = ScrollController()
     child = Column([Text(f"Item {i}") for i in range(20)])
-    scroller = Scroller(
+    scroller = VerticalScrollable(
         child=child,
-        scroll_controller=controller,
-        scrollbar_thickness=20,
-        scrollbar_padding=0,
+        controller=controller,
+        style=ScrollbarStyle(thickness=20, inset=0),
     )
     scroller.layout(200, 200)
     scroller.set_last_rect(0, 0, 200, 200)
