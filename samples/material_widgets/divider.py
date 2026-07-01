@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Divider, Text
+from nuiitivet.material import App, HorizontalDivider, Text, VerticalDivider
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -14,9 +14,9 @@ def main(png_path: str = "") -> None:
         cross_alignment="start",
         children=[
             Text("Inbox", padding=(8, 8, 8, 8)),
-            Divider(),
+            HorizontalDivider(),
             Text("Sent", padding=(8, 8, 8, 8)),
-            Divider(style=DividerStyle(inset_left=24)),
+            HorizontalDivider(style=DividerStyle(inset_left=24)),
             Text("Drafts", padding=(8, 8, 8, 8)),
         ],
     )
@@ -26,9 +26,9 @@ def main(png_path: str = "") -> None:
         cross_alignment="center",
         children=[
             Text("Home", padding=(16, 8, 16, 8)),
-            Divider(orientation="vertical"),
+            VerticalDivider(),
             Text("Explore", padding=(16, 8, 16, 8)),
-            Divider(orientation="vertical"),
+            VerticalDivider(),
             Text("Account", padding=(16, 8, 16, 8)),
         ],
     )

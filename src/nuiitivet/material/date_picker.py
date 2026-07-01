@@ -34,7 +34,7 @@ from nuiitivet.modifiers.visible import visible
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.material.divider import Divider
+from nuiitivet.material.divider import HorizontalDivider
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -1644,7 +1644,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         # height was sized for 5 weeks and clipped the action row).
         column_children: list[Widget] = [
             self._build_header(style, year_view=self._showing_year_picker),
-            Divider(),
+            HorizontalDivider(),
             nav_header,
         ]
 
@@ -1914,7 +1914,7 @@ class ModalDateRangePicker(
         # section paddings (the fixed token height was sized for 5 weeks).
         column_children: list[Widget] = [
             self._build_header(style, year_view=self._showing_year_picker),
-            Divider(),
+            HorizontalDivider(),
             nav_header,
         ]
 
@@ -2205,7 +2205,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
                     # label floats ~7dp above its outline, so an extra 7dp top
                     # inset on the field keeps the *label text top* 10dp below the
                     # divider line (not just the outline).
-                    Divider(padding=(0, 10, 0, 10)),
+                    HorizontalDivider(padding=(0, 10, 0, 10)),
                     Box(
                         padding=(24, 6, 24, 4),
                         child=self._text_field,

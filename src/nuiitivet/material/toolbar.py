@@ -14,7 +14,7 @@ from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import Widget
 
 PaddingLike = Union[int, tuple[int, int], tuple[int, int, int, int]]
-ToolbarOrientation = Literal["horizontal", "vertical"]
+_ToolbarOrientation = Literal["horizontal", "vertical"]
 
 
 def _validate_buttons(buttons: Sequence[MaterialButtonBase]) -> list[MaterialButtonBase]:
@@ -98,32 +98,30 @@ class DockedToolbar(Box):
         return self._user_style if self._user_style is not None else ToolbarStyle.standard()
 
 
-class FloatingToolbar(Box):
-    """Material Design 3 floating toolbar.
+class _FloatingToolbarBase(Box):
+    """Shared behavior for floating toolbars.
 
-    Floating toolbar supports both horizontal and vertical orientations and
-    exposes external padding to place the floating container away from edges.
+    Floating toolbar exposes external padding to place the floating container
+    away from edges. Orientation is fixed by the concrete subclass, which
+    selects a Row or Column layout for the action buttons.
     """
 
     def __init__(
         self,
         buttons: Sequence[MaterialButtonBase],
         *,
-        orientation: ToolbarOrientation = "horizontal",
+        orientation: _ToolbarOrientation,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
     ) -> None:
-        """Initialize FloatingToolbar.
+        """Initialize shared floating toolbar state.
 
         Args:
             buttons: Action buttons placed inside the toolbar.
-            orientation: Layout orientation for action buttons.
+            orientation: Layout orientation for action buttons, fixed by the subclass.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
         """
-        if orientation not in ("horizontal", "vertical"):
-            raise ValueError("orientation must be 'horizontal' or 'vertical'")
-
         self._user_style = style
         self.orientation = orientation
         effective_style = self.style
@@ -178,4 +176,50 @@ class FloatingToolbar(Box):
         return self._user_style if self._user_style is not None else ToolbarStyle.standard()
 
 
-__all__ = ["DockedToolbar", "FloatingToolbar", "ToolbarOrientation"]
+class HorizontalFloatingToolbar(_FloatingToolbarBase):
+    """Material Design 3 horizontal floating toolbar.
+
+    Lays out action buttons in a row inside a fully rounded floating container.
+    """
+
+    def __init__(
+        self,
+        buttons: Sequence[MaterialButtonBase],
+        *,
+        padding: PaddingLike = 0,
+        style: Optional[ToolbarStyle] = None,
+    ) -> None:
+        """Initialize HorizontalFloatingToolbar.
+
+        Args:
+            buttons: Action buttons placed inside the toolbar.
+            padding: External padding around the floating toolbar.
+            style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
+        """
+        super().__init__(buttons, orientation="horizontal", padding=padding, style=style)
+
+
+class VerticalFloatingToolbar(_FloatingToolbarBase):
+    """Material Design 3 vertical floating toolbar.
+
+    Lays out action buttons in a column inside a fully rounded floating container.
+    """
+
+    def __init__(
+        self,
+        buttons: Sequence[MaterialButtonBase],
+        *,
+        padding: PaddingLike = 0,
+        style: Optional[ToolbarStyle] = None,
+    ) -> None:
+        """Initialize VerticalFloatingToolbar.
+
+        Args:
+            buttons: Action buttons placed inside the toolbar.
+            padding: External padding around the floating toolbar.
+            style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
+        """
+        super().__init__(buttons, orientation="vertical", padding=padding, style=style)
+
+
+__all__ = ["DockedToolbar", "HorizontalFloatingToolbar", "VerticalFloatingToolbar"]

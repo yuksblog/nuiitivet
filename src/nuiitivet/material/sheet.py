@@ -8,7 +8,7 @@ from typing import Callable, Literal, Optional, Union
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import IconButton
-from nuiitivet.material.divider import Divider
+from nuiitivet.material.divider import VerticalDivider
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle, StandardSideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
@@ -368,7 +368,7 @@ class StandardSideSheet(ComposableWidget):
 
         # Optionally add a vertical Divider on the edge facing the main content.
         if resolved_style.show_divider:
-            divider = Divider(orientation="vertical")
+            divider = VerticalDivider()
             if self.side == "right":
                 inner: Widget = Row([divider, content_col], width="100%", height="100%")
             else:

@@ -1,8 +1,8 @@
-"""Material Widgets - DockedToolbar / FloatingToolbar."""
+"""Material Widgets - DockedToolbar / HorizontalFloatingToolbar."""
 
 from __future__ import annotations
 
-from nuiitivet.material import App, DockedToolbar, FloatingToolbar, IconButton, Text
+from nuiitivet.material import App, DockedToolbar, HorizontalFloatingToolbar, IconButton, Text
 from nuiitivet.material.styles import IconButtonStyle, ToolbarStyle
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -21,7 +21,7 @@ def main(png_path: str = "") -> None:
     docked = DockedToolbar(_actions(), style=ToolbarStyle.standard())
     docked.width_sizing = 480
 
-    floating = FloatingToolbar(
+    floating = HorizontalFloatingToolbar(
         _actions(),
         padding=(12, 8, 12, 8),
         style=ToolbarStyle.standard(),

@@ -1,7 +1,7 @@
 import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material import Card, CardStyle, Text
-from nuiitivet.material.divider import Divider
+from nuiitivet.material.divider import HorizontalDivider
 from nuiitivet.modifiers import background, clickable, corner_radius, modeless
 from nuiitivet.observable import Observable
 
@@ -16,7 +16,7 @@ info_panel = Card(
     child=nv.Column(
         children=[
             Text("Keyboard Shortcuts"),
-            Divider(padding=(4, 0)),
+            HorizontalDivider(padding=(4, 0)),
             Text("Ctrl+N  New file"),
             Text("Ctrl+O  Open file"),
             Text("Ctrl+S  Save"),
@@ -60,7 +60,7 @@ def main(png: str = "") -> None:
             child=nv.Column(
                 children=[
                     Text("Keyboard Shortcuts"),
-                    Divider(padding=(4, 0)),
+                    HorizontalDivider(padding=(4, 0)),
                     Text("Ctrl+N  New file"),
                     Text("Ctrl+O  Open file"),
                     Text("Ctrl+S  Save"),

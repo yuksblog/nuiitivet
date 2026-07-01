@@ -123,11 +123,11 @@ API References: [Checkbox](../api/material.md#nuiitivet.material.Checkbox) ・ [
 
 ## Slider
 
-Numeric input. `Slider` selects a value in a range, `CenteredSlider` is anchored at zero, `RangeSlider` selects a min/max pair.
+Numeric input, split by axis. `HorizontalSlider` / `VerticalSlider` select a value in a range, the `*CenteredSlider` variants are anchored at zero, and the `*RangeSlider` variants select a min/max pair. Horizontal variants are sized with `width`; vertical variants with `height`.
 
 ![Slider](../assets/material_widgets_slider.png)
 
-API References: [Slider](../api/material.md#nuiitivet.material.Slider) ・ [CenteredSlider](../api/material.md#nuiitivet.material.CenteredSlider) ・ [RangeSlider](../api/material.md#nuiitivet.material.RangeSlider)
+API References: [HorizontalSlider](../api/material.md#nuiitivet.material.HorizontalSlider) ・ [VerticalSlider](../api/material.md#nuiitivet.material.VerticalSlider) ・ [HorizontalCenteredSlider](../api/material.md#nuiitivet.material.HorizontalCenteredSlider) ・ [VerticalCenteredSlider](../api/material.md#nuiitivet.material.VerticalCenteredSlider) ・ [HorizontalRangeSlider](../api/material.md#nuiitivet.material.HorizontalRangeSlider) ・ [VerticalRangeSlider](../api/material.md#nuiitivet.material.VerticalRangeSlider)
 
 ---
 
@@ -173,11 +173,11 @@ API References: [SmallBadge](../api/material.md#nuiitivet.material.SmallBadge) �
 
 ## Divider
 
-Horizontal or vertical separator line.
+Separator line, split by axis. `HorizontalDivider` draws a full-width line (sized with `width`); `VerticalDivider` draws a full-height line (sized with `height`). The cross-axis thickness comes from the style.
 
 ![Divider](../assets/material_widgets_divider.png)
 
-[API Reference](../api/material.md#nuiitivet.material.Divider)
+API References: [HorizontalDivider](../api/material.md#nuiitivet.material.HorizontalDivider) ・ [VerticalDivider](../api/material.md#nuiitivet.material.VerticalDivider)
 
 ---
 
@@ -203,11 +203,11 @@ Vertical navigation bar with collapsed / expanded states, badges, and an optiona
 
 ## Toolbar
 
-Action bar of icon buttons. `DockedToolbar` stretches to its container; `FloatingToolbar` is a pill-shaped overlay.
+Action bar of icon buttons. `DockedToolbar` stretches to its container; `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` are pill-shaped overlays laid out along their respective axis.
 
 ![Toolbar](../assets/material_widgets_toolbar.png)
 
-API References: [DockedToolbar](../api/material.md#nuiitivet.material.DockedToolbar) ・ [FloatingToolbar](../api/material.md#nuiitivet.material.FloatingToolbar)
+API References: [DockedToolbar](../api/material.md#nuiitivet.material.DockedToolbar) ・ [HorizontalFloatingToolbar](../api/material.md#nuiitivet.material.HorizontalFloatingToolbar) ・ [VerticalFloatingToolbar](../api/material.md#nuiitivet.material.VerticalFloatingToolbar)
 
 ---
 

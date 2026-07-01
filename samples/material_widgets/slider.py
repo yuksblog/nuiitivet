@@ -1,8 +1,14 @@
-"""Material Widgets - Slider, CenteredSlider, RangeSlider."""
+"""Material Widgets - HorizontalSlider, HorizontalCenteredSlider, HorizontalRangeSlider."""
 
 from __future__ import annotations
 
-from nuiitivet.material import App, CenteredSlider, RangeSlider, Slider, Text
+from nuiitivet.material import (
+    App,
+    HorizontalCenteredSlider,
+    HorizontalRangeSlider,
+    HorizontalSlider,
+    Text,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 
@@ -15,20 +21,22 @@ def main(png_path: str = "") -> None:
             cross_alignment="start",
             children=[
                 Text("Slider"),
-                Slider(value=0.4, length=360, min_value=0.0, max_value=1.0),
+                HorizontalSlider(value=0.4, width=360, min_value=0.0, max_value=1.0),
                 Text("Slider with stops & value indicator"),
-                Slider(
+                HorizontalSlider(
                     value=60.0,
-                    length=360,
+                    width=360,
                     min_value=0.0,
                     max_value=100.0,
                     stops=6,
                     show_value_indicator=True,
                 ),
                 Text("CenteredSlider"),
-                CenteredSlider(value=0.3, length=360, min_value=-1.0, max_value=1.0),
+                HorizontalCenteredSlider(value=0.3, width=360, min_value=-1.0, max_value=1.0),
                 Text("RangeSlider"),
-                RangeSlider(value_start=0.25, value_end=0.75, length=360, min_value=0.0, max_value=1.0),
+                HorizontalRangeSlider(
+                    value_start=0.25, value_end=0.75, width=360, min_value=0.0, max_value=1.0
+                ),
             ],
         ),
     )

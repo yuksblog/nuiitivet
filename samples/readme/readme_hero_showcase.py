@@ -32,7 +32,6 @@ from nuiitivet.material.progress_indicators import (
     CircularProgressIndicator,
     LinearProgressIndicator,
 )
-from nuiitivet.material.slider import Orientation
 from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle
 from nuiitivet.material.styles.card_style import CardStyle
@@ -578,19 +577,19 @@ def _settings_section() -> nv.Widget:
                 nv.Row(
                     [
                         md.Text("Volume", style=TITLE_MD),
-                        md.Slider(
+                        md.HorizontalSlider(
                             value=volume,
                             min_value=0.0,
                             max_value=1.0,
                             show_value_indicator=True,
-                            length=nv.Sizing.fixed(220),
+                            width=nv.Sizing.fixed(220),
                         ),
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
                     width=nv.Sizing.flex(1),
                 ),
-                md.Divider(),
+                md.HorizontalDivider(),
                 nv.Row(
                     [
                         md.Text("High-quality streaming", style=TITLE_MD),
@@ -600,7 +599,7 @@ def _settings_section() -> nv.Widget:
                     cross_alignment="center",
                     width=nv.Sizing.flex(1),
                 ),
-                md.Divider(),
+                md.HorizontalDivider(),
                 nv.Row(
                     [
                         md.Text("Crossfade", style=TITLE_MD),
@@ -647,12 +646,11 @@ def _settings_section() -> nv.Widget:
         eq_columns.append(
             nv.Column(
                 [
-                    md.Slider(
+                    md.VerticalSlider(
                         value=_ObservableValue(default),
                         min_value=0.0,
                         max_value=1.0,
-                        orientation=Orientation.VERTICAL,
-                        length=nv.Sizing.fixed(110),
+                        height=nv.Sizing.fixed(110),
                     ),
                     md.Text(label, style=BODY_SM),
                 ],

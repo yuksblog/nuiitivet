@@ -1,5 +1,10 @@
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.material.slider import CenteredSlider, Orientation, RangeSlider, Slider
+from nuiitivet.material.slider import (
+    HorizontalCenteredSlider,
+    HorizontalRangeSlider,
+    HorizontalSlider,
+    VerticalSlider,
+)
 from nuiitivet.observable import Observable
 from tests.helpers.pointer import send_pointer_event_for_test
 
@@ -14,7 +19,7 @@ def _make_obs(initial: float):
 
 def test_slider_track_click_updates_value_and_callback() -> None:
     called: list[float] = []
-    s = Slider(value=0.0, on_change=lambda v: called.append(v), min_value=0.0, max_value=100.0, length=200)
+    s = HorizontalSlider(value=0.0, on_change=lambda v: called.append(v), min_value=0.0, max_value=100.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     assert send_pointer_event_for_test(s, PointerEventType.PRESS, x=150.0, y=24.0) is True
@@ -24,7 +29,7 @@ def test_slider_track_click_updates_value_and_callback() -> None:
 
 
 def test_slider_discrete_stops_snaps_value() -> None:
-    s = Slider(value=0.0, min_value=0.0, max_value=100.0, stops=5, length=200)
+    s = HorizontalSlider(value=0.0, min_value=0.0, max_value=100.0, stops=5, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     assert send_pointer_event_for_test(s, PointerEventType.PRESS, x=140.0, y=24.0) is True
@@ -34,7 +39,7 @@ def test_slider_discrete_stops_snaps_value() -> None:
 
 def test_slider_observable_binding_updates_source() -> None:
     state = _make_obs(0.0)
-    s = Slider(value=state, min_value=0.0, max_value=10.0, length=200)
+    s = HorizontalSlider(value=state, min_value=0.0, max_value=10.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     assert send_pointer_event_for_test(s, PointerEventType.PRESS, x=100.0, y=24.0) is True
@@ -43,7 +48,7 @@ def test_slider_observable_binding_updates_source() -> None:
 
 
 def test_centered_slider_active_range_changes_around_zero() -> None:
-    c = CenteredSlider(value=-0.5, min_value=-1.0, max_value=1.0, length=200)
+    c = HorizontalCenteredSlider(value=-0.5, min_value=-1.0, max_value=1.0, width=200)
 
     c.handle_key_event("right")
 
@@ -52,13 +57,13 @@ def test_centered_slider_active_range_changes_around_zero() -> None:
 
 def test_range_slider_drag_updates_nearest_handle() -> None:
     called: list[tuple[float, float]] = []
-    r = RangeSlider(
+    r = HorizontalRangeSlider(
         value_start=20.0,
         value_end=80.0,
         on_change=lambda v: called.append(v),
         min_value=0.0,
         max_value=100.0,
-        length=200,
+        width=200,
     )
     r.set_layout_rect(0, 0, 200, 48)
 
@@ -72,7 +77,7 @@ def test_range_slider_drag_updates_nearest_handle() -> None:
 
 
 def test_slider_vertical_orientation_key_event() -> None:
-    s = Slider(value=0.5, min_value=0.0, max_value=1.0, orientation=Orientation.VERTICAL, length=200)
+    s = VerticalSlider(value=0.5, min_value=0.0, max_value=1.0, height=200)
 
     s.handle_key_event("up")
 
@@ -80,7 +85,7 @@ def test_slider_vertical_orientation_key_event() -> None:
 
 
 def test_slider_space_plus_arrow_uses_larger_step() -> None:
-    s = Slider(value=0.0, min_value=0.0, max_value=1.0)
+    s = HorizontalSlider(value=0.0, min_value=0.0, max_value=1.0)
 
     assert s.handle_key_event("space") is True
     assert s.handle_key_event("right") is True
@@ -89,7 +94,7 @@ def test_slider_space_plus_arrow_uses_larger_step() -> None:
 
 
 def test_slider_value_indicator_path_during_drag() -> None:
-    s = Slider(value=0.5, show_value_indicator=True, min_value=0.0, max_value=1.0, length=200)
+    s = HorizontalSlider(value=0.5, show_value_indicator=True, min_value=0.0, max_value=1.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     assert send_pointer_event_for_test(s, PointerEventType.PRESS, x=100.0, y=24.0) is True
@@ -107,8 +112,8 @@ def test_slider_value_indicator_path_during_drag() -> None:
 
 def test_slider_disabled_rejects_track_press() -> None:
     called: list[float] = []
-    s = Slider(
-        value=0.0, on_change=lambda v: called.append(v), min_value=0.0, max_value=100.0, disabled=True, length=200
+    s = HorizontalSlider(
+        value=0.0, on_change=lambda v: called.append(v), min_value=0.0, max_value=100.0, disabled=True, width=200
     )
     s.set_layout_rect(0, 0, 200, 48)
 
@@ -119,7 +124,7 @@ def test_slider_disabled_rejects_track_press() -> None:
 
 
 def test_slider_disabled_rejects_key_event() -> None:
-    s = Slider(value=0.5, min_value=0.0, max_value=1.0, disabled=True)
+    s = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0, disabled=True)
 
     result = s.handle_key_event("right")
 
@@ -132,7 +137,7 @@ def test_slider_disabled_rejects_key_event() -> None:
 
 def test_slider_observable_external_change_syncs() -> None:
     obs = _make_obs(0.0)
-    s = Slider(value=obs, min_value=0.0, max_value=1.0, length=200)
+    s = HorizontalSlider(value=obs, min_value=0.0, max_value=1.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     obs.value = 0.75
@@ -143,7 +148,7 @@ def test_slider_observable_external_change_syncs() -> None:
 def test_range_slider_observable_external_change_syncs() -> None:
     start_obs = _make_obs(0.2)
     end_obs = _make_obs(0.8)
-    r = RangeSlider(value_start=start_obs, value_end=end_obs, min_value=0.0, max_value=1.0, length=200)
+    r = HorizontalRangeSlider(value_start=start_obs, value_end=end_obs, min_value=0.0, max_value=1.0, width=200)
     r.set_layout_rect(0, 0, 200, 48)
 
     start_obs.value = 0.1
@@ -157,13 +162,13 @@ def test_range_slider_observable_external_change_syncs() -> None:
 
 
 def test_range_slider_init_swaps_inverted_range() -> None:
-    r = RangeSlider(value_start=0.8, value_end=0.2, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.8, value_end=0.2, min_value=0.0, max_value=1.0)
 
     assert r.value_start <= r.value_end
 
 
 def test_range_slider_value_start_clamped_to_value_end() -> None:
-    r = RangeSlider(value_start=0.2, value_end=0.6, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.6, min_value=0.0, max_value=1.0)
 
     r.value_start = 0.9  # Exceeds value_end; should be clamped
 
@@ -171,7 +176,7 @@ def test_range_slider_value_start_clamped_to_value_end() -> None:
 
 
 def test_range_slider_value_end_clamped_to_value_start() -> None:
-    r = RangeSlider(value_start=0.4, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.4, value_end=0.8, min_value=0.0, max_value=1.0)
 
     r.value_end = 0.1  # Below value_start; should be clamped
 
@@ -182,7 +187,7 @@ def test_range_slider_value_end_clamped_to_value_start() -> None:
 
 
 def test_slider_discrete_stops_keyboard_moves_by_one_stop() -> None:
-    s = Slider(value=0.0, min_value=0.0, max_value=1.0, stops=5)
+    s = HorizontalSlider(value=0.0, min_value=0.0, max_value=1.0, stops=5)
 
     s.handle_key_event("right")
 
@@ -191,7 +196,7 @@ def test_slider_discrete_stops_keyboard_moves_by_one_stop() -> None:
 
 
 def test_slider_discrete_stops_keyboard_clamps_at_max() -> None:
-    s = Slider(value=1.0, min_value=0.0, max_value=1.0, stops=5)
+    s = HorizontalSlider(value=1.0, min_value=0.0, max_value=1.0, stops=5)
 
     s.handle_key_event("right")
 
@@ -199,7 +204,7 @@ def test_slider_discrete_stops_keyboard_clamps_at_max() -> None:
 
 
 def test_slider_discrete_stops_keyboard_decrements() -> None:
-    s = Slider(value=0.5, min_value=0.0, max_value=1.0, stops=5)
+    s = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0, stops=5)
 
     s.handle_key_event("left")
 
@@ -210,7 +215,7 @@ def test_slider_discrete_stops_keyboard_decrements() -> None:
 
 
 def test_slider_paint_disabled_does_not_raise() -> None:
-    s = Slider(value=0.5, min_value=0.0, max_value=1.0, disabled=True, length=200)
+    s = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0, disabled=True, width=200)
     s.set_layout_rect(0, 0, 200, 48)
 
     class _DummyCanvas:
@@ -222,7 +227,7 @@ def test_slider_paint_disabled_does_not_raise() -> None:
 
 
 def test_range_slider_paint_disabled_does_not_raise() -> None:
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0, disabled=True, length=200)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0, disabled=True, width=200)
     r.set_layout_rect(0, 0, 200, 48)
 
     class _DummyCanvas:
@@ -237,7 +242,7 @@ def test_range_slider_paint_disabled_does_not_raise() -> None:
 
 def test_range_slider_tab_switches_active_handle() -> None:
     """Tab should move active handle from 0 to 1."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
 
     assert r._active_handle_index == 0
 
@@ -249,7 +254,7 @@ def test_range_slider_tab_switches_active_handle() -> None:
 
 def test_range_slider_tab_at_last_handle_does_not_go_beyond() -> None:
     """Tab at last handle should stay at handle index 1."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
     result = r.on_key_event("tab", 0)
@@ -260,7 +265,7 @@ def test_range_slider_tab_at_last_handle_does_not_go_beyond() -> None:
 
 def test_range_slider_shift_tab_moves_back() -> None:
     """Shift+Tab should move active handle from 1 to 0."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
     result = r.on_key_event("tab", 1)  # modifiers=1 (MOD_SHIFT)
@@ -271,7 +276,7 @@ def test_range_slider_shift_tab_moves_back() -> None:
 
 def test_range_slider_wants_tab_at_first_handle() -> None:
     """wants_tab should return True when at first handle (forward)."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 0
 
     assert r._wants_tab(0) is True
@@ -279,7 +284,7 @@ def test_range_slider_wants_tab_at_first_handle() -> None:
 
 def test_range_slider_wants_tab_at_last_handle_returns_false() -> None:
     """wants_tab should return False when at last handle (forward)."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
     assert r._wants_tab(0) is False
@@ -287,7 +292,7 @@ def test_range_slider_wants_tab_at_last_handle_returns_false() -> None:
 
 def test_range_slider_wants_tab_shift_at_first_handle_returns_false() -> None:
     """Shift+Tab wants_tab should return False when at first handle."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 0
 
     assert r._wants_tab(1) is False
@@ -295,7 +300,7 @@ def test_range_slider_wants_tab_shift_at_first_handle_returns_false() -> None:
 
 def test_range_slider_wants_tab_shift_at_last_handle() -> None:
     """Shift+Tab wants_tab should return True when at last handle."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
     assert r._wants_tab(1) is True
@@ -303,7 +308,7 @@ def test_range_slider_wants_tab_shift_at_last_handle() -> None:
 
 def test_slider_wants_tab_always_false() -> None:
     """Single-handle Slider should never consume Tab."""
-    s = Slider(value=0.5, min_value=0.0, max_value=1.0)
+    s = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0)
 
     assert s._wants_tab(0) is False
     assert s._wants_tab(1) is False
@@ -311,7 +316,7 @@ def test_slider_wants_tab_always_false() -> None:
 
 def test_range_slider_arrow_key_moves_active_handle_value() -> None:
     """Arrow key should move the value of the active handle."""
-    r = RangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
 
     # Tab to second handle
     r.on_key_event("tab", 0)
