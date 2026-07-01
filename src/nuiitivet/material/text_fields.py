@@ -158,7 +158,6 @@ class TextField(InteractiveWidget):
         error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = 200,
-        height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[TextFieldStyle] = None,
     ):
@@ -178,13 +177,11 @@ class TextField(InteractiveWidget):
             error_text: Deprecated alias for supporting_text.
             disabled: Whether the text field is disabled.
             width: Width specification.
-            height: Height specification.
             padding: Padding around the text field.
             style: Custom style configuration.
         """
         super().__init__(
             width=width,
-            height=height,
             padding=padding,
             state_layer_color=ColorRole.ON_SURFACE,
             disabled=False,  # Set initial disabled state below

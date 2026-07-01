@@ -116,12 +116,13 @@ This is a **feature of the Widget base class**, having two interpretations:
 Each M3 component (Button, Checkbox, etc.) is a **closed unit with an internal structure**.
 
 ```python
-# M3 components have "M3-spec sizes"
-Checkbox(size=48)  # M3's "48dp touch target"
-Button(height=40)  # M3's "40dp container height"
+# M3-spec sizes are style-driven, not constructor parameters
+# (SIZE_POLICY Section 0: MD3 fixes the axis -> style only).
+Checkbox(style=CheckboxStyle(default_touch_target=48))  # M3's "48dp touch target"
+Button(style=ButtonStyle.filled("m"))                   # M3's container height (size variant)
 ```
 
-→ These are **M3-spec parameters** and are unrelated to `padding`.
+→ These are **M3-spec dimensions owned by `style`** and are unrelated to `padding`.
 
 ### Rule 2: Widget.padding = allocated → content insets
 
@@ -134,9 +135,9 @@ Note: In leaf widgets, this can appear as "outer margin."
 
 ```python
 # M3 component + Framework layout adjustment
-Checkbox(size=48, padding=10)
-#        ^         ^
-#        M3 spec   insets (padding)
+Checkbox(padding=10)
+#        ^
+#        insets (padding); touch target (48dp) is owned by style
 ```
 
 **Illustration**:

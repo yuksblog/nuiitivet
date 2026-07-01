@@ -67,14 +67,19 @@ cell = Card(
 )
 ```
 
-#### The `size` Parameter (Specific Widgets)
+#### Which Dimensions Are Constructor Parameters (Per-Axis Binary Rule)
 
-Widgets where being square is essential (like `Icon` or `Checkbox`) provide `size` as an initialization parameter.
+Whether a size dimension is a **public constructor parameter** is decided **per axis, not per widget**, by a single binary rule derived from MD3. See [SIZE_POLICY.md](SIZE_POLICY.md) Section 0 for the full policy and the authoritative classification table.
 
-* **Purpose**: Enforces an aspect ratio (1:1) and prevents inconsistency between `width` and `height`.
-* **Behavior**:
-  * Takes `size` at initialization and internally sets both `width` and `height` to the same value.
-  * These Widgets typically do not accept separate `width` / `height` arguments in their constructors.
+* **MD3 leaves the axis open** → expose it on the constructor, named by its degree of freedom:
+  * independently variable single axis → **semantic name** (`width`, `length`);
+  * uniformly variable (1:1) → single **`size`** (e.g. `Icon`, `CircularProgressIndicator`).
+  * The parameter lives on the constructor, never inside `style`.
+* **MD3 fixes the axis** (spec token / size variant) → **not** a constructor parameter; customize via `style` only.
+  * Examples: `Button`/`ToggleButton`/chip **height** (size variant), `Checkbox`/`RadioButton`/`Switch` touch target (`*Style.default_touch_target`), `MenuItem` height (`MenuStyle.item_height`), `TextField` height, `Badge` dimensions.
+
+* **API curation only, no runtime enforcement.** Curation applies to the public constructor surface. The base `WidgetKernel`'s `width_sizing` / `height_sizing` remain an unsupported **escape hatch** — no clamping or validation is added (see [SIZE_POLICY.md](SIZE_POLICY.md), *No Runtime Enforcement*).
+* **Uniform (1:1) widgets** (`Icon`, circular progress) still take a single `size`, internally setting both `width` and `height`, and do not accept separate `width` / `height` arguments.
 
 ### 3. Alignment: Parent's Responsibility
 
