@@ -3,7 +3,7 @@
 from __future__ import annotations
 from nuiitivet.scrolling import ScrollController, ScrollDirection
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.widgets.scrollbar import Scrollbar, ScrollbarBehavior
+from nuiitivet.widgets.scrollbar import HorizontalScrollbar, ScrollbarBehavior, VerticalScrollbar
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
@@ -21,7 +21,7 @@ class DummyApp:
 def test_scrollbar_mounts_and_listens_to_controller() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=100.0, viewport_size=200, content_size=300)
-    scrollbar = Scrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
+    scrollbar = VerticalScrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
     app = DummyApp()
     scrollbar.mount(app)
     assert scrollbar._offset_unsubscribe is not None
@@ -37,7 +37,7 @@ def test_scrollbar_auto_hide_starts_animation_on_scroll() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=200.0, viewport_size=200, content_size=400)
     behavior = ScrollbarBehavior(auto_hide=True, hide_delay=0.2, fade_duration=0.01)
-    scrollbar = Scrollbar(controller, behavior=behavior)
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
     app = DummyApp()
     scrollbar.mount(app)
 
@@ -58,7 +58,7 @@ def test_scrollbar_auto_hide_starts_animation_on_scroll() -> None:
 def test_scrollbar_drag_responds_to_mouse_move() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=400.0, viewport_size=200, content_size=600)
-    scrollbar = Scrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
+    scrollbar = VerticalScrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
     scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
     scrollbar.thumb_rect = (0, 0, scrollbar.thickness, 40)
     assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 2, 10) is True
@@ -72,7 +72,7 @@ def test_scrollbar_drag_responds_to_mouse_move() -> None:
 def test_scrollbar_horizontal_drag_responds_to_mouse_move() -> None:
     controller = ScrollController(axes=(ScrollDirection.HORIZONTAL,), primary_axis=ScrollDirection.HORIZONTAL)
     controller._update_metrics(max_extent=400.0, viewport_size=300, content_size=700)
-    scrollbar = Scrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False), direction=ScrollDirection.HORIZONTAL)
+    scrollbar = HorizontalScrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
     scrollbar.bar_rect = (0, 0, 200, scrollbar.thickness)
     scrollbar.thumb_rect = (0, 0, 60, scrollbar.thickness)
     assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 30, 2) is True
@@ -87,7 +87,7 @@ def test_hit_slop_expands_hover_and_press() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=400.0, viewport_size=200, content_size=600)
     behavior = ScrollbarBehavior(auto_hide=False)
-    scrollbar = Scrollbar(controller, behavior=behavior)
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
     scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
     scrollbar.thumb_rect = (0, 0, scrollbar.thickness, 40)
     hs = max(8, scrollbar.thickness)
@@ -105,7 +105,7 @@ def test_hit_slop_expands_hover_and_press_horizontal() -> None:
     controller = ScrollController(axes=(ScrollDirection.HORIZONTAL,), primary_axis=ScrollDirection.HORIZONTAL)
     controller._update_metrics(max_extent=400.0, viewport_size=300, content_size=700)
     behavior = ScrollbarBehavior(auto_hide=False)
-    scrollbar = Scrollbar(controller, behavior=behavior, direction=ScrollDirection.HORIZONTAL)
+    scrollbar = HorizontalScrollbar(controller, behavior=behavior)
     scrollbar.bar_rect = (0, 0, 200, scrollbar.thickness)
     scrollbar.thumb_rect = (0, 0, 60, scrollbar.thickness)
     hs = max(8, scrollbar.thickness)
@@ -124,7 +124,7 @@ def test_track_click_behavior_page_vertical() -> None:
     controller._update_metrics(max_extent=400.0, viewport_size=100, content_size=500)
     controller.scroll_to(200.0)
     behavior = ScrollbarBehavior(auto_hide=False, track_click_behavior="page")
-    scrollbar = Scrollbar(controller, behavior=behavior)
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
     scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
     scrollbar.thumb_rect = (0, 80, scrollbar.thickness, 40)
     assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 2, 50) is True
@@ -137,7 +137,7 @@ def test_track_click_behavior_jump_vertical() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=400.0, viewport_size=100, content_size=500)
     behavior = ScrollbarBehavior(auto_hide=False, track_click_behavior="jump")
-    scrollbar = Scrollbar(controller, behavior=behavior)
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
     scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
     scrollbar.thumb_rect = (0, 0, scrollbar.thickness, 40)
     click_y = 150
@@ -149,7 +149,7 @@ def test_track_click_behavior_jump_vertical() -> None:
 def test_scrollbar_release_clears_hover_after_drag() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=300.0, viewport_size=150, content_size=450)
-    scrollbar = Scrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
+    scrollbar = VerticalScrollbar(controller, behavior=ScrollbarBehavior(auto_hide=False))
     scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
     scrollbar.thumb_rect = (0, 0, scrollbar.thickness, 40)
     assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 2, 10, pointer_id=1) is True
