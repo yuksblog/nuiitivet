@@ -8,7 +8,7 @@ from nuiitivet.material.styles.badge_style import LargeBadgeStyle, SmallBadgeSty
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.modifiers.stick import StickModifier, stick
-from nuiitivet.rendering.sizing import Sizing, SizingLike
+from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 
@@ -19,27 +19,25 @@ class SmallBadge(Box):
     def __init__(
         self,
         *,
-        width: SizingLike = None,
-        height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[SmallBadgeStyle] = None,
     ) -> None:
         """Initialize SmallBadge.
 
+        The dot dimensions are MD3-fixed (spec size tokens), so they are not
+        constructor parameters; customize them via ``style`` instead
+        (SIZE_POLICY: MD3 fixes the axis -> style only).
+
         Args:
-            width: Badge width sizing. Defaults to style width.
-            height: Badge height sizing. Defaults to style height.
             padding: External badge padding.
             style: Optional style override.
         """
         effective_style = style or SmallBadgeStyle()
-        resolved_width = width if width is not None else Sizing.fixed(effective_style.width)
-        resolved_height = height if height is not None else Sizing.fixed(effective_style.height)
 
         super().__init__(
             child=None,
-            width=resolved_width,
-            height=resolved_height,
+            width=Sizing.fixed(effective_style.width),
+            height=Sizing.fixed(effective_style.height),
             padding=padding,
             background_color=effective_style.background_color,
             corner_radius=effective_style.corner_radius,
@@ -70,17 +68,17 @@ class LargeBadge(Box):
         self,
         text: str,
         *,
-        width: SizingLike = None,
-        height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int], None] = None,
         style: Optional[LargeBadgeStyle] = None,
     ) -> None:
         """Initialize LargeBadge.
 
+        The height is MD3-fixed (spec) and the width is content-driven, so
+        neither is a constructor parameter; customize the height via ``style``
+        (SIZE_POLICY: MD3 fixes the axis -> style only).
+
         Args:
             text: Badge text to display. Must be non-empty.
-            width: Badge width sizing.
-            height: Badge height sizing. Defaults to style height.
             padding: External badge padding. Defaults to style padding.
             style: Optional style override.
         """
@@ -90,7 +88,7 @@ class LargeBadge(Box):
         self.text = text
 
         effective_style = style or LargeBadgeStyle()
-        resolved_height = height if height is not None else Sizing.fixed(effective_style.height)
+        resolved_height = Sizing.fixed(effective_style.height)
         resolved_padding = effective_style.padding if padding is None else padding
 
         label = Text(
@@ -105,7 +103,6 @@ class LargeBadge(Box):
 
         super().__init__(
             child=label,
-            width=width,
             height=resolved_height,
             padding=resolved_padding,
             background_color=effective_style.background_color,

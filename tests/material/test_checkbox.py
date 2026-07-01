@@ -14,14 +14,17 @@ def _make_obs(initial):
 
 
 def test_preferred_size_default_and_custom():
-    """Test preferred_size with default (48dp M3) and custom sizes."""
+    """Test preferred_size with default (48dp M3) and style-driven sizes."""
+    from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
     c = Checkbox()
     assert c.preferred_size() == (48, 48)
-    c2 = Checkbox(size=56)
+    # Touch-target size is style-driven (MD3 fixes the axis -> style only).
+    c2 = Checkbox(style=CheckboxStyle(default_touch_target=56))
     assert c2.preferred_size() == (56, 56)
-    c3 = Checkbox(size=48, padding=8)
+    c3 = Checkbox(style=CheckboxStyle(default_touch_target=48), padding=8)
     assert c3.preferred_size() == (64, 64)
-    c4 = Checkbox(size=40)
+    c4 = Checkbox(style=CheckboxStyle(default_touch_target=40))
     assert c4.preferred_size() == (40, 40)
 
 
@@ -187,7 +190,7 @@ def test_checkbox_padding():
 
 def test_checkbox_content_rect():
     """Test content_rect applies padding correctly."""
-    c = Checkbox(size=48, padding=10)
+    c = Checkbox(padding=10)
     cx, cy, cw, ch = c.content_rect(0, 0, 100, 100)
     assert cx == 10
     assert cy == 10

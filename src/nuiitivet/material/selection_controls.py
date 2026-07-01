@@ -15,7 +15,6 @@ from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable, ObservableProtocol
-from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -36,7 +35,6 @@ class Checkbox(Toggleable, InteractiveWidget):
     Parameters:
     - checked: Checked state source (bool / Observable[bool] / Observable[Optional[bool]])
     - on_toggle: Callback when toggled
-    - size: Touch target size (default 48dp, M3 recommendation)
     - padding: Space around the checkbox (M3: "space between UI elements")
     - indeterminate: Indeterminate flag (bool / Observable[bool])
     - disabled: Disable interaction (bool / Observable[bool])
@@ -50,7 +48,6 @@ class Checkbox(Toggleable, InteractiveWidget):
         on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
         indeterminate: bool | ObservableProtocol[bool] = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: SizingLike = 48,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
     ):
@@ -89,6 +86,13 @@ class Checkbox(Toggleable, InteractiveWidget):
         # Store style (use provided or get from theme lazily)
         self._style = style
 
+        # Touch-target size is style-driven, not a constructor parameter: MD3
+        # fixes the selection-control target at 48dp (SIZE_POLICY: MD3 fixes the
+        # axis -> style only). Sourced from the resolved style's
+        # ``default_touch_target``; the ``width_sizing``/``height_sizing``
+        # escape hatch on the base kernel still overrides it.
+        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
+
         # Resolve padding
         final_padding = padding
         if final_padding is None:
@@ -103,8 +107,8 @@ class Checkbox(Toggleable, InteractiveWidget):
             on_change=on_toggle,
             tristate=False,  # Checkbox does not cycle to indeterminate
             disabled=disabled,
-            width=size,
-            height=size,
+            width=touch_target,
+            height=touch_target,
             padding=final_padding,
         )
 
@@ -112,22 +116,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         # We can do this in on_mount or similar if we want full theme support for padding.
         self._user_padding = padding
 
-        # Parse size for M3 touch target
-        try:
-            from nuiitivet.rendering.sizing import parse_sizing
-
-            parsed = parse_sizing(size, default=None)
-            if parsed.kind == "fixed":
-                self._touch_target_size = int(parsed.value)
-            elif parsed.kind in ("flex", "auto"):
-                # Checkbox cannot resolve flex/auto without parent context
-                self._touch_target_size = 48
-            else:
-                # Last resort: try numeric coercion
-                self._touch_target_size = int(cast(int, size))
-        except Exception:
-            exception_once(_logger, "checkbox_size_exc", "Failed to parse checkbox size")
-            self._touch_target_size = 48
+        self._touch_target_size = touch_target
 
         initial_selection = 1.0 if self.value is True or self.value is None else 0.0
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
@@ -557,7 +546,6 @@ class RadioButton(Toggleable, InteractiveWidget):
         value: object | None,
         *,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: SizingLike = 48,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["RadioButtonStyle"] = None,
     ) -> None:
@@ -566,12 +554,14 @@ class RadioButton(Toggleable, InteractiveWidget):
         Args:
             value: Option value represented by this radio button.
             disabled: Disable interaction when True.
-            size: Touch target size.
             padding: Space around the touch target.
             style: Style override. Uses theme style when omitted.
         """
         self.option_value = value
         self._style = style
+
+        # Touch-target size is style-driven (MD3 fixes the axis -> style only).
+        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
 
         final_padding = padding if padding is not None else (style.padding if style is not None else 0)
         self._user_padding = padding
@@ -581,21 +571,12 @@ class RadioButton(Toggleable, InteractiveWidget):
             on_change=None,
             tristate=False,
             disabled=disabled,
-            width=size,
-            height=size,
+            width=touch_target,
+            height=touch_target,
             padding=final_padding,
         )
 
-        try:
-            from nuiitivet.rendering.sizing import parse_sizing
-
-            parsed = parse_sizing(size, default=None)
-            if parsed.kind == "fixed":
-                self._touch_target_size = int(parsed.value)
-            else:
-                self._touch_target_size = 48
-        except Exception:
-            self._touch_target_size = 48
+        self._touch_target_size = touch_target
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
@@ -809,7 +790,6 @@ class Switch(Toggleable, InteractiveWidget):
         *,
         on_change: Optional[Callable[[bool], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
-        size: SizingLike = 48,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["SwitchStyle"] = None,
     ) -> None:
@@ -819,13 +799,15 @@ class Switch(Toggleable, InteractiveWidget):
             checked: Checked state source (bool or observable bool).
             on_change: Callback invoked when checked state changes.
             disabled: Disable interaction when True.
-            size: Touch target size.
             padding: Space around the switch.
             style: Style override. Uses theme style when omitted.
         """
         self._style = style
         self._user_padding = padding
         self._on_change_bool = on_change
+
+        # Touch-target size is style-driven (MD3 fixes the axis -> style only).
+        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
 
         final_padding = padding if padding is not None else (style.padding if style is not None else 0)
 
@@ -840,21 +822,12 @@ class Switch(Toggleable, InteractiveWidget):
             on_change=_on_toggle,
             tristate=False,
             disabled=disabled,
-            width=size,
-            height=size,
+            width=touch_target,
+            height=touch_target,
             padding=final_padding,
         )
 
-        try:
-            from nuiitivet.rendering.sizing import parse_sizing
-
-            parsed = parse_sizing(size, default=None)
-            if parsed.kind == "fixed":
-                self._touch_target_size = int(parsed.value)
-            else:
-                self._touch_target_size = 48
-        except Exception:
-            self._touch_target_size = 48
+        self._touch_target_size = touch_target
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))

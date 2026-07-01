@@ -30,7 +30,7 @@ def test_checkbox_accepts_custom_style():
 def test_checkbox_style_compute_sizes():
     """Checkbox should use style.compute_sizes() for layout."""
     custom_style = CheckboxStyle(icon_size_ratio=0.6, corner_radius_ratio=0.2, stroke_width_ratio=0.15)
-    checkbox = Checkbox(size=40, style=custom_style)
+    checkbox = Checkbox(style=custom_style)
     sizes = checkbox.style.compute_sizes(40)
     assert sizes["icon_size"] == 24
     assert abs(sizes["corner_radius"] - 4.8) < 0.01
@@ -59,10 +59,12 @@ def test_theme_with_custom_checkbox_style():
     assert new_mat_data.checkbox_style.hover_alpha == 0.1
 
 
-def test_checkbox_style_backward_compatible():
-    """Existing code without style parameter should continue working."""
-    checkbox1 = Checkbox(checked=True, size=48)
+def test_checkbox_touch_target_from_style():
+    """Touch-target size is sourced from the style (MD3 fixes the axis)."""
+    checkbox1 = Checkbox(checked=True)
     assert checkbox1.style is not None
-    checkbox2 = Checkbox(checked=False, size=40, padding=8, disabled=True)
+    checkbox2 = Checkbox(
+        checked=False, style=CheckboxStyle(default_touch_target=40), padding=8, disabled=True
+    )
     assert checkbox2.style is not None
     assert checkbox2._touch_target_size == 40

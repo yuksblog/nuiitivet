@@ -51,11 +51,14 @@ def test_switch_disabled_prevents_toggle() -> None:
 
 
 def test_switch_preferred_size_default_and_padding() -> None:
+    from nuiitivet.material.styles.switch_style import SwitchStyle
+
     s1 = Switch()
     assert s1.preferred_size() == (48, 48)
 
-    s2 = Switch(size=56)
+    # Touch-target size is style-driven (MD3 fixes the axis -> style only).
+    s2 = Switch(style=SwitchStyle(default_touch_target=56))
     assert s2.preferred_size() == (56, 56)
 
-    s3 = Switch(size=48, padding=8)
+    s3 = Switch(style=SwitchStyle(default_touch_target=48), padding=8)
     assert s3.preferred_size() == (64, 64)

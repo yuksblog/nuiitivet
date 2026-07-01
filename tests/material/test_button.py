@@ -12,8 +12,10 @@ def test_preferred_size_default_and_custom():
     w, h = b.preferred_size()
     assert w >= 64
     assert h == 48
-    b2 = Button("ok", width=200, height=60, style=ButtonStyle.filled())
-    assert b2.preferred_size() == (200, 60)
+    # Height is MD3-fixed by the style size variant (filled("s") -> 48dp);
+    # only width is a constructor parameter.
+    b2 = Button("ok", width=200, style=ButtonStyle.filled())
+    assert b2.preferred_size() == (200, 48)
 
 
 def test_pointer_event_click_calls_handler_and_pressed_state():

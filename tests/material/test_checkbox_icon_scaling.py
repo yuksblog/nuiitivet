@@ -15,7 +15,7 @@ class TestCheckboxIconScaling(unittest.TestCase):
             self.skipTest("skia-python is required for this test")
 
         # Checkbox with flex width (simulated by passing large rect to paint)
-        c = Checkbox(size="100%")
+        c = Checkbox()
 
         # Mock canvas
         canvas = MagicMock()
@@ -61,7 +61,7 @@ class TestCheckboxIconScaling(unittest.TestCase):
         self.assertTrue(found_large_font, "Icon did not scale to fit allocated rect")
 
     def test_checkbox_hit_test_rect(self):
-        c = Checkbox(size="100%")
+        c = Checkbox()
         canvas = MagicMock()
         # Paint with 100x100
         c.paint(canvas, 0, 0, 100, 100)

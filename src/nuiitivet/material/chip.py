@@ -21,22 +21,6 @@ if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
 
 
-def _resolve_fixed_height(height: SizingLike, fallback: int) -> int:
-    if isinstance(height, (int, float)):
-        return int(height)
-    if height is None:
-        return int(fallback)
-    try:
-        from nuiitivet.rendering.sizing import parse_sizing
-
-        parsed = parse_sizing(height, default=None)
-        if parsed.kind == "fixed":
-            return int(parsed.value)
-    except Exception:
-        pass
-    return int(fallback)
-
-
 def _chip_text(
     label: str | ReadOnlyObservableProtocol[str],
     color: ColorSpec,
@@ -88,7 +72,6 @@ class MaterialChipBase(InteractiveWidget):
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
     ):
@@ -99,13 +82,13 @@ class MaterialChipBase(InteractiveWidget):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            height: Height sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
         """
         self._user_style = style
         effective_style = self.style
-        resolved_height = _resolve_fixed_height(height, effective_style.container_height)
+        # Chip height is MD3-fixed (container_height token) -> style only.
+        resolved_height = int(effective_style.container_height)
         content_padding = padding if padding is not None else 0
 
         super().__init__(
@@ -170,7 +153,6 @@ class AssistChip(MaterialChipBase):
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
     ):
@@ -182,7 +164,6 @@ class AssistChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            height: Height sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
         """
@@ -208,7 +189,6 @@ class AssistChip(MaterialChipBase):
             on_click=on_click,
             disabled=disabled,
             width=width,
-            height=height,
             padding=padding,
             style=style,
         )
@@ -231,7 +211,6 @@ class FilterChip(MaterialChipBase):
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
     ):
@@ -245,7 +224,6 @@ class FilterChip(MaterialChipBase):
             on_click: Additional click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            height: Height sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
         """
@@ -272,7 +250,6 @@ class FilterChip(MaterialChipBase):
             on_click=self._handle_click,
             disabled=disabled,
             width=width,
-            height=height,
             padding=padding,
             style=style,
         )
@@ -365,7 +342,6 @@ class InputChip(MaterialChipBase):
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
     ):
@@ -379,7 +355,6 @@ class InputChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            height: Height sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
         """
@@ -420,7 +395,6 @@ class InputChip(MaterialChipBase):
             on_click=on_click,
             disabled=disabled,
             width=width,
-            height=height,
             padding=padding,
             style=style,
         )
@@ -441,7 +415,6 @@ class SuggestionChip(MaterialChipBase):
         on_click: Optional[Callable[[], None]] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
     ):
@@ -453,7 +426,6 @@ class SuggestionChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            height: Height sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
         """
@@ -479,7 +451,6 @@ class SuggestionChip(MaterialChipBase):
             on_click=on_click,
             disabled=disabled,
             width=width,
-            height=height,
             padding=padding,
             style=style,
         )

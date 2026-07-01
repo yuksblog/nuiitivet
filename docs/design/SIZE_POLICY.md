@@ -13,6 +13,63 @@ This document defines how widgets determine their size (Layout) and how they dra
     * All widgets accept `fixed`, `auto`, and `flex` on both axes.
     * We rely on sensible default behaviors rather than restrictions.
 
+3. **API Curation, Per-Axis (see Section 0)**
+    * Whether a dimension is a *public constructor parameter* is decided **per axis, not per widget**, by a single binary rule derived from MD3.
+    * This is curation of the public surface only — it is **not** runtime enforcement (Principle 2 still holds; the base-kernel escape hatch always works).
+
+## 0. API Curation: Constructor Parameters vs Style
+
+This section governs **which size dimensions a Material widget exposes as public constructor parameters**. It is a curation rule for the public API surface; it deliberately adds no clamping or validation (see Principle 2, *No Runtime Enforcement*).
+
+### The Binary Per-Axis Rule
+
+A dimension is decided **per axis**, using one binary test:
+
+1. **MD3 leaves the axis open** → expose it as a public constructor parameter, named by its natural degree of freedom:
+   * independently variable single axis → **semantic name** (`width`, `length`);
+   * uniformly variable (1:1) → single **`size`**.
+   * The parameter lives on the **constructor**, never inside `style`.
+2. **MD3 fixes the axis** (spec token / size variant) → **do not** expose it; customization goes through `style` only.
+
+### Supporting Decisions
+
+* **Enforcement strength = "API curation only".** Public constructor params are curated by the rule above. Reaching into the inherited `width_sizing` / `height_sizing` of the base `WidgetKernel` still works as an unsupported **escape hatch**. We do **not** add clamping/ignore logic — this keeps the *No Runtime Enforcement* stance intact and costs nothing.
+* **Semantic naming is a feature.** `size` / `length` / `width` communicate *how* each axis is meant to vary, instead of a generic `width`/`height` everywhere.
+* **Icon stays variable.** MD3 defines multiple optical icon sizes (20/24/40/48dp), so the icon dimension is not MD3-fixed → `Icon(size=…)` remains a numeric `SizingLike` on the constructor.
+* **Coupling Icon size to Text type-scale is out of scope** (a separate ambient-theme concern; must not be folded into `Icon.size`).
+
+### Resulting Classification
+
+> The authoritative list is derived by a fresh audit of every public constructor against the rule. The table below records the outcome of that audit (issue #249).
+
+| Widget / axis | MD3 fixes it? | Exposure |
+| :--- | :--- | :--- |
+| Generic primitives / containers (`Box`, `Row`, `Column`, `Stack`, `*Scrollable`, `Card`, `Text`, `Image`) | No (both axes) | `width`, `height` |
+| `Button.width` / `ToggleButton.width` | No | `width` |
+| `Button.height` / `ToggleButton.height` | Yes (size variant) | style only |
+| `IconButton` / `IconToggleButton` / `Fab` / `ExtendedFab` | Yes (square = container height / content-driven) | style only (no size param) |
+| `GroupButton.width` | No | `width` |
+| `StandardButtonGroup` / `ConnectedButtonGroup` | Fixed by variant (content-fit / `100%`) | no public size param (internal only) |
+| `SplitButton.width` | No | `width` |
+| `Checkbox` / `RadioButton` / `Switch` | Yes (48dp target + fixed graphic) | style only (`*Style.default_touch_target`) |
+| Chips (`AssistChip` / `FilterChip` / `InputChip` / `SuggestionChip`) width | No | `width` |
+| Chips height | Yes (32dp container) | style only |
+| `Slider` / `CenteredSlider` / `RangeSlider` main axis | No | `length` |
+| `Slider` cross axis | Yes (track/handle tokens) | style only, internal `Sizing.fixed(...)` |
+| `Icon.size` | No (20/24/40/48dp) | `size` |
+| `CircularProgressIndicator.size` / `LoadingIndicator.size` | No | `size` |
+| `LinearProgressIndicator.width` (= length) | No (main) / thickness style | `width` |
+| `SmallBadge` / `LargeBadge` | Yes (spec tokens) / width content-driven | style only (no size param) |
+| `HorizontalDivider.width` / `VerticalDivider.height` | main No / cross Yes | axis-specific param only |
+| `DockedToolbar` / `Horizontal`·`VerticalFloatingToolbar` | style-driven | no public size param |
+| `TextField.width` | No | `width` |
+| `TextField.height` | Yes (56dp) | style only |
+| `MenuItem` / `SubMenuItem` height | Yes (48dp list item) | style only (`MenuStyle.item_height`) |
+| `NavigationRail.width` | No (expanded 220–360) | `width` |
+| `BasicDialog.width` | No (280–560) | `width` |
+| `Menu` / `SideSheet` / `BottomSheet` / `StandardSideSheet` | style-fixed | no public size param |
+| `Tooltip` / `RichTooltip` | container | `width`, `height` |
+
 ## 1. Layout Policy (Allocated Rect)
 
 The **Allocated Rect** is the space assigned to the widget by its parent during the layout pass.

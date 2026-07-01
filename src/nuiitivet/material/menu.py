@@ -21,7 +21,7 @@ from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
 from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
-from nuiitivet.rendering.sizing import Sizing, SizingLike
+from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from nuiitivet.widgeting.widget import Widget
@@ -60,9 +60,12 @@ class MenuItem(InteractiveWidget):
         disabled: bool = False,
         leading_icon: Symbol | str | None = None,
         trailing: Symbol | str | None = None,
-        height: SizingLike = None,
     ) -> None:
         """Initialize MenuItem.
+
+        The item height is MD3-fixed (list-item token), so it is not a
+        constructor parameter; customize it via ``MenuStyle.item_height``
+        (SIZE_POLICY: MD3 fixes the axis -> style only).
 
         Args:
             label: Item label.
@@ -70,14 +73,12 @@ class MenuItem(InteractiveWidget):
             disabled: Whether this item is disabled.
             leading_icon: Optional leading icon.
             trailing: Optional trailing icon (Symbol) or trailing text (str).
-            height: Optional fixed item height.
         """
         self.label = label
         self.leading_icon = leading_icon
         self.trailing = trailing
         self._menu_style: MenuStyle = MenuStyle.standard()
         self._selected = False
-        self._uses_style_height = height is None
         self._leading_icon_widget: Icon | None = None
         self._label_widget: Text | None = None
         self._trailing_text_widget: Text | None = None
@@ -86,7 +87,7 @@ class MenuItem(InteractiveWidget):
         self._content_container: Container | None = None
         self._content_icon_size: int | None = None
 
-        resolved_height = height if height is not None else Sizing.fixed(self._menu_style.item_height)
+        resolved_height = Sizing.fixed(self._menu_style.item_height)
 
         super().__init__(
             child=Text(label),
@@ -192,8 +193,7 @@ class MenuItem(InteractiveWidget):
         self._PRESS_OPACITY = float(style.pressed_alpha)
         self.corner_radius = float(style.state_layer_corner_radius)
 
-        if self._uses_style_height:
-            self.height_sizing = Sizing.fixed(style.item_height)
+        self.height_sizing = Sizing.fixed(style.item_height)
 
         foreground = style.selected_foreground if self._selected else style.label_color
         icon_color = style.selected_foreground if self._selected else style.icon_color
@@ -273,7 +273,6 @@ class SubMenuItem(MenuItem):
         *,
         leading_icon: Symbol | str | None = None,
         disabled: bool = False,
-        height: SizingLike = None,
     ) -> None:
         """Initialize SubMenuItem.
 
@@ -282,7 +281,6 @@ class SubMenuItem(MenuItem):
             items: Submenu entries.
             leading_icon: Optional leading icon.
             disabled: Whether this item is disabled.
-            height: Optional fixed item height.
         """
         self._submenu_items = list(items)
         self._submenu_handle: OverlayHandle[object] | None = None
@@ -298,7 +296,6 @@ class SubMenuItem(MenuItem):
             disabled=disabled,
             leading_icon=leading_icon,
             trailing=Symbols.chevron_right,
-            height=height,
         )
 
     def _on_self_click(self) -> None:

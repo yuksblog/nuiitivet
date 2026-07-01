@@ -697,11 +697,15 @@ class Button(MaterialButtonBase):
         on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
     ):
         """Initialize Button.
+
+        The height is MD3-fixed by the style's size variant, so it is not a
+        constructor parameter; select it through ``style`` (e.g.
+        ``ButtonStyle.filled("m")``) — SIZE_POLICY: MD3 fixes the axis -> style
+        only.
 
         Args:
             label: Text label for the button.
@@ -709,27 +713,25 @@ class Button(MaterialButtonBase):
             on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
             width: Width specification. Defaults to auto.
-            height: Height specification. Defaults to auto.
             padding: Padding override; ``None`` delegates to ``style.padding``.
             style: Visual style preset. Defaults to ``ButtonStyle.filled("s")``.
         """
         effective_style = style if style is not None else ButtonStyle.filled("s")
         self._user_style = effective_style
         self._user_padding = padding
-        self._user_height = height
+        self._user_height = None
 
         text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY
-        height_px = _coerce_fixed_height_px(height)
 
         child_widget = build_button_child(
             label=label,
             icon=icon,
             foreground=text_color,
-            button_height=height_px,
+            button_height=None,
             style=effective_style,
         )
 
-        params = resolve_button_style_params(effective_style, padding, height, disabled)
+        params = resolve_button_style_params(effective_style, padding, None, disabled)
 
         super().__init__(
             child=child_widget,
@@ -968,11 +970,15 @@ class ToggleButton(ToggleButtonBase):
         on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ToggleButtonStyle] = None,
     ):
         """Initialize ToggleButton.
+
+        The height is MD3-fixed by the style's size variant, so it is not a
+        constructor parameter; select it through ``style`` (e.g.
+        ``ToggleButtonStyle.filled("m")``) — SIZE_POLICY: MD3 fixes the axis ->
+        style only.
 
         Args:
             label: Text label for the button.
@@ -981,7 +987,6 @@ class ToggleButton(ToggleButtonBase):
             on_change: Callback invoked with the new selected value.
             disabled: Whether the button is disabled.
             width: Width specification.
-            height: Height specification.
             padding: Padding override; ``None`` uses ``style.padding``.
             style: Toggle style preset. Defaults to ``ToggleButtonStyle.filled("s")``.
         """
@@ -994,7 +999,6 @@ class ToggleButton(ToggleButtonBase):
             on_change=on_change,
             disabled=disabled,
             width=width,
-            height=height,
             padding=padding,
         )
 
