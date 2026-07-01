@@ -11,7 +11,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.scrolling import ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
-from nuiitivet.widgets.scrollbar import Scrollbar, ScrollbarBehavior
+from nuiitivet.widgets.scrollbar import ScrollbarBehavior, _ScrollbarBase
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
@@ -269,7 +269,7 @@ def test_scrollable_registers_children_in_store():
     viewport = next((c for c in scrollable.children if isinstance(c, ScrollViewport)), None)
     assert viewport is not None
     assert child in viewport.children
-    assert any((isinstance(c, Scrollbar) for c in scrollable.children))
+    assert any((isinstance(c, _ScrollbarBase) for c in scrollable.children))
 
 
 def test_scrollable_scrollbar_visible_false_suppresses_display():
@@ -277,7 +277,7 @@ def test_scrollable_scrollbar_visible_false_suppresses_display():
     child = Column([Text("Item")])
     scrollable = VerticalScrollable(child=child, scrollbar_visible=False)
     # The scrollbar widget is still mounted as a child...
-    assert any((isinstance(c, Scrollbar) for c in scrollable.children))
+    assert any((isinstance(c, _ScrollbarBase) for c in scrollable.children))
     # ...but it never wants to show.
     assert scrollable._wants_scrollbar() is False
     assert scrollable._should_show_scrollbar() is False

@@ -61,6 +61,7 @@ A dimension is decided **per axis**, using one binary test:
 | `LinearProgressIndicator.width` (= length) | No (main) / thickness style | `width` |
 | `SmallBadge` / `LargeBadge` | Yes (spec tokens) / width content-driven | style only (no size param) |
 | `HorizontalDivider.width` / `VerticalDivider.height` | main No / cross Yes | axis-specific param only |
+| `HorizontalScrollbar.width` / `VerticalScrollbar.height` (= `length`) | main No / cross Yes (`thickness`) | axis-specific `length` param only |
 | `DockedToolbar` / `Horizontal`·`VerticalFloatingToolbar` | style-driven | no public size param |
 | `TextField.width` | No | `width` |
 | `TextField.height` | Yes (56dp) | style only |

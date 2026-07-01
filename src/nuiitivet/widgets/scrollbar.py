@@ -1,8 +1,16 @@
-"""Scrollbar widget: independent scrollbar drawing and event handling.
+"""Scrollbar widgets: independent scrollbar drawing and event handling.
 
-This is a minimal, reusable implementation that supports vertical scrollbars.
-It derives colors from the current Theme (ColorRole.ON_SURFACE) and exposes
-handle_event/draw APIs so containers (like Scrollable) can delegate behavior.
+Public API:
+
+* :class:`VerticalScrollbar` — scrollbar for the vertical axis.
+* :class:`HorizontalScrollbar` — scrollbar for the horizontal axis.
+
+Both share :class:`_ScrollbarBase`, which holds the axis-parameterized drawing
+and gesture logic. Per the size policy, only the **main axis** (scroll length)
+is a public dimension; the **cross axis** is the fixed ``thickness``. Colors are
+derived from the current Theme (``ColorRole.ON_SURFACE`` / ``ColorRole.PRIMARY``),
+and the widgets expose paint / event APIs so containers (like ``*Scrollable``)
+can delegate behavior.
 """
 
 from __future__ import annotations
@@ -11,7 +19,7 @@ from dataclasses import dataclass
 import logging
 import threading
 import time
-from typing import Optional, Tuple
+from typing import ClassVar, Optional, Tuple
 
 from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.input.pointer import PointerEvent
@@ -34,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ScrollbarBehavior:
-    """Immutable behavior configuration for :class:`Scrollbar`."""
+    """Immutable behavior configuration for scrollbar widgets."""
 
     auto_hide: bool = True
     hide_delay: float = 1.0
@@ -56,8 +64,19 @@ class ScrollbarBehavior:
             object.__setattr__(self, "track_click_behavior", "none")
 
 
-class Scrollbar(InteractionHostMixin, Widget):
-    """Minimal vertical scrollbar widget."""
+class _ScrollbarBase(InteractionHostMixin, Widget):
+    """(Internal) Axis-parameterized scrollbar widget.
+
+    Not part of the public API. Use :class:`VerticalScrollbar` or
+    :class:`HorizontalScrollbar`, which fix the scroll axis via ``_direction``.
+
+    Draws a track + thumb for a single scroll axis and delegates gestures
+    (thumb drag, track click) to :class:`ScrollController`. Only the main-axis
+    length is a public dimension; the cross axis is the fixed ``thickness``.
+    """
+
+    #: Scroll axis fixed by each concrete subclass.
+    _direction: ClassVar[ScrollDirection]
 
     _offset_unsubscribe: Optional[object]
     _hide_timer: Optional[threading.Timer]
@@ -68,18 +87,29 @@ class Scrollbar(InteractionHostMixin, Widget):
         controller: ScrollController,
         behavior: Optional[ScrollbarBehavior] = None,
         *,
-        direction: ScrollDirection | str = ScrollDirection.VERTICAL,
+        length: SizingLike = None,
         thickness: int = 8,
         min_thumb_length: int = 24,
         padding: int | tuple | None = 0,
-        width: SizingLike = None,
-        height: SizingLike = None,
     ) -> None:
+        """Initialize shared scrollbar state.
+
+        Args:
+            controller: The :class:`ScrollController` driving the scroll axis.
+            behavior: Interaction behavior (auto-hide, track clicks…).
+            length: Main-axis length sizing override (cross axis is
+                ``thickness``). Maps to ``height`` for vertical scrollbars and
+                ``width`` for horizontal scrollbars via the concrete subclass.
+            thickness: Cross-axis thickness in pixels.
+            min_thumb_length: Minimum thumb length in pixels.
+            padding: Inner padding (inset) of the scrollbar.
+        """
+        width, height = self._axis_sizing(length, thickness)
         super().__init__(width=width, height=height, padding=padding)
         beh = behavior or ScrollbarBehavior()
         self._controller = controller
         self._behavior = beh
-        self.direction = direction if isinstance(direction, ScrollDirection) else ScrollDirection(direction)
+        self.direction = self._direction
         self.thickness = int(thickness)
         self.min_thumb_length = int(min_thumb_length)
         self.interactive = bool(beh.interactive)
@@ -555,5 +585,43 @@ class Scrollbar(InteractionHostMixin, Widget):
         self._active_pointer_id = None
         self._on_interaction()
 
+    @staticmethod
+    def _axis_sizing(length: SizingLike, thickness: int) -> Tuple[SizingLike, SizingLike]:
+        """Map the main-axis ``length`` onto ``(width, height)`` for the axis.
 
-__all__ = ["Scrollbar", "ScrollbarBehavior"]
+        The cross axis is fixed to ``thickness`` (not exposed publicly); the
+        concrete subclass overrides this to assign ``length`` to the correct
+        dimension. The base implementation raises to force a subclass.
+        """
+        raise NotImplementedError
+
+
+class VerticalScrollbar(_ScrollbarBase):
+    """Scrollbar for the vertical axis.
+
+    Only ``length`` (mapped to ``height``) is a public dimension; the width is
+    the fixed ``thickness`` (cross axis).
+    """
+
+    _direction = ScrollDirection.VERTICAL
+
+    @staticmethod
+    def _axis_sizing(length: SizingLike, thickness: int) -> Tuple[SizingLike, SizingLike]:
+        return (int(thickness), length)
+
+
+class HorizontalScrollbar(_ScrollbarBase):
+    """Scrollbar for the horizontal axis.
+
+    Only ``length`` (mapped to ``width``) is a public dimension; the height is
+    the fixed ``thickness`` (cross axis).
+    """
+
+    _direction = ScrollDirection.HORIZONTAL
+
+    @staticmethod
+    def _axis_sizing(length: SizingLike, thickness: int) -> Tuple[SizingLike, SizingLike]:
+        return (length, int(thickness))
+
+
+__all__ = ["VerticalScrollbar", "HorizontalScrollbar", "ScrollbarBehavior"]

@@ -25,7 +25,12 @@ from ..widgeting.widget import Widget
 from ..scrolling import ScrollController, ScrollDirection, ScrollPhysics, ScrollbarStyle
 from ..rendering.sizing import Sizing, SizingLike
 from ..input.pointer import PointerEvent, PointerEventType
-from ..widgets.scrollbar import Scrollbar, ScrollbarBehavior
+from ..widgets.scrollbar import (
+    HorizontalScrollbar,
+    ScrollbarBehavior,
+    VerticalScrollbar,
+    _ScrollbarBase,
+)
 from .scroll_viewport import ScrollViewport
 
 logger = logging.getLogger(__name__)
@@ -56,6 +61,9 @@ class _ScrollableBase(Widget):
 
     #: Scroll axis fixed by each concrete subclass.
     _direction: ClassVar[ScrollDirection]
+
+    #: Axis-specific scrollbar class fixed by each concrete subclass.
+    _scrollbar_class: ClassVar[type[_ScrollbarBase]]
 
     def __init__(
         self,
@@ -117,10 +125,9 @@ class _ScrollableBase(Widget):
         )
         self.add_child(self._viewport)
 
-        self._scrollbar = Scrollbar(
+        self._scrollbar = self._scrollbar_class(
             self._controller,
             behavior=self._scrollbar_behavior,
-            direction=self.direction,
             thickness=self._scrollbar_style.thickness,
             min_thumb_length=self._scrollbar_style.min_thumb_length,
             padding=self._scrollbar_style.inset,
@@ -526,12 +533,14 @@ class VerticalScrollable(_ScrollableBase):
     """Scrolls its child along the vertical axis."""
 
     _direction = ScrollDirection.VERTICAL
+    _scrollbar_class = VerticalScrollbar
 
 
 class HorizontalScrollable(_ScrollableBase):
     """Scrolls its child along the horizontal axis."""
 
     _direction = ScrollDirection.HORIZONTAL
+    _scrollbar_class = HorizontalScrollbar
 
 
 __all__ = ["VerticalScrollable", "HorizontalScrollable"]
