@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from nuiitivet.material.divider import Divider
+from nuiitivet.material.divider import HorizontalDivider, VerticalDivider
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.rendering.sizing import Sizing
@@ -55,39 +55,39 @@ def test_divider_style_is_immutable() -> None:
 
 
 def test_divider_horizontal_default_sizing() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     assert d.width_sizing.kind == "flex"
     assert d.height_sizing.kind == "fixed"
     assert d.height_sizing.value == 1  # default thickness
 
 
 def test_divider_vertical_default_sizing() -> None:
-    d = Divider(orientation="vertical")
+    d = VerticalDivider()
     assert d.width_sizing.kind == "fixed"
     assert d.width_sizing.value == 1  # default thickness
     assert d.height_sizing.kind == "flex"
 
 
 def test_divider_horizontal_custom_thickness() -> None:
-    d = Divider(style=DividerStyle(thickness=4))
+    d = HorizontalDivider(style=DividerStyle(thickness=4))
     assert d.height_sizing.kind == "fixed"
     assert d.height_sizing.value == 4
 
 
 def test_divider_vertical_custom_thickness() -> None:
-    d = Divider(orientation="vertical", style=DividerStyle(thickness=3))
+    d = VerticalDivider(style=DividerStyle(thickness=3))
     assert d.width_sizing.kind == "fixed"
     assert d.width_sizing.value == 3
 
 
 def test_divider_explicit_width_override() -> None:
-    d = Divider(width=Sizing.fixed(200))
+    d = HorizontalDivider(width=Sizing.fixed(200))
     assert d.width_sizing.kind == "fixed"
     assert d.width_sizing.value == 200
 
 
 def test_divider_explicit_height_override() -> None:
-    d = Divider(height=Sizing.fixed(50))
+    d = VerticalDivider(height=Sizing.fixed(50))
     assert d.height_sizing.kind == "fixed"
     assert d.height_sizing.value == 50
 
@@ -98,21 +98,21 @@ def test_divider_explicit_height_override() -> None:
 
 
 def test_divider_horizontal_preferred_size_with_max() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     w, h = d.preferred_size(max_width=300, max_height=100)
     assert w == 300  # flex → uses max_width
     assert h == 1  # fixed thickness
 
 
 def test_divider_vertical_preferred_size_with_max() -> None:
-    d = Divider(orientation="vertical")
+    d = VerticalDivider()
     w, h = d.preferred_size(max_width=100, max_height=200)
     assert w == 1  # fixed thickness
     assert h == 200  # flex → uses max_height
 
 
 def test_divider_preferred_size_no_max() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     w, h = d.preferred_size()
     assert w == 0  # flex with no constraint → 0
     assert h == 1  # fixed
@@ -124,13 +124,13 @@ def test_divider_preferred_size_no_max() -> None:
 
 
 def test_divider_paint_none_canvas_does_not_raise() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     d.paint(None, 0, 0, 200, 1)
     assert d.last_rect == (0, 0, 200, 1)
 
 
 def test_divider_paint_sets_last_rect() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     d.paint(None, 10, 20, 100, 1)
     assert d.last_rect == (10, 20, 100, 1)
 
@@ -145,7 +145,7 @@ def _make_canvas():
 
 
 def test_divider_paint_calls_draw_rect() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     canvas = _make_canvas()
 
     with (
@@ -160,7 +160,7 @@ def test_divider_paint_calls_draw_rect() -> None:
 
 def test_divider_paint_horizontal_inset_applied() -> None:
     style = DividerStyle(inset_left=16, inset_right=8)
-    d = Divider(style=style)
+    d = HorizontalDivider(style=style)
     canvas = _make_canvas()
 
     with (
@@ -175,7 +175,7 @@ def test_divider_paint_horizontal_inset_applied() -> None:
 
 def test_divider_paint_vertical_inset_applied() -> None:
     style = DividerStyle(inset_left=8, inset_right=8)
-    d = Divider(orientation="vertical", style=style)
+    d = VerticalDivider(style=style)
     canvas = _make_canvas()
 
     with (
@@ -190,7 +190,7 @@ def test_divider_paint_vertical_inset_applied() -> None:
 
 def test_divider_paint_skipped_when_inset_exceeds_size() -> None:
     style = DividerStyle(inset_left=100, inset_right=100)
-    d = Divider(style=style)
+    d = HorizontalDivider(style=style)
     canvas = _make_canvas()
 
     with (
@@ -204,7 +204,7 @@ def test_divider_paint_skipped_when_inset_exceeds_size() -> None:
 
 
 def test_divider_paint_skipped_when_color_unresolved() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     canvas = _make_canvas()
 
     with patch("nuiitivet.material.divider.resolve_color_to_rgba", return_value=None):
@@ -218,9 +218,11 @@ def test_divider_paint_skipped_when_color_unresolved() -> None:
 
 
 def test_divider_importable_from_material() -> None:
-    from nuiitivet.material import Divider as MaterialDivider
+    from nuiitivet.material import HorizontalDivider as MaterialHorizontalDivider
+    from nuiitivet.material import VerticalDivider as MaterialVerticalDivider
 
-    assert MaterialDivider is Divider
+    assert MaterialHorizontalDivider is HorizontalDivider
+    assert MaterialVerticalDivider is VerticalDivider
 
 
 # ---------------------------------------------------------------------------
@@ -229,15 +231,15 @@ def test_divider_importable_from_material() -> None:
 
 
 def test_divider_default_padding_is_zero() -> None:
-    d = Divider()
+    d = HorizontalDivider()
     assert d.padding == (0, 0, 0, 0)
 
 
 def test_divider_padding_scalar() -> None:
-    d = Divider(padding=8)
+    d = HorizontalDivider(padding=8)
     assert d.padding == (8, 8, 8, 8)
 
 
 def test_divider_padding_tuple() -> None:
-    d = Divider(padding=(4, 8, 4, 8))
+    d = HorizontalDivider(padding=(4, 8, 4, 8))
     assert d.padding == (4, 8, 4, 8)

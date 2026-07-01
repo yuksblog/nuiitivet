@@ -10,7 +10,7 @@ from __future__ import annotations
 from nuiitivet.material import (
     App,
     ConnectedButtonGroup,
-    Divider,
+    HorizontalDivider,
     GroupButton,
     StandardButtonGroup,
     Text,
@@ -72,7 +72,7 @@ def _section(title: str, *rows) -> Column:
     return Column(
         gap=18,
         cross_alignment="start",
-        children=[_section_title(title), Divider(), *rows],
+        children=[_section_title(title), HorizontalDivider(), *rows],
     )
 
 

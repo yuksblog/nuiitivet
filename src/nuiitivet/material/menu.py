@@ -9,7 +9,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.spacer import Spacer
-from nuiitivet.material.divider import Divider
+from nuiitivet.material.divider import HorizontalDivider
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.styles.divider_style import DividerStyle
@@ -492,7 +492,7 @@ class Menu(InteractiveWidget):
                     Container(
                         width=Sizing.flex(),
                         padding=(0, self.style.divider_vertical_padding, 0, self.style.divider_vertical_padding),
-                        child=Divider(style=divider_style),
+                        child=HorizontalDivider(style=divider_style),
                     )
                 )
                 continue

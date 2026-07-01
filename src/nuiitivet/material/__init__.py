@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .badge import LargeBadge, SmallBadge
     from .app import MaterialApp as App
-    from .divider import Divider
+    from .divider import HorizontalDivider, VerticalDivider
     from .buttons import (
         Button,
         ExtendedFab,
@@ -36,7 +36,14 @@ if TYPE_CHECKING:
     from .icon import Icon
     from .navigation_rail import NavigationRail, RailItem
     from .selection_controls import Checkbox, RadioButton, RadioGroup, Switch
-    from .slider import CenteredSlider, Orientation, RangeSlider, Slider
+    from .slider import (
+        HorizontalCenteredSlider,
+        HorizontalRangeSlider,
+        HorizontalSlider,
+        VerticalCenteredSlider,
+        VerticalRangeSlider,
+        VerticalSlider,
+    )
     from .symbols import Symbol, Symbols
     from .text_fields import TextField
     from .styles.text_field_style import TextFieldStyle
@@ -45,7 +52,7 @@ if TYPE_CHECKING:
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
-    from .toolbar import DockedToolbar, FloatingToolbar, ToolbarOrientation
+    from .toolbar import DockedToolbar, HorizontalFloatingToolbar, VerticalFloatingToolbar
     from .tooltip import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle, StandardSideSheetStyle
     from .sheet import SideSheet, BottomSheet, StandardSideSheet
@@ -77,7 +84,8 @@ __all__ = [
     "ThemeFactory",
     "SmallBadge",
     "LargeBadge",
-    "Divider",
+    "HorizontalDivider",
+    "VerticalDivider",
     "Text",
     "Icon",
     "Symbols",
@@ -86,10 +94,12 @@ __all__ = [
     "RadioButton",
     "RadioGroup",
     "Switch",
-    "Slider",
-    "CenteredSlider",
-    "RangeSlider",
-    "Orientation",
+    "HorizontalSlider",
+    "VerticalSlider",
+    "HorizontalCenteredSlider",
+    "VerticalCenteredSlider",
+    "HorizontalRangeSlider",
+    "VerticalRangeSlider",
     "Card",
     "CardStyle",
     "AssistChip",
@@ -130,8 +140,8 @@ __all__ = [
     "SubMenuItem",
     "LoadingIntent",
     "DockedToolbar",
-    "FloatingToolbar",
-    "ToolbarOrientation",
+    "HorizontalFloatingToolbar",
+    "VerticalFloatingToolbar",
     "Tooltip",
     "RichTooltip",
     "MaterialTransitions",
@@ -174,7 +184,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ThemeFactory": ("theme", "MaterialThemeFactory"),
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),
-    "Divider": ("divider", "Divider"),
+    "HorizontalDivider": ("divider", "HorizontalDivider"),
+    "VerticalDivider": ("divider", "VerticalDivider"),
     "Text": ("text", "Text"),
     "Icon": ("icon", "Icon"),
     "Symbols": ("symbols", "Symbols"),
@@ -183,10 +194,12 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RadioButton": ("selection_controls", "RadioButton"),
     "RadioGroup": ("selection_controls", "RadioGroup"),
     "Switch": ("selection_controls", "Switch"),
-    "Slider": ("slider", "Slider"),
-    "CenteredSlider": ("slider", "CenteredSlider"),
-    "RangeSlider": ("slider", "RangeSlider"),
-    "Orientation": ("slider", "Orientation"),
+    "HorizontalSlider": ("slider", "HorizontalSlider"),
+    "VerticalSlider": ("slider", "VerticalSlider"),
+    "HorizontalCenteredSlider": ("slider", "HorizontalCenteredSlider"),
+    "VerticalCenteredSlider": ("slider", "VerticalCenteredSlider"),
+    "HorizontalRangeSlider": ("slider", "HorizontalRangeSlider"),
+    "VerticalRangeSlider": ("slider", "VerticalRangeSlider"),
     "Card": ("card", "Card"),
     "CardStyle": ("styles.card_style", "CardStyle"),
     "AssistChip": ("chip", "AssistChip"),
@@ -227,8 +240,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SubMenuItem": ("menu", "SubMenuItem"),
     "LoadingIntent": ("intents", "LoadingIntent"),
     "DockedToolbar": ("toolbar", "DockedToolbar"),
-    "FloatingToolbar": ("toolbar", "FloatingToolbar"),
-    "ToolbarOrientation": ("toolbar", "ToolbarOrientation"),
+    "HorizontalFloatingToolbar": ("toolbar", "HorizontalFloatingToolbar"),
+    "VerticalFloatingToolbar": ("toolbar", "VerticalFloatingToolbar"),
     "Tooltip": ("tooltip", "Tooltip"),
     "RichTooltip": ("tooltip", "RichTooltip"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),

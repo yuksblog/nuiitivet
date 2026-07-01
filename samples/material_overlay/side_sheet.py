@@ -6,7 +6,7 @@ Shows how to display a modal side sheet using Overlay.side_sheet().
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, Divider, SideSheet
+from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, HorizontalDivider, SideSheet
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
@@ -21,7 +21,7 @@ class SideSheetDemo(ComposableWidget):
                 Box(
                     Column(
                         children=[
-                            Divider(),
+                            HorizontalDivider(),
                             Text("Setting 1"),
                             Text("Setting 2"),
                             Text("Setting 3"),
@@ -75,7 +75,7 @@ def main(png_path: str = "") -> App:
                 Box(
                     Column(
                         children=[
-                            Divider(),
+                            HorizontalDivider(),
                             Text("Setting 1"),
                             Text("Setting 2"),
                             Text("Setting 3"),

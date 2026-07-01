@@ -4,7 +4,11 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import IconButton
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.toolbar import DockedToolbar, FloatingToolbar
+from nuiitivet.material.toolbar import (
+    DockedToolbar,
+    HorizontalFloatingToolbar,
+    VerticalFloatingToolbar,
+)
 from nuiitivet.material.styles.button_style import IconButtonStyle
 from nuiitivet.widgets.box import Box
 
@@ -39,7 +43,7 @@ def test_docked_toolbar_has_no_outer_padding() -> None:
 
 
 def test_floating_toolbar_accepts_outer_padding() -> None:
-    toolbar = FloatingToolbar([IconButton("add")], padding=(12, 8, 12, 8))
+    toolbar = HorizontalFloatingToolbar([IconButton("add")], padding=(12, 8, 12, 8))
 
     assert toolbar.padding == (12, 8, 12, 8)
     assert len(toolbar.children) == 1
@@ -49,7 +53,7 @@ def test_floating_toolbar_accepts_outer_padding() -> None:
 
 def test_floating_toolbar_vertical_orientation_uses_column() -> None:
     buttons = [IconButton("add"), IconButton("close")]
-    toolbar = FloatingToolbar(buttons, orientation="vertical")
+    toolbar = VerticalFloatingToolbar(buttons)
     inner = toolbar.children[0]
 
     assert isinstance(inner, Box)
@@ -62,8 +66,8 @@ def test_floating_toolbar_padding_rule_is_shared_across_orientations() -> None:
     buttons_h = [IconButton("add"), IconButton("close")]
     buttons_v = [IconButton("add"), IconButton("close")]
 
-    horizontal = FloatingToolbar(buttons_h, orientation="horizontal")
-    vertical = FloatingToolbar(buttons_v, orientation="vertical")
+    horizontal = HorizontalFloatingToolbar(buttons_h)
+    vertical = VerticalFloatingToolbar(buttons_v)
 
     horizontal_content = horizontal.children[0].children[0]
     vertical_content = vertical.children[0].children[0]

@@ -127,25 +127,25 @@ def test_standard_side_sheet_style_show_divider_default():
 def test_standard_side_sheet_build_divider_right_side():
     """Right-side sheet: Divider appears as first child of the inner Row."""
     from nuiitivet.layout.row import Row as LayoutRow
-    from nuiitivet.material.divider import Divider
+    from nuiitivet.material.divider import VerticalDivider
 
     sheet = StandardSideSheet(Box(), side="right")
     built = sheet.build()
     inner = built.children[0]
     assert isinstance(inner, LayoutRow)
-    assert isinstance(inner.children[0], Divider)
+    assert isinstance(inner.children[0], VerticalDivider)
 
 
 def test_standard_side_sheet_build_divider_left_side():
     """Left-side sheet: Divider appears as last child of the inner Row."""
     from nuiitivet.layout.row import Row as LayoutRow
-    from nuiitivet.material.divider import Divider
+    from nuiitivet.material.divider import VerticalDivider
 
     sheet = StandardSideSheet(Box(), side="left")
     built = sheet.build()
     inner = built.children[0]
     assert isinstance(inner, LayoutRow)
-    assert isinstance(inner.children[-1], Divider)
+    assert isinstance(inner.children[-1], VerticalDivider)
 
 
 def test_standard_side_sheet_build_no_divider_when_disabled():

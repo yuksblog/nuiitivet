@@ -6,7 +6,7 @@ Shows how to display a modal bottom sheet using Overlay.bottom_sheet().
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, Divider, BottomSheet
+from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, HorizontalDivider, BottomSheet
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
@@ -21,7 +21,7 @@ class BottomSheetDemo(ComposableWidget):
                 Box(
                     Column(
                         children=[
-                            Divider(),
+                            HorizontalDivider(),
                             Text("Item 1"),
                             Text("Item 2"),
                             Text("Item 3"),
@@ -75,7 +75,7 @@ def main(png_path: str = "") -> App:
                 Box(
                     Column(
                         children=[
-                            Divider(),
+                            HorizontalDivider(),
                             Text("Item 1"),
                             Text("Item 2"),
                             Text("Item 3"),

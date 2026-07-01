@@ -713,8 +713,12 @@ class _SliderBase(InteractiveWidget):
         return ()
 
 
-class Slider(_SliderBase):
-    """Material Design 3 Slider widget."""
+class _Slider(_SliderBase):
+    """Shared single-handle slider behavior.
+
+    Orientation and axis length are internal; concrete axis-specific
+    subclasses fix the orientation and expose ``width`` / ``height``.
+    """
 
     def __init__(
         self,
@@ -822,8 +826,8 @@ class Slider(_SliderBase):
         return self.value
 
 
-class CenteredSlider(Slider):
-    """Material Design 3 Centered Slider widget."""
+class _CenteredSlider(_Slider):
+    """Shared centered single-handle slider behavior."""
 
     def __init__(
         self,
@@ -879,8 +883,8 @@ class CenteredSlider(Slider):
         return (self._value_to_ratio(0.0),)
 
 
-class RangeSlider(_SliderBase):
-    """Material Design 3 Range Slider widget."""
+class _RangeSlider(_SliderBase):
+    """Shared two-handle range slider behavior."""
 
     def __init__(
         self,
@@ -1049,4 +1053,293 @@ class RangeSlider(_SliderBase):
         return self.value_end
 
 
-__all__ = ["Orientation", "Slider", "CenteredSlider", "RangeSlider"]
+class HorizontalSlider(_Slider):
+    """Material Design 3 horizontal slider. Sized with ``width``."""
+
+    def __init__(
+        self,
+        value: float | ObservableProtocol[float] = 0.0,
+        *,
+        on_change: Optional[Callable[[float], None]] = None,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        width: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize HorizontalSlider.
+
+        Args:
+            value: Current slider value or observable value.
+            on_change: Callback invoked when value changes.
+            min_value: Minimum value.
+            max_value: Maximum value.
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            width: Main-axis (width) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.HORIZONTAL,
+            length=width,
+            padding=padding,
+            style=style,
+        )
+
+
+class VerticalSlider(_Slider):
+    """Material Design 3 vertical slider. Sized with ``height``."""
+
+    def __init__(
+        self,
+        value: float | ObservableProtocol[float] = 0.0,
+        *,
+        on_change: Optional[Callable[[float], None]] = None,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        height: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize VerticalSlider.
+
+        Args:
+            value: Current slider value or observable value.
+            on_change: Callback invoked when value changes.
+            min_value: Minimum value.
+            max_value: Maximum value.
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            height: Main-axis (height) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.VERTICAL,
+            length=height,
+            padding=padding,
+            style=style,
+        )
+
+
+class HorizontalCenteredSlider(_CenteredSlider):
+    """Material Design 3 horizontal centered slider. Sized with ``width``."""
+
+    def __init__(
+        self,
+        value: float | ObservableProtocol[float] = 0.0,
+        *,
+        on_change: Optional[Callable[[float], None]] = None,
+        min_value: float = -1.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        width: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize HorizontalCenteredSlider.
+
+        Args:
+            value: Current slider value or observable value.
+            on_change: Callback invoked when value changes.
+            min_value: Minimum value (default: -1.0).
+            max_value: Maximum value (default: 1.0).
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            width: Main-axis (width) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value=value,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.HORIZONTAL,
+            length=width,
+            padding=padding,
+            style=style,
+        )
+
+
+class VerticalCenteredSlider(_CenteredSlider):
+    """Material Design 3 vertical centered slider. Sized with ``height``."""
+
+    def __init__(
+        self,
+        value: float | ObservableProtocol[float] = 0.0,
+        *,
+        on_change: Optional[Callable[[float], None]] = None,
+        min_value: float = -1.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        height: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize VerticalCenteredSlider.
+
+        Args:
+            value: Current slider value or observable value.
+            on_change: Callback invoked when value changes.
+            min_value: Minimum value (default: -1.0).
+            max_value: Maximum value (default: 1.0).
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            height: Main-axis (height) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value=value,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.VERTICAL,
+            length=height,
+            padding=padding,
+            style=style,
+        )
+
+
+class HorizontalRangeSlider(_RangeSlider):
+    """Material Design 3 horizontal range slider. Sized with ``width``."""
+
+    def __init__(
+        self,
+        value_start: float | ObservableProtocol[float] = 0.0,
+        value_end: float | ObservableProtocol[float] = 1.0,
+        *,
+        on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        width: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize HorizontalRangeSlider.
+
+        Args:
+            value_start: Start value or observable value.
+            value_end: End value or observable value.
+            on_change: Callback invoked when range changes.
+            min_value: Minimum value.
+            max_value: Maximum value.
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            width: Main-axis (width) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value_start,
+            value_end,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.HORIZONTAL,
+            length=width,
+            padding=padding,
+            style=style,
+        )
+
+
+class VerticalRangeSlider(_RangeSlider):
+    """Material Design 3 vertical range slider. Sized with ``height``."""
+
+    def __init__(
+        self,
+        value_start: float | ObservableProtocol[float] = 0.0,
+        value_end: float | ObservableProtocol[float] = 1.0,
+        *,
+        on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        stops: Optional[int] = None,
+        show_value_indicator: bool = False,
+        disabled: bool | ObservableProtocol[bool] = False,
+        height: SizingLike = "1%",
+        padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
+        style: Optional["SliderStyle"] = None,
+    ) -> None:
+        """Initialize VerticalRangeSlider.
+
+        Args:
+            value_start: Start value or observable value.
+            value_end: End value or observable value.
+            on_change: Callback invoked when range changes.
+            min_value: Minimum value.
+            max_value: Maximum value.
+            stops: Discrete stop count. ``None`` means continuous.
+            show_value_indicator: Whether to show value indicator during drag.
+            disabled: Disabled state.
+            height: Main-axis (height) sizing.
+            padding: Slider padding.
+            style: Optional SliderStyle override.
+        """
+        super().__init__(
+            value_start,
+            value_end,
+            on_change=on_change,
+            min_value=min_value,
+            max_value=max_value,
+            stops=stops,
+            show_value_indicator=show_value_indicator,
+            disabled=disabled,
+            orientation=Orientation.VERTICAL,
+            length=height,
+            padding=padding,
+            style=style,
+        )
+
+
+__all__ = [
+    "HorizontalSlider",
+    "VerticalSlider",
+    "HorizontalCenteredSlider",
+    "VerticalCenteredSlider",
+    "HorizontalRangeSlider",
+    "VerticalRangeSlider",
+]
