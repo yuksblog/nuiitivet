@@ -9,28 +9,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from nuiitivet.rendering.padding import PaddingLike
-
 
 @dataclass(frozen=True)
 class ScrollbarStyle:
     """Immutable visual style for the scrollbar of a ``Scrollable``.
 
-    Holds only static appearance/layout. Dynamic visibility is controlled by
-    the ``scrollbar_visible`` parameter of the scrollable widget, and
-    interaction behavior (auto-hide, track clicks, etc.) lives in
+    Holds only the bar's own appearance. Placement (viewport padding, offset
+    from the edge, overlay vs. inline) lives in
+    :class:`~nuiitivet.scrolling.ScrollableStyle`; dynamic visibility is
+    controlled by the ``scrollbar_visible`` parameter of the scrollable widget,
+    and interaction behavior (auto-hide, track clicks, etc.) lives in
     :class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
 
     Attributes:
         thickness: Scrollbar thickness in pixels. Defaults to ``8``.
         min_thumb_length: Minimum thumb length in pixels. Defaults to ``24``.
-        inset: Offset of the scrollbar from the viewport edge. Accepts a single
-            int or a padding tuple. Defaults to ``2``.
     """
 
     thickness: int = 8
     min_thumb_length: int = 24
-    inset: PaddingLike = 2
 
     def copy_with(self, **changes) -> "ScrollbarStyle":
         """Return a copy of this style with the given fields overridden.

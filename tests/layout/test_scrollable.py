@@ -9,7 +9,7 @@ from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.scroll_viewport import ScrollViewport
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.scrolling import ScrollbarStyle
+from nuiitivet.scrolling import ScrollableStyle, ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.scrollbar import ScrollbarBehavior, _ScrollbarBase
 from tests.helpers.pointer import send_pointer_event_for_test
@@ -173,7 +173,7 @@ def test_scrollable_requires_child():
 def test_scrollable_preferred_size():
     """Scrollable preferred_size should include padding."""
     child = Column([Text("Item")])
-    scrollable = VerticalScrollable(child=child, padding=10)
+    scrollable = VerticalScrollable(child=child, style=ScrollableStyle(viewport_padding=10))
     child_w, child_h = child.preferred_size()
     scrollable_w, scrollable_h = scrollable.preferred_size()
     assert scrollable_w == child_w + 20
@@ -250,16 +250,20 @@ def test_scrollable_rejects_controller_without_required_axis():
         HorizontalScrollable(child=child, controller=controller)
 
 
-def test_scrollable_accepts_behavior_and_style():
-    """Scrollable should accept behavior + style configuration objects."""
+def test_scrollable_accepts_behavior_and_styles():
+    """Scrollable should accept behavior + appearance + placement config objects."""
     child = Column([Text("Item")])
     behavior = ScrollbarBehavior(auto_hide=False)
-    style = ScrollbarStyle(thickness=12, inset=4)
-    scrollable = VerticalScrollable(child=child, behavior=behavior, style=style)
+    scrollbar_style = ScrollbarStyle(thickness=12)
+    style = ScrollableStyle(scrollbar_padding=4)
+    scrollable = VerticalScrollable(
+        child=child, scrollbar_behavior=behavior, scrollbar_style=scrollbar_style, style=style
+    )
     assert scrollable.scrollbar_behavior is behavior
-    assert scrollable.scrollbar_style is style
+    assert scrollable.scrollbar_style is scrollbar_style
+    assert scrollable.scrollable_style is style
     assert scrollable._scrollbar.thickness == 12
-    assert scrollable._scrollbar.padding[2] == 4
+    assert scrollable._scrollbar_padding[2] == 4
 
 
 def test_scrollable_registers_children_in_store():

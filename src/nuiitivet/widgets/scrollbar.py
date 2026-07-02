@@ -90,9 +90,12 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         length: SizingLike = None,
         thickness: int = 8,
         min_thumb_length: int = 24,
-        padding: int | tuple | None = 0,
     ) -> None:
         """Initialize shared scrollbar state.
+
+        The bar knows only its own appearance; its placement (offset from the
+        viewport edge) is decided by the enclosing container. See
+        :class:`~nuiitivet.scrolling.ScrollableStyle`.
 
         Args:
             controller: The :class:`ScrollController` driving the scroll axis.
@@ -102,10 +105,9 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
                 ``width`` for horizontal scrollbars via the concrete subclass.
             thickness: Cross-axis thickness in pixels.
             min_thumb_length: Minimum thumb length in pixels.
-            padding: Inner padding (inset) of the scrollbar.
         """
         width, height = self._axis_sizing(length, thickness)
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height)
         beh = behavior or ScrollbarBehavior()
         self._controller = controller
         self._behavior = beh
@@ -430,24 +432,6 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         return track_color, thumb_color
 
     # --- drawing ---
-    def draw_vertical(
-        self,
-        canvas,
-        x: int,
-        y: int,
-        width: int,
-        height: int,
-        vp_x: int,
-        vp_y: int,
-        vp_w: int,
-        vp_h: int,
-    ):
-        bar_x = x + width - self.thickness - self.padding[2]
-        bar_y = vp_y
-        bar_w = self.thickness
-        bar_h = vp_h
-        self.paint(canvas, bar_x, bar_y, bar_w, bar_h)
-
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         content_extent = self._controller.axis_content_size(self.direction)
         viewport_extent = self._controller.axis_viewport_size(self.direction)

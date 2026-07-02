@@ -2,6 +2,7 @@
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.scrollable import VerticalScrollable
+from nuiitivet.scrolling import ScrollableStyle
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -76,7 +77,7 @@ def test_viewport_hittest_respects_padding() -> None:
     """ScrollViewport with padding should only hit inside padded viewport."""
     widgets = [SimpleWidget() for _ in range(10)]
     col = Column(widgets, gap=5)
-    scroller = VerticalScrollable(col, height=100, padding=10)
+    scroller = VerticalScrollable(col, height=100, style=ScrollableStyle(viewport_padding=10))
     canvas = MockCanvas()
     scroller.paint(canvas, 50, 50, 200, 100)
     hit_inside = scroller.hit_test(99, 99)
