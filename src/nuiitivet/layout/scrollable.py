@@ -7,10 +7,12 @@ Public API:
 
 Both share :class:`_ScrollableBase`, which holds the direction-parameterized
 layout / paint / gesture logic. The scroll *engine* configuration (``physics``
-and ``scroll_multiplier``) lives on :class:`~nuiitivet.scrolling.ScrollController`;
-scrollbar appearance is configured via
-:class:`~nuiitivet.scrolling.ScrollbarStyle` and scrollbar
-interaction via :class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
+and ``scroll_multiplier``) lives on :class:`~nuiitivet.scrolling.ScrollController`.
+Three independent concerns configure the scrollbar: appearance via
+:class:`~nuiitivet.scrolling.ScrollbarStyle`, placement (viewport padding, bar
+offset, overlay vs. inline) via :class:`~nuiitivet.scrolling.ScrollableStyle`,
+and temporal interaction via
+:class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
 """
 
 from __future__ import annotations
@@ -22,7 +24,8 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
 from ..widgeting.widget import Widget
-from ..scrolling import ScrollController, ScrollDirection, ScrollPhysics, ScrollbarStyle
+from ..scrolling import ScrollableStyle, ScrollController, ScrollDirection, ScrollPhysics, ScrollbarStyle
+from ..rendering.padding import parse_padding
 from ..rendering.sizing import Sizing, SizingLike
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import (
@@ -73,11 +76,16 @@ class _ScrollableBase(Widget):
         scrollbar_visible: ScrollbarVisibleLike = True,
         width: SizingLike = None,
         height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        behavior: Optional[ScrollbarBehavior] = None,
-        style: Optional[ScrollbarStyle] = None,
+        scrollbar_behavior: Optional[ScrollbarBehavior] = None,
+        scrollbar_style: Optional[ScrollbarStyle] = None,
+        style: Optional[ScrollableStyle] = None,
     ) -> None:
         """Initialize the scrollable.
+
+        The three configuration concerns are kept separate: ``scrollbar_style``
+        owns the bar's appearance, ``style`` owns placement (viewport padding,
+        bar offset, overlay vs. inline), and ``scrollbar_behavior`` owns
+        temporal behavior (auto-hide, track clicks…).
 
         Args:
             child: The widget to make scrollable.
@@ -87,9 +95,10 @@ class _ScrollableBase(Widget):
                 or an ``Observable[bool]`` for reactive visibility.
             width: Width sizing override.
             height: Height sizing override.
-            padding: Inner padding of the viewport (scrolled area).
-            behavior: Scrollbar interaction behavior (auto-hide, track clicks…).
-            style: Scrollbar appearance (thickness, min thumb length, inset).
+            scrollbar_behavior: Scrollbar interaction behavior (auto-hide,
+                track clicks…).
+            scrollbar_style: Scrollbar appearance (thickness, min thumb length).
+            style: Placement (viewport padding, scrollbar padding, overlay).
         """
         super().__init__(width=width, height=height)
 
@@ -113,15 +122,18 @@ class _ScrollableBase(Widget):
         self.physics = self._controller.physics
         self.scroll_multiplier = self._controller.scroll_multiplier
 
-        self._scrollbar_behavior = behavior or ScrollbarBehavior()
-        self._scrollbar_style = style or ScrollbarStyle()
+        self._scrollbar_behavior = scrollbar_behavior or ScrollbarBehavior()
+        self._scrollbar_style = scrollbar_style or ScrollbarStyle()
+        self._scrollable_style = style or ScrollableStyle()
+        #: Bar offset from the viewport edge, parsed to (left, top, right, bottom).
+        self._scrollbar_padding = parse_padding(self._scrollable_style.scrollbar_padding)
         self._scrollbar_visible: ScrollbarVisibleLike = scrollbar_visible
 
         self._viewport = ScrollViewport(
             child=child,
             controller=self._controller,
             direction=self.direction,
-            padding=padding,
+            padding=parse_padding(self._scrollable_style.viewport_padding),
         )
         self.add_child(self._viewport)
 
@@ -130,7 +142,6 @@ class _ScrollableBase(Widget):
             behavior=self._scrollbar_behavior,
             thickness=self._scrollbar_style.thickness,
             min_thumb_length=self._scrollbar_style.min_thumb_length,
-            padding=self._scrollbar_style.inset,
         )
         self.add_child(self._scrollbar)
 
@@ -246,15 +257,15 @@ class _ScrollableBase(Widget):
         viewport_height = int(height)
 
         wants_scrollbar = self._wants_scrollbar()
-        reserve_always = bool(wants_scrollbar and (not bool(self._scrollbar_behavior.auto_hide)))
+        reserve_space = bool(wants_scrollbar and self._reserves_scrollbar_space())
 
-        if wants_scrollbar and reserve_always:
+        if reserve_space:
             if self.direction is ScrollDirection.VERTICAL:
-                pad_r = self._scrollbar.padding[2]
+                pad_r = self._scrollbar_padding[2]
                 thickness = self._scrollbar.thickness
                 viewport_width = max(0, viewport_width - thickness - pad_r)
             elif self.direction is ScrollDirection.HORIZONTAL:
-                pad_b = self._scrollbar.padding[3]
+                pad_b = self._scrollbar_padding[3]
                 thickness = self._scrollbar.thickness
                 viewport_height = max(0, viewport_height - thickness - pad_b)
 
@@ -265,13 +276,13 @@ class _ScrollableBase(Widget):
 
         if wants_scrollbar and self._should_show_scrollbar():
             if self.direction is ScrollDirection.VERTICAL:
-                pad_r = scrollbar.padding[2]
+                pad_r = self._scrollbar_padding[2]
                 bar_x = int(width) - scrollbar.thickness - pad_r
                 bar_y = 0
                 bar_w = scrollbar.thickness
                 bar_h = viewport_height
             else:
-                pad_b = scrollbar.padding[3]
+                pad_b = self._scrollbar_padding[3]
                 bar_x = 0
                 bar_y = int(height) - scrollbar.thickness - pad_b
                 bar_w = viewport_width
@@ -308,18 +319,17 @@ class _ScrollableBase(Widget):
 
         wants_scrollbar = self._wants_scrollbar()
 
-        # Phase 1 behaviour:
-        # - if scrollbar.auto_hide is True -> overlay: do NOT reserve space (draw on top)
-        # - if scrollbar.auto_hide is False -> reserve-always: always reserve space for the scrollbar
-        reserve_always = bool(wants_scrollbar and (not bool(self._scrollbar_behavior.auto_hide)))
+        # Placement:
+        # - scrollbar_overlay is True  -> overlay: do NOT reserve space (draw on top)
+        # - scrollbar_overlay is False -> inline: reserve a gutter for the scrollbar
+        reserve_space = bool(wants_scrollbar and self._reserves_scrollbar_space())
 
-        # If we must reserve space (auto_hide == False) subtract thickness regardless
-        if wants_scrollbar and reserve_always:
+        if reserve_space:
             if self.direction is ScrollDirection.VERTICAL:
-                pad_r = self._scrollbar.padding[2]
+                pad_r = self._scrollbar_padding[2]
                 viewport_width = max(0, viewport_width - self._scrollbar.thickness - pad_r)
             elif self.direction is ScrollDirection.HORIZONTAL:
-                pad_b = self._scrollbar.padding[3]
+                pad_b = self._scrollbar_padding[3]
                 viewport_height = max(0, viewport_height - self._scrollbar.thickness - pad_b)
 
         self._viewport.paint(canvas, x, y, viewport_width, viewport_height)
@@ -329,7 +339,7 @@ class _ScrollableBase(Widget):
             viewport_rect = self._viewport.viewport_rect or (x, y, viewport_width, viewport_height)
             scrollbar = self._scrollbar
             if self.direction is ScrollDirection.VERTICAL:
-                pad_r = scrollbar.padding[2]
+                pad_r = self._scrollbar_padding[2]
                 bar_x = x + width - scrollbar.thickness - pad_r
                 bar_y = viewport_rect[1]
                 bar_w = scrollbar.thickness
@@ -342,7 +352,7 @@ class _ScrollableBase(Widget):
                 except Exception:
                     exception_once(logger, "scrollable_scrollbar_paint_exc", "Scrollbar paint failed")
             elif self.direction is ScrollDirection.HORIZONTAL:
-                pad_b = scrollbar.padding[3]
+                pad_b = self._scrollbar_padding[3]
                 bar_x = viewport_rect[0]
                 bar_y = y + height - scrollbar.thickness - pad_b
                 bar_w = viewport_rect[2]
@@ -358,6 +368,14 @@ class _ScrollableBase(Widget):
     def _wants_scrollbar(self) -> bool:
         """Whether a scrollbar should participate in layout / paint at all."""
         return _read_bool(self._scrollbar_visible) and self.physics is not ScrollPhysics.NEVER
+
+    def _reserves_scrollbar_space(self) -> bool:
+        """Whether the viewport reserves a gutter for the scrollbar (inline).
+
+        Driven purely by placement (``ScrollableStyle.scrollbar_overlay``) and
+        independent of temporal behavior (``ScrollbarBehavior.auto_hide``).
+        """
+        return not self._scrollable_style.scrollbar_overlay
 
     def _should_show_scrollbar(self) -> bool:
         """Whether the scrollbar should currently be shown."""
@@ -518,6 +536,11 @@ class _ScrollableBase(Widget):
     def scrollbar_style(self) -> ScrollbarStyle:
         """Return the immutable scrollbar visual style."""
         return self._scrollbar_style
+
+    @property
+    def scrollable_style(self) -> ScrollableStyle:
+        """Return the immutable placement style (viewport/scrollbar padding, overlay)."""
+        return self._scrollable_style
 
     def _apply_axis_sizing_defaults(self) -> None:
         """Ensure the scroll axis stretches to parent constraints by default."""

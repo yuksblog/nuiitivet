@@ -8,7 +8,7 @@ from nuiitivet.scrolling import ScrollController
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.column import Column
-from nuiitivet.scrolling import ScrollbarStyle
+from nuiitivet.scrolling import ScrollableStyle, ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
@@ -19,7 +19,8 @@ def _make_basic_scroller():
     scroller = VerticalScrollable(
         child=child,
         controller=controller,
-        style=ScrollbarStyle(thickness=20, inset=0),
+        scrollbar_style=ScrollbarStyle(thickness=20),
+        style=ScrollableStyle(scrollbar_padding=0),
     )
     scroller.layout(200, 200)
     scroller.set_last_rect(0, 0, 200, 200)

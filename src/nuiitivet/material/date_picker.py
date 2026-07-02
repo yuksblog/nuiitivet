@@ -26,7 +26,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.scrolling import ScrollController, ScrollDirection
+from nuiitivet.scrolling import ScrollableStyle, ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.modifiers.transform import rotate
@@ -594,7 +594,7 @@ class _YearChipGrid(ComposableWidget):
             scrollbar_visible=False,
             width=int(style.container_width),
             height=self._list_height,
-            padding=(12, 15, 12, 4),
+            style=ScrollableStyle(viewport_padding=(12, 15, 12, 4)),
         )
 
 
