@@ -82,7 +82,7 @@ For why modifiers exist and what kinds are available, see [docs/guide/modifier.m
 ### 1.2 Data Binding
 
 Dynamic UIs need state management.
-Starting with React (the JavaScript one), many frameworks rebuild the UI whenever state changes. Nuiitivet doesn't rebuild — it *binds* state to the UI instead.
+With **data binding**, you declare *what the UI shows* in terms of your state — once — and that link stays live. Change the state, and every bound part of the UI follows on its own. You never write the code that pushes a value into a widget, and the UI can't drift out of sync with your state, because your state *is* the UI's single source of truth.
 
 That mechanism is `Observable`. It binds directly to the UI like Signals (SolidJS, MobX), and it also carries operators like `throttle()` and `debounce()` like Rx — the best of both worlds. (It's inspired by WPF's ReactiveProperty.)
 
