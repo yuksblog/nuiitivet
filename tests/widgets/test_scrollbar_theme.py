@@ -104,6 +104,7 @@ def test_style_override_wins_over_theme_data() -> None:
 
     light = PlainTheme.light()
     theme_data = light.extension(ScrollbarThemeData)
+    assert theme_data is not None
     style = ScrollbarStyle(thumb=(255, 0, 0, 255), track=("#00FF00", 0.5))
 
     resolved = style.resolve_colors(theme_data, theme=light)
