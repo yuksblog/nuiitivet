@@ -146,6 +146,58 @@ def test_track_click_behavior_jump_vertical() -> None:
     assert abs(controller.get_offset() - expected) < 50.0
 
 
+def test_track_click_jump_centers_thumb_on_click_vertical() -> None:
+    controller = ScrollController()
+    controller._update_metrics(max_extent=400.0, viewport_size=100, content_size=500)
+    behavior = ScrollbarBehavior(auto_hide=False, track_click_behavior="jump")
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
+    track_len = 200
+    thumb_len = 40
+    scrollbar.bar_rect = (0, 0, scrollbar.thickness, track_len)
+    scrollbar.thumb_rect = (0, 0, scrollbar.thickness, thumb_len)
+    click_y = 100
+    assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 2, click_y) is True
+    max_offset = controller.axis_max_extent(ScrollDirection.VERTICAL)
+    scroll_ratio = controller.get_offset() / max_offset
+    thumb_center = (track_len - thumb_len) * scroll_ratio + thumb_len / 2
+    assert abs(thumb_center - click_y) <= 1.0
+
+
+def test_track_click_jump_centers_thumb_on_click_horizontal() -> None:
+    controller = ScrollController(axes=(ScrollDirection.HORIZONTAL,), primary_axis=ScrollDirection.HORIZONTAL)
+    controller._update_metrics(max_extent=400.0, viewport_size=100, content_size=500)
+    behavior = ScrollbarBehavior(auto_hide=False, track_click_behavior="jump")
+    scrollbar = HorizontalScrollbar(controller, behavior=behavior)
+    track_len = 200
+    thumb_len = 40
+    scrollbar.bar_rect = (0, 0, track_len, scrollbar.thickness)
+    scrollbar.thumb_rect = (0, 0, thumb_len, scrollbar.thickness)
+    click_x = 120
+    assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, click_x, 2) is True
+    max_offset = controller.axis_max_extent(ScrollDirection.HORIZONTAL)
+    scroll_ratio = controller.get_offset(axis=ScrollDirection.HORIZONTAL) / max_offset
+    thumb_center = (track_len - thumb_len) * scroll_ratio + thumb_len / 2
+    assert abs(thumb_center - click_x) <= 1.0
+
+
+def test_track_click_jump_starts_drag() -> None:
+    controller = ScrollController()
+    controller._update_metrics(max_extent=400.0, viewport_size=100, content_size=500)
+    behavior = ScrollbarBehavior(auto_hide=False, track_click_behavior="jump")
+    scrollbar = VerticalScrollbar(controller, behavior=behavior)
+    scrollbar.bar_rect = (0, 0, scrollbar.thickness, 200)
+    scrollbar.thumb_rect = (0, 0, scrollbar.thickness, 40)
+    # Press on empty track (not on the thumb) should jump AND begin a drag.
+    assert send_pointer_event_for_test(scrollbar, PointerEventType.PRESS, 2, 100) is True
+    assert scrollbar._dragging is True
+    after_jump = controller.get_offset()
+    # Continuing to move the pointer should keep scrolling as a drag.
+    assert send_pointer_event_for_test(scrollbar, PointerEventType.MOVE, 2, 140) is True
+    assert controller.get_offset() > after_jump
+    assert send_pointer_event_for_test(scrollbar, PointerEventType.RELEASE, 2, 140) is True
+    assert scrollbar._dragging is False
+
+
 def test_scrollbar_release_clears_hover_after_drag() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=300.0, viewport_size=150, content_size=450)
