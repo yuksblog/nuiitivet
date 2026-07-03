@@ -12,7 +12,7 @@ Three independent concerns configure the scrollbar: appearance via
 :class:`~nuiitivet.scrolling.ScrollbarStyle`, placement (viewport padding, bar
 offset, overlay vs. inline) via :class:`~nuiitivet.scrolling.ScrollableStyle`,
 and temporal interaction via
-:class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
+:class:`~nuiitivet.scrolling.ScrollbarBehavior`.
 """
 
 from __future__ import annotations
@@ -24,13 +24,19 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
 from ..widgeting.widget import Widget
-from ..scrolling import ScrollableStyle, ScrollController, ScrollDirection, ScrollPhysics, ScrollbarStyle
+from ..scrolling import (
+    ScrollableStyle,
+    ScrollbarBehavior,
+    ScrollController,
+    ScrollDirection,
+    ScrollPhysics,
+    ScrollbarStyle,
+)
 from ..rendering.padding import parse_padding
 from ..rendering.sizing import Sizing, SizingLike
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import (
     HorizontalScrollbar,
-    ScrollbarBehavior,
     VerticalScrollbar,
     _ScrollbarBase,
 )

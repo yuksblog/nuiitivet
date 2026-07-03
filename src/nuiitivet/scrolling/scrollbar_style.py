@@ -28,7 +28,7 @@ class ScrollbarStyle:
     inline) lives in :class:`~nuiitivet.scrolling.ScrollableStyle`; dynamic
     visibility is controlled by the ``scrollbar_visible`` parameter of the
     scrollable widget, and interaction behavior (auto-hide, track clicks, etc.)
-    lives in :class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`.
+    lives in :class:`~nuiitivet.scrolling.ScrollbarBehavior`.
 
     Colors follow the framework-wide ``ThemeData`` / ``Style`` division: the
     app-wide default palette is supplied by the design system via

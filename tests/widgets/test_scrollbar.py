@@ -1,9 +1,9 @@
 """Unit tests for the standalone Scrollbar widget."""
 
 from __future__ import annotations
-from nuiitivet.scrolling import ScrollController, ScrollDirection
+from nuiitivet.scrolling import ScrollbarBehavior, ScrollController, ScrollDirection
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.widgets.scrollbar import HorizontalScrollbar, ScrollbarBehavior, VerticalScrollbar
+from nuiitivet.widgets.scrollbar import HorizontalScrollbar, VerticalScrollbar
 from tests.helpers.pointer import send_pointer_event_for_test
 
 

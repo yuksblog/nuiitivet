@@ -9,9 +9,9 @@ from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.scroll_viewport import ScrollViewport
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.scrolling import ScrollableStyle, ScrollbarStyle
+from nuiitivet.scrolling import ScrollableStyle, ScrollbarBehavior, ScrollbarStyle
 from nuiitivet.widgets.text import TextBase as Text
-from nuiitivet.widgets.scrollbar import ScrollbarBehavior, _ScrollbarBase
+from nuiitivet.widgets.scrollbar import _ScrollbarBase
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
