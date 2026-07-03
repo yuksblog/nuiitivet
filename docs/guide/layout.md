@@ -43,6 +43,7 @@ Refer to the following guides based on what you want to create.
 | Create wrapping lists (Tag lists, etc.) | [layout_extras.md](layout_extras.md) | `Flow` |
 | Make scrollable | [layout_overflow.md](layout_overflow.md) | `VerticalScrollable` / `HorizontalScrollable` |
 | Create tab switching | [layout_extras.md](layout_extras.md) | `Deck` |
+| Dynamically generate a list from data | [layout_dynamic.md](layout_dynamic.md) | `builder()` / `ForEach` |
 
 ## More Details
 

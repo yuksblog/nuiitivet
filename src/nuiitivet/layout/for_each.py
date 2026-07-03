@@ -2,10 +2,11 @@
 
 ForEach acts as a layout provider that materializes its children inside
 scoped fragments so individual items can be invalidated without forcing
-the parent layout to rebuild entirely. The widget can be embedded inside
-Row/Column/Flow (or any other layout) and can also materialize
-convenience wrappers via ``row()``, ``column()`` and ``flow()`` helper
-methods.
+the parent layout to rebuild entirely. Embed it directly in a layout's
+``children`` list (e.g. ``Row/Column/Flow(children=[ForEach(...)])``). For
+the common case, prefer the ``builder()`` class method on
+``Row``/``Column``/``Stack``/``Flow``/``UniformFlow``, which constructs the
+layout with an embedded ForEach for you.
 """
 
 from __future__ import annotations
