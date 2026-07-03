@@ -92,6 +92,17 @@ The scroll axis is chosen by the class (`VerticalScrollable` /
 | `behavior` | Scrollbar interaction via `ScrollbarBehavior(auto_hide, …)` |
 | `controller` | A `ScrollController` carrying scroll `physics` and `scroll_multiplier` |
 
+The scrollbar is a **generic** widget, so its colors are not baked into the
+widget. Following the framework-wide `ThemeData` / `Style` split:
+
+- The **app-wide default palette** comes from the active theme's
+  `ScrollbarThemeData` (`track`, `thumb`, `thumb_hover`, `thumb_active`),
+  resolved at paint time. Each design system supplies its own — Material maps
+  them onto `ColorRole.ON_SURFACE` / `PRIMARY` — so a single scrollbar
+  automatically follows light/dark theme switches.
+- A **per-instance override** can be set via the matching nullable `ColorSpec`
+  fields on `ScrollbarStyle`; a `None` field falls back to the theme.
+
 ## Next Steps
 
 - Basic Spacing: [layout_spacing.md](layout_spacing.md)
