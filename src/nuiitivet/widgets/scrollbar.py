@@ -265,18 +265,22 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             self._on_interaction()
             return
 
-        # Jump behavior
+        # Jump behavior: center the thumb on the click position.
         if track_length <= 0:
             return
         max_offset = self._controller.axis_max_extent(self.direction)
         thumb_len = max(self.min_thumb_length, int((thumb_length) or (track_length * 0.1)))
-        rel = float(click_axis - axis_origin) / float(max(1, track_length))
-        rel = max(0.0, min(1.0, rel))
-        thumb_pos = int((track_length - thumb_len) * rel)
+        # Place the thumb so its center sits under the pointer, then clamp its
+        # start into the valid track range before deriving the scroll ratio.
+        thumb_pos = int((click_axis - axis_origin) - thumb_len / 2)
+        thumb_pos = max(0, min(track_length - thumb_len, thumb_pos))
         denom = max(1, track_length - thumb_len)
         scroll_ratio = float(thumb_pos) / float(denom) if denom > 0 else 0.0
         target_offset = scroll_ratio * max_offset
         self._controller.scroll_to(target_offset, axis=self.direction)
+        # Continue the press as a thumb drag so the user can keep dragging from
+        # the jumped position, matching a press that starts on the thumb.
+        self._thumb_node.activate(event)
         self._on_interaction()
 
     def _on_track_hover_change(self, hovered: bool) -> None:
