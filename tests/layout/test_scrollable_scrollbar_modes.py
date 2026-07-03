@@ -10,12 +10,11 @@ All four combinations of overlay x auto_hide are exercised below.
 
 import pytest
 
-from nuiitivet.scrolling import ScrollController, ScrollableStyle, ScrollbarStyle
+from nuiitivet.scrolling import ScrollbarBehavior, ScrollController, ScrollableStyle, ScrollbarStyle
 from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.widgets.text import TextBase as Text
-from nuiitivet.widgets.scrollbar import ScrollbarBehavior
 
 
 def _paint(scroller, width, height):

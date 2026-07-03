@@ -5,7 +5,7 @@ placement carries no design-system dependency.
 
 Separates *placement* (where the viewport and bar sit) from *appearance*
 (:class:`~nuiitivet.scrolling.ScrollbarStyle`, the bar's own look) and
-*temporal behavior* (:class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`,
+*temporal behavior* (:class:`~nuiitivet.scrolling.ScrollbarBehavior`,
 e.g. auto-hide). These are independent axes.
 """
 
@@ -22,7 +22,7 @@ class ScrollableStyle:
 
     Owns *where* the viewport and the scrollbar sit, independently of how the
     bar looks (:class:`ScrollbarStyle`) or when it is shown
-    (:class:`~nuiitivet.widgets.scrollbar.ScrollbarBehavior`).
+    (:class:`~nuiitivet.scrolling.ScrollbarBehavior`).
 
     Attributes:
         viewport_padding: Inner padding of the viewport (scrolled area).

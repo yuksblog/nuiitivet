@@ -17,7 +17,6 @@ delegate behavior.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import threading
 import time
@@ -25,7 +24,7 @@ from typing import ClassVar, Optional, Tuple
 
 from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollbarStyle, ScrollbarThemeData
+from nuiitivet.scrolling import ScrollbarBehavior, ScrollController, ScrollDirection, ScrollbarStyle, ScrollbarThemeData
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.colors.utils import apply_alpha_to_rgba
 from nuiitivet.rendering.sizing import SizingLike
@@ -39,30 +38,6 @@ from nuiitivet.widgets.interaction import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class ScrollbarBehavior:
-    """Immutable behavior configuration for scrollbar widgets."""
-
-    auto_hide: bool = True
-    hide_delay: float = 1.0
-    fade_duration: float = 0.15
-    hide_threshold: float = 0.25
-    track_click_behavior: str = "jump"
-    interactive: bool = True
-    hit_slop: Optional[int] = None
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "hide_delay", max(0.0, float(self.hide_delay)))
-        object.__setattr__(self, "fade_duration", max(0.0, float(self.fade_duration)))
-        object.__setattr__(self, "hide_threshold", max(0.0, min(1.0, float(self.hide_threshold))))
-        try:
-            if self.track_click_behavior not in ("none", "page", "jump"):
-                object.__setattr__(self, "track_click_behavior", "none")
-        except Exception:
-            exception_once(logger, "scrollbar_behavior_post_init_exc", "ScrollbarBehavior.__post_init__ failed")
-            object.__setattr__(self, "track_click_behavior", "none")
 
 
 class _ScrollbarBase(InteractionHostMixin, Widget):
@@ -592,4 +567,4 @@ class HorizontalScrollbar(_ScrollbarBase):
         return (length, int(thickness))
 
 
-__all__ = ["VerticalScrollbar", "HorizontalScrollbar", "ScrollbarBehavior"]
+__all__ = ["VerticalScrollbar", "HorizontalScrollbar"]
