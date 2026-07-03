@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from nuiitivet.scrolling.scrollbar_theme_data import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
 
 if TYPE_CHECKING:
@@ -57,6 +58,22 @@ class PlainColorRole(Enum):
         return None
 
 
+def _plain_scrollbar_theme_data() -> ScrollbarThemeData:
+    """Default scrollbar palette for the Plain design system.
+
+    The Plain theme has no accent color, so every slot maps onto
+    ``PlainColorRole.ON_SURFACE`` (with differing alpha) as tokens. Resolving at
+    paint time keeps the scrollbar in sync when switching between the light and
+    dark Plain themes.
+    """
+    return ScrollbarThemeData(
+        track=(PlainColorRole.ON_SURFACE, 0.12),
+        thumb=(PlainColorRole.ON_SURFACE, 0.70),
+        thumb_hover=(PlainColorRole.ON_SURFACE, 0.90),
+        thumb_active=(PlainColorRole.ON_SURFACE, 1.0),
+    )
+
+
 class PlainTheme:
     """Factory for creating Themes with Plain configuration."""
 
@@ -69,7 +86,11 @@ class PlainTheme:
             outline="#79747E",
             scrim="#000000",
         )
-        return Theme(mode="light", extensions=[data], name="plain-light")
+        return Theme(
+            mode="light",
+            extensions=[data, _plain_scrollbar_theme_data()],
+            name="plain-light",
+        )
 
     @staticmethod
     def dark() -> Theme:
@@ -80,4 +101,8 @@ class PlainTheme:
             outline="#938F99",
             scrim="#000000",
         )
-        return Theme(mode="dark", extensions=[data], name="plain-dark")
+        return Theme(
+            mode="dark",
+            extensions=[data, _plain_scrollbar_theme_data()],
+            name="plain-dark",
+        )

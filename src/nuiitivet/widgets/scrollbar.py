@@ -8,9 +8,11 @@ Public API:
 Both share :class:`_ScrollbarBase`, which holds the axis-parameterized drawing
 and gesture logic. Per the size policy, only the **main axis** (scroll length)
 is a public dimension; the **cross axis** is the fixed ``thickness``. Colors are
-derived from the current Theme (``ColorRole.ON_SURFACE`` / ``ColorRole.PRIMARY``),
-and the widgets expose paint / event APIs so containers (like ``*Scrollable``)
-can delegate behavior.
+resolved at paint time from the generic theme seam via
+:class:`~nuiitivet.scrolling.ScrollbarThemeData` (no direct Material dependency),
+with per-instance overrides from :class:`~nuiitivet.scrolling.ScrollbarStyle`, and
+the widgets expose paint / event APIs so containers (like ``*Scrollable``) can
+delegate behavior.
 """
 
 from __future__ import annotations
@@ -23,12 +25,11 @@ from typing import ClassVar, Optional, Tuple
 
 from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.scrolling import ScrollController, ScrollDirection
+from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollbarStyle, ScrollbarThemeData
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.colors.utils import hex_to_rgba
+from nuiitivet.colors.utils import apply_alpha_to_rgba
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, get_skia, make_paint, make_rect, rgba_to_skia_color  # noqa: F401
-from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgets.interaction import (
     DraggableNode,
@@ -88,8 +89,7 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         behavior: Optional[ScrollbarBehavior] = None,
         *,
         length: SizingLike = None,
-        thickness: int = 8,
-        min_thumb_length: int = 24,
+        style: Optional[ScrollbarStyle] = None,
     ) -> None:
         """Initialize shared scrollbar state.
 
@@ -103,17 +103,19 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             length: Main-axis length sizing override (cross axis is
                 ``thickness``). Maps to ``height`` for vertical scrollbars and
                 ``width`` for horizontal scrollbars via the concrete subclass.
-            thickness: Cross-axis thickness in pixels.
-            min_thumb_length: Minimum thumb length in pixels.
+            style: Scrollbar appearance (geometry + optional per-instance color
+                overrides). See :class:`~nuiitivet.scrolling.ScrollbarStyle`.
         """
-        width, height = self._axis_sizing(length, thickness)
+        st = style or ScrollbarStyle()
+        width, height = self._axis_sizing(length, st.thickness)
         super().__init__(width=width, height=height)
         beh = behavior or ScrollbarBehavior()
         self._controller = controller
         self._behavior = beh
+        self._style = st
         self.direction = self._direction
-        self.thickness = int(thickness)
-        self.min_thumb_length = int(min_thumb_length)
+        self.thickness = int(st.thickness)
+        self.min_thumb_length = int(st.min_thumb_length)
         self.interactive = bool(beh.interactive)
         self.track_click_behavior = beh.track_click_behavior
         self.auto_hide = bool(beh.auto_hide)
@@ -415,22 +417,6 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             exception_once(logger, "scrollbar_hide_timer_cancel_exc", "Hide timer cancel raised")
         self._hide_timer = None
 
-    def _derive_colors(self, _unused=None):
-        try:
-            from nuiitivet.theme.theme import Theme
-
-            theme = Theme.of(self)
-            base = theme.get(ColorRole.ON_SURFACE)
-        except Exception:
-            base = "#000000"
-
-        tr = hex_to_rgba(base, alpha=0.12)
-        th = hex_to_rgba(base, alpha=0.70)
-
-        track_color = rgba_to_skia_color(tr)
-        thumb_color = rgba_to_skia_color(th)
-        return track_color, thumb_color
-
     # --- drawing ---
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         content_extent = self._controller.axis_content_size(self.direction)
@@ -445,19 +431,17 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         try:
             from nuiitivet.theme.theme import Theme
 
-            theme = Theme.of(self)
-            from nuiitivet.material.theme.theme_data import MaterialThemeData
-
-            mat = theme.extension(MaterialThemeData)
-            roles = mat.roles if mat is not None else {}
-            on_surface = roles.get(ColorRole.ON_SURFACE, "#000000")
-            primary = roles.get(ColorRole.PRIMARY, "#000000")
+            theme: Optional[Theme] = Theme.of(self)
         except Exception:
-            on_surface = "#000000"
-            primary = "#000000"
+            theme = None
 
-        tr = hex_to_rgba(on_surface, alpha=0.12)
-        track_color = rgba_to_skia_color(tr)
+        theme_data: Optional[ScrollbarThemeData] = None
+        if theme is not None:
+            try:
+                theme_data = theme.extension(ScrollbarThemeData)
+            except Exception:
+                theme_data = None
+
         progress = 1.0 if not self.auto_hide else float(self._visibility.value)
 
         try:
@@ -472,20 +456,20 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             self.set_last_rect(bar_x, bar_y, bar_w, bar_h)
             return
 
+        # Colors are resolved at paint time against the current theme so a single
+        # palette renders correctly across light/dark modes; per-instance style
+        # overrides win over the theme. Auto-hide visibility is applied as an
+        # extra alpha multiplier on top.
+        colors = self._style.resolve_colors(theme_data, theme)
         if self._pressed or self._dragging:
-            thumb_base = primary
-            thumb_alpha = 1.0
+            thumb_rgba = colors["thumb_active"]
         elif self._thumb_hover:
-            thumb_base = primary
-            thumb_alpha = 0.9
+            thumb_rgba = colors["thumb_hover"]
         else:
-            thumb_base = on_surface
-            thumb_alpha = 0.7
-        effective_alpha = thumb_alpha * vis_progress
-        th = hex_to_rgba(thumb_base, alpha=effective_alpha)
-        thumb_color = rgba_to_skia_color(th)
-        tr_vis = hex_to_rgba(on_surface, alpha=0.12 * vis_progress)
-        track_color = rgba_to_skia_color(tr_vis)
+            thumb_rgba = colors["thumb"]
+
+        thumb_color = rgba_to_skia_color(apply_alpha_to_rgba(thumb_rgba, vis_progress))
+        track_color = rgba_to_skia_color(apply_alpha_to_rgba(colors["track"], vis_progress))
         track_paint = make_paint(color=track_color, style="fill", aa=True)
         corner_radius = (bar_w / 2) if self.direction is ScrollDirection.VERTICAL else (bar_h / 2)
         track_rect = make_rect(bar_x, bar_y, bar_w, bar_h)

@@ -253,7 +253,7 @@ class MyWidget(ComposableWidget):
                                 gap=8,
                                 cross_alignment="center",
                             ),
-                            behavior=ScrollbarBehavior(auto_hide=False),
+                            scrollbar_behavior=ScrollbarBehavior(auto_hide=False),
                             height=50,
                         ),
                     ],

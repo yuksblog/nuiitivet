@@ -4,9 +4,25 @@ from __future__ import annotations
 
 from typing import Tuple
 
+from nuiitivet.scrolling import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
+from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.material.theme.palette import from_seed
+
+
+def _material_scrollbar_theme_data() -> ScrollbarThemeData:
+    """Default scrollbar palette mapped onto Material color roles.
+
+    Colors are stored as tokens (not resolved RGBA), so the same instance
+    resolves to the correct light/dark values against whichever theme is active.
+    """
+    return ScrollbarThemeData(
+        track=(ColorRole.ON_SURFACE, 0.12),
+        thumb=(ColorRole.ON_SURFACE, 0.70),
+        thumb_hover=(ColorRole.PRIMARY, 0.90),
+        thumb_active=(ColorRole.PRIMARY, 1.0),
+    )
 
 
 class MaterialThemeFactory:
@@ -19,7 +35,11 @@ class MaterialThemeFactory:
         roles = dark_roles if mode == "dark" else light_roles
 
         material_data = MaterialThemeData(roles=roles)
-        return Theme(mode=mode, extensions=[material_data], name=name)
+        return Theme(
+            mode=mode,
+            extensions=[material_data, _material_scrollbar_theme_data()],
+            name=name,
+        )
 
     @staticmethod
     def light(seed_color: str) -> Theme:

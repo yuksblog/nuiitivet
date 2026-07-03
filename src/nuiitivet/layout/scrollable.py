@@ -140,8 +140,7 @@ class _ScrollableBase(Widget):
         self._scrollbar = self._scrollbar_class(
             self._controller,
             behavior=self._scrollbar_behavior,
-            thickness=self._scrollbar_style.thickness,
-            min_thumb_length=self._scrollbar_style.min_thumb_length,
+            style=self._scrollbar_style,
         )
         self.add_child(self._scrollbar)
 
