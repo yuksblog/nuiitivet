@@ -15,7 +15,6 @@ def test_text_style_defaults():
     assert style.font_size == 14
     assert style.color == ColorRole.ON_SURFACE
     assert style.text_alignment == "start"
-    assert style.overflow == "visible"
 
 
 def test_text_style_custom_values():
@@ -24,12 +23,10 @@ def test_text_style_custom_values():
         font_size=24,
         color=ColorRole.PRIMARY,
         text_alignment="center",
-        overflow="ellipsis",
     )
     assert style.font_size == 24
     assert style.color == ColorRole.PRIMARY
     assert style.text_alignment == "center"
-    assert style.overflow == "ellipsis"
 
 
 def test_text_style_copy_with():
@@ -50,12 +47,10 @@ def test_text_style_copy_with():
     custom_style = base_style.copy_with(
         font_size=18,
         text_alignment="center",
-        overflow="clip",
     )
     assert custom_style.font_size == 18
     assert custom_style.color == ColorRole.ON_SURFACE  # unchanged
     assert custom_style.text_alignment == "center"
-    assert custom_style.overflow == "clip"
 
 
 def test_text_style_immutable():
@@ -114,15 +109,29 @@ def test_text_widget_style_text_alignment():
     assert text_end._style.text_alignment == "end"
 
 
-def test_text_widget_style_overflow():
-    """Test Text widget overflow options."""
-    text_visible = Text("Text", style=TextStyle(overflow="visible"))
-    text_clip = Text("Text", style=TextStyle(overflow="clip"))
-    text_ellipsis = Text("Text", style=TextStyle(overflow="ellipsis"))
+def test_text_widget_overflow_options():
+    """Text widget overflow/truncation/max_lines live on the widget, not the style."""
+    text_visible = Text("Text", overflow="visible")
+    text_clip = Text("Text", overflow="clip")
+    text_ellipsis = Text("Text", overflow="ellipsis", truncation="middle", max_lines=2)
 
-    assert text_visible._style.overflow == "visible"
-    assert text_clip._style.overflow == "clip"
-    assert text_ellipsis._style.overflow == "ellipsis"
+    assert text_visible._overflow == "visible"
+    assert text_clip._overflow == "clip"
+    assert text_ellipsis._overflow == "ellipsis"
+    assert text_ellipsis._truncation == "middle"
+    assert text_ellipsis._max_lines == 2
+
+    # Defaults
+    default_text = Text("Text")
+    assert default_text._overflow == "visible"
+    assert default_text._truncation == "tail"
+    assert default_text._max_lines is None
+    assert default_text._soft_wrap is True
+
+    # Invalid values fall back to defaults; max_lines < 1 clamps to 1.
+    assert Text("x", overflow="bogus")._overflow == "visible"  # type: ignore[arg-type]
+    assert Text("x", truncation="bogus")._truncation == "tail"  # type: ignore[arg-type]
+    assert Text("x", max_lines=0)._max_lines == 1
 
 
 def test_theme_default_text_style():

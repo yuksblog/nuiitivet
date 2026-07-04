@@ -26,9 +26,6 @@ class TextStyleProtocol(Protocol):
     @property
     def text_alignment(self) -> Literal["start", "center", "end"]: ...
 
-    @property
-    def overflow(self) -> Literal["visible", "clip", "ellipsis"]: ...
-
 
 @dataclass(frozen=True)
 class TextStyle:
@@ -38,7 +35,6 @@ class TextStyle:
     color: ColorSpec = "#000000"
     font_family: str | None = None
     text_alignment: Literal["start", "center", "end"] = "start"
-    overflow: Literal["visible", "clip", "ellipsis"] = "visible"
 
     def copy_with(self, **changes: Any) -> "TextStyle":
         return replace(self, **changes)

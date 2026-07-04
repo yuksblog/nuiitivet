@@ -80,19 +80,19 @@ class RailItem(Widget):
                 color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
                 font_size=12,
                 text_alignment="center",
-                overflow="ellipsis",
             )
         else:
             text_style = TextStyle(
                 color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
                 font_size=12,
                 text_alignment="center",
-                overflow="ellipsis",
             )
 
         self._label_widget = Text(
             label,
             style=text_style,
+            max_lines=1,
+            overflow="ellipsis",
         )
 
     @property
@@ -154,16 +154,19 @@ class _RailItemButton(InteractiveWidget):
             color=ColorRole.ON_SURFACE_VARIANT,
             font_size=14,
             text_alignment="start",
-            overflow="clip",
         )
 
         self._vertical_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=12, text_alignment="center"),
+            max_lines=1,
+            overflow="clip",
         )
         self._horizontal_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=14, text_alignment="start"),
+            max_lines=1,
+            overflow="clip",
         )
 
         # Fixed content size with animated clip window.

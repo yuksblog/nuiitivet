@@ -22,7 +22,9 @@ class TextStyle:
     - Default font size: 14pt (body medium)
     - Default color: ON_SURFACE
     - Default alignment: left
-    - Default overflow: visible
+
+    Overflow / wrapping behavior (max_lines, overflow, truncation, soft_wrap)
+    lives on the Text widget itself, not on this reusable visual style.
     """
 
     # Typography
@@ -34,7 +36,6 @@ class TextStyle:
 
     # Layout
     text_alignment: Literal["start", "center", "end"] = "start"
-    overflow: Literal["visible", "clip", "ellipsis"] = "visible"
 
     def copy_with(self, **changes) -> "TextStyle":
         """Create a new style instance with specified fields changed.
