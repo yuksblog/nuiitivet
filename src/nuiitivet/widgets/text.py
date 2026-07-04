@@ -4,7 +4,8 @@ Displays a string or State-like value and invalidates when the value changes.
 """
 
 import logging
-from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
+import math
+from typing import Any, Callable, List, Literal, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import Widget
@@ -35,10 +36,19 @@ class TextBase(Widget):
 
     Parameters:
     - label: Text string or Observable
-    - style: Text style for font size, color, alignment, overflow
+    - style: Visual style for font size, color, alignment
     - width: Explicit width sizing
     - height: Explicit height sizing
     - padding: Space around text
+    - max_lines: Maximum number of lines (``None`` = unbounded). Hard line
+      breaks (``\\n``) and soft wrapping both count toward this limit.
+    - overflow: What to do when text exceeds the layout box: ``"visible"``
+      (draw beyond bounds), ``"clip"`` (cut at the edge), or ``"ellipsis"``
+      (truncate the last visible line with ``…``).
+    - truncation: Where the ellipsis is placed — ``"tail"``, ``"head"`` or
+      ``"middle"``. Only meaningful when ``overflow="ellipsis"``.
+    - soft_wrap: Whether text wraps at soft line breaks when the width is
+      bounded. Hard breaks (``\\n``) always break regardless of this flag.
     """
 
     # instance Disposable returned from subscribing to a label Observable
@@ -46,8 +56,7 @@ class TextBase(Widget):
 
     # Paint-time cache to avoid expensive repeated shaping/measurement.
     _paint_cache_key: Optional[tuple] = None
-    _paint_cache_text: Optional[str] = None
-    _paint_cache_advance_w: Optional[float] = None
+    _paint_cache_lines: Optional[List[str]] = None
 
     def __init__(
         self,
@@ -56,6 +65,11 @@ class TextBase(Widget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        *,
+        max_lines: Optional[int] = None,
+        overflow: Literal["visible", "clip", "ellipsis"] = "visible",
+        truncation: Literal["tail", "head", "middle"] = "tail",
+        soft_wrap: bool = True,
     ):
         super().__init__(width=width, height=height, padding=padding)
         self.label = label
@@ -63,12 +77,167 @@ class TextBase(Widget):
         # Use provided style or None (resolved via property)
         self._style = style
 
+        # Overflow / wrapping behavior lives on the widget, not the style.
+        self._max_lines = self._normalize_max_lines(max_lines)
+        self._overflow: str = overflow if overflow in ("visible", "clip", "ellipsis") else "visible"
+        self._truncation: str = truncation if truncation in ("tail", "head", "middle") else "tail"
+        self._soft_wrap: bool = bool(soft_wrap)
+
         # instance attribute tracking a Disposable returned by subscribe
         self._label_unsub = None
 
         self._paint_cache_key = None
-        self._paint_cache_text = None
-        self._paint_cache_advance_w = None
+        self._paint_cache_lines = None
+
+    @staticmethod
+    def _normalize_max_lines(value: Optional[int]) -> Optional[int]:
+        """Normalize ``max_lines`` to ``None`` or an int ``>= 1``."""
+        if value is None:
+            return None
+        try:
+            v = int(value)
+        except (TypeError, ValueError):
+            return None
+        return v if v >= 1 else 1
+
+    def _wrap_paragraph(self, para: str, avail_w: float, measure: Callable[[str], float]) -> List[str]:
+        """Greedily wrap a single paragraph (no hard breaks) to ``avail_w``.
+
+        Wrapping only occurs when ``soft_wrap`` is enabled and a bounded width
+        is available. Words longer than the width are broken character-by-
+        character so they never overflow silently.
+        """
+        if not self._soft_wrap or avail_w <= 0 or measure(para) <= avail_w:
+            return [para]
+
+        lines: List[str] = []
+        cur = ""
+        for word in para.split(" "):
+            candidate = word if not cur else cur + " " + word
+            if measure(candidate) <= avail_w:
+                cur = candidate
+                continue
+            if cur:
+                lines.append(cur)
+                cur = ""
+            if measure(word) <= avail_w:
+                cur = word
+            else:
+                # Break an overly long word across lines by character.
+                chunk = ""
+                for ch in word:
+                    if chunk and measure(chunk + ch) > avail_w:
+                        lines.append(chunk)
+                        chunk = ch
+                    else:
+                        chunk += ch
+                cur = chunk
+        if cur or not lines:
+            lines.append(cur)
+        return lines
+
+    def _layout_lines(
+        self, txt: str, avail_w: float, measure: Callable[[str], float]
+    ) -> Tuple[List[str], bool]:
+        """Resolve ``txt`` into visible lines.
+
+        Normalizes line endings, honors ``\\n`` as hard breaks, applies soft
+        wrapping, then caps to ``max_lines``. Returns the lines together with a
+        flag indicating whether content was cut by the line limit.
+        """
+        norm = txt.replace("\r\n", "\n").replace("\r", "\n")
+        lines: List[str] = []
+        for para in norm.split("\n"):
+            lines.extend(self._wrap_paragraph(para, avail_w, measure))
+
+        overflowed = False
+        if self._max_lines is not None and len(lines) > self._max_lines:
+            lines = lines[: self._max_lines]
+            overflowed = True
+        return lines, overflowed
+
+    def _apply_ellipsis(
+        self, lines: List[str], overflowed: bool, avail_w: float, measure: Callable[[str], float]
+    ) -> List[str]:
+        """Truncate the last visible line with ``…`` when content overflows."""
+        if not lines or self._overflow != "ellipsis" or avail_w <= 0:
+            return lines
+        last = lines[-1]
+        if overflowed or measure(last) > avail_w:
+            lines = list(lines)
+            lines[-1] = self._truncate_line(last, avail_w, measure)
+        return lines
+
+    def _truncate_line(self, text: str, avail_w: float, measure: Callable[[str], float]) -> str:
+        """Truncate ``text`` to fit ``avail_w`` with an ellipsis at head/middle/tail."""
+        ellipsis = "…"
+        ew = measure(ellipsis)
+        if ew > avail_w:
+            return ellipsis
+        n = len(text)
+
+        if self._truncation == "head":
+            lo, hi, best = 0, n, 0
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                if ew + measure(text[n - mid:]) <= avail_w:
+                    best, lo = mid, mid + 1
+                else:
+                    hi = mid - 1
+            return (ellipsis + text[n - best:]) if best > 0 else ellipsis
+
+        if self._truncation == "middle":
+            lo, hi = 0, n
+            best_pre, best_suf = 0, 0
+            while lo <= hi:
+                k = (lo + hi) // 2
+                pre, suf = (k + 1) // 2, k // 2
+                candidate = text[:pre] + ellipsis + (text[n - suf:] if suf else "")
+                if measure(candidate) <= avail_w:
+                    best_pre, best_suf, lo = pre, suf, k + 1
+                else:
+                    hi = k - 1
+            if best_pre == 0 and best_suf == 0:
+                return ellipsis
+            return text[:best_pre] + ellipsis + (text[n - best_suf:] if best_suf else "")
+
+        # tail (default)
+        lo, hi, best = 0, n, 0
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if measure(text[:mid]) + ew <= avail_w:
+                best, lo = mid, mid + 1
+            else:
+                hi = mid - 1
+        return (text[:best] + ellipsis) if best > 0 else ellipsis
+
+    @staticmethod
+    def _line_spacing(font: Any, font_size: float) -> float:
+        """Return recommended line height, falling back when skia is absent."""
+        getter = getattr(font, "getSpacing", None)
+        if callable(getter):
+            try:
+                s = float(getter())
+                if s > 0:
+                    return s
+            except Exception:
+                pass
+        return float(font_size) * 1.25
+
+    @staticmethod
+    def _font_vmetrics(font: Any, font_size: float) -> Tuple[float, float]:
+        """Return (ascent, descent) as positive magnitudes for baseline layout."""
+        getter = getattr(font, "getMetrics", None)
+        if callable(getter):
+            try:
+                m = getter()
+                asc = float(getattr(m, "fAscent", 0.0))
+                desc = float(getattr(m, "fDescent", 0.0))
+                if asc != 0.0 or desc != 0.0:
+                    return (-asc, desc)
+            except Exception:
+                pass
+        return (float(font_size) * 0.8, float(font_size) * 0.2)
 
     @property
     def style(self) -> TextStyleProtocol:
@@ -110,14 +279,43 @@ class TextBase(Widget):
                 pkg_font_dir=None,
                 fallback_to_default=True,
             )
-            left, top, right, bottom = measure_text_ink_bounds(tf, font_size, txt)
-            measured_width = int(max(0.0, right - left))
-            measured_height = int(max(0.0, bottom - top))
 
+            # Available content width for wrapping: explicit width if fixed,
+            # otherwise the constraint handed down by the parent (P0-C). ``0``
+            # means unbounded, so soft wrapping stays off.
+            l, t, r, b = self.padding
+            if w_dim.kind == "fixed":
+                avail_w = float(w_dim.value)
+            elif max_width is not None:
+                avail_w = max(0.0, float(max_width) - float(l) - float(r))
+            else:
+                avail_w = 0.0
+
+            def measure_w(s: str) -> float:
+                return float(measure_text_width(tf, font_size, str(s)))
+
+            lines, _ = self._layout_lines(txt, avail_w, measure_w)
+
+            # Use advance width (the same metric paint uses for wrapping) and
+            # round up, so a Text allocated its own preferred width never wraps
+            # against itself due to an ink-vs-advance rounding gap.
+            measured_width = 0
+            for ln in lines:
+                measured_width = max(measured_width, int(math.ceil(measure_w(ln))))
             if measured_width <= 0:
                 measured_width = max(0, int(font_size * max(1, len(txt) * 0.6)))
-            if measured_height <= 0:
-                measured_height = font_size
+
+            n_lines = max(1, len(lines))
+            if n_lines == 1:
+                # Preserve prior single-line ink-based height.
+                sl, st, sr, sb = measure_text_ink_bounds(tf, font_size, lines[0] if lines else txt)
+                measured_height = int(max(0.0, sb - st))
+                if measured_height <= 0:
+                    measured_height = font_size
+            else:
+                font = make_font(tf, font_size)
+                line_h = self._line_spacing(font, font_size)
+                measured_height = int(round(line_h * n_lines))
         except Exception:
             exception_once(_logger, "text_preferred_size_measure_exc", "Text preferred_size measurement failed")
             # Fallback: approximate character width ~0.6 * font_size
@@ -149,7 +347,7 @@ class TextBase(Widget):
         return (int(total_w), int(total_h))
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
-        """Paint text with padding support (M3準拠)."""
+        """Paint text with padding, multi-line layout and overflow support."""
         # Apply padding to get content area (M3: space between UI elements)
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
@@ -160,112 +358,108 @@ class TextBase(Widget):
             pkg_font_dir=None,
             fallback_to_default=True,
         )
-        # Use font size from style
-        font = make_font(tf, self.style.font_size)
+        font_size = self.style.font_size
+        font = make_font(tf, font_size)
 
         def measure_text_w(text_value: str) -> float:
-            return float(measure_text_width(tf, self.style.font_size, str(text_value)))
+            return float(measure_text_width(tf, font_size, str(text_value)))
 
-        # Cache overflow processing and alignment width.
-        # Key must change when any factor affecting truncation/advance width changes.
+        alignment = str(self.style.text_alignment)
+        avail_w = float(cw)
+
+        # Cache the resolved line list. The key must change when any factor
+        # affecting line breaking or truncation changes.
         cache_key = (
             txt,
             int(cw),
             int(ch),
-            float(self.style.font_size),
-            str(self.style.overflow),
-            str(self.style.text_alignment),
+            float(font_size),
+            self._overflow,
+            self._truncation,
+            bool(self._soft_wrap),
+            self._max_lines if self._max_lines is not None else -1,
+            alignment,
             tuple(self.padding),
         )
-        if self._paint_cache_key == cache_key and self._paint_cache_text is not None:
-            txt = self._paint_cache_text
-            cached_advance = self._paint_cache_advance_w
+        if self._paint_cache_key == cache_key and self._paint_cache_lines is not None:
+            lines = self._paint_cache_lines
         else:
-            cached_advance = None
+            laid, overflowed = self._layout_lines(txt, avail_w, measure_text_w)
+            lines = self._apply_ellipsis(laid, overflowed, avail_w, measure_text_w)
+            self._paint_cache_key = cache_key
+            self._paint_cache_lines = lines
 
-        # Overflow handling: ellipsis requires measurement. Clip can be done via canvas clipping.
-        if self.style.overflow == "ellipsis" and cw > 0 and self._paint_cache_key != cache_key:
-            text_width = measure_text_w(txt)
-            if text_width > cw:
-                ellipsis = "…"
-                ellipsis_width = measure_text_w(ellipsis)
-
-                left, right = 0, len(txt)
-                while left < right:
-                    mid = (left + right + 1) // 2
-                    test_text = txt[:mid]
-                    test_width = measure_text_w(test_text)
-                    if test_width + ellipsis_width <= cw:
-                        left = mid
-                    else:
-                        right = mid - 1
-
-                txt = (txt[:left] + ellipsis) if left > 0 else ellipsis
-
-        tp = make_text_blob(txt, font)
-        # skia may return None for an empty or unrenderable blob (or missing backend); guard
-        # against that to avoid calling .bounds() on None.
-        if tp is None:
-            # Nothing to draw for empty/unrenderable text or missing backend
+        if not lines or font is None or canvas is None:
             return
-
-        ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, self.style.font_size, txt)
-        ink_w = max(0.0, float(ink_right) - float(ink_left))
-        ink_h = max(0.0, float(ink_bottom) - float(ink_top))
-
-        # Use advance width for center/end alignment.
-        alignment = str(self.style.text_alignment)
-        if cached_advance is not None:
-            advance_width = float(cached_advance)
-        elif alignment in ("center", "end"):
-            try:
-                advance_width = float(measure_text_w(txt))
-            except Exception:
-                advance_width = 0.0
-        else:
-            advance_width = 0.0
-
-        # Handle text alignment.
-        # Use tight ink bounds for visual alignment.
-        tx: float
-        if alignment == "start":
-            tx = float(cx) - float(ink_left)
-        elif alignment == "center":
-            tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
-        elif alignment == "end":
-            tx = float(cx) + cw - ink_w - float(ink_left)
-        else:
-            # Fallback to start
-            tx = float(cx) - float(ink_left)
-
-        # Vertical centering
-        ty: float = float(cy) + (ch - ink_h) / 2 - float(ink_top)
 
         # Resolve text color from the theme to an RGBA tuple and convert
         # to a skia color when skia is available.
         from nuiitivet.theme.theme import Theme
 
         rgba = resolve_color_to_rgba(self.style.color, default="#000000", theme=Theme.of(self))
-        paint_color = rgba_to_skia_color(rgba)
+        paint = make_paint(color=rgba_to_skia_color(rgba), style="fill", aa=True)
+        if paint is None:
+            return
 
-        paint = make_paint(color=paint_color, style="fill", aa=True)
-        if paint is not None and canvas is not None:
-            # Apply clipping if overflow is "clip"
-            if self.style.overflow == "clip":
-                canvas.save()
-                canvas.clipRect((cx, cy, cx + cw, cy + ch))
-                canvas.drawTextBlob(tp, tx, ty, paint)
-                canvas.restore()
-            else:
-                canvas.drawTextBlob(tp, tx, ty, paint)
+        clip = self._overflow == "clip"
+        if clip:
+            canvas.save()
+            canvas.clipRect((cx, cy, cx + cw, cy + ch))
 
-        # Update cache for stable frames.
-        self._paint_cache_key = cache_key
-        self._paint_cache_text = txt
-        if alignment in ("center", "end"):
-            self._paint_cache_advance_w = float(advance_width)
+        if len(lines) == 1:
+            self._paint_single_line(canvas, font, tf, font_size, lines[0], cx, cy, cw, ch, alignment, paint)
         else:
-            self._paint_cache_advance_w = None
+            self._paint_multi_line(canvas, font, tf, font_size, lines, cx, cy, cw, ch, alignment, paint)
+
+        if clip:
+            canvas.restore()
+
+    def _paint_single_line(
+        self, canvas, font, tf, font_size, text, cx, cy, cw, ch, alignment, paint
+    ) -> None:
+        """Draw one line using tight ink bounds for centering (parity path)."""
+        tp = make_text_blob(text, font)
+        if tp is None:
+            return
+        ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, font_size, text)
+        ink_w = max(0.0, float(ink_right) - float(ink_left))
+        ink_h = max(0.0, float(ink_bottom) - float(ink_top))
+
+        if alignment == "center":
+            tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
+        elif alignment == "end":
+            tx = float(cx) + cw - ink_w - float(ink_left)
+        else:
+            tx = float(cx) - float(ink_left)
+        ty = float(cy) + (ch - ink_h) / 2 - float(ink_top)
+        canvas.drawTextBlob(tp, tx, ty, paint)
+
+    def _paint_multi_line(
+        self, canvas, font, tf, font_size, lines, cx, cy, cw, ch, alignment, paint
+    ) -> None:
+        """Draw stacked lines on consistent baselines derived from font metrics."""
+        line_h = self._line_spacing(font, font_size)
+        ascent, descent = self._font_vmetrics(font, font_size)
+        n = len(lines)
+        block_h = line_h * n
+        top = float(cy) + (ch - block_h) / 2.0
+        # Vertically center the glyph box within each line slot.
+        baseline_offset = (line_h - (ascent + descent)) / 2.0 + ascent
+
+        for i, text in enumerate(lines):
+            tp = make_text_blob(text, font)
+            if tp is None:
+                continue
+            ink_left, _t, ink_right, _b = measure_text_ink_bounds(tf, font_size, text)
+            ink_w = max(0.0, float(ink_right) - float(ink_left))
+            if alignment == "center":
+                tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
+            elif alignment == "end":
+                tx = float(cx) + cw - ink_w - float(ink_left)
+            else:
+                tx = float(cx) - float(ink_left)
+            ty = top + i * line_h + baseline_offset
+            canvas.drawTextBlob(tp, tx, ty, paint)
 
     def _resolve_label(self) -> str:
         lbl = self.label
@@ -287,8 +481,7 @@ class TextBase(Widget):
             def _cb(*_args, **_kwargs):
                 try:
                     self._paint_cache_key = None
-                    self._paint_cache_text = None
-                    self._paint_cache_advance_w = None
+                    self._paint_cache_lines = None
                     # Label changes affect measured width/height, so request
                     # layout when possible and always schedule a redraw.
                     if self.needs_layout:
@@ -324,5 +517,4 @@ class TextBase(Widget):
             self._label_unsub = None
 
         self._paint_cache_key = None
-        self._paint_cache_text = None
-        self._paint_cache_advance_w = None
+        self._paint_cache_lines = None

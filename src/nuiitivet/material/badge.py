@@ -97,8 +97,9 @@ class LargeBadge(Box):
                 color=effective_style.content_color,
                 font_size=effective_style.font_size,
                 text_alignment="center",
-                overflow="clip",
             ),
+            max_lines=1,
+            overflow="clip",
         )
 
         super().__init__(

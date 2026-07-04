@@ -5,7 +5,7 @@ Provides a Material-decorated Text that defaults to the current Material theme.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Literal, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.observable import ReadOnlyObservableProtocol
@@ -30,6 +30,10 @@ class Text(TextBase):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional["TextStyle"] = None,
+        max_lines: Optional[int] = None,
+        overflow: Literal["visible", "clip", "ellipsis"] = "visible",
+        truncation: Literal["tail", "head", "middle"] = "tail",
+        soft_wrap: bool = True,
     ):
         """Initialize Material Text widget.
 
@@ -39,6 +43,10 @@ class Text(TextBase):
             height: Height specification.
             padding: Padding around the text.
             style: Custom Material TextStyle.
+            max_lines: Maximum number of lines (``None`` = unbounded).
+            overflow: Overflow handling: ``"visible"``, ``"clip"`` or ``"ellipsis"``.
+            truncation: Ellipsis position: ``"tail"``, ``"head"`` or ``"middle"``.
+            soft_wrap: Whether to wrap at soft line breaks when width is bounded.
         """
         from nuiitivet.material.styles.text_style import TextStyle
 
@@ -51,6 +59,10 @@ class Text(TextBase):
             width=width,
             height=height,
             padding=padding,
+            max_lines=max_lines,
+            overflow=overflow,
+            truncation=truncation,
+            soft_wrap=soft_wrap,
         )
 
     @property

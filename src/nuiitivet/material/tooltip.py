@@ -61,8 +61,9 @@ class Tooltip(ComposableWidget):
             style=TextStyle(
                 font_size=style.text_size,
                 color=style.content_color,
-                overflow="ellipsis",
             ),
+            max_lines=1,
+            overflow="ellipsis",
         )
         content_height = self.height_sizing if self.height_sizing.kind == "fixed" else style.min_height
         return Box(
