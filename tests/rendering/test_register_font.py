@@ -139,7 +139,7 @@ class TestGetTypefaceWithRegistry:
 
         register_font(str(font_path), "CachedFont")
 
-        key = (None, ("CachedFont",), None, True)
+        key = (None, ("CachedFont",), None, True, 400)
         assert key not in _TYPEFACE_CACHE
 
         get_typeface(family_candidates=("CachedFont",))
