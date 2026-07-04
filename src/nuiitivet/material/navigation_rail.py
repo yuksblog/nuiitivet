@@ -17,6 +17,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
 from nuiitivet.theme.types import ColorSpec
@@ -125,22 +126,17 @@ class RailItem(Widget):
         icon_size = eff_style.icon_size
         self._icon_widget = Icon(icon, size=icon_size, style=IconStyle(color=icon_color))
 
+        label_color = eff_style.label_color or ColorRole.ON_SURFACE_VARIANT
         if eff_style.label_text_style is not None:
-            text_style = eff_style.label_text_style.copy_with(
-                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
-                font_size=12,
-                text_alignment="center",
-            )
+            text_style = eff_style.label_text_style.copy_with(color=label_color)
         else:
-            text_style = TextStyle(
-                color=eff_style.label_color or ColorRole.ON_SURFACE_VARIANT,
-                font_size=12,
-                text_alignment="center",
-            )
+            text_style = TextStyle(color=label_color)
 
         self._label_widget = Text(
             label,
             style=text_style,
+            type_scale=TypeScale.LABEL_MEDIUM,
+            alignment="center",
             width=Sizing.fixed(eff_style.container_width_collapsed),
             max_lines=1,
             overflow="ellipsis",
@@ -207,8 +203,6 @@ class _RailItemButton(InteractiveWidget):
 
         base_label_style = eff_style.label_text_style or TextStyle(
             color=ColorRole.ON_SURFACE_VARIANT,
-            font_size=14,
-            text_alignment="start",
         )
 
         # Inset the collapsed label so long labels never touch the rail edges.
@@ -223,7 +217,9 @@ class _RailItemButton(InteractiveWidget):
 
         self._vertical_label = Text(
             rail_item.label_spec,
-            style=base_label_style.copy_with(font_size=12, text_alignment="center"),
+            style=base_label_style,
+            type_scale=TypeScale.LABEL_MEDIUM,
+            alignment="center",
             width=Sizing.fixed(collapsed_label_width),
             max_lines=1,
             overflow="ellipsis",
@@ -233,7 +229,9 @@ class _RailItemButton(InteractiveWidget):
         )
         self._horizontal_label = Text(
             rail_item.label_spec,
-            style=base_label_style.copy_with(font_size=14, text_alignment="start"),
+            style=base_label_style,
+            type_scale=TypeScale.LABEL_LARGE,
+            alignment="start",
             width=Sizing.fixed(expanded_label_width),
             max_lines=1,
             overflow="ellipsis",
@@ -373,12 +371,12 @@ class _RailItemButton(InteractiveWidget):
 
         if isinstance(self._vertical_label, Text):
             current_style = getattr(self._vertical_label, "_style", None) or TextStyle()
-            self._vertical_label._style = current_style.copy_with(color=label_color, text_alignment="center")
+            self._vertical_label._style = current_style.copy_with(color=label_color)
             self._vertical_label.invalidate()
 
         if isinstance(self._horizontal_label, Text):
             current_style = getattr(self._horizontal_label, "_style", None) or TextStyle()
-            self._horizontal_label._style = current_style.copy_with(color=label_color, text_alignment="start")
+            self._horizontal_label._style = current_style.copy_with(color=label_color)
             self._horizontal_label.invalidate()
 
         self._indicator_color = indicator_color

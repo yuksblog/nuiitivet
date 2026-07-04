@@ -36,7 +36,7 @@ A dimension is decided **per axis**, using one binary test:
 * **Enforcement strength = "API curation only".** Public constructor params are curated by the rule above. Reaching into the inherited `width_sizing` / `height_sizing` of the base `WidgetKernel` still works as an unsupported **escape hatch**. We do **not** add clamping/ignore logic — this keeps the *No Runtime Enforcement* stance intact and costs nothing.
 * **Semantic naming is a feature.** `size` / `length` / `width` communicate *how* each axis is meant to vary, instead of a generic `width`/`height` everywhere.
 * **Icon stays variable.** MD3 defines multiple optical icon sizes (20/24/40/48dp), so the icon dimension is not MD3-fixed → `Icon(size=…)` remains a numeric `SizingLike` on the constructor.
-* **Coupling Icon size to Text type-scale is out of scope** (a separate ambient-theme concern; must not be folded into `Icon.size`).
+* **Coupling Icon size to Text type-scale is out of scope** and was resolved *against* an ambient mechanism — see [TYPOGRAPHY.md](TYPOGRAPHY.md) §2. `Icon` exposes no type-scale param and keeps its numeric `size`; composite widgets pick optical sizes internally.
 
 ### Resulting Classification
 

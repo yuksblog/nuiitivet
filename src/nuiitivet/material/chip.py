@@ -13,6 +13,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
@@ -25,7 +26,12 @@ def _chip_text(
     label: str | ReadOnlyObservableProtocol[str],
     color: ColorSpec,
 ) -> Text:
-    return Text(label, style=TextStyle(font_size=14, color=color, text_alignment="center"))
+    return Text(
+        label,
+        style=TextStyle(color=color),
+        type_scale=TypeScale.LABEL_LARGE,
+        alignment="center",
+    )
 
 
 def _chip_icon(

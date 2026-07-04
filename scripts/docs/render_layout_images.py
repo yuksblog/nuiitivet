@@ -75,7 +75,6 @@ SAMPLES = [
     ("samples/modifier_transform/opacity.py", "modifier_transform_opacity.png"),
     ("samples/modifier_transform/rotate_scale.py", "modifier_transform_rotate_scale.png"),
     ("samples/modifier_transform/translate.py", "modifier_transform_translate.png"),
-    ("samples/modifier_others/scrollable.py", "modifier_others_scrollable.png"),
     ("samples/modifier_others/will_pop.py", "modifier_others_will_pop.png"),
     ("samples/modifier_others/stick.py", "modifier_others_stick.png"),
     ("samples/modifier_others/visible_static.py", "modifier_others_visible_static.png"),

@@ -16,6 +16,7 @@ from nuiitivet.theme.plain_theme import PlainColorRole
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -40,9 +41,9 @@ class PlainDialog(ComposableWidget):
                         Text(
                             self.intent.title,
                             style=TextStyle(
-                                font_size=20,
                                 color=PlainColorRole.ON_SURFACE,
                             ),
+                            type_scale=TypeScaleToken.from_size(20),
                         ),
                         Text(
                             self.intent.message,

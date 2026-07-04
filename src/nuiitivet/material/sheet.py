@@ -11,6 +11,7 @@ from nuiitivet.material.buttons import IconButton
 from nuiitivet.material.divider import VerticalDivider
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle, StandardSideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
@@ -136,7 +137,8 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
                 Box(
                     Text(
                         self._headline,
-                        style=TextStyle(font_size=22, color=ColorRole.ON_SURFACE_VARIANT),
+                        style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
+                        type_scale=TypeScaleToken.from_size(22),
                     ),
                     width="100%",
                     padding=(8, 0, 8, 0),
@@ -230,7 +232,8 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
                 Box(
                     Text(
                         self._headline,
-                        style=TextStyle(font_size=22, color=ColorRole.ON_SURFACE_VARIANT),
+                        style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
+                        type_scale=TypeScaleToken.from_size(22),
                     ),
                     width="100%",
                     padding=(8, 0, 8, 0),
@@ -345,7 +348,8 @@ class StandardSideSheet(ComposableWidget):
                     Box(
                         Text(
                             self._headline,
-                            style=TextStyle(font_size=22, color=ColorRole.ON_SURFACE_VARIANT),
+                            style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
+                            type_scale=TypeScaleToken.from_size(22),
                         ),
                         width=Sizing.flex(1),
                         padding=(8, 0, 8, 0),

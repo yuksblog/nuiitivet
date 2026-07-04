@@ -37,6 +37,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.divider import HorizontalDivider
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
@@ -933,9 +934,9 @@ class _MonthYearHeader(ComposableWidget):
                 return Text(
                     text,
                     style=TextStyle(
-                        font_size=int(s.menu_button_font_size),
                         color=disabled_text_color if dimmed else s.menu_button_text,
                     ),
+                    type_scale=TypeScaleToken.from_size(int(s.menu_button_font_size)),
                 )
 
             def _dropdown(
@@ -1013,9 +1014,9 @@ class _MonthYearHeader(ComposableWidget):
                     Text(
                         f"{month_name} {self._year}",
                         style=TextStyle(
-                            font_size=int(s.menu_button_font_size),
                             color=s.menu_button_text,
                         ),
+                        type_scale=TypeScaleToken.from_size(int(s.menu_button_font_size)),
                     ),
                     IconButton(arrow_icon, on_click=self._on_toggle_year_picker, style=dropdown_style),
                 ],
@@ -1132,11 +1133,9 @@ class _CalendarGrid(ComposableWidget):
                     alignment="center",
                     child=Text(
                         label,
-                        style=TextStyle(
-                            font_size=style.date_font_size,
-                            color=style.weekday_text,
-                            text_alignment="center",
-                        ),
+                        style=TextStyle(color=style.weekday_text),
+                        type_scale=TypeScaleToken.from_size(style.date_font_size),
+                        alignment="center",
                     ),
                 )
             )
@@ -1588,18 +1587,18 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
                     Text(
                         self._supporting_text,
                         style=TextStyle(
-                            font_size=int(style.header_supporting_text_font_size),
                             color=style.header_supporting_text_color,
                         ),
+                        type_scale=TypeScaleToken.from_size(int(style.header_supporting_text_font_size)),
                     ),
                     Row(
                         [
                             Text(
                                 date_str,
                                 style=TextStyle(
-                                    font_size=int(style.header_headline_font_size),
                                     color=style.header_headline_color,
                                 ),
+                                type_scale=TypeScaleToken.from_size(int(style.header_headline_font_size)),
                             ),
                             Icon("edit", size=24),
                         ],
@@ -1857,18 +1856,18 @@ class ModalDateRangePicker(
                     Text(
                         self._supporting_text,
                         style=TextStyle(
-                            font_size=int(style.header_supporting_text_font_size),
                             color=style.header_supporting_text_color,
                         ),
+                        type_scale=TypeScaleToken.from_size(int(style.header_supporting_text_font_size)),
                     ),
                     Row(
                         [
                             Text(
                                 date_str,
                                 style=TextStyle(
-                                    font_size=int(style.range_headline_font_size),
                                     color=style.header_headline_color,
                                 ),
+                                type_scale=TypeScaleToken.from_size(int(style.range_headline_font_size)),
                             ),
                             Icon("edit", size=24),
                         ],
@@ -2138,9 +2137,9 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
                         child=Text(
                             self._supporting_text,
                             style=TextStyle(
-                                font_size=int(style.header_supporting_text_font_size),
                                 color=style.header_supporting_text_color,
                             ),
+                            type_scale=TypeScaleToken.from_size(int(style.header_supporting_text_font_size)),
                         ),
                     ),
                     Row(
@@ -2156,9 +2155,9 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
                                 child=Text(
                                     date_str,
                                     style=TextStyle(
-                                        font_size=int(style.header_headline_font_size),
                                         color=style.header_headline_color,
                                     ),
+                                    type_scale=TypeScaleToken.from_size(int(style.header_headline_font_size)),
                                 ),
                             ),
                             Icon("calendar_today", size=24),

@@ -43,6 +43,7 @@ from nuiitivet.material.styles.progress_indicator_style import (
 )
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.modifiers import background, clip, corner_radius, rotate, scale, shadow
 from nuiitivet.observable import runtime as observable_runtime
@@ -51,18 +52,19 @@ from nuiitivet.runtime.app import App
 from nuiitivet.runtime.intents import CloseWindowIntent, MinimizeWindowIntent
 
 # ---------------------------- Typography presets -------------------------
-# Small wrappers around ``TextStyle`` to keep the build code dense and
-# expressive. Sizes loosely follow Material 3 type scale roles.
+# Type-scale tokens supply typography (size). Colour lives on TextStyle.
+# Sizes loosely follow Material 3 type scale roles.
 
-DISPLAY = TextStyle(font_size=36)
-HEADLINE = TextStyle(font_size=24)
-TITLE_LG = TextStyle(font_size=20)
-TITLE_MD = TextStyle(font_size=16)
-LABEL = TextStyle(font_size=12)
-BODY_LG = TextStyle(font_size=16)
-BODY_MD = TextStyle(font_size=14)
-BODY_SM = TextStyle(font_size=12)
-TITLE_BAR_APP = TextStyle(font_size=14, color=ColorRole.ON_PRIMARY_CONTAINER)
+DISPLAY = TypeScaleToken.from_size(36)
+HEADLINE = TypeScaleToken.from_size(24)
+TITLE_LG = TypeScaleToken.from_size(20)
+TITLE_MD = TypeScaleToken.from_size(16)
+LABEL = TypeScaleToken.from_size(12)
+BODY_LG = TypeScaleToken.from_size(16)
+BODY_MD = TypeScaleToken.from_size(14)
+BODY_SM = TypeScaleToken.from_size(12)
+TITLE_BAR_APP_SCALE = TypeScaleToken.from_size(14)
+TITLE_BAR_APP = TextStyle(color=ColorRole.ON_PRIMARY_CONTAINER)
 
 
 # ------------------------------ Title bar --------------------------------
@@ -79,7 +81,7 @@ class PulseTitleBar(nv.ComposableWidget):
                     size=16,
                     style=IconStyle(color=ColorRole.ON_PRIMARY_CONTAINER),
                 ),
-                md.Text("Pulse", style=TITLE_BAR_APP),
+                md.Text("Pulse", style=TITLE_BAR_APP, type_scale=TITLE_BAR_APP_SCALE),
             ],
             gap=6,
             cross_alignment="center",
@@ -219,8 +221,8 @@ def _track_card(title: str, artist: str, accent: str) -> nv.Widget:
                 _accent_tile(accent, size=64),
                 nv.Column(
                     [
-                        md.Text(title, style=TITLE_MD),
-                        md.Text(artist, style=BODY_MD),
+                        md.Text(title, type_scale=TITLE_MD),
+                        md.Text(artist, type_scale=BODY_MD),
                     ],
                     gap=4,
                     cross_alignment="start",
@@ -341,8 +343,8 @@ class HeroPanel(nv.ComposableWidget):
                 ),
                 nv.Row(
                     [
-                        md.Text("1:42", style=BODY_SM),
-                        md.Text("4:08", style=BODY_SM),
+                        md.Text("1:42", type_scale=BODY_SM),
+                        md.Text("4:08", type_scale=BODY_SM),
                     ],
                     main_alignment="space-between",
                     width=nv.Sizing.flex(1),
@@ -355,9 +357,9 @@ class HeroPanel(nv.ComposableWidget):
 
         text_block = nv.Column(
             [
-                md.Text("NOW PLAYING", style=LABEL),
-                md.Text("Midnight Drive", style=HEADLINE),
-                md.Text("Aurora Lights · 2026", style=BODY_LG),
+                md.Text("NOW PLAYING", type_scale=LABEL),
+                md.Text("Midnight Drive", type_scale=HEADLINE),
+                md.Text("Aurora Lights · 2026", type_scale=BODY_LG),
                 nv.Container(height=8),
                 nv.Row(
                     [
@@ -429,7 +431,7 @@ def _home_section(hero: HeroPanel) -> nv.Widget:
             nv.Container(height=8),
             nv.Row(
                 [
-                    md.Text("Up Next", style=TITLE_LG),
+                    md.Text("Up Next", type_scale=TITLE_LG),
                     md.AssistChip("See all", leading_icon="arrow_forward"),
                 ],
                 main_alignment="space-between",
@@ -460,8 +462,8 @@ def _grid_section(swatches: List[str]) -> nv.Widget:
                         nv.Column(
                             [
                                 _accent_tile(c, size=140),
-                                md.Text(f"Mix #{i + 1:02d}", style=TITLE_MD),
-                                md.Text("12 tracks · 48 min", style=BODY_SM),
+                                md.Text(f"Mix #{i + 1:02d}", type_scale=TITLE_MD),
+                                md.Text("12 tracks · 48 min", type_scale=BODY_SM),
                             ],
                             gap=6,
                             padding=12,
@@ -494,8 +496,8 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
         nv.Column(
             [
                 cover,
-                md.Text(title, style=TITLE_LG),
-                md.Text(meta, style=BODY_SM),
+                md.Text(title, type_scale=TITLE_LG),
+                md.Text(meta, type_scale=BODY_SM),
                 nv.Container(height=2),
                 nv.Row(
                     [
@@ -518,7 +520,7 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
 def _artist_avatar(name: str, color: str) -> nv.Widget:
     avatar = _gradient_box(color, width=72, height=72, radius=36, bubble_dim=130)
     return nv.Column(
-        [avatar, md.Text(name, style=BODY_SM)],
+        [avatar, md.Text(name, type_scale=BODY_SM)],
         gap=6,
         cross_alignment="center",
     )
@@ -532,7 +534,7 @@ def _library_section() -> nv.Widget:
     """
     return nv.Column(
         [
-            md.Text("Top Mixes", style=TITLE_LG),
+            md.Text("Top Mixes", type_scale=TITLE_LG),
             nv.Row(
                 [_top_mix_card(t, m, c) for (t, m, c) in _TOP_MIXES],
                 gap=14,
@@ -540,7 +542,7 @@ def _library_section() -> nv.Widget:
                 width=nv.Sizing.flex(1),
             ),
             nv.Container(height=4),
-            md.Text("Artists", style=TITLE_LG),
+            md.Text("Artists", type_scale=TITLE_LG),
             nv.Row(
                 [_artist_avatar(n, c) for (n, c) in _ARTISTS],
                 gap=18,
@@ -573,10 +575,10 @@ def _settings_section() -> nv.Widget:
     playback_card = md.Card(
         nv.Column(
             [
-                md.Text("Playback", style=TITLE_LG),
+                md.Text("Playback", type_scale=TITLE_LG),
                 nv.Row(
                     [
-                        md.Text("Volume", style=TITLE_MD),
+                        md.Text("Volume", type_scale=TITLE_MD),
                         md.HorizontalSlider(
                             value=volume,
                             min_value=0.0,
@@ -592,7 +594,7 @@ def _settings_section() -> nv.Widget:
                 md.HorizontalDivider(),
                 nv.Row(
                     [
-                        md.Text("High-quality streaming", style=TITLE_MD),
+                        md.Text("High-quality streaming", type_scale=TITLE_MD),
                         md.Switch(checked=True),
                     ],
                     main_alignment="space-between",
@@ -602,7 +604,7 @@ def _settings_section() -> nv.Widget:
                 md.HorizontalDivider(),
                 nv.Row(
                     [
-                        md.Text("Crossfade", style=TITLE_MD),
+                        md.Text("Crossfade", type_scale=TITLE_MD),
                         md.Switch(checked=True),
                     ],
                     main_alignment="space-between",
@@ -622,7 +624,7 @@ def _settings_section() -> nv.Widget:
     theme_card = md.Card(
         nv.Column(
             [
-                md.Text("Theme", style=TITLE_LG),
+                md.Text("Theme", type_scale=TITLE_LG),
                 ConnectedButtonGroup(
                     items=[
                         GroupButton("Light", icon="light_mode"),
@@ -652,7 +654,7 @@ def _settings_section() -> nv.Widget:
                         max_value=1.0,
                         height=nv.Sizing.fixed(110),
                     ),
-                    md.Text(label, style=BODY_SM),
+                    md.Text(label, type_scale=BODY_SM),
                 ],
                 gap=6,
                 cross_alignment="center",
@@ -661,7 +663,7 @@ def _settings_section() -> nv.Widget:
     equalizer_card = md.Card(
         nv.Column(
             [
-                md.Text("Equalizer", style=TITLE_LG),
+                md.Text("Equalizer", type_scale=TITLE_LG),
                 nv.Row(
                     eq_columns,
                     gap=24,
@@ -798,8 +800,8 @@ class PulseApp(nv.ComposableWidget):
         header = nv.Container(
             child=nv.Column(
                 [
-                    md.Text(title_text, style=HEADLINE),
-                    md.Text(subtitle_text, style=BODY_MD),
+                    md.Text(title_text, type_scale=HEADLINE),
+                    md.Text(subtitle_text, type_scale=BODY_MD),
                 ],
                 gap=2,
                 cross_alignment="start",

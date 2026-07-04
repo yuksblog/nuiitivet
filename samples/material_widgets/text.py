@@ -10,6 +10,7 @@ from __future__ import annotations
 from nuiitivet.material import App, Text
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.rendering.sizing import Sizing
@@ -23,8 +24,9 @@ SENTENCE = (
 )
 PATH = "/Users/alice/projects/nuiitivet/src/material/text.py"
 
-_BODY = TextStyle(font_size=15)
-_CAPTION = TextStyle(font_size=11, color=ColorRole.ON_SURFACE_VARIANT)
+_BODY = TypeScaleToken.from_size(15)
+_CAPTION_SCALE = TypeScaleToken.from_size(11)
+_CAPTION = TextStyle(color=ColorRole.ON_SURFACE_VARIANT)
 
 
 def _demo(caption: str, demo: Text) -> Column:
@@ -33,7 +35,7 @@ def _demo(caption: str, demo: Text) -> Column:
         gap=4,
         cross_alignment="start",
         children=[
-            Text(caption, style=_CAPTION),
+            Text(caption, style=_CAPTION, type_scale=_CAPTION_SCALE),
             # Indent the example so the caption reads as its heading.
             Container(padding=(16, 0, 0, 0), child=demo),
         ],
@@ -50,14 +52,14 @@ def main(png_path: str = "") -> None:
                 # Hard line breaks: \n always breaks, regardless of width.
                 _demo(
                     "Hard line breaks (\\n)",
-                    Text("First line\nSecond line\nThird line", style=_BODY),
+                    Text("First line\nSecond line\nThird line", type_scale=_BODY),
                 ),
                 # Soft wrapping capped to 2 lines, then an ellipsis.
                 _demo(
                     "soft_wrap + max_lines=2 + ellipsis",
                     Text(
                         SENTENCE,
-                        style=_BODY,
+                        type_scale=_BODY,
                         width=Sizing.fixed(DEMO_WIDTH),
                         max_lines=2,
                         overflow="ellipsis",
@@ -68,7 +70,7 @@ def main(png_path: str = "") -> None:
                     "overflow=clip (max_lines=1)",
                     Text(
                         SENTENCE,
-                        style=_BODY,
+                        type_scale=_BODY,
                         width=Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="clip",
@@ -79,7 +81,7 @@ def main(png_path: str = "") -> None:
                     "overflow=ellipsis, truncation=tail",
                     Text(
                         SENTENCE,
-                        style=_BODY,
+                        type_scale=_BODY,
                         width=Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",
@@ -91,7 +93,7 @@ def main(png_path: str = "") -> None:
                     "truncation=middle",
                     Text(
                         PATH,
-                        style=_BODY,
+                        type_scale=_BODY,
                         width=Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",
@@ -103,7 +105,7 @@ def main(png_path: str = "") -> None:
                     "truncation=head",
                     Text(
                         PATH,
-                        style=_BODY,
+                        type_scale=_BODY,
                         width=Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",

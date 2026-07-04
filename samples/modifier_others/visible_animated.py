@@ -5,7 +5,7 @@ from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern, ScalePattern
 from nuiitivet.material import Card, CardStyle
 from nuiitivet.modifiers import visible
-from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.observable import Observable
 from nuiitivet.widgeting.widget import ComposableWidget
 
@@ -18,7 +18,7 @@ _FADE_SCALE = TransitionDefinition(
 
 def _panel(label: str) -> nv.Widget:
     return Card(
-        child=md.Text(label, style=TextStyle(font_size=14)),
+        child=md.Text(label, type_scale=TypeScaleToken.from_size(14)),
         padding=16,
         width=220,
         style=CardStyle.filled(),
@@ -39,13 +39,13 @@ class _VisibleToggleDemo(ComposableWidget):
             children=[
                 md.Text(
                     "Toggle with TransitionDefinition (fade + scale)",
-                    style=TextStyle(font_size=12),
+                    type_scale=TypeScaleToken.from_size(12),
                 ),
                 Button("Toggle visibility", on_click=toggle, style=ButtonStyle.filled()),
                 _panel("Animated widget").modifier(visible(self.is_visible, transition=_FADE_SCALE)),
                 md.Text(
                     "↑ Layout space is always reserved",
-                    style=TextStyle(font_size=12),
+                    type_scale=TypeScaleToken.from_size(12),
                 ),
             ],
             gap=12,
