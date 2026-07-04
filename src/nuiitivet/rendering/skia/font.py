@@ -30,6 +30,25 @@ _USER_DEFAULT_FONT_FAMILY: Optional[str] = None
 # Registry mapping custom family names to font file paths (populated by register_font)
 _FONT_REGISTRY: dict[str, str] = {}
 
+# Default font weight (MD3 "Regular"). Used when a caller does not request one.
+_DEFAULT_WEIGHT = 400
+
+
+def _make_font_style(skia, weight: int):
+    """Build a ``skia.FontStyle`` for the given weight (upright, normal width).
+
+    Falls back to a default ``FontStyle`` when the weighted constructor is
+    unavailable for any reason.
+    """
+    try:
+        return skia.FontStyle(
+            int(weight),
+            skia.FontStyle.kNormal_Width,
+            skia.FontStyle.kUpright_Slant,
+        )
+    except Exception:
+        return skia.FontStyle()
+
 
 def set_default_font_family(family_name: Optional[str]) -> None:
     """Set the system-wide default font family.
@@ -114,8 +133,19 @@ def _register_typeface(typeface: object) -> int:
     return tf_id
 
 
+def _glyph_count(font: object, text: str) -> int:
+    """Return the number of glyphs ``text`` shapes to (falls back to char count)."""
+    text_to_glyphs = getattr(font, "textToGlyphs", None)
+    if callable(text_to_glyphs):
+        try:
+            return len(text_to_glyphs(str(text)))
+        except Exception:
+            pass
+    return len(str(text))
+
+
 @functools.lru_cache(maxsize=65536)
-def _measure_text_width_cached(typeface_id: int, size: float, text: str) -> float:
+def _measure_text_width_cached(typeface_id: int, size: float, text: str, tracking: float = 0.0) -> float:
     typeface = _TYPEFACE_ID_REGISTRY.get(typeface_id)
     if typeface is None:
         return 0.0
@@ -124,6 +154,14 @@ def _measure_text_width_cached(typeface_id: int, size: float, text: str) -> floa
     if font is None:
         return 0.0
 
+    base = _measure_text_advance(font, text)
+    if tracking:
+        base += float(tracking) * _glyph_count(font, text)
+    return base
+
+
+def _measure_text_advance(font: object, text: str) -> float:
+    """Advance width of ``text`` without tracking (uses the fastest API available)."""
     measure = getattr(font, "measureText", None)
     if callable(measure):
         try:
@@ -160,7 +198,9 @@ def _measure_text_width_cached(typeface_id: int, size: float, text: str) -> floa
 
 
 @functools.lru_cache(maxsize=65536)
-def _measure_text_ink_bounds_cached(typeface_id: int, size: float, text: str) -> Tuple[float, float, float, float]:
+def _measure_text_ink_bounds_cached(
+    typeface_id: int, size: float, text: str, tracking: float = 0.0
+) -> Tuple[float, float, float, float]:
     """Measure tight ink bounds as (left, top, right, bottom)."""
 
     typeface = _TYPEFACE_ID_REGISTRY.get(typeface_id)
@@ -198,7 +238,7 @@ def _measure_text_ink_bounds_cached(typeface_id: int, size: float, text: str) ->
                     top = min(top, top_i)
                     right = max(right, right_i)
                     bottom = max(bottom, bottom_i)
-                x += float(w)
+                x += float(w) + float(tracking)
 
             if have:
                 return (left, top, right, bottom)
@@ -206,23 +246,36 @@ def _measure_text_ink_bounds_cached(typeface_id: int, size: float, text: str) ->
             exception_once(logger, "skia_font_ink_bounds_exc", "Failed to measure text ink bounds")
 
     # Last-resort fallback: return an advance-only box.
-    adv_w = float(measure_text_width(typeface, size, text_value))
+    adv_w = float(measure_text_width(typeface, size, text_value, tracking))
     return (0.0, 0.0, adv_w, float(size))
 
 
-def measure_text_ink_bounds(typeface: Optional[object], size: float, text: str) -> Tuple[float, float, float, float]:
-    """Measure tight ink bounds as (left, top, right, bottom) with an LRU cache."""
+def measure_text_ink_bounds(
+    typeface: Optional[object], size: float, text: str, tracking: float = 0.0
+) -> Tuple[float, float, float, float]:
+    """Measure tight ink bounds as (left, top, right, bottom) with an LRU cache.
+
+    ``tracking`` (letter-spacing px) widens the inter-glyph advances so the
+    reported right edge matches the tracked paint path.
+    """
 
     if typeface is None:
         return (0.0, 0.0, 0.0, 0.0)
 
     tf_id = _register_typeface(typeface)
     size_key = round(float(size), 3)
-    return _measure_text_ink_bounds_cached(tf_id, size_key, str(text))
+    tracking_key = round(float(tracking), 3)
+    return _measure_text_ink_bounds_cached(tf_id, size_key, str(text), tracking_key)
 
 
-def measure_text_width(typeface: Optional[object], size: float, text: str) -> float:
-    """Measure advance width with a process-wide LRU cache."""
+def measure_text_width(
+    typeface: Optional[object], size: float, text: str, tracking: float = 0.0
+) -> float:
+    """Measure advance width with a process-wide LRU cache.
+
+    ``tracking`` (letter-spacing px, may be negative) is added once per glyph so
+    measurement stays consistent with the tracked paint path.
+    """
 
     if typeface is None:
         return 0.0
@@ -230,7 +283,8 @@ def measure_text_width(typeface: Optional[object], size: float, text: str) -> fl
     tf_id = _register_typeface(typeface)
     # Avoid unbounded key growth due to float representation noise.
     size_key = round(float(size), 3)
-    return _measure_text_width_cached(tf_id, size_key, str(text))
+    tracking_key = round(float(tracking), 3)
+    return _measure_text_width_cached(tf_id, size_key, str(text), tracking_key)
 
 
 def get_typeface(
@@ -238,20 +292,31 @@ def get_typeface(
     family_candidates: Optional[Tuple[str, ...]] = None,
     pkg_font_dir: Optional[str] = None,
     fallback_to_default: bool = True,
+    weight: int = _DEFAULT_WEIGHT,
 ):
-    """Load a skia.Typeface from paths or family names (cached)."""
+    """Load a skia.Typeface from paths or family names (cached).
+
+    ``weight`` (100-900) is threaded into system font matching so roles that
+    differ only in weight resolve to distinct faces. When the requested weight
+    is unavailable the platform font manager selects the nearest available one.
+    File-loaded typefaces are static faces and are returned as-is.
+    """
     skia = get_skia(raise_if_missing=False)
     if skia is None:
         return None
 
+    weight = int(weight)
     key = (
         tuple(candidate_files) if candidate_files is not None else None,
         tuple(family_candidates) if family_candidates is not None else None,
         pkg_font_dir,
         bool(fallback_to_default),
+        weight,
     )
     if key in _TYPEFACE_CACHE:
         return _TYPEFACE_CACHE[key]
+
+    font_style = _make_font_style(skia, weight)
 
     typeface = None
 
@@ -316,10 +381,10 @@ def get_typeface(
         try:
             for family in family_candidates:
                 try:
-                    typeface = font_mgr.matchFamilyStyle(family, skia.FontStyle())
+                    typeface = font_mgr.matchFamilyStyle(family, font_style)
                 except Exception:
                     try:
-                        typeface = skia.Typeface.MakeFromName(family, skia.FontStyle())
+                        typeface = skia.Typeface.MakeFromName(family, font_style)
                     except Exception:
                         exception_once(
                             logger,
@@ -337,7 +402,7 @@ def get_typeface(
     if family_candidates:
         for family in family_candidates:
             try:
-                typeface = skia.Typeface.MakeFromName(family, skia.FontStyle())
+                typeface = skia.Typeface.MakeFromName(family, font_style)
                 if typeface is not None:
                     _TYPEFACE_CACHE[key] = typeface
                     return typeface
@@ -378,7 +443,7 @@ def get_typeface(
 
             if fam_name:
                 try:
-                    typeface = font_mgr.matchFamilyStyle(fam_name, skia.FontStyle())
+                    typeface = font_mgr.matchFamilyStyle(fam_name, font_style)
                     if typeface is not None:
                         _TYPEFACE_CACHE[key] = typeface
                         return typeface
@@ -573,10 +638,30 @@ def make_font(typeface: Optional[object], size: float) -> Optional[object]:
         return None
 
 
-def make_text_blob(text: str, font) -> Optional[object]:
+def _codepoint_advances(font: object, text: str) -> Optional[list]:
+    """Per-code-point advance widths of ``text`` (``None`` if unavailable)."""
+    text_to_glyphs = getattr(font, "textToGlyphs", None)
+    get_widths = getattr(font, "getWidths", None)
+    if not (callable(text_to_glyphs) and callable(get_widths)):
+        return None
+    try:
+        glyphs = text_to_glyphs(text)
+        # MakeFromPosTextH (UTF-8) needs one x per code point; only a 1:1
+        # glyph mapping lets us position code points from glyph advances.
+        if len(glyphs) != len(text):
+            return None
+        return [float(w) for w in get_widths(glyphs)]
+    except Exception:
+        return None
+
+
+def make_text_blob(text: str, font, tracking: float = 0.0) -> Optional[object]:
     """Create a skia.TextBlob from string and font.
 
-    Returns None when skia is not installed.
+    When ``tracking`` (letter-spacing px) is non-zero and a per-code-point
+    positioned blob can be built, glyphs are laid out with the extra spacing;
+    otherwise a plain string blob is returned. Returns None when skia is not
+    installed.
     """
 
     skia = get_skia(raise_if_missing=False)
@@ -584,12 +669,32 @@ def make_text_blob(text: str, font) -> Optional[object]:
         return None
 
     tb_cls = getattr(skia, "TextBlob", None)
+    text_value = str(text)
+
+    if tracking and text_value:
+        pos_maker = getattr(tb_cls, "MakeFromPosTextH", None) if tb_cls is not None else None
+        advances = _codepoint_advances(font, text_value) if callable(pos_maker) else None
+        if callable(pos_maker) and advances is not None:
+            xpos = []
+            x = 0.0
+            for i, adv in enumerate(advances):
+                xpos.append(x + float(tracking) * i)
+                x += adv
+            try:
+                return pos_maker(text_value, xpos, 0.0, font)
+            except Exception:
+                exception_once(
+                    logger,
+                    "skia_textblob_makefrompostexth_exc",
+                    "skia.TextBlob.MakeFromPosTextH failed; falling back to string blob",
+                )
+
     maker = getattr(tb_cls, "MakeFromString", None) if tb_cls is not None else None
     if not callable(maker):
         debug_once(logger, "skia_textblob_makefromstring_missing", "skia.TextBlob.MakeFromString is missing")
         return None
     try:
-        return maker(str(text), font)
+        return maker(text_value, font)
     except Exception:
         exception_once(logger, "skia_textblob_makefromstring_exc", "skia.TextBlob.MakeFromString failed")
         return None

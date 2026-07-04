@@ -3,6 +3,9 @@
 Demonstrates the Text layout features that live on the widget itself
 (not on TextStyle): hard line breaks (``\\n``), soft wrapping, ``max_lines``,
 ``overflow`` (visible/clip/ellipsis) and ellipsis ``truncation`` position.
+
+Also shows the ``TypeScaleToken`` typography metrics that the Skia text path
+applies: ``weight`` (font thickness) and ``tracking`` (letter spacing).
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.widgeting.widget import Widget
 
 # A width narrow enough that the demo strings must wrap or truncate.
 DEMO_WIDTH = 300
@@ -28,8 +32,12 @@ _BODY = TypeScaleToken.from_size(15)
 _CAPTION_SCALE = TypeScaleToken.from_size(11)
 _CAPTION = TextStyle(color=ColorRole.ON_SURFACE_VARIANT)
 
+# Typography demo strings/tokens. Same size (24px) so only weight/tracking vary.
+TYPO_SAMPLE = "Weight & Tracking"
+_HEADING = TypeScaleToken.from_size(24)
 
-def _demo(caption: str, demo: Text) -> Column:
+
+def _demo(caption: str, demo: Widget) -> Column:
     """A captioned block: a property label with the example indented beneath it."""
     return Column(
         gap=4,
@@ -112,6 +120,30 @@ def main(png_path: str = "") -> None:
                         truncation="head",
                     ),
                 ),
+                # Weight: same 24px size, increasing font thickness.
+                _demo(
+                    "weight (300 / 400 / 700 / 900)",
+                    Column(
+                        gap=2,
+                        cross_alignment="start",
+                        children=[
+                            Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(weight=w))
+                            for w in (300, 400, 700, 900)
+                        ],
+                    ),
+                ),
+                # Tracking: same 24px size, widening letter spacing (incl. negative).
+                _demo(
+                    "tracking (-1.0 / 0.0 / 2.0 / 6.0 px)",
+                    Column(
+                        gap=2,
+                        cross_alignment="start",
+                        children=[
+                            Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(tracking=t))
+                            for t in (-1.0, 0.0, 2.0, 6.0)
+                        ],
+                    ),
+                ),
             ],
         ),
     )
@@ -119,7 +151,7 @@ def main(png_path: str = "") -> None:
         content=content,
         title="Text",
         width=420,
-        height=420,
+        height=760,
     )
     if png_path:
         app.render_to_png(png_path)

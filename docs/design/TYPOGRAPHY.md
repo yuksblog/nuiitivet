@@ -107,11 +107,12 @@ guard above continues to hold.
 `DEFAULT_TYPE_SCALE` is `BODY_MEDIUM`; a `Text` created without an explicit
 `type_scale` uses it.
 
-> **Rendering status:** `font_size` and `line_height` are wired into layout and
-> paint today. `weight` and `tracking` are defined on the token but not yet
-> applied by the Skia text path — that is deferred to a follow-up. Defining all
-> four fields now keeps the data model MD3-complete and avoids a future breaking
-> change to the token.
+> **Rendering status:** all four metrics are wired into the Skia text path.
+> `font_size` and `line_height` drive layout and paint; `weight` is threaded into
+> typeface resolution (`FontStyle`, with the platform font manager selecting the
+> nearest available weight as a graceful fallback); and `tracking` (letter
+> spacing, may be negative) is applied consistently in both width/ink
+> measurement and paint, so wrapping and ellipsis stay correct.
 
 ## 2. Why not ambient inheritance
 

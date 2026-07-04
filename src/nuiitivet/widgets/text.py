@@ -278,6 +278,8 @@ class TextBase(Widget):
         txt = self._resolve_label()
         # Typography comes from the type-scale token.
         font_size = self.type_scale.font_size
+        weight = self.type_scale.weight
+        tracking = self.type_scale.tracking
 
         try:
             tf = get_typeface(
@@ -285,6 +287,7 @@ class TextBase(Widget):
                 family_candidates=self._resolve_font_candidates(),
                 pkg_font_dir=None,
                 fallback_to_default=True,
+                weight=weight,
             )
 
             # Available content width for wrapping: explicit width if fixed,
@@ -299,7 +302,7 @@ class TextBase(Widget):
                 avail_w = 0.0
 
             def measure_w(s: str) -> float:
-                return float(measure_text_width(tf, font_size, str(s)))
+                return float(measure_text_width(tf, font_size, str(s), tracking))
 
             lines, _ = self._layout_lines(txt, avail_w, measure_w)
 
@@ -315,7 +318,7 @@ class TextBase(Widget):
             n_lines = max(1, len(lines))
             if n_lines == 1:
                 # Preserve prior single-line ink-based height.
-                sl, st, sr, sb = measure_text_ink_bounds(tf, font_size, lines[0] if lines else txt)
+                sl, st, sr, sb = measure_text_ink_bounds(tf, font_size, lines[0] if lines else txt, tracking)
                 measured_height = int(max(0.0, sb - st))
                 if measured_height <= 0:
                     measured_height = int(font_size)
@@ -358,17 +361,20 @@ class TextBase(Widget):
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
         txt = self._resolve_label()
+        font_size = self.type_scale.font_size
+        weight = self.type_scale.weight
+        tracking = self.type_scale.tracking
         tf = get_typeface(
             candidate_files=None,
             family_candidates=self._resolve_font_candidates(),
             pkg_font_dir=None,
             fallback_to_default=True,
+            weight=weight,
         )
-        font_size = self.type_scale.font_size
         font = make_font(tf, font_size)
 
         def measure_text_w(text_value: str) -> float:
-            return float(measure_text_width(tf, font_size, str(text_value)))
+            return float(measure_text_width(tf, font_size, str(text_value), tracking))
 
         alignment = self._alignment
         avail_w = float(cw)
@@ -380,6 +386,8 @@ class TextBase(Widget):
             int(cw),
             int(ch),
             float(font_size),
+            int(weight),
+            float(tracking),
             self._overflow,
             self._truncation,
             bool(self._soft_wrap),
@@ -413,21 +421,25 @@ class TextBase(Widget):
             canvas.clipRect((cx, cy, cx + cw, cy + ch))
 
         if len(lines) == 1:
-            self._paint_single_line(canvas, font, tf, font_size, lines[0], cx, cy, cw, ch, alignment, paint)
+            self._paint_single_line(
+                canvas, font, tf, font_size, tracking, lines[0], cx, cy, cw, ch, alignment, paint
+            )
         else:
-            self._paint_multi_line(canvas, font, tf, font_size, lines, cx, cy, cw, ch, alignment, paint)
+            self._paint_multi_line(
+                canvas, font, tf, font_size, tracking, lines, cx, cy, cw, ch, alignment, paint
+            )
 
         if clip:
             canvas.restore()
 
     def _paint_single_line(
-        self, canvas, font, tf, font_size, text, cx, cy, cw, ch, alignment, paint
+        self, canvas, font, tf, font_size, tracking, text, cx, cy, cw, ch, alignment, paint
     ) -> None:
         """Draw one line using tight ink bounds for centering (parity path)."""
-        tp = make_text_blob(text, font)
+        tp = make_text_blob(text, font, tracking)
         if tp is None:
             return
-        ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, font_size, text)
+        ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, font_size, text, tracking)
         ink_w = max(0.0, float(ink_right) - float(ink_left))
         ink_h = max(0.0, float(ink_bottom) - float(ink_top))
 
@@ -441,7 +453,7 @@ class TextBase(Widget):
         canvas.drawTextBlob(tp, tx, ty, paint)
 
     def _paint_multi_line(
-        self, canvas, font, tf, font_size, lines, cx, cy, cw, ch, alignment, paint
+        self, canvas, font, tf, font_size, tracking, lines, cx, cy, cw, ch, alignment, paint
     ) -> None:
         """Draw stacked lines on consistent baselines derived from font metrics."""
         line_h = float(self.type_scale.line_height)
@@ -453,10 +465,10 @@ class TextBase(Widget):
         baseline_offset = (line_h - (ascent + descent)) / 2.0 + ascent
 
         for i, text in enumerate(lines):
-            tp = make_text_blob(text, font)
+            tp = make_text_blob(text, font, tracking)
             if tp is None:
                 continue
-            ink_left, _t, ink_right, _b = measure_text_ink_bounds(tf, font_size, text)
+            ink_left, _t, ink_right, _b = measure_text_ink_bounds(tf, font_size, text, tracking)
             ink_w = max(0.0, float(ink_right) - float(ink_left))
             if alignment == "center":
                 tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
