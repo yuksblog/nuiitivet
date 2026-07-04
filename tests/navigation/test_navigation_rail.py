@@ -149,14 +149,19 @@ def test_navigation_rail_width_calculation():
 
 
 def test_navigation_rail_custom_width():
-    """NavigationRail should respect custom width."""
+    """A fixed width sets the expanded width (within the MD3 range)."""
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
     ]
-    rail = NavigationRail(children=items, width=150)
+    # 280 is inside [220, 360], so it is used verbatim as the expanded width.
+    rail = NavigationRail(children=items, expanded=True, width=280)
 
-    assert rail._calculate_width() == 150
+    assert rail._calculate_width() == 280
+    # Collapsed always returns the collapsed container width, never the custom
+    # expanded width.
+    collapsed = NavigationRail(children=items, expanded=False, width=280)
+    assert collapsed._calculate_width() == 96
 
 
 def test_navigation_rail_no_menu_button():
