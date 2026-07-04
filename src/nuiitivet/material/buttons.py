@@ -128,9 +128,15 @@ def make_child_from_label(
     # Local import to avoid circular imports at module import time.
     from nuiitivet.material.text import Text
     from nuiitivet.material.styles.text_style import TextStyle
+    from nuiitivet.theme.type_scale import TypeScaleToken
 
     # Material button label is always rendered via Material Text.
-    return Text(label, style=TextStyle(color=foreground, font_size=font_size, text_alignment="center"))
+    return Text(
+        label,
+        style=TextStyle(color=foreground),
+        type_scale=TypeScaleToken.from_size(font_size),
+        alignment="center",
+    )
 
 
 def build_button_child(

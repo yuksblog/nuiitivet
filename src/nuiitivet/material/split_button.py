@@ -606,6 +606,7 @@ class SplitButton(Box):
         from nuiitivet.material.text import Text
         from nuiitivet.material.styles.icon_style import IconStyle
         from nuiitivet.material.styles.text_style import TextStyle
+        from nuiitivet.theme.type_scale import TypeScaleToken
         from nuiitivet.layout.row import Row
 
         fg: ColorSpec = style.foreground or ColorRole.ON_SURFACE
@@ -619,7 +620,9 @@ class SplitButton(Box):
         if label is not None:
             text_w = Text(
                 label,
-                style=TextStyle(color=fg, font_size=style.label_font_size, text_alignment="center"),
+                style=TextStyle(color=fg),
+                type_scale=TypeScaleToken.from_size(style.label_font_size),
+                alignment="center",
             )
 
         if icon_w is not None and text_w is None:

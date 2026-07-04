@@ -13,6 +13,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.material import App, Text, ThemeFactory
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.modifiers import background, corner_radius
 from nuiitivet.theme.theme import Theme
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -79,8 +80,8 @@ class BrandCard(ComposableWidget):
             child=Column(
                 gap=8,
                 children=[
-                    Text(self.heading, style=TextStyle(color=accent, font_size=16)),
-                    Text(self.content, style=TextStyle(font_size=13)),
+                    Text(self.heading, style=TextStyle(color=accent), type_scale=TypeScaleToken.from_size(16)),
+                    Text(self.content, type_scale=TypeScaleToken.from_size(13)),
                 ],
             ),
         ).modifier(background(bg) | corner_radius(12))

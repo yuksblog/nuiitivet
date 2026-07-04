@@ -9,6 +9,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.modifiers.stick import StickModifier, stick
 from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 
@@ -93,11 +94,9 @@ class LargeBadge(Box):
 
         label = Text(
             text,
-            style=TextStyle(
-                color=effective_style.content_color,
-                font_size=effective_style.font_size,
-                text_alignment="center",
-            ),
+            style=TextStyle(color=effective_style.content_color),
+            type_scale=TypeScaleToken.from_size(effective_style.font_size),
+            alignment="center",
             max_lines=1,
             overflow="clip",
         )

@@ -33,9 +33,10 @@ class DialogStyle:
     max_width: float = 560.0
     padding: PaddingLike = 24  # Container internal padding
 
-    # Text Styles (Optional overrides)
-    title_text_style: Optional[TextStyle] = None  # Defaults to headlineSmall (24sp)
-    content_text_style: Optional[TextStyle] = None  # Defaults to bodyMedium (14sp)
+    # Text visual overrides (color / font_family). Typography roles are fixed
+    # by MD3: title = Headline Small, content = Body Medium.
+    title_text_style: Optional[TextStyle] = None
+    content_text_style: Optional[TextStyle] = None
 
     # Content Layout
     icon_size: int = 24

@@ -2,12 +2,12 @@ import nuiitivet as nv
 import nuiitivet.material as md
 from nuiitivet.material import Card, CardStyle
 from nuiitivet.modifiers import visible
-from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 
 
 def _panel(label: str) -> nv.Widget:
     return Card(
-        child=md.Text(label, style=TextStyle(font_size=14)),
+        child=md.Text(label, type_scale=TypeScaleToken.from_size(14)),
         padding=16,
         width=180,
         style=CardStyle.filled(),
@@ -17,11 +17,11 @@ def _panel(label: str) -> nv.Widget:
 def main(png: str = "") -> None:
     content = nv.Column(
         children=[
-            md.Text("visible(True) — always shown", style=TextStyle(font_size=12)),
+            md.Text("visible(True) — always shown", type_scale=TypeScaleToken.from_size(12)),
             _panel("Always shown").modifier(visible(True)),
-            md.Text("visible(False) — hidden, but layout space preserved", style=TextStyle(font_size=12)),
+            md.Text("visible(False) — hidden, but layout space preserved", type_scale=TypeScaleToken.from_size(12)),
             _panel("Never shown").modifier(visible(False)),
-            md.Text("Sibling below: layout space of hidden widget is reserved", style=TextStyle(font_size=12)),
+            md.Text("Sibling below: layout space of hidden widget is reserved", type_scale=TypeScaleToken.from_size(12)),
         ],
         gap=12,
         cross_alignment="start",

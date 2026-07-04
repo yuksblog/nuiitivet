@@ -21,6 +21,7 @@ from nuiitivet.rendering.skia import (
     rgba_to_skia_color,
 )
 from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.text_style import TextStyle, TextStyleProtocol
 
@@ -36,7 +37,11 @@ class TextBase(Widget):
 
     Parameters:
     - label: Text string or Observable
-    - style: Visual style for font size, color, alignment
+    - style: Visual style (color, font_family) — not typography or alignment
+    - type_scale: MD3 type-scale token supplying typography (font size, line
+      height, weight, tracking). Defaults to Body Medium.
+    - alignment: Horizontal text alignment within the box (``"start"``,
+      ``"center"``, ``"end"``).
     - width: Explicit width sizing
     - height: Explicit height sizing
     - padding: Space around text
@@ -66,6 +71,8 @@ class TextBase(Widget):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         *,
+        type_scale: Optional[TypeScaleToken] = None,
+        alignment: Literal["start", "center", "end"] = "start",
         max_lines: Optional[int] = None,
         overflow: Literal["visible", "clip", "ellipsis"] = "visible",
         truncation: Literal["tail", "head", "middle"] = "tail",
@@ -76,6 +83,12 @@ class TextBase(Widget):
 
         # Use provided style or None (resolved via property)
         self._style = style
+
+        # Typography comes from the type-scale token (not the style).
+        self._type_scale = type_scale
+
+        # Alignment is a layout/flow concern and lives on the widget.
+        self._alignment: str = alignment if alignment in ("start", "center", "end") else "start"
 
         # Overflow / wrapping behavior lives on the widget, not the style.
         self._max_lines = self._normalize_max_lines(max_lines)
@@ -212,19 +225,6 @@ class TextBase(Widget):
         return (text[:best] + ellipsis) if best > 0 else ellipsis
 
     @staticmethod
-    def _line_spacing(font: Any, font_size: float) -> float:
-        """Return recommended line height, falling back when skia is absent."""
-        getter = getattr(font, "getSpacing", None)
-        if callable(getter):
-            try:
-                s = float(getter())
-                if s > 0:
-                    return s
-            except Exception:
-                pass
-        return float(font_size) * 1.25
-
-    @staticmethod
     def _font_vmetrics(font: Any, font_size: float) -> Tuple[float, float]:
         """Return (ascent, descent) as positive magnitudes for baseline layout."""
         getter = getattr(font, "getMetrics", None)
@@ -245,6 +245,13 @@ class TextBase(Widget):
         if self._style is not None:
             return self._style
         return TextStyle()
+
+    @property
+    def type_scale(self) -> TypeScaleToken:
+        """Return the active type-scale token (defaults to Body Medium)."""
+        if self._type_scale is not None:
+            return self._type_scale
+        return DEFAULT_TYPE_SCALE
 
     def _resolve_font_candidates(self) -> Tuple[str, ...]:
         """Resolve font family candidates including Japanese fonts."""
@@ -269,8 +276,8 @@ class TextBase(Widget):
 
         # Otherwise measure the text
         txt = self._resolve_label()
-        # Use font size from style
-        font_size = self.style.font_size
+        # Typography comes from the type-scale token.
+        font_size = self.type_scale.font_size
 
         try:
             tf = get_typeface(
@@ -311,17 +318,16 @@ class TextBase(Widget):
                 sl, st, sr, sb = measure_text_ink_bounds(tf, font_size, lines[0] if lines else txt)
                 measured_height = int(max(0.0, sb - st))
                 if measured_height <= 0:
-                    measured_height = font_size
+                    measured_height = int(font_size)
             else:
-                font = make_font(tf, font_size)
-                line_h = self._line_spacing(font, font_size)
+                line_h = float(self.type_scale.line_height)
                 measured_height = int(round(line_h * n_lines))
         except Exception:
             exception_once(_logger, "text_preferred_size_measure_exc", "Text preferred_size measurement failed")
             # Fallback: approximate character width ~0.6 * font_size
             approx_char_w = int(font_size * 0.6)
             measured_width = len(txt) * approx_char_w
-            measured_height = font_size
+            measured_height = int(font_size)
 
         # Apply explicit sizing where provided
         if w_dim.kind == "fixed":
@@ -358,13 +364,13 @@ class TextBase(Widget):
             pkg_font_dir=None,
             fallback_to_default=True,
         )
-        font_size = self.style.font_size
+        font_size = self.type_scale.font_size
         font = make_font(tf, font_size)
 
         def measure_text_w(text_value: str) -> float:
             return float(measure_text_width(tf, font_size, str(text_value)))
 
-        alignment = str(self.style.text_alignment)
+        alignment = self._alignment
         avail_w = float(cw)
 
         # Cache the resolved line list. The key must change when any factor
@@ -438,7 +444,7 @@ class TextBase(Widget):
         self, canvas, font, tf, font_size, lines, cx, cy, cw, ch, alignment, paint
     ) -> None:
         """Draw stacked lines on consistent baselines derived from font metrics."""
-        line_h = self._line_spacing(font, font_size)
+        line_h = float(self.type_scale.line_height)
         ascent, descent = self._font_vmetrics(font, font_size)
         n = len(lines)
         block_h = line_h * n

@@ -16,6 +16,7 @@ from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.menu_style import MenuStyle
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
@@ -121,14 +122,14 @@ class MenuItem(InteractiveWidget):
             self._leading_icon_widget = Icon(self.leading_icon, size=style.icon_size)
             children.append(self._leading_icon_widget)
 
-        self._label_widget = Text(self.label, style=TextStyle(font_size=14))
+        self._label_widget = Text(self.label, type_scale=TypeScaleToken.from_size(14))
         children.append(self._label_widget)
         children.append(Spacer(width=Sizing.flex()))
 
         trailing = self.trailing
         if trailing is not None:
             if isinstance(trailing, str):
-                self._trailing_text_widget = Text(trailing, style=TextStyle(font_size=12))
+                self._trailing_text_widget = Text(trailing, type_scale=TypeScaleToken.from_size(12))
                 children.append(self._trailing_text_widget)
             else:
                 self._trailing_icon_widget = Icon(trailing, size=style.icon_size)
@@ -240,10 +241,10 @@ class MenuItem(InteractiveWidget):
             self._leading_icon_widget._style = IconStyle(color=icon_color)
 
         if self._label_widget is not None:
-            self._label_widget._style = TextStyle(font_size=14, color=foreground)
+            self._label_widget._style = TextStyle(color=foreground)
 
         if self._trailing_text_widget is not None:
-            self._trailing_text_widget._style = TextStyle(font_size=12, color=trailing_text_color)
+            self._trailing_text_widget._style = TextStyle(color=trailing_text_color)
 
         if self._trailing_icon_widget is not None:
             self._trailing_icon_widget._style = IconStyle(color=icon_color)

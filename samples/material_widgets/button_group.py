@@ -22,6 +22,7 @@ from nuiitivet.material.styles.button_group_style import (
 from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
@@ -49,11 +50,15 @@ _SIZE_CONTENT: dict[ButtonSize, list[tuple[str | None, str | None]]] = {
 
 
 def _section_title(text: str) -> Text:
-    return Text(text, style=TextStyle(font_size=18, color=ColorRole.ON_SURFACE))
+    return Text(text, style=TextStyle(color=ColorRole.ON_SURFACE), type_scale=TypeScaleToken.from_size(18))
 
 
 def _caption(text: str) -> Text:
-    return Text(text, style=TextStyle(font_size=12, color=ColorRole.ON_SURFACE_VARIANT))
+    return Text(
+        text,
+        style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
+        type_scale=TypeScaleToken.from_size(12),
+    )
 
 
 def _labeled(caption: str, widget) -> Column:

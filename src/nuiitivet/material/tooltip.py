@@ -10,6 +10,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
@@ -59,9 +60,9 @@ class Tooltip(ComposableWidget):
         label = Text(
             self.message,
             style=TextStyle(
-                font_size=style.text_size,
                 color=style.content_color,
             ),
+            type_scale=TypeScaleToken.from_size(style.text_size),
             max_lines=1,
             overflow="ellipsis",
         )
@@ -163,9 +164,9 @@ class RichTooltip(ComposableWidget):
                 Text(
                     self.subhead,
                     style=TextStyle(
-                        font_size=style.subhead_text_size,
                         color=style.subhead_color,
                     ),
+                    type_scale=TypeScaleToken.from_size(style.subhead_text_size),
                 )
             )
 
@@ -173,9 +174,9 @@ class RichTooltip(ComposableWidget):
             Text(
                 self.supporting_text,
                 style=TextStyle(
-                    font_size=style.supporting_text_size,
                     color=style.supporting_text_color,
                 ),
+                type_scale=TypeScaleToken.from_size(style.supporting_text_size),
             )
         )
 

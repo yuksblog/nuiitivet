@@ -9,6 +9,7 @@ from typing import Any, Literal, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.widgets.text import TextBase
 from nuiitivet.widgets.text_style import TextStyleProtocol
 
@@ -30,6 +31,8 @@ class Text(TextBase):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional["TextStyle"] = None,
+        type_scale: Optional[TypeScaleToken] = None,
+        alignment: Literal["start", "center", "end"] = "start",
         max_lines: Optional[int] = None,
         overflow: Literal["visible", "clip", "ellipsis"] = "visible",
         truncation: Literal["tail", "head", "middle"] = "tail",
@@ -42,7 +45,11 @@ class Text(TextBase):
             width: Width specification.
             height: Height specification.
             padding: Padding around the text.
-            style: Custom Material TextStyle.
+            style: Custom Material TextStyle (color, font_family).
+            type_scale: MD3 type-scale token supplying typography. Defaults to
+                Body Medium.
+            alignment: Horizontal text alignment (``"start"``, ``"center"``,
+                ``"end"``).
             max_lines: Maximum number of lines (``None`` = unbounded).
             overflow: Overflow handling: ``"visible"``, ``"clip"`` or ``"ellipsis"``.
             truncation: Ellipsis position: ``"tail"``, ``"head"`` or ``"middle"``.
@@ -59,6 +66,8 @@ class Text(TextBase):
             width=width,
             height=height,
             padding=padding,
+            type_scale=type_scale,
+            alignment=alignment,
             max_lines=max_lines,
             overflow=overflow,
             truncation=truncation,

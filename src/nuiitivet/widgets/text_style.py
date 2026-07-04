@@ -1,21 +1,27 @@
 """Core text style.
 
-Defines the minimal style surface required by the core Text widget.
+Defines the minimal *visual* style surface for the core Text widget.
+
+Layer boundaries (see ``docs/design/TYPOGRAPHY.md``):
+
+* Typographic metrics (font size / line height / weight / tracking) live on the
+  :class:`~nuiitivet.theme.type_scale.TypeScaleToken` passed as ``type_scale``.
+* Layout / flow behavior (alignment, wrapping, overflow) lives on the Text
+  widget itself.
+* :class:`TextStyle` holds only the reusable visual look orthogonal to role and
+  layout — today ``color`` and ``font_family``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
 from nuiitivet.theme.types import ColorSpec
 
 
 class TextStyleProtocol(Protocol):
-    """Structural type for Text widget styling."""
-
-    @property
-    def font_size(self) -> int: ...
+    """Structural type for Text widget visual styling."""
 
     @property
     def color(self) -> ColorSpec: ...
@@ -23,18 +29,17 @@ class TextStyleProtocol(Protocol):
     @property
     def font_family(self) -> str | None: ...
 
-    @property
-    def text_alignment(self) -> Literal["start", "center", "end"]: ...
-
 
 @dataclass(frozen=True)
 class TextStyle:
-    """Immutable style for the core Text widget."""
+    """Immutable visual style for the core Text widget.
 
-    font_size: int = 14
+    Typography comes from ``type_scale`` and alignment from the widget; this
+    style intentionally carries neither.
+    """
+
     color: ColorSpec = "#000000"
     font_family: str | None = None
-    text_alignment: Literal["start", "center", "end"] = "start"
 
     def copy_with(self, **changes: Any) -> "TextStyle":
         return replace(self, **changes)

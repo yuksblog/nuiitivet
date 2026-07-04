@@ -552,6 +552,7 @@ class GroupButton(InteractiveWidget):
         from nuiitivet.material.text import Text
         from nuiitivet.material.styles.icon_style import IconStyle
         from nuiitivet.material.styles.text_style import TextStyle
+        from nuiitivet.theme.type_scale import TypeScaleToken
         from nuiitivet.layout.row import Row
 
         # Icon / label / spacing scale with the group size (MD3 button tokens).
@@ -569,7 +570,9 @@ class GroupButton(InteractiveWidget):
         if self._label is not None:
             text_w = Text(
                 self._label,
-                style=TextStyle(color=foreground, font_size=label_size, text_alignment="center"),
+                style=TextStyle(color=foreground),
+                type_scale=TypeScaleToken.from_size(label_size),
+                alignment="center",
             )
             self._text_widget = text_w
 
@@ -609,9 +612,9 @@ class GroupButton(InteractiveWidget):
             if current is not None:
                 self._text_widget._style = current.copy_with(color=foreground)  # type: ignore[attr-defined]
             else:
-                self._text_widget._style = TextStyle(  # type: ignore[attr-defined]
-                    color=foreground, font_size=14, text_alignment="center"
-                )
+                # Typography (type_scale) and alignment already live on the
+                # widget from build time; only the color needs refreshing.
+                self._text_widget._style = TextStyle(color=foreground)  # type: ignore[attr-defined]
             self._text_widget.invalidate()
 
         if self._icon_widget_ref is not None and isinstance(self._icon_widget_ref, Icon):

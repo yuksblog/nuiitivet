@@ -4,6 +4,7 @@ import nuiitivet as nv
 from nuiitivet.runtime.app import App
 from nuiitivet.material import Text
 from nuiitivet.material.styles.text_style import TextStyle
+from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.modifiers import background
@@ -14,7 +15,7 @@ SKIP_WINDOW_FRAME = True
 def main(png_path: str = "") -> None:
     header = Row(
         children=[
-            Text("My App", style=TextStyle(color="#ffffff", font_size=14)),
+            Text("My App", style=TextStyle(color="#ffffff"), type_scale=TypeScaleToken.from_size(14)),
         ],
         cross_alignment="center",
         width="100%",

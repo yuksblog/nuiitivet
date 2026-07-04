@@ -97,7 +97,7 @@ def test_navigation_rail_layout_collapsed():
     # "Nav rail item vertical label text font size 12pt"
     # Vertical label is used in collapsed mode
     label = item_button._vertical_label
-    assert label.style.font_size == 12
+    assert label.type_scale.font_size == 12
 
     # "Nav rail item vertical icon label space 4dp"
     icon = item_button._icon_widget
@@ -129,7 +129,7 @@ def test_navigation_rail_layout_expanded():
 
     # "Nav rail item horizontal label text font size 14pt"
     h_label = item_button._horizontal_label
-    assert h_label.style.font_size == 14
+    assert h_label.type_scale.font_size == 14
 
     # "Nav rail item horizontal active indicator height 56dp"
     assert item_button._indicator_rect is not None
@@ -526,7 +526,7 @@ def test_multiword_label_fills_width_before_ellipsis():
     tf = get_typeface(family_candidates=label._resolve_font_candidates(), fallback_to_default=True)
 
     def measure(s: str) -> float:
-        return float(measure_text_width(tf, label.style.font_size, s))
+        return float(measure_text_width(tf, label.type_scale.font_size, s))
 
     width = float(label.width_sizing.value)
     lines, overflowed = label._layout_lines(label_text, width, measure)
@@ -557,7 +557,7 @@ def test_long_label_is_truncated_with_ellipsis_glyph():
     tf = get_typeface(family_candidates=label._resolve_font_candidates(), fallback_to_default=True)
 
     def measure(s: str) -> float:
-        return float(measure_text_width(tf, label.style.font_size, s))
+        return float(measure_text_width(tf, label.type_scale.font_size, s))
 
     # Sanity: the raw label really is wider than the box.
     assert measure(_LONG_LABEL) > 96

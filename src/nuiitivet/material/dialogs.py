@@ -15,6 +15,7 @@ from nuiitivet.material.styles.dialog_style import DialogStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
@@ -114,35 +115,33 @@ class BasicDialog(ComposableWidget):
             )
             children.append(Box(height=style.icon_bottom_gap))
 
-        # 2. Title
+        # 2. Title — MD3 role: Headline Small.
         if self.title is not None:
             title_style = style.title_text_style
             if title_style is None:
-                title_style = TextStyle(
-                    font_size=24, color=ColorRole.ON_SURFACE, text_alignment="center" if self.icon else "start"
-                )
+                title_style = TextStyle(color=ColorRole.ON_SURFACE)
 
             children.append(
                 Text(
                     label=self.title,
                     style=title_style,
+                    type_scale=TypeScale.HEADLINE_SMALL,
+                    alignment="center" if self.icon else "start",
                 )
             )
             children.append(Box(height=style.title_content_gap))
 
-        # 3. Content
+        # 3. Content — MD3 role: Body Medium.
         if self.message is not None:
             content_style = style.content_text_style
             if content_style is None:
-                content_style = TextStyle(
-                    font_size=14,
-                    color=ColorRole.ON_SURFACE_VARIANT,
-                )
+                content_style = TextStyle(color=ColorRole.ON_SURFACE_VARIANT)
 
             children.append(
                 Text(
                     label=self.message,
                     style=content_style,
+                    type_scale=TypeScale.BODY_MEDIUM,
                 )
             )
 
