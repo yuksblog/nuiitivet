@@ -4,7 +4,8 @@ from typing import Callable, Optional, Sequence, Tuple, Union
 import logging
 
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.rendering.sizing import SizingLike, Sizing
+from nuiitivet.common.logging_once import warning_once
+from nuiitivet.rendering.sizing import SizingLike, Sizing, parse_sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
@@ -25,6 +26,55 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEF
 from nuiitivet.modifiers.transform import rotate
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_expanded_width(
+    width: Union[SizingLike, ReadOnlyObservableProtocol, None],
+    style: NavigationRailStyle,
+) -> Tuple[float, Optional[Tuple[str, str]]]:
+    """Resolve the effective expanded rail width from the ``width`` argument.
+
+    Only a *fixed* width is interpreted as the expanded width (clamped into the
+    MD3 range ``[min, max]``). ``None`` silently falls back to the minimum
+    expanded width. Any other value (flex/auto/percent/observable) cannot be
+    interpreted as an expanded width, so the minimum is used and a warning is
+    returned so the caller can surface it.
+
+    Returns ``(effective_width, warning)`` where ``warning`` is either ``None``
+    or a ``(log_once_key, message)`` pair for :func:`warning_once`.
+    """
+    lo = style.container_width_expanded_min
+    hi = style.container_width_expanded_max
+    if width is None:
+        # No width provided: default to the minimum expanded width, silently.
+        return style.clamp_expanded_width(lo), None
+    if isinstance(width, (Sizing, int, float, str)):
+        sizing = parse_sizing(width)
+        if sizing.kind == "fixed":
+            requested = float(sizing.value)
+            effective = style.clamp_expanded_width(requested)
+            if effective != requested:
+                return effective, (
+                    f"navigation_rail_width_clamped:{requested:g}:{lo:g}:{hi:g}",
+                    f"NavigationRail width {requested:g}dp is outside the MD3 "
+                    f"expanded range [{lo:g}, {hi:g}]; clamped to {effective:g}dp. "
+                    f"Raise NavigationRailStyle.container_width_expanded_max to "
+                    f"allow wider rails.",
+                )
+            return effective, None
+        # A non-fixed sizing (flex/auto/percent) cannot be an expanded width.
+        return style.clamp_expanded_width(lo), (
+            f"navigation_rail_width_non_fixed:{sizing.kind}",
+            f"NavigationRail width is not a fixed size ({sizing.kind}); the "
+            f"expanded width defaulted to {lo:g}dp. Pass a fixed width "
+            f"(e.g. width=280) to set the expanded width.",
+        )
+    # Observable or otherwise non-interpretable width.
+    return style.clamp_expanded_width(lo), (
+        "navigation_rail_width_observable",
+        "NavigationRail width must be a fixed size to set the expanded width; "
+        f"the expanded width defaulted to {lo:g}dp.",
+    )
 
 
 class RailItem(Widget):
@@ -137,6 +187,7 @@ class _RailItemButton(InteractiveWidget):
         expand_animation: Animatable,
         label_animation: Animatable,
         rail_style: Optional[NavigationRailStyle] = None,
+        expanded_width: float = NavigationRailStyle().container_width_expanded_min,
         on_click: Optional[Callable[[], None]] = None,
     ) -> None:
         self._expand_animation = expand_animation
@@ -144,6 +195,8 @@ class _RailItemButton(InteractiveWidget):
         # Resolve effective style: item style > rail style > defaults
         eff_style = rail_item.style or rail_style or NavigationRailStyle()
         self._eff_style = eff_style
+        # Effective expanded rail width used to size the pill and label.
+        self._expanded_width = expanded_width
         self._selected = bool(selected)
         self._indicator_color: Optional[ColorSpec] = None
         self._indicator_rect: Optional[Tuple[int, int, int, int]] = None
@@ -158,10 +211,20 @@ class _RailItemButton(InteractiveWidget):
             text_alignment="start",
         )
 
+        # Inset the collapsed label so long labels never touch the rail edges.
+        # 96dp rail - 2 * 8dp = 80dp label box (M3 collapsed container width).
+        collapsed_label_width = max(
+            0.0,
+            eff_style.container_width_collapsed - 2.0 * eff_style.label_horizontal_inset,
+        )
+        # Expanded label width scales with the container so it fills the pill at
+        # any container width in the M3 expanded range (220-360dp).
+        expanded_label_width = eff_style.expanded_label_width(expanded_width)
+
         self._vertical_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=12, text_alignment="center"),
-            width=Sizing.fixed(eff_style.container_width_collapsed),
+            width=Sizing.fixed(collapsed_label_width),
             max_lines=1,
             overflow="ellipsis",
             # Single-line label: fill the width and truncate mid-word instead of
@@ -171,16 +234,19 @@ class _RailItemButton(InteractiveWidget):
         self._horizontal_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=14, text_alignment="start"),
-            width=Sizing.fixed(eff_style.horizontal_label_width),
+            width=Sizing.fixed(expanded_label_width),
             max_lines=1,
             overflow="ellipsis",
             soft_wrap=False,
         )
 
         # Fixed content size with animated clip window.
+        # Inset content box (centered in the full-width container below), which
+        # keeps the 8dp margin on each side while the outer container stays at
+        # the full rail width for layout/animation.
         self._vertical_content = Box(
             child=self._vertical_label,
-            width=Sizing.fixed(eff_style.container_width_collapsed),
+            width=Sizing.fixed(collapsed_label_width),
             height=Sizing.fixed(eff_style.label_height),
             alignment="center",
         )
@@ -194,13 +260,13 @@ class _RailItemButton(InteractiveWidget):
 
         self._horizontal_content = Box(
             child=self._horizontal_label,
-            width=Sizing.fixed(eff_style.horizontal_label_width),
+            width=Sizing.fixed(expanded_label_width),
             height=Sizing.fixed(eff_style.label_height),
             alignment="center_left",
         )
         self._horizontal_label_container = Box(
             child=self._horizontal_content,
-            width=Sizing.fixed(eff_style.horizontal_label_width),
+            width=Sizing.fixed(expanded_label_width),
             height=Sizing.fixed(eff_style.label_height),
             alignment="center_left",
         )
@@ -346,7 +412,7 @@ class _RailItemButton(InteractiveWidget):
             Rect(
                 x=margin,
                 y=0.0,
-                width=float(self._eff_style.indicator_width_expanded),
+                width=self._eff_style.expanded_indicator_width(self._expanded_width),
                 height=float(self._eff_style.item_height),
             ),
             t_layout,
@@ -393,7 +459,7 @@ class _RailItemButton(InteractiveWidget):
             Rect(
                 x=label_x_expanded,
                 y=label_y_expanded,
-                width=float(self._eff_style.horizontal_label_width),
+                width=self._eff_style.expanded_label_width(self._expanded_width),
                 height=label_height,
             ),
             t_label,
@@ -629,7 +695,8 @@ class NavigationRail(Widget):
 
     Display modes:
     - Collapsed (expanded=False): Icon above label (vertical), 96px wide
-    - Expanded (expanded=True): Icon + label (horizontal), 220px wide
+    - Expanded (expanded=True): Icon + label (horizontal), 220-360px wide
+      (the expanded width is set via the ``width`` argument; see ``__init__``)
 
     Both modes show labels. The active indicator (selection background) wraps:
     - Collapsed: Only the icon (56×32dp)
@@ -665,7 +732,13 @@ class NavigationRail(Widget):
             on_select: Callback when an item is selected.
             expanded: Whether the rail is expanded (bool or Observable).
             show_menu_button: Whether to show the menu toggle button.
-            width: Width specification.
+            width: Expanded rail width. A *fixed* value (e.g. ``280`` or
+                ``Sizing.fixed(280)``) sets the expanded width, clamped into the
+                MD3 range ``[220, 360]`` (see ``NavigationRailStyle``). The rail
+                always animates between the collapsed width and this expanded
+                width; the collapsed width is never overridden here. Any
+                non-fixed value (or ``None``) uses the minimum expanded width;
+                non-fixed values also emit a warning.
             height: Height specification.
             padding: Padding specification.
             style: Custom NavigationRailStyle.
@@ -688,21 +761,22 @@ class NavigationRail(Widget):
         self._log_instance_id = id(self)
         logger.debug("NavigationRail init id=%s", self._log_instance_id)
 
-        # Drive width via animation if not fixed
-        if width is None:
-            width = self._expand_animation.map(
-                lambda progress: Sizing.fixed(
-                    int(
-                        lerp(
-                            float(eff_style.container_width_collapsed),
-                            float(eff_style.container_width_expanded),
-                            progress,
-                        )
-                    )
-                )
+        # Resolve the expanded width from `width` (only a fixed value sets it),
+        # then always drive the outer width via the collapse animation so the
+        # rail animates 96dp <-> expanded width regardless of what was passed.
+        self._expanded_width, width_warning = _resolve_expanded_width(width, eff_style)
+        collapsed_width = float(eff_style.container_width_collapsed)
+        expanded_width = self._expanded_width
+        animated_width = self._expand_animation.map(
+            lambda progress: Sizing.fixed(
+                int(lerp(collapsed_width, expanded_width, progress))
             )
+        )
 
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=animated_width, height=height, padding=padding)
+
+        if width_warning is not None:
+            warning_once(logger, width_warning[0], width_warning[1])
 
         self._item_buttons: list[_RailItemButton] = []
 
@@ -797,6 +871,7 @@ class NavigationRail(Widget):
                 expand_animation=self._expand_animation,
                 label_animation=self._label_animation,
                 rail_style=self.style,
+                expanded_width=self._expanded_width,
                 on_click=_on_click,
             )
             item_buttons.append(button)
@@ -822,13 +897,16 @@ class NavigationRail(Widget):
         self.add_child(rail_bg)
 
     def _calculate_width(self) -> int:
-        """Calculate rail width based on expanded state."""
-        if self.width_sizing.kind == "fixed":
-            # Use explicit width if provided.
-            return int(self.width_sizing.value)
-        # M3 defaults: 96dp collapsed, 220dp expanded.
+        """Calculate rail width based on expanded state.
+
+        The outer width animates between the collapsed width and the resolved
+        expanded width (:attr:`_expanded_width`), so this returns the target for
+        the current state.
+        """
         eff_style = self.style or NavigationRailStyle()
-        return int(eff_style.container_width_expanded if self._is_expanded else eff_style.container_width_collapsed)
+        if self._is_expanded:
+            return int(self._expanded_width)
+        return int(eff_style.container_width_collapsed)
 
     def _build_menu_button(self) -> Widget:
         """Build the menu toggle button."""

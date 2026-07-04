@@ -4,8 +4,10 @@ from contextlib import contextmanager
 from typing import Callable, Generator
 
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
+from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import runtime as observable_runtime
+from nuiitivet.rendering.sizing import Sizing
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +223,82 @@ def test_horizontal_label_position_when_expanded():
     assert h == 20
 
 
+def test_expanded_widths_scale_with_fixed_width():
+    """A fixed width sets the expanded width; pill and label scale to fill it.
+
+    M3 allows the expanded rail to be 220-360dp. Passing width=360 (fixed)
+    widens the pill and label instead of leaving the right side empty, while
+    keeping the label inside the pill (16dp inner pad).
+    """
+    items = [RailItem(icon="home", label="Home")]
+    rail = NavigationRail(children=items, expanded=True, width=Sizing.fixed(360))
+    rail.layout(360, 600)
+
+    button = _get_item_button(rail)
+    assert button._indicator_rect is not None
+    ind_x, _iy, ind_w, _ih = button._indicator_rect
+    assert (ind_x, ind_w) == (20, 314)  # 360 - 20 leading - 26 trailing
+
+    assert button._horizontal_label_container.layout_rect is not None
+    lx, _ly, lw, _lh = button._horizontal_label_container.layout_rect
+    assert (lx, lw) == (68, 250)  # 314 - 2*16 pad - 24 icon - 8 gap
+
+    # Label must stay inside the pill: label right + inner pad == pill right.
+    assert (lx + lw) + NavigationRailStyle().indicator_horizontal_padding == ind_x + ind_w
+
+
+def test_expanded_width_clamped_to_max_with_warning(caplog):
+    """A fixed width above the max is clamped to the max and warns once."""
+    import logging
+
+    from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
+
+    _clear_log_once_keys_for_tests()
+    items = [RailItem(icon="home", label="Home")]
+    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+        rail = NavigationRail(children=items, expanded=True, width=Sizing.fixed(500))
+    assert rail._expanded_width == 360.0
+    assert any("clamped" in r.message for r in caplog.records)
+
+
+def test_expanded_width_defaults_to_min_without_warning(caplog):
+    """No width (None) silently uses the minimum expanded width."""
+    import logging
+
+    from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
+
+    _clear_log_once_keys_for_tests()
+    items = [RailItem(icon="home", label="Home")]
+    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+        rail = NavigationRail(children=items, expanded=True)
+    assert rail._expanded_width == 220.0
+    assert caplog.records == []
+
+
+def test_non_fixed_width_uses_min_and_warns(caplog):
+    """A non-fixed width cannot be an expanded width: use min and warn."""
+    import logging
+
+    from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
+
+    _clear_log_once_keys_for_tests()
+    items = [RailItem(icon="home", label="Home")]
+    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+        rail = NavigationRail(children=items, expanded=True, width=Sizing.flex(1))
+    assert rail._expanded_width == 220.0
+    assert any("not a fixed size" in r.message for r in caplog.records)
+
+
+def test_expanded_widths_honor_explicit_overrides():
+    """Explicit indicator/label widths are used verbatim (no auto-derivation)."""
+    style = NavigationRailStyle(
+        indicator_width_expanded=174.0,
+        horizontal_label_width=110.0,
+    )
+    assert style.expanded_indicator_width(360.0) == 174.0
+    assert style.expanded_label_width(360.0) == 110.0
+
+
 def test_vertical_label_position_when_collapsed():
     """Vertical label should be visible just below the collapsed indicator.
 
@@ -424,7 +502,8 @@ def test_rail_item_button_labels_ellipsize_within_box_width():
     button = rail._item_buttons[0]
 
     for label, expected_w in (
-        (button._vertical_label, 96),
+        # Collapsed label is inset by 8dp per side: 96 - 2 * 8 = 80.
+        (button._vertical_label, 80),
         (button._horizontal_label, 110),
     ):
         assert label._overflow == "ellipsis"
