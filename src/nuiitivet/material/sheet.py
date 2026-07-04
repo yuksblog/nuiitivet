@@ -349,7 +349,7 @@ class StandardSideSheet(ComposableWidget):
                         Text(
                             self._headline,
                             style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
-                        type_scale=TypeScaleToken.from_size(22),
+                            type_scale=TypeScaleToken.from_size(22),
                         ),
                         width=Sizing.flex(1),
                         padding=(8, 0, 8, 0),
