@@ -405,3 +405,84 @@ def test_animation_transition_expanded_to_collapsed_container_width():
 
     assert rail.width_sizing.kind == "fixed"
     assert rail.width_sizing.value == 96
+
+
+# ---------------------------------------------------------------------------
+# Long-label truncation (#276)
+# ---------------------------------------------------------------------------
+
+from nuiitivet.rendering.skia import get_typeface, measure_text_width  # noqa: E402
+
+_LONG_LABEL = "Verylongdestinationlabelname"
+
+
+def test_rail_item_button_labels_ellipsize_within_box_width():
+    """Rendered rail labels are bound to the label box width and ellipsize."""
+    items = [RailItem(icon="home", label=_LONG_LABEL)]
+    rail = NavigationRail(children=items, expanded=False)
+    rail.layout(800, 600)
+    button = rail._item_buttons[0]
+
+    for label, expected_w in (
+        (button._vertical_label, 96),
+        (button._horizontal_label, 110),
+    ):
+        assert label._overflow == "ellipsis"
+        assert label._max_lines == 1
+        # Single-line labels must not word-wrap, so truncation fills the width
+        # instead of dropping everything after the first word.
+        assert label._soft_wrap is False
+        assert label.width_sizing.kind == "fixed"
+        assert label.width_sizing.value == expected_w
+
+
+def test_multiword_label_fills_width_before_ellipsis():
+    """A multi-word label truncates mid-word (fills the box), not after word 1."""
+    label_text = "Settings preferences configuration"
+    items = [RailItem(icon="settings", label=label_text)]
+    rail = NavigationRail(children=items, expanded=False)
+    rail.layout(800, 600)
+    label = rail._item_buttons[0]._vertical_label
+
+    tf = get_typeface(family_candidates=label._resolve_font_candidates(), fallback_to_default=True)
+
+    def measure(s: str) -> float:
+        return float(measure_text_width(tf, label.style.font_size, s))
+
+    width = float(label.width_sizing.value)
+    lines, overflowed = label._layout_lines(label_text, width, measure)
+    out = label._apply_ellipsis(lines, overflowed, width, measure)[0]
+
+    assert out.endswith("…")
+    # Must keep more than just the first word ("Settings").
+    assert out.startswith("Settings ")
+    assert out != "Settings…"
+
+
+def test_rail_item_label_widget_ellipsizes():
+    """The RailItem.label_widget (exposed API) also truncates with an ellipsis."""
+    item = RailItem(icon="home", label=_LONG_LABEL)
+    label = item.label_widget
+    assert label._overflow == "ellipsis"
+    assert label.width_sizing.kind == "fixed"
+    assert label.width_sizing.value == 96
+
+
+def test_long_label_is_truncated_with_ellipsis_glyph():
+    """A label longer than the box paints a trailing ellipsis, not a hard clip."""
+    items = [RailItem(icon="home", label=_LONG_LABEL)]
+    rail = NavigationRail(children=items, expanded=False)
+    rail.layout(800, 600)
+    label = rail._item_buttons[0]._vertical_label
+
+    tf = get_typeface(family_candidates=label._resolve_font_candidates(), fallback_to_default=True)
+
+    def measure(s: str) -> float:
+        return float(measure_text_width(tf, label.style.font_size, s))
+
+    # Sanity: the raw label really is wider than the box.
+    assert measure(_LONG_LABEL) > 96
+    lines, overflowed = label._layout_lines(_LONG_LABEL, 96.0, measure)
+    out = label._apply_ellipsis(lines, overflowed, 96.0, measure)
+    assert out[-1].endswith("…")
+    assert out[-1] != _LONG_LABEL

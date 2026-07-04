@@ -91,8 +91,10 @@ class RailItem(Widget):
         self._label_widget = Text(
             label,
             style=text_style,
+            width=Sizing.fixed(eff_style.container_width_collapsed),
             max_lines=1,
             overflow="ellipsis",
+            soft_wrap=False,
         )
 
     @property
@@ -159,14 +161,20 @@ class _RailItemButton(InteractiveWidget):
         self._vertical_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=12, text_alignment="center"),
+            width=Sizing.fixed(eff_style.container_width_collapsed),
             max_lines=1,
-            overflow="clip",
+            overflow="ellipsis",
+            # Single-line label: fill the width and truncate mid-word instead of
+            # word-wrapping (which would drop everything after the first word).
+            soft_wrap=False,
         )
         self._horizontal_label = Text(
             rail_item.label_spec,
             style=base_label_style.copy_with(font_size=14, text_alignment="start"),
+            width=Sizing.fixed(eff_style.horizontal_label_width),
             max_lines=1,
-            overflow="clip",
+            overflow="ellipsis",
+            soft_wrap=False,
         )
 
         # Fixed content size with animated clip window.
