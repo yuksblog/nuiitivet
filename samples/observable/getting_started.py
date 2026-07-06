@@ -37,7 +37,13 @@ class Counter:
 
 
 class Model:
-    """Two independent instances share the same descriptor."""
+    """Class-level Observable descriptor with per-instance state.
+
+    ``value`` is defined once as a class attribute, so every instance shares the
+    same descriptor object. Each instance nonetheless holds its *own* value
+    (stored on the instance), so mutating one instance's ``value`` never affects
+    another's.
+    """
 
     value: Observable[int] = Observable(0)
 
