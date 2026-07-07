@@ -36,7 +36,8 @@ from nuiitivet.input.codes import (
 from .gpu_frame import draw_gpu_frame
 
 from nuiitivet.observable.runtime import set_clock
-from nuiitivet.common.logging_once import debug_once, exception_once
+from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
+from nuiitivet.runtime.renderer import RendererMode
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,13 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return True
 
 
-def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
-    """Run an interactive window for the given App-like object."""
+def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode = "auto") -> None:
+    """Run an interactive window for the given App-like object.
+
+    ``renderer`` selects the drawing backend: ``"auto"`` (GPU with raster
+    fallback), ``"gpu"`` (require GPU; raise on failure), or ``"cpu"`` (always
+    raster). See :class:`nuiitivet.runtime.renderer.RendererMode`.
+    """
 
     debug_keys = _env_flag("NUIITIVET_DEBUG_KEYS", default=False)
     debug_keys_filter_raw = os.environ.get("NUIITIVET_DEBUG_KEYS_FILTER", "").strip().lower()
@@ -147,14 +153,23 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     except Exception:
         exception_once(logger, "pyglet_get_chrome_exc", "Failed to determine window style from chrome")
 
-    window = pyglet.window.Window(
-        width=getattr(app, "width", 0),
-        height=getattr(app, "height", 0),
-        caption=caption,
-        style=style,
-        vsync=False,
-        resizable=getattr(app, "resizable", True),
-    )
+    try:
+        window = pyglet.window.Window(
+            width=getattr(app, "width", 0),
+            height=getattr(app, "height", 0),
+            caption=caption,
+            style=style,
+            vsync=False,
+            resizable=getattr(app, "resizable", True),
+        )
+    except Exception:
+        logger.error(
+            "Failed to create the application window. App.run() requires a display; "
+            "headless environments cannot run an interactive window and should render "
+            "offscreen via App.render_to_png() instead.",
+            exc_info=True,
+        )
+        raise
 
     # Check scale immediately and resize if needed
     try:
@@ -269,7 +284,18 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     gr_context = None
     GL = None
     skia = get_skia(raise_if_missing=False)
-    if skia is not None:
+    if renderer == "cpu":
+        # Software/raster renderer requested: skip GPU initialization entirely.
+        logger.info("renderer='cpu': using software (raster) rendering")
+    elif skia is None:
+        if renderer == "gpu":
+            raise RuntimeError("renderer='gpu' was requested but the Skia backend is unavailable.")
+        warning_once(
+            logger,
+            "pyglet_renderer_skia_unavailable",
+            "Skia unavailable; using software (raster) rendering",
+        )
+    else:
         try:
             from OpenGL import GL as _GL  # type: ignore
 
@@ -291,6 +317,19 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
                 gr_context = None
 
         gpu_enabled = gr_context is not None and GL is not None
+        if not gpu_enabled:
+            if renderer == "gpu":
+                raise RuntimeError(
+                    "renderer='gpu' was requested but the GPU backend could not be initialized "
+                    "(GrDirectContext.MakeGL failed or OpenGL is unavailable). This environment "
+                    "may lack a usable GPU or OpenGL context."
+                )
+            # renderer == "auto": degrade to software rendering.
+            warning_once(
+                logger,
+                "pyglet_renderer_auto_gpu_unavailable",
+                "GPU renderer unavailable; falling back to software (raster) rendering",
+            )
 
     def _recreate_gl_context(reason: str) -> None:
         nonlocal gr_context, gpu_enabled
@@ -663,6 +702,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
                     ok = False
                 if ok:
                     return
+                if renderer == "gpu":
+                    logger.error("renderer='gpu': GPU frame rendering failed")
+                    raise RuntimeError("renderer='gpu' was requested but GPU frame rendering failed.")
                 gpu_enabled = False
 
         if getattr(app, "_dirty", False) or getattr(app, "_last_image", None) is None:

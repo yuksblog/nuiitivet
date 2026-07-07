@@ -100,6 +100,7 @@ from nuiitivet.runtime.intents import CloseWindowIntent, MinimizeWindowIntent
 
 # Configuration
 from nuiitivet.rendering.skia.font import set_default_font_family, register_font
+from nuiitivet.runtime.renderer import RendererMode
 
 __all__: list[str] = [
     # Layout
@@ -184,4 +185,5 @@ __all__: list[str] = [
     # Configuration
     "set_default_font_family",
     "register_font",
+    "RendererMode",
 ]

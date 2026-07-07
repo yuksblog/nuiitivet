@@ -32,6 +32,7 @@ from .chrome import OSChrome, CustomChrome
 from .title_bar import WindowDragArea
 from nuiitivet.observable.protocols import Disposable, ReadOnlyObservableProtocol
 from .window import WindowSizingLike, WindowPosition, parse_window_sizing
+from .renderer import RendererMode, parse_renderer_mode
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 
@@ -1026,12 +1027,27 @@ class App:
             except Exception:
                 exception_once(logger, "app_set_draw_fps_exc", "Event loop set_draw_fps raised")
 
-    def run(self, draw_fps: Optional[float] = None):
-        """Run an interactive window using the pyglet backend."""
+    def run(self, draw_fps: Optional[float] = None, *, renderer: RendererMode = "auto"):
+        """Run an interactive window using the pyglet backend.
+
+        Args:
+            draw_fps: Optional fixed draw rate. ``None`` draws on demand.
+            renderer: Renderer selection.
+
+                - ``"auto"`` (default): try the GPU and silently fall back to
+                  software (raster) rendering when it is unavailable.
+                - ``"gpu"``: require the GPU; raise ``RuntimeError`` if the GPU
+                  backend cannot be initialized or a GPU frame fails to render.
+                - ``"cpu"``: always render in software; the GPU is never touched.
+
+                For GPU-less, software-GL, or remote environments (with a
+                display) prefer ``"cpu"``. Truly headless environments cannot use
+                ``run()`` at all — render offscreen via :meth:`render_to_png`.
+        """
 
         from ..backends.pyglet.runner import run_app
 
-        run_app(self, draw_fps=draw_fps)
+        run_app(self, draw_fps=draw_fps, renderer=parse_renderer_mode(renderer))
 
     def exit(self, exit_code: int = 0) -> None:
         """Exit the application."""
