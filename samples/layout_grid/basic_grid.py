@@ -1,10 +1,9 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _cell(label: str) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _cell(label: str) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
         width="100%",
@@ -33,7 +32,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.App(content=widget, title="Basic nv.Grid")
+    app = nv.App(content=widget, title="Basic nv.Grid")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

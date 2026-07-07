@@ -5,8 +5,7 @@ Row / Column / Stack / Flow / UniformFlow. It materializes children from a
 data collection via a ``(item, index) -> Widget`` builder function.
 """
 
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -14,7 +13,7 @@ def main(png: str = ""):
 
     widget = nv.Flow.builder(
         tags,
-        lambda tag, index: md.Card(md.Text(tag, padding=8), style=md.CardStyle.outlined()),
+        lambda tag, index: nv.Card(nv.Text(tag, padding=8), style=nv.CardStyle.outlined()),
         main_gap=8,
         cross_gap=8,
         padding=8,
@@ -23,7 +22,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.App(content=root, title="Dynamic List: builder()")
+    app = nv.App(content=root, title="Dynamic List: builder()")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -2,51 +2,47 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, HorizontalDivider, Text, VerticalDivider
-from nuiitivet.material.styles.divider_style import DividerStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    list_section = Column(
+    list_section = nv.Column(
         cross_alignment="start",
         children=[
-            Text("Inbox", padding=(8, 8, 8, 8)),
-            HorizontalDivider(),
-            Text("Sent", padding=(8, 8, 8, 8)),
-            HorizontalDivider(style=DividerStyle(inset_left=24)),
-            Text("Drafts", padding=(8, 8, 8, 8)),
+            nv.Text("Inbox", padding=(8, 8, 8, 8)),
+            nv.HorizontalDivider(),
+            nv.Text("Sent", padding=(8, 8, 8, 8)),
+            nv.HorizontalDivider(style=nv.DividerStyle(inset_left=24)),
+            nv.Text("Drafts", padding=(8, 8, 8, 8)),
         ],
     )
 
-    row_section = Row(
+    row_section = nv.Row(
         height=40,
         cross_alignment="center",
         children=[
-            Text("Home", padding=(16, 8, 16, 8)),
-            VerticalDivider(),
-            Text("Explore", padding=(16, 8, 16, 8)),
-            VerticalDivider(),
-            Text("Account", padding=(16, 8, 16, 8)),
+            nv.Text("Home", padding=(16, 8, 16, 8)),
+            nv.VerticalDivider(),
+            nv.Text("Explore", padding=(16, 8, 16, 8)),
+            nv.VerticalDivider(),
+            nv.Text("Account", padding=(16, 8, 16, 8)),
         ],
     )
 
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=20,
             cross_alignment="start",
             children=[
-                Text("Horizontal Divider"),
+                nv.Text("Horizontal Divider"),
                 list_section,
-                Text("Vertical Divider"),
+                nv.Text("Vertical Divider"),
                 row_section,
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Divider",
         width=440,

@@ -7,13 +7,7 @@ Demonstrates:
 - Chaining operators (debounce → map → dispatch_to_ui)
 """
 
-from nuiitivet.observable import Observable, batch
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Text, ButtonStyle
-from nuiitivet.material.buttons import Button
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgets.box import Box
+import nuiitivet.material as nv
 
 
 class BatchModel:
@@ -24,16 +18,16 @@ class BatchModel:
     """
 
     def __init__(self) -> None:
-        self.price = Observable(100)
-        self.quantity = Observable(2)
-        self.notify_count = Observable(0)
+        self.price = nv.Observable(100)
+        self.quantity = nv.Observable(2)
+        self.notify_count = nv.Observable(0)
 
         self.total = self.price.combine(self.quantity).compute(lambda p, q: p * q)
         self.total.subscribe(lambda _: setattr(self.notify_count, "value", self.notify_count.value + 1))
 
     def update_batched(self) -> None:
         """Update both observables atomically → one notification."""
-        with batch():
+        with nv.batch():
             self.price.value += 10
             self.quantity.value += 1
 
@@ -47,8 +41,8 @@ class DebounceModel:
     """Debounce: fire only after input settles for 0.5 s."""
 
     def __init__(self) -> None:
-        self.raw_count = Observable(0)
-        self.execute_count = Observable(0)
+        self.raw_count = nv.Observable(0)
+        self.execute_count = nv.Observable(0)
 
         debounced = self.raw_count.debounce(0.5)
         debounced.subscribe(lambda _: setattr(self.execute_count, "value", self.execute_count.value + 1))
@@ -61,8 +55,8 @@ class ThrottleModel:
     """Throttle: fire at most once every 0.5 s."""
 
     def __init__(self) -> None:
-        self.raw_count = Observable(0)
-        self.execute_count = Observable(0)
+        self.raw_count = nv.Observable(0)
+        self.execute_count = nv.Observable(0)
 
         throttled = self.raw_count.throttle(0.5)
         throttled.subscribe(lambda _: setattr(self.execute_count, "value", self.execute_count.value + 1))
@@ -71,61 +65,61 @@ class ThrottleModel:
         self.raw_count.value += 1
 
 
-class PracticalControlsApp(ComposableWidget):
+class PracticalControlsApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.batch_model = BatchModel()
         self.debounce_model = DebounceModel()
         self.throttle_model = ThrottleModel()
 
-    def build(self) -> Widget:
+    def build(self) -> nv.Widget:
         bm = self.batch_model
         dm = self.debounce_model
         tm = self.throttle_model
 
-        return Box(
+        return nv.Box(
             padding=24,
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
                     # --- batch() ---
-                    Text("batch()"),
-                    Text(bm.price.map(lambda p: f"Price: {p}")),
-                    Text(bm.quantity.map(lambda q: f"Quantity: {q}")),
-                    Text(bm.total.map(lambda t: f"Total: {t}")),
-                    Text(bm.notify_count.map(lambda n: f"Subscriber fired: {n}x")),
-                    Row(
+                    nv.Text("batch()"),
+                    nv.Text(bm.price.map(lambda p: f"Price: {p}")),
+                    nv.Text(bm.quantity.map(lambda q: f"Quantity: {q}")),
+                    nv.Text(bm.total.map(lambda t: f"Total: {t}")),
+                    nv.Text(bm.notify_count.map(lambda n: f"Subscriber fired: {n}x")),
+                    nv.Row(
                         gap=12,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Update (batched)",
                                 on_click=lambda: bm.update_batched(),
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Update (unbatched)",
                                 on_click=lambda: bm.update_unbatched(),
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
                         ],
                     ),
                     # --- debounce() ---
-                    Text("debounce(0.5 s)"),
-                    Text(dm.raw_count.map(lambda n: f"Clicks: {n}")),
-                    Text(dm.execute_count.map(lambda n: f"Executed: {n}x")),
-                    Button(
+                    nv.Text("debounce(0.5 s)"),
+                    nv.Text(dm.raw_count.map(lambda n: f"Clicks: {n}")),
+                    nv.Text(dm.execute_count.map(lambda n: f"Executed: {n}x")),
+                    nv.Button(
                         "Click (debounced)",
                         on_click=lambda: dm.click(),
-                        style=ButtonStyle.filled(),
+                        style=nv.ButtonStyle.filled(),
                     ),
                     # --- throttle() ---
-                    Text("throttle(0.5 s)"),
-                    Text(tm.raw_count.map(lambda n: f"Clicks: {n}")),
-                    Text(tm.execute_count.map(lambda n: f"Executed: {n}x")),
-                    Button(
+                    nv.Text("throttle(0.5 s)"),
+                    nv.Text(tm.raw_count.map(lambda n: f"Clicks: {n}")),
+                    nv.Text(tm.execute_count.map(lambda n: f"Executed: {n}x")),
+                    nv.Button(
                         "Click (throttled)",
                         on_click=lambda: tm.click(),
-                        style=ButtonStyle.filled(),
+                        style=nv.ButtonStyle.filled(),
                     ),
                 ],
             ),
@@ -134,7 +128,7 @@ class PracticalControlsApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = PracticalControlsApp()
-    app = App(content=widget)
+    app = nv.App(content=widget)
     try:
         app.run()
     except Exception:

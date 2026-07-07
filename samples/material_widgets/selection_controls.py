@@ -2,58 +2,67 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Checkbox, RadioButton, RadioGroup, Switch, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("Checkbox"),
-                Row(
+                nv.Text("Checkbox"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        Checkbox(checked=True),
-                        Checkbox(checked=False),
-                        Checkbox(checked=True, disabled=True),
-                        Checkbox(checked=False, disabled=True),
+                        nv.Checkbox(checked=True),
+                        nv.Checkbox(checked=False),
+                        nv.Checkbox(checked=True, disabled=True),
+                        nv.Checkbox(checked=False, disabled=True),
                     ],
                 ),
-                Text("RadioButton"),
-                RadioGroup(
-                    Row(
+                nv.Text("RadioButton"),
+                nv.RadioGroup(
+                    nv.Row(
                         gap=16,
                         cross_alignment="center",
                         children=[
-                            Row(gap=6, cross_alignment="center", children=[RadioButton("a"), Text("Option A")]),
-                            Row(gap=6, cross_alignment="center", children=[RadioButton("b"), Text("Option B")]),
-                            Row(gap=6, cross_alignment="center", children=[RadioButton("c"), Text("Option C")]),
+                            nv.Row(
+                                gap=6,
+                                cross_alignment="center",
+                                children=[nv.RadioButton("a"), nv.Text("Option A")],
+                            ),
+                            nv.Row(
+                                gap=6,
+                                cross_alignment="center",
+                                children=[nv.RadioButton("b"), nv.Text("Option B")],
+                            ),
+                            nv.Row(
+                                gap=6,
+                                cross_alignment="center",
+                                children=[nv.RadioButton("c"), nv.Text("Option C")],
+                            ),
                         ],
                     ),
                     value="a",
                 ),
-                Text("Switch"),
-                Row(
+                nv.Text("Switch"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        Switch(checked=True),
-                        Switch(checked=False),
-                        Switch(checked=True, disabled=True),
-                        Switch(checked=False, disabled=True),
+                        nv.Switch(checked=True),
+                        nv.Switch(checked=False),
+                        nv.Switch(checked=True, disabled=True),
+                        nv.Switch(checked=False, disabled=True),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Selection Controls",
         width=520,

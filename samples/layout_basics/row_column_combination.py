@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,18 +8,18 @@ def main(png: str = ""):
             # 1行目: 名前（横並び）
             nv.Row(
                 children=[
-                    md.TextField(label="First Name"),
-                    md.TextField(label="Last Name"),
+                    nv.TextField(label="First Name"),
+                    nv.TextField(label="Last Name"),
                 ],
                 gap=8,
             ),
             # 2行目: 住所
-            md.TextField(label="Address", width=nv.Sizing.flex(1)),
+            nv.TextField(label="Address", width=nv.Sizing.flex(1)),
             # 3行目: ボタン（横並び）
             nv.Row(
                 children=[
-                    md.Button("Cancel", style=md.ButtonStyle.text()),
-                    md.Button("Register", style=md.ButtonStyle.filled()),
+                    nv.Button("Cancel", style=nv.ButtonStyle.text()),
+                    nv.Button("Register", style=nv.ButtonStyle.filled()),
                 ],
                 gap=12,
             ),
@@ -30,7 +29,7 @@ def main(png: str = ""):
         cross_alignment="center",
     )
 
-    app = md.App(
+    app = nv.App(
         content=form,
         title="nv.Row/nv.Column Combination",
         width="auto",

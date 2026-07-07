@@ -1,13 +1,10 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, focusable, border, corner_radius
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 
 class FocusDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_focused = Observable(False)
+        self.is_focused = nv.Observable(False)
 
     def _set_focused(self, focused: bool) -> None:
         self.is_focused.value = focused
@@ -18,13 +15,13 @@ class FocusDemo(nv.ComposableWidget):
         return nv.Container(
             width=200,
             height=50,
-            child=md.Text("Focus with Tab"),
+            child=nv.Text("Focus with Tab"),
             alignment="center",
         ).modifier(
-            background("#E0E0E0")
-            | corner_radius(8)
-            | border(color=border_color, width=2)
-            | focusable(on_focus_change=self._set_focused)
+            nv.background("#E0E0E0")
+            | nv.corner_radius(8)
+            | nv.border(color=border_color, width=2)
+            | nv.focusable(on_focus_change=self._set_focused)
         )
 
 
@@ -35,7 +32,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = md.App(content=content, title="Focusable Modifier")
+    app = nv.App(content=content, title="Focusable Modifier")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

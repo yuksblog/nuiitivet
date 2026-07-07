@@ -2,46 +2,42 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Button
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=12,
             cross_alignment="start",
             children=[
-                Row(
+                nv.Row(
                     gap=12,
                     children=[
-                        Button("Filled", style=ButtonStyle.filled()),
-                        Button("Tonal", style=ButtonStyle.tonal()),
-                        Button("Elevated", style=ButtonStyle.elevated()),
+                        nv.Button("Filled", style=nv.ButtonStyle.filled()),
+                        nv.Button("Tonal", style=nv.ButtonStyle.tonal()),
+                        nv.Button("Elevated", style=nv.ButtonStyle.elevated()),
                     ],
                 ),
-                Row(
+                nv.Row(
                     gap=12,
                     children=[
-                        Button("Outlined", style=ButtonStyle.outlined()),
-                        Button("Text", style=ButtonStyle.text()),
+                        nv.Button("Outlined", style=nv.ButtonStyle.outlined()),
+                        nv.Button("Text", style=nv.ButtonStyle.text()),
                     ],
                 ),
-                Row(
+                nv.Row(
                     gap=12,
                     children=[
-                        Button("With icon", icon="add", style=ButtonStyle.filled()),
-                        Button("Disabled", style=ButtonStyle.filled(), disabled=True),
+                        nv.Button("With icon", icon="add", style=nv.ButtonStyle.filled()),
+                        nv.Button("Disabled", style=nv.ButtonStyle.filled(), disabled=True),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Button",
         width=560,

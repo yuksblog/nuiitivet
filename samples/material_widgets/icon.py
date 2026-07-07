@@ -2,38 +2,35 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Icon, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
-def _cell(name: str, size: int) -> Column:
-    return Column(
+def _cell(name: str, size: int) -> nv.Column:
+    return nv.Column(
         gap=4,
         cross_alignment="center",
-        children=[Icon(name, size=size), Text(name)],
+        children=[nv.Icon(name, size=size), nv.Text(name)],
     )
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=20,
             cross_alignment="start",
             children=[
-                Text("Sizes (24 / 32 / 40)"),
-                Row(
+                nv.Text("Sizes (24 / 32 / 40)"),
+                nv.Row(
                     gap=24,
                     children=[
-                        Icon("favorite", size=24),
-                        Icon("favorite", size=32),
-                        Icon("favorite", size=40),
+                        nv.Icon("favorite", size=24),
+                        nv.Icon("favorite", size=32),
+                        nv.Icon("favorite", size=40),
                     ],
                 ),
-                Text("Common symbols"),
-                Row(
+                nv.Text("Common symbols"),
+                nv.Row(
                     gap=24,
                     children=[
                         _cell("home", 32),
@@ -46,7 +43,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Icon",
         width=560,

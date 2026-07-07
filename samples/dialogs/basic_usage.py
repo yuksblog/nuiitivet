@@ -4,32 +4,23 @@ Basic Dialog Usage
 Shows how to display a standard BasicDialog using Overlay.
 """
 
-from nuiitivet.material import App
-from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.material import Overlay
-from nuiitivet.material.text import Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class BasicDialogDemo(ComposableWidget):
-    result_text: Observable[str] = Observable("Ready")
+class BasicDialogDemo(nv.ComposableWidget):
+    result_text: nv.Observable[str] = nv.Observable("Ready")
 
     async def _show_dialog(self):
         # Overlay.root() finds the globally unique Overlay
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
 
         # Create the dialog widget
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
-                Button("CANCEL", on_click=lambda: overlay.close("Canceled"), style=ButtonStyle.text()),
-                Button("OK", on_click=lambda: overlay.close("Confirmed"), style=ButtonStyle.text()),
+                nv.Button("CANCEL", on_click=lambda: overlay.close("Canceled"), style=nv.ButtonStyle.text()),
+                nv.Button("OK", on_click=lambda: overlay.close("Confirmed"), style=nv.ButtonStyle.text()),
             ],
         )
 
@@ -40,14 +31,14 @@ class BasicDialogDemo(ComposableWidget):
         if result.value:
             self.result_text.value = f"Last Action: {result.value}"
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
-                    Text(self.result_text),
-                    Button("Show Basic Dialog", on_click=self._show_dialog, style=ButtonStyle.filled()),
+                    nv.Text(self.result_text),
+                    nv.Button("Show Basic Dialog", on_click=self._show_dialog, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
@@ -56,16 +47,16 @@ class BasicDialogDemo(ComposableWidget):
 def main(png_path: str = ""):
     if png_path:
         # For screenshot, render the dialog directly
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
-            actions=[Button("CANCEL", style=ButtonStyle.text()), Button("OK", style=ButtonStyle.text())],
+            actions=[nv.Button("CANCEL", style=nv.ButtonStyle.text()), nv.Button("OK", style=nv.ButtonStyle.text())],
         )
-        app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
+        app = nv.App(content=nv.Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return App(content=BasicDialogDemo(), width=400, height=300)
+    return nv.App(content=BasicDialogDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":

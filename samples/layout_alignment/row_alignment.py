@@ -1,10 +1,9 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _tile(label: str) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _tile(label: str) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         width=56,
         height=40,
         alignment="center",
@@ -34,16 +33,16 @@ def main(png: str = ""):
     content = nv.Column(
         # Render all variants so differences are easy to compare.
         children=[
-            md.Card(
+            nv.Card(
                 nv.Column(
-                    children=[md.Text(a), _demo_row(a)],
+                    children=[nv.Text(a), _demo_row(a)],
                     gap=8,
                     cross_alignment="start",
                     width="100%",
                 ),
                 width=560,
                 padding=12,
-                style=md.CardStyle.outlined(),
+                style=nv.CardStyle.outlined(),
             )
             for a in main_alignments
         ],
@@ -52,7 +51,7 @@ def main(png: str = ""):
         cross_alignment="start",
     )
 
-    app = md.App(
+    app = nv.App(
         content=content,
         title="nv.Row main_alignment",
         width="auto",

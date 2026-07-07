@@ -9,14 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.material import App, Text, ThemeFactory
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.modifiers import background, corner_radius
-from nuiitivet.theme.theme import Theme
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 # ---------------------------------------------------------------------------
 # 1. Define a custom ThemeExtension
@@ -46,11 +39,11 @@ class AppBrandTheme:
 # ---------------------------------------------------------------------------
 
 
-def make_theme() -> Theme:
+def make_theme() -> nv.Theme:
     """Create a theme that contains both Material and brand extensions."""
-    base = ThemeFactory.light("#1A6B3C")
+    base = nv.ThemeFactory.light("#1A6B3C")
     # Append the brand extension to the existing extensions list
-    return Theme(
+    return nv.Theme(
         mode=base.mode,
         extensions=[*base.extensions, AppBrandTheme()],
         name="app-brand-light",
@@ -62,7 +55,7 @@ def make_theme() -> Theme:
 # ---------------------------------------------------------------------------
 
 
-class BrandCard(ComposableWidget):
+class BrandCard(nv.ComposableWidget):
     """A card-like widget styled with brand colors from ``AppBrandTheme``."""
 
     def __init__(self, heading: str, content: str) -> None:
@@ -70,30 +63,30 @@ class BrandCard(ComposableWidget):
         self.heading = heading
         self.content = content
 
-    def build(self) -> Widget:
-        brand = Theme.of(self).extension(AppBrandTheme)
+    def build(self) -> nv.Widget:
+        brand = nv.Theme.of(self).extension(AppBrandTheme)
         bg = brand.brand_surface if brand else "#E8F5E9"
         accent = brand.brand_accent if brand else "#FF6F00"
 
-        return Container(
+        return nv.Container(
             padding=16,
-            child=Column(
+            child=nv.Column(
                 gap=8,
                 children=[
-                    Text(self.heading, style=TextStyle(color=accent), type_scale=TypeScaleToken.from_size(16)),
-                    Text(self.content, type_scale=TypeScaleToken.from_size(13)),
+                    nv.Text(self.heading, style=nv.TextStyle(color=accent), type_scale=nv.TypeScaleToken.from_size(16)),
+                    nv.Text(self.content, type_scale=nv.TypeScaleToken.from_size(13)),
                 ],
             ),
-        ).modifier(background(bg) | corner_radius(12))
+        ).modifier(nv.background(bg) | nv.corner_radius(12))
 
 
-class HomeScreen(ComposableWidget):
-    def build(self) -> Widget:
-        return Container(
+class HomeScreen(nv.ComposableWidget):
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
                     BrandCard(
@@ -110,7 +103,7 @@ class HomeScreen(ComposableWidget):
 
 
 def main(png_path: str = "") -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Theme Extensions - Custom Widget",
         theme=make_theme(),

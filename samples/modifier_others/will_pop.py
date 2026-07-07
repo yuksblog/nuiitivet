@@ -1,25 +1,17 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.material import Overlay, Navigator
-from nuiitivet.material.text_fields import TextField
-from nuiitivet.modifiers import will_pop
-from nuiitivet.observable import Observable
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def _open_editor() -> None:
-            Navigator.root().push(EditScreen())
+            nv.Navigator.root().push(EditScreen())
 
         return nv.Container(
             padding=24,
             child=nv.Column(
                 children=[
-                    md.Text("Open editor, edit text, then try Esc or Back."),
-                    Button("Open editor", on_click=_open_editor, style=ButtonStyle.filled()),
+                    nv.Text("Open editor, edit text, then try Esc or Back."),
+                    nv.Button("Open editor", on_click=_open_editor, style=nv.ButtonStyle.filled()),
                 ],
                 gap=14,
                 cross_alignment="start",
@@ -30,7 +22,7 @@ class HomeScreen(nv.ComposableWidget):
 class EditScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.text = Observable("Hello")
+        self.text = nv.Observable("Hello")
         self._initial_text = str(self.text.value)
 
     def _is_dirty(self) -> bool:
@@ -43,13 +35,13 @@ class EditScreen(nv.ComposableWidget):
         if not self._is_dirty():
             return True
 
-        result = await Overlay.root().dialog(
-            BasicDialog(
+        result = await nv.Overlay.root().dialog(
+            nv.BasicDialog(
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[
-                    Button("Cancel", on_click=lambda: Overlay.root().close(False), style=ButtonStyle.text()),
-                    Button("Discard", on_click=lambda: Overlay.root().close(True), style=ButtonStyle.filled()),
+                    nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(False), style=nv.ButtonStyle.text()),
+                    nv.Button("Discard", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.filled()),
                 ],
             ),
             dismiss_on_outside_tap=False,
@@ -61,8 +53,8 @@ class EditScreen(nv.ComposableWidget):
             padding=24,
             child=nv.Column(
                 children=[
-                    md.Text("Edit text. Back/Esc asks confirmation when unsaved."),
-                    TextField.two_way(
+                    nv.Text("Edit text. Back/Esc asks confirmation when unsaved."),
+                    nv.TextField.two_way(
                         self.text,
                         width=420,
                         height=52,
@@ -70,8 +62,8 @@ class EditScreen(nv.ComposableWidget):
                     ),
                     nv.Row(
                         children=[
-                            Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.text()),
-                            Button("Save", on_click=self._save, style=ButtonStyle.filled()),
+                            nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.text()),
+                            nv.Button("Save", on_click=self._save, style=nv.ButtonStyle.filled()),
                         ],
                         gap=10,
                     ),
@@ -79,11 +71,11 @@ class EditScreen(nv.ComposableWidget):
                 gap=14,
                 cross_alignment="start",
             ),
-        ).modifier(will_pop(on_will_pop=self._on_will_pop))
+        ).modifier(nv.will_pop(on_will_pop=self._on_will_pop))
 
 
 def main(png: str = ""):
-    app = md.App(
+    app = nv.App(
         HomeScreen(),
         width=400,
         height=200,

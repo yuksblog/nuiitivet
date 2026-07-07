@@ -6,33 +6,27 @@ Click the toggle button to switch between light and dark mode.
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Button, Text, ThemeFactory
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable
-from nuiitivet.theme.intents import ThemeModeIntent
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
-light, dark = ThemeFactory.from_seed_pair("#6750A4")
+light, dark = nv.ThemeFactory.from_seed_pair("#6750A4")
 
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     _is_dark: bool = False
-    _toggle_label: Observable[str] = Observable("Switch to Dark")
+    _toggle_label: nv.Observable[str] = nv.Observable("Switch to Dark")
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Theme Toggle"),
-                    Button("Get Started", style=ButtonStyle.filled()),
-                    Button("Learn More", style=ButtonStyle.outlined()),
-                    Button(self._toggle_label, style=ButtonStyle.tonal(), on_click=self._on_toggle),
+                    nv.Text("Theme Toggle"),
+                    nv.Button("Get Started", style=nv.ButtonStyle.filled()),
+                    nv.Button("Learn More", style=nv.ButtonStyle.outlined()),
+                    nv.Button(self._toggle_label, style=nv.ButtonStyle.tonal(), on_click=self._on_toggle),
                 ],
             ),
         )
@@ -41,11 +35,11 @@ class HomeScreen(ComposableWidget):
         self._is_dark = not self._is_dark
         self._toggle_label.value = "Switch to Light" if self._is_dark else "Switch to Dark"
         next_theme = dark if self._is_dark else light
-        App.of(self).dispatch(ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
 
 
 def main() -> None:
-    App(
+    nv.App(
         content=HomeScreen(),
         title="Light / Dark Toggle",
         theme=light,

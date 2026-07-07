@@ -6,66 +6,61 @@ Shows how to display a brief, non-blocking message using Overlay.snackbar().
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle
-from nuiitivet.material.snackbar import Snackbar
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.stack import Stack
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 
-class SnackbarDemo(ComposableWidget):
+class SnackbarDemo(nv.ComposableWidget):
     def show_snackbar(self) -> None:
-        Overlay.root().snackbar("Item deleted")
+        nv.Overlay.root().snackbar("Item deleted")
 
     def show_custom_snackbar(self) -> None:
-        Overlay.root().snackbar(Snackbar("Upload complete"))
+        nv.Overlay.root().snackbar(nv.Snackbar("Upload complete"))
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Snackbar Demo"),
-                    Button("Show Snackbar", on_click=self.show_snackbar, style=ButtonStyle.filled()),
-                    Button("Custom Snackbar", on_click=self.show_custom_snackbar, style=ButtonStyle.outlined()),
+                    nv.Text("Snackbar Demo"),
+                    nv.Button("Show Snackbar", on_click=self.show_snackbar, style=nv.ButtonStyle.filled()),
+                    nv.Button("Custom Snackbar", on_click=self.show_custom_snackbar, style=nv.ButtonStyle.outlined()),
                 ],
             ),
         )
 
 
-def main(png_path: str = "") -> App:
+def main(png_path: str = "") -> nv.App:
     if png_path:
-        background = Container(
+        background = nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Snackbar Demo"),
-                    Button("Show Snackbar", style=ButtonStyle.filled()),
-                    Button("Custom Snackbar", style=ButtonStyle.outlined()),
+                    nv.Text("Snackbar Demo"),
+                    nv.Button("Show Snackbar", style=nv.ButtonStyle.filled()),
+                    nv.Button("Custom Snackbar", style=nv.ButtonStyle.outlined()),
                 ],
             ),
         )
-        snackbar_overlay = Container(
+        snackbar_overlay = nv.Container(
             alignment="bottom-center",
             width="100%",
             height="100%",
             padding=(0, 0, 0, 24),
-            child=Snackbar("Item deleted"),
+            child=nv.Snackbar("Item deleted"),
         )
-        app = App(
-            content=Stack(width=480, height=320, children=[background, snackbar_overlay]),
+        app = nv.App(
+            content=nv.Stack(width=480, height=320, children=[background, snackbar_overlay]),
             width=480,
             height=320,
         )
         app.render_to_png(png_path)
         return app
 
-    return App(content=SnackbarDemo(), width=480, height=320)
+    return nv.App(content=SnackbarDemo(), width=480, height=320)
 
 
 if __name__ == "__main__":

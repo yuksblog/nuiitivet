@@ -1,19 +1,17 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, corner_radius
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
     content = nv.Column(
         children=[
-            md.Text("Hello").modifier(background("#FF5722")),
-            md.Text("Rounded Box").modifier(background("#2196F3") | corner_radius(8)),
+            nv.Text("Hello").modifier(nv.background("#FF5722")),
+            nv.Text("Rounded Box").modifier(nv.background("#2196F3") | nv.corner_radius(8)),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Modifier Basic Usage", width=400)
+    app = nv.App(content=content, title="Modifier Basic Usage", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

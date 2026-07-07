@@ -7,25 +7,7 @@ connected single-select group.
 
 from __future__ import annotations
 
-from nuiitivet.material import (
-    App,
-    ConnectedButtonGroup,
-    HorizontalDivider,
-    GroupButton,
-    StandardButtonGroup,
-    Text,
-)
-from nuiitivet.material.styles.button_group_style import (
-    ConnectedButtonGroupStyle,
-    StandardButtonGroupStyle,
-)
-from nuiitivet.material.styles.button_size import ButtonSize
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 # Icons reused for the tonal icon-only group.
 _ALIGN_ICONS = ("format_align_left", "format_align_center", "format_align_right")
@@ -33,9 +15,9 @@ _ALIGN_ICONS = ("format_align_left", "format_align_center", "format_align_right"
 # Size scale content: each row varies icons and label presence (icon-only,
 # label-only, icon + label).  Content-fit widths keep the pressed-width
 # interaction working and avoid narrow vertical pills at large sizes.
-_SIZES: tuple[ButtonSize, ...] = ("xs", "s", "m", "l", "xl")
+_SIZES: tuple[nv.ButtonSize, ...] = ("xs", "s", "m", "l", "xl")
 
-_SIZE_CONTENT: dict[ButtonSize, list[tuple[str | None, str | None]]] = {
+_SIZE_CONTENT: dict[nv.ButtonSize, list[tuple[str | None, str | None]]] = {
     "xs": [("format_align_left", None), ("format_align_center", None), ("format_align_right", None)],
     "s": [(None, "Day"), (None, "Week"), (None, "Month")],
     "m": [("calendar_today", "Day"), ("event", "Week"), ("schedule", "Month")],
@@ -49,24 +31,24 @@ _SIZE_CONTENT: dict[ButtonSize, list[tuple[str | None, str | None]]] = {
 # ---------------------------------------------------------------------------
 
 
-def _section_title(text: str) -> Text:
-    return Text(text, style=TextStyle(color=ColorRole.ON_SURFACE), type_scale=TypeScaleToken.from_size(18))
+def _section_title(text: str) -> nv.Text:
+    return nv.Text(text, style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE), type_scale=nv.TypeScaleToken.from_size(18))
 
 
-def _caption(text: str) -> Text:
-    return Text(
+def _caption(text: str) -> nv.Text:
+    return nv.Text(
         text,
-        style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
-        type_scale=TypeScaleToken.from_size(12),
+        style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT),
+        type_scale=nv.TypeScaleToken.from_size(12),
     )
 
 
-def _labeled(caption: str, widget) -> Column:
+def _labeled(caption: str, widget) -> nv.Column:
     """A small caption stacked above a button group."""
-    return Column(gap=8, cross_alignment="start", children=[_caption(caption), widget])
+    return nv.Column(gap=8, cross_alignment="start", children=[_caption(caption), widget])
 
 
-def _section(title: str, *rows) -> Column:
+def _section(title: str, *rows) -> nv.Column:
     """A titled section grouping related examples.
 
     A plain ``Column`` (not ``Card``): ``Card`` is a scoped ``WidgetBuilder``
@@ -74,31 +56,31 @@ def _section(title: str, *rows) -> Column:
     an in-progress press when a child animates its width and triggers a
     relayout.  A plain layout container has no such rebuild.
     """
-    return Column(
+    return nv.Column(
         gap=18,
         cross_alignment="start",
-        children=[_section_title(title), HorizontalDivider(), *rows],
+        children=[_section_title(title), nv.HorizontalDivider(), *rows],
     )
 
 
-def _days_group(style) -> StandardButtonGroup:
-    return StandardButtonGroup(
-        [GroupButton("Day"), GroupButton("Week"), GroupButton("Month")],
+def _days_group(style) -> nv.StandardButtonGroup:
+    return nv.StandardButtonGroup(
+        [nv.GroupButton("Day"), nv.GroupButton("Week"), nv.GroupButton("Month")],
         style=style,
     )
 
 
-def _icon_group(style) -> StandardButtonGroup:
-    return StandardButtonGroup(
-        [GroupButton(icon=icon) for icon in _ALIGN_ICONS],
+def _icon_group(style) -> nv.StandardButtonGroup:
+    return nv.StandardButtonGroup(
+        [nv.GroupButton(icon=icon) for icon in _ALIGN_ICONS],
         style=style,
     )
 
 
-def _size_group(size: ButtonSize) -> StandardButtonGroup:
-    return StandardButtonGroup(
-        [GroupButton(icon=icon, label=label) for icon, label in _SIZE_CONTENT[size]],
-        style=StandardButtonGroupStyle.filled(size),
+def _size_group(size: nv.ButtonSize) -> nv.StandardButtonGroup:
+    return nv.StandardButtonGroup(
+        [nv.GroupButton(icon=icon, label=label) for icon, label in _SIZE_CONTENT[size]],
+        style=nv.StandardButtonGroupStyle.filled(size),
     )
 
 
@@ -110,18 +92,18 @@ def _size_group(size: ButtonSize) -> StandardButtonGroup:
 def main(png_path: str = "") -> None:
     standard = _section(
         "Standard",
-        _labeled("Filled", _days_group(StandardButtonGroupStyle.filled())),
-        _labeled("Tonal", _icon_group(StandardButtonGroupStyle.tonal())),
-        _labeled("Outlined", _days_group(StandardButtonGroupStyle.outlined())),
+        _labeled("Filled", _days_group(nv.StandardButtonGroupStyle.filled())),
+        _labeled("Tonal", _icon_group(nv.StandardButtonGroupStyle.tonal())),
+        _labeled("Outlined", _days_group(nv.StandardButtonGroupStyle.outlined())),
     )
 
     connected = _section(
         "Connected",
         _labeled(
             "Single select",
-            ConnectedButtonGroup(
-                [GroupButton("Small"), GroupButton("Medium"), GroupButton("Large")],
-                style=ConnectedButtonGroupStyle.outlined(),
+            nv.ConnectedButtonGroup(
+                [nv.GroupButton("Small"), nv.GroupButton("Medium"), nv.GroupButton("Large")],
+                style=nv.ConnectedButtonGroupStyle.outlined(),
             ),
         ),
     )
@@ -131,17 +113,17 @@ def main(png_path: str = "") -> None:
         *[_labeled(size.upper(), _size_group(size)) for size in _SIZES],
     )
 
-    page = Row(
+    page = nv.Row(
         gap=24,
         cross_alignment="start",
         children=[
-            Column(gap=24, cross_alignment="start", children=[standard, connected]),
+            nv.Column(gap=24, cross_alignment="start", children=[standard, connected]),
             sizes,
         ],
     )
 
-    content = Container(padding=32, child=page)
-    app = App(
+    content = nv.Container(padding=32, child=page)
+    app = nv.App(
         content=content,
         title="ButtonGroup",
     )

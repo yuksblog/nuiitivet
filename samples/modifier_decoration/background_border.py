@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, border
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,27 +7,27 @@ def main(png: str = ""):
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Background"),
+                child=nv.Text("Background"),
                 alignment="center",
-            ).modifier(background("#E0E0E0")),
+            ).modifier(nv.background("#E0E0E0")),
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Border"),
+                child=nv.Text("Border"),
                 alignment="center",
-            ).modifier(border(color="#F44336", width=4)),
+            ).modifier(nv.border(color="#F44336", width=4)),
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Both"),
+                child=nv.Text("Both"),
                 alignment="center",
-            ).modifier(background("#E0E0E0") | border(color="#4CAF50", width=2)),
+            ).modifier(nv.background("#E0E0E0") | nv.border(color="#4CAF50", width=2)),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Background & Border", width=400)
+    app = nv.App(content=content, title="Background & Border", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

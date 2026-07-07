@@ -1,19 +1,18 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
     content = nv.Column(
         children=[
-            md.TextField(label="Email"),
-            md.TextField(label="Password"),
-            md.Button("Login", style=md.ButtonStyle.filled()),
+            nv.TextField(label="Email"),
+            nv.TextField(label="Password"),
+            nv.Button("Login", style=nv.ButtonStyle.filled()),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Basic nv.Column", width=400)
+    app = nv.App(content=content, title="Basic nv.Column", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

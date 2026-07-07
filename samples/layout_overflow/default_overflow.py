@@ -1,26 +1,25 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
     # 親の枠（150x150）
-    widget = md.Card(
+    widget = nv.Card(
         width=150,
         height=150,
         padding=10,
         # 子が大きい（200x200）-> そのままはみ出して表示される
-        child=md.Card(
+        child=nv.Card(
             width=200,
             height=200,
-            child=md.Text("Overflow Content"),
+            child=nv.Text("Overflow Content"),
         ),
-        style=md.CardStyle.outlined(),
+        style=nv.CardStyle.outlined(),
     )
 
     # Center it so we can see the overflow clearly
     root = nv.Container(padding=100, child=widget)
 
-    app = md.App(content=root, title="Default Overflow", width=400)
+    app = nv.App(content=root, title="Default Overflow", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

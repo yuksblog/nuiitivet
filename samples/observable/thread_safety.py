@@ -10,21 +10,15 @@ Demonstrates:
 import threading
 import time
 
-from nuiitivet.observable import Observable
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Text, ButtonStyle
-from nuiitivet.material.buttons import Button
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgets.box import Box
+import nuiitivet.material as nv
 
 
 class AsyncLoaderViewModel:
     """Fetches data on a worker thread; observables are dispatched to the UI thread."""
 
-    data: Observable[str | None] = Observable(None)
-    loading: Observable[bool] = Observable(False)
-    error: Observable[str | None] = Observable(None)
+    data: nv.Observable[str | None] = nv.Observable(None)
+    loading: nv.Observable[bool] = nv.Observable(False)
+    error: nv.Observable[str | None] = nv.Observable(None)
 
     def __init__(self) -> None:
         # All three observables that touch UI must be dispatched to the UI thread
@@ -64,37 +58,37 @@ class AsyncLoaderViewModel:
         threading.Thread(target=worker, daemon=True).start()
 
 
-class ThreadSafetyApp(ComposableWidget):
+class ThreadSafetyApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.vm = AsyncLoaderViewModel()
 
-    def build(self) -> Widget:
+    def build(self) -> nv.Widget:
         vm = self.vm
-        return Box(
+        return nv.Box(
             padding=24,
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Observable: Thread Safety"),
-                    Text("Workers update observables from a background thread."),
-                    Text("dispatch_to_ui() ensures callbacks run on the UI thread."),
-                    Text(vm.status_text),
-                    Text(vm.data_text),
-                    Text(vm.data_upper),
-                    Text(vm.error_text),
-                    Row(
+                    nv.Text("Observable: Thread Safety"),
+                    nv.Text("Workers update observables from a background thread."),
+                    nv.Text("dispatch_to_ui() ensures callbacks run on the UI thread."),
+                    nv.Text(vm.status_text),
+                    nv.Text(vm.data_text),
+                    nv.Text(vm.data_upper),
+                    nv.Text(vm.error_text),
+                    nv.Row(
                         gap=12,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Fetch (success)",
                                 on_click=lambda: vm.fetch(should_fail=False),
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Fetch (error)",
                                 on_click=lambda: vm.fetch(should_fail=True),
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
                         ],
                     ),
@@ -105,7 +99,7 @@ class ThreadSafetyApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = ThreadSafetyApp()
-    app = App(content=widget)
+    app = nv.App(content=widget)
     try:
         app.run()
     except Exception:

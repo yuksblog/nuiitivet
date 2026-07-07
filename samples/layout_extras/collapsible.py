@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 class CollapsibleDemo(nv.ComposableWidget):
@@ -10,14 +9,14 @@ class CollapsibleDemo(nv.ComposableWidget):
 
     def build(self) -> nv.Widget:
         details = nv.Collapsible(
-            md.Card(
+            nv.Card(
                 nv.Column(
                     padding=16,
                     gap=8,
                     children=[
-                        md.Text("Format: PDF / EPUB / HTML"),
-                        md.Text("Size: 4.2 MB"),
-                        md.Text("License: MIT"),
+                        nv.Text("Format: PDF / EPUB / HTML"),
+                        nv.Text("Size: 4.2 MB"),
+                        nv.Text("License: MIT"),
                     ],
                 ),
             ),
@@ -29,14 +28,14 @@ class CollapsibleDemo(nv.ComposableWidget):
             gap=12,
             width="100%",
             children=[
-                md.Button("Show Details", on_click=self.toggle),
+                nv.Button("Show Details", on_click=self.toggle),
                 details,
             ],
         )
 
 
 def main(png: str = "") -> None:
-    app = md.App(
+    app = nv.App(
         content=CollapsibleDemo(),
         title="nv.Collapsible Demo",
         width=320,

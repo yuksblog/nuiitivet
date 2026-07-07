@@ -1,13 +1,12 @@
 """App layout grid sample."""
 
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _card(label: str, width="100%", height="100%") -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _card(label: str, width="100%", height="100%") -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
         width=width,
@@ -34,7 +33,7 @@ def main(png: str = ""):
 
     # 400x400 as requested
     # title_bar argument included so render_layout_images.py can extract the title string
-    app = md.App(
+    app = nv.App(
         content=widget,
         title="nv.Grid Layout",
         width=400,

@@ -1,18 +1,17 @@
 """Step 4 expand sample."""
 
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _card(label: str, expand: bool = True) -> md.Card:
+def _card(label: str, expand: bool = True) -> nv.Card:
     # expand=True -> width/height="100%" (Fills grid cell)
     # expand=False -> width/height=default (Fits content)
     w = "100%" if expand else None
     h = "100%" if expand else None
 
-    return md.Card(
-        md.Text(label),
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
         width=w,
@@ -45,7 +44,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.App(
+    app = nv.App(
         content=widget,
         title="Step 4: Expansion",
         width=400,

@@ -1,19 +1,16 @@
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
-from nuiitivet.material.styles.text_style import TextStyle
+import nuiitivet.material as nv
 
 import argparse
 
 
 def build_modifier_demo():
-    text1 = md.Text("Hello", padding=12).modifier(mod.background("#FF5722"))
-    text2 = md.Text(
+    text1 = nv.Text("Hello", padding=12).modifier(nv.background("#FF5722"))
+    text2 = nv.Text(
         "Rounded Box",
         padding=12,
-        style=TextStyle(color="white"),
-    ).modifier(mod.background("#2196F3") | mod.corner_radius(8))
+        style=nv.TextStyle(color="white"),
+    ).modifier(nv.background("#2196F3") | nv.corner_radius(8))
 
     return nv.Column(
         children=[
@@ -34,7 +31,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    app = md.App(content=build_modifier_demo(), title="Modifier Demo")
+    app = nv.App(content=build_modifier_demo(), title="Modifier Demo")
 
     if args.png:
         app.render_to_png(args.png)

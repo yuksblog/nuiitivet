@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, RichTooltip, Text, Tooltip
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=20,
             cross_alignment="start",
             children=[
-                Text("Tooltip (plain)"),
-                Tooltip("Save the current document"),
-                Text("RichTooltip"),
-                RichTooltip(
+                nv.Text("Tooltip (plain)"),
+                nv.Tooltip("Save the current document"),
+                nv.Text("RichTooltip"),
+                nv.RichTooltip(
                     supporting_text="Saves your work and uploads it to the cloud.",
                     subhead="Save changes",
                     action_label="Learn more",
@@ -26,7 +24,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Tooltip",
         width=440,

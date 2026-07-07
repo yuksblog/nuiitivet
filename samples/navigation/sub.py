@@ -1,104 +1,95 @@
-import nuiitivet as nv
-
-from nuiitivet.material import App, Text, Button, Navigator
-from nuiitivet.material.navigator import MaterialNavigator
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class NestedDetails(ComposableWidget):
+class NestedDetails(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            Navigator.of(self).pop()
+            nv.Navigator.of(self).pop()
 
-        return Box(
+        return nv.Box(
             background_color="#F5F7FF",
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Nested Details"),
-                    Button("Back (Nested)", on_click=go_back, style=ButtonStyle.filled()),
+                    nv.Text("Nested Details"),
+                    nv.Button("Back (Nested)", on_click=go_back, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-class NestedHome(ComposableWidget):
+class NestedHome(nv.ComposableWidget):
     def build(self):
         def go_deeper() -> None:
-            Navigator.of(self).push(NestedDetails())
+            nv.Navigator.of(self).push(NestedDetails())
 
-        return Column(
+        return nv.Column(
             padding=16,
             gap=12,
             children=[
-                Text("Nested Home"),
-                Button("Go Deeper (Nested)", on_click=go_deeper, style=ButtonStyle.filled()),
+                nv.Text("Nested Home"),
+                nv.Button("Go Deeper (Nested)", on_click=go_deeper, style=nv.ButtonStyle.filled()),
             ],
         )
 
 
-class FullScreenDetails(ComposableWidget):
+class FullScreenDetails(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            Navigator.root().pop()
+            nv.Navigator.root().pop()
 
-        return Box(
+        return nv.Box(
             background_color="#EEF7F0",
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=20,
                 gap=12,
                 children=[
-                    Text("Full Screen Details"),
-                    Button("Back (Full Screen)", on_click=go_back, style=ButtonStyle.filled()),
+                    nv.Text("Full Screen Details"),
+                    nv.Button("Back (Full Screen)", on_click=go_back, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-class MainScreen(ComposableWidget):
+class MainScreen(nv.ComposableWidget):
     def build(self):
         def open_full_screen() -> None:
-            Navigator.root().push(FullScreenDetails())
+            nv.Navigator.root().push(FullScreenDetails())
 
-        return Row(
+        return nv.Row(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             gap=12,
             padding=12,
             children=[
-                Container(
+                nv.Container(
                     width=200,
                     height=nv.Sizing.flex(1),
-                    child=Column(
+                    child=nv.Column(
                         padding=16,
                         gap=12,
                         children=[
-                            Text("Sidebar Menu"),
-                            Button("Open Full Screen", on_click=open_full_screen, style=ButtonStyle.filled()),
+                            nv.Text("Sidebar Menu"),
+                            nv.Button("Open Full Screen", on_click=open_full_screen, style=nv.ButtonStyle.filled()),
                         ],
                     ),
                 ),
-                Container(
+                nv.Container(
                     width=nv.Sizing.flex(1),
                     height=nv.Sizing.flex(1),
-                    child=MaterialNavigator(NestedHome()),
+                    child=nv.Navigator(NestedHome()),
                 ),
             ],
         )
 
 
 def main(png_path: str | None = None) -> None:
-    app = App(
+    app = nv.App(
         content=MainScreen(),
         title="Nested Navigation",
         width=400,

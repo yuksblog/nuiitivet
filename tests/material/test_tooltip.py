@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
-from nuiitivet.material.tooltip import RichTooltip, Tooltip
+from nuiitivet.material.tooltip_widgets import RichTooltip, Tooltip
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.modifiers.tooltip import TooltipBox, TooltipModifier, tooltip
 from nuiitivet.widgeting.widget import Widget

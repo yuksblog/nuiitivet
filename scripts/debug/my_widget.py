@@ -9,55 +9,27 @@ import logging
 import sys
 from typing import List, Optional
 
-from nuiitivet.common.logging_once import exception_once
-from nuiitivet.material import App
-from nuiitivet.material import Checkbox, Icon, Text
-from nuiitivet.material.styles import IconStyle
-from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.modifiers import shadow
-from nuiitivet.observable import Observable
-from nuiitivet.layout.column import Column
-
-# flow removed
-from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.material.card import Card
-from nuiitivet.material.styles.card_style import CardStyle
-from nuiitivet.layout.row import Row
-from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
-from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.material.symbols import Symbols
-from nuiitivet.material.buttons import Fab, Button
-from nuiitivet.theme.intents import ThemeModeIntent
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.scrollbar import ScrollbarBehavior
-from nuiitivet.material import ThemeFactory
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 _logger = logging.getLogger(__name__)
 
 
 def _update_theme_seed(context, seed: str) -> None:
-    from nuiitivet.theme.theme import Theme
-    from nuiitivet.runtime.app import App
-
-    current_mode = Theme.of(context).mode
+    current_mode = nv.Theme.of(context).mode
     if current_mode == "dark":
-        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.dark(seed)))
+        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.dark(seed)))
     else:
-        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.light(seed)))
+        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.light(seed)))
 
 
 def _toggle_theme_mode(context) -> None:
-    from nuiitivet.theme.theme import Theme
-    from nuiitivet.runtime.app import App
-
     # Default seed since we don't track it
     seed = "#6750A4"
-    current_mode = Theme.of(context).mode
+    current_mode = nv.Theme.of(context).mode
     if current_mode == "light":
-        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.dark(seed)))
+        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.dark(seed)))
     else:
-        App.of(context).dispatch(ThemeModeIntent(ThemeFactory.light(seed)))
+        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.light(seed)))
 
 
 class MyWidgetModel:
@@ -67,12 +39,12 @@ class MyWidgetModel:
     add/remove operations for each.
     """
 
-    column_items: Observable[List[str]] = Observable([])
-    row_items: Observable[List[str]] = Observable([])
-    grid_items: Observable[List[str]] = Observable([])
-    click_log: Observable[str] = Observable("")
-    checkbox_state: Observable[Optional[bool]] = Observable(None)
-    checkbox_state2: Observable[Optional[bool]] = Observable(None)
+    column_items: nv.Observable[List[str]] = nv.Observable([])
+    row_items: nv.Observable[List[str]] = nv.Observable([])
+    grid_items: nv.Observable[List[str]] = nv.Observable([])
+    click_log: nv.Observable[str] = nv.Observable("")
+    checkbox_state: nv.Observable[Optional[bool]] = nv.Observable(None)
+    checkbox_state2: nv.Observable[Optional[bool]] = nv.Observable(None)
 
     def __init__(self) -> None:
         self._column_count: int = 0
@@ -131,14 +103,10 @@ class MyWidgetModel:
             try:
                 self.click_log._value = f"Clicked: {label}"
             except Exception:
-                exception_once(
-                    _logger,
-                    "my_widget_record_click_fallback_exc",
-                    "Failed to record click in fallback path",
-                )
+                _logger.exception("Failed to record click in fallback path")
 
 
-class MyWidget(ComposableWidget):
+class MyWidget(nv.ComposableWidget):
 
     def __init__(self, model: MyWidgetModel):
         super().__init__()
@@ -151,79 +119,89 @@ class MyWidget(ComposableWidget):
             self._icon_debugged = False
 
         children = [
-            Row(
+            nv.Row(
                 [
-                    Button(
-                        "Seed Purple", on_click=lambda: _update_theme_seed(self, "#6750A4"), style=ButtonStyle.filled()
+                    nv.Button(
+                        "Seed Purple",
+                        on_click=lambda: _update_theme_seed(self, "#6750A4"),
+                        style=nv.ButtonStyle.filled(),
                     ),
-                    Button(
-                        "Seed Teal", on_click=lambda: _update_theme_seed(self, "#00796B"), style=ButtonStyle.filled()
+                    nv.Button(
+                        "Seed Teal",
+                        on_click=lambda: _update_theme_seed(self, "#00796B"),
+                        style=nv.ButtonStyle.filled(),
                     ),
-                    Button(
-                        "Seed Amber", on_click=lambda: _update_theme_seed(self, "#FFC107"), style=ButtonStyle.filled()
+                    nv.Button(
+                        "Seed Amber",
+                        on_click=lambda: _update_theme_seed(self, "#FFC107"),
+                        style=nv.ButtonStyle.filled(),
                     ),
-                    Button("Toggle Mode", on_click=lambda: _toggle_theme_mode(self), style=ButtonStyle.filled()),
+                    nv.Button("Toggle Mode", on_click=lambda: _toggle_theme_mode(self), style=nv.ButtonStyle.filled()),
                 ],
                 gap=8,
                 cross_alignment="center",
             ),
-            Card(
-                Row(
+            nv.Card(
+                nv.Row(
                     [
-                        Icon(Symbols.home, size=24),
-                        Icon(Symbols.search, size=24, style=IconStyle(family="rounded")),
-                        Icon(Symbols.menu, size=24, style=IconStyle(family="sharp")),
-                        Icon(Symbols.settings, size=24, style=IconStyle(family="twotone")),
+                        nv.Icon(nv.Symbols.home, size=24),
+                        nv.Icon(nv.Symbols.search, size=24, style=nv.IconStyle(family="rounded")),
+                        nv.Icon(nv.Symbols.menu, size=24, style=nv.IconStyle(family="sharp")),
+                        nv.Icon(nv.Symbols.settings, size=24, style=nv.IconStyle(family="twotone")),
                     ],
                     gap=12,
                     cross_alignment="center",
                 ),
                 padding=8,
-                style=CardStyle.filled().copy_with(border_radius=8),
+                style=nv.CardStyle.filled().copy_with(border_radius=8),
                 alignment="center",
             ),
-            Card(
-                Row([Text("Last click:"), Text(self.model.click_log)], gap=8, cross_alignment="center"),
+            nv.Card(
+                nv.Row([nv.Text("Last click:"), nv.Text(self.model.click_log)], gap=8, cross_alignment="center"),
                 padding=6,
                 alignment="center",
             ),
-            Row(
+            nv.Row(
                 [
-                    Button("Record: A", on_click=lambda: self.model.record_click("A"), style=ButtonStyle.elevated()),
-                    Button("Record: B", on_click=lambda: self.model.record_click("B"), style=ButtonStyle.elevated()),
-                    Button("Clear", on_click=lambda: self.model.record_click(""), style=ButtonStyle.outlined()),
+                    nv.Button(
+                        "Record: A", on_click=lambda: self.model.record_click("A"), style=nv.ButtonStyle.elevated()
+                    ),
+                    nv.Button(
+                        "Record: B", on_click=lambda: self.model.record_click("B"), style=nv.ButtonStyle.elevated()
+                    ),
+                    nv.Button("Clear", on_click=lambda: self.model.record_click(""), style=nv.ButtonStyle.outlined()),
                 ],
                 gap=8,
                 cross_alignment="center",
             ),
-            Card(
-                Column(
+            nv.Card(
+                nv.Column(
                     [
-                        Text("Column demo:"),
-                        Row(
+                        nv.Text("Column demo:"),
+                        nv.Row(
                             [
-                                Button(
+                                nv.Button(
                                     "Add (Column)",
                                     on_click=self.model.add_column_item,
-                                    style=ButtonStyle.elevated(),
+                                    style=nv.ButtonStyle.elevated(),
                                 ),
-                                Button(
+                                nv.Button(
                                     "Remove (Column)",
                                     on_click=self.model.remove_column_item,
-                                    style=ButtonStyle.outlined(),
+                                    style=nv.ButtonStyle.outlined(),
                                 ),
                             ],
                             gap=8,
                             cross_alignment="center",
                         ),
-                        VerticalScrollable(
-                            Column.builder(
+                        nv.VerticalScrollable(
+                            nv.Column.builder(
                                 self.model.column_items,
-                                lambda item, idx: Text(item),
+                                lambda item, idx: nv.Text(item),
                                 gap=8,
                                 cross_alignment="center",
                             ),
-                            width=Sizing.flex(),
+                            width=nv.Sizing.flex(),
                         ),
                     ],
                     gap=6,
@@ -231,29 +209,31 @@ class MyWidget(ComposableWidget):
                     height=200,
                 ),
                 padding=8,
-                style=CardStyle.filled().copy_with(border_radius=6),
+                style=nv.CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
-            Card(
-                Column(
+            nv.Card(
+                nv.Column(
                     [
-                        Text("Row demo:"),
-                        Row(
+                        nv.Text("Row demo:"),
+                        nv.Row(
                             [
-                                Button("Add (Row)", on_click=self.model.add_row_item, style=ButtonStyle.tonal()),
-                                Button("Remove (Row)", on_click=self.model.remove_row_item, style=ButtonStyle.text()),
+                                nv.Button("Add (Row)", on_click=self.model.add_row_item, style=nv.ButtonStyle.tonal()),
+                                nv.Button(
+                                    "Remove (Row)", on_click=self.model.remove_row_item, style=nv.ButtonStyle.text()
+                                ),
                             ],
                             gap=8,
                             cross_alignment="center",
                         ),
-                        HorizontalScrollable(
-                            Row.builder(
+                        nv.HorizontalScrollable(
+                            nv.Row.builder(
                                 self.model.row_items,
-                                lambda item, idx: Text(item),
+                                lambda item, idx: nv.Text(item),
                                 gap=8,
                                 cross_alignment="center",
                             ),
-                            scrollbar_behavior=ScrollbarBehavior(auto_hide=False),
+                            scrollbar_behavior=nv.ScrollbarBehavior(auto_hide=False),
                             height=50,
                         ),
                     ],
@@ -261,27 +241,27 @@ class MyWidget(ComposableWidget):
                     cross_alignment="start",
                 ),
                 padding=8,
-                style=CardStyle.filled().copy_with(border_radius=6),
+                style=nv.CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
-            Card(
-                Column(
+            nv.Card(
+                nv.Column(
                     [
-                        Text("Grid demo:"),
-                        UniformFlow.builder(
+                        nv.Text("Grid demo:"),
+                        nv.UniformFlow.builder(
                             self.model.grid_items,
-                            lambda item, idx: Text(item),
+                            lambda item, idx: nv.Text(item),
                             columns=3,
                             main_gap=8,
                             cross_gap=8,
                         ),
-                        Row(
+                        nv.Row(
                             [
-                                Fab(Symbols.add, on_click=self.model.add_grid_item),
-                                Button(
+                                nv.Fab(nv.Symbols.add, on_click=self.model.add_grid_item),
+                                nv.Button(
                                     "Remove (Grid)",
                                     on_click=self.model.remove_grid_item,
-                                    style=ButtonStyle.outlined(),
+                                    style=nv.ButtonStyle.outlined(),
                                 ),
                             ],
                             gap=8,
@@ -292,27 +272,27 @@ class MyWidget(ComposableWidget):
                     cross_alignment="start",
                 ),
                 padding=8,
-                style=CardStyle.outlined().copy_with(border_radius=6),
+                style=nv.CardStyle.outlined().copy_with(border_radius=6),
                 alignment="start",
             ).modifier(
-                shadow((ColorRole.SHADOW, 0.12), blur=12.0, offset=(0, 6))
+                nv.shadow((nv.ColorRole.SHADOW, 0.12), blur=12.0, offset=(0, 6))
             ),  # Test that modifiers work on Cards
-            Card(
-                Column(
+            nv.Card(
+                nv.Column(
                     [
-                        Text("Checkbox demo:"),
-                        Row(
+                        nv.Text("Checkbox demo:"),
+                        nv.Row(
                             [
-                                Checkbox(checked=self.model.checkbox_state),
-                                Text(self.model.checkbox_state),
+                                nv.Checkbox(checked=self.model.checkbox_state),
+                                nv.Text(self.model.checkbox_state),
                             ],
                             gap=12,
                             cross_alignment="center",
                         ),
-                        Row(
+                        nv.Row(
                             [
-                                Checkbox(checked=self.model.checkbox_state2),
-                                Text(self.model.checkbox_state2),
+                                nv.Checkbox(checked=self.model.checkbox_state2),
+                                nv.Text(self.model.checkbox_state2),
                             ],
                             gap=12,
                             cross_alignment="center",
@@ -322,20 +302,20 @@ class MyWidget(ComposableWidget):
                     cross_alignment="start",
                 ),
                 padding=8,
-                style=CardStyle.filled().copy_with(border_radius=6),
+                style=nv.CardStyle.filled().copy_with(border_radius=6),
                 alignment="start",
             ),
         ]
 
-        root = Column(children, padding=12, gap=12, cross_alignment="center")
+        root = nv.Column(children, padding=12, gap=12, cross_alignment="center")
         return root
 
     def _log_icon_debug(self) -> None:
-        icon = Icon(Symbols.home, size=24)
+        icon = nv.Icon(nv.Symbols.home, size=24)
         symbol_codepoint = icon._symbol_codepoint
-        current_symbol = Symbols.home
+        current_symbol = nv.Symbols.home
         debug_fields = {
-            "icon_class": f"{Icon.__module__}.{Icon.__name__}",
+            "icon_class": f"{nv.Icon.__module__}.{nv.Icon.__name__}",
             "symbol_name": current_symbol.name,
             "symbol_glyph": current_symbol.glyph(),
             "icon_resolved": symbol_codepoint,
@@ -349,7 +329,7 @@ if __name__ == "__main__":
     model = MyWidgetModel()
     widget = MyWidget(model)
 
-    app = App(
+    app = nv.App(
         content=widget,
         # width=750,
         # height=850,

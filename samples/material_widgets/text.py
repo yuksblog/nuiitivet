@@ -10,14 +10,7 @@ applies: ``weight`` (font thickness) and ``tracking`` (letter spacing).
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Text
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.widgeting.widget import Widget
+import nuiitivet.material as nv
 
 # A width narrow enough that the demo strings must wrap or truncate.
 DEMO_WIDTH = 300
@@ -28,47 +21,47 @@ SENTENCE = (
 )
 PATH = "/Users/alice/projects/nuiitivet/src/material/text.py"
 
-_BODY = TypeScaleToken.from_size(15)
-_CAPTION_SCALE = TypeScaleToken.from_size(11)
-_CAPTION = TextStyle(color=ColorRole.ON_SURFACE_VARIANT)
+_BODY = nv.TypeScaleToken.from_size(15)
+_CAPTION_SCALE = nv.TypeScaleToken.from_size(11)
+_CAPTION = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 
 # Typography demo strings/tokens. Same size (24px) so only weight/tracking vary.
 TYPO_SAMPLE = "Weight & Tracking"
-_HEADING = TypeScaleToken.from_size(24)
+_HEADING = nv.TypeScaleToken.from_size(24)
 
 
-def _demo(caption: str, demo: Widget) -> Column:
+def _demo(caption: str, demo: nv.Widget) -> nv.Column:
     """A captioned block: a property label with the example indented beneath it."""
-    return Column(
+    return nv.Column(
         gap=4,
         cross_alignment="start",
         children=[
-            Text(caption, style=_CAPTION, type_scale=_CAPTION_SCALE),
+            nv.Text(caption, style=_CAPTION, type_scale=_CAPTION_SCALE),
             # Indent the example so the caption reads as its heading.
-            Container(padding=(16, 0, 0, 0), child=demo),
+            nv.Container(padding=(16, 0, 0, 0), child=demo),
         ],
     )
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
                 # Hard line breaks: \n always breaks, regardless of width.
                 _demo(
                     "Hard line breaks (\\n)",
-                    Text("First line\nSecond line\nThird line", type_scale=_BODY),
+                    nv.Text("First line\nSecond line\nThird line", type_scale=_BODY),
                 ),
                 # Soft wrapping capped to 2 lines, then an ellipsis.
                 _demo(
                     "soft_wrap + max_lines=2 + ellipsis",
-                    Text(
+                    nv.Text(
                         SENTENCE,
                         type_scale=_BODY,
-                        width=Sizing.fixed(DEMO_WIDTH),
+                        width=nv.Sizing.fixed(DEMO_WIDTH),
                         max_lines=2,
                         overflow="ellipsis",
                     ),
@@ -76,10 +69,10 @@ def main(png_path: str = "") -> None:
                 # Single line, cut at the edge.
                 _demo(
                     "overflow=clip (max_lines=1)",
-                    Text(
+                    nv.Text(
                         SENTENCE,
                         type_scale=_BODY,
-                        width=Sizing.fixed(DEMO_WIDTH),
+                        width=nv.Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="clip",
                     ),
@@ -87,10 +80,10 @@ def main(png_path: str = "") -> None:
                 # Single line, ellipsis at the end (default truncation).
                 _demo(
                     "overflow=ellipsis, truncation=tail",
-                    Text(
+                    nv.Text(
                         SENTENCE,
                         type_scale=_BODY,
-                        width=Sizing.fixed(DEMO_WIDTH),
+                        width=nv.Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",
                         truncation="tail",
@@ -99,10 +92,10 @@ def main(png_path: str = "") -> None:
                 # Middle truncation keeps both ends — great for file paths.
                 _demo(
                     "truncation=middle",
-                    Text(
+                    nv.Text(
                         PATH,
                         type_scale=_BODY,
-                        width=Sizing.fixed(DEMO_WIDTH),
+                        width=nv.Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",
                         truncation="middle",
@@ -111,10 +104,10 @@ def main(png_path: str = "") -> None:
                 # Head truncation keeps the tail (e.g. the file name).
                 _demo(
                     "truncation=head",
-                    Text(
+                    nv.Text(
                         PATH,
                         type_scale=_BODY,
-                        width=Sizing.fixed(DEMO_WIDTH),
+                        width=nv.Sizing.fixed(DEMO_WIDTH),
                         max_lines=1,
                         overflow="ellipsis",
                         truncation="head",
@@ -123,11 +116,11 @@ def main(png_path: str = "") -> None:
                 # Weight: same 24px size, increasing font thickness.
                 _demo(
                     "weight (300 / 400 / 700 / 900)",
-                    Column(
+                    nv.Column(
                         gap=2,
                         cross_alignment="start",
                         children=[
-                            Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(weight=w))
+                            nv.Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(weight=w))
                             for w in (300, 400, 700, 900)
                         ],
                     ),
@@ -135,11 +128,11 @@ def main(png_path: str = "") -> None:
                 # Tracking: same 24px size, widening letter spacing (incl. negative).
                 _demo(
                     "tracking (-1.0 / 0.0 / 2.0 / 6.0 px)",
-                    Column(
+                    nv.Column(
                         gap=2,
                         cross_alignment="start",
                         children=[
-                            Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(tracking=t))
+                            nv.Text(TYPO_SAMPLE, type_scale=_HEADING.copy_with(tracking=t))
                             for t in (-1.0, 0.0, 2.0, 6.0)
                         ],
                     ),
@@ -147,7 +140,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Text",
         width=420,

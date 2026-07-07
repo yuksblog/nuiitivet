@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, rotate, scale
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,21 +7,21 @@ def main(png: str = ""):
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Rotate 45°"),
+                child=nv.Text("Rotate 45°"),
                 alignment="center",
-            ).modifier(background("#4CAF50") | rotate(45)),
+            ).modifier(nv.background("#4CAF50") | nv.rotate(45)),
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Scale 1.5x"),
+                child=nv.Text("Scale 1.5x"),
                 alignment="center",
-            ).modifier(background("#2196F3") | scale(1.5)),
+            ).modifier(nv.background("#2196F3") | nv.scale(1.5)),
         ],
         gap=48,
         padding=48,
     )
 
-    app = md.App(content=content, title="Rotate & Scale", width=400)
+    app = nv.App(content=content, title="Rotate & Scale", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -8,14 +7,14 @@ def main(png: str = ""):
         gap=16,
         width=500,
         children=[
-            md.Button("Left 1", style=md.ButtonStyle.outlined()),
-            md.Button("Left 2", style=md.ButtonStyle.outlined()),
+            nv.Button("Left 1", style=nv.ButtonStyle.outlined()),
+            nv.Button("Left 2", style=nv.ButtonStyle.outlined()),
             nv.Spacer(width="100%"),
-            md.Button("Right", style=md.ButtonStyle.filled()),
+            nv.Button("Right", style=nv.ButtonStyle.filled()),
         ],
     )
 
-    app = md.App(content=widget, title="nv.Spacer Flex Demo")
+    app = nv.App(content=widget, title="nv.Spacer Flex Demo")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

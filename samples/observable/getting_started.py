@@ -7,13 +7,7 @@ Demonstrates:
 - Integration with UI widgets
 """
 
-from nuiitivet.observable import Observable
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Text, ButtonStyle
-from nuiitivet.material.buttons import Button
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgets.box import Box
+import nuiitivet.material as nv
 
 # --- Basic Usage: instance attribute style ---
 
@@ -22,7 +16,7 @@ class Counter:
     """Simple counter with a derived double_count."""
 
     def __init__(self) -> None:
-        self.count = Observable(0)
+        self.count = nv.Observable(0)
         self.double_count = self.count.map(lambda c: c * 2)
 
     def increment(self) -> None:
@@ -45,13 +39,13 @@ class Model:
     another's.
     """
 
-    value: Observable[int] = Observable(0)
+    value: nv.Observable[int] = nv.Observable(0)
 
 
 # --- UI Integration ---
 
 
-class CounterApp(ComposableWidget):
+class CounterApp(nv.ComposableWidget):
     """Counter demo that wires Observable state into the widget tree."""
 
     def __init__(self) -> None:
@@ -62,27 +56,27 @@ class CounterApp(ComposableWidget):
         self.label = self.counter.count.map(lambda c: f"Count: {c}")
         self.double_label = self.counter.double_count.map(lambda d: f"Double: {d}")
 
-    def build(self) -> Widget:
-        return Box(
+    def build(self) -> nv.Widget:
+        return nv.Box(
             padding=24,
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Observable: Getting Started"),
-                    Text(self.label),
-                    Text(self.double_label),
-                    Row(
+                    nv.Text("Observable: Getting Started"),
+                    nv.Text(self.label),
+                    nv.Text(self.double_label),
+                    nv.Row(
                         gap=12,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Increment",
                                 on_click=lambda: self.counter.increment(),
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Decrement",
                                 on_click=lambda: self.counter.decrement(),
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
                         ],
                     ),
@@ -93,7 +87,7 @@ class CounterApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = CounterApp()
-    app = App(content=widget)
+    app = nv.App(content=widget)
     try:
         app.run()
     except Exception:

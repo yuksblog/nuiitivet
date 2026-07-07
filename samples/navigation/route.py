@@ -1,80 +1,63 @@
-import nuiitivet as nv
-
-from nuiitivet.material import (
-    FadeIn,
-    FadeOut,
-    App,
-    MaterialTransitions,
-    SlideInVertically,
-    SlideOutVertically,
-    Text,
-    Button,
-)
-from nuiitivet.layout.column import Column
-from nuiitivet.material import Navigator
-from nuiitivet.navigation import Route, Transitions
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class DetailsScreen(ComposableWidget):
+class DetailsScreen(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            Navigator.root().pop()
+            nv.Navigator.root().pop()
 
-        return Box(
+        return nv.Box(
             background_color="#F5F7FF",
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Animated Details Screen"),
-                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
+                    nv.Text("Animated Details Screen"),
+                    nv.Button("Back", on_click=go_back, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_with_custom_animation() -> None:
-            custom_transition = MaterialTransitions.page(
-                enter=FadeIn() | SlideInVertically(initial_offset_y=50.0),
-                exit_=FadeOut() | SlideOutVertically(target_offset_y=50.0),
+            custom_transition = nv.MaterialTransitions.page(
+                enter=nv.FadeIn() | nv.SlideInVertically(initial_offset_y=50.0),
+                exit_=nv.FadeOut() | nv.SlideOutVertically(target_offset_y=50.0),
             )
-            route = Route(
+            route = nv.Route(
                 builder=lambda: DetailsScreen(),
                 transition_spec=custom_transition,
             )
-            Navigator.root().push(route)
+            nv.Navigator.root().push(route)
 
         def navigate_instantly() -> None:
-            route = Route(
+            route = nv.Route(
                 builder=lambda: DetailsScreen(),
-                transition_spec=Transitions.empty(),
+                transition_spec=nv.Transitions.empty(),
             )
-            Navigator.root().push(route)
+            nv.Navigator.root().push(route)
 
-        return Column(
+        return nv.Column(
             padding=16,
             gap=12,
             children=[
-                Text("Home Screen"),
-                Button(
+                nv.Text("Home Screen"),
+                nv.Button(
                     "Go to Details (Custom Animation)",
                     on_click=navigate_with_custom_animation,
-                    style=ButtonStyle.filled(),
+                    style=nv.ButtonStyle.filled(),
                 ),
-                Button("Go to Details (Instant)", on_click=navigate_instantly, style=ButtonStyle.filled()),
+                nv.Button("Go to Details (Instant)", on_click=navigate_instantly, style=nv.ButtonStyle.filled()),
             ],
         )
 
 
 def main(png_path: str | None = None) -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Navigation Route",
         width=400,

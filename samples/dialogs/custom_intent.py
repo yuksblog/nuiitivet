@@ -7,47 +7,36 @@ without knowing about the specific UI implementation (Widgets).
 """
 
 from dataclasses import dataclass
-from nuiitivet.material import App
-from nuiitivet.material.buttons import Button
-from nuiitivet.material import Overlay
-from nuiitivet.material.text import Text
-from nuiitivet.material.card import Card
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.spacer import Spacer
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class CustomDialogContent(ComposableWidget):
+class CustomDialogContent(nv.ComposableWidget):
     """A completely custom widget to be used as a dialog."""
 
-    def __init__(self, overlay: Overlay, initial: int = 0):
+    def __init__(self, overlay: nv.Overlay, initial: int = 0):
         super().__init__()
         self.overlay = overlay
-        self.counter = Observable(initial)
+        self.counter = nv.Observable(initial)
 
     def _increment(self):
         self.counter.value += 1
 
-    def build(self) -> Widget:
-        return Card(
-            child=Container(
+    def build(self) -> nv.Widget:
+        return nv.Card(
+            child=nv.Container(
                 padding=24,
-                child=Column(
+                child=nv.Column(
                     gap=16,
                     children=[
-                        Text("Custom Interactive Dialog"),
-                        Row(
+                        nv.Text("Custom Interactive Dialog"),
+                        nv.Row(
                             gap=10,
-                            children=[Text("Count:"), Text(self.counter.map(str))],
+                            children=[nv.Text("Count:"), nv.Text(self.counter.map(str))],
                         ),
-                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
-                        Spacer(height=8),
-                        Button("Close & Return Count", on_click=lambda: self.overlay.close(
-                            self.counter.value), style=ButtonStyle.outlined()),
+                        nv.Button("Increment", on_click=self._increment, style=nv.ButtonStyle.filled()),
+                        nv.Spacer(height=8),
+                        nv.Button("Close & Return Count", on_click=lambda: self.overlay.close(
+                            self.counter.value), style=nv.ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -64,19 +53,19 @@ class CounterIntent:
 
 
 # 2. Define the Dialog Creator
-def create_counter_dialog(intent: CounterIntent) -> Widget:
+def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
     """Creates a widget for the CounterIntent."""
     return CustomDialogContent(
-        Overlay.root(),
+        nv.Overlay.root(),
         initial=intent.initial_value,
     )
 
 
 class CustomIntentViewModel:
     def __init__(self):
-        self.message = Observable("No result yet")
+        self.message = nv.Observable("No result yet")
 
-    async def open_counter(self, overlay: Overlay):
+    async def open_counter(self, overlay: nv.Overlay):
         # The ViewModel just emits an intent and waits for a result
         result = await overlay.dialog(CounterIntent(initial_value=5))
 
@@ -84,26 +73,26 @@ class CustomIntentViewModel:
             self.message.value = f"Final Count from Intent: {result.value}"
 
 
-class CustomIntentDemo(ComposableWidget):
+class CustomIntentDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
         self.vm = CustomIntentViewModel()
 
     async def _on_open_click(self):
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
         await self.vm.open_counter(overlay)
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
-                    Text(self.vm.message),
-                    Button(
+                    nv.Text(self.vm.message),
+                    nv.Button(
                         "Open Counter (via Intent)",
                         on_click=self._on_open_click,
-                        style=ButtonStyle.filled()),
+                        style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
@@ -113,13 +102,13 @@ def main(png_path: str = ""):
     if png_path:
         from typing import cast
 
-        content = CustomDialogContent(overlay=cast(Overlay, None), initial=5)
-        app = App(content=Container(alignment="center", child=content), width=400, height=300)
+        content = CustomDialogContent(overlay=cast(nv.Overlay, None), initial=5)
+        app = nv.App(content=nv.Container(alignment="center", child=content), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
     # 3. Register the Mapping in App
-    return App(
+    return nv.App(
         content=CustomIntentDemo(),
         overlay_routes={CounterIntent: create_counter_dialog},
         width=400,

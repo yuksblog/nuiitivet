@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -8,14 +7,14 @@ def main(png: str = ""):
         height=300,
         child=nv.VerticalScrollable(
             child=nv.Column(
-                children=[md.Text(f"Item {i}") for i in range(50)],
+                children=[nv.Text(f"Item {i}") for i in range(50)],
                 gap=8,
                 padding=16,
             ),
         ),
     )
 
-    app = md.App(content=widget, title="Scrollable List", width=400)
+    app = nv.App(content=widget, title="Scrollable List", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

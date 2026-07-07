@@ -1,26 +1,24 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
-    widget = md.Card(
+    widget = nv.Card(
         width=150,
         height=150,
         padding=10,
-        child=md.Card(
+        child=nv.Card(
             width=200,
             height=200,
-            child=md.Text("Clipped Content"),
+            child=nv.Text("Clipped Content"),
         ),
-        style=md.CardStyle.outlined(),
+        style=nv.CardStyle.outlined(),
     ).modifier(
-        mod.clip()
+        nv.clip()
     )  # 枠からはみ出た部分は描画されない
 
     root = nv.Container(padding=100, child=widget)
 
-    app = md.App(content=root, title="Clipped Content", width=400)
+    app = nv.App(content=root, title="Clipped Content", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

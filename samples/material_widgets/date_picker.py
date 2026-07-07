@@ -8,21 +8,19 @@ from __future__ import annotations
 
 from datetime import date
 
-from nuiitivet.material import App, DockedDatePicker
-from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    selected: Observable[date | None] = Observable(date(2026, 6, 25))
-    content = Container(
+    selected: nv.Observable[date | None] = nv.Observable(date(2026, 6, 25))
+    content = nv.Container(
         padding=24,
-        child=DockedDatePicker(
+        child=nv.DockedDatePicker(
             selected,
             on_change=lambda value: print(f"Selected: {value}"),
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="DockedDatePicker",
         width=460,

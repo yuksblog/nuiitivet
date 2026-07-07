@@ -2,43 +2,40 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Fab, FabStyle, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("Color variants (size s)"),
-                Row(
+                nv.Text("Color variants (size s)"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        Fab("add", style=FabStyle.primary()),
-                        Fab("edit", style=FabStyle.secondary()),
-                        Fab("share", style=FabStyle.tertiary()),
+                        nv.Fab("add", style=nv.FabStyle.primary()),
+                        nv.Fab("edit", style=nv.FabStyle.secondary()),
+                        nv.Fab("share", style=nv.FabStyle.tertiary()),
                     ],
                 ),
-                Text("Sizes (s / m / l)"),
-                Row(
+                nv.Text("Sizes (s / m / l)"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        Fab("add", style=FabStyle.primary("s")),
-                        Fab("add", style=FabStyle.primary("m")),
-                        Fab("add", style=FabStyle.primary("l")),
+                        nv.Fab("add", style=nv.FabStyle.primary("s")),
+                        nv.Fab("add", style=nv.FabStyle.primary("m")),
+                        nv.Fab("add", style=nv.FabStyle.primary("l")),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Fab",
         width=440,

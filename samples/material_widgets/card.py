@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Card, CardStyle, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
-def _card(label: str, style: CardStyle) -> Card:
-    return Card(
-        Column(gap=4, children=[Text(label), Text("Card body content")]),
+def _card(label: str, style: nv.CardStyle) -> nv.Card:
+    return nv.Card(
+        nv.Column(gap=4, children=[nv.Text(label), nv.Text("Card body content")]),
         width=160,
         height=110,
         padding=16,
@@ -19,18 +16,18 @@ def _card(label: str, style: CardStyle) -> Card:
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Row(
+        child=nv.Row(
             gap=16,
             children=[
-                _card("Filled", CardStyle.filled()),
-                _card("Outlined", CardStyle.outlined()),
-                _card("Elevated", CardStyle.elevated()),
+                _card("Filled", nv.CardStyle.filled()),
+                _card("Outlined", nv.CardStyle.outlined()),
+                _card("Elevated", nv.CardStyle.elevated()),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Card",
         width=600,

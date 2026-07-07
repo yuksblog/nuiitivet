@@ -5,34 +5,25 @@ Shows a ViewModel pattern where the ViewModel depends directly on UI components 
 This is simpler but creates strong coupling between Logic and View.
 """
 
-from nuiitivet.material import App
-from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.material import Overlay
-from nuiitivet.material.text import Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
 class CoupledViewModel:
     """A ViewModel that knows about UI widgets (Simple but coupled)."""
 
     def __init__(self):
-        self.status = Observable("Ready")
+        self.status = nv.Observable("Ready")
 
-    async def process_action(self, overlay: Overlay):
+    async def process_action(self, overlay: nv.Overlay):
         self.status.value = "Processing..."
 
         # ViewModel creates and configures the View (BasicDialog)
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
             actions=[
-                Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text()),
+                nv.Button("OK", on_click=lambda: overlay.close(True), style=nv.ButtonStyle.text()),
             ],
         )
 
@@ -40,23 +31,23 @@ class CoupledViewModel:
         self.status.value = "Finished"
 
 
-class DirectViewModelDemo(ComposableWidget):
+class DirectViewModelDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
         self.vm = CoupledViewModel()
 
     async def _on_run_click(self):
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
         await self.vm.process_action(overlay)
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
-                    Text(self.vm.status),
-                    Button("Run Process", on_click=self._on_run_click, style=ButtonStyle.filled()),
+                    nv.Text(self.vm.status),
+                    nv.Button("Run Process", on_click=self._on_run_click, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
@@ -65,17 +56,17 @@ class DirectViewModelDemo(ComposableWidget):
 def main(png_path: str = ""):
     if png_path:
         # Screenshot: Render the dialog that the ViewModel would create
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
-            actions=[Button("OK", style=ButtonStyle.text())],
+            actions=[nv.Button("OK", style=nv.ButtonStyle.text())],
         )
-        app = App(content=Container(alignment="center", child=dialog), width=400, height=300)
+        app = nv.App(content=nv.Container(alignment="center", child=dialog), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return App(content=DirectViewModelDemo(), width=400, height=300)
+    return nv.App(content=DirectViewModelDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":

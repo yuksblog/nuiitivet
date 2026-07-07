@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, clickable, corner_radius
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,15 +7,17 @@ def main(png: str = ""):
             nv.Container(
                 width=200,
                 height=50,
-                child=md.Text("Click Me!"),
+                child=nv.Text("Click Me!"),
                 alignment="center",
-            ).modifier(background("#4CAF50") | corner_radius(8) | clickable(on_click=lambda: print("Clicked!"))),
+            ).modifier(
+                nv.background("#4CAF50") | nv.corner_radius(8) | nv.clickable(on_click=lambda: print("Clicked!"))
+            ),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Clickable Modifier", width=400)
+    app = nv.App(content=content, title="Clickable Modifier", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

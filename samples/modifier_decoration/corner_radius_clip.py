@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, corner_radius, clip
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,21 +7,21 @@ def main(png: str = ""):
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Radius"),
+                child=nv.Text("Radius"),
                 alignment="center",
-            ).modifier(background("#2196F3") | corner_radius(16)),
+            ).modifier(nv.background("#2196F3") | nv.corner_radius(16)),
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Clip"),
+                child=nv.Text("Clip"),
                 alignment="center",
-            ).modifier(background("#FF9800") | clip()),
+            ).modifier(nv.background("#FF9800") | nv.clip()),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Corner Radius & Clip", width=400)
+    app = nv.App(content=content, title="Corner Radius & Clip", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

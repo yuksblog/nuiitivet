@@ -2,45 +2,41 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, IconButton, IconToggleButton, Text
-from nuiitivet.material.styles import IconButtonStyle, IconToggleButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=12,
             cross_alignment="start",
             children=[
-                Text("IconButton"),
-                Row(
+                nv.Text("IconButton"),
+                nv.Row(
                     gap=12,
                     children=[
-                        IconButton("home", style=IconButtonStyle.standard()),
-                        IconButton("favorite", style=IconButtonStyle.filled()),
-                        IconButton("search", style=IconButtonStyle.outlined()),
-                        IconButton("settings", style=IconButtonStyle.tonal()),
-                        IconButton("add", style=IconButtonStyle.filled(), disabled=True),
+                        nv.IconButton("home", style=nv.IconButtonStyle.standard()),
+                        nv.IconButton("favorite", style=nv.IconButtonStyle.filled()),
+                        nv.IconButton("search", style=nv.IconButtonStyle.outlined()),
+                        nv.IconButton("settings", style=nv.IconButtonStyle.tonal()),
+                        nv.IconButton("add", style=nv.IconButtonStyle.filled(), disabled=True),
                     ],
                 ),
-                Text("IconToggleButton"),
-                Row(
+                nv.Text("IconToggleButton"),
+                nv.Row(
                     gap=12,
                     children=[
-                        IconToggleButton("home", selected=False, style=IconToggleButtonStyle.standard()),
-                        IconToggleButton("favorite", selected=True, style=IconToggleButtonStyle.filled()),
-                        IconToggleButton("search", selected=False, style=IconToggleButtonStyle.outlined()),
-                        IconToggleButton("settings", selected=True, style=IconToggleButtonStyle.tonal()),
+                        nv.IconToggleButton("home", selected=False, style=nv.IconToggleButtonStyle.standard()),
+                        nv.IconToggleButton("favorite", selected=True, style=nv.IconToggleButtonStyle.filled()),
+                        nv.IconToggleButton("search", selected=False, style=nv.IconToggleButtonStyle.outlined()),
+                        nv.IconToggleButton("settings", selected=True, style=nv.IconToggleButtonStyle.tonal()),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="IconButton",
         width=520,

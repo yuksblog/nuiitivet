@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, translate
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,21 +7,21 @@ def main(png: str = ""):
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Normal"),
+                child=nv.Text("Normal"),
                 alignment="center",
-            ).modifier(background("#FF9800")),
+            ).modifier(nv.background("#FF9800")),
             nv.Container(
                 width=100,
                 height=100,
-                child=md.Text("Translated"),
+                child=nv.Text("Translated"),
                 alignment="center",
-            ).modifier(background("#FF9800") | translate((20, 20))),
+            ).modifier(nv.background("#FF9800") | nv.translate((20, 20))),
         ],
         gap=16,
         padding=16,
     )
 
-    app = md.App(content=content, title="Translate Modifier", width=400)
+    app = nv.App(content=content, title="Translate Modifier", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

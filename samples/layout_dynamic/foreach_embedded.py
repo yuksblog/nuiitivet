@@ -4,9 +4,7 @@ Demonstrates the embedded ``children=[ForEach(...)]`` form. It behaves
 identically to ``builder()`` at runtime but reads in a SwiftUI-like style.
 """
 
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.layout.for_each import ForEach
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -18,16 +16,16 @@ def main(png: str = ""):
         padding=8,
         width=300,
         children=[
-            ForEach(
+            nv.ForEach(
                 tags,
-                lambda tag, index: md.Card(md.Text(tag, padding=8), style=md.CardStyle.outlined()),
+                lambda tag, index: nv.Card(nv.Text(tag, padding=8), style=nv.CardStyle.outlined()),
             ),
         ],
     )
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.App(content=root, title="Dynamic List: ForEach")
+    app = nv.App(content=root, title="Dynamic List: ForEach")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -2,28 +2,20 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import (
-    App,
-    HorizontalCenteredSlider,
-    HorizontalRangeSlider,
-    HorizontalSlider,
-    Text,
-)
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("Slider"),
-                HorizontalSlider(value=0.4, width=360, min_value=0.0, max_value=1.0),
-                Text("Slider with stops & value indicator"),
-                HorizontalSlider(
+                nv.Text("Slider"),
+                nv.HorizontalSlider(value=0.4, width=360, min_value=0.0, max_value=1.0),
+                nv.Text("Slider with stops & value indicator"),
+                nv.HorizontalSlider(
                     value=60.0,
                     width=360,
                     min_value=0.0,
@@ -31,16 +23,16 @@ def main(png_path: str = "") -> None:
                     stops=6,
                     show_value_indicator=True,
                 ),
-                Text("CenteredSlider"),
-                HorizontalCenteredSlider(value=0.3, width=360, min_value=-1.0, max_value=1.0),
-                Text("RangeSlider"),
-                HorizontalRangeSlider(
+                nv.Text("CenteredSlider"),
+                nv.HorizontalCenteredSlider(value=0.3, width=360, min_value=-1.0, max_value=1.0),
+                nv.Text("RangeSlider"),
+                nv.HorizontalRangeSlider(
                     value_start=0.25, value_end=0.75, width=360, min_value=0.0, max_value=1.0
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Slider",
         width=480,

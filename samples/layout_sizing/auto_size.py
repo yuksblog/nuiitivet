@@ -1,20 +1,19 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
-    widget = md.Card(
+    widget = nv.Card(
         # width/height 指定なし -> auto
         width="auto",
         height="auto",
-        child=md.Text("This box fits the content"),
+        child=nv.Text("This box fits the content"),
         padding=16,
         alignment="center",
     )
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.App(content=root, title="Auto Size", width=400)
+    app = nv.App(content=root, title="Auto Size", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

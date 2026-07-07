@@ -6,25 +6,20 @@ Shows how to display a modal bottom sheet using Overlay.bottom_sheet().
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, HorizontalDivider, BottomSheet
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.stack import Stack
-from nuiitivet.widgets.box import Box
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 
-class BottomSheetDemo(ComposableWidget):
+class BottomSheetDemo(nv.ComposableWidget):
     def show_bottom_sheet(self) -> None:
-        Overlay.root().bottom_sheet(
-            BottomSheet(
-                Box(
-                    Column(
+        nv.Overlay.root().bottom_sheet(
+            nv.BottomSheet(
+                nv.Box(
+                    nv.Column(
                         children=[
-                            HorizontalDivider(),
-                            Text("Item 1"),
-                            Text("Item 2"),
-                            Text("Item 3"),
+                            nv.HorizontalDivider(),
+                            nv.Text("Item 1"),
+                            nv.Text("Item 2"),
+                            nv.Text("Item 3"),
                         ],
                         gap=8,
                         cross_alignment="start",
@@ -35,50 +30,50 @@ class BottomSheetDemo(ComposableWidget):
             )
         )
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Bottom Sheet Demo"),
-                    Button("Show Bottom Sheet", on_click=self.show_bottom_sheet, style=ButtonStyle.filled()),
+                    nv.Text("Bottom Sheet Demo"),
+                    nv.Button("Show Bottom Sheet", on_click=self.show_bottom_sheet, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-def main(png_path: str = "") -> App:
+def main(png_path: str = "") -> nv.App:
     if png_path:
-        background = Container(
+        background = nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Bottom Sheet Demo"),
-                    Button("Show Bottom Sheet", style=ButtonStyle.filled()),
+                    nv.Text("Bottom Sheet Demo"),
+                    nv.Button("Show Bottom Sheet", style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
-        scrim = Box(
+        scrim = nv.Box(
             background_color=(0, 0, 0, 80),
             width="100%",
             height="100%",
         )
-        sheet_overlay = Container(
+        sheet_overlay = nv.Container(
             alignment="bottom-center",
             width="100%",
             height="100%",
-            child=BottomSheet(
-                Box(
-                    Column(
+            child=nv.BottomSheet(
+                nv.Box(
+                    nv.Column(
                         children=[
-                            HorizontalDivider(),
-                            Text("Item 1"),
-                            Text("Item 2"),
-                            Text("Item 3"),
+                            nv.HorizontalDivider(),
+                            nv.Text("Item 1"),
+                            nv.Text("Item 2"),
+                            nv.Text("Item 3"),
                         ],
                         gap=8,
                         cross_alignment="start",
@@ -88,15 +83,15 @@ def main(png_path: str = "") -> App:
                 headline="Options",
             ),
         )
-        app = App(
-            content=Stack(width=480, height=400, children=[background, scrim, sheet_overlay]),
+        app = nv.App(
+            content=nv.Stack(width=480, height=400, children=[background, scrim, sheet_overlay]),
             width=480,
             height=400,
         )
         app.render_to_png(png_path)
         return app
 
-    return App(content=BottomSheetDemo(), width=480, height=400)
+    return nv.App(content=BottomSheetDemo(), width=480, height=400)
 
 
 if __name__ == "__main__":

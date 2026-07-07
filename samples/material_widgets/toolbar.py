@@ -2,45 +2,42 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, DockedToolbar, HorizontalFloatingToolbar, IconButton, Text
-from nuiitivet.material.styles import IconButtonStyle, ToolbarStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 
-def _actions() -> list[IconButton]:
+def _actions() -> list[nv.IconButton]:
     return [
-        IconButton("menu", style=IconButtonStyle.standard()),
-        IconButton("search", style=IconButtonStyle.standard()),
-        IconButton("favorite", style=IconButtonStyle.filled()),
-        IconButton("more_vert", style=IconButtonStyle.outlined()),
+        nv.IconButton("menu", style=nv.IconButtonStyle.standard()),
+        nv.IconButton("search", style=nv.IconButtonStyle.standard()),
+        nv.IconButton("favorite", style=nv.IconButtonStyle.filled()),
+        nv.IconButton("more_vert", style=nv.IconButtonStyle.outlined()),
     ]
 
 
 def main(png_path: str = "") -> None:
-    docked = DockedToolbar(_actions(), style=ToolbarStyle.standard())
+    docked = nv.DockedToolbar(_actions(), style=nv.ToolbarStyle.standard())
     docked.width_sizing = 480
 
-    floating = HorizontalFloatingToolbar(
+    floating = nv.HorizontalFloatingToolbar(
         _actions(),
         padding=(12, 8, 12, 8),
-        style=ToolbarStyle.standard(),
+        style=nv.ToolbarStyle.standard(),
     )
 
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("DockedToolbar"),
+                nv.Text("DockedToolbar"),
                 docked,
-                Text("FloatingToolbar"),
+                nv.Text("FloatingToolbar"),
                 floating,
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Toolbar",
         width=560,
