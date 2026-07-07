@@ -156,6 +156,7 @@ nav:
           - Window Chrome: guide/window_chrome.md
           - Size and Position: guide/window_size_position.md
           - Operations: guide/window_operations.md
+          - Renderer Selection: guide/renderer_selection.md
       - Modifiers:
           - Overview: guide/modifier.md
           - Decoration: guide/modifier_decoration.md
