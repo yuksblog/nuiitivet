@@ -42,12 +42,8 @@ slowly — a case that cannot be detected automatically.
 
 `App.run()` always needs a display: it opens an OS window. **Truly headless
 environments (no display at all) cannot use `run()` in any mode** — window
-creation fails and a clear error is logged. To render without a display, use
-offscreen rendering, which is always software-based:
-
-```python
-app.render_to_png("out.png")
-```
+creation fails and a clear error is logged. Nuiitivet is a GUI framework, so
+running without a display is not supported.
 
 ## Logging
 

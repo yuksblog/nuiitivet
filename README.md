@@ -184,7 +184,7 @@ Logic → UI declaratively, UI → logic imperatively. What matters in both dire
 ### 2.1. Requirements
 
 - Python 3.10 or higher
-- macOS / Windows / Linux(not tested)
+- macOS / Windows / Linux
 
 Main internal libraries used (drawing/rendering):
 
@@ -285,6 +285,18 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 | [Async & Threading](docs/guide/threading.md) | Safe UI updates from background work. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
-## 4. License
+## 4. Known Limitations
+
+- **No OS accessibility integration.** Everything is drawn with Skia, so the app
+  does not participate in the OS accessibility tree — screen readers and
+  VoiceOver cannot inspect the UI. This is a real constraint for domains that
+  require assistive-technology support.
+- **Requires an OpenGL/GPU context.** Live rendering goes through pyglet +
+  PyOpenGL + skia and needs an OpenGL/GPU context, which has implications for
+  headless, remote, and old-GPU environments. For GPU-less or software-OpenGL
+  setups you can select a CPU/raster renderer — see
+  [Renderer Selection](docs/guide/renderer_selection.md).
+
+## 5. License
 
 Nuiitivet is licensed under the Apache License 2.0. See the LICENSE file for more info.
