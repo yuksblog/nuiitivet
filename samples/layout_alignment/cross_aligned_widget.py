@@ -1,11 +1,10 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = "") -> None:
-    def _tile(label: str, *, width: int = 160, height: int = 40) -> md.Card:
-        return md.Card(
-            md.Text(label),
+    def _tile(label: str, *, width: int = 160, height: int = 40) -> nv.Card:
+        return nv.Card(
+            nv.Text(label),
             width=width,
             height=height,
             alignment="center",
@@ -25,7 +24,7 @@ def main(png: str = "") -> None:
         ],
     )
 
-    app = md.App(
+    app = nv.App(
         content=content,
         title="nv.CrossAligned",
         width="auto",

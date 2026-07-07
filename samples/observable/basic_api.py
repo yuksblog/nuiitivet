@@ -7,13 +7,7 @@ Demonstrates:
 - Custom comparison functions
 """
 
-from nuiitivet.observable import Observable
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Text, ButtonStyle
-from nuiitivet.material.buttons import Button
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgets.box import Box
+import nuiitivet.material as nv
 
 
 class UserRecord:
@@ -29,27 +23,27 @@ def compare_users(a: UserRecord | None, b: UserRecord | None) -> bool:
     return a.uid == b.uid
 
 
-class BasicApiApp(ComposableWidget):
+class BasicApiApp(nv.ComposableWidget):
     """Showcases creating, reading, updating, subscribing, and custom compare."""
 
     def __init__(self) -> None:
         super().__init__()
 
         # --- Creating Observables ---
-        self.name = Observable("Alice")
-        self.age = Observable(20)
-        self.items: Observable[list[str]] = Observable([])
+        self.name = nv.Observable("Alice")
+        self.age = nv.Observable(20)
+        self.items: nv.Observable[list[str]] = nv.Observable([])
 
         # Custom comparison 1: always notify even when the value is unchanged
-        self.noise = Observable(0, compare=lambda a, b: False)
-        self._noise_write_count = Observable(0)
-        self._noise_notify_count = Observable(0)
+        self.noise = nv.Observable(0, compare=lambda a, b: False)
+        self._noise_write_count = nv.Observable(0)
+        self._noise_notify_count = nv.Observable(0)
         self.noise.subscribe(lambda _: setattr(self._noise_notify_count, "value", self._noise_notify_count.value + 1))
 
         # Custom comparison 2: user identity determined by uid only
-        self.user: Observable[UserRecord] = Observable(UserRecord(1, "Alice"), compare=compare_users)
-        self._rename_write_count = Observable(0)
-        self._user_notify_count = Observable(0)
+        self.user: nv.Observable[UserRecord] = nv.Observable(UserRecord(1, "Alice"), compare=compare_users)
+        self._rename_write_count = nv.Observable(0)
+        self._user_notify_count = nv.Observable(0)
         self.user.subscribe(lambda _: setattr(self._user_notify_count, "value", self._user_notify_count.value + 1))
 
         # --- Derived display labels ---
@@ -97,55 +91,55 @@ class BasicApiApp(ComposableWidget):
     def _unsubscribe_age(self) -> None:
         self._age_sub.dispose()
 
-    def build(self) -> Widget:
-        return Box(
+    def build(self) -> nv.Widget:
+        return nv.Box(
             padding=24,
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Observable: Basic API"),
+                    nv.Text("Observable: Basic API"),
                     # Getting / setting
-                    Text(self.age_label),
-                    Text(self.items_label),
-                    Row(
+                    nv.Text(self.age_label),
+                    nv.Text(self.items_label),
+                    nv.Row(
                         gap=8,
                         children=[
-                            Button("Birthday (+1)", on_click=self._birthday, style=ButtonStyle.filled()),
-                            Button("Add item", on_click=self._add_item, style=ButtonStyle.outlined()),
+                            nv.Button("Birthday (+1)", on_click=self._birthday, style=nv.ButtonStyle.filled()),
+                            nv.Button("Add item", on_click=self._add_item, style=nv.ButtonStyle.outlined()),
                         ],
                     ),
                     # subscribe / unsubscribe (check console for output)
-                    Button(
+                    nv.Button(
                         "Unsubscribe age log (check console)",
                         on_click=self._unsubscribe_age,
-                        style=ButtonStyle.text(),
+                        style=nv.ButtonStyle.text(),
                     ),
                     # Custom comparison 1: always notify
                     # compare=lambda a,b: False なので同じ値でも必ず通知される
-                    Text(self.noise_write_label),
-                    Text(self.noise_notify_label),
-                    Button(
+                    nv.Text(self.noise_write_label),
+                    nv.Text(self.noise_notify_label),
+                    nv.Button(
                         "Set same noise value (written = notified)",
                         on_click=self._tick_noise,
-                        style=ButtonStyle.outlined(),
+                        style=nv.ButtonStyle.outlined(),
                     ),
                     # Custom comparison 2: compare by uid
                     # uid が同じなら通知されない → ラベルも更新されない
-                    Text(self.user_label),
-                    Text(self.rename_write_label),
-                    Text(self.user_notify_label),
-                    Row(
+                    nv.Text(self.user_label),
+                    nv.Text(self.rename_write_label),
+                    nv.Text(self.user_notify_label),
+                    nv.Row(
                         gap=8,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Rename (writes++ / notifications unchanged)",
                                 on_click=self._rename_user,
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Change uid (writes++ / notifications++)",
                                 on_click=self._change_user_id,
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
                         ],
                     ),
@@ -156,7 +150,7 @@ class BasicApiApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = BasicApiApp()
-    app = App(content=widget)
+    app = nv.App(content=widget)
     try:
         app.run()
     except Exception:

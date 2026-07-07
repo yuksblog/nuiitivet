@@ -24,47 +24,22 @@ import argparse
 from enum import IntEnum
 from typing import List
 
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.layout.deck import Deck
-from nuiitivet.material.button_group import ConnectedButtonGroup, GroupButton
-from nuiitivet.material.progress_indicators import (
-    CircularProgressIndicator,
-    LinearProgressIndicator,
-)
-from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
-from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle
-from nuiitivet.material.styles.card_style import CardStyle
-from nuiitivet.material.styles.fab_style import FabStyle
-from nuiitivet.material.styles.icon_style import IconStyle
-from nuiitivet.material.styles.progress_indicator_style import (
-    CircularProgressIndicatorStyle,
-    LinearProgressIndicatorStyle,
-)
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.material.theme.material_theme import MaterialThemeFactory
-from nuiitivet.modifiers import background, clip, corner_radius, rotate, scale, shadow
-from nuiitivet.observable import runtime as observable_runtime
-from nuiitivet.observable.value import _ObservableValue
-from nuiitivet.runtime.app import App
-from nuiitivet.runtime.intents import CloseWindowIntent, MinimizeWindowIntent
+import nuiitivet.material as nv
 
 # ---------------------------- Typography presets -------------------------
 # Type-scale tokens supply typography (size). Colour lives on TextStyle.
 # Sizes loosely follow Material 3 type scale roles.
 
-DISPLAY = TypeScaleToken.from_size(36)
-HEADLINE = TypeScaleToken.from_size(24)
-TITLE_LG = TypeScaleToken.from_size(20)
-TITLE_MD = TypeScaleToken.from_size(16)
-LABEL = TypeScaleToken.from_size(12)
-BODY_LG = TypeScaleToken.from_size(16)
-BODY_MD = TypeScaleToken.from_size(14)
-BODY_SM = TypeScaleToken.from_size(12)
-TITLE_BAR_APP_SCALE = TypeScaleToken.from_size(14)
-TITLE_BAR_APP = TextStyle(color=ColorRole.ON_PRIMARY_CONTAINER)
+DISPLAY = nv.TypeScaleToken.from_size(36)
+HEADLINE = nv.TypeScaleToken.from_size(24)
+TITLE_LG = nv.TypeScaleToken.from_size(20)
+TITLE_MD = nv.TypeScaleToken.from_size(16)
+LABEL = nv.TypeScaleToken.from_size(12)
+BODY_LG = nv.TypeScaleToken.from_size(16)
+BODY_MD = nv.TypeScaleToken.from_size(14)
+BODY_SM = nv.TypeScaleToken.from_size(12)
+TITLE_BAR_APP_SCALE = nv.TypeScaleToken.from_size(14)
+TITLE_BAR_APP = nv.TextStyle(color=nv.ColorRole.ON_PRIMARY_CONTAINER)
 
 
 # ------------------------------ Title bar --------------------------------
@@ -76,12 +51,12 @@ class PulseTitleBar(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         branding = nv.Row(
             [
-                md.Icon(
+                nv.Icon(
                     "music_note",
                     size=16,
-                    style=IconStyle(color=ColorRole.ON_PRIMARY_CONTAINER),
+                    style=nv.IconStyle(color=nv.ColorRole.ON_PRIMARY_CONTAINER),
                 ),
-                md.Text("Pulse", style=TITLE_BAR_APP, type_scale=TITLE_BAR_APP_SCALE),
+                nv.Text("Pulse", style=TITLE_BAR_APP, type_scale=TITLE_BAR_APP_SCALE),
             ],
             gap=6,
             cross_alignment="center",
@@ -89,15 +64,15 @@ class PulseTitleBar(nv.ComposableWidget):
 
         controls = nv.Row(
             [
-                md.IconButton(
+                nv.IconButton(
                     "remove",
-                    style=IconButtonStyle.standard("s"),
-                    on_click=lambda: App.of(self).dispatch(MinimizeWindowIntent()),
+                    style=nv.IconButtonStyle.standard("s"),
+                    on_click=lambda: nv.App.of(self).dispatch(nv.MinimizeWindowIntent()),
                 ),
-                md.IconButton(
+                nv.IconButton(
                     "close",
-                    style=IconButtonStyle.standard("s"),
-                    on_click=lambda: App.of(self).dispatch(CloseWindowIntent()),
+                    style=nv.IconButtonStyle.standard("s"),
+                    on_click=lambda: nv.App.of(self).dispatch(nv.CloseWindowIntent()),
                 ),
             ],
             gap=2,
@@ -111,7 +86,7 @@ class PulseTitleBar(nv.ComposableWidget):
             padding=(16, 0, 8, 0),
             width=nv.Sizing.flex(1),
             height=44,
-        ).modifier(background(ColorRole.PRIMARY_CONTAINER))
+        ).modifier(nv.background(nv.ColorRole.PRIMARY_CONTAINER))
 
 
 # ----------------------------- Section model -----------------------------
@@ -194,7 +169,7 @@ def _gradient_box(
     """
     accent = _ACCENT_PAIRS.get(color, color)
     bubble = nv.Container(width=bubble_dim, height=bubble_dim).modifier(
-        background(_alpha_hex(accent, 0xCC)) | corner_radius(bubble_dim // 2)
+        nv.background(_alpha_hex(accent, 0xCC)) | nv.corner_radius(bubble_dim // 2)
     )
     return nv.Container(
         child=nv.Stack(
@@ -205,7 +180,7 @@ def _gradient_box(
         ),
         width=width,
         height=height,
-    ).modifier(background(color) | corner_radius(radius) | clip())
+    ).modifier(nv.background(color) | nv.corner_radius(radius) | nv.clip())
 
 
 def _accent_tile(color: str, size: int = 88, *, radius: int = 20) -> nv.Widget:
@@ -215,14 +190,14 @@ def _accent_tile(color: str, size: int = 88, *, radius: int = 20) -> nv.Widget:
 
 
 def _track_card(title: str, artist: str, accent: str) -> nv.Widget:
-    return md.Card(
+    return nv.Card(
         nv.Row(
             [
                 _accent_tile(accent, size=64),
                 nv.Column(
                     [
-                        md.Text(title, type_scale=TITLE_MD),
-                        md.Text(artist, type_scale=BODY_MD),
+                        nv.Text(title, type_scale=TITLE_MD),
+                        nv.Text(artist, type_scale=BODY_MD),
                     ],
                     gap=4,
                     cross_alignment="start",
@@ -232,7 +207,7 @@ def _track_card(title: str, artist: str, accent: str) -> nv.Widget:
             cross_alignment="center",
             padding=12,
         ),
-        style=CardStyle.filled().copy_with(border_radius=24),
+        style=nv.CardStyle.filled().copy_with(border_radius=24),
         width=nv.Sizing.flex(1),
     )
 
@@ -248,18 +223,18 @@ class HeroPanel(nv.ComposableWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.rotation = _ObservableValue(0.0)
-        self.pulse = _ObservableValue(1.0)
+        self.rotation = nv.Observable(0.0)
+        self.pulse = nv.Observable(1.0)
         self._elapsed = 0.0
         self._tick_fn = self._tick
 
     def on_mount(self) -> None:  # pragma: no cover - visual only
         super().on_mount()
-        observable_runtime.clock.schedule_interval(self._tick_fn, 1 / 60.0)
+        nv.clock.schedule_interval(self._tick_fn, 1 / 60.0)
 
     def on_unmount(self) -> None:  # pragma: no cover - visual only
         try:
-            observable_runtime.clock.unschedule(self._tick_fn)
+            nv.clock.unschedule(self._tick_fn)
         finally:
             super().on_unmount()
 
@@ -274,29 +249,29 @@ class HeroPanel(nv.ComposableWidget):
 
     def build(self) -> nv.Widget:
         # Circular album with a determinate progress arc wrapping it.
-        ring_style = CircularProgressIndicatorStyle.default().copy_with(
+        ring_style = nv.CircularProgressIndicatorStyle.default().copy_with(
             track_thickness=8.0,
-            active_indicator_color=ColorRole.PRIMARY,
-            track_color=ColorRole.SURFACE_VARIANT,
+            active_indicator_color=nv.ColorRole.PRIMARY,
+            track_color=nv.ColorRole.SURFACE_VARIANT,
         )
-        ring = CircularProgressIndicator(value=0.42, size=180, style=ring_style)
+        ring = nv.CircularProgressIndicator(value=0.42, size=180, style=ring_style)
 
         # Inner circular "album" with a music glyph; gently rotates and pulses.
         disc = nv.Container(
-            child=md.Icon(
+            child=nv.Icon(
                 "music_note",
                 size=56,
-                style=IconStyle(color=ColorRole.ON_PRIMARY),
+                style=nv.IconStyle(color=nv.ColorRole.ON_PRIMARY),
             ),
             width=140,
             height=140,
             alignment=("center", "center"),
         ).modifier(
-            background(ColorRole.PRIMARY)
-            | corner_radius(70)
-            | rotate(self.rotation)
-            | scale(self.pulse)
-            | shadow(blur=24, color="#33000000", offset=(0, 6))
+            nv.background(nv.ColorRole.PRIMARY)
+            | nv.corner_radius(70)
+            | nv.rotate(self.rotation)
+            | nv.scale(self.pulse)
+            | nv.shadow(blur=24, color="#33000000", offset=(0, 6))
         )
 
         cover = nv.Stack(
@@ -309,11 +284,11 @@ class HeroPanel(nv.ComposableWidget):
         # --- Now-playing transport row (showcasing IconButton variants) ---
         controls = nv.Row(
             [
-                md.IconButton("shuffle", style=IconButtonStyle.standard("s")),
-                md.IconButton("skip_previous", style=IconButtonStyle.standard("m")),
-                md.IconButton("play_arrow", style=IconButtonStyle.filled("m")),
-                md.IconButton("skip_next", style=IconButtonStyle.standard("m")),
-                md.IconButton("repeat", style=IconButtonStyle.standard("s")),
+                nv.IconButton("shuffle", style=nv.IconButtonStyle.standard("s")),
+                nv.IconButton("skip_previous", style=nv.IconButtonStyle.standard("m")),
+                nv.IconButton("play_arrow", style=nv.IconButtonStyle.filled("m")),
+                nv.IconButton("skip_next", style=nv.IconButtonStyle.standard("m")),
+                nv.IconButton("repeat", style=nv.IconButtonStyle.standard("s")),
             ],
             gap=4,
             cross_alignment="center",
@@ -322,29 +297,29 @@ class HeroPanel(nv.ComposableWidget):
         # --- Action row: Filled "Like" + Tonal "Add to mix" + IconToggle fav ---
         actions = nv.Row(
             [
-                md.Button("Like", icon="thumb_up", style=ButtonStyle.filled("s")),
-                md.Button("Add to mix", icon="playlist_add", style=ButtonStyle.tonal("s")),
-                md.IconToggleButton("favorite", selected=True),
+                nv.Button("Like", icon="thumb_up", style=nv.ButtonStyle.filled("s")),
+                nv.Button("Add to mix", icon="playlist_add", style=nv.ButtonStyle.tonal("s")),
+                nv.IconToggleButton("favorite", selected=True),
             ],
             gap=8,
             cross_alignment="center",
         )
 
         # Linear progress + time labels.
-        progress_style = LinearProgressIndicatorStyle.default().copy_with(
+        progress_style = nv.LinearProgressIndicatorStyle.default().copy_with(
             track_thickness=6.0,
         )
         progress_block = nv.Column(
             [
-                LinearProgressIndicator(
+                nv.LinearProgressIndicator(
                     value=0.42,
                     width=nv.Sizing.flex(1),
                     style=progress_style,
                 ),
                 nv.Row(
                     [
-                        md.Text("1:42", type_scale=BODY_SM),
-                        md.Text("4:08", type_scale=BODY_SM),
+                        nv.Text("1:42", type_scale=BODY_SM),
+                        nv.Text("4:08", type_scale=BODY_SM),
                     ],
                     main_alignment="space-between",
                     width=nv.Sizing.flex(1),
@@ -357,15 +332,15 @@ class HeroPanel(nv.ComposableWidget):
 
         text_block = nv.Column(
             [
-                md.Text("NOW PLAYING", type_scale=LABEL),
-                md.Text("Midnight Drive", type_scale=HEADLINE),
-                md.Text("Aurora Lights · 2026", type_scale=BODY_LG),
+                nv.Text("NOW PLAYING", type_scale=LABEL),
+                nv.Text("Midnight Drive", type_scale=HEADLINE),
+                nv.Text("Aurora Lights · 2026", type_scale=BODY_LG),
                 nv.Container(height=8),
                 nv.Row(
                     [
-                        md.FilterChip("Synthwave", selected=True),
-                        md.FilterChip("Ambient"),
-                        md.FilterChip("Chillhop"),
+                        nv.FilterChip("Synthwave", selected=True),
+                        nv.FilterChip("Ambient"),
+                        nv.FilterChip("Chillhop"),
                     ],
                     gap=8,
                 ),
@@ -384,7 +359,7 @@ class HeroPanel(nv.ComposableWidget):
             width=nv.Sizing.flex(1),
         )
 
-        return md.Card(
+        return nv.Card(
             nv.Row(
                 [cover, text_block],
                 gap=28,
@@ -392,9 +367,9 @@ class HeroPanel(nv.ComposableWidget):
                 padding=24,
                 width=nv.Sizing.flex(1),
             ),
-            style=CardStyle.filled().copy_with(
+            style=nv.CardStyle.filled().copy_with(
                 border_radius=32,
-                background=ColorRole.PRIMARY_CONTAINER,
+                background=nv.ColorRole.PRIMARY_CONTAINER,
             ),
             width=nv.Sizing.flex(1),
         )
@@ -431,8 +406,8 @@ def _home_section(hero: HeroPanel) -> nv.Widget:
             nv.Container(height=8),
             nv.Row(
                 [
-                    md.Text("Up Next", type_scale=TITLE_LG),
-                    md.AssistChip("See all", leading_icon="arrow_forward"),
+                    nv.Text("Up Next", type_scale=TITLE_LG),
+                    nv.AssistChip("See all", leading_icon="arrow_forward"),
                 ],
                 main_alignment="space-between",
                 cross_alignment="center",
@@ -458,18 +433,18 @@ def _grid_section(swatches: List[str]) -> nv.Widget:
         [
             nv.Flow(
                 [
-                    md.Card(
+                    nv.Card(
                         nv.Column(
                             [
                                 _accent_tile(c, size=140),
-                                md.Text(f"Mix #{i + 1:02d}", type_scale=TITLE_MD),
-                                md.Text("12 tracks · 48 min", type_scale=BODY_SM),
+                                nv.Text(f"Mix #{i + 1:02d}", type_scale=TITLE_MD),
+                                nv.Text("12 tracks · 48 min", type_scale=BODY_SM),
                             ],
                             gap=6,
                             padding=12,
                             cross_alignment="start",
                         ),
-                        style=CardStyle.filled().copy_with(border_radius=28),
+                        style=nv.CardStyle.filled().copy_with(border_radius=28),
                     )
                     for i, c in enumerate(swatches)
                 ],
@@ -492,17 +467,17 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
         radius=20,
         bubble_dim=620,
     )
-    return md.Card(
+    return nv.Card(
         nv.Column(
             [
                 cover,
-                md.Text(title, type_scale=TITLE_LG),
-                md.Text(meta, type_scale=BODY_SM),
+                nv.Text(title, type_scale=TITLE_LG),
+                nv.Text(meta, type_scale=BODY_SM),
                 nv.Container(height=2),
                 nv.Row(
                     [
-                        md.Button("Play", icon="play_arrow", style=ButtonStyle.filled("s")),
-                        md.Button("Shuffle", icon="shuffle", style=ButtonStyle.outlined("s")),
+                        nv.Button("Play", icon="play_arrow", style=nv.ButtonStyle.filled("s")),
+                        nv.Button("Shuffle", icon="shuffle", style=nv.ButtonStyle.outlined("s")),
                     ],
                     gap=8,
                 ),
@@ -512,7 +487,7 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
             cross_alignment="start",
             width=nv.Sizing.flex(1),
         ),
-        style=CardStyle.filled().copy_with(border_radius=28),
+        style=nv.CardStyle.filled().copy_with(border_radius=28),
         width=nv.Sizing.flex(1),
     )
 
@@ -520,7 +495,7 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
 def _artist_avatar(name: str, color: str) -> nv.Widget:
     avatar = _gradient_box(color, width=72, height=72, radius=36, bubble_dim=130)
     return nv.Column(
-        [avatar, md.Text(name, type_scale=BODY_SM)],
+        [avatar, nv.Text(name, type_scale=BODY_SM)],
         gap=6,
         cross_alignment="center",
     )
@@ -534,7 +509,7 @@ def _library_section() -> nv.Widget:
     """
     return nv.Column(
         [
-            md.Text("Top Mixes", type_scale=TITLE_LG),
+            nv.Text("Top Mixes", type_scale=TITLE_LG),
             nv.Row(
                 [_top_mix_card(t, m, c) for (t, m, c) in _TOP_MIXES],
                 gap=14,
@@ -542,7 +517,7 @@ def _library_section() -> nv.Widget:
                 width=nv.Sizing.flex(1),
             ),
             nv.Container(height=4),
-            md.Text("Artists", type_scale=TITLE_LG),
+            nv.Text("Artists", type_scale=TITLE_LG),
             nv.Row(
                 [_artist_avatar(n, c) for (n, c) in _ARTISTS],
                 gap=18,
@@ -570,16 +545,16 @@ def _settings_section() -> nv.Widget:
 
     Three cards: Playback, Theme (ConnectedButtonGroup), Equalizer (vertical Sliders).
     """
-    volume = _ObservableValue(0.65)
+    volume = nv.Observable(0.65)
 
-    playback_card = md.Card(
+    playback_card = nv.Card(
         nv.Column(
             [
-                md.Text("Playback", type_scale=TITLE_LG),
+                nv.Text("Playback", type_scale=TITLE_LG),
                 nv.Row(
                     [
-                        md.Text("Volume", type_scale=TITLE_MD),
-                        md.HorizontalSlider(
+                        nv.Text("Volume", type_scale=TITLE_MD),
+                        nv.HorizontalSlider(
                             value=volume,
                             min_value=0.0,
                             max_value=1.0,
@@ -591,21 +566,21 @@ def _settings_section() -> nv.Widget:
                     cross_alignment="center",
                     width=nv.Sizing.flex(1),
                 ),
-                md.HorizontalDivider(),
+                nv.HorizontalDivider(),
                 nv.Row(
                     [
-                        md.Text("High-quality streaming", type_scale=TITLE_MD),
-                        md.Switch(checked=True),
+                        nv.Text("High-quality streaming", type_scale=TITLE_MD),
+                        nv.Switch(checked=True),
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
                     width=nv.Sizing.flex(1),
                 ),
-                md.HorizontalDivider(),
+                nv.HorizontalDivider(),
                 nv.Row(
                     [
-                        md.Text("Crossfade", type_scale=TITLE_MD),
-                        md.Switch(checked=True),
+                        nv.Text("Crossfade", type_scale=TITLE_MD),
+                        nv.Switch(checked=True),
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
@@ -617,21 +592,21 @@ def _settings_section() -> nv.Widget:
             cross_alignment="start",
             width=nv.Sizing.flex(1),
         ),
-        style=CardStyle.filled().copy_with(border_radius=28),
+        style=nv.CardStyle.filled().copy_with(border_radius=28),
         width=nv.Sizing.flex(1),
     )
 
-    theme_card = md.Card(
+    theme_card = nv.Card(
         nv.Column(
             [
-                md.Text("Theme", type_scale=TITLE_LG),
-                ConnectedButtonGroup(
+                nv.Text("Theme", type_scale=TITLE_LG),
+                nv.ConnectedButtonGroup(
                     items=[
-                        GroupButton("Light", icon="light_mode"),
-                        GroupButton("Dark", icon="dark_mode", selected=True),
-                        GroupButton("Auto", icon="brightness_auto"),
+                        nv.GroupButton("Light", icon="light_mode"),
+                        nv.GroupButton("Dark", icon="dark_mode", selected=True),
+                        nv.GroupButton("Auto", icon="brightness_auto"),
                     ],
-                    style=ConnectedButtonGroupStyle.tonal("m"),
+                    style=nv.ConnectedButtonGroupStyle.tonal("m"),
                 ),
             ],
             gap=12,
@@ -639,7 +614,7 @@ def _settings_section() -> nv.Widget:
             cross_alignment="start",
             width=nv.Sizing.flex(1),
         ),
-        style=CardStyle.filled().copy_with(border_radius=28),
+        style=nv.CardStyle.filled().copy_with(border_radius=28),
         width=nv.Sizing.flex(1),
     )
 
@@ -648,22 +623,22 @@ def _settings_section() -> nv.Widget:
         eq_columns.append(
             nv.Column(
                 [
-                    md.VerticalSlider(
-                        value=_ObservableValue(default),
+                    nv.VerticalSlider(
+                        value=nv.Observable(default),
                         min_value=0.0,
                         max_value=1.0,
                         height=nv.Sizing.fixed(110),
                     ),
-                    md.Text(label, type_scale=BODY_SM),
+                    nv.Text(label, type_scale=BODY_SM),
                 ],
                 gap=6,
                 cross_alignment="center",
             )
         )
-    equalizer_card = md.Card(
+    equalizer_card = nv.Card(
         nv.Column(
             [
-                md.Text("Equalizer", type_scale=TITLE_LG),
+                nv.Text("Equalizer", type_scale=TITLE_LG),
                 nv.Row(
                     eq_columns,
                     gap=24,
@@ -677,7 +652,7 @@ def _settings_section() -> nv.Widget:
             cross_alignment="start",
             width=nv.Sizing.flex(1),
         ),
-        style=CardStyle.filled().copy_with(border_radius=28),
+        style=nv.CardStyle.filled().copy_with(border_radius=28),
         width=nv.Sizing.flex(1),
     )
 
@@ -708,19 +683,19 @@ class PulseApp(nv.ComposableWidget):
 
     def __init__(self, *, autoplay: bool = True) -> None:
         super().__init__()
-        self.section = _ObservableValue(int(Section.HOME))
-        self.rail_expanded = _ObservableValue(True)
+        self.section = nv.Observable(int(Section.HOME))
+        self.rail_expanded = nv.Observable(True)
         self._autoplay = autoplay
         self._cycle_fn = self._advance_section
 
     def on_mount(self) -> None:  # pragma: no cover - visual only
         super().on_mount()
         if self._autoplay:
-            observable_runtime.clock.schedule_interval(self._cycle_fn, self._SECTION_INTERVAL_SEC)
+            nv.clock.schedule_interval(self._cycle_fn, self._SECTION_INTERVAL_SEC)
 
     def on_unmount(self) -> None:  # pragma: no cover - visual only
         try:
-            observable_runtime.clock.unschedule(self._cycle_fn)
+            nv.clock.unschedule(self._cycle_fn)
         finally:
             super().on_unmount()
 
@@ -728,12 +703,12 @@ class PulseApp(nv.ComposableWidget):
         self.section.value = (int(self.section.value) + 1) % len(Section)
 
     def build(self) -> nv.Widget:
-        rail = md.NavigationRail(
+        rail = nv.NavigationRail(
             children=[
-                md.RailItem(icon="home", label="Home"),
-                md.RailItem(icon="explore", label="Discover", small_badge=_ObservableValue(True)),
-                md.RailItem(icon="library_music", label="Library", large_badge=_ObservableValue("3")),
-                md.RailItem(icon="settings", label="Settings"),
+                nv.RailItem(icon="home", label="Home"),
+                nv.RailItem(icon="explore", label="Discover", small_badge=nv.Observable(True)),
+                nv.RailItem(icon="library_music", label="Library", large_badge=nv.Observable("3")),
+                nv.RailItem(icon="settings", label="Settings"),
             ],
             index=self.section,
             expanded=self.rail_expanded,
@@ -743,7 +718,7 @@ class PulseApp(nv.ComposableWidget):
         )
 
         hero = HeroPanel()
-        content = Deck(
+        content = nv.Deck(
             children=[
                 _home_section(hero),
                 _grid_section(
@@ -774,7 +749,7 @@ class PulseApp(nv.ComposableWidget):
         # child by the same anchor; the body fills via ``flex(100)`` so the
         # alignment only visibly affects the small FAB child.
         fab = nv.Container(
-            child=md.Fab("play_arrow", style=FabStyle.primary("m")),
+            child=nv.Fab("play_arrow", style=nv.FabStyle.primary("m")),
             padding=24,
         )
 
@@ -800,8 +775,8 @@ class PulseApp(nv.ComposableWidget):
         header = nv.Container(
             child=nv.Column(
                 [
-                    md.Text(title_text, type_scale=HEADLINE),
-                    md.Text(subtitle_text, type_scale=BODY_MD),
+                    nv.Text(title_text, type_scale=HEADLINE),
+                    nv.Text(subtitle_text, type_scale=BODY_MD),
                 ],
                 gap=2,
                 cross_alignment="start",
@@ -809,7 +784,7 @@ class PulseApp(nv.ComposableWidget):
             padding=(24, 14, 24, 14),
             width=nv.Sizing.flex(1),
             height=nv.Sizing.fixed(76),
-        ).modifier(background(ColorRole.SURFACE_CONTAINER_LOW))
+        ).modifier(nv.background(nv.ColorRole.SURFACE_CONTAINER_LOW))
 
         return nv.Column(
             [header, body],
@@ -833,9 +808,9 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
-    theme = MaterialThemeFactory.from_seed(args.seed, mode="dark" if args.dark else "light")
+    theme = nv.ThemeFactory.from_seed(args.seed, mode="dark" if args.dark else "light")
 
-    app = md.App(
+    app = nv.App(
         content=PulseApp(autoplay=not args.no_autoplay),
         title="Pulse",
         width=1150,

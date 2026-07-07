@@ -1,45 +1,40 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import Card, CardStyle, Text
-from nuiitivet.material.divider import HorizontalDivider
-from nuiitivet.modifiers import background, clickable, corner_radius, modeless
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-is_open: Observable[bool] = Observable(False)
+is_open: nv.Observable[bool] = nv.Observable(False)
 
 
 def toggle() -> None:
     is_open.value = not is_open.value
 
 
-info_panel = Card(
+info_panel = nv.Card(
     child=nv.Column(
         children=[
-            Text("Keyboard Shortcuts"),
-            HorizontalDivider(padding=(4, 0)),
-            Text("Ctrl+N  New file"),
-            Text("Ctrl+O  Open file"),
-            Text("Ctrl+S  Save"),
-            Text("Ctrl+Z  Undo"),
+            nv.Text("Keyboard Shortcuts"),
+            nv.HorizontalDivider(padding=(4, 0)),
+            nv.Text("Ctrl+N  New file"),
+            nv.Text("Ctrl+O  Open file"),
+            nv.Text("Ctrl+S  Save"),
+            nv.Text("Ctrl+Z  Undo"),
         ],
         gap=6,
         cross_alignment="start",
     ),
     padding=16,
     width=200,
-    style=CardStyle.elevated(),
+    style=nv.CardStyle.elevated(),
 )
 
 anchor = (
     nv.Container(
         width=160,
         height=40,
-        child=md.Text("Show shortcuts"),
+        child=nv.Text("Show shortcuts"),
         alignment="center",
     )
-    .modifier(background("#2196F3") | corner_radius(8) | clickable(on_click=toggle))
+    .modifier(nv.background("#2196F3") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        modeless(
+        nv.modeless(
             info_panel,
             is_open=is_open,
             alignment="bottom-left",
@@ -53,27 +48,27 @@ anchor = (
 def main(png: str = "") -> None:
     if png:
         # For screenshot: place popup content directly in layout (overlay not captured by render_to_png)
-        _anchor = nv.Container(width=160, height=40, child=md.Text("Show shortcuts"), alignment="center").modifier(
-            background("#2196F3") | corner_radius(8)
+        _anchor = nv.Container(width=160, height=40, child=nv.Text("Show shortcuts"), alignment="center").modifier(
+            nv.background("#2196F3") | nv.corner_radius(8)
         )
-        _panel = Card(
+        _panel = nv.Card(
             child=nv.Column(
                 children=[
-                    Text("Keyboard Shortcuts"),
-                    HorizontalDivider(padding=(4, 0)),
-                    Text("Ctrl+N  New file"),
-                    Text("Ctrl+O  Open file"),
-                    Text("Ctrl+S  Save"),
-                    Text("Ctrl+Z  Undo"),
+                    nv.Text("Keyboard Shortcuts"),
+                    nv.HorizontalDivider(padding=(4, 0)),
+                    nv.Text("Ctrl+N  New file"),
+                    nv.Text("Ctrl+O  Open file"),
+                    nv.Text("Ctrl+S  Save"),
+                    nv.Text("Ctrl+Z  Undo"),
                 ],
                 gap=6,
                 cross_alignment="start",
             ),
             padding=16,
             width=200,
-            style=CardStyle.elevated(),
+            style=nv.CardStyle.elevated(),
         )
-        app = md.App(
+        app = nv.App(
             content=nv.Column(children=[_anchor, _panel], gap=4, padding=16),
             title="modeless Modifier",
             width=300,
@@ -82,7 +77,7 @@ def main(png: str = "") -> None:
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
-    app = md.App(
+    app = nv.App(
         content=nv.Column(children=[anchor], gap=8, padding=16),
         title="modeless Modifier",
         width=300,

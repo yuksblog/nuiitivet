@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -20,25 +19,25 @@ def main(png: str = ""):
             children=[_bar("H=32", 32), _bar("H=64", 64), _bar("H=96", 96)],
         )
 
-    def _bar(label: str, height: int) -> md.Card:
-        return md.Card(
-            md.Text(label),
+    def _bar(label: str, height: int) -> nv.Card:
+        return nv.Card(
+            nv.Text(label),
             width=88,
             height=height,
             alignment="center",
         )
 
-    def _panel(alignment: str) -> md.Card:
-        return md.Card(
+    def _panel(alignment: str) -> nv.Card:
+        return nv.Card(
             nv.Column(
-                children=[md.Text(alignment), _demo_row(alignment)],
+                children=[nv.Text(alignment), _demo_row(alignment)],
                 gap=8,
                 cross_alignment="start",
                 width="100%",
             ),
             width=560,
             padding=12,
-            style=md.CardStyle.outlined(),
+            style=nv.CardStyle.outlined(),
         )
 
     content = nv.Column(
@@ -49,7 +48,7 @@ def main(png: str = ""):
         cross_alignment="start",
     )
 
-    app = md.App(
+    app = nv.App(
         content=content,
         title="nv.Row cross_alignment",
         width="auto",

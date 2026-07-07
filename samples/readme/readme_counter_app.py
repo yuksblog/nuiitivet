@@ -1,6 +1,5 @@
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 class CounterApp(nv.ComposableWidget):
@@ -14,8 +13,8 @@ class CounterApp(nv.ComposableWidget):
     def build(self):
         return nv.Column(
             [
-                md.Text(self.count),
-                md.Button(
+                nv.Text(self.count),
+                nv.Button(
                     "Increment",
                     on_click=self.increment,
                 ),
@@ -29,7 +28,7 @@ def main(png: str = "") -> None:
     app_widget = CounterApp()
     if png:
         app_widget.count.value = 3
-    app = md.App(
+    app = nv.App(
         content=app_widget,
         title="Counter Demo",
         width=250,

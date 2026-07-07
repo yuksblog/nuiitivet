@@ -14,19 +14,7 @@ from dataclasses import dataclass, replace
 
 from typing import Optional
 
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.material import App, Button, Text, ThemeFactory
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.modifiers import background, corner_radius
-from nuiitivet.observable import Observable
-from nuiitivet.theme import ThemeExtension
-from nuiitivet.theme.intents import ThemeModeIntent
-from nuiitivet.theme.manager import ThemeManager
-from nuiitivet.theme.theme import Theme
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 # ---------------------------------------------------------------------------
 # 1. ThemeExtension — same structure, different values per mode
@@ -41,7 +29,7 @@ class AppBrandTheme:
     brand_on_surface: str  # text color on top of brand_surface
     brand_accent: str
 
-    def copy_with(self, **kwargs) -> ThemeExtension:
+    def copy_with(self, **kwargs) -> nv.ThemeExtension:
         """Return a copy with selected fields replaced."""
         return replace(self, **kwargs)
 
@@ -51,10 +39,10 @@ class AppBrandTheme:
 # ---------------------------------------------------------------------------
 
 
-def make_light_theme() -> Theme:
+def make_light_theme() -> nv.Theme:
     """Light variant: soft green surface, orange accent."""
-    base = ThemeFactory.light("#1A6B3C")
-    return Theme(
+    base = nv.ThemeFactory.light("#1A6B3C")
+    return nv.Theme(
         mode=base.mode,
         extensions=[
             *base.extensions,
@@ -68,10 +56,10 @@ def make_light_theme() -> Theme:
     )
 
 
-def make_dark_theme() -> Theme:
+def make_dark_theme() -> nv.Theme:
     """Dark variant: deep green surface, amber accent."""
-    base = ThemeFactory.dark("#1A6B3C")
-    return Theme(
+    base = nv.ThemeFactory.dark("#1A6B3C")
+    return nv.Theme(
         mode=base.mode,
         extensions=[
             *base.extensions,
@@ -94,20 +82,18 @@ _dark = make_dark_theme()
 # ---------------------------------------------------------------------------
 
 
-class BrandCard(ComposableWidget):
+class BrandCard(nv.ComposableWidget):
     """Reads brand colors from AppBrandTheme — same code as Use case 1."""
 
     def __init__(self, heading: str, content: str) -> None:
         super().__init__()
         self.heading = heading
         self.content = content
-        self._theme_manager: Optional[ThemeManager] = None
+        self._theme_manager: Optional[nv.ThemeManager] = None
 
     def on_mount(self) -> None:
         super().on_mount()
-        from nuiitivet.runtime.app import AppScope
-
-        scope = self.find_ancestor(AppScope)
+        scope = self.find_ancestor(nv.AppScope)
         if scope is not None:
             self._theme_manager = scope.theme_manager
             self._theme_manager.subscribe(self._on_theme_change)
@@ -118,25 +104,25 @@ class BrandCard(ComposableWidget):
             self._theme_manager = None
         super().on_unmount()
 
-    def _on_theme_change(self, _theme: Theme) -> None:
+    def _on_theme_change(self, _theme: nv.Theme) -> None:
         self.rebuild()
 
-    def build(self) -> Widget:
-        brand = Theme.of(self).extension(AppBrandTheme)
+    def build(self) -> nv.Widget:
+        brand = nv.Theme.of(self).extension(AppBrandTheme)
         bg = brand.brand_surface if brand else "#1B3A2A"
         fg = brand.brand_on_surface if brand else "#C8E6C9"
         accent = brand.brand_accent if brand else "#FFB300"
 
-        return Container(
+        return nv.Container(
             padding=16,
-            child=Column(
+            child=nv.Column(
                 gap=8,
                 children=[
-                    Text(self.heading, style=TextStyle(color=accent), type_scale=TypeScaleToken.from_size(16)),
-                    Text(self.content, style=TextStyle(color=fg), type_scale=TypeScaleToken.from_size(13)),
+                    nv.Text(self.heading, style=nv.TextStyle(color=accent), type_scale=nv.TypeScaleToken.from_size(16)),
+                    nv.Text(self.content, style=nv.TextStyle(color=fg), type_scale=nv.TypeScaleToken.from_size(13)),
                 ],
             ),
-        ).modifier(background(bg) | corner_radius(12))
+        ).modifier(nv.background(bg) | nv.corner_radius(12))
 
 
 # ---------------------------------------------------------------------------
@@ -144,25 +130,25 @@ class BrandCard(ComposableWidget):
 # ---------------------------------------------------------------------------
 
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     _is_dark: bool = True
-    _toggle_label: Observable[str] = Observable("Switch to Light")
+    _toggle_label: nv.Observable[str] = nv.Observable("Switch to Light")
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
                     BrandCard(
                         heading="Brand Card",
                         content="Colors come from AppBrandTheme.",
                     ),
-                    Button(
+                    nv.Button(
                         self._toggle_label,
-                        style=ButtonStyle.tonal(),
+                        style=nv.ButtonStyle.tonal(),
                         on_click=self._on_toggle,
                     ),
                 ],
@@ -173,11 +159,11 @@ class HomeScreen(ComposableWidget):
         self._is_dark = not self._is_dark
         next_theme = _dark if self._is_dark else _light
         self._toggle_label.value = "Switch to Light" if self._is_dark else "Switch to Dark"
-        App.of(self).dispatch(ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
 
 
 def main(png_path: str = "") -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Theme Extensions - Light/Dark Widget",
         theme=_dark,

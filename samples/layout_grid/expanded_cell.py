@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -9,12 +8,12 @@ def main(png: str = ""):
         columns=[200],
         children=[
             nv.GridItem(
-                child=md.Card(
+                child=nv.Card(
                     # カードをセルのサイズいっぱいに広げる
                     width="100%",
                     height="100%",
                     alignment="center",
-                    child=md.Text("Expanded md.Card"),
+                    child=nv.Text("Expanded md.Card"),
                 ),
                 row=0,
                 column=0,
@@ -24,7 +23,7 @@ def main(png: str = ""):
 
     root = nv.Container(padding=50, child=widget)
 
-    app = md.App(content=root, title="Expanded Cell")
+    app = nv.App(content=root, title="Expanded Cell")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

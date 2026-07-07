@@ -1,6 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+import nuiitivet.material as nv
 
 
 class DeckDemo(nv.ComposableWidget):
@@ -15,20 +13,20 @@ class DeckDemo(nv.ComposableWidget):
             padding=8,
             gap=8,
             children=[
-                md.Button(
+                nv.Button(
                     "Tab1",
                     on_click=lambda: self.set_index(0),
-                    style=md.ButtonStyle.filled(),
+                    style=nv.ButtonStyle.filled(),
                 ),
-                md.Button(
+                nv.Button(
                     "Tab2",
                     on_click=lambda: self.set_index(1),
-                    style=md.ButtonStyle.filled(),
+                    style=nv.ButtonStyle.filled(),
                 ),
-                md.Button(
+                nv.Button(
                     "Tab3",
                     on_click=lambda: self.set_index(2),
-                    style=md.ButtonStyle.filled(),
+                    style=nv.ButtonStyle.filled(),
                 ),
             ],
         )
@@ -42,20 +40,20 @@ class DeckDemo(nv.ComposableWidget):
                     alignment="center",
                     width="100%",
                     height="100%",
-                    child=md.Text("Tab 1 Content"),
-                ).modifier(mod.background("#BBDEFB")),
+                    child=nv.Text("Tab 1 Content"),
+                ).modifier(nv.background("#BBDEFB")),
                 nv.Container(
                     alignment="center",
                     width="100%",
                     height="100%",
-                    child=md.Text("Tab 2 Content"),
-                ).modifier(mod.background("#C8E6C9")),
+                    child=nv.Text("Tab 2 Content"),
+                ).modifier(nv.background("#C8E6C9")),
                 nv.Container(
                     alignment="center",
                     width="100%",
                     height="100%",
-                    child=md.Text("Tab 3 Content"),
-                ).modifier(mod.background("#FFE0B2")),
+                    child=nv.Text("Tab 3 Content"),
+                ).modifier(nv.background("#FFE0B2")),
             ],
         )
 
@@ -70,7 +68,7 @@ class DeckDemo(nv.ComposableWidget):
 
 def main(png: str = ""):
 
-    app = md.App(
+    app = nv.App(
         content=DeckDemo(),
         title="nv.Deck Demo",
         width=520,

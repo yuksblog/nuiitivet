@@ -5,8 +5,7 @@ inline with a list comprehension. Use this when the data does not change
 after the layout is built.
 """
 
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -16,13 +15,13 @@ def main(png: str = ""):
         main_gap=8,
         cross_gap=8,
         padding=8,
-        children=[md.Card(md.Text(tag, padding=8), style=md.CardStyle.outlined()) for tag in tags],
+        children=[nv.Card(nv.Text(tag, padding=8), style=nv.CardStyle.outlined()) for tag in tags],
         width=300,
     )
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = md.App(content=root, title="Dynamic List: Static Comprehension")
+    app = nv.App(content=root, title="Dynamic List: Static Comprehension")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

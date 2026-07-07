@@ -8,10 +8,7 @@ dismisses the menu via the shared light-dismiss overlay.
 
 from __future__ import annotations
 
-from nuiitivet.material import App, ExtendedFab, Fab, FabMenu, FabMenuItem, FabStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 _ACTIONS = [
     ("edit", "Compose"),
@@ -21,20 +18,20 @@ _ACTIONS = [
 ]
 
 
-def _items() -> list[FabMenuItem]:
+def _items() -> list[nv.FabMenuItem]:
     return [
-        FabMenuItem(icon=icon, label=label, on_click=lambda label=label: print(label))
+        nv.FabMenuItem(icon=icon, label=label, on_click=lambda label=label: print(label))
         for icon, label in _ACTIONS
     ]
 
 
-def _build_interactive_content() -> Container:
+def _build_interactive_content() -> nv.Container:
     """The real, interactive FabMenu anchored at the bottom-trailing corner."""
-    fab_menu = FabMenu("add", items=_items(), style=FabStyle.primary("m"))
-    return Container(padding=16, alignment="bottom-right", child=fab_menu)
+    fab_menu = nv.FabMenu("add", items=_items(), style=nv.FabStyle.primary("m"))
+    return nv.Container(padding=16, alignment="bottom-right", child=fab_menu)
 
 
-def _build_png_content() -> Container:
+def _build_png_content() -> nv.Container:
     """Static open-state preview for the screenshot.
 
     The real menu list is a light-dismiss overlay with a staggered reveal
@@ -42,26 +39,26 @@ def _build_png_content() -> Container:
     open state with static tonal pills above the solid close button.
     """
     pills = [
-        ExtendedFab(label, icon=icon, style=FabStyle.primary(), expanded=Observable(True))
+        nv.ExtendedFab(label, icon=icon, style=nv.FabStyle.primary(), expanded=nv.Observable(True))
         for icon, label in _ACTIONS
     ]
-    return Container(
+    return nv.Container(
         padding=16,
         alignment="bottom-right",
-        child=Column(
+        child=nv.Column(
             gap=8,
             cross_alignment="end",
-            children=[*pills, Fab("close", style=FabStyle.primary_solid("m"))],
+            children=[*pills, nv.Fab("close", style=nv.FabStyle.primary_solid("m"))],
         ),
     )
 
 
 def main(png_path: str = "") -> None:
     if png_path:
-        app = App(content=_build_png_content(), title="FabMenu", width=420, height=520)
+        app = nv.App(content=_build_png_content(), title="FabMenu", width=420, height=520)
         app.render_to_png(png_path)
     else:
-        app = App(content=_build_interactive_content(), title="FabMenu", width=420, height=520)
+        app = nv.App(content=_build_interactive_content(), title="FabMenu", width=420, height=520)
         app.run()
 
 

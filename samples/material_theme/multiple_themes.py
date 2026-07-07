@@ -6,41 +6,36 @@ and ThemeModeIntent. Themes are registered on mount and switched by string key.
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Button, Text, ThemeFactory
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.theme.intents import ThemeRegistryIntent, ThemeModeIntent
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
-ocean_light, ocean_dark = ThemeFactory.from_seed_pair("#00639B")
-forest_light, forest_dark = ThemeFactory.from_seed_pair("#386A20")
+ocean_light, ocean_dark = nv.ThemeFactory.from_seed_pair("#00639B")
+forest_light, forest_dark = nv.ThemeFactory.from_seed_pair("#386A20")
 
 
-class HomeScreen(ComposableWidget):
-    def build(self) -> Widget:
+class HomeScreen(nv.ComposableWidget):
+    def build(self) -> nv.Widget:
         def switch(name: str):
-            return lambda: App.of(self).dispatch(ThemeModeIntent(theme=name))
+            return lambda: nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=name))
 
-        return Container(
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=12,
                 children=[
-                    Text("Multiple Themes"),
-                    Button("Ocean Light", style=ButtonStyle.filled(), on_click=switch("ocean-light")),
-                    Button("Ocean Dark", style=ButtonStyle.tonal(), on_click=switch("ocean-dark")),
-                    Button("Forest Light", style=ButtonStyle.filled(), on_click=switch("forest-light")),
-                    Button("Forest Dark", style=ButtonStyle.tonal(), on_click=switch("forest-dark")),
+                    nv.Text("Multiple Themes"),
+                    nv.Button("Ocean Light", style=nv.ButtonStyle.filled(), on_click=switch("ocean-light")),
+                    nv.Button("Ocean Dark", style=nv.ButtonStyle.tonal(), on_click=switch("ocean-dark")),
+                    nv.Button("Forest Light", style=nv.ButtonStyle.filled(), on_click=switch("forest-light")),
+                    nv.Button("Forest Dark", style=nv.ButtonStyle.tonal(), on_click=switch("forest-dark")),
                 ],
             ),
         )
 
 
 def main() -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Multiple Themes",
         theme=ocean_light,
@@ -48,7 +43,7 @@ def main() -> None:
         height=340,
     )
     app.dispatch(
-        ThemeRegistryIntent(
+        nv.ThemeRegistryIntent(
             themes={
                 "ocean-light": ocean_light,
                 "ocean-dark": ocean_dark,

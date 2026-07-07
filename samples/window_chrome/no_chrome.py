@@ -1,19 +1,17 @@
 """Window Chrome - Borderless window (chrome=None)."""
 
-from nuiitivet.runtime.app import App
-from nuiitivet.material import Text
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 SKIP_WINDOW_FRAME = True
 
 
 def main(png_path: str = "") -> None:
-    app = App(
-        content=Container(
+    app = nv.App(
+        content=nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Text("Borderless Window"),
+            child=nv.Text("Borderless Window"),
         ),
         title="Borderless",
         chrome=None,

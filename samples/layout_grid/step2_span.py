@@ -1,14 +1,13 @@
 """Step 2 span sample."""
 
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _card(label: str) -> md.Card:
+def _card(label: str) -> nv.Card:
     # Step 2: 単純なカード（サイズ指定なし）
-    return md.Card(
-        md.Text(label),
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
     )
@@ -34,7 +33,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.App(
+    app = nv.App(
         content=widget,
         title="Step 2: Spanning",
         width=400,

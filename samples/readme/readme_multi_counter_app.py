@@ -1,6 +1,5 @@
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 class MultiCounterApp(nv.ComposableWidget):
@@ -21,19 +20,19 @@ class MultiCounterApp(nv.ComposableWidget):
             [
                 nv.Row(
                     [
-                        md.Text(self.count_a),
-                        md.Button("+", on_click=self.increment_a),
+                        nv.Text(self.count_a),
+                        nv.Button("+", on_click=self.increment_a),
                     ],
                     gap=12,
                 ),
                 nv.Row(
                     [
-                        md.Text(self.count_b),
-                        md.Button("+", on_click=self.increment_b),
+                        nv.Text(self.count_b),
+                        nv.Button("+", on_click=self.increment_b),
                     ],
                     gap=12,
                 ),
-                md.Text(self.total),
+                nv.Text(self.total),
             ],
             gap=16,
             padding=20,
@@ -45,7 +44,7 @@ def main(png: str = "") -> None:
     if png:
         app_widget.count_a.value = 3
         app_widget.count_b.value = 5
-    app = md.App(
+    app = nv.App(
         content=app_widget,
         title="Multi Counter Demo",
         width=250,

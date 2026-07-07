@@ -2,44 +2,42 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, TextField, TextFieldStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                TextField(
+                nv.TextField(
                     value="",
                     label="Username",
                     leading_icon="person",
                     width=320,
                 ),
-                TextField(
+                nv.TextField(
                     value="",
                     label="Password",
                     leading_icon="lock",
                     obscure_text=True,
                     width=320,
-                    style=TextFieldStyle.outlined(),
+                    style=nv.TextFieldStyle.outlined(),
                 ),
-                TextField(
+                nv.TextField(
                     value="invalid@",
                     label="Email",
                     supporting_text="Invalid email address",
                     is_error=True,
                     width=320,
-                    style=TextFieldStyle.outlined(),
+                    style=nv.TextFieldStyle.outlined(),
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="TextField",
         width=440,

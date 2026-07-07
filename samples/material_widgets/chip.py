@@ -2,40 +2,37 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, AssistChip, FilterChip, InputChip, SuggestionChip, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=12,
             cross_alignment="start",
             children=[
-                Text("Assist / Filter"),
-                Row(
+                nv.Text("Assist / Filter"),
+                nv.Row(
                     gap=12,
                     children=[
-                        AssistChip("Assist", leading_icon="add"),
-                        FilterChip("Filter", selected=True, leading_icon="tune"),
-                        FilterChip("Filter", selected=False, leading_icon="tune"),
+                        nv.AssistChip("Assist", leading_icon="add"),
+                        nv.FilterChip("Filter", selected=True, leading_icon="tune"),
+                        nv.FilterChip("Filter", selected=False, leading_icon="tune"),
                     ],
                 ),
-                Text("Input / Suggestion"),
-                Row(
+                nv.Text("Input / Suggestion"),
+                nv.Row(
                     gap=12,
                     children=[
-                        InputChip("Input", leading_icon="person", trailing_icon="close"),
-                        SuggestionChip("Suggestion", leading_icon="lightbulb"),
+                        nv.InputChip("Input", leading_icon="person", trailing_icon="close"),
+                        nv.SuggestionChip("Suggestion", leading_icon="lightbulb"),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Chip",
         width=560,

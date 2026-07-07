@@ -2,45 +2,34 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import (
-    App,
-    CircularProgressIndicator,
-    IndeterminateCircularProgressIndicator,
-    IndeterminateLinearProgressIndicator,
-    LinearProgressIndicator,
-    LoadingIndicator,
-    Text,
-)
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("LinearProgressIndicator"),
-                LinearProgressIndicator(value=0.4, width=320),
-                Text("Indeterminate Linear"),
-                IndeterminateLinearProgressIndicator(width=320),
-                Text("Circular (determinate / indeterminate)"),
-                Row(
+                nv.Text("LinearProgressIndicator"),
+                nv.LinearProgressIndicator(value=0.4, width=320),
+                nv.Text("Indeterminate Linear"),
+                nv.IndeterminateLinearProgressIndicator(width=320),
+                nv.Text("Circular (determinate / indeterminate)"),
+                nv.Row(
                     gap=24,
                     cross_alignment="center",
                     children=[
-                        CircularProgressIndicator(value=0.65, size=40),
-                        IndeterminateCircularProgressIndicator(size=40),
-                        LoadingIndicator(),
+                        nv.CircularProgressIndicator(value=0.65, size=40),
+                        nv.IndeterminateCircularProgressIndicator(size=40),
+                        nv.LoadingIndicator(),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Progress Indicators",
         width=440,

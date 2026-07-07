@@ -5,10 +5,7 @@ from __future__ import annotations
 import struct
 import zlib
 
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Image, Text
+import nuiitivet.material as nv
 
 
 def _png_chunk(chunk_type: bytes, payload: bytes) -> bytes:
@@ -44,17 +41,17 @@ def _make_demo_png_bytes(width: int = 200, height: int = 200) -> bytes:
     return signature + _png_chunk(b"IHDR", ihdr) + _png_chunk(b"IDAT", idat) + _png_chunk(b"IEND", b"")
 
 
-def _fit_card(label: str, fit: str, source: bytes) -> Container:
-    return Container(
+def _fit_card(label: str, fit: str, source: bytes) -> nv.Container:
+    return nv.Container(
         padding=8,
-        child=Column(
+        child=nv.Column(
             gap=4,
             children=[
-                Text(label),
-                Container(
+                nv.Text(label),
+                nv.Container(
                     width=180,
                     height=120,
-                    child=Image(source, fit=fit, width="100%", height="100%"),  # type: ignore[arg-type]
+                    child=nv.Image(source, fit=fit, width="100%", height="100%"),  # type: ignore[arg-type]
                 ),
             ],
         ),
@@ -63,19 +60,19 @@ def _fit_card(label: str, fit: str, source: bytes) -> Container:
 
 def main(png_path: str = "") -> None:
     source = _make_demo_png_bytes()
-    content = Container(
+    content = nv.Container(
         padding=16,
-        child=Column(
+        child=nv.Column(
             gap=12,
             children=[
-                Row(
+                nv.Row(
                     gap=8,
                     children=[
                         _fit_card("fit=contain", "contain", source),
                         _fit_card("fit=cover", "cover", source),
                     ],
                 ),
-                Row(
+                nv.Row(
                     gap=8,
                     children=[
                         _fit_card("fit=fill", "fill", source),
@@ -85,7 +82,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="Image",
         width=420,

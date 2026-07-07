@@ -1,15 +1,15 @@
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
-    widget = md.Card(
+    widget = nv.Card(
         width="100%",
-        child=md.Text("Full Width Box"),
+        child=nv.Text("Full Width Box"),
         padding=16,
         alignment="center",
     )
 
-    app = md.App(content=widget, title="Full Width Box", width=400)
+    app = nv.App(content=widget, title="Full Width Box", width=400)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

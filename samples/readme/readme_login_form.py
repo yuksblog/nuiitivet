@@ -1,22 +1,21 @@
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def build_login_form():
     return nv.Column(
         [
-            md.TextField(
+            nv.TextField(
                 value="",
                 label="Username",
                 width=300,
             ),
-            md.TextField(
+            nv.TextField(
                 value="",
                 label="Password",
                 width=300,
             ),
-            md.Button(
+            nv.Button(
                 "Login",
                 on_click=lambda: print("Login clicked"),
                 width=300,
@@ -28,7 +27,7 @@ def build_login_form():
 
 
 def main(png: str = "") -> None:
-    app = md.App(content=build_login_form(), title="Login Form")
+    app = nv.App(content=build_login_form(), title="Login Form")
 
     if png:
         app.render_to_png(png)

@@ -7,17 +7,13 @@ directly for each colour mapping and size.
 
 from __future__ import annotations
 
-from nuiitivet.material import App, ExtendedFab, FabStyle, Text
-from nuiitivet.observable import Observable
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
-def _toggling_fab(label: str, icon: str, style: FabStyle) -> ExtendedFab:
+def _toggling_fab(label: str, icon: str, style: nv.FabStyle) -> nv.ExtendedFab:
     """Return an ExtendedFab that toggles its own expanded state on click."""
-    expanded = Observable(True)
-    return ExtendedFab(
+    expanded = nv.Observable(True)
+    return nv.ExtendedFab(
         label,
         icon=icon,
         style=style,
@@ -27,46 +23,46 @@ def _toggling_fab(label: str, icon: str, style: FabStyle) -> ExtendedFab:
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=16,
             cross_alignment="start",
             children=[
-                Text("Tonal color variants (size s) — click to collapse/expand"),
-                Row(
+                nv.Text("Tonal color variants (size s) — click to collapse/expand"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        _toggling_fab("Compose", "edit", FabStyle.primary()),
-                        _toggling_fab("Share", "share", FabStyle.secondary()),
-                        _toggling_fab("Save", "save", FabStyle.tertiary()),
+                        _toggling_fab("Compose", "edit", nv.FabStyle.primary()),
+                        _toggling_fab("Share", "share", nv.FabStyle.secondary()),
+                        _toggling_fab("Save", "save", nv.FabStyle.tertiary()),
                     ],
                 ),
-                Text("Solid color variants (size s) — click to collapse/expand"),
-                Row(
+                nv.Text("Solid color variants (size s) — click to collapse/expand"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        _toggling_fab("Compose", "edit", FabStyle.primary_solid()),
-                        _toggling_fab("Share", "share", FabStyle.secondary_solid()),
-                        _toggling_fab("Save", "save", FabStyle.tertiary_solid()),
+                        _toggling_fab("Compose", "edit", nv.FabStyle.primary_solid()),
+                        _toggling_fab("Share", "share", nv.FabStyle.secondary_solid()),
+                        _toggling_fab("Save", "save", nv.FabStyle.tertiary_solid()),
                     ],
                 ),
-                Text("Sizes (s / m / l) — click to collapse/expand"),
-                Row(
+                nv.Text("Sizes (s / m / l) — click to collapse/expand"),
+                nv.Row(
                     gap=16,
                     cross_alignment="center",
                     children=[
-                        _toggling_fab("Compose", "edit", FabStyle.primary("s")),
-                        _toggling_fab("Compose", "edit", FabStyle.primary("m")),
-                        _toggling_fab("Compose", "edit", FabStyle.primary("l")),
+                        _toggling_fab("Compose", "edit", nv.FabStyle.primary("s")),
+                        _toggling_fab("Compose", "edit", nv.FabStyle.primary("m")),
+                        _toggling_fab("Compose", "edit", nv.FabStyle.primary("l")),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="ExtendedFab",
         width=660,

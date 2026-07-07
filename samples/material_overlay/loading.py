@@ -6,62 +6,58 @@ Shows how to display a centered loading indicator using Overlay.loading().
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Overlay, Text, Button, ButtonStyle, LoadingIndicator
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.stack import Stack
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 
-class LoadingDemo(ComposableWidget):
+class LoadingDemo(nv.ComposableWidget):
     def show_loading(self) -> None:
-        Overlay.root().loading()
+        nv.Overlay.root().loading()
         # handle = Overlay.root().loading()
         # In real usage, dismiss when done:
         # handle.close(None)
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Loading Demo"),
-                    Button("Show Loading", on_click=self.show_loading, style=ButtonStyle.tonal()),
+                    nv.Text("Loading Demo"),
+                    nv.Button("Show Loading", on_click=self.show_loading, style=nv.ButtonStyle.tonal()),
                 ],
             ),
         )
 
 
-def main(png_path: str = "") -> App:
+def main(png_path: str = "") -> nv.App:
     if png_path:
-        background = Container(
+        background = nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Loading Demo"),
-                    Button("Show Loading", style=ButtonStyle.tonal()),
+                    nv.Text("Loading Demo"),
+                    nv.Button("Show Loading", style=nv.ButtonStyle.tonal()),
                 ],
             ),
         )
-        indicator_overlay = Container(
+        indicator_overlay = nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=LoadingIndicator(size=48),
+            child=nv.LoadingIndicator(size=48),
         )
-        app = App(
-            content=Stack(width=480, height=320, children=[background, indicator_overlay]),
+        app = nv.App(
+            content=nv.Stack(width=480, height=320, children=[background, indicator_overlay]),
             width=480,
             height=320,
         )
         app.render_to_png(png_path)
         return app
 
-    return App(content=LoadingDemo(), width=480, height=320)
+    return nv.App(content=LoadingDemo(), width=480, height=320)
 
 
 if __name__ == "__main__":

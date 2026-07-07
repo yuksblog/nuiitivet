@@ -1,14 +1,13 @@
 """Step 3 sizing sample."""
 
 from __future__ import annotations
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _card(label: str) -> md.Card:
+def _card(label: str) -> nv.Card:
     # サイズ指定なし
-    return md.Card(
-        md.Text(label),
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
     )
@@ -34,7 +33,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = md.App(
+    app = nv.App(
         content=widget, title="Step 3: nv.Sizing Strategies", width=400, height=400
     )
     if png:

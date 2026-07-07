@@ -1,5 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -15,9 +14,9 @@ def main(png: str = ""):
         "bottom-right",
     ]
 
-    def _tile(alignment: str) -> md.Card:
-        return md.Card(
-            md.Text(alignment, padding=8),
+    def _tile(alignment: str) -> nv.Card:
+        return nv.Card(
+            nv.Text(alignment, padding=8),
             width=160,
             height=96,
             alignment=alignment,
@@ -34,7 +33,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", padding=24, child=grid)
 
-    app = md.App(
+    app = nv.App(
         content=root,
         title="nv.Container Alignment",
         width="auto",

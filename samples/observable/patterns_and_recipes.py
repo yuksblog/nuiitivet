@@ -10,13 +10,7 @@ Demonstrates:
 import threading
 import time
 
-from nuiitivet.observable import Observable, combine, batch
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.material import App, Text, ButtonStyle
-from nuiitivet.material.buttons import Button
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.widgets.box import Box
+import nuiitivet.material as nv
 
 # ---------------------------------------------------------------------------
 # Pattern 1: ViewModel
@@ -26,8 +20,8 @@ from nuiitivet.widgets.box import Box
 class TodoViewModel:
     """Owns all state and business logic. The View only reads and forwards."""
 
-    items: Observable[list[str]] = Observable([])
-    selected_index: Observable[int | None] = Observable(None)
+    items: nv.Observable[list[str]] = nv.Observable([])
+    selected_index: nv.Observable[int | None] = nv.Observable(None)
 
     def __init__(self) -> None:
         self.items.dispatch_to_ui()
@@ -38,7 +32,7 @@ class TodoViewModel:
         self.summary = self.item_count.map(lambda c: f"{c} item(s)" if c > 0 else "No items")
 
     def add_item(self, text: str) -> None:
-        with batch():
+        with nv.batch():
             self.items.value = self.items.value + [text]
 
     def remove_selected(self) -> None:
@@ -46,7 +40,7 @@ class TodoViewModel:
         if idx is not None and 0 <= idx < len(self.items.value):
             lst = list(self.items.value)
             lst.pop(idx)
-            with batch():
+            with nv.batch():
                 self.items.value = lst
                 self.selected_index.value = None
 
@@ -62,12 +56,12 @@ class TodoViewModel:
 class ShoppingCart:
     """Subtotal and total derived from items + tax_rate."""
 
-    items: Observable[list[dict]] = Observable([])
-    tax_rate: Observable[float] = Observable(0.1)
+    items: nv.Observable[list[dict]] = nv.Observable([])
+    tax_rate: nv.Observable[float] = nv.Observable(0.1)
 
     def __init__(self) -> None:
         self.subtotal = self.items.map(lambda lst: sum(item["price"] * item["qty"] for item in lst))
-        self.total = combine(self.subtotal, self.tax_rate).compute(lambda sub, rate: int(sub * (1 + rate)))
+        self.total = nv.combine(self.subtotal, self.tax_rate).compute(lambda sub, rate: int(sub * (1 + rate)))
 
     def add_item(self, price: int, qty: int) -> None:
         self.items.value = self.items.value + [{"price": price, "qty": qty}]
@@ -85,7 +79,7 @@ class ManagedViewModel:
     """Holds derived observables and releases them on dispose()."""
 
     def __init__(self) -> None:
-        self.count = Observable(0)
+        self.count = nv.Observable(0)
         self.doubled = self.count.map(lambda x: x * 2)
         # Keep explicit reference so GC does not collect the derived observable
         self._disposables = [self.doubled]
@@ -107,9 +101,9 @@ class ManagedViewModel:
 class AsyncViewModel:
     """Thread-safe async fetch using dispatch_to_ui()."""
 
-    data: Observable[str] = Observable("")
-    loading: Observable[bool] = Observable(False)
-    error: Observable[str | None] = Observable(None)
+    data: nv.Observable[str] = nv.Observable("")
+    loading: nv.Observable[bool] = nv.Observable(False)
+    error: nv.Observable[str | None] = nv.Observable(None)
 
     def __init__(self) -> None:
         self.data.dispatch_to_ui()
@@ -140,7 +134,7 @@ class AsyncViewModel:
 # ---------------------------------------------------------------------------
 
 
-class PatternsApp(ComposableWidget):
+class PatternsApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.vm = TodoViewModel()
@@ -156,62 +150,62 @@ class PatternsApp(ComposableWidget):
         self.vm.select(0)
         self.vm.remove_selected()
 
-    def build(self) -> Widget:
+    def build(self) -> nv.Widget:
         vm = self.vm
         cart = self.cart
         avm = self.async_vm
 
-        return Box(
+        return nv.Box(
             padding=24,
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
                     # --- ViewModel pattern ---
-                    Text("Pattern 1: ViewModel"),
-                    Text(vm.summary),
-                    Row(
+                    nv.Text("Pattern 1: ViewModel"),
+                    nv.Text(vm.summary),
+                    nv.Row(
                         gap=8,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Add item",
                                 on_click=lambda: self._add_todo_item(),
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Remove first",
                                 on_click=lambda: self._remove_first(),
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
                         ],
                     ),
                     # --- Derived state composition ---
-                    Text("Pattern 2: Derived State Composition"),
-                    Text(cart.subtotal.map(lambda s: f"Subtotal: ¥{s:,}")),
-                    Text(cart.total.map(lambda t: f"Total (w/ tax): ¥{t:,}")),
-                    Row(
+                    nv.Text("Pattern 2: Derived State Composition"),
+                    nv.Text(cart.subtotal.map(lambda s: f"Subtotal: ¥{s:,}")),
+                    nv.Text(cart.total.map(lambda t: f"Total (w/ tax): ¥{t:,}")),
+                    nv.Row(
                         gap=8,
                         children=[
-                            Button(
+                            nv.Button(
                                 "Add ¥500 item",
                                 on_click=lambda: cart.add_item(500, 1),
-                                style=ButtonStyle.filled(),
+                                style=nv.ButtonStyle.filled(),
                             ),
-                            Button(
+                            nv.Button(
                                 "Clear cart",
                                 on_click=lambda: cart.clear(),
-                                style=ButtonStyle.outlined(),
+                                style=nv.ButtonStyle.outlined(),
                             ),
                         ],
                     ),
                     # --- Async fetch ---
-                    Text("Pattern 4: Async Data Fetch"),
-                    Text(avm.status),
-                    Text(avm.data_display),
-                    Text(avm.error_display),
-                    Button(
+                    nv.Text("Pattern 4: Async Data Fetch"),
+                    nv.Text(avm.status),
+                    nv.Text(avm.data_display),
+                    nv.Text(avm.error_display),
+                    nv.Button(
                         "Fetch data",
                         on_click=lambda: avm.fetch(),
-                        style=ButtonStyle.filled(),
+                        style=nv.ButtonStyle.filled(),
                     ),
                 ],
             ),
@@ -220,7 +214,7 @@ class PatternsApp(ComposableWidget):
 
 if __name__ == "__main__":
     widget = PatternsApp()
-    app = App(content=widget)
+    app = nv.App(content=widget)
     try:
         app.run()
     except Exception:

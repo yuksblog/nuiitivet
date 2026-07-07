@@ -1,3 +1,19 @@
+"""Material design system root.
+
+This is the single public import root for Material apps. It re-exports every
+core symbol from :mod:`nuiitivet` *and* adds the Material widgets/styles, so a
+single import gives access to everything::
+
+    import nuiitivet.material as nv
+
+    nv.Column(...)   # core symbol
+    nv.Button(...)   # material symbol
+
+Deep imports (``nuiitivet.material.buttons``, ``nuiitivet.material.styles.*``,
+...) are internal and unsupported. See the "Imports" section of
+``docs/guide/index.md``.
+"""
+
 from __future__ import annotations
 
 import importlib
@@ -47,13 +63,24 @@ if TYPE_CHECKING:
     from .symbols import Symbol, Symbols
     from .text_fields import TextField
     from .styles.text_field_style import TextFieldStyle
+    from .styles.text_style import TextStyle
+    from .styles.icon_style import IconStyle
+    from .styles.divider_style import DividerStyle
+    from .styles.toolbar_style import ToolbarStyle
+    from .styles.progress_indicator_style import (
+        CircularProgressIndicatorStyle,
+        LinearProgressIndicatorStyle,
+    )
+    from .snackbar import Snackbar
+    from .intents import BasicDialogIntent
+    from .theme.color_role import ColorRole
     from .text import Text
     from .navigator import MaterialNavigator as Navigator
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
     from .toolbar import DockedToolbar, HorizontalFloatingToolbar, VerticalFloatingToolbar
-    from .tooltip import Tooltip, RichTooltip
+    from .tooltip_widgets import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle, StandardSideSheetStyle
     from .sheet import SideSheet, BottomSheet, StandardSideSheet
     from .button_group import (
@@ -123,6 +150,15 @@ __all__ = [
     "FabSize",
     "TextField",
     "TextFieldStyle",
+    "TextStyle",
+    "IconStyle",
+    "DividerStyle",
+    "ToolbarStyle",
+    "CircularProgressIndicatorStyle",
+    "LinearProgressIndicatorStyle",
+    "Snackbar",
+    "BasicDialogIntent",
+    "ColorRole",
     "NavigationRail",
     "RailItem",
     "Navigator",
@@ -223,10 +259,20 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "FabSize": ("styles.button_size", "FabSize"),
     "TextField": ("text_fields", "TextField"),
     "TextFieldStyle": ("styles.text_field_style", "TextFieldStyle"),
+    "TextStyle": ("styles.text_style", "TextStyle"),
+    "IconStyle": ("styles.icon_style", "IconStyle"),
+    "DividerStyle": ("styles.divider_style", "DividerStyle"),
+    "ToolbarStyle": ("styles.toolbar_style", "ToolbarStyle"),
+    "CircularProgressIndicatorStyle": ("styles.progress_indicator_style", "CircularProgressIndicatorStyle"),
+    "LinearProgressIndicatorStyle": ("styles.progress_indicator_style", "LinearProgressIndicatorStyle"),
+    "Snackbar": ("snackbar", "Snackbar"),
+    "BasicDialogIntent": ("intents", "BasicDialogIntent"),
+    "ColorRole": ("theme.color_role", "ColorRole"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),
     "Navigator": ("navigator", "MaterialNavigator"),
     "Overlay": ("overlay", "MaterialOverlay"),
+    "WhileLoading": ("overlay", "WhileLoading"),
     "LoadingScope": ("overlay", "LoadingScope"),
     "BasicDialog": ("dialogs", "BasicDialog"),
     "LoadingIndicator": ("loading_indicator", "LoadingIndicator"),
@@ -242,8 +288,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "DockedToolbar": ("toolbar", "DockedToolbar"),
     "HorizontalFloatingToolbar": ("toolbar", "HorizontalFloatingToolbar"),
     "VerticalFloatingToolbar": ("toolbar", "VerticalFloatingToolbar"),
-    "Tooltip": ("tooltip", "Tooltip"),
-    "RichTooltip": ("tooltip", "RichTooltip"),
+    "Tooltip": ("tooltip_widgets", "Tooltip"),
+    "RichTooltip": ("tooltip_widgets", "RichTooltip"),
     "MaterialLoadingIndicatorIntent": ("overlay_intents", "MaterialLoadingIndicatorIntent"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
     "MaterialTransitionSpec": ("transition_spec", "MaterialTransitionSpec"),
@@ -278,6 +324,23 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SlideOutVertically": ("transitions", "SlideOutVertically"),
     "Image": ("..widgets.image", "Image"),
 }
+
+
+# --- Re-export every core symbol (Option B: single public root) ------------
+# Core names are bound eagerly here so that ``import nuiitivet.material as nv``
+# exposes ``nv.Column`` etc. Names that Material overrides (e.g. ``Navigator``
+# -> ``MaterialNavigator``) are skipped and resolved lazily via ``_EXPORTS``.
+import nuiitivet as _core  # noqa: E402 — must follow _EXPORTS to detect overrides
+
+_reexported_core = [name for name in _core.__all__ if name not in _EXPORTS]
+for _name in _reexported_core:
+    globals()[_name] = getattr(_core, _name)
+
+# Extend (do not reassign) so ``__all__`` stays a literal list that static
+# analysers can read for the Material-specific exports.
+__all__.extend(_reexported_core)
+
+del _core, _name, _reexported_core
 
 
 def __getattr__(name: str) -> Any:

@@ -205,19 +205,19 @@ pip install nuiitivet
 
 ### 2.3. Your First App
 
-To create an application with Nuiitivet, follow these two steps:
+To create an application with Nuiitivet, follow these steps:
 
+- Import your UI design system with `import nuiitivet.material as nv`
 - Inherit from `ComposableWidget` to create a UI component
 - Pass the UI component to `App` and start the application
 
 ```python
-from nuiitivet import Column, ComposableWidget, Observable
-from nuiitivet.material import App, Text, Button
+import nuiitivet.material as nv
 
-class CounterApp(ComposableWidget):
+class CounterApp(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.count = Observable(0)
+        self.count = nv.Observable(0)
 
     def handle_increment(self):
         # 1. Output log
@@ -229,10 +229,10 @@ class CounterApp(ComposableWidget):
             print("Milestone reached!")
         
     def build(self):
-        return Column(
+        return nv.Column(
             [
-                Text(self.count),
-                Button(
+                nv.Text(self.count),
+                nv.Button(
                     "Increment",
                     on_click=self.handle_increment,
                 )
@@ -246,7 +246,7 @@ def main():
     counter_app = CounterApp()
     
     # Start with App
-    app = App(content=counter_app)
+    app = nv.App(content=counter_app)
     app.run()
 
 if __name__ == "__main__":

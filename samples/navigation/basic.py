@@ -1,49 +1,43 @@
-import nuiitivet as nv
-
-from nuiitivet.material import App, Text, Button, Navigator
-from nuiitivet.layout.column import Column
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class DetailsScreen(ComposableWidget):
+class DetailsScreen(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            Navigator.root().pop()
+            nv.Navigator.root().pop()
 
-        return Box(
+        return nv.Box(
             background_color="#F5F7FF",
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Details Screen"),
-                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
+                    nv.Text("Details Screen"),
+                    nv.Button("Back", on_click=go_back, style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_to_details() -> None:
-            Navigator.root().push(DetailsScreen())
+            nv.Navigator.root().push(DetailsScreen())
 
-        return Column(
+        return nv.Column(
             padding=16,
             gap=12,
             children=[
-                Text("Home Screen"),
-                Button("Go to Details", on_click=navigate_to_details, style=ButtonStyle.filled()),
+                nv.Text("Home Screen"),
+                nv.Button("Go to Details", on_click=navigate_to_details, style=nv.ButtonStyle.filled()),
             ],
         )
 
 
 def main(png_path: str | None = None) -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Navigation Basic",
         width=400,

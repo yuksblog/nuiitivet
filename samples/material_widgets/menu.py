@@ -2,29 +2,28 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Menu, MenuDivider, MenuItem, SubMenuItem
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    menu = Menu(
+    menu = nv.Menu(
         items=[
-            MenuItem("New", leading_icon="add"),
-            MenuItem("Open...", leading_icon="folder_open"),
-            MenuDivider(),
-            MenuItem("Save", leading_icon="save", trailing="Ctrl+S"),
-            MenuItem("Save As...", trailing="Shift+Ctrl+S", disabled=True),
-            SubMenuItem(
+            nv.MenuItem("New", leading_icon="add"),
+            nv.MenuItem("Open...", leading_icon="folder_open"),
+            nv.MenuDivider(),
+            nv.MenuItem("Save", leading_icon="save", trailing="Ctrl+S"),
+            nv.MenuItem("Save As...", trailing="Shift+Ctrl+S", disabled=True),
+            nv.SubMenuItem(
                 "Export",
-                items=[MenuItem("PNG"), MenuItem("SVG")],
+                items=[nv.MenuItem("PNG"), nv.MenuItem("SVG")],
             ),
-            MenuDivider(),
-            MenuItem("Exit"),
+            nv.MenuDivider(),
+            nv.MenuItem("Exit"),
         ],
     )
 
-    app = App(
-        content=Container(padding=24, child=menu),
+    app = nv.App(
+        content=nv.Container(padding=24, child=menu),
         title="Menu",
         width=360,
         height=380,

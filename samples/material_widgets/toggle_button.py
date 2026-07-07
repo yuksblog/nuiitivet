@@ -2,48 +2,53 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, ToggleButton, ToggleButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    content = Container(
+    content = nv.Container(
         padding=24,
-        child=Column(
+        child=nv.Column(
             gap=12,
             cross_alignment="start",
             children=[
-                Row(
+                nv.Row(
                     gap=12,
                     children=[
-                        ToggleButton("Filled", icon="check", selected=True, style=ToggleButtonStyle.filled()),
-                        ToggleButton("Filled", icon="check", selected=False, style=ToggleButtonStyle.filled()),
+                        nv.ToggleButton("Filled", icon="check", selected=True, style=nv.ToggleButtonStyle.filled()),
+                        nv.ToggleButton("Filled", icon="check", selected=False, style=nv.ToggleButtonStyle.filled()),
                     ],
                 ),
-                Row(
+                nv.Row(
                     gap=12,
                     children=[
-                        ToggleButton("Outlined", icon="check", selected=True, style=ToggleButtonStyle.outlined()),
-                        ToggleButton("Outlined", icon="check", selected=False, style=ToggleButtonStyle.outlined()),
-                    ],
-                ),
-                Row(
-                    gap=12,
-                    children=[
-                        ToggleButton(
-                            "Disabled", icon="check", selected=True, disabled=True, style=ToggleButtonStyle.filled()
+                        nv.ToggleButton(
+                            "Outlined", icon="check", selected=True, style=nv.ToggleButtonStyle.outlined()
                         ),
-                        ToggleButton(
-                            "Disabled", icon="check", selected=False, disabled=True, style=ToggleButtonStyle.outlined()
+                        nv.ToggleButton(
+                            "Outlined", icon="check", selected=False, style=nv.ToggleButtonStyle.outlined()
+                        ),
+                    ],
+                ),
+                nv.Row(
+                    gap=12,
+                    children=[
+                        nv.ToggleButton(
+                            "Disabled", icon="check", selected=True, disabled=True, style=nv.ToggleButtonStyle.filled()
+                        ),
+                        nv.ToggleButton(
+                            "Disabled",
+                            icon="check",
+                            selected=False,
+                            disabled=True,
+                            style=nv.ToggleButtonStyle.outlined(),
                         ),
                     ],
                 ),
             ],
         ),
     )
-    app = App(
+    app = nv.App(
         content=content,
         title="ToggleButton",
         width=560,

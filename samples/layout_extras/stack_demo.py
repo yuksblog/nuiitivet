@@ -1,7 +1,4 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
-from nuiitivet.material.styles.card_style import CardStyle
+import nuiitivet.material as nv
 
 
 def main(png: str = ""):
@@ -11,32 +8,32 @@ def main(png: str = ""):
         alignment="center",  # デフォルトの配置位置
         children=[
             # 1. 背景（奥）
-            md.Card(
-                md.Text(""),
+            nv.Card(
+                nv.Text(""),
                 width="100%",
                 height="100%",
-            ).modifier(mod.background("#BBDEFB")),
-            md.Card(
-                md.Text(""),
+            ).modifier(nv.background("#BBDEFB")),
+            nv.Card(
+                nv.Text(""),
                 width="80%",
                 height="80%",
-            ).modifier(mod.background("#90CAF9")),
-            md.Card(
-                md.Text("Overlay md.Text"),
+            ).modifier(nv.background("#90CAF9")),
+            nv.Card(
+                nv.Text("Overlay md.Text"),
                 width="60%",
                 height="60%",
                 alignment="center",
-            ).modifier(mod.background("#64B5F6")),
+            ).modifier(nv.background("#64B5F6")),
         ],
     )
 
-    root = md.Card(
+    root = nv.Card(
         widget,
         alignment="center",
-        style=CardStyle(background=None, border_radius=0),
+        style=nv.CardStyle(background=None, border_radius=0),
     )
 
-    app = md.App(content=root, title="nv.Stack Demo")
+    app = nv.App(content=root, title="nv.Stack Demo")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

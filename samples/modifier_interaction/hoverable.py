@@ -1,13 +1,10 @@
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, hoverable, corner_radius
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 
 class HoverDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_hovered = Observable(False)
+        self.is_hovered = nv.Observable(False)
 
     def _set_hovered(self, hovered: bool) -> None:
         self.is_hovered.value = hovered
@@ -18,9 +15,9 @@ class HoverDemo(nv.ComposableWidget):
         return nv.Container(
             width=200,
             height=50,
-            child=md.Text("Hover Me!"),
+            child=nv.Text("Hover Me!"),
             alignment="center",
-        ).modifier(background(bg_color) | corner_radius(8) | hoverable(on_hover_change=self._set_hovered))
+        ).modifier(nv.background(bg_color) | nv.corner_radius(8) | nv.hoverable(on_hover_change=self._set_hovered))
 
 
 def main(png: str = ""):
@@ -30,7 +27,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = md.App(content=content, title="Hoverable Modifier")
+    app = nv.App(content=content, title="Hoverable Modifier")
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

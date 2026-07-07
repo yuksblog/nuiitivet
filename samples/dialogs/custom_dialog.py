@@ -4,51 +4,40 @@ Custom Dialog Usage
 Shows how to display any generic Widget as a modal dialog using Overlay.
 """
 
-from nuiitivet.material import App
-from nuiitivet.material.buttons import Button
-from nuiitivet.material import Overlay
-from nuiitivet.material.text import Text
-from nuiitivet.material.card import Card
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.spacer import Spacer
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class CustomDialogContent(ComposableWidget):
+class CustomDialogContent(nv.ComposableWidget):
     """A completely custom widget to be used as a dialog."""
 
-    def __init__(self, overlay: Overlay):
+    def __init__(self, overlay: nv.Overlay):
         super().__init__()
         self.overlay = overlay
-        self.counter = Observable(0)
+        self.counter = nv.Observable(0)
 
     def _increment(self):
         self.counter.value += 1
 
-    def build(self) -> Widget:
-        return Card(
-            child=Container(
+    def build(self) -> nv.Widget:
+        return nv.Card(
+            child=nv.Container(
                 padding=24,
-                child=Column(
+                child=nv.Column(
                     gap=16,
                     children=[
-                        Text("Custom Interactive Dialog"),
-                        Text("You can maintain state within the dialog."),
-                        Row(
+                        nv.Text("Custom Interactive Dialog"),
+                        nv.Text("You can maintain state within the dialog."),
+                        nv.Row(
                             gap=10,
                             children=[
-                                Text("Count:"),
-                                Text(self.counter.map(str)),
+                                nv.Text("Count:"),
+                                nv.Text(self.counter.map(str)),
                             ],
                         ),
-                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
-                        Spacer(height=8),
-                        Button("Close & Return Count", on_click=lambda: self.overlay.close(
-                            self.counter.value), style=ButtonStyle.outlined()),
+                        nv.Button("Increment", on_click=self._increment, style=nv.ButtonStyle.filled()),
+                        nv.Spacer(height=8),
+                        nv.Button("Close & Return Count", on_click=lambda: self.overlay.close(
+                            self.counter.value), style=nv.ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -56,11 +45,11 @@ class CustomDialogContent(ComposableWidget):
         )
 
 
-class CustomDialogDemo(ComposableWidget):
-    last_count: Observable[str] = Observable("No count yet")
+class CustomDialogDemo(nv.ComposableWidget):
+    last_count: nv.Observable[str] = nv.Observable("No count yet")
 
     async def _show_custom_dialog(self):
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
 
         # Pass the overlay instance to the content so it can close itself
         content = CustomDialogContent(overlay)
@@ -71,17 +60,17 @@ class CustomDialogDemo(ComposableWidget):
         if result.value is not None:
             self.last_count.value = f"Final Count: {result.value}"
 
-    def build(self) -> Widget:
-        return Container(
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
-                    Text(self.last_count),
-                    Button(
+                    nv.Text(self.last_count),
+                    nv.Button(
                         "Open Custom Dialog",
                         on_click=self._show_custom_dialog,
-                        style=ButtonStyle.filled()),
+                        style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
@@ -92,13 +81,13 @@ def main(png_path: str = ""):
         from typing import cast
 
         # Mock overlay for screenshot
-        content = CustomDialogContent(overlay=cast(Overlay, None))
+        content = CustomDialogContent(overlay=cast(nv.Overlay, None))
         content.counter.value = 5
-        app = App(content=Container(alignment="center", child=content), width=400, height=300)
+        app = nv.App(content=nv.Container(alignment="center", child=content), width=400, height=300)
         app.render_to_png(png_path)
         return app
 
-    return App(content=CustomDialogDemo(), width=400, height=300)
+    return nv.App(content=CustomDialogDemo(), width=400, height=300)
 
 
 if __name__ == "__main__":

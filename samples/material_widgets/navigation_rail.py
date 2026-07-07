@@ -2,42 +2,38 @@
 
 from __future__ import annotations
 
-from nuiitivet.material import App, Card, CardStyle, NavigationRail, RailItem, Text
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.observable import Observable
-from nuiitivet.rendering.sizing import Sizing
+import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    rail = NavigationRail(
+    rail = nv.NavigationRail(
         children=[
-            RailItem(icon="home", label="Home", small_badge=Observable(True)),
-            RailItem(icon="search", label="Search", large_badge=Observable("3")),
-            RailItem(icon="library_books", label="Library"),
-            RailItem(icon="settings", label="Settings"),
+            nv.RailItem(icon="home", label="Home", small_badge=nv.Observable(True)),
+            nv.RailItem(icon="search", label="Search", large_badge=nv.Observable("3")),
+            nv.RailItem(icon="library_books", label="Library"),
+            nv.RailItem(icon="settings", label="Settings"),
         ],
-        index=Observable(0),
-        expanded=Observable(False),
+        index=nv.Observable(0),
+        expanded=nv.Observable(False),
         show_menu_button=True,
-        height=Sizing.flex(1),
+        height=nv.Sizing.flex(1),
     )
-    body = Card(
-        Column(
+    body = nv.Card(
+        nv.Column(
             gap=8,
             padding=20,
             cross_alignment="start",
             children=[
-                Text("NavigationRail"),
-                Text("Compact, expanded, badges, and menu button."),
+                nv.Text("NavigationRail"),
+                nv.Text("Compact, expanded, badges, and menu button."),
             ],
         ),
-        style=CardStyle.filled().copy_with(border_radius=0),
-        width=Sizing.flex(1),
-        height=Sizing.flex(1),
+        style=nv.CardStyle.filled().copy_with(border_radius=0),
+        width=nv.Sizing.flex(1),
+        height=nv.Sizing.flex(1),
     )
-    app = App(
-        content=Row([rail, body], width=Sizing.flex(1), height=Sizing.flex(1)),
+    app = nv.App(
+        content=nv.Row([rail, body], width=nv.Sizing.flex(1), height=nv.Sizing.flex(1)),
         title="NavigationRail",
         width=560,
         height=320,

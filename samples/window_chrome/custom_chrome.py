@@ -1,34 +1,27 @@
 """Window Chrome - Custom (app-drawn) decoration."""
 
-import nuiitivet as nv
-from nuiitivet.runtime.app import App
-from nuiitivet.material import Text
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
-from nuiitivet.modifiers import background
+import nuiitivet.material as nv
 
 SKIP_WINDOW_FRAME = True
 
 
 def main(png_path: str = "") -> None:
-    header = Row(
+    header = nv.Row(
         children=[
-            Text("My App", style=TextStyle(color="#ffffff"), type_scale=TypeScaleToken.from_size(14)),
+            nv.Text("My App", style=nv.TextStyle(color="#ffffff"), type_scale=nv.TypeScaleToken.from_size(14)),
         ],
         cross_alignment="center",
         width="100%",
         height=40,
         padding=(12, 0),
-    ).modifier(background("#1a237e"))
+    ).modifier(nv.background("#1a237e"))
 
-    app = App(
-        content=Container(
+    app = nv.App(
+        content=nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Text("Custom Chrome"),
+            child=nv.Text("Custom Chrome"),
         ),
         title="My App",
         chrome=nv.CustomChrome(

@@ -1,30 +1,26 @@
 """Material App - Basic Usage."""
 
-from nuiitivet.material import App, Button, Text
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 
-class HomeScreen(ComposableWidget):
-    def build(self) -> Widget:
-        return Container(
+class HomeScreen(nv.ComposableWidget):
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Hello, Material Design!"),
-                    Button("Get Started", style=ButtonStyle.filled()),
+                    nv.Text("Hello, Material Design!"),
+                    nv.Button("Get Started", style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
 def main(png_path: str = "") -> None:
-    app = App(
+    app = nv.App(
         content=HomeScreen(),
         title="Material App",
         width=400,
