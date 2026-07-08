@@ -47,11 +47,12 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             .modifier(will_pop(on_will_pop=lambda: not has_unsaved_changes))
         )
 
+    The slide-in edge and corner rounding are owned by
+    ``MaterialOverlay.side_sheet(sheet, side=...)``, not by this widget.
+
     Args:
         content: Widget to display below the header.
         headline: Header title text (str or Observable[str]). Required by M3.
-        side: Edge the sheet slides in from (``"right"`` or ``"left"``).
-            Defaults to ``"right"``.
         on_back: Callback invoked when the Back icon button is pressed.
             Back button visibility is controlled separately by *show_back_button*.
         show_back_button: Whether to show the Back icon button.
@@ -67,7 +68,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         content: Widget,
         *,
         headline: Union[str, ReadOnlyObservableProtocol[str]],
-        side: Literal["right", "left"] = "right",
         on_back: Optional[Callable[[], None]] = None,
         show_back_button: Union[bool, ReadOnlyObservableProtocol[bool]] = False,
         style: Optional[SideSheetStyle] = None,
@@ -77,7 +77,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         Args:
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
-            side: Edge the sheet slides in from. Defaults to ``"right"``.
             on_back: Callback for the Back icon button press.
             show_back_button: Back button visibility (bool or Observable[bool]).
                 Defaults to ``False``. Rendered only when truthy **and** *on_back*
@@ -85,10 +84,9 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             style: Container style. Defaults to :class:`SideSheetStyle`.
         """
         _style = style if style is not None else SideSheetStyle()
-        super().__init__(height=_style.height)
+        super().__init__(width=_style.width, height=_style.height)
         self._content = content
         self._headline = headline
-        self.side = side
         self._on_back = on_back
         self._show_back_button = show_back_button
         self._user_style = style
@@ -151,13 +149,9 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             cross_alignment="center",
         )
 
-        # Apply per-corner radius: round only the inner (away-from-edge) corners.
-        cr = float(resolved_style.corner_radius)
-        if self.side == "right":
-            corner_radius = (cr, 0.0, 0.0, cr)  # tl, tr, br, bl
-        else:
-            corner_radius = (0.0, cr, cr, 0.0)  # tl, tr, br, bl
-
+        # Corner rounding is applied by ``MaterialOverlay.side_sheet()`` via the
+        # ``corner_radius`` modifier (it depends on the slide-in edge, which this
+        # widget does not know).  The container itself is square.
         return Box(
             Column(
                 [header, self._content],
@@ -165,7 +159,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
             ),
             width=resolved_style.width,
             height=resolved_style.height,
-            corner_radius=corner_radius,
             background_color=resolved_style.background_color,
             alignment="top-left",
         )

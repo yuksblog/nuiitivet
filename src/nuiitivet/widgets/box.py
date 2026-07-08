@@ -1,3 +1,4 @@
+import inspect
 import math
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
@@ -491,3 +492,27 @@ class ModifierBox(Box):
                 self.cross_align = child.cross_align
             except Exception:
                 exception_once(_logger, "modifier_box_cross_align_copy_exc", "Failed to copy child.cross_align")
+
+    async def handle_back_event(self) -> bool:
+        """Forward back events to the wrapped child.
+
+        ``ModifierBox`` is a purely decorative wrapper, so it must be transparent
+        to the back-event pipeline; otherwise a ``will_pop`` scope nested below a
+        modifier (e.g. ``.modifier(corner_radius(...))``) would be silently
+        bypassed. Returns ``True`` (proceed) when the child cannot intercept.
+        """
+        child = self.children[0] if self.children else None
+        if child is None:
+            return True
+        handler = getattr(child, "handle_back_event", None)
+        if not callable(handler):
+            return True
+        try:
+            result = handler()
+            if inspect.isawaitable(result):
+                result = await result
+            return bool(result)
+        except Exception:
+            # Fail open to avoid trapping navigation.
+            exception_once(_logger, "modifier_box_handle_back_exc", "Child handle_back_event raised")
+            return True
