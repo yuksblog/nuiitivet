@@ -181,10 +181,9 @@ nav:
           - Material Widgets: guide/material_widgets.md
           - Theme Extensions: guide/theme_extensions.md
           - Font Configuration: guide/font_configuration.md
-      - Async & Threading:
-          - guide/threading.md
-      - Interaction:
-          - guide/interaction_region.md
+      - Advanced:
+          - Threading Model: guide/threading.md
+          - Interaction Region: guide/interaction_region.md
       - Packaging:
           - guide/packaging.md
   - API Reference:

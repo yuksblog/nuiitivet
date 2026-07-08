@@ -17,50 +17,13 @@ This includes:
 - Layout and Paint operations
 - Mounting and Unmounting widgets
 
-Violating this rule will raise a `RuntimeError` in debug mode.
+Violating this rule raises a `RuntimeError` in debug mode. The rule applies to
+*every* path into the UI — not only Observables, but also asyncio callbacks, raw
+`threading.Thread` workers, and anything scheduled outside the main loop.
 
 ## Working with Background Threads
 
-You can perform expensive operations (network requests, heavy computation) on background threads. However, you must be careful when updating the UI with the results.
-
-### Using Observables
-
-The recommended way to communicate from a background thread to the UI thread is using `Observable` with `dispatch_to_ui()`.
-
-```python
-import threading
-import time
-import nuiitivet as nv
-
-class MyState:
-    def __init__(self):
-        # Define an observable and enable UI dispatching
-        self.progress = nv.Observable(0.0).dispatch_to_ui()
-
-    def start_work(self):
-        threading.Thread(target=self._worker).start()
-
-    def _worker(self):
-        for i in range(101):
-            time.sleep(0.1)
-            # Safe to update from background thread
-            # The framework will coalesce updates and dispatch to UI thread
-            self.progress.value = i / 100.0
-```
-
-### Coalescing
-
-When `dispatch_to_ui()` is enabled, rapid updates from a background thread are automatically coalesced. If the worker thread produces updates faster than the UI can process them, the UI will only receive the latest value when it's ready to process the next frame. This prevents the UI event loop from being flooded.
-
-### Computed Observables
-
-`ComputedObservable` also supports `dispatch_to_ui()`. If a computed observable depends on values that change on background threads, you can enable dispatching on the computed observable to ensure its subscribers (usually UI widgets) are notified on the UI thread.
-
-```python
-# If 'raw_data' updates on background thread
-processed_data = raw_data.map(lambda d: process(d)).dispatch_to_ui()
-```
-
-## Testing
-
-For testing code that involves threading and `dispatch_to_ui`, you can use the `mock_clock` fixture (if available in your test suite) or mock `pyglet.clock.schedule_once` to control when UI events are processed.
+You can run expensive work (network requests, heavy computation) on background
+threads, but the results must reach the UI on the main thread. The framework
+provides `Observable.dispatch_to_ui()` as the supported bridge for this; see the
+[Observable: Thread Safety](observable/thread-safety.md) guide for how to use it.

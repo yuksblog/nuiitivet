@@ -84,6 +84,33 @@ display = Observable.compute(lambda: (
 ))
 ```
 
+## Keep Transformations Pure
+
+The function you pass to `.map()` / `.compute()` should be a pure transformation:
+derive a value from the observable inputs and return it, with no side effects.
+These functions re-run whenever a dependency changes (and may be deferred to a
+later frame), so side effects performed inside them — mutating other observables,
+driving widgets — fire unpredictably.
+
+Return the derived value and bind it where you need it (for example, pass the
+resulting observable straight to a widget) instead of updating state from inside
+the transform.
+
+```python
+# ❌ bad: the transform mutates a separate observable as a side effect
+label = Observable("")
+Text(label)
+
+def update_label(c):
+    label.value = f"Count: {c}"  # side effect, not a returned value
+
+count.map(update_label)  # the mapped result is unused
+
+# ✅ good: the transform returns a value; bind the widget to it
+count_label = count.map(lambda c: f"Count: {c}")
+Text(count_label)
+```
+
 ## Performance Note
 
 - `.map()` and `.combine()` internally leverage compute-like mechanisms.
