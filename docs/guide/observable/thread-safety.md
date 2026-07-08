@@ -16,7 +16,9 @@ viewmodel.data.value = result
 
 ## Solution: `.dispatch_to_ui()`
 
-Use `.dispatch_to_ui()` for observables that drive UI rendering.
+Use `.dispatch_to_ui()` for observables that drive UI rendering. Once enabled,
+notifications are marshalled onto the UI thread, so subscribers can safely touch
+widgets even when the value was set from a background thread.
 
 ```python
 import threading
@@ -54,20 +56,21 @@ total = (
 )
 ```
 
-## Important Constraints
+## Rapid Updates Are Coalesced
 
-Inside compute/mapping functions:
+When `.dispatch_to_ui()` is enabled, rapid updates from a background thread are
+automatically coalesced: if the worker produces values faster than the UI can
+process them, subscribers only receive the latest value on the next frame. This
+keeps a busy worker from flooding the UI event loop, but it also means
+intermediate values are dropped rather than queued — subscribers may not observe
+every value the worker sets (e.g. a progress counter can skip numbers).
 
-- ✅ use observable values
-- ❌ avoid direct UI widget access
+## Testing
 
-```python
-# good
-text = count.map(lambda c: f"Count: {c}")
-
-# then update widgets in subscribe callbacks
-text.subscribe(lambda value: set_label_text(value))
-```
+To test code that relies on `.dispatch_to_ui()`, you need to control when the
+queued UI notifications are delivered. Use the `mock_clock` fixture (if your test
+suite provides one) or mock `pyglet.clock.schedule_once` so you can drive the
+dispatch deterministically instead of waiting on a real frame.
 
 ---
 
