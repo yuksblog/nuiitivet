@@ -67,16 +67,14 @@ def test_material_overlay_dialog_accepts_widget_without_manual_dialog_route() ->
     assert overlay.has_entries() is True
 
 
-def test_material_overlay_dialog_accepts_custom_route_without_wrapping() -> None:
+def test_material_overlay_dialog_rejects_directly_passed_route() -> None:
+    """dialog() no longer accepts a Route directly; a Route is treated as an
+    unknown intent. Callers needing a custom Route should use show_modal()."""
     overlay = MaterialOverlay(intents={})
     route = OverlayRoute(builder=lambda: BasicDialog(title="Custom route"), barrier_dismissible=False)
 
-    normalized = overlay._normalize_dialog_to_route(route, dismiss_on_outside_tap=False)
-
-    assert normalized is route
-
-    overlay.dialog(route, dismiss_on_outside_tap=False)
-    assert overlay.has_entries() is True
+    with pytest.raises(RuntimeError, match=r"No overlay intent is registered: OverlayRoute"):
+        overlay.dialog(route, dismiss_on_outside_tap=False)
 
 
 def test_overlay_loading_returns_handle() -> None:

@@ -76,9 +76,10 @@ overlay.dialog(
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `dialog` | `Widget \| Route \| Any` | required | Dialog widget, route, or intent |
+| `dialog` | `Widget \| Any` | required | Dialog widget, or an intent resolved by the overlay |
 | `dismiss_on_outside_tap` | `bool` | `True` | Dismiss when tapping the scrim |
-| `timeout` | `float \| None` | `None` | Auto-dismiss after seconds |
+
+For a fully custom `Route` (non-standard transition or barrier), call `show_modal()` directly. Dialogs do not auto-dismiss, so there is no `timeout` parameter.
 
 ## Snackbar
 
@@ -98,14 +99,14 @@ overlay.snackbar(Snackbar("Upload complete"))
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `message` | `str \| Snackbar \| OverlayRoute` | required | Message text, widget, or route |
+| `message` | `str \| Snackbar` | required | Message text or a `Snackbar` widget |
 | `duration` | `float` | `3.0` | Display duration in seconds |
 
 ![Snackbar](../assets/material_overlay_snackbar.png)
 
 ## Side Sheet
 
-Displays a modal sheet that slides in from a side edge. The `side` parameter on `SideSheet` is the single source of truth for three things at once: the slide direction of the transition, the screen-edge alignment, and which corners are rounded. Keeping these in sync is the reason `side_sheet()` accepts only a `SideSheet` widget rather than an arbitrary `OverlayRoute`.
+Displays a modal sheet that slides in from a side edge. The slide-in edge is a placement concern owned by `side_sheet()`: the `side` argument drives three things at once — the slide direction of the transition, the screen-edge alignment, and which (inner, away-from-edge) corners are rounded. The corner rounding is applied by `side_sheet()` via the `corner_radius` modifier, so the `SideSheet` widget itself renders a square container and no longer takes a `side` parameter.
 
 ```python
 from nuiitivet.material import SideSheet, Text
@@ -114,14 +115,15 @@ overlay.side_sheet(
     SideSheet(
         headline="Settings",
         content=Text("Sheet content here"),
-        side="right",
-    )
+    ),
+    side="right",
 )
 ```
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
 | `sheet` | `SideSheet` | required | Side sheet widget |
+| `side` | `"right" \| "left"` | `"right"` | Edge the sheet slides in from |
 | `dismiss_on_outside_tap` | `bool` | `True` | Dismiss when tapping the scrim |
 
 ![Side Sheet](../assets/material_overlay_side_sheet.png)
@@ -190,9 +192,9 @@ Each shortcut applies a pre-configured MD3 transition automatically. All transit
 | `side_sheet` | Slide in from side edge | Slide out to side edge | Fades with content |
 | `loading` | Instant | Instant | None |
 
-For `dialog()`, `snackbar()`, and `loading()`, pass an `OverlayRoute(transition_spec=...)` directly — each shortcut accepts `OverlayRoute` and uses it as-is.
+These shortcuts accept only their typed arguments — a `Widget` (or intent) for `dialog()`/`loading()`, `str`/`Snackbar` for `snackbar()`, and the corresponding sheet widget for `bottom_sheet()`/`side_sheet()`. They do not accept a free-form `Route`/`OverlayRoute`, because each shortcut owns the MD3 transition, screen-edge position, and (for sheets) corner radii, and accepting an arbitrary route would break that consistency. `bottom_sheet()` derives everything from the fact that it is a bottom sheet; `side_sheet()` derives it from its `side` argument.
 
-`bottom_sheet()` and `side_sheet()` intentionally accept only their typed widget arguments. For sheets, the transition direction, screen-edge position, and corner radii must all stay consistent with each other; the shortcut derives all three from the widget's own properties (`BottomSheet` always slides from the bottom, `SideSheet.side` drives everything for side sheets). Accepting a free-form `OverlayRoute` would break that consistency, so these shortcuts do not support it. To display a fully custom sheet with a non-standard transition, call `show_modal` directly.
+To display fully custom overlay content with a non-standard transition or barrier, call `show_modal()` / `show_modeless()` directly.
 
 ## Intent System
 

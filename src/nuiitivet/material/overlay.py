@@ -16,6 +16,7 @@ from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.overlay_position import OverlayPosition
+from nuiitivet.modifiers.corner_radius import corner_radius
 from nuiitivet.widgeting.widget import Widget
 from .overlay_visual_state import MaterialOverlayLayerComposer
 from .sheet import BottomSheet, SideSheet
@@ -64,7 +65,7 @@ class WhileLoading(AbstractContextManager[None], AbstractAsyncContextManager[Non
             await fetch_data()
     """
 
-    def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Route | Any | None) -> None:
+    def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Any | None) -> None:
         self._overlay = overlay
         self._indicator = indicator
         self._handle: OverlayHandle[Any] | None = None
@@ -153,37 +154,48 @@ class MaterialOverlay(Overlay):
 
     def dialog(
         self,
-        dialog: Widget | Route | Any,
+        dialog: Widget | Any,
         *,
-        dismiss_on_outside_tap: bool | None = None,
-        timeout: float | None = None,
+        dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
-        if dismiss_on_outside_tap is None:
-            dismiss_on_outside_tap = True
+        """Display a modal Material dialog.
 
+        Args:
+            dialog: A :class:`Widget` to display as the dialog, or an intent
+                resolved by the overlay's intent resolver (e.g.
+                :class:`BasicDialogIntent`). To present a fully custom
+                :class:`Route`, call :meth:`show_modal` directly.
+            dismiss_on_outside_tap: Whether tapping the scrim dismisses the
+                dialog. Defaults to ``True``.
+
+        Returns:
+            An :class:`OverlayHandle` for manual dismissal.
+        """
         route = self._normalize_dialog_to_route(
             dialog,
-            dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
+            dismiss_on_outside_tap=dismiss_on_outside_tap,
         )
 
         return self.show_modal(
             route,
-            dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
-            timeout=timeout,
+            dismiss_on_outside_tap=dismiss_on_outside_tap,
         )
 
     def _normalize_dialog_to_route(
         self,
-        dialog: Widget | Route | Any,
+        dialog: Widget | Any,
         *,
         dismiss_on_outside_tap: bool,
     ) -> Route:
         """Normalize dialog input to a Route.
 
         This is the single boundary adapter for `dialog(...)` input polymorphism.
+        A :class:`Widget` is presented directly; any other value is resolved
+        through the intent resolver, which may yield a :class:`Widget` or a
+        :class:`Route`.
         """
         resolved: Widget | Route
-        if isinstance(dialog, (Widget, Route)):
+        if isinstance(dialog, Widget):
             resolved = dialog
         else:
             resolved = self._intent_resolver.resolve(dialog)
@@ -200,17 +212,19 @@ class MaterialOverlay(Overlay):
 
     def snackbar(
         self,
-        message: str | Snackbar | OverlayRoute,
+        message: str | Snackbar,
         *,
         duration: float = 3.0,
     ) -> OverlayHandle[None]:
-        if isinstance(message, OverlayRoute):
-            route: Route = message
-            return self.show_modeless(
-                route,
-                timeout=float(duration),
-                position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
-            )
+        """Display a brief, non-blocking Material snackbar.
+
+        Args:
+            message: The message text, or a pre-built :class:`Snackbar` widget.
+            duration: Seconds before the snackbar auto-dismisses. Defaults to ``3.0``.
+
+        Returns:
+            An :class:`OverlayHandle` for the shown snackbar.
+        """
         widget: Widget = message if isinstance(message, Snackbar) else Snackbar(str(message))
         return self.show_modeless(
             widget,
@@ -221,20 +235,22 @@ class MaterialOverlay(Overlay):
 
     def loading(
         self,
-        indicator: Widget | Route | Any | None = None,
+        indicator: Widget | Any | None = None,
     ) -> OverlayHandle[Any]:
         """Show a loading indicator overlay and return a handle for manual dismissal.
 
         Args:
-            indicator: Widget, Route, or intent to display as the loading indicator.
-                Defaults to the built-in :class:`LoadingIndicator`.
+            indicator: Widget or intent to display as the loading indicator.
+                Defaults to the built-in :class:`LoadingIndicator`, resolved
+                through the :class:`LoadingIntent` (overridable via the app's
+                ``overlay_routes``).
 
         Returns:
             An :class:`OverlayHandle` that can be closed via ``handle.close(None)``.
         """
         if indicator is None:
             resolved: Widget | Route = self._intent_resolver.resolve(LoadingIntent())
-        elif isinstance(indicator, (Widget, Route)):
+        elif isinstance(indicator, Widget):
             resolved = indicator
         else:
             resolved = self._intent_resolver.resolve(indicator)
@@ -246,7 +262,7 @@ class MaterialOverlay(Overlay):
 
     def while_loading(
         self,
-        indicator: Widget | Route | Any | None = None,
+        indicator: Widget | Any | None = None,
     ) -> WhileLoading:
         """Return a context manager that shows a loading indicator for the duration of a block.
 
@@ -261,11 +277,11 @@ class MaterialOverlay(Overlay):
         Internally delegates show/close to :meth:`loading`.
 
         Args:
-            indicator: Widget, Route, or intent to display as the loading indicator.
+            indicator: Widget or intent to display as the loading indicator.
                 Defaults to the built-in :class:`LoadingIndicator`.
 
         Returns:
-            A :class:`LoadingScope` context manager that shows the indicator on entry and closes it on exit.
+            A :class:`WhileLoading` context manager that shows the indicator on entry and closes it on exit.
         """
         return WhileLoading(self, indicator)
 
@@ -273,29 +289,40 @@ class MaterialOverlay(Overlay):
         self,
         sheet: Widget,
         *,
+        side: Literal["right", "left"] = "right",
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
         """Display a modal side sheet.
 
-        The sheet's position, corner radii, and transition direction are derived
-        from ``sheet.side``.  Visual styling (background, size, corner radius) is
-        fully owned by the :class:`SideSheet` widget.
+        The slide-in edge is a placement concern owned by this method: ``side``
+        controls the sheet's alignment, transition direction, and which (inner,
+        away-from-edge) corners are rounded.  The corner rounding is applied here
+        via the :func:`corner_radius` modifier, using the radius from
+        ``SideSheet.style``; the :class:`SideSheet` widget itself renders a
+        square container.
 
         Args:
             sheet: SideSheet widget (or a wrapper such as one produced by
                 ``.modifier(will_pop(...))``) that defines content, headline,
                 and styling.
+            side: Edge the sheet slides in from (``"right"`` or ``"left"``).
+                Defaults to ``"right"``.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
         """
         inner = _find_descendant(sheet, SideSheet)
         if inner is None:
             raise TypeError("side_sheet() requires a SideSheet widget (possibly wrapped by modifiers)")
-        alignment = "top-right" if inner.side == "right" else "top-left"
+
+        cr = float(inner.style.corner_radius)
+        # Round only the inner (away-from-edge) corners: (tl, tr, br, bl).
+        radius = (cr, 0.0, 0.0, cr) if side == "right" else (0.0, cr, cr, 0.0)
+        presented = sheet.modifier(corner_radius(radius))
+        alignment = "top-right" if side == "right" else "top-left"
 
         route = OverlayRoute(
-            builder=lambda: sheet,
-            transition_spec=MaterialTransitions.side_sheet(side=inner.side),
+            builder=lambda: presented,
+            transition_spec=MaterialTransitions.side_sheet(side=side),
             barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 

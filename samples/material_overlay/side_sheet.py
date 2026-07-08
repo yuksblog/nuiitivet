@@ -66,6 +66,8 @@ def main(png_path: str = "") -> nv.App:
             alignment="top-right",
             width="100%",
             height="100%",
+            # Corner rounding is applied by MaterialOverlay.side_sheet() at
+            # display time; this static preview mimics it for a right-side sheet.
             child=nv.SideSheet(
                 nv.Box(
                     nv.Column(
@@ -81,7 +83,7 @@ def main(png_path: str = "") -> nv.App:
                     padding=24,
                 ),
                 headline="Settings",
-            ),
+            ).modifier(nv.corner_radius((16.0, 0.0, 0.0, 16.0))),
         )
         app = nv.App(
             content=nv.Stack(width=640, height=400, children=[background, scrim, sheet_overlay]),

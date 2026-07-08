@@ -132,8 +132,8 @@ async def test_material_overlay_side_sheet_accepts_wrapped_widget() -> None:
     overlay = MaterialOverlay(intents={})
     Overlay.set_root(overlay)
     try:
-        sheet = SideSheet(Container(width=10, height=10), headline="X", side="left")
-        handle = overlay.side_sheet(sheet.modifier(will_pop(on_will_pop=lambda: True)))
+        sheet = SideSheet(Container(width=10, height=10), headline="X")
+        handle = overlay.side_sheet(sheet.modifier(will_pop(on_will_pop=lambda: True)), side="left")
         assert handle is not None
         assert overlay.has_entries() is True
     finally:
