@@ -1,7 +1,7 @@
 # Observable & Reactive Programming
 
 This document summarizes the internal design of the Observable and reactive system in `nuiitivet`.
-For a usage guide, see [docs/guide/observable.md](../guide/observable.md).
+For a usage guide, see [docs/guide/state-management/index.md](../guide/state-management/index.md).
 
 See also:
 

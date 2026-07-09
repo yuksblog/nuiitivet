@@ -1,7 +1,3 @@
----
-layout: default
----
-
 # Nuiitivet Guides
 
 This section is the practical user guide for building apps with Nuiitivet.
@@ -24,19 +20,19 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 ## Recommended Path
 
-1. [Layout](layout.md)
-2. [Observable](observable.md)
-3. [UI Design System](ui_design_system.md)
+1. [Layout](layout/index.md)
+2. [Observable](state-management/index.md)
+3. [UI Design System](design-system/index.md)
 4. [Packaging](packaging.md)
 
 ## Topics
 
-- [Dialogs](dialogs.md)
-- [Navigation](navigation.md)
-- [Window](window.md)
-- [Modifiers](modifier.md)
+- [Dialogs](overlay/dialogs.md)
+- [Navigation](navigation/index.md)
+- [Window](window/index.md)
+- [Modifiers](modifiers/index.md)
 
 ## Advanced
 
-- [Async & Threading](threading.md)
-- [Interaction](interaction_region.md)
+- [Async & Threading](advanced/threading.md)
+- [Interaction](advanced/interaction_region.md)
