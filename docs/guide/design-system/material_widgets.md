@@ -266,9 +266,20 @@ With a literal `opened=True` and no `on_close_click`, no close button is rendere
 
 ## DockedDatePicker
 
-Inline calendar that always stays visible (not a dialog). It writes the selected `datetime.date` back to a shared observable and supports `min_date` / `max_date` bounds.
+A text field with a trailing calendar icon button. Tapping the icon opens a `DatePicker` in a dropdown anchored below the field; the date can also be typed directly. `value` is the single source of truth for both routes.
 
-![DockedDatePicker](../../assets/material_widgets_date_picker.png)
+```python
+selected: Observable[date | None] = Observable(None)
+DockedDatePicker(value=selected, min_date=date(2026, 1, 1))
+```
+
+`value` is keyword-only.
+
+Per MD3 the dropdown carries a Cancel/OK action row, so clicking a day selects it without committing: the calendar edits an internal draft, and only OK copies it into `value` and fires `on_change`. Cancel — and any other dismissal, such as tapping outside — drops the draft, so an abandoned selection is never observable from `value`.
+
+Typing has no OK to wait for, so it commits as soon as the text parses. An unparseable date puts the field into its error state and leaves `value` untouched, while clearing the field sets `value` to `None`.
+
+![DockedDatePicker](../../assets/material_widgets_docked_date_picker.png)
 
 [API Reference](../../api/material.md#nuiitivet.material.DockedDatePicker)
 

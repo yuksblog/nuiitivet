@@ -132,6 +132,7 @@ SAMPLES = [
     ("samples/design-system/material_widgets/tooltip.py", "material_widgets_tooltip.png"),
     ("samples/design-system/material_widgets/standard_side_sheet.py", "material_widgets_standard_side_sheet.png"),
     ("samples/design-system/material_widgets/date_picker.py", "material_widgets_date_picker.png"),
+    ("samples/design-system/material_widgets/docked_date_picker.py", "material_widgets_docked_date_picker.png"),
     ("samples/design-system/material_widgets/image.py", "material_widgets_image.png"),
     # Theme Extensions
     ("samples/design-system/theme_extensions/custom_widget.py", "theme_extensions_custom_widget.png"),

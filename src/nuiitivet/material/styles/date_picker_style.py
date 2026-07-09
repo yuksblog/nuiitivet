@@ -1,14 +1,19 @@
 """Date picker widget styles.
 
 Each MD3 date-picker widget has its own immutable style dataclass. The calendar
-based pickers share a common :class:`DatePickerStyle` base (calendar cell,
-colors, header, navigation button) and add only the fields their distinct
-selection views need:
+based pickers share a common :class:`CalendarStyle` base (calendar cell, colors,
+header, navigation button) and add only the fields their distinct selection
+views need:
 
-- :class:`DockedDatePickerStyle`  — adds the inline month/year list-menu tokens.
+- :class:`DatePickerStyle`        — adds the inline month/year list-menu tokens.
 - :class:`ModalDatePickerStyle`   — adds the modal year-chip selection tokens.
 - :class:`ModalDateRangePickerStyle` — extends the modal style with range-header
   tokens.
+
+:class:`DockedDatePickerStyle` *composes* a :class:`DatePickerStyle` rather than
+inheriting one: its dropdown content literally is a :class:`DatePicker`, so the
+calendar tokens stay on their own plane instead of being flattened onto the
+text-field tokens.
 
 :class:`ModalDateInputStyle` is independent: the date-input dialog is a
 text-field form, not a calendar, so it shares none of the calendar tokens.
@@ -18,24 +23,27 @@ MD3 token references: ``md.comp.date-picker.*``
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import TypeVar
 
 from nuiitivet.theme.types import ColorSpec
 from ..theme.color_role import ColorRole
 
-_S = TypeVar("_S", bound="DatePickerStyle")
+_S = TypeVar("_S", bound="CalendarStyle")
 
 
 @dataclass(frozen=True)
-class DatePickerStyle:
+class CalendarStyle:
     """Shared style base for the calendar-based date pickers (MD3 Expressive).
 
     Holds the tokens consumed by the calendar widgets shared across
-    :class:`DockedDatePickerStyle`, :class:`ModalDatePickerStyle` and
+    :class:`DatePickerStyle`, :class:`ModalDatePickerStyle` and
     :class:`ModalDateRangePickerStyle` (the calendar grid, day cells and the
     month/year navigation header). Variant-specific selection views add their
     own tokens in the respective subclass.
+
+    Not exported from ``nuiitivet.material``: users only ever need the concrete
+    styles. Import it from this module for type hints and subclassing.
 
     Defaults match the MD3 docked picker. Subclasses override the container and
     header dimensions for their variant.
@@ -105,14 +113,14 @@ class DatePickerStyle:
 
 
 @dataclass(frozen=True)
-class DockedDatePickerStyle(DatePickerStyle):
-    """Style for :class:`DockedDatePicker` (inline calendar).
+class DatePickerStyle(CalendarStyle):
+    """Style for :class:`DatePicker` (inline calendar).
 
-    MD3 docked picker: 360×460dp container, Large corner rounding (16dp). Adds
-    the month/year inline list-menu tokens to the shared calendar base.
+    MD3 calendar: 360×460dp container, Large corner rounding (16dp). Adds the
+    month/year inline list-menu tokens to the shared calendar base.
     """
 
-    # --- Month/year selection list item (docked inline grids) ---
+    # --- Month/year selection list item (inline grids) ---
     menu_list_item_height: float = 48.0
     menu_list_item_selected_background: ColorSpec = ColorRole.SECONDARY_CONTAINER
     menu_list_item_text: ColorSpec = ColorRole.ON_SURFACE
@@ -120,7 +128,37 @@ class DockedDatePickerStyle(DatePickerStyle):
 
 
 @dataclass(frozen=True)
-class ModalDatePickerStyle(DatePickerStyle):
+class DockedDatePickerStyle:
+    """Style for :class:`DockedDatePicker` (text field + anchored calendar).
+
+    Composes — rather than inherits — a :class:`DatePickerStyle` for the
+    dropdown calendar, keeping the calendar tokens separate from the text-field
+    and dropdown tokens.
+    """
+
+    # --- Dropdown calendar ---
+    calendar: DatePickerStyle = field(default_factory=DatePickerStyle)
+
+    # --- Text field ---
+    field_width: float = 360.0
+
+    # --- Dropdown placement ---
+    dropdown_gap: float = 4.0  # Vertical gap between the field and the calendar
+
+    def copy_with(self, **changes) -> "DockedDatePickerStyle":
+        """Return a new style with the given fields overridden.
+
+        Args:
+            **changes: Fields to override.
+
+        Returns:
+            New ``DockedDatePickerStyle`` instance with applied changes.
+        """
+        return replace(self, **changes)
+
+
+@dataclass(frozen=True)
+class ModalDatePickerStyle(CalendarStyle):
     """Style for :class:`ModalDatePicker` (single-date dialog).
 
     MD3 modal picker: 360×524dp container, Extra-large corner rounding (28dp).

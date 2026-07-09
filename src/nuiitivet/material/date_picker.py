@@ -1,8 +1,9 @@
 """Material Design 3 DatePicker widgets.
 
-This module provides three date-picker variants following MD3 Expressive spec:
+This module provides the date-picker variants following MD3 Expressive spec:
 
-- :class:`DockedDatePicker`: Inline calendar picker.
+- :class:`DatePicker`: Inline calendar picker.
+- :class:`DockedDatePicker`: Text field with an anchored calendar dropdown.
 - :class:`ModalDatePicker`: Dialog-based single-date picker.
   Works with :class:`OverlayHandle` when displayed via
   ``overlay.dialog(ModalDatePicker())``.
@@ -29,6 +30,7 @@ from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.scrolling import ScrollableStyle, ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
+from nuiitivet.modifiers.popup import light_dismiss
 from nuiitivet.modifiers.transform import rotate
 from nuiitivet.modifiers.visible import visible
 from nuiitivet.material.icon import Icon
@@ -49,6 +51,7 @@ from nuiitivet.common.logging_once import exception_once
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.date_picker_style import (
+        CalendarStyle,
         DatePickerStyle,
         DockedDatePickerStyle,
         ModalDatePickerStyle,
@@ -74,6 +77,42 @@ def _next_month(year: int, month: int) -> Tuple[int, int]:
     if month == 12:
         return year + 1, 1
     return year, month + 1
+
+
+# Formats accepted when parsing user input; the first one is also the format
+# used to render a date back into a text field.
+_DATE_INPUT_FORMATS: Tuple[str, ...] = ("%m/%d/%Y", "%m-%d-%Y", "%Y-%m-%d")
+
+
+def _parse_date(text: str) -> Optional[_Date]:
+    """Attempt to parse ``text`` as a date using common formats.
+
+    Args:
+        text: Raw user input.
+
+    Returns:
+        Parsed :class:`datetime.date` or ``None`` if parsing fails.
+    """
+    for fmt in _DATE_INPUT_FORMATS:
+        try:
+            return _DateTime.strptime(text.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _format_date(value: Optional[_Date]) -> str:
+    """Render ``value`` in the canonical input format, or ``""`` when unset.
+
+    Args:
+        value: Date to render, or ``None``.
+
+    Returns:
+        Text that :func:`_parse_date` round-trips back to ``value``.
+    """
+    if value is None:
+        return ""
+    return value.strftime(_DATE_INPUT_FORMATS[0])
 
 
 def _fill_six_weeks(year: int, month: int) -> list[list[_Date]]:
@@ -128,7 +167,7 @@ class _DayCell(InteractiveWidget):
         is_range_start: Whether this day is the first day of the selection range.
         is_range_end: Whether this day is the last day of the selection range.
         on_tap: Callback invoked when the cell is tapped.
-        style: DatePickerStyle controlling sizes and colors.
+        style: CalendarStyle controlling sizes and colors.
     """
 
     def __init__(
@@ -144,7 +183,7 @@ class _DayCell(InteractiveWidget):
         is_range_end: bool = False,
         on_tap: Optional[VoidCallback] = None,
         cell_width: Optional[int] = None,
-        style: "DatePickerStyle",
+        style: "CalendarStyle",
     ) -> None:
         """Initialize _DayCell.
 
@@ -358,7 +397,7 @@ class _DayCell(InteractiveWidget):
 _YEAR_GRID_COLS = 4
 _YEAR_GRID_ROWS = 5  # 20 years per page (4 × 5)
 _YEAR_CHIP_COLS = 3  # MD3 modal year grid: 3 × 72dp + 2 × 30dp gap + 2 × 30dp pad = 336dp
-_YEAR_LIST_PAGE_SIZE = 7  # 7 years per page for docked year list
+_YEAR_LIST_PAGE_SIZE = 7  # 7 years per page for the inline year list
 
 
 def _centered_scroll_controller(
@@ -385,7 +424,7 @@ def _centered_scroll_controller(
     )
 
 
-def _modal_calendar_body_height(style: "DatePickerStyle") -> int:
+def _modal_calendar_body_height(style: "CalendarStyle") -> int:
     """Return the modal calendar body height (weekday row + 6-week grid).
 
     Used to size the year-selection grid so the dialog height stays stable when
@@ -519,7 +558,7 @@ class _YearChip(InteractiveWidget):
 class _YearChipGrid(ComposableWidget):
     """Scrollable 3-column year chip grid for the modal picker.
 
-    Mirrors the docked year list (:class:`_YearList`) continuous-scroll model
+    Mirrors the inline year list (:class:`_YearList`) continuous-scroll model
     but renders 72×36dp pill chips in a 3-column grid per the MD3 modal
     year-selection measurement: ``UniformFlow`` with 3 columns, 30dp main/cross
     gaps and 30dp inner padding, wrapped in a ``VerticalScrollable`` padded
@@ -530,7 +569,7 @@ class _YearChipGrid(ComposableWidget):
         selected_year: Currently selected year.
         on_select: Callback invoked with the selected year.
         list_height: Pixel height for the :class:`VerticalScrollable` viewport.
-        style: DatePickerStyle.
+        style: ModalDatePickerStyle.
     """
 
     # Symmetric year range shown around the selected year.
@@ -600,12 +639,12 @@ class _YearChipGrid(ComposableWidget):
 
 
 # ---------------------------------------------------------------------------
-# Internal: _MenuListItem, _MonthList, _YearList  (docked picker list menus)
+# Internal: _MenuListItem, _MonthList, _YearList  (inline picker list menus)
 # ---------------------------------------------------------------------------
 
 
 class _MenuListItem(InteractiveWidget):
-    """Full-width list item for docked picker month/year menus.
+    """Full-width list item for inline picker month/year menus.
 
     MD3 layout per row:
     - Left 16dp  |  check icon 24dp  |  Left 16dp  |  label (left-aligned)  |  Right 16dp
@@ -633,7 +672,7 @@ class _MenuListItem(InteractiveWidget):
         is_selected: bool = False,
         on_tap: Optional[VoidCallback] = None,
         item_width: float,
-        style: "DockedDatePickerStyle",
+        style: "DatePickerStyle",
     ) -> None:
         # Paint-only: no child widget tree. The MD3 visual (full-width selected
         # background, state layer, focus ring) is drawn by InteractiveWidget;
@@ -712,7 +751,7 @@ class _MenuListItem(InteractiveWidget):
 
 
 class _MonthList(ComposableWidget):
-    """Scrollable list of all 12 months for the docked picker.
+    """Scrollable list of all 12 months for the inline picker.
 
     Args:
         current_month: Currently selected month (1–12).
@@ -729,7 +768,7 @@ class _MonthList(ComposableWidget):
         on_select: Callable[[int], None],
         list_height: int,
         item_width: float,
-        style: "DockedDatePickerStyle",
+        style: "DatePickerStyle",
     ) -> None:
         super().__init__()
         self._current_month = current_month
@@ -768,7 +807,7 @@ class _MonthList(ComposableWidget):
 
 
 class _YearList(ComposableWidget):
-    """Scrollable list of years for the docked picker.
+    """Scrollable list of years for the inline picker.
 
     Displays a scrollable column of years centered on ``current_year``.
 
@@ -790,7 +829,7 @@ class _YearList(ComposableWidget):
         on_select: Callable[[int], None],
         list_height: int,
         item_width: float,
-        style: "DockedDatePickerStyle",
+        style: "DatePickerStyle",
     ) -> None:
         super().__init__()
         self._current_year = current_year
@@ -838,7 +877,7 @@ class _MonthYearHeader(ComposableWidget):
 
     Supports two layout variants:
 
-    - ``"docked"``: Two separate clickable ``[Month ▾]`` / ``[Year ▾]``
+    - ``"inline"``: Two separate clickable ``[Month ▾]`` / ``[Year ▾]``
       buttons flanked by prev/next chevrons.
     - ``"modal"``: A single combined ``[Month Year ▾/▴]`` button on the left
       with prev/next chevrons on the right.
@@ -848,20 +887,20 @@ class _MonthYearHeader(ComposableWidget):
         month: Current view month (1–12).
         on_prev: Callback for the previous-month button.
         on_next: Callback for the next-month button.
-        on_month_tap: (docked) Callback when the Month button is tapped.
-        on_year_tap: (docked) Callback when the Year button is tapped.
+        on_month_tap: (inline) Callback when the Month button is tapped.
+        on_year_tap: (inline) Callback when the Year button is tapped.
         on_toggle_year_picker: (modal) Callback to toggle the year picker.
         year_picker_active: (modal) Whether the year picker is currently shown.
-        active_view: (docked) Which list menu is open (``"month"``/``"year"``),
+        active_view: (inline) Which list menu is open (``"month"``/``"year"``),
             or ``None`` for the calendar. The open group's dropdown arrow points
             up; the opposite group's controls hide and its label greys out.
-        month_rotation: (docked) Observable degrees for the month dropdown arrow.
-        year_rotation: (docked) Observable degrees for the year dropdown arrow.
-        variant: ``"docked"`` or ``"modal"``.
+        month_rotation: (inline) Observable degrees for the month dropdown arrow.
+        year_rotation: (inline) Observable degrees for the year dropdown arrow.
+        variant: ``"inline"`` or ``"modal"``.
         nav_padding: (modal) Outer padding (left, top, right, bottom) of the
             nav row. MD3 modal measurement: ``(12, 6, 12, 2)`` in the calendar
             view, ``(12, 6, 12, 8)`` in the year-selection view.
-        style: DatePickerStyle.
+        style: CalendarStyle.
     """
 
     def __init__(
@@ -880,9 +919,9 @@ class _MonthYearHeader(ComposableWidget):
         active_view: Optional[Literal["month", "year"]] = None,
         month_rotation: Optional[ReadOnlyObservableProtocol[float]] = None,
         year_rotation: Optional[ReadOnlyObservableProtocol[float]] = None,
-        variant: Literal["docked", "modal"] = "docked",
+        variant: Literal["inline", "modal"] = "inline",
         nav_padding: Tuple[int, int, int, int] = (12, 6, 12, 2),
-        style: "DatePickerStyle",
+        style: "CalendarStyle",
     ) -> None:
         super().__init__()
         self._year = year
@@ -907,7 +946,7 @@ class _MonthYearHeader(ComposableWidget):
         month_name = calendar.month_name[self._month]
         s = self._style
 
-        if self._variant == "docked":
+        if self._variant == "inline":
             # Layout (measurement image):
             #   [← Month ▾ →]  [spacer]  [← Year ▾ →]
             # Each group: chevron_left | Text(label) | IconButton(arrow_drop_down) | chevron_right
@@ -1064,7 +1103,7 @@ class _CalendarGrid(ComposableWidget):
         min_date: Earliest selectable date.
         max_date: Latest selectable date.
         on_day_tap: Callback invoked with the tapped :class:`datetime.date`.
-        style: DatePickerStyle.
+        style: CalendarStyle.
     """
 
     def __init__(
@@ -1078,7 +1117,7 @@ class _CalendarGrid(ComposableWidget):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         on_day_tap: Optional[Callable[[_Date], None]] = None,
-        style: "DatePickerStyle",
+        style: "CalendarStyle",
     ) -> None:
         """Initialize _CalendarGrid.
 
@@ -1208,25 +1247,37 @@ class _CalendarGrid(ComposableWidget):
 
 
 # ---------------------------------------------------------------------------
-# Public: DockedDatePicker
+# Public: DatePicker
 # ---------------------------------------------------------------------------
 
 
-class DockedDatePicker(ComposableWidget):
-    """Material Design 3 Docked Date Picker.
+class DatePicker(ComposableWidget):
+    """Material Design 3 inline calendar date picker.
 
     An inline calendar widget that updates a shared observable value when the
-    user selects a date.  The picker always stays visible (not a dialog).
+    user selects a date.  The picker always stays visible (not a dialog), which
+    makes it composable with other widgets — :class:`DockedDatePicker` embeds
+    one as its dropdown content.
 
     MD3 container: 360×456dp, Large corner rounding (16dp).
+
+    Selecting a day updates ``value`` immediately; the MD3 action row confirms or
+    abandons that selection.  Standalone there is nothing to confirm *to*, so OK
+    is inert and Cancel clears the selection.  An embedder that owns a dismissal
+    — :class:`DockedDatePicker` closing its dropdown — passes ``on_confirm`` and
+    ``on_cancel`` to take over both buttons.
 
     Args:
         value: Observable holding the currently selected :class:`datetime.date`
             (or ``None``).  Both reads and writes are performed on this object.
         on_change: Optional callback invoked after the value is updated.
+        on_confirm: Optional callback invoked with ``value`` when OK is pressed.
+            When omitted, OK does nothing.
+        on_cancel: Optional callback invoked when Cancel is pressed.  When
+            omitted, Cancel clears ``value``.
         min_date: Earliest selectable date.
         max_date: Latest selectable date.
-        style: Visual style.  Defaults to :class:`DockedDatePickerStyle`.
+        style: Visual style.  Defaults to :class:`DatePickerStyle`.
     """
 
     def __init__(
@@ -1234,15 +1285,20 @@ class DockedDatePicker(ComposableWidget):
         value: ObservableProtocol[Optional[_Date]],
         *,
         on_change: Optional[Callable[[Optional[_Date]], None]] = None,
+        on_confirm: Optional[Callable[[Optional[_Date]], None]] = None,
+        on_cancel: Optional[Callable[[], None]] = None,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
-        style: Optional["DockedDatePickerStyle"] = None,
+        style: Optional["DatePickerStyle"] = None,
     ) -> None:
-        """Initialize DockedDatePicker.
+        """Initialize DatePicker.
 
         Args:
             value: Observable holding the selected date (or None).
             on_change: Callback invoked when the user selects a date.
+            on_confirm: Callback invoked with the selected date when OK is pressed.
+            on_cancel: Callback invoked when Cancel is pressed; replaces the
+                default "clear the selection" behavior.
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
@@ -1250,6 +1306,8 @@ class DockedDatePicker(ComposableWidget):
         super().__init__()
         self._value_obs = value
         self._on_change = on_change
+        self._on_confirm = on_confirm
+        self._on_cancel_cb = on_cancel
         self._min_date = min_date
         self._max_date = max_date
         self._user_style = style
@@ -1272,18 +1330,33 @@ class DockedDatePicker(ComposableWidget):
         self._year_rotation: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_SPATIAL)
 
     @property
-    def style(self) -> "DockedDatePickerStyle":
+    def style(self) -> "DatePickerStyle":
         """Return the resolved date picker style."""
         if self._user_style is not None:
             return self._user_style
-        from nuiitivet.material.styles.date_picker_style import DockedDatePickerStyle
+        from nuiitivet.material.styles.date_picker_style import DatePickerStyle
 
-        return DockedDatePickerStyle()
+        return DatePickerStyle()
 
     def on_mount(self) -> None:
         """Subscribe to external value changes to keep the display in sync."""
         super().on_mount()
         self.observe(self._value_obs, lambda _: self.rebuild())
+
+    def show_month(self, year: int, month: int) -> None:
+        """Scroll the calendar to ``year``/``month`` without changing the value.
+
+        Returns the picker to the calendar view if a month or year list is open.
+
+        Args:
+            year: Calendar year to display.
+            month: Calendar month to display (1–12).
+        """
+        self._view_year = year
+        self._view_month = month
+        self._view_mode = "calendar"
+        self._sync_rotation()
+        self.rebuild()
 
     def _go_prev_month(self) -> None:
         self._view_year, self._view_month = _prev_month(self._view_year, self._view_month)
@@ -1345,7 +1418,17 @@ class DockedDatePicker(ComposableWidget):
             self._on_change(d)
         self.rebuild()
 
+    def _on_ok(self) -> None:
+        if self._on_confirm is None:
+            return
+        selected = getattr(self._value_obs, "value", None)
+        self._on_confirm(selected if isinstance(selected, _Date) else None)
+
     def _on_cancel(self) -> None:
+        if self._on_cancel_cb is not None:
+            self._on_cancel_cb()
+            return
+
         try:
             self._value_obs.value = None  # type: ignore[attr-defined]
         except AttributeError:
@@ -1355,7 +1438,7 @@ class DockedDatePicker(ComposableWidget):
         self.rebuild()
 
     def build(self) -> Widget:
-        """Build the docked picker container with navigation header and calendar."""
+        """Build the inline calendar container with navigation header and calendar."""
         style = self.style
         selected = getattr(self._value_obs, "value", None)
         shadow = md3_elevation_to_shadow(style.elevation)
@@ -1372,7 +1455,7 @@ class DockedDatePicker(ComposableWidget):
             active_view=self._view_mode if self._view_mode in ("month", "year") else None,  # type: ignore[arg-type]
             month_rotation=self._month_rotation,
             year_rotation=self._year_rotation,
-            variant="docked",
+            variant="inline",
             style=style,
         )
 
@@ -1433,7 +1516,7 @@ class DockedDatePicker(ComposableWidget):
                 [
                     Box(width=0),  # spacer to push buttons right
                     Button("Cancel", on_click=self._on_cancel, style=action_btn_style),
-                    Button("OK", on_click=lambda: None, style=action_btn_style),
+                    Button("OK", on_click=self._on_ok, style=action_btn_style),
                 ],
                 gap=16,
                 main_alignment="end",
@@ -1455,6 +1538,245 @@ class DockedDatePicker(ComposableWidget):
                 gap=0,
                 height=int(style.container_height),
             ),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Public: DockedDatePicker
+# ---------------------------------------------------------------------------
+
+
+class DockedDatePicker(ComposableWidget):
+    """Material Design 3 Docked Date Picker.
+
+    A text field with a trailing calendar icon button that opens a
+    :class:`DatePicker` in a dropdown anchored below the field.  The date can be
+    entered either by typing it or by picking it from the calendar; ``value`` is
+    the single source of truth for both.
+
+    Typing an unparseable date puts the field into its error state and leaves
+    ``value`` untouched.  Clearing the field sets ``value`` to ``None``.
+
+    Per MD3 the dropdown carries a Cancel/OK action row, so picking a day is a
+    selection rather than a commit.  The calendar edits an internal draft; only
+    OK copies it into ``value`` and fires ``on_change``.  Cancel — and any other
+    dismissal, such as tapping outside the dropdown — drops the draft, so an
+    abandoned selection is never observable from ``value``.
+
+    Typing into the field has no OK to wait for, so it commits as soon as the
+    text parses.
+
+    MD3 reference: ``md.comp.date-picker.docked.*``
+
+    Args:
+        value: Observable holding the currently selected :class:`datetime.date`
+            (or ``None``).  Both reads and writes are performed on this object.
+            Keyword-only, so call sites written against the pre-rename
+            ``DockedDatePicker`` (the inline calendar, now :class:`DatePicker`)
+            fail loudly instead of silently changing behavior.
+        on_change: Optional callback invoked after the value is updated.
+        min_date: Earliest selectable date.
+        max_date: Latest selectable date.
+        label: Floating label for the text field.
+        date_format: Format hint shown as supporting text (e.g. ``"mm/dd/yyyy"``).
+        style: Visual style.  Defaults to :class:`DockedDatePickerStyle`.
+    """
+
+    def __init__(
+        self,
+        *,
+        value: ObservableProtocol[Optional[_Date]],
+        on_change: Optional[Callable[[Optional[_Date]], None]] = None,
+        min_date: Optional[_Date] = None,
+        max_date: Optional[_Date] = None,
+        label: str = "Date",
+        date_format: str = "mm/dd/yyyy",
+        style: Optional["DockedDatePickerStyle"] = None,
+    ) -> None:
+        """Initialize DockedDatePicker.
+
+        Args:
+            value: Observable holding the selected date (or None).
+            on_change: Callback invoked when the value changes.
+            min_date: Minimum selectable date.
+            max_date: Maximum selectable date.
+            label: Text field label.
+            date_format: Format hint shown below the text field.
+            style: Optional style override.
+        """
+        super().__init__()
+        self._value_obs = value
+        self._on_change = on_change
+        self._min_date = min_date
+        self._max_date = max_date
+        self._date_format = date_format
+        self._user_style = style
+
+        initial = getattr(value, "value", None)
+        self._text_obs: Observable[str] = Observable(_format_date(initial if isinstance(initial, _Date) else None))
+        self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format)
+        self._is_error_obs: Observable[bool] = Observable(False)
+        self._is_open: Observable[bool] = Observable(False)
+
+        # Set while propagating a change between ``value`` and the text field so
+        # the observer on the other side does not echo it back.
+        self._syncing = False
+
+        # The dropdown calendar writes here, not to ``value``. Opening seeds it
+        # from ``value``; OK copies it back. Cancelling just drops it, so an
+        # abandoned selection never reaches ``value`` or ``on_change``.
+        self._draft_obs: Observable[Optional[_Date]] = Observable(initial if isinstance(initial, _Date) else None)
+
+        style_ = self.style
+
+        # Both the field and the calendar are built once and reused across
+        # rebuild cycles: the field to preserve focus and cursor position, the
+        # calendar to preserve the month being viewed while the dropdown reopens.
+        from nuiitivet.material.text_fields import TextField
+        from nuiitivet.material.styles.text_field_style import TextFieldStyle
+
+        self._text_field: TextField = TextField.two_way(
+            self._text_obs,
+            label=label,
+            supporting_text=self._supporting_text_obs,
+            is_error=self._is_error_obs,
+            trailing_icon="calendar_today",
+            on_tap_trailing_icon=self._toggle_dropdown,
+            style=TextFieldStyle.outlined(),
+            width=style_.field_width,
+        )
+        self._calendar = DatePicker(
+            self._draft_obs,
+            on_confirm=self._on_calendar_confirm,
+            on_cancel=self._on_calendar_cancel,
+            min_date=min_date,
+            max_date=max_date,
+            style=style_.calendar,
+        )
+
+    @property
+    def style(self) -> "DockedDatePickerStyle":
+        """Return the resolved docked date picker style."""
+        if self._user_style is not None:
+            return self._user_style
+        from nuiitivet.material.styles.date_picker_style import DockedDatePickerStyle
+
+        return DockedDatePickerStyle()
+
+    def on_mount(self) -> None:
+        """Subscribe to text input, external value changes and dropdown state."""
+        super().on_mount()
+        # ``observe`` applies the current value immediately. The text field and
+        # ``value`` were already reconciled in ``__init__``, so suppress the
+        # initial callbacks: replaying them would report a mount as a user edit.
+        self._syncing = True
+        try:
+            self.observe(self._text_obs, self._on_text_changed)
+            self.observe(self._value_obs, self._on_value_changed)
+            self.observe(self._is_open, self._on_open_changed)
+        finally:
+            self._syncing = False
+
+    def _toggle_dropdown(self) -> None:
+        self._is_open.value = not self._is_open.value
+
+    def _current_value(self) -> Optional[_Date]:
+        selected = getattr(self._value_obs, "value", None)
+        return selected if isinstance(selected, _Date) else None
+
+    def _on_open_changed(self, opened: bool) -> None:
+        """Seed the draft from ``value`` each time the dropdown opens."""
+        if self._syncing or not opened:
+            return
+
+        current = self._current_value()
+        self._draft_obs.value = current
+        if current is not None:
+            self._calendar.show_month(current.year, current.month)
+
+    def _on_calendar_confirm(self, selected: Optional[_Date]) -> None:
+        """OK: commit the draft selection to ``value`` and close."""
+        self._is_open.value = False
+        if selected == self._current_value():
+            return
+        self._write_value(selected)
+        self._set_text(_format_date(selected))
+        self._clear_error()
+
+    def _on_calendar_cancel(self) -> None:
+        """Cancel: close and drop the draft.  ``value`` never saw it."""
+        self._is_open.value = False
+
+    def _set_error(self, message: str) -> None:
+        self._is_error_obs.value = True
+        self._supporting_text_obs.value = message
+
+    def _clear_error(self) -> None:
+        self._is_error_obs.value = False
+        self._supporting_text_obs.value = self._date_format
+
+    def _write_value(self, selected: Optional[_Date]) -> None:
+        """Write through to ``value`` without echoing back into the text field."""
+        self._syncing = True
+        try:
+            self._value_obs.value = selected  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+        finally:
+            self._syncing = False
+        if self._on_change is not None:
+            self._on_change(selected)
+
+    def _on_text_changed(self, text: str) -> None:
+        if self._syncing:
+            return
+
+        if not text.strip():
+            self._clear_error()
+            self._write_value(None)
+            return
+
+        parsed = _parse_date(text)
+        if parsed is None:
+            self._set_error("Invalid date")
+            return
+        if self._min_date is not None and parsed < self._min_date:
+            self._set_error(f"Date must be on or after {self._min_date.strftime('%b %d, %Y')}")
+            return
+        if self._max_date is not None and parsed > self._max_date:
+            self._set_error(f"Date must be on or before {self._max_date.strftime('%b %d, %Y')}")
+            return
+
+        self._clear_error()
+        self._write_value(parsed)
+        # Keep the calendar in step, in case the dropdown is open while typing.
+        self._draft_obs.value = parsed
+        self._calendar.show_month(parsed.year, parsed.month)
+
+    def _set_text(self, text: str) -> None:
+        """Drive the text field without echoing back through ``_on_text_changed``."""
+        self._syncing = True
+        try:
+            self._text_obs.value = text
+        finally:
+            self._syncing = False
+
+    def _on_value_changed(self, selected: Optional[_Date]) -> None:
+        if self._syncing:
+            return
+        self._set_text(_format_date(selected if isinstance(selected, _Date) else None))
+        self._clear_error()
+
+    def build(self) -> Widget:
+        """Build the text field with its anchored calendar dropdown."""
+        return self._text_field.modifier(
+            light_dismiss(
+                self._calendar,
+                is_open=self._is_open,
+                alignment="bottom-left",
+                anchor="top-left",
+                offset=(0.0, self.style.dropdown_gap),
+            )
         )
 
 
@@ -1970,23 +2292,6 @@ class ModalDateRangePicker(
 # ---------------------------------------------------------------------------
 
 
-def _parse_date(text: str) -> Optional[_Date]:
-    """Attempt to parse ``text`` as a date using common formats.
-
-    Args:
-        text: Raw user input.
-
-    Returns:
-        Parsed :class:`datetime.date` or ``None`` if parsing fails.
-    """
-    for fmt in ("%m/%d/%Y", "%m-%d-%Y", "%Y-%m-%d"):
-        try:
-            return _DateTime.strptime(text.strip(), fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
 class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
     """Material Design 3 Modal Date Input.
 
@@ -2050,8 +2355,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         self._user_style = style
 
         # Internal observables for the text field
-        init_text = init_value.strftime("%m/%d/%Y") if init_value else ""
-        self._text_obs: Observable[str] = Observable(init_text)
+        self._text_obs: Observable[str] = Observable(_format_date(init_value))
         self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format)
 
         # Build the TextField once and reuse across rebuild cycles to preserve

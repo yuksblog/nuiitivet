@@ -242,6 +242,31 @@ def test_text_field_invokes_icon_tap_callbacks_on_press() -> None:
     assert trailing_tapped is True
 
 
+def test_text_field_invokes_icon_tap_callbacks_when_field_is_offset_from_root() -> None:
+    """Pointer events arrive in root coordinates, not coordinates local to the field."""
+    trailing_tapped = False
+
+    def _on_trailing() -> None:
+        nonlocal trailing_tapped
+        trailing_tapped = True
+
+    tf = TextField(value="", trailing_icon="close", on_tap_trailing_icon=_on_trailing)
+    tf.layout(200, 56)
+    # Place the field away from the root origin, the way any real layout does.
+    tf.set_layout_rect(24, 24, 200, 56)
+
+    icon = tf.trailing_icon
+    assert icon is not None
+    icon_rect = icon.layout_rect
+    assert icon_rect is not None
+    ix, iy, iw, ih = icon_rect
+    tf._handle_press(
+        PointerEvent.mouse_event(1, PointerEventType.PRESS, 24 + ix + iw / 2, 24 + iy + ih / 2)
+    )
+
+    assert trailing_tapped is True
+
+
 def test_text_field_does_not_invoke_icon_callbacks_when_pressing_non_icon_area() -> None:
     leading_tapped = False
     trailing_tapped = False

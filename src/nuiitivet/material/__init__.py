@@ -96,7 +96,13 @@ if TYPE_CHECKING:
     from .split_button import SplitButton
     from .styles.split_button_style import SplitButtonStyle
     from .transition_spec import MaterialTransitionSpec
-    from .date_picker import DockedDatePicker, ModalDatePicker, ModalDateRangePicker, ModalDateInput
+    from .date_picker import (
+        DatePicker,
+        DockedDatePicker,
+        ModalDatePicker,
+        ModalDateRangePicker,
+        ModalDateInput,
+    )
     from .styles.date_picker_style import (
         DatePickerStyle,
         DockedDatePickerStyle,
@@ -196,6 +202,7 @@ __all__ = [
     "ConnectedButtonGroup",
     "SplitButton",
     "SplitButtonStyle",
+    "DatePicker",
     "DockedDatePicker",
     "ModalDatePicker",
     "ModalDateRangePicker",
@@ -307,6 +314,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ConnectedButtonGroup": ("button_group", "ConnectedButtonGroup"),
     "SplitButton": ("split_button", "SplitButton"),
     "SplitButtonStyle": ("styles.split_button_style", "SplitButtonStyle"),
+    "DatePicker": ("date_picker", "DatePicker"),
     "DockedDatePicker": ("date_picker", "DockedDatePicker"),
     "ModalDatePicker": ("date_picker", "ModalDatePicker"),
     "ModalDateRangePicker": ("date_picker", "ModalDateRangePicker"),
