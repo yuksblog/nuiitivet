@@ -27,8 +27,15 @@ class ReadOnlyObservableProtocol(Protocol, Generic[T]):
     def value(self) -> T: ...
 
 
+@runtime_checkable
 class ObservableProtocol(ReadOnlyObservableProtocol[T], Protocol, Generic[T]):
-    """Mutable observable protocol: supports reading and writing .value."""
+    """Mutable observable protocol: supports reading and writing .value.
+
+    Note:
+        ``isinstance`` against a runtime-checkable protocol only inspects
+        attribute presence, so a read-only observable also matches.  Static
+        typing is what separates the two.
+    """
 
     @property
     def value(self) -> T: ...

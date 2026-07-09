@@ -1,4 +1,4 @@
-"""Material Widgets - StandardSideSheet with Collapsible open/close."""
+"""Material Widgets - StandardSideSheet open/close."""
 
 from __future__ import annotations
 
@@ -14,24 +14,19 @@ class StandardSideSheetDemo(nv.ComposableWidget):
         self.opened.value = not self.opened.value
 
     def build(self) -> nv.Widget:
-        sheet = nv.Collapsible(
-            nv.StandardSideSheet(
-                nv.Column(
-                    padding=16,
-                    gap=12,
-                    width="100%",
-                    children=[
-                        nv.Text("Option A"),
-                        nv.Text("Option B"),
-                        nv.Text("Option C"),
-                    ],
-                ),
-                headline="Filters",
-                on_close=self.toggle,
+        sheet = nv.StandardSideSheet(
+            nv.Column(
+                padding=16,
+                gap=12,
+                width="100%",
+                children=[
+                    nv.Text("Option A"),
+                    nv.Text("Option B"),
+                    nv.Text("Option C"),
+                ],
             ),
+            headline="Filters",
             opened=self.opened,
-            axis="horizontal",
-            alignment="top_right",
         )
 
         body = nv.Box(
