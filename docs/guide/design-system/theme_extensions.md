@@ -99,7 +99,7 @@ class BrandCard(ComposableWidget):
 
 ### Full sample
 
-See the complete runnable example: `samples/theme_extensions/custom_widget.py`
+See the complete runnable example: `samples/design-system/theme_extensions/custom_widget.py`
 
 ![Custom Widget](../../assets/theme_extensions_custom_widget.png)
 
@@ -208,7 +208,7 @@ variant is active — it simply reads whatever `AppBrandTheme` is registered.
 
 ### Full sample
 
-See the complete runnable example: `samples/theme_extensions/custom_color_token.py`
+See the complete runnable example: `samples/design-system/theme_extensions/custom_color_token.py`
 
 ![Light/Dark Widget](../../assets/theme_extensions_light_dark.png)
 
