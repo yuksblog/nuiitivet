@@ -657,8 +657,15 @@ class TextField(InteractiveWidget):
         if rect is None:
             return False
 
+        # Pointer events carry root coordinates, while the icon's layout rect is
+        # relative to this field. Rebase the point onto the field's own origin,
+        # which is (0, 0) only when the field sits at the root.
+        origin = self.global_layout_rect
+        ox, oy = (origin[0], origin[1]) if origin is not None else (0, 0)
+        px, py = event.x - ox, event.y - oy
+
         rx, ry, rw, rh = rect
-        return rx <= event.x <= (rx + rw) and ry <= event.y <= (ry + rh)
+        return rx <= px <= (rx + rw) and ry <= py <= (ry + rh)
 
     def _invoke_icon_tap_callback(self, cb: Optional[Callable[[], None]], *, key: str) -> None:
         if cb is None:
