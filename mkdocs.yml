@@ -134,56 +134,57 @@ nav:
   - Guide:
       - guide/index.md
       - Layout:
-          - Overview: guide/layout.md
-          - Basics: guide/layout_basics.md
-          - Alignment: guide/layout_alignment.md
-          - Sizing: guide/layout_sizing.md
-          - Spacing: guide/layout_spacing.md
-          - Grid: guide/layout_grid.md
-          - Overflow: guide/layout_overflow.md
-          - Extras: guide/layout_extras.md
+          - guide/layout/index.md
+          - Basics: guide/layout/basics.md
+          - Alignment: guide/layout/alignment.md
+          - Sizing: guide/layout/sizing.md
+          - Spacing: guide/layout/spacing.md
+          - Grid: guide/layout/grid.md
+          - Overflow: guide/layout/overflow.md
+          - Dynamic: guide/layout/dynamic.md
+          - Extras: guide/layout/extras.md
       - Overlay:
-          - Overview: guide/overlay.md
-          - Primitives: guide/overlay_primitives.md
-          - Dialogs: guide/dialogs.md
+          - guide/overlay/index.md
+          - Primitives: guide/overlay/primitives.md
+          - Dialogs: guide/overlay/dialogs.md
       - Navigation:
-          - Overview: guide/navigation.md
-          - Route & Animations: guide/navigation_route.md
-          - Intent-Based Navigation: guide/navigation_intent.md
-          - Nested Navigation: guide/navigation_sub.md
+          - guide/navigation/index.md
+          - Route & Animations: guide/navigation/route.md
+          - Intent-Based Navigation: guide/navigation/intent.md
+          - Nested Navigation: guide/navigation/nested.md
       - Window:
-          - Overview: guide/window.md
-          - Window Chrome: guide/window_chrome.md
-          - Size and Position: guide/window_size_position.md
-          - Operations: guide/window_operations.md
-          - Renderer Selection: guide/renderer_selection.md
+          - guide/window/index.md
+          - Window Chrome: guide/window/chrome.md
+          - Size and Position: guide/window/size_position.md
+          - Operations: guide/window/operations.md
+          - Renderer Selection: guide/window/renderer_selection.md
       - Modifiers:
-          - Overview: guide/modifier.md
-          - Decoration: guide/modifier_decoration.md
-          - Interaction: guide/modifier_interaction.md
-          - Transform: guide/modifier_transform.md
-          - Popup: guide/modifier_popup.md
-          - Others: guide/modifier_others.md
+          - guide/modifiers/index.md
+          - Decoration: guide/modifiers/decoration.md
+          - Interaction: guide/modifiers/interaction.md
+          - Transform: guide/modifiers/transform.md
+          - Popup: guide/modifiers/popup.md
+          - Others: guide/modifiers/others.md
       - State Management:
-          - Overview: guide/observable.md
-          - Getting Started: guide/observable/getting-started.md
-          - Basic API: guide/observable/basic-api.md
-          - Operators: guide/observable/operators.md
-          - Practical Controls: guide/observable/practical-controls.md
-          - Thread Safety: guide/observable/thread-safety.md
-          - Patterns and Recipes: guide/observable/patterns-and-recipes.md
+          - guide/state-management/index.md
+          - Getting Started: guide/state-management/getting_started.md
+          - Basic API: guide/state-management/basic_api.md
+          - Operators: guide/state-management/operators.md
+          - Practical Controls: guide/state-management/practical_controls.md
+          - Thread Safety: guide/state-management/thread_safety.md
+          - Patterns and Recipes: guide/state-management/patterns_and_recipes.md
       - UI Design System:
-          - Overview: guide/ui_design_system.md
-          - Material App: guide/material_app.md
-          - Material Overlay: guide/material_overlay.md
-          - Material Theme: guide/material_theme.md
-          - Material Navigator: guide/material_navigator.md
-          - Material Widgets: guide/material_widgets.md
-          - Theme Extensions: guide/theme_extensions.md
-          - Font Configuration: guide/font_configuration.md
+          - guide/design-system/index.md
+          - Material App: guide/design-system/material_app.md
+          - Material Overlay: guide/design-system/material_overlay.md
+          - Material Theme: guide/design-system/material_theme.md
+          - Material Navigator: guide/design-system/material_navigator.md
+          - Material Widgets: guide/design-system/material_widgets.md
+          - Theme Extensions: guide/design-system/theme_extensions.md
+          - Font Configuration: guide/design-system/font_configuration.md
       - Advanced:
-          - Threading Model: guide/threading.md
-          - Interaction Region: guide/interaction_region.md
+          - Threading Model: guide/advanced/threading.md
+          - Interaction Region: guide/advanced/interaction_region.md
       - Packaging:
           - guide/packaging.md
   - API Reference:

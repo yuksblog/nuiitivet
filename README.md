@@ -77,7 +77,7 @@ Button("OK").modifier(
 )
 ```
 
-For why modifiers exist and what kinds are available, see [docs/guide/modifier.md](docs/guide/modifier.md).
+For why modifiers exist and what kinds are available, see [docs/guide/modifiers/index.md](docs/guide/modifiers/index.md).
 
 ### 1.2 Data Binding
 
@@ -144,7 +144,7 @@ self.query = Observable("")
 self.results = self.query.debounce(0.3).map(search_api)
 ```
 
-The full guide to Observable is in [docs/guide/observable.md](docs/guide/observable.md).
+The full guide to Observable is in [docs/guide/state-management/index.md](docs/guide/state-management/index.md).
 
 ### 1.3 Event Handlers
 
@@ -262,27 +262,27 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 
 | Guide | Summary |
 | ----- | ------- |
-| [Layout](docs/guide/layout.md) | Build UIs with widgets and parameters. |
-| [Observable](docs/guide/observable.md) | Reactive state that auto-updates the UI. |
-| [Modifier](docs/guide/modifier.md) | Attach decoration and behavior to widgets. |
-| [UI Design System](docs/guide/ui_design_system.md) | Theming and design tokens. |
+| [Layout](docs/guide/layout/index.md) | Build UIs with widgets and parameters. |
+| [Observable](docs/guide/state-management/index.md) | Reactive state that auto-updates the UI. |
+| [Modifier](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |
+| [UI Design System](docs/guide/design-system/index.md) | Theming and design tokens. |
 
 ### Material Design
 
 | Guide | Summary |
 | ----- | ------- |
-| [Material App](docs/guide/material_app.md) | App entry point and structure. |
-| [Material Theme](docs/guide/material_theme.md) | Color schemes generated from a seed. |
-| [Material Widgets](docs/guide/material_widgets.md) | Catalog of built-in widgets. |
-| [Navigation](docs/guide/navigation.md) | Screens, routes, and transitions. |
-| [Dialogs & Overlays](docs/guide/dialogs.md) | Dialogs, loading, and overlays. |
+| [Material App](docs/guide/design-system/material_app.md) | App entry point and structure. |
+| [Material Theme](docs/guide/design-system/material_theme.md) | Color schemes generated from a seed. |
+| [Material Widgets](docs/guide/design-system/material_widgets.md) | Catalog of built-in widgets. |
+| [Navigation](docs/guide/navigation/index.md) | Screens, routes, and transitions. |
+| [Dialogs & Overlays](docs/guide/overlay/dialogs.md) | Dialogs, loading, and overlays. |
 
 ### Going Further
 
 | Guide | Summary |
 | ----- | ------- |
-| [Window & Chrome](docs/guide/window.md) | Window sizing, position, and custom chrome. |
-| [Async & Threading](docs/guide/threading.md) | Safe UI updates from background work. |
+| [Window & Chrome](docs/guide/window/index.md) | Window sizing, position, and custom chrome. |
+| [Async & Threading](docs/guide/advanced/threading.md) | Safe UI updates from background work. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
 ## 4. Known Limitations
@@ -295,7 +295,7 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
   PyOpenGL + skia and needs an OpenGL/GPU context, which has implications for
   headless, remote, and old-GPU environments. For GPU-less or software-OpenGL
   setups you can select a CPU/raster renderer — see
-  [Renderer Selection](docs/guide/renderer_selection.md).
+  [Renderer Selection](docs/guide/window/renderer_selection.md).
 
 ## 5. License
 
