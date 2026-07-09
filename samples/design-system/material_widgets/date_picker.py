@@ -1,4 +1,4 @@
-"""Material Widgets - DockedDatePicker.
+"""Material Widgets - DatePicker.
 
 An inline calendar that always stays visible (not a dialog) and writes the
 selected :class:`datetime.date` back to a shared observable.
@@ -15,14 +15,14 @@ def main(png_path: str = "") -> None:
     selected: nv.Observable[date | None] = nv.Observable(date(2026, 6, 25))
     content = nv.Container(
         padding=24,
-        child=nv.DockedDatePicker(
+        child=nv.DatePicker(
             selected,
             on_change=lambda value: print(f"Selected: {value}"),
         ),
     )
     app = nv.App(
         content=content,
-        title="DockedDatePicker",
+        title="DatePicker",
         width=460,
         height=560,
     )
