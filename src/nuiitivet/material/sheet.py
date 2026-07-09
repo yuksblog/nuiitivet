@@ -5,16 +5,18 @@ from __future__ import annotations
 import logging
 from typing import Callable, Literal, Optional, Union
 
+from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import IconButton
 from nuiitivet.material.divider import VerticalDivider
+from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.material.styles.sheet_style import BottomSheetStyle, SideSheetStyle, StandardSideSheetStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -259,33 +261,40 @@ class StandardSideSheet(ComposableWidget):
     """Material Design 3 standard (docked) side sheet.
 
     A standard side sheet is a permanent part of the layout, sitting beside
-    the main content.  It does **not** manage its own open/close animation;
-    wrap it in :class:`~nuiitivet.layout.collapsible.Collapsible` when
-    animated expand/collapse is needed::
+    the main content.  It owns its open/close animation: the sheet stays
+    mounted while its allocated width animates between the style width and
+    zero::
+
+        opened: Observable[bool] = Observable(True)
 
         Row([
             main_content,
-            Collapsible(
-                StandardSideSheet(
-                    panel_content,
-                    headline="Filters",
-                    on_close=vm.close_panel,
-                ),
-                opened=vm.panel_open,
-                axis="horizontal",
-                alignment="top_right",
-            ),
+            StandardSideSheet(panel_content, headline="Filters", opened=opened),
         ])
+
+    Toggling the sheet is a plain write to *opened*
+    (``opened.value = not opened.value``).  Conditionally rendering the sheet
+    instead would unmount it and skip the animation.
+
+    The close icon button is rendered when the sheet can act on a press, i.e.
+    when *opened* is a writable observable, when *on_close_click* is given, or
+    both.  With a literal ``bool`` *opened* and no callback there is nothing a
+    press could do, so no button is shown.
 
     Args:
         content: Widget to display inside the sheet.
+        opened: ``bool`` or writable ``Observable[bool]`` driving the
+            expand/collapse animation.  Defaults to ``True``.
+        on_close_click: Callback invoked when the close icon button is
+            pressed.  **Supplying it disables the default auto-close**: the
+            sheet no longer writes ``opened.value = False`` and updating
+            *opened* becomes the caller's responsibility.  This is the
+            interception point for confirm-before-close flows.
         headline: Optional header title text (``str`` or
             ``Observable[str]``).  When provided, an M3-compliant header row
             is rendered above *content*.
         side: Edge the sheet is attached to (``"right"`` or ``"left"``).
-            Defaults to ``"right"``.
-        on_close: Callback invoked when the close icon button is pressed.
-            When ``None``, no close button is rendered in the header.
+            Defaults to ``"right"``.  The collapse anchor is derived from it.
         style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
     """
 
@@ -293,33 +302,52 @@ class StandardSideSheet(ComposableWidget):
         self,
         content: Widget,
         *,
+        opened: Union[bool, ObservableProtocol[bool]] = True,
+        on_close_click: Optional[Callable[[], None]] = None,
         headline: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
         side: Literal["right", "left"] = "right",
-        on_close: Optional[Callable[[], None]] = None,
         style: Optional[StandardSideSheetStyle] = None,
     ) -> None:
         """Initialize StandardSideSheet.
 
         Args:
             content: Widget to display inside the sheet.
+            opened: ``bool`` or writable ``Observable[bool]``.  Defaults to
+                ``True``.
+            on_close_click: Callback for the close icon button.  Supplying it
+                disables the default ``opened.value = False`` auto-close.
             headline: Optional header title (str or Observable[str]).
             side: Attachment edge (``"right"`` or ``"left"``).
                 Defaults to ``"right"``.
-            on_close: Callback for the close icon button.  No button is shown
-                when ``None``.
             style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
         """
         super().__init__()
         self._content = content
+        self._opened = opened
+        self._on_close_click = on_close_click
         self._headline = headline
         self.side = side
-        self._on_close = on_close
         self._user_style = style
 
     @property
     def style(self) -> StandardSideSheetStyle:
         """Return the resolved sheet style."""
         return self._user_style if self._user_style is not None else StandardSideSheetStyle()
+
+    def _can_auto_close(self) -> bool:
+        """Return whether *opened* is writable, i.e. the sheet can close itself."""
+        return isinstance(self._opened, ObservableProtocol)
+
+    def _show_close_button(self) -> bool:
+        return self._on_close_click is not None or self._can_auto_close()
+
+    def _handle_close_click(self) -> None:
+        """Close button handler: the callback replaces the default auto-close."""
+        if self._on_close_click is not None:
+            self._on_close_click()
+            return
+        if isinstance(self._opened, ObservableProtocol):
+            self._opened.value = False
 
     def on_mount(self) -> None:
         """Mount and subscribe to headline observable if provided."""
@@ -329,12 +357,13 @@ class StandardSideSheet(ComposableWidget):
             self.bind(sub)
 
     def build(self) -> Widget:
-        """Build the sheet: outer Box with optional header Row and content."""
+        """Build the sheet: a Collapsible wrapping the sheet container Box."""
         resolved_style = self.style
 
         # Optionally build the header row (headline + close button).
         body_parts: list[Widget] = []
-        if self._headline is not None or self._on_close is not None:
+        show_close = self._show_close_button()
+        if self._headline is not None or show_close:
             header_children: list[Widget] = []
             if self._headline is not None:
                 header_children.append(
@@ -348,8 +377,8 @@ class StandardSideSheet(ComposableWidget):
                         padding=(8, 0, 8, 0),
                     )
                 )
-            if self._on_close is not None:
-                header_children.append(IconButton("close", on_click=self._on_close))
+            if show_close:
+                header_children.append(IconButton("close", on_click=self._handle_close_click))
             body_parts.append(
                 Row(
                     header_children,
@@ -373,11 +402,23 @@ class StandardSideSheet(ComposableWidget):
         else:
             inner = content_col
 
-        return Box(
+        container = Box(
             inner,
             width=resolved_style.width,
             height=resolved_style.height,
             background_color=resolved_style.background_color,
+        )
+
+        # The collapse anchor is the edge the sheet is docked to: the child is
+        # laid out at its natural width while the allocated rect shrinks, so
+        # the docked edge must stay pinned.
+        alignment = ("end", "start") if self.side == "right" else ("start", "start")
+        return Collapsible(
+            container,
+            opened=self._opened,
+            axis="horizontal",
+            alignment=alignment,
+            motion=EXPRESSIVE_DEFAULT_SPATIAL,
         )
 
 

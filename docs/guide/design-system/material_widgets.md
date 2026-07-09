@@ -233,20 +233,30 @@ API References: [Tooltip](../../api/material.md#nuiitivet.material.Tooltip) ・ 
 
 ## StandardSideSheet
 
-Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Wrap it in `Collapsible` (with `axis="horizontal"`) to animate it open and closed without any additional API on the sheet itself.
+Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Pass a writable `Observable[bool]` as `opened` and the sheet animates its own width open and closed, staying mounted throughout.
 
 ```python
-Collapsible(
-    StandardSideSheet(
-        panel_content,
-        headline="Filters",
-        on_close=vm.close_panel,
-    ),
-    opened=vm.panel_open,
-    axis="horizontal",
-    alignment="top_right",
-)
+opened: Observable[bool] = Observable(True)
+
+Row([
+    main_content,
+    StandardSideSheet(panel_content, headline="Filters", opened=opened),
+])
 ```
+
+The close icon button writes `opened.value = False` by default. Pass `on_close_click` to intercept the press instead — the callback **replaces** the default, so updating `opened` becomes your responsibility:
+
+```python
+def confirm_close() -> None:
+    if vm.has_unsaved_changes:
+        vm.show_confirm_dialog()
+    else:
+        opened.value = False
+
+StandardSideSheet(panel_content, opened=opened, on_close_click=confirm_close)
+```
+
+With a literal `opened=True` and no `on_close_click`, no close button is rendered: a press would have nothing to act on.
 
 ![StandardSideSheet](../../assets/material_widgets_standard_side_sheet.png)
 
