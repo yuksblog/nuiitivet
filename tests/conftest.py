@@ -2,6 +2,13 @@ import pathlib
 import sys
 import warnings
 
+import pyglet
+
+# Importing pyglet.window creates a shadow window, which needs a display
+# connection and raises NoSuchDisplayException under headless CI. Tests never
+# open a real window, so disable it before any test module imports pyglet.window.
+pyglet.options["shadow_window"] = False
+
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _SRC = _ROOT / "src"
