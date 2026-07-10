@@ -1,8 +1,8 @@
 """Tests for key-release delivery and the authoritative modifier-key mask.
 
-Key release had no dispatch path at all before #310: the runner dropped every
-symbol except ``escape`` and forwarded that one as a *press*. These tests cover
-the release path end to end at the framework boundary — ``_dispatch_key_release``,
+Key release had no dispatch path before #310: the runner dropped every symbol
+except ``escape`` and forwarded that one as a *press*. These tests cover the
+release path end to end at the framework boundary — ``_dispatch_key_release``,
 ``FocusNode.handle_key_release_event``, ``focusable(on_key_up=...)`` — plus the
 App-owned modifier-key mask that release maintenance and window deactivation feed.
 """
@@ -10,6 +10,7 @@ App-owned modifier-key mask that release maintenance and window deactivation fee
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 import pytest
 from pyglet.window import key as pyglet_key
@@ -22,7 +23,7 @@ from nuiitivet.navigation import Navigator
 from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
-from nuiitivet.widgets.interaction import FocusNode
+from nuiitivet.widgets.interaction import FocusNode, InteractionHostMixin
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -31,10 +32,24 @@ class _LeafWidget(Widget):
         pass
 
 
+def _record(sink: list[Any], value: Any, result: bool) -> bool:
+    """Append ``value`` to ``sink`` and return ``result`` (a valid bool callback)."""
+    sink.append(value)
+    return result
+
+
 def _mounted_app(root: Widget) -> App:
     app = App(root)
     app.root.mount(app)
     return app
+
+
+def _focus(widget: Widget) -> None:
+    """Focus the FocusNode hosted by ``widget`` (which ``focusable()`` wrapped)."""
+    assert isinstance(widget, InteractionHostMixin)
+    node = widget.get_node(FocusNode)
+    assert isinstance(node, FocusNode)
+    node.request_focus()
 
 
 # ---------------------------------------------------------------------------
@@ -48,14 +63,14 @@ def test_letter_press_and_release_reach_separate_callbacks() -> None:
 
     child = _LeafWidget().modifier(
         focusable(
-            on_key=lambda k, m: presses.append((k, m)) or True,
-            on_key_up=lambda k, m: releases.append((k, m)) or True,
+            on_key=lambda k, m: _record(presses, (k, m), True),
+            on_key_up=lambda k, m: _record(releases, (k, m), True),
         )
     )
     root = Box()
     root.add_child(child)
     app = _mounted_app(root)
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
 
     assert app._dispatch_key_press("a") is True
     assert app._dispatch_key_release("a") is True
@@ -70,11 +85,11 @@ def test_release_does_not_synthesize_a_press() -> None:
     """A node with only on_key must never see its press callback fire on release."""
     presses: list[str] = []
 
-    child = _LeafWidget().modifier(focusable(on_key=lambda k, m: presses.append(k) or True))
+    child = _LeafWidget().modifier(focusable(on_key=lambda k, m: _record(presses, k, True)))
     root = Box()
     root.add_child(child)
     app = _mounted_app(root)
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
 
     assert app._dispatch_key_release("a") is False  # nothing consumes it
     assert presses == []  # crucially: no phantom press
@@ -90,13 +105,11 @@ def test_release_does_not_synthesize_a_press() -> None:
 def test_modifier_key_release_carries_mask() -> None:
     releases: list[tuple[str, int]] = []
 
-    child = _LeafWidget().modifier(
-        focusable(on_key_up=lambda k, m: releases.append((k, m)) or True)
-    )
+    child = _LeafWidget().modifier(focusable(on_key_up=lambda k, m: _record(releases, (k, m), True)))
     root = Box()
     root.add_child(child)
     app = _mounted_app(root)
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
 
     assert app._dispatch_key_release("lctrl", MOD_CTRL) is True
     assert releases == [("lctrl", MOD_CTRL)]
@@ -114,13 +127,13 @@ def test_release_bubbles_to_parent_focus_node() -> None:
     parent_releases: list[str] = []
 
     child = _LeafWidget().modifier(
-        focusable(on_key_up=lambda k, m: child_releases.append(k) or False)  # bubble up
+        focusable(on_key_up=lambda k, m: _record(child_releases, k, False))  # bubble up
     )
-    parent = Box().modifier(focusable(on_key_up=lambda k, m: parent_releases.append(k) or True))
+    parent = Box().modifier(focusable(on_key_up=lambda k, m: _record(parent_releases, k, True)))
     parent.add_child(child)
     app = _mounted_app(parent)
 
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
     assert app._dispatch_key_release("b") is True
 
     assert child_releases == ["b"]
@@ -134,13 +147,13 @@ def test_release_bubbling_stops_on_truthy_return() -> None:
     parent_releases: list[str] = []
 
     child = _LeafWidget().modifier(
-        focusable(on_key_up=lambda k, m: child_releases.append(k) or True)  # consume
+        focusable(on_key_up=lambda k, m: _record(child_releases, k, True))  # consume
     )
-    parent = Box().modifier(focusable(on_key_up=lambda k, m: parent_releases.append(k) or True))
+    parent = Box().modifier(focusable(on_key_up=lambda k, m: _record(parent_releases, k, True)))
     parent.add_child(child)
     app = _mounted_app(parent)
 
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
     assert app._dispatch_key_release("b") is True
 
     assert child_releases == ["b"]
@@ -174,11 +187,11 @@ async def test_escape_release_does_not_reach_focus_node() -> None:
     """Escape is consumed for back-navigation, mirroring the press path."""
     releases: list[str] = []
 
-    child = _LeafWidget().modifier(focusable(on_key_up=lambda k, m: releases.append(k) or True))
+    child = _LeafWidget().modifier(focusable(on_key_up=lambda k, m: _record(releases, k, True)))
     root = Box()
     root.add_child(child)
     app = _mounted_app(root)
-    child.get_node(FocusNode).request_focus()
+    _focus(child)
 
     app._dispatch_key_release("escape")
     await asyncio.sleep(0)
