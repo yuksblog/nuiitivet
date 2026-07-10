@@ -234,14 +234,14 @@ class _SliderBase(InteractiveWidget):
             self._handle_width_anim.target = target
         return float(self._handle_width_anim.value)
 
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
         if self.disabled:
             return False
 
         key_name = (key or "").lower()
 
         if key_name == "tab":
-            return self._handle_tab_key(modifiers)
+            return self._handle_tab_key(modifier_keys)
 
         if key_name == "space":
             self._space_accel_armed = True
@@ -251,15 +251,15 @@ class _SliderBase(InteractiveWidget):
         dec = key_name in ("left", "down")
         if not inc and not dec:
             self._space_accel_armed = False
-            return super().on_key_event(key, modifiers)
+            return super().on_key_event(key, modifier_keys)
 
-        step = self._keyboard_step(modifiers, large=self._space_accel_armed)
+        step = self._keyboard_step(modifier_keys, large=self._space_accel_armed)
         delta = step if inc else -step
         self._step_active_handle(delta)
         self._space_accel_armed = False
         return True
 
-    def _wants_tab(self, modifiers: int = 0) -> bool:
+    def _wants_tab(self, modifier_keys: int = 0) -> bool:
         """Return True if Tab should be consumed internally.
 
         For single-handle sliders this always returns False.
@@ -268,14 +268,14 @@ class _SliderBase(InteractiveWidget):
         """
         if self._handle_count <= 1:
             return False
-        go_back = bool(int(modifiers) & 1)
+        go_back = bool(int(modifier_keys) & 1)
         if go_back:
             return self._active_handle_index > 0
         return self._active_handle_index < self._handle_count - 1
 
-    def _handle_tab_key(self, modifiers: int = 0) -> bool:
+    def _handle_tab_key(self, modifier_keys: int = 0) -> bool:
         """Move active handle index on Tab."""
-        go_back = bool(int(modifiers) & 1)
+        go_back = bool(int(modifier_keys) & 1)
         if go_back:
             self._active_handle_index = max(0, self._active_handle_index - 1)
         else:
@@ -283,7 +283,7 @@ class _SliderBase(InteractiveWidget):
         self.invalidate()
         return True
 
-    def _keyboard_step(self, modifiers: int, *, large: bool = False) -> float:
+    def _keyboard_step(self, modifier_keys: int, *, large: bool = False) -> float:
         span = max(1e-6, self._max_value - self._min_value)
         if self._stops is not None and self._stops >= 2:
             unit = span / float(max(1, self._stops - 1))
@@ -293,7 +293,7 @@ class _SliderBase(InteractiveWidget):
         if large:
             unit *= 10.0
 
-        if modifiers & MOD_SHIFT:
+        if modifier_keys & MOD_SHIFT:
             unit *= 10.0
         return unit
 

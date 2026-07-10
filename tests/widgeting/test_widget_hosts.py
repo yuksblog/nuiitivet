@@ -7,8 +7,8 @@ class DummyWidget(Widget):
     def build(self):  # pragma: no cover - builder host not exercised here
         return self
 
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
-        self._key_events.append((key, modifiers))
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
+        self._key_events.append((key, modifier_keys))
         return False
 
     def on_focus_event(self, event: FocusEvent) -> bool:
@@ -49,11 +49,11 @@ def test_key_hook_short_circuits_default_handler():
     events = []
 
     def key_hook(event):
-        events.append((event.key, event.modifiers))
+        events.append((event.key, event.modifier_keys))
         return True
 
     widget.register_input_hook("key", key_hook)
-    handled = widget.handle_key_event("space", modifiers=1)
+    handled = widget.handle_key_event("space", modifier_keys=1)
 
     assert handled is True
     assert events == [("space", 1)]

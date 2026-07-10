@@ -546,7 +546,7 @@ class FocusNode(InteractionNode):
         self._parent: Optional["FocusNode"] = None
         self._wants_tab: Optional[Callable[[int], bool]] = None
 
-    def wants_tab(self, modifiers: int = 0) -> bool:
+    def wants_tab(self, modifier_keys: int = 0) -> bool:
         """Return True if this node wants to consume Tab internally.
 
         Composite widgets (e.g. RangeSlider) override this via the
@@ -554,10 +554,10 @@ class FocusNode(InteractionNode):
         focus to the next node in the traversal list.
 
         Args:
-            modifiers: Keyboard modifier flags (e.g. Shift).
+            modifier_keys: Keyboard modifier key flags (e.g. Shift).
         """
         if self._wants_tab is not None:
-            return self._wants_tab(modifiers)
+            return self._wants_tab(modifier_keys)
         return False
 
     def request_focus(self, source: FocusSource = FocusSource.KEYBOARD) -> None:
@@ -603,15 +603,15 @@ class FocusNode(InteractionNode):
                 owner_name=owner_name,
             )
 
-    def handle_key_event(self, key: str, modifiers: int) -> bool:
+    def handle_key_event(self, key: str, modifier_keys: int) -> bool:
         if self._on_key:
-            if self._on_key(key, modifiers):
+            if self._on_key(key, modifier_keys):
                 return True
 
         # Bubbling: Try parent
         p = self.parent
         if p:
-            return p.handle_key_event(key, modifiers)
+            return p.handle_key_event(key, modifier_keys)
         return False
 
     def handle_text_event(self, text: str) -> bool:

@@ -40,7 +40,7 @@ def send_pointer_event_for_test(
     button: Optional[int] = None,
     scroll_x: float = 0.0,
     scroll_y: float = 0.0,
-    modifiers: int = 0,
+    modifier_keys: int = 0,
 ) -> bool:
     """Test helper: dispatch a synthetic pointer event directly to the given widget.
 
@@ -53,7 +53,7 @@ def send_pointer_event_for_test(
     convenience.
     """
     if event_type is PointerEventType.SCROLL:
-        event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y, modifiers=modifiers)
+        event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y, modifier_keys=modifier_keys)
     else:
         event = PointerEvent.mouse_event(
             pointer_id,
@@ -63,7 +63,7 @@ def send_pointer_event_for_test(
             dx=dx,
             dy=dy,
             button=button,
-            modifiers=modifiers,
+            modifier_keys=modifier_keys,
         )
 
     _ensure_layout_rect_from_last_rect(widget)
@@ -86,7 +86,7 @@ def send_pointer_event_for_test_via_app_routing(
     button: Optional[int] = None,
     scroll_x: float = 0.0,
     scroll_y: float = 0.0,
-    modifiers: int = 0,
+    modifier_keys: int = 0,
 ) -> bool:
     """Test helper: dispatch a synthetic pointer event via App-style routing.
 
@@ -95,7 +95,7 @@ def send_pointer_event_for_test_via_app_routing(
     - Bubble the event up the `_parent` chain until handled.
     """
     if event_type is PointerEventType.SCROLL:
-        event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y, modifiers=modifiers)
+        event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y, modifier_keys=modifier_keys)
     else:
         event = PointerEvent.mouse_event(
             pointer_id,
@@ -105,7 +105,7 @@ def send_pointer_event_for_test_via_app_routing(
             dx=dx,
             dy=dy,
             button=button,
-            modifiers=modifiers,
+            modifier_keys=modifier_keys,
         )
 
     _ensure_layout_rect_from_last_rect(root)

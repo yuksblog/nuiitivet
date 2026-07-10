@@ -56,7 +56,9 @@ def focusable(
     Args:
         enabled: Whether the widget is focusable.
         on_focus_change: Callback invoked when focus state changes.
-        on_key: Callback invoked when a key event occurs while focused.
+        on_key: Callback invoked as ``on_key(key, modifier_keys)`` when a key
+                event occurs while focused. ``modifier_keys`` is a bitmask of
+                the held modifier keys (``MOD_SHIFT``, ``MOD_CTRL``, ...).
                 Return True to stop propagation (bubbling).
     """
     return FocusableModifier(enabled, on_focus_change, on_key)

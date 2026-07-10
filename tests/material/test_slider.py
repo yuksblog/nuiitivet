@@ -268,7 +268,7 @@ def test_range_slider_shift_tab_moves_back() -> None:
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
-    result = r.on_key_event("tab", 1)  # modifiers=1 (MOD_SHIFT)
+    result = r.on_key_event("tab", 1)  # modifier_keys=1 (MOD_SHIFT)
 
     assert result is True
     assert r._active_handle_index == 0

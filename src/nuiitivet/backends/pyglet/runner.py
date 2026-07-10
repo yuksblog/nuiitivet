@@ -839,7 +839,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     @window.event
     def on_key_press(symbol, modifiers):
-        key_name, norm_mods = _normalize_key(symbol, modifiers)
+        key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
         nonlocal esc_down
         if str(key_name).strip().lower() == "escape":
@@ -858,7 +858,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                     kn = "escape"
                     if not debug_keys_filter or kn in debug_keys_filter:
                         ts = time.perf_counter()
-                        print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={norm_mods} handled=False")
+                        print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={modifier_keys} handled=False")
                 # Let pyglet's default ESC handling run (e.g. close window).
                 return False
 
@@ -867,13 +867,13 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 kn = "escape"
                 if not debug_keys_filter or kn in debug_keys_filter:
                     ts = time.perf_counter()
-                    print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={norm_mods} handled=True")
+                    print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={modifier_keys} handled=True")
             # Handle ESC on key release to avoid OS key-repeat glitches and to
             # align with "keyup triggers back" semantics.
             return True
 
         try:
-            handled = bool(app._dispatch_key_press(key_name, norm_mods))
+            handled = bool(app._dispatch_key_press(key_name, modifier_keys))
         except Exception:
             exception_once(logger, "pyglet_on_key_press_dispatch_exc", "Key press dispatch raised")
             handled = False
@@ -882,7 +882,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             kn = str(key_name).strip().lower()
             if not debug_keys_filter or kn in debug_keys_filter:
                 ts = time.perf_counter()
-                print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={norm_mods} handled={handled}")
+                print(f"[nuiitivet] key_press t={ts:.6f} key={kn} mods={modifier_keys} handled={handled}")
 
         if handled:
             try:
@@ -896,7 +896,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     @window.event
     def on_key_release(symbol, modifiers):
-        key_name, norm_mods = _normalize_key(symbol, modifiers)
+        key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
         nonlocal esc_down
         if str(key_name).strip().lower() != "escape":
@@ -917,7 +917,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 handled = False
         else:
             try:
-                handled = bool(app._dispatch_key_press("escape", norm_mods))
+                handled = bool(app._dispatch_key_press("escape", modifier_keys))
             except Exception:
                 exception_once(logger, "pyglet_on_key_release_dispatch_exc", "Key release dispatch raised")
                 handled = False
@@ -926,7 +926,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             kn = "escape"
             if not debug_keys_filter or kn in debug_keys_filter:
                 ts = time.perf_counter()
-                print(f"[nuiitivet] key_release t={ts:.6f} key={kn} mods={norm_mods} handled={handled}")
+                print(f"[nuiitivet] key_release t={ts:.6f} key={kn} mods={modifier_keys} handled={handled}")
 
         if handled:
             try:
@@ -1148,27 +1148,27 @@ def _patch_pyglet_cocoa_view() -> None:
         exception_once(logger, "pyglet_cocoa_view_patch_exc", "Failed to patch pyglet cocoa view")
 
 
-def _normalize_key(symbol: int, modifiers: int) -> tuple[str, int]:
+def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
     try:
         keymod = pyglet.window.key
 
-        norm_mods = 0
-        if modifiers & keymod.MOD_SHIFT:
-            norm_mods |= MOD_SHIFT
-        if modifiers & keymod.MOD_CTRL:
-            norm_mods |= MOD_CTRL
-        if modifiers & keymod.MOD_ALT:
-            norm_mods |= MOD_ALT
+        modifier_keys = 0
+        if pyglet_modifiers & keymod.MOD_SHIFT:
+            modifier_keys |= MOD_SHIFT
+        if pyglet_modifiers & keymod.MOD_CTRL:
+            modifier_keys |= MOD_CTRL
+        if pyglet_modifiers & keymod.MOD_ALT:
+            modifier_keys |= MOD_ALT
         # Map Command to META on macOS
-        if modifiers & getattr(keymod, "MOD_COMMAND", 0):
-            norm_mods |= MOD_META
+        if pyglet_modifiers & getattr(keymod, "MOD_COMMAND", 0):
+            modifier_keys |= MOD_META
 
         if symbol == keymod.TAB:
-            return "tab", norm_mods
+            return "tab", modifier_keys
         if symbol == keymod.SPACE:
-            return "space", norm_mods
+            return "space", modifier_keys
         if symbol in (keymod.ENTER, keymod.RETURN):
-            return "enter", norm_mods
+            return "enter", modifier_keys
     except Exception:
         exception_once(logger, "pyglet_normalize_key_map_exc", "Failed to normalize key/modifier mapping")
 

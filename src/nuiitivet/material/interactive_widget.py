@@ -82,7 +82,7 @@ class InteractiveWidget(Clickable):
             node._on_key = self.on_key_event
             node._on_focus_change = self._handle_focus_change
 
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
         """Handle key events (Space/Enter to click)."""
         if self.disabled:
             return False

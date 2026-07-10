@@ -839,7 +839,7 @@ class App:
             exception_once(logger, "app_collect_focus_nodes_root_exc", "Collecting FocusNodes from root raised")
         return res
 
-    def _dispatch_key_press(self, key, modifiers=0):
+    def _dispatch_key_press(self, key, modifier_keys=0):
         """Handle key presses for focus navigation and activation.
 
         Accepts simple string names: 'tab', 'space', 'enter'. Returns True if handled.
@@ -874,13 +874,13 @@ class App:
 
                     # Allow composite widgets to consume Tab internally
                     # (e.g. RangeSlider switching between handles).
-                    if cur.wants_tab(modifiers):
-                        return cur.handle_key_event("tab", modifiers)
+                    if cur.wants_tab(modifier_keys):
+                        return cur.handle_key_event("tab", modifier_keys)
 
                     idx = nodes.index(cur)
 
                     # Treat bit0 as shift (matches pyglet MOD_SHIFT in practice).
-                    go_back = bool(int(modifiers) & 1)
+                    go_back = bool(int(modifier_keys) & 1)
 
                     if go_back:
                         next_idx = (idx - 1) % len(nodes)
@@ -896,7 +896,7 @@ class App:
         # 2. Try FocusNode bubbling (New System)
         if self._focused_node:
             try:
-                if self._focused_node.handle_key_event(kname or str(key), modifiers):
+                if self._focused_node.handle_key_event(kname or str(key), modifier_keys):
                     return True
             except Exception:
                 exception_once(logger, "app_focused_node_handle_key_exc", "Focused node handle_key_event raised")
@@ -975,7 +975,7 @@ class App:
             pointer_type=pivot.pointer_type,
             button=pivot.button,
             timestamp=time.time(),
-            modifiers=pivot.modifiers,
+            modifier_keys=pivot.modifier_keys,
         )
         try:
             widget.dispatch_pointer_event(cancel_event)

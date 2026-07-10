@@ -21,7 +21,7 @@ class DummyWidget(Widget):
         self.vm_val.value = 1
         return True
 
-    def on_key_event(self, key, modifiers):
+    def on_key_event(self, key, modifier_keys):
         self.vm_val.value = 2
         return True
 
@@ -66,7 +66,7 @@ def test_pointer_event_auto_batch():
 
 def test_key_event_auto_batch():
     class VerifyingWidget(DummyWidget):
-        def on_key_event(self, key, modifiers):
+        def on_key_event(self, key, modifier_keys):
             self.vm_val.value = 20
             assert self.computations == 1, "Computation should be deferred inside handler"
             return True
