@@ -106,6 +106,16 @@ class InputHubMixin:
     def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:  # pragma: no cover - default no-op
         return False
 
+    def handle_key_release_event(self, key: str, modifier_keys: int = 0) -> bool:
+        with batch():
+            event = KeyInputEvent(key=key, modifier_keys=modifier_keys, released=True)
+            if self._dispatch_input("key", event):
+                return True
+            return bool(self.on_key_release_event(key, modifier_keys))
+
+    def on_key_release_event(self, key: str, modifier_keys: int = 0) -> bool:  # pragma: no cover - default no-op
+        return False
+
     # --- Focus delivery ----------------------------------------------------
     def handle_focus_event(self, event: FocusEvent) -> bool:
         with batch():

@@ -289,6 +289,7 @@ class App:
         self._last_hover_target = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
+        self._modifier_keys: int = 0
         self._pointer_capture_manager = PointerCaptureManager()
         self._pointer_capture_manager.set_cancel_callback(self._handle_pointer_cancel)
         self._primary_pointer_id = 1
@@ -902,6 +903,71 @@ class App:
                 exception_once(logger, "app_focused_node_handle_key_exc", "Focused node handle_key_event raised")
 
         return False
+
+    def _dispatch_key_release(self, key, modifier_keys=0) -> bool:
+        """Handle key releases, mirroring :meth:`_dispatch_key_press`.
+
+        Back-navigation keys off the Escape *release* (the press only latches
+        intent), so Escape is routed to :meth:`handle_back_event` here rather
+        than to the focused node. Every other key is routed to the focused
+        :class:`FocusNode` via :meth:`FocusNode.handle_key_release_event`, with
+        the same bubbling semantics as key press. Unlike a press there is no Tab
+        traversal — traversal is a press-time action. Returns True if handled.
+        """
+        kname = None
+        try:
+            if isinstance(key, str):
+                kname = key.lower()
+        except Exception:
+            debug_once(logger, "app_key_release_name_lower_exc", "Failed to normalize key name")
+            kname = None
+
+        if kname == "escape":
+            import asyncio
+
+            asyncio.create_task(self.handle_back_event())
+            return True
+
+        if self._focused_node:
+            try:
+                if self._focused_node.handle_key_release_event(kname or str(key), modifier_keys):
+                    return True
+            except Exception:
+                exception_once(
+                    logger,
+                    "app_focused_node_handle_key_release_exc",
+                    "Focused node handle_key_release_event raised",
+                )
+
+        return False
+
+    @property
+    def modifier_keys(self) -> int:
+        """The keyboard-modifier keys currently held down.
+
+        A bitmask of ``MOD_SHIFT``/``MOD_CTRL``/``MOD_ALT``/``MOD_META``. This is
+        the single authoritative source of "which modifier keys are down",
+        maintained by the backend on every key press and release and cleared on
+        window deactivation. It is exposed for framework internals only and must
+        not be treated as mutable application state.
+        """
+        return self._modifier_keys
+
+    def _set_modifier_keys(self, modifier_keys: int) -> None:
+        """Update the authoritative modifier-key mask (framework-internal)."""
+        try:
+            self._modifier_keys = int(modifier_keys)
+        except Exception:
+            debug_once(logger, "app_set_modifier_keys_exc", "Failed to set modifier-key mask")
+            self._modifier_keys = 0
+
+    def _clear_modifier_keys(self) -> None:
+        """Clear the authoritative modifier-key mask (framework-internal).
+
+        Called when the window loses focus so that a modifier released while the
+        app was inactive cannot leave a permanently stuck mask.
+        """
+        self._modifier_keys = 0
 
     def _dispatch_text(self, text: str) -> bool:
         """Handle text input events."""
