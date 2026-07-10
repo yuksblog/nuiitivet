@@ -1148,7 +1148,8 @@ def _patch_pyglet_cocoa_view() -> None:
         exception_once(logger, "pyglet_cocoa_view_patch_exc", "Failed to patch pyglet cocoa view")
 
 
-def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
+def _normalize_modifiers(pyglet_modifiers: int) -> int:
+    """Translate a pyglet modifier bitmask into nuiitivet's MOD_* mask."""
     try:
         keymod = pyglet.window.key
 
@@ -1162,23 +1163,36 @@ def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
         # Map Command to META on macOS
         if pyglet_modifiers & getattr(keymod, "MOD_COMMAND", 0):
             modifier_keys |= MOD_META
-
-        if symbol == keymod.TAB:
-            return "tab", modifier_keys
-        if symbol == keymod.SPACE:
-            return "space", modifier_keys
-        if symbol in (keymod.ENTER, keymod.RETURN):
-            return "enter", modifier_keys
+        return modifier_keys
     except Exception:
-        exception_once(logger, "pyglet_normalize_key_map_exc", "Failed to normalize key/modifier mapping")
+        exception_once(logger, "pyglet_normalize_modifiers_exc", "Failed to normalize modifier mapping")
+        return 0
+
+
+def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
+    """Translate a pyglet key symbol and modifier mask into nuiitivet's key name and MOD_* mask.
+
+    The modifier mask is resolved independently of the key name so that a failure
+    to name the key never silently drops the modifiers, and vice versa.
+    """
+    modifier_keys = _normalize_modifiers(pyglet_modifiers)
 
     try:
         keymod = pyglet.window.key
-        name = keymod.symbol_string(symbol)
-        return name.lower(), 0
+
+        if symbol == keymod.TAB:
+            name = "tab"
+        elif symbol == keymod.SPACE:
+            name = "space"
+        elif symbol in (keymod.ENTER, keymod.RETURN):
+            name = "enter"
+        else:
+            name = keymod.symbol_string(symbol).lower()
     except Exception:
-        exception_once(logger, "pyglet_normalize_key_symbol_string_exc", "key.symbol_string failed")
-        return "", 0
+        exception_once(logger, "pyglet_normalize_key_name_exc", "Failed to normalize key name")
+        name = ""
+
+    return name, modifier_keys
 
 
 def _normalize_text_motion(motion: int) -> int:

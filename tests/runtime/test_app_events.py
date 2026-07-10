@@ -157,9 +157,13 @@ def test_draw_raster_frame_success(monkeypatch):
         image=FakePygletImage,
         app=types.SimpleNamespace(exit=lambda: None),
     )
-    monkeypatch.setitem(__import__("sys").modules, "pyglet", fake_pyglet)
 
     from nuiitivet.backends.pyglet import runner as pyglet_runner
+
+    # _draw_raster_frame resolves pyglet through the runner module's global, so
+    # patch that binding directly. Patching sys.modules would only work if this
+    # test happened to be the first to import the runner.
+    monkeypatch.setattr(pyglet_runner, "pyglet", fake_pyglet)
 
     ok = pyglet_runner._draw_raster_frame(app, skia=None)
     assert ok is True
