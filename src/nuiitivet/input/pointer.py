@@ -49,7 +49,7 @@ class PointerEvent:
     button: Optional[int] = None
     timestamp: float = 0.0
     is_primary: bool = True
-    modifiers: int = 0
+    modifier_keys: int = 0
 
     @staticmethod
     def mouse_event(
@@ -62,7 +62,7 @@ class PointerEvent:
         dy: float = 0.0,
         button: Optional[int] = None,
         timestamp: Optional[float] = None,
-        modifiers: int = 0,
+        modifier_keys: int = 0,
     ) -> "PointerEvent":
         return PointerEvent(
             id=pointer_id,
@@ -74,7 +74,7 @@ class PointerEvent:
             dy=dy,
             button=button,
             timestamp=time.time() if timestamp is None else float(timestamp),
-            modifiers=modifiers,
+            modifier_keys=modifier_keys,
         )
 
     @staticmethod
@@ -86,7 +86,7 @@ class PointerEvent:
         scroll_y: float,
         *,
         timestamp: Optional[float] = None,
-        modifiers: int = 0,
+        modifier_keys: int = 0,
     ) -> "PointerEvent":
         return PointerEvent(
             id=pointer_id,
@@ -97,5 +97,5 @@ class PointerEvent:
             scroll_x=scroll_x,
             scroll_y=scroll_y,
             timestamp=time.time() if timestamp is None else float(timestamp),
-            modifiers=modifiers,
+            modifier_keys=modifier_keys,
         )

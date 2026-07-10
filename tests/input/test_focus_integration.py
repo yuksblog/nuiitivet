@@ -26,7 +26,7 @@ def test_focus_traversal_and_shift_tab():
         fake_window = types.SimpleNamespace(key=fake_key)
         fake_pyglet = types.SimpleNamespace(window=fake_window)
         sys.modules["pyglet"] = fake_pyglet
-        handled = app._dispatch_key_press("tab", modifiers=1)
+        handled = app._dispatch_key_press("tab", modifier_keys=1)
         assert handled is True
         assert app._focused_target is cb1
         assert cb1.state.focused is True

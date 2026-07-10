@@ -17,7 +17,7 @@ class KeyInputEvent:
     """Normalized key input delivered to widgets."""
 
     key: str
-    modifiers: int = 0
+    modifier_keys: int = 0
 
 
 @dataclass(frozen=True)

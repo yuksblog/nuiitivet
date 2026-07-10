@@ -533,7 +533,7 @@ class Menu(InteractiveWidget):
 
         return (resolved_width, resolved_height)
 
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
         key_name = str(key).lower()
 
         if key_name == "escape":
@@ -550,7 +550,7 @@ class Menu(InteractiveWidget):
         if key_name in ("enter", "space"):
             if 0 <= self._focus_index < len(self._focusable_items):
                 item = self._focusable_items[self._focus_index]
-                return item.on_key_event(key_name, modifiers)
+                return item.on_key_event(key_name, modifier_keys)
             return False
 
         return False

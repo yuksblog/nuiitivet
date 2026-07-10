@@ -518,8 +518,8 @@ class EditableText(InteractionHostMixin, Widget):
 
         return False
 
-    def _handle_key(self, key: str, modifiers: int) -> bool:
-        is_ctrl = bool(modifiers & (MOD_CTRL | MOD_META))
+    def _handle_key(self, key: str, modifier_keys: int) -> bool:
+        is_ctrl = bool(modifier_keys & (MOD_CTRL | MOD_META))
 
         if not is_ctrl:
             return False

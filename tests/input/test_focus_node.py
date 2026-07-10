@@ -76,7 +76,7 @@ def test_focus_traversal():
 def test_key_event_routing():
     received_keys = []
 
-    def on_key(key, modifiers):
+    def on_key(key, modifier_keys):
         received_keys.append(key)
         return True
 
@@ -100,11 +100,11 @@ def test_key_event_bubbling():
     child_keys = []
     parent_keys = []
 
-    def on_child_key(key, modifiers):
+    def on_child_key(key, modifier_keys):
         child_keys.append(key)
         return False  # Bubble up
 
-    def on_parent_key(key, modifiers):
+    def on_parent_key(key, modifier_keys):
         parent_keys.append(key)
         return True  # Handle it
 

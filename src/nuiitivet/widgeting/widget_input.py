@@ -96,14 +96,14 @@ class InputHubMixin:
             )
 
     # --- Key delivery ------------------------------------------------------
-    def handle_key_event(self, key: str, modifiers: int = 0) -> bool:
+    def handle_key_event(self, key: str, modifier_keys: int = 0) -> bool:
         with batch():
-            event = KeyInputEvent(key=key, modifiers=modifiers)
+            event = KeyInputEvent(key=key, modifier_keys=modifier_keys)
             if self._dispatch_input("key", event):
                 return True
-            return bool(self.on_key_event(key, modifiers))
+            return bool(self.on_key_event(key, modifier_keys))
 
-    def on_key_event(self, key: str, modifiers: int = 0) -> bool:  # pragma: no cover - default no-op
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:  # pragma: no cover - default no-op
         return False
 
     # --- Focus delivery ----------------------------------------------------
