@@ -532,6 +532,7 @@ class FocusNode(InteractionNode):
         *,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
+        on_key_up: Optional[Callable[[str, int], bool]] = None,
         on_text: Optional[Callable[[str], bool]] = None,
         on_text_motion: Optional[Callable[[int, bool], bool]] = None,
         on_ime_composition: Optional[Callable[[str, int, int], bool]] = None,
@@ -539,6 +540,7 @@ class FocusNode(InteractionNode):
         super().__init__()
         self._on_focus_change = on_focus_change
         self._on_key = on_key
+        self._on_key_up = on_key_up
         self._on_text = on_text
         self._on_text_motion = on_text_motion
         self._on_ime_composition = on_ime_composition
@@ -612,6 +614,23 @@ class FocusNode(InteractionNode):
         p = self.parent
         if p:
             return p.handle_key_event(key, modifier_keys)
+        return False
+
+    def handle_key_release_event(self, key: str, modifier_keys: int) -> bool:
+        """Handle a key release, bubbling to ancestors like key press.
+
+        Mirrors :meth:`handle_key_event`: the ``on_key_up`` callback may return
+        True to consume the release and stop propagation; otherwise it bubbles to
+        the nearest ancestor :class:`FocusNode`.
+        """
+        if self._on_key_up:
+            if self._on_key_up(key, modifier_keys):
+                return True
+
+        # Bubbling: Try parent
+        p = self.parent
+        if p:
+            return p.handle_key_release_event(key, modifier_keys)
         return False
 
     def handle_text_event(self, text: str) -> bool:

@@ -18,6 +18,8 @@ class KeyInputEvent:
 
     key: str
     modifier_keys: int = 0
+    released: bool = False
+    """True when the event is a key release rather than a key press."""
 
 
 @dataclass(frozen=True)

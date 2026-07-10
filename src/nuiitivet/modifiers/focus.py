@@ -11,10 +11,12 @@ class FocusableModifier(ModifierElement):
         enabled: bool = True,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
+        on_key_up: Optional[Callable[[str, int], bool]] = None,
     ) -> None:
         self.enabled = enabled
         self.on_focus_change = on_focus_change
         self.on_key = on_key
+        self.on_key_up = on_key_up
 
     def apply(self, widget: Widget) -> Widget:
         if not self.enabled:
@@ -29,6 +31,7 @@ class FocusableModifier(ModifierElement):
             node = FocusNode(
                 on_focus_change=self.on_focus_change,
                 on_key=self.on_key,
+                on_key_up=self.on_key_up,
             )
             region.add_node(node)
         else:
@@ -49,6 +52,7 @@ def focusable(
     enabled: bool = True,
     on_focus_change: Optional[FocusChangeCallback] = None,
     on_key: Optional[Callable[[str, int], bool]] = None,
+    on_key_up: Optional[Callable[[str, int], bool]] = None,
 ) -> FocusableModifier:
     """
     Mark the widget as focusable.
@@ -56,9 +60,12 @@ def focusable(
     Args:
         enabled: Whether the widget is focusable.
         on_focus_change: Callback invoked when focus state changes.
-        on_key: Callback invoked as ``on_key(key, modifier_keys)`` when a key
-                event occurs while focused. ``modifier_keys`` is a bitmask of
-                the held modifier keys (``MOD_SHIFT``, ``MOD_CTRL``, ...).
-                Return True to stop propagation (bubbling).
+        on_key: Callback invoked as ``on_key(key, modifier_keys)`` when a key is
+                pressed while focused. ``modifier_keys`` is a bitmask of the held
+                modifier keys (``MOD_SHIFT``, ``MOD_CTRL``, ...). Return True to
+                stop propagation (bubbling).
+        on_key_up: Callback invoked as ``on_key_up(key, modifier_keys)`` when a
+                key is released while focused. Bubbles to ancestor focusables and
+                stops on a truthy return, exactly like ``on_key``.
     """
-    return FocusableModifier(enabled, on_focus_change, on_key)
+    return FocusableModifier(enabled, on_focus_change, on_key, on_key_up)

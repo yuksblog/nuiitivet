@@ -5,7 +5,6 @@ This module owns the pyglet dependency so the core package remains backend-agnos
 
 from __future__ import annotations
 
-import asyncio
 import io
 import logging
 import math
@@ -752,7 +751,16 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     @window.event
     def on_deactivate():
-        pass
+        # Focus left the window, so key-up events for anything currently held
+        # will be delivered to another app and never reach us. Clear the
+        # authoritative modifier-key mask and the Escape latch so a key released
+        # while inactive cannot leave permanently-wrong state behind.
+        nonlocal esc_down
+        esc_down = False
+        try:
+            app._clear_modifier_keys()
+        except Exception:
+            exception_once(logger, "pyglet_on_deactivate_clear_modifier_keys_exc", "Failed to clear modifier-key mask")
 
     @window.event
     def on_resize(width, height):
@@ -841,6 +849,11 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     def on_key_press(symbol, modifiers):
         key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
+        try:
+            app._set_modifier_keys(modifier_keys)
+        except Exception:
+            exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
+
         nonlocal esc_down
         if str(key_name).strip().lower() == "escape":
             can_handle = False
@@ -898,32 +911,31 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     def on_key_release(symbol, modifiers):
         key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
-        nonlocal esc_down
-        if str(key_name).strip().lower() != "escape":
-            return False
-        if not esc_down:
-            return True
-        esc_down = False
+        try:
+            app._set_modifier_keys(modifier_keys)
+        except Exception:
+            exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
-        handler = getattr(app, "handle_back_event", None)
-        if callable(handler):
-            try:
-                # ESC was already captured as handled on key_press; schedule the
-                # async back handler as a task and treat the key as handled.
-                asyncio.create_task(handler())
-                handled = True
-            except Exception:
-                exception_once(logger, "pyglet_on_key_release_back_handler_exc", "Back handler raised")
-                handled = False
-        else:
-            try:
-                handled = bool(app._dispatch_key_press("escape", modifier_keys))
-            except Exception:
-                exception_once(logger, "pyglet_on_key_release_dispatch_exc", "Key release dispatch raised")
-                handled = False
+        nonlocal esc_down
+        if str(key_name).strip().lower() == "escape":
+            # Back-navigation fires on the Escape release, gated by the press
+            # latch: a release without a matching press (e.g. focus returned
+            # mid-tap) must not trigger it.
+            if not esc_down:
+                return True
+            esc_down = False
+
+        try:
+            # Escape is routed to handle_back_event inside _dispatch_key_release;
+            # every other key is delivered to the focused node as a release. No
+            # press is ever synthesized from a release.
+            handled = bool(app._dispatch_key_release(key_name, modifier_keys))
+        except Exception:
+            exception_once(logger, "pyglet_on_key_release_dispatch_exc", "Key release dispatch raised")
+            handled = False
 
         if debug_keys:
-            kn = "escape"
+            kn = str(key_name).strip().lower()
             if not debug_keys_filter or kn in debug_keys_filter:
                 ts = time.perf_counter()
                 print(f"[nuiitivet] key_release t={ts:.6f} key={kn} mods={modifier_keys} handled={handled}")
