@@ -1,17 +1,16 @@
 import nuiitivet.material as nv
-from nuiitivet.input import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 
 
 def _format_modifier_keys(modifier_keys: int) -> str:
     """Render a modifier-key bitmask as a human-readable string like 'CTRL|SHIFT'."""
     names = []
-    if modifier_keys & MOD_SHIFT:
+    if modifier_keys & nv.MOD_SHIFT:
         names.append("SHIFT")
-    if modifier_keys & MOD_CTRL:
+    if modifier_keys & nv.MOD_CTRL:
         names.append("CTRL")
-    if modifier_keys & MOD_ALT:
+    if modifier_keys & nv.MOD_ALT:
         names.append("ALT")
-    if modifier_keys & MOD_META:
+    if modifier_keys & nv.MOD_META:
         names.append("META")
     return "|".join(names) if names else "-"
 

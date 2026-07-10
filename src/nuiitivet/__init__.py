@@ -47,6 +47,9 @@ from nuiitivet.overlay import OverlayAware
 # State Management
 from nuiitivet.observable import Observable, batch, combine, clock
 
+# Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers)
+from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+
 # Theme
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScale, TypeScaleToken
@@ -175,6 +178,11 @@ __all__: list[str] = [
     "translate",
     "visible",
     "will_pop",
+    # Input
+    "MOD_SHIFT",
+    "MOD_CTRL",
+    "MOD_ALT",
+    "MOD_META",
     # Window / runtime
     "AppScope",
     "OSChrome",
