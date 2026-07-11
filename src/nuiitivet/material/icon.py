@@ -13,6 +13,7 @@ from nuiitivet.rendering.skia import (
     get_typeface,
     make_font,
     make_text_blob,
+    register_typeface_cache_clearer,
     typeface_from_bytes,
     typeface_from_file,
 )
@@ -27,6 +28,25 @@ DEFAULT_ICON_PX = 24
 
 
 logger = logging.getLogger(__name__)
+
+
+# Resolved typefaces keyed by packaged symbol-font resource filename. The
+# symbol fonts are multi-MB TTFs whose bytes get SHA-256 hashed to build the
+# lower-level typeface cache key, so reading and hashing them on every icon
+# rebuild dominates the paint cost. Memoizing the resolved typeface here (and
+# caching misses as ``None``) means each font is read and hashed at most once
+# per process. Shared across all ``Icon`` instances since the resource content
+# is identical regardless of which widget requests it.
+_RESOURCE_TYPEFACE_CACHE: dict[str, Optional[object]] = {}
+
+
+def _clear_icon_typeface_cache_for_tests() -> None:
+    """Clear the packaged-symbol typeface cache (tests only)."""
+
+    _RESOURCE_TYPEFACE_CACHE.clear()
+
+
+register_typeface_cache_clearer(_clear_icon_typeface_cache_for_tests)
 
 
 def _pixel_size_from_sizing(size: SizingLike) -> int:
@@ -315,6 +335,10 @@ class Icon(IconBase):
         def _try_load_from_resources(filename: str):
             if symbols_root is None:
                 return None
+            # Return the memoized typeface (or cached miss) without touching the
+            # multi-MB font bytes again on subsequent rebuilds.
+            if filename in _RESOURCE_TYPEFACE_CACHE:
+                return _RESOURCE_TYPEFACE_CACHE[filename]
             try:
                 blob_path = symbols_root.joinpath(filename)
                 # read_bytes works both for filesystem and zip packages
@@ -326,9 +350,10 @@ class Icon(IconBase):
                     "Failed to read icon font bytes from package resources (file=%s)",
                     filename,
                 )
+                _RESOURCE_TYPEFACE_CACHE[filename] = None
                 return None
             try:
-                return typeface_from_bytes(data_bytes)
+                tf = typeface_from_bytes(data_bytes)
             except Exception:
                 exception_once(
                     logger,
@@ -336,7 +361,10 @@ class Icon(IconBase):
                     "typeface_from_bytes failed for packaged font (file=%s)",
                     filename,
                 )
+                _RESOURCE_TYPEFACE_CACHE[filename] = None
                 return None
+            _RESOURCE_TYPEFACE_CACHE[filename] = tf
+            return tf
 
         # Build file candidates similar to previous implementation
         symbol_style_map = {
