@@ -700,6 +700,19 @@ def make_text_blob(text: str, font, tracking: float = 0.0) -> Optional[object]:
         return None
 
 
+_EXTRA_CACHE_CLEARERS: list = []
+
+
+def register_typeface_cache_clearer(fn) -> None:
+    """Register a callback invoked by :func:`_clear_typeface_caches_for_tests`.
+
+    Lets higher layers (e.g. ``material.icon``) hook their own typeface caches
+    into the shared test-reset path without this module importing them.
+    """
+
+    _EXTRA_CACHE_CLEARERS.append(fn)
+
+
 def _clear_typeface_caches_for_tests() -> None:
     """Clear internal typeface caches (tests only)."""
 
@@ -707,6 +720,8 @@ def _clear_typeface_caches_for_tests() -> None:
         _TYPEFACE_CACHE.clear()
         _TYPEFACE_DIRECT_CACHE.clear()
         _FONT_REGISTRY.clear()
+        for clearer in _EXTRA_CACHE_CLEARERS:
+            clearer()
     except Exception:
         exception_once(logger, "clear_typeface_caches_exc", "Failed to clear typeface caches")
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import calendar
 import logging
 from datetime import date as _Date, datetime as _DateTime, timedelta as _TimeDelta
-from typing import Callable, Literal, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Literal, Optional, Tuple, TYPE_CHECKING
 
 from nuiitivet.animation import Animatable
 from nuiitivet.layout.column import Column
@@ -1166,16 +1166,13 @@ class _CalendarGrid(ComposableWidget):
         header_cells: list[Widget] = []
         for label in _WEEKDAY_LABELS:
             header_cells.append(
-                Box(
+                Text(
+                    label,
                     width=_CELL_SLOT,
                     height=_WEEKDAY_H,
                     alignment="center",
-                    child=Text(
-                        label,
-                        style=TextStyle(color=style.weekday_text),
-                        type_scale=TypeScaleToken.from_size(style.date_font_size),
-                        alignment="center",
-                    ),
+                    style=TextStyle(color=style.weekday_text),
+                    type_scale=TypeScaleToken.from_size(style.date_font_size),
                 )
             )
         # Docked and modal calendars share the same weekday/grid spacing: 15dp
@@ -1193,16 +1190,27 @@ class _CalendarGrid(ComposableWidget):
         date_rows: list[Widget] = []
         for week in weeks:
             cells: list[Widget] = []
+            # Adjacent-month days form a contiguous run at the start and/or end
+            # of each week; collapse each run into a single blank slot instead
+            # of one empty Box per day. With gap=0 the merged width is exact.
+            outside_run = 0
+
+            def _flush_outside_run() -> None:
+                nonlocal outside_run
+                if outside_run:
+                    cells.append(Box(width=_CELL_SLOT * outside_run, height=_DATE_SLOT_H))
+                    outside_run = 0
+
             for d in week:
-                is_outside_month = d.month != self._month
-                if is_outside_month:
-                    cells.append(Box(width=_CELL_SLOT, height=_DATE_SLOT_H))
+                if d.month != self._month:
+                    outside_run += 1
                     continue
+                _flush_outside_run()
                 is_today = d == today
                 is_out_of_range = (self._min_date is not None and d < self._min_date) or (
                     self._max_date is not None and d > self._max_date
                 )
-                is_disabled = is_outside_month or is_out_of_range
+                is_disabled = is_out_of_range
                 has_complete_range = self._range_start is not None and self._range_end is not None
                 is_range_start = has_complete_range and self._range_start == d
                 is_range_end = has_complete_range and self._range_end == d
@@ -1223,7 +1231,7 @@ class _CalendarGrid(ComposableWidget):
                         day=d.day,
                         is_selected=is_selected,
                         is_today=is_today,
-                        is_outside_month=is_outside_month,
+                        is_outside_month=False,
                         is_disabled=is_disabled,
                         is_in_range=is_in_range,
                         is_range_start=is_range_start,
@@ -1233,15 +1241,13 @@ class _CalendarGrid(ComposableWidget):
                         style=style,
                     )
                 )
+            _flush_outside_run()
             date_rows.append(Row(cells, gap=0))
 
-        # Calendar grid container. Date cells are 40dp with an 8dp inter-row gap
-        # (48dp MD3 pitch); the container's own padding provides the gap to the
-        # weekday row above (8dp) and the action row below (4dp).
-        date_grid = Box(
-            padding=grid_padding,
-            child=Column(date_rows, gap=8),
-        )
+        # Calendar grid. Date cells are 40dp with an 8dp inter-row gap (48dp MD3
+        # pitch); the grid's own padding provides the gap to the weekday row
+        # above (8dp) and the action row below (4dp).
+        date_grid = Column(date_rows, gap=8, padding=grid_padding)
 
         return Column([header_row, date_grid], gap=0)
 
@@ -1329,6 +1335,11 @@ class DatePicker(ComposableWidget):
         self._month_rotation: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self._year_rotation: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_SPATIAL)
 
+        # Value last reflected in the built subtree. Used to suppress the
+        # redundant rebuild that ``observe`` would otherwise trigger by applying
+        # the current value immediately on (re)mount.
+        self._synced_value: Any = initial
+
     @property
     def style(self) -> "DatePickerStyle":
         """Return the resolved date picker style."""
@@ -1341,7 +1352,20 @@ class DatePicker(ComposableWidget):
     def on_mount(self) -> None:
         """Subscribe to external value changes to keep the display in sync."""
         super().on_mount()
-        self.observe(self._value_obs, lambda _: self.rebuild())
+        self._synced_value = getattr(self._value_obs, "value", None)
+        self.observe(self._value_obs, self._on_value_changed)
+
+    def _on_value_changed(self, new_value: Any) -> None:
+        """Rebuild only when an external write actually changes the value.
+
+        ``observe`` applies the current value immediately on every (re)mount;
+        the freshly built subtree already reflects it, so rebuilding then is
+        pure waste.  Guard on the value to skip those redundant rebuilds.
+        """
+        if new_value == self._synced_value:
+            return
+        self._synced_value = new_value
+        self.rebuild()
 
     def show_month(self, year: int, month: int) -> None:
         """Scroll the calendar to ``year``/``month`` without changing the value.
@@ -1352,11 +1376,15 @@ class DatePicker(ComposableWidget):
             year: Calendar year to display.
             month: Calendar month to display (1–12).
         """
+        changed = (
+            self._view_year != year or self._view_month != month or self._view_mode != "calendar"
+        )
         self._view_year = year
         self._view_month = month
         self._view_mode = "calendar"
         self._sync_rotation()
-        self.rebuild()
+        if changed:
+            self.rebuild()
 
     def _go_prev_month(self) -> None:
         self._view_year, self._view_month = _prev_month(self._view_year, self._view_month)
@@ -1410,13 +1438,14 @@ class DatePicker(ComposableWidget):
         self.rebuild()
 
     def _on_day_tap(self, d: _Date) -> None:
+        # Writing the value notifies ``_on_value_changed``, which rebuilds when
+        # the selection actually changes — so no explicit rebuild here.
         try:
             self._value_obs.value = d  # type: ignore[attr-defined]
         except AttributeError:
             pass
         if self._on_change is not None:
             self._on_change(d)
-        self.rebuild()
 
     def _on_ok(self) -> None:
         if self._on_confirm is None:
@@ -1514,7 +1543,6 @@ class DatePicker(ComposableWidget):
             action_btn_style = ButtonStyle.text().copy_with(container_height=40, min_height=40)
             action_row = Row(
                 [
-                    Box(width=0),  # spacer to push buttons right
                     Button("Cancel", on_click=self._on_cancel, style=action_btn_style),
                     Button("OK", on_click=self._on_ok, style=action_btn_style),
                 ],
