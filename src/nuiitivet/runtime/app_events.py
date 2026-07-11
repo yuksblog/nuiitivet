@@ -6,6 +6,7 @@ import logging
 from typing import Any, Optional
 
 from .pointer import PointerCaptureManager
+from nuiitivet.input.codes import is_primary_button
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.common.logging_once import exception_once
 
@@ -75,13 +76,17 @@ def _deliver_pointer_event(app: Any, target: Any, event: PointerEvent) -> Option
     return handler
 
 
-def dispatch_mouse_motion(app: Any, x: int, y: int):
+def dispatch_mouse_motion(app: Any, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
     manager = _pointer_manager(app)
     pointer_id = _primary_pointer_id(app)
     owner = manager.owner_of(pointer_id) if manager is not None else None
 
     if owner is not None:
-        event = PointerEvent.mouse_event(pointer_id, PointerEventType.MOVE, x, y)
+        # Drag: carry the held-button mask so a consumer can distinguish a
+        # right-drag from a left-drag.
+        event = PointerEvent.mouse_event(
+            pointer_id, PointerEventType.MOVE, x, y, buttons=buttons, modifier_keys=modifier_keys
+        )
         _deliver_pointer_event(app, owner, event)
         if manager is not None:
             manager.update_event(event)
@@ -98,16 +103,24 @@ def dispatch_mouse_motion(app: Any, x: int, y: int):
 
     if prev is cur:
         if cur is not None:
-            hover_event = PointerEvent.mouse_event(pointer_id, PointerEventType.HOVER, x, y)
+            hover_event = PointerEvent.mouse_event(
+                pointer_id, PointerEventType.HOVER, x, y, buttons=buttons, modifier_keys=modifier_keys
+            )
             _deliver_pointer_event(app, cur, hover_event)
     else:
         if prev is not None:
-            leave_event = PointerEvent.mouse_event(pointer_id, PointerEventType.LEAVE, x, y)
+            leave_event = PointerEvent.mouse_event(
+                pointer_id, PointerEventType.LEAVE, x, y, modifier_keys=modifier_keys
+            )
             _deliver_pointer_event(app, prev, leave_event)
         if cur is not None:
-            enter_event = PointerEvent.mouse_event(pointer_id, PointerEventType.ENTER, x, y)
+            enter_event = PointerEvent.mouse_event(
+                pointer_id, PointerEventType.ENTER, x, y, modifier_keys=modifier_keys
+            )
             _deliver_pointer_event(app, cur, enter_event)
-            hover_event = PointerEvent.mouse_event(pointer_id, PointerEventType.HOVER, x, y)
+            hover_event = PointerEvent.mouse_event(
+                pointer_id, PointerEventType.HOVER, x, y, buttons=buttons, modifier_keys=modifier_keys
+            )
             _deliver_pointer_event(app, cur, hover_event)
         try:
             app._last_hover_target = cur
@@ -170,9 +183,14 @@ def _handler_hosts_focused_node(handler: Any, focused_node: Any) -> bool:
     return False
 
 
-def dispatch_mouse_press(app: Any, x: int, y: int):
+def dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
     if app.root is None:
         return
+
+    # Only a primary (left / synthetic) press activates and moves focus. A
+    # secondary button (right / middle) must not blur a focused node or
+    # activate a widget.
+    primary = is_primary_button(button)
 
     target = None
     try:
@@ -185,8 +203,8 @@ def dispatch_mouse_press(app: Any, x: int, y: int):
     focused_before = getattr(app, "_focused_node", None)
 
     if target is None:
-        # Click on empty area: blur any currently-focused node.
-        if focused_before is not None:
+        # Click on empty area: blur any currently-focused node (primary only).
+        if primary and focused_before is not None:
             try:
                 app.request_focus(None)
             except Exception:
@@ -198,7 +216,9 @@ def dispatch_mouse_press(app: Any, x: int, y: int):
         return
 
     pointer_id = _primary_pointer_id(app)
-    press_event = PointerEvent.mouse_event(pointer_id, PointerEventType.PRESS, x, y)
+    press_event = PointerEvent.mouse_event(
+        pointer_id, PointerEventType.PRESS, x, y, button=button, modifier_keys=modifier_keys
+    )
     handler = _deliver_pointer_event(app, target, press_event)
     manager = _pointer_manager(app)
     if handler is not None and manager is not None:
@@ -219,7 +239,8 @@ def dispatch_mouse_press(app: Any, x: int, y: int):
     #   host (e.g. TextField containing a focused EditableText). Restricted
     #   to ``handler`` so unrelated layout ancestors do not preserve focus.
     if (
-        focused_before is not None
+        primary
+        and focused_before is not None
         and focused_after is focused_before
         and not _press_target_contains_focused_node(target, focused_before)
         and not _handler_hosts_focused_node(handler, focused_before)
@@ -234,7 +255,7 @@ def dispatch_mouse_press(app: Any, x: int, y: int):
             )
 
 
-def dispatch_mouse_release(app: Any, x: int, y: int):
+def dispatch_mouse_release(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
     pointer_id = _primary_pointer_id(app)
     manager = _pointer_manager(app)
     owner = manager.owner_of(pointer_id) if manager is not None else None
@@ -252,7 +273,9 @@ def dispatch_mouse_release(app: Any, x: int, y: int):
             manager.release(pointer_id)
         return
 
-    release_event = PointerEvent.mouse_event(pointer_id, PointerEventType.RELEASE, x, y)
+    release_event = PointerEvent.mouse_event(
+        pointer_id, PointerEventType.RELEASE, x, y, button=button, modifier_keys=modifier_keys
+    )
     handler = _deliver_pointer_event(app, target, release_event)
     if manager is not None:
         if owner is not None:
