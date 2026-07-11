@@ -4,10 +4,13 @@ import pytest
 
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
+from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.observable import Observable
 from nuiitivet.input.codes import MOD_META, TEXT_MOTION_BACKSPACE
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
+
+from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
 
 def test_text_field_value_property():
@@ -137,9 +140,19 @@ def test_text_field_api_invokes_trailing_icon_callback_on_icon_press() -> None:
         trailing_icon="close",
         on_tap_trailing_icon=_on_trailing,
     )
+    root = Box()
+    root.add_child(tf)
+    root.layout(250, 106)
+    root.set_layout_rect(0, 0, 250, 106)
+    root.set_last_rect(0, 0, 250, 106)
     tf.layout(200, 56)
+    tf.set_layout_rect(0, 0, 200, 56)
+    tf.set_last_rect(0, 0, 200, 56)
 
-    tf._handle_press(PointerEvent.mouse_event(1, PointerEventType.PRESS, 187, 28))
+    ix, iy, iw, ih = tf.trailing_icon.layout_rect
+    cx, cy = ix + iw / 2, iy + ih / 2
+    send_pointer_event_for_test_via_app_routing(root, PointerEventType.PRESS, cx, cy, button=1)
+    send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, cx, cy, button=1)
 
     assert tapped is True
 

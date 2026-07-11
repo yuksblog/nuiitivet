@@ -56,7 +56,20 @@ def _build_text_field_icon(
     icon: Any,
     *,
     arg_name: str,
+    on_tap: Optional[Callable[[], None]] = None,
 ) -> Optional[Widget]:
+    """Build the widget rendered for a leading / trailing text-field icon.
+
+    A *decorative* icon (``on_tap is None``) is a plain :class:`Icon`: it
+    carries no state layer, hover, focus, or press feedback, matching the MD3
+    text-field icon tokens which only model a tinted, non-interactive glyph.
+
+    A *tappable* icon (``on_tap`` supplied) is upgraded to a standard
+    :class:`IconButton`. MD3 has no icon state-layer token in the text-field
+    set; per the Flutter / Compose implementations an interactive text-field
+    icon is a standard icon button, so it brings its own hover (8%), focus
+    (10%), and pressed state layers plus keyboard focusability.
+    """
     if icon is None:
         return None
 
@@ -72,6 +85,11 @@ def _build_text_field_icon(
     )
     if not ok:
         raise TypeError(f"{arg_name} must be a Symbol/str (or an Observable of them). " f"Got: {type(icon)!r}")
+
+    if on_tap is not None:
+        from nuiitivet.material.buttons import IconButton
+
+        return IconButton(icon, on_click=on_tap)
 
     from nuiitivet.material.icon import Icon
 
@@ -93,9 +111,13 @@ class TextField(InteractiveWidget):
     - on_change: Callback when value changes
     - label: Floating label text (supports Observable)
     - leading_icon: Icon source (Symbol/str or Observable of them)
-    - on_tap_leading_icon: Callback invoked when the leading icon is tapped
+    - on_tap_leading_icon: Callback invoked when the leading icon is tapped.
+      Supplying it upgrades the icon to a standard IconButton with hover /
+      focus / pressed state layers; a decorative icon (no callback) renders
+      as a plain, feedback-free glyph.
     - trailing_icon: Icon source (Symbol/str or Observable of them)
     - on_tap_trailing_icon: Callback invoked when the trailing icon is tapped
+      (see ``on_tap_leading_icon`` for the interactive-icon behavior)
     - obscure_text: Whether to mask text display (password-style)
     - supporting_text: Supporting text to display below the field (supports Observable)
     - is_error: Whether the field is in error state (supports Observable)
@@ -250,17 +272,24 @@ class TextField(InteractiveWidget):
             initial_disabled = bool(disabled)
 
         self.label = label_value
-        self.leading_icon = _build_text_field_icon(leading_icon, arg_name="leading_icon")
-        self.trailing_icon = _build_text_field_icon(trailing_icon, arg_name="trailing_icon")
         self._on_tap_leading_icon = on_tap_leading_icon
         self._on_tap_trailing_icon = on_tap_trailing_icon
+
+        if on_tap_leading_icon is not None and leading_icon is None:
+            raise ValueError("on_tap_leading_icon requires leading_icon to be provided")
+        if on_tap_trailing_icon is not None and trailing_icon is None:
+            raise ValueError("on_tap_trailing_icon requires trailing_icon to be provided")
+
+        # A tap callback upgrades the icon to a standard IconButton (state
+        # layers + keyboard focus); a decorative icon stays a plain Icon.
+        self.leading_icon = _build_text_field_icon(
+            leading_icon, arg_name="leading_icon", on_tap=on_tap_leading_icon
+        )
+        self.trailing_icon = _build_text_field_icon(
+            trailing_icon, arg_name="trailing_icon", on_tap=on_tap_trailing_icon
+        )
         self.supporting_text = supporting_text_value
         self.is_error = initial_is_error
-
-        if self._on_tap_leading_icon is not None and self.leading_icon is None:
-            raise ValueError("on_tap_leading_icon requires leading_icon to be provided")
-        if self._on_tap_trailing_icon is not None and self.trailing_icon is None:
-            raise ValueError("on_tap_trailing_icon requires trailing_icon to be provided")
 
         self._user_style = style
 
@@ -352,6 +381,13 @@ class TextField(InteractiveWidget):
 
         self.state.disabled = next_disabled
         self._editable.state.disabled = next_disabled
+
+        # Tappable icons are IconButton children with their own interaction
+        # state; disable them alongside the field so they stop responding to
+        # hover / press / tap.
+        for icon in (self.leading_icon, self.trailing_icon):
+            if isinstance(icon, InteractiveWidget):
+                icon.disabled = next_disabled
 
         if next_disabled:
             # Ensure visual state doesn't get stuck.
@@ -630,55 +666,18 @@ class TextField(InteractiveWidget):
         self._editable.focus()
 
     def _handle_press(self, event: PointerEvent) -> None:
+        # Reached only when the press was not consumed by a child (i.e. it
+        # landed on the field body, padding, or a decorative icon). A tappable
+        # icon is a real ``IconButton`` child that handles its own press,
+        # hover, focus, and tap callback via the framework's hit testing, so
+        # it never bubbles here.
         if self.disabled:
             return
 
-        # All press paths route focus through the editable's pointer-focus
-        # entry point so that ``EditableText._focus_from_pointer`` is set
-        # consistently regardless of where the press lands (icons, padding,
-        # or the editable area itself). This avoids the focus ring showing
-        # for clicks per MD3 spec.
-        if self._is_point_in_icon_rect(event, self.leading_icon):
-            self._invoke_icon_tap_callback(self._on_tap_leading_icon, key="leading")
-            self._editable.request_focus_from_pointer()
-            return
-
-        if self._is_point_in_icon_rect(event, self.trailing_icon):
-            self._invoke_icon_tap_callback(self._on_tap_trailing_icon, key="trailing")
-            self._editable.request_focus_from_pointer()
-            return
-
+        # Route focus through the editable's pointer-focus entry point so that
+        # ``EditableText._focus_from_pointer`` is set and the focus ring is
+        # suppressed for clicks per MD3 spec.
         self._editable.request_focus_from_pointer()
-
-    def _is_point_in_icon_rect(self, event: PointerEvent, icon: Optional[Widget]) -> bool:
-        if icon is None:
-            return False
-        rect = icon.layout_rect
-        if rect is None:
-            return False
-
-        # Pointer events carry root coordinates, while the icon's layout rect is
-        # relative to this field. Rebase the point onto the field's own origin,
-        # which is (0, 0) only when the field sits at the root.
-        origin = self.global_layout_rect
-        ox, oy = (origin[0], origin[1]) if origin is not None else (0, 0)
-        px, py = event.x - ox, event.y - oy
-
-        rx, ry, rw, rh = rect
-        return rx <= px <= (rx + rw) and ry <= py <= (ry + rh)
-
-    def _invoke_icon_tap_callback(self, cb: Optional[Callable[[], None]], *, key: str) -> None:
-        if cb is None:
-            return
-        try:
-            cb()
-        except Exception:
-            exception_once(
-                _logger,
-                f"text_field_tap_{key}_icon_exc",
-                "TextField %s icon tap callback raised",
-                key,
-            )
 
     def _get_font(self):
         # Use locale-aware fallbacks so that label / supporting text written
