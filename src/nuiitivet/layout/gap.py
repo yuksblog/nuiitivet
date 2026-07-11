@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Union
 
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 
 
-def normalize_gap(value: Union[int, float, str, ReadOnlyObservableProtocol, None]) -> int:
+def normalize_gap(value: Union[int, float, str, ObservableBase, None]) -> int:
     """Normalize a gap value to a non-negative integer.
 
     Args:
@@ -18,7 +18,7 @@ def normalize_gap(value: Union[int, float, str, ReadOnlyObservableProtocol, None
     # If it is observable, we cannot resolve it to int here.
     # The caller must check for instance before calling this if they support observability.
     # Currently existing code assumes int return.
-    if isinstance(value, ReadOnlyObservableProtocol):
+    if isinstance(value, ObservableBase):
         return 0
     try:
         return max(0, int(value))

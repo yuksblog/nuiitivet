@@ -9,7 +9,7 @@ from ..common.logging_once import exception_once
 from ..rendering.padding import parse_padding
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 
 
 _logger = logging.getLogger(__name__)
@@ -28,9 +28,9 @@ class WidgetKernel:
     def __init__(
         self,
         *,
-        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
-        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
-        padding: Union[PaddingLike, ReadOnlyObservableProtocol] = None,
+        width: Union[SizingLike, ObservableBase] = None,
+        height: Union[SizingLike, ObservableBase] = None,
+        padding: Union[PaddingLike, ObservableBase] = None,
         **_: Any,
     ) -> None:
         super().__init__()
@@ -134,8 +134,8 @@ class WidgetKernel:
         return self._width_sizing
 
     @width_sizing.setter
-    def width_sizing(self, value: Union[SizingLike, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def width_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "width_sizing", v))  # type: ignore
             return
@@ -147,8 +147,8 @@ class WidgetKernel:
         return self._height_sizing
 
     @height_sizing.setter
-    def height_sizing(self, value: Union[SizingLike, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def height_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "height_sizing", v))  # type: ignore
             return
@@ -161,8 +161,8 @@ class WidgetKernel:
         return self._padding
 
     @padding.setter
-    def padding(self, pad: Union[PaddingLike, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(pad, ReadOnlyObservableProtocol):
+    def padding(self, pad: Union[PaddingLike, ObservableBase]) -> None:
+        if isinstance(pad, ObservableBase):
             if hasattr(self, "observe"):
                 self.observe(pad, lambda v: setattr(self, "padding", v))  # type: ignore
             return

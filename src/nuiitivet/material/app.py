@@ -17,7 +17,7 @@ from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
-    from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+    from nuiitivet.observable.protocols import ObservableBase
     from nuiitivet.runtime.chrome import CustomChrome, OSChrome
 
 
@@ -50,7 +50,7 @@ class MaterialApp(App):
         height: WindowSizingLike = "auto",
         background: ColorSpec = ColorRole.SURFACE,
         theme: Optional[Any] = None,
-        title: str | None | ReadOnlyObservableProtocol[str | None] = None,
+        title: str | None | ObservableBase[str | None] = None,
         chrome: OSChrome | CustomChrome | None = _UNSET,  # type: ignore[assignment]
         window_position: WindowPosition | None = None,
         resizable: bool = True,

@@ -30,7 +30,7 @@ from .app_events import (
 )
 from .chrome import OSChrome, CustomChrome
 from .title_bar import WindowDragArea
-from nuiitivet.observable.protocols import Disposable, ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import Disposable, ObservableBase
 from .window import WindowSizingLike, WindowPosition, parse_window_sizing
 from .renderer import RendererMode, parse_renderer_mode
 from nuiitivet.layout.column import Column
@@ -164,7 +164,7 @@ class App:
         root: Widget,
         width: WindowSizingLike,
         height: WindowSizingLike,
-        title: "str | None | ReadOnlyObservableProtocol[str | None]",
+        title: "str | None | ObservableBase[str | None]",
         chrome: "OSChrome | CustomChrome | None",
         background: ColorSpec,
         theme: Optional[Any] = None,
@@ -278,7 +278,7 @@ class App:
         # Wrap the root widget with AppScope to provide access to the App instance
         self.root = AppScope(app=self, child=self.root)
 
-        self._title_value: str | None | ReadOnlyObservableProtocol[str | None] = title
+        self._title_value: str | None | ObservableBase[str | None] = title
         self._title_disposable: Optional[Disposable] = None
 
         self._scale = 1.0
@@ -430,7 +430,7 @@ class App:
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
-        title: "str | None | ReadOnlyObservableProtocol[str | None]" = None,
+        title: "str | None | ObservableBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay_factory: Callable[[], "Overlay"] | None = None,
@@ -451,7 +451,7 @@ class App:
             width: Window width specification.
             height: Window height specification.
             title: OS window title. Accepts a plain string or a
-                :class:`~nuiitivet.observable.protocols.ReadOnlyObservableProtocol`
+                :class:`~nuiitivet.observable.protocols.ObservableBase`
                 for dynamic updates (e.g. ``Observable("Untitled")``). Pass
                 ``None`` for no title.
             chrome: Window decoration. Pass an :class:`OSChrome` instance to
@@ -626,7 +626,7 @@ class App:
         self._theme_subscription = None
 
     def _subscribe_title_updates(self) -> None:
-        if not isinstance(self._title_value, ReadOnlyObservableProtocol):
+        if not isinstance(self._title_value, ObservableBase):
             return
         app_ref = weakref.ref(self)
 

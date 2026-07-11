@@ -5,7 +5,7 @@ from typing import Any
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import AlignmentLike, normalize_alignment
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.fit import Fit
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import clip_rect, make_rect
@@ -29,7 +29,7 @@ class Image(Widget):
 
     def __init__(
         self,
-        source: bytes | None | ReadOnlyObservableProtocol[bytes | None],
+        source: bytes | None | ObservableBase[bytes | None],
         *,
         fit: Fit = "contain",
         width: SizingLike = None,
@@ -52,12 +52,12 @@ class Image(Widget):
         self._align_raw: AlignmentLike = alignment
         self._alignment: tuple[str, str] = normalize_alignment(alignment, default=("center", "center"))
 
-        self._source: bytes | None | ReadOnlyObservableProtocol[bytes | None] = source
+        self._source: bytes | None | ObservableBase[bytes | None] = source
         self._resolved_source: bytes | None = None
         self._decoded_image: Any | None = None
         self._decoded_token: tuple[int, int] | None = None
 
-        if isinstance(source, ReadOnlyObservableProtocol):
+        if isinstance(source, ObservableBase):
             self.observe(source, self._on_source_change)
         else:
             self._on_source_change(source)

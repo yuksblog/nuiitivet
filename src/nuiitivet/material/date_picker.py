@@ -42,7 +42,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
-from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import Observable, ObservableProtocol, ObservableBase
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
@@ -917,8 +917,8 @@ class _MonthYearHeader(ComposableWidget):
         on_toggle_year_picker: Optional[VoidCallback] = None,
         year_picker_active: bool = False,
         active_view: Optional[Literal["month", "year"]] = None,
-        month_rotation: Optional[ReadOnlyObservableProtocol[float]] = None,
-        year_rotation: Optional[ReadOnlyObservableProtocol[float]] = None,
+        month_rotation: Optional[ObservableBase[float]] = None,
+        year_rotation: Optional[ObservableBase[float]] = None,
         variant: Literal["inline", "modal"] = "inline",
         nav_padding: Tuple[int, int, int, int] = (12, 6, 12, 2),
         style: "CalendarStyle",
@@ -980,7 +980,7 @@ class _MonthYearHeader(ComposableWidget):
 
             def _dropdown(
                 on_tap: Optional[VoidCallback],
-                rotation: Optional[ReadOnlyObservableProtocol[float]],
+                rotation: Optional[ObservableBase[float]],
             ) -> Widget:
                 btn: Widget = IconButton("arrow_drop_down", on_click=on_tap, style=dropdown_style)
                 if rotation is not None:
@@ -994,7 +994,7 @@ class _MonthYearHeader(ComposableWidget):
                 on_prev: Optional[VoidCallback],
                 on_next: Optional[VoidCallback],
                 on_tap: Optional[VoidCallback],
-                rotation: Optional[ReadOnlyObservableProtocol[float]],
+                rotation: Optional[ObservableBase[float]],
             ) -> Widget:
                 # The full chevron/dropdown structure is always built so the label
                 # keeps its position; hidden parts are merely made invisible via

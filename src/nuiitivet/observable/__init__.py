@@ -3,7 +3,14 @@
 from .batching import BatchContext, batch, detach_batch
 from .combine import CombineBuilder, combine
 from .computed import ComputedObservable
-from .protocols import CompareFunc, Disposable, ObservableProtocol, ReadOnlyObservableProtocol
+from .protocols import (
+    CompareFunc,
+    Disposable,
+    MutableObservableBase,
+    ObservableBase,
+    ObservableProtocol,
+    ReadOnlyObservableProtocol,
+)
 from .runtime import clock, set_clock
 from .timed import DebouncedObservable, ThrottledObservable
 from .value import Observable, _ObservableValue
@@ -18,7 +25,9 @@ __all__ = [
     "ComputedObservable",
     "DebouncedObservable",
     "Disposable",
+    "MutableObservableBase",
     "Observable",
+    "ObservableBase",
     "ObservableProtocol",
     "ReadOnlyObservableProtocol",
     "ThrottledObservable",

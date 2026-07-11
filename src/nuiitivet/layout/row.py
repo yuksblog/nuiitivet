@@ -9,7 +9,7 @@ from .metrics import compute_aligned_offsets, align_offset
 from .layout_utils import expand_layout_children
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 
 
 class Row(Widget):
@@ -32,7 +32,7 @@ class Row(Widget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        gap: Union[int, ReadOnlyObservableProtocol] = 0,
+        gap: Union[int, ObservableBase] = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
     ):
@@ -63,8 +63,8 @@ class Row(Widget):
         return getattr(self, "_gap", 0)
 
     @gap.setter
-    def gap(self, value: Union[int, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def gap(self, value: Union[int, ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "gap", v))
             return

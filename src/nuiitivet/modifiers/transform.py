@@ -5,7 +5,7 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ObservableBase
 from ..rendering.sizing import SizingLike
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
@@ -14,10 +14,10 @@ from ..widgeting.widget import Widget
 logger = logging.getLogger(__name__)
 
 
-AngleLike = Union[float, ReadOnlyObservableProtocol[float]]
-ScaleLike = Union[float, Tuple[float, float], ReadOnlyObservableProtocol[float]]
-TranslateLike = Union[Tuple[float, float], ReadOnlyObservableProtocol[Tuple[float, float]]]
-OpacityLike = Union[float, ReadOnlyObservableProtocol[float]]
+AngleLike = Union[float, ObservableBase[float]]
+ScaleLike = Union[float, Tuple[float, float], ObservableBase[float]]
+TranslateLike = Union[Tuple[float, float], ObservableBase[Tuple[float, float]]]
+OpacityLike = Union[float, ObservableBase[float]]
 OriginLike = Union[str, Tuple[float, float]]
 
 
@@ -78,7 +78,7 @@ class TransformBox(Widget):
 
     def _bind_rotation(self, rotation: AngleLike) -> None:
         self._rotation_source = rotation
-        if isinstance(rotation, ReadOnlyObservableProtocol):
+        if isinstance(rotation, ObservableBase):
             try:
                 self.observe(rotation, self._set_rotation)
                 return
@@ -99,7 +99,7 @@ class TransformBox(Widget):
 
     def _bind_scale(self, scale: ScaleLike) -> None:
         self._scale_source = scale
-        if isinstance(scale, ReadOnlyObservableProtocol):
+        if isinstance(scale, ObservableBase):
             try:
                 self.observe(scale, self._set_scale)
                 return
@@ -125,7 +125,7 @@ class TransformBox(Widget):
 
     def _bind_translation(self, translation: TranslateLike) -> None:
         self._translation_source = translation
-        if isinstance(translation, ReadOnlyObservableProtocol):
+        if isinstance(translation, ObservableBase):
             try:
                 self.observe(translation, self._set_translation)
                 return
@@ -148,7 +148,7 @@ class TransformBox(Widget):
 
     def _bind_opacity(self, opacity: OpacityLike) -> None:
         self._opacity_source = opacity
-        if isinstance(opacity, ReadOnlyObservableProtocol):
+        if isinstance(opacity, ObservableBase):
             try:
                 self.observe(opacity, self._set_opacity)
                 return

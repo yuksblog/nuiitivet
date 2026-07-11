@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Generic, List, Optional, TypeVar
+from typing import Any, Callable, List, Optional, TypeVar
 
 from nuiitivet.common.logging_once import debug_once
 
 from .combine import CombineBuilder
 from .computed import ComputedObservable
-from .protocols import Disposable, ReadOnlyObservableProtocol
+from .protocols import Disposable, ObservableBase, ReadOnlyObservableProtocol
 from . import runtime
 
 T = TypeVar("T")
@@ -16,7 +16,7 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
-class DebouncedObservable(Generic[T]):
+class DebouncedObservable(ObservableBase[T]):
     """Debounced observable that emits value only after delay with no new changes."""
 
     def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
@@ -76,7 +76,7 @@ class DebouncedObservable(Generic[T]):
         return self
 
 
-class ThrottledObservable(Generic[T]):
+class ThrottledObservable(ObservableBase[T]):
     """Throttled observable that emits first value then ignores changes for duration."""
 
     def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
