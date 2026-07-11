@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 import logging
 from collections.abc import Awaitable
@@ -94,6 +94,16 @@ class InteractionNode:
 
     def handle_pointer_event(self, event: PointerEvent, bounds: Optional[Sequence[float]] = None) -> bool:
         """Handle a pointer event. Return True if consumed."""
+        return False
+
+    def handle_modifier_keys_change(
+        self, event: PointerEvent, bounds: Optional[Sequence[float]] = None
+    ) -> bool:
+        """Handle a modifier-key mask change synthesized at the pointer position.
+
+        Delivered by the :class:`Application` whenever the held modifier-key mask
+        changes while a pointer is inside or captured. Returns True if consumed.
+        """
         return False
 
 
@@ -350,6 +360,277 @@ class PointerInputNode(InteractionNode):
             return False
         rx, ry, rw, rh = rect
         return rx <= x <= rx + rw and ry <= y <= ry + rh
+
+
+class PointerListenerNode(InteractionNode):
+    """Raw pointer-stream node backing the ``pointer_input()`` modifier.
+
+    Where :class:`PointerInputNode` collapses press+release into an
+    argument-less click and reduces hover to a ``bool``, this node surfaces the
+    individual pointer events — press, move, release, enter, leave, scroll —
+    each delivering the full :class:`PointerEvent` with widget-local
+    coordinates (``local_x`` / ``local_y``) populated. It optionally captures the
+    pointer on press so a stroke that runs off the widget keeps delivering move
+    and release, and it delivers ``on_modifier_keys_change`` while the pointer is
+    inside or captured.
+
+    It is a *separate* node from the default :class:`PointerInputNode`, so it
+    composes with ``clickable`` / ``hoverable`` on the same widget without either
+    clobbering the other.
+    """
+
+    def __init__(
+        self,
+        *,
+        on_press: Optional[PointerEventCallback] = None,
+        on_move: Optional[PointerEventCallback] = None,
+        on_release: Optional[PointerEventCallback] = None,
+        on_enter: Optional[PointerEventCallback] = None,
+        on_leave: Optional[PointerEventCallback] = None,
+        on_scroll: Optional[PointerEventCallback] = None,
+        on_modifier_keys_change: Optional[PointerEventCallback] = None,
+        buttons: Optional[Sequence[int]] = None,
+        capture: bool = True,
+        hit_test: Optional[Callable[[float, float], bool]] = None,
+    ) -> None:
+        super().__init__()
+        self._hit_test = hit_test
+        self._active_pointer_id: Optional[int] = None
+        self._active_button: Optional[int] = None
+        self._inside = False
+        self.configure(
+            on_press=on_press,
+            on_move=on_move,
+            on_release=on_release,
+            on_enter=on_enter,
+            on_leave=on_leave,
+            on_scroll=on_scroll,
+            on_modifier_keys_change=on_modifier_keys_change,
+            buttons=buttons,
+            capture=capture,
+        )
+
+    def configure(
+        self,
+        *,
+        on_press: Optional[PointerEventCallback] = None,
+        on_move: Optional[PointerEventCallback] = None,
+        on_release: Optional[PointerEventCallback] = None,
+        on_enter: Optional[PointerEventCallback] = None,
+        on_leave: Optional[PointerEventCallback] = None,
+        on_scroll: Optional[PointerEventCallback] = None,
+        on_modifier_keys_change: Optional[PointerEventCallback] = None,
+        buttons: Optional[Sequence[int]] = None,
+        capture: bool = True,
+    ) -> None:
+        """Replace the callbacks and options (setter semantics).
+
+        Recomposition re-applies the modifier; replacing rather than appending
+        keeps a single handler per event instead of accumulating N copies.
+        """
+        self._on_press = on_press
+        self._on_move = on_move
+        self._on_release = on_release
+        self._on_enter = on_enter
+        self._on_leave = on_leave
+        self._on_scroll = on_scroll
+        self._on_modifier_keys_change = on_modifier_keys_change
+        self._buttons: Optional[frozenset[int]] = frozenset(buttons) if buttons is not None else None
+        self._capture = capture
+
+    def _invoke_callback(self, cb: Callable[..., Any], *args: Any, error_key: str, error_msg: str) -> None:
+        owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+        invoke_event_handler(cb, *args, error_key=error_key, error_msg=error_msg, owner_name=owner_name)
+
+    def _button_allowed(self, button: Optional[int]) -> bool:
+        # A synthetic event (button is None) is never filtered out; explicit
+        # button codes are checked against the filter when one is set.
+        if self._buttons is None or button is None:
+            return True
+        return button in self._buttons
+
+    def _resolve_rect(self, bounds: Optional[Sequence[float]]) -> Optional[Sequence[float]]:
+        rect = bounds
+        if rect is None and self.owner:
+            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+        return rect
+
+    def _with_local(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> PointerEvent:
+        rect = self._resolve_rect(bounds)
+        if rect is None:
+            return event
+        return replace(event, local_x=event.x - rect[0], local_y=event.y - rect[1])
+
+    def _point_inside(self, bounds: Optional[Sequence[float]], x: float, y: float) -> bool:
+        if self._hit_test:
+            return self._hit_test(x, y)
+        rect = self._resolve_rect(bounds)
+        if rect is None:
+            return False
+        rx, ry, rw, rh = rect
+        return rx <= x <= rx + rw and ry <= y <= ry + rh
+
+    def handle_pointer_event(self, event: PointerEvent, bounds: Optional[Sequence[float]] = None) -> bool:
+        if self.state.disabled:
+            if self._active_pointer_id is not None:
+                self._active_pointer_id = None
+                self._active_button = None
+            self._inside = False
+            return False
+
+        etype = event.type
+        if etype == PointerEventType.PRESS:
+            return self._handle_press(event, bounds)
+        if etype in (PointerEventType.MOVE, PointerEventType.HOVER):
+            return self._handle_move(event, bounds)
+        if etype == PointerEventType.RELEASE:
+            return self._handle_release(event, bounds)
+        if etype == PointerEventType.ENTER:
+            return self._handle_enter(event, bounds)
+        if etype == PointerEventType.LEAVE:
+            return self._handle_leave(event, bounds)
+        if etype == PointerEventType.SCROLL:
+            return self._handle_scroll(event, bounds)
+        if etype == PointerEventType.CANCEL:
+            return self._handle_cancel(event)
+        return False
+
+    def _handle_press(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        if not self._button_allowed(event.button):
+            return False
+        if not self._point_inside(bounds, event.x, event.y):
+            return False
+
+        self._active_pointer_id = event.id
+        self._active_button = event.button
+        if self._capture and self.owner:
+            try:
+                self.owner.capture_pointer(event, passive=False)
+            except Exception:
+                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+                exception_once(
+                    logger,
+                    f"pointer_listener_capture_pointer_exc:{owner_name}",
+                    "capture_pointer raised (owner=%s)",
+                    owner_name,
+                )
+
+        if self._on_press:
+            self._invoke_callback(
+                self._on_press,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_press",
+                error_msg="pointer_input on_press raised",
+            )
+        return True
+
+    def _handle_move(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        captured = self._capture and self._active_pointer_id is not None and self._active_pointer_id == event.id
+        inside = self._point_inside(bounds, event.x, event.y)
+        self._inside = inside
+        if not captured and not inside:
+            return False
+        if self._on_move:
+            self._invoke_callback(
+                self._on_move,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_move",
+                error_msg="pointer_input on_move raised",
+            )
+        return True
+
+    def _handle_release(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        if self._active_pointer_id != event.id:
+            return False
+        # Ignore a release from a different button than the one that opened the
+        # press (all buttons share one pointer id today). A synthetic release
+        # (button is None) always matches.
+        if event.button is not None and event.button != self._active_button:
+            return False
+
+        if self._capture and self.owner:
+            try:
+                self.owner.release_pointer(event.id)
+            except Exception:
+                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+                exception_once(
+                    logger,
+                    f"pointer_listener_release_pointer_exc:{owner_name}",
+                    "release_pointer raised (owner=%s)",
+                    owner_name,
+                )
+        self._active_pointer_id = None
+        self._active_button = None
+
+        if self._on_release:
+            self._invoke_callback(
+                self._on_release,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_release",
+                error_msg="pointer_input on_release raised",
+            )
+        return True
+
+    def _handle_enter(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        self._inside = True
+        if self._on_enter:
+            self._invoke_callback(
+                self._on_enter,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_enter",
+                error_msg="pointer_input on_enter raised",
+            )
+            return True
+        return False
+
+    def _handle_leave(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        self._inside = False
+        if self._on_leave:
+            self._invoke_callback(
+                self._on_leave,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_leave",
+                error_msg="pointer_input on_leave raised",
+            )
+            return True
+        return False
+
+    def _handle_scroll(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        if not self._point_inside(bounds, event.x, event.y):
+            return False
+        if self._on_scroll:
+            self._invoke_callback(
+                self._on_scroll,
+                self._with_local(event, bounds),
+                error_key="pointer_listener_scroll",
+                error_msg="pointer_input on_scroll raised",
+            )
+            return True
+        return False
+
+    def _handle_cancel(self, event: PointerEvent) -> bool:
+        if self._active_pointer_id != event.id:
+            return False
+        self._active_pointer_id = None
+        self._active_button = None
+        return True
+
+    def handle_modifier_keys_change(
+        self, event: PointerEvent, bounds: Optional[Sequence[float]] = None
+    ) -> bool:
+        if self.state.disabled or self._on_modifier_keys_change is None:
+            return False
+        # Deliver only while the pointer is inside or captured — never for a
+        # widget the pointer is neither over nor holding.
+        if self._active_pointer_id is None and not self._inside:
+            return False
+        self._invoke_callback(
+            self._on_modifier_keys_change,
+            self._with_local(event, bounds),
+            error_key="pointer_listener_modifier_keys_change",
+            error_msg="pointer_input on_modifier_keys_change raised",
+        )
+        return True
 
 
 class DraggableNode(InteractionNode):
@@ -779,6 +1060,19 @@ class InteractionHostMixin:
         bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
         for node in self._nodes:
             consumed = node.handle_pointer_event(event, bounds) or consumed
+        return consumed
+
+    def dispatch_modifier_keys_change(self, event: PointerEvent) -> bool:
+        """Deliver a modifier-key mask change to this region's nodes.
+
+        Called by the :class:`Application` when the held modifier-key mask
+        changes; only :class:`PointerListenerNode` responds, and only while the
+        pointer is inside or captured. Returns True if any node consumed it.
+        """
+        consumed = False
+        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
+        for node in self._nodes:
+            consumed = node.handle_modifier_keys_change(event, bounds) or consumed
         return consumed
 
 

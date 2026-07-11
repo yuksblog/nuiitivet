@@ -7,7 +7,7 @@ import time
 import traceback
 import warnings
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
 
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
@@ -290,6 +290,10 @@ class App:
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
         self._modifier_keys: int = 0
+        # Last known pointer position / held buttons (screen coords), used to
+        # synthesize the pointer event delivered on a modifier-key mask change.
+        self._last_pointer_pos: Optional[Tuple[float, float]] = None
+        self._last_pointer_buttons: int = 0
         self._pointer_capture_manager = PointerCaptureManager()
         self._pointer_capture_manager.set_cancel_callback(self._handle_pointer_cancel)
         self._primary_pointer_id = 1
@@ -954,12 +958,22 @@ class App:
         return self._modifier_keys
 
     def _set_modifier_keys(self, modifier_keys: int) -> None:
-        """Update the authoritative modifier-key mask (framework-internal)."""
+        """Update the authoritative modifier-key mask (framework-internal).
+
+        When the mask actually changes, a synthetic pointer event is delivered
+        to the widget under (or capturing) the pointer via
+        :meth:`_dispatch_modifier_keys_change` so ``pointer_input`` handlers can
+        react to a modifier press/release even while the pointer is stationary.
+        """
         try:
-            self._modifier_keys = int(modifier_keys)
+            new_mask = int(modifier_keys)
         except Exception:
             debug_once(logger, "app_set_modifier_keys_exc", "Failed to set modifier-key mask")
-            self._modifier_keys = 0
+            new_mask = 0
+        if new_mask == self._modifier_keys:
+            return
+        self._modifier_keys = new_mask
+        self._dispatch_modifier_keys_change()
 
     def _clear_modifier_keys(self) -> None:
         """Clear the authoritative modifier-key mask (framework-internal).
@@ -967,7 +981,60 @@ class App:
         Called when the window loses focus so that a modifier released while the
         app was inactive cannot leave a permanently stuck mask.
         """
+        if self._modifier_keys == 0:
+            return
         self._modifier_keys = 0
+        self._dispatch_modifier_keys_change()
+
+    def _dispatch_modifier_keys_change(self) -> None:
+        """Notify ``pointer_input`` handlers that the modifier-key mask changed.
+
+        The synthetic event is placed at the last known pointer position and
+        routed to the widget currently capturing the pointer, or failing that
+        the widget under the pointer. Only :class:`PointerListenerNode` instances
+        that are inside or captured respond (see
+        :meth:`InteractionHostMixin.dispatch_modifier_keys_change`).
+        """
+        pos = self._last_pointer_pos
+        if pos is None:
+            return
+
+        manager = self._pointer_capture_manager
+        target: Any = None
+        if manager is not None:
+            target = manager.owner_of(self._primary_pointer_id)
+        if target is None:
+            target = self._last_hover_target
+        if target is None:
+            return
+
+        event = PointerEvent.mouse_event(
+            self._primary_pointer_id,
+            PointerEventType.MOVE,
+            pos[0],
+            pos[1],
+            buttons=self._last_pointer_buttons,
+            modifier_keys=self._modifier_keys,
+        )
+
+        current = target
+        visited: set[int] = set()
+        while current is not None and id(current) not in visited:
+            visited.add(id(current))
+            dispatcher = getattr(current, "dispatch_modifier_keys_change", None)
+            if callable(dispatcher):
+                try:
+                    if dispatcher(event):
+                        self.invalidate()
+                        return
+                except Exception:
+                    exception_once(
+                        logger,
+                        "app_dispatch_modifier_keys_change_exc",
+                        "dispatch_modifier_keys_change raised (target=%s)",
+                        type(current).__name__,
+                    )
+            current = getattr(current, "_parent", None)
 
     def _dispatch_text(self, text: str) -> bool:
         """Handle text input events."""

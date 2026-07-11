@@ -58,6 +58,7 @@ from nuiitivet.input.codes import (
     MOD_META,
     MOD_SHIFT,
 )
+from nuiitivet.input.pointer import PointerEvent, PointerEventType
 
 # Theme
 from nuiitivet.theme.theme import Theme
@@ -95,6 +96,7 @@ from nuiitivet.modifiers import (
     light_dismiss,
     modeless,
     opacity,
+    pointer_input,
     rotate,
     scale,
     shadow,
@@ -179,6 +181,7 @@ __all__: list[str] = [
     "light_dismiss",
     "modeless",
     "opacity",
+    "pointer_input",
     "rotate",
     "scale",
     "shadow",
@@ -195,6 +198,8 @@ __all__: list[str] = [
     "BUTTON_LEFT",
     "BUTTON_MIDDLE",
     "BUTTON_RIGHT",
+    "PointerEvent",
+    "PointerEventType",
     # Window / runtime
     "AppScope",
     "OSChrome",

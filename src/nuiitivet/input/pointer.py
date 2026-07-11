@@ -48,6 +48,12 @@ class PointerEvent:
         the same ``BUTTON_*`` codes OR-ed together. It is populated on ``MOVE``
         (drag) events so a consumer can tell a right-drag from a left-drag; it
         is ``0`` when no button is held.
+
+    Coordinate semantics:
+        ``x`` / ``y`` are screen (window) coordinates. ``local_x`` / ``local_y``
+        are relative to the top-left of the widget that *receives* the event and
+        are populated at dispatch time; on an event that has not been routed to a
+        widget they default to the screen coordinates' offset of ``0.0``.
     """
 
     id: int
@@ -64,6 +70,8 @@ class PointerEvent:
     timestamp: float = 0.0
     is_primary: bool = True
     modifier_keys: int = 0
+    local_x: float = 0.0
+    local_y: float = 0.0
 
     @staticmethod
     def mouse_event(

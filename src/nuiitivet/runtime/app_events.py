@@ -76,7 +76,21 @@ def _deliver_pointer_event(app: Any, target: Any, event: PointerEvent) -> Option
     return handler
 
 
+def _track_pointer_pos(app: Any, x: int, y: int, buttons: int) -> None:
+    """Record the latest pointer position / held-button mask on the app.
+
+    Used to synthesize the event delivered on a modifier-key mask change so
+    ``pointer_input`` handlers can react while the pointer is stationary.
+    """
+    try:
+        app._last_pointer_pos = (float(x), float(y))
+        app._last_pointer_buttons = int(buttons)
+    except Exception:
+        exception_once(logger, "app_events_track_pointer_pos_exc", "Failed to record pointer position")
+
+
 def dispatch_mouse_motion(app: Any, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
+    _track_pointer_pos(app, x, y, buttons)
     manager = _pointer_manager(app)
     pointer_id = _primary_pointer_id(app)
     owner = manager.owner_of(pointer_id) if manager is not None else None
@@ -184,6 +198,8 @@ def _handler_hosts_focused_node(handler: Any, focused_node: Any) -> bool:
 
 
 def dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+    held = getattr(app, "_last_pointer_buttons", 0) | (button or 0)
+    _track_pointer_pos(app, x, y, held)
     if app.root is None:
         return
 
@@ -256,6 +272,8 @@ def dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = No
 
 
 def dispatch_mouse_release(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+    held = getattr(app, "_last_pointer_buttons", 0) & ~(button or 0)
+    _track_pointer_pos(app, x, y, held)
     pointer_id = _primary_pointer_id(app)
     manager = _pointer_manager(app)
     owner = manager.owner_of(pointer_id) if manager is not None else None
