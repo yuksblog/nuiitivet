@@ -84,7 +84,7 @@ For why modifiers exist and what kinds are available, see [docs/guide/modifiers/
 Dynamic UIs need state management.
 With **data binding**, you declare *what the UI shows* in terms of your state — once — and that link stays live. Change the state, and every bound part of the UI follows on its own. You never write the code that pushes a value into a widget, and the UI can't drift out of sync with your state, because your state *is* the UI's single source of truth.
 
-That mechanism is `Observable`. It binds directly to the UI like Signals (SolidJS, MobX), and it also carries operators like `throttle()` and `debounce()` like Rx — the best of both worlds. (It's inspired by WPF's ReactiveProperty.)
+That mechanism is `Observable`. It binds directly to the UI, and it also carries operators like `throttle()` and `debounce()` like Rx — the best of both worlds. (It's inspired by WPF's ReactiveProperty.)
 
 Let me walk you through three things I like about it.
 
@@ -140,7 +140,7 @@ This is where the ReactiveProperty heritage really shines. You can slot in an Rx
 ```python
 self.query = Observable("")
 
-# debounce like Rx, then bind the result to the UI like Signals
+# debounce like Rx, then bind the result straight to the UI
 self.results = self.query.debounce(0.3).map(search_api)
 ```
 
@@ -263,9 +263,17 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 | Guide | Summary |
 | ----- | ------- |
 | [Layout](docs/guide/layout/index.md) | Build UIs with widgets and parameters. |
-| [Observable](docs/guide/state-management/index.md) | Reactive state that auto-updates the UI. |
-| [Modifier](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |
+| [State Management](docs/guide/state-management/index.md) | Reactive `Observable` state that auto-updates the UI. |
+| [Modifiers](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |
 | [UI Design System](docs/guide/design-system/index.md) | Theming and design tokens. |
+
+### Building Screens
+
+| Guide | Summary |
+| ----- | ------- |
+| [Overlay](docs/guide/overlay/index.md) | Dialogs, loading, and overlays. |
+| [Navigation](docs/guide/navigation/index.md) | Screens, routes, and transitions. |
+| [Window & Chrome](docs/guide/window/index.md) | Window sizing, position, and custom chrome. |
 
 ### Material Design
 
@@ -274,14 +282,11 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 | [Material App](docs/guide/design-system/material_app.md) | App entry point and structure. |
 | [Material Theme](docs/guide/design-system/material_theme.md) | Color schemes generated from a seed. |
 | [Material Widgets](docs/guide/design-system/material_widgets.md) | Catalog of built-in widgets. |
-| [Navigation](docs/guide/navigation/index.md) | Screens, routes, and transitions. |
-| [Dialogs & Overlays](docs/guide/overlay/dialogs.md) | Dialogs, loading, and overlays. |
 
 ### Going Further
 
 | Guide | Summary |
 | ----- | ------- |
-| [Window & Chrome](docs/guide/window/index.md) | Window sizing, position, and custom chrome. |
 | [Async & Threading](docs/guide/advanced/threading.md) | Safe UI updates from background work. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
