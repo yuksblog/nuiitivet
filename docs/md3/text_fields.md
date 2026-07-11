@@ -11,6 +11,39 @@
 - Five interactive states are represented across the current token sets: Enabled, Disabled, Hovered, Focused, and Error.
 - Values were resolved from the Material token table using the Light + Default + Expressive context when available, with Light + Default as fallback.
 
+## Interactive (tappable) icons — design note
+
+Investigated for #302 (2026-07-11).
+
+The text-field token set models the leading / trailing icon as **decorative
+only**: the icon tokens are colors per *field* state
+(`{hover,focus,error,disabled}.{leading,trailing}-icon.color`) and a `24dp`
+size, describing how the glyph is tinted while the **field** is in that state.
+Both `hover.trailing-icon.color` and the enabled `trailing-icon.color` resolve
+to `#49454F`, confirming the token describes field state, not a hover of the
+icon itself. There is **no icon state-layer token** in any text-field set — the
+only state-layer tokens are for the filled field's own container.
+
+MD3 does not spell out a token for an *interactive* text-field icon. The
+governing principle is stated generally: "Apply states consistently across
+components," and the Enabled state description ("An enabled state communicates
+an interactive component… Enabled states use the default styling for each
+interactive component") means an interactive element is expected to carry the
+usual state layers. Following the Flutter and Jetpack Compose implementations,
+an interactive text-field icon is therefore realized as a **standard icon
+button** (`md.comp.icon-button.standard.*`), which brings hover (8%), focus
+(10%), and pressed state layers plus keyboard focusability.
+
+**Implementation:** in `TextField`, a leading / trailing icon with a tap
+callback (`on_tap_leading_icon` / `on_tap_trailing_icon`) is built as a standard
+`IconButton`; a decorative icon (no callback) stays a plain, feedback-free
+`Icon`. Hit testing is handled by the framework's coordinate-translating widget
+tree (offset-safe; see #300), not a field-local rectangle test.
+
+**Known gap:** the framework has no mouse-cursor-shape API, so the pointer does
+not change to a hand over the tappable icon (no existing widget changes the
+cursor either). Tracked separately in #316.
+
 ## Tokens & Specs
 
 ### Token Sets Discovered
