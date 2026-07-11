@@ -109,6 +109,8 @@ class TextField(InteractiveWidget):
     Parameters:
     - value: Initial text value (str or TextEditingValue) OR External observable
     - on_change: Callback when value changes
+    - on_submit: Callback invoked with the confirmed value when the user presses
+      Enter in the field
     - label: Floating label text (supports Observable)
     - leading_icon: Icon source (Symbol/str or Observable of them)
     - on_tap_leading_icon: Callback invoked when the leading icon is tapped.
@@ -167,6 +169,7 @@ class TextField(InteractiveWidget):
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[Callable[[str], None]] = None,
         *,
+        on_submit: Optional[Callable[[str], None]] = None,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
         on_tap_leading_icon: Optional[Callable[[], None]] = None,
@@ -188,6 +191,8 @@ class TextField(InteractiveWidget):
         Args:
             value: Initial text value or observable.
             on_change: Callback when value changes.
+            on_submit: Callback invoked with the confirmed value when the user
+                presses Enter in the field.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
             on_tap_leading_icon: Callback invoked when the leading icon is tapped.
@@ -294,6 +299,7 @@ class TextField(InteractiveWidget):
         self._user_style = style
 
         self._on_change = on_change
+        self._on_submit = on_submit
 
         # Children
         if self.leading_icon is not None:
@@ -307,6 +313,7 @@ class TextField(InteractiveWidget):
             value=value,
             on_change=self._handle_editable_change,
             on_focus_change=self._on_editable_focus_change,
+            on_submit=self._handle_editable_submit,
             text_color=style.text_color,
             cursor_color=style.error_cursor_color if self.is_error else style.cursor_color,
             selection_color=style.selection_color,
@@ -527,6 +534,13 @@ class TextField(InteractiveWidget):
         self._update_label_state()
         if self._on_change:
             self._on_change(new_text)
+
+    def _handle_editable_submit(self, value: str) -> None:
+        if self._on_submit:
+            try:
+                self._on_submit(value)
+            except Exception:
+                exception_once(_logger, "text_field_on_submit_exc", "TextField on_submit raised")
 
     def _on_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self._update_label_state()

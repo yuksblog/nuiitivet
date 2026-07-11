@@ -72,6 +72,7 @@ class EditableText(InteractionHostMixin, Widget):
         value: Union[str, ObservableProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
+        on_submit: Optional[StrCallback] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
         selection_color: ColorSpec = "#B3D7FF",  # Default selection color
@@ -93,6 +94,15 @@ class EditableText(InteractionHostMixin, Widget):
 
         self._on_change = on_change
         self._on_focus_change_callback = on_focus_change
+        self._on_submit = on_submit
+        # Tracks whether the most recent input event committed an IME
+        # composition. On macOS the commit arrives as ``on_text`` *before* the
+        # Enter key's ``on_key_press`` (the composition is already cleared by
+        # the time ``_handle_key`` sees the Enter), so ``is_composing`` alone
+        # cannot tell the confirming Enter apart from a genuine submit. This
+        # flag mirrors the browser's ``KeyboardEvent.isComposing`` signal: it
+        # is set when a composition commits and consumed by the next key press.
+        self._ime_just_committed = False
         self._external_str_obs: ObservableProtocol[str] | None = None
         self._external_sub: Optional[Disposable] = None
 
@@ -394,6 +404,10 @@ class EditableText(InteractionHostMixin, Widget):
         return len(text)
 
     def _handle_focus_change(self, focused: bool, source: FocusSource):
+        # A focus change (e.g. clicking away, which commits an active
+        # composition) ends any input burst, so a pending IME-commit marker
+        # must not survive to suppress a later, unrelated Enter.
+        self._ime_just_committed = False
         if not focused:
             # Clear the pointer-origin marker so the next keyboard focus
             # acquisition correctly shows the focus ring.
@@ -417,6 +431,12 @@ class EditableText(InteractionHostMixin, Widget):
         current_value = self._state_internal.value
         selection = current_value.selection
         full_text = current_value.text
+
+        # Committed text delivered while a composition is active means the IME
+        # just confirmed the composition (e.g. pressing Enter on a converted
+        # candidate). Remember it so the Enter that follows is treated as a
+        # commit, not a submit. Plain typing clears any stale marker.
+        self._ime_just_committed = current_value.is_composing
 
         if current_value.is_composing:
             range_to_replace = current_value.composing
@@ -467,6 +487,10 @@ class EditableText(InteractionHostMixin, Widget):
         return True
 
     def _handle_text_motion(self, motion: int, select: bool = False) -> bool:
+        # Cursor navigation ends any input burst; drop a pending IME-commit
+        # marker so it cannot suppress a later Enter.
+        self._ime_just_committed = False
+
         current_value = self._state_internal.value
         text = current_value.text
         selection = current_value.selection
@@ -542,12 +566,37 @@ class EditableText(InteractionHostMixin, Widget):
         return False
 
     def _handle_key(self, key: str, modifier_keys: int) -> bool:
+        current_value = self._state_internal.value
+
+        # Any key press consumes a pending IME-commit marker: the commit's
+        # confirming Enter is the very next key event after the commit, so the
+        # flag only ever needs to survive a single key press.
+        ime_just_committed = self._ime_just_committed
+        self._ime_just_committed = False
+
+        if key == "enter":
+            # Enter confirms the text. EditableText is single-line, so Enter
+            # never inserts a newline; the value is left untouched (see #307).
+            # Do not submit when this Enter is confirming an IME composition:
+            # either the composition is still active, or it committed on this
+            # same keystroke just before the Enter reached us.
+            if current_value.is_composing or ime_just_committed:
+                return False
+            if self._on_submit is not None:
+                invoke_event_handler(
+                    self._on_submit,
+                    current_value.text,
+                    error_key="editable_text_on_submit",
+                    error_msg="EditableText on_submit raised",
+                )
+                return True
+            return False
+
         is_ctrl = bool(modifier_keys & (MOD_CTRL | MOD_META))
 
         if not is_ctrl:
             return False
 
-        current_value = self._state_internal.value
         text = current_value.text
         selection = current_value.selection
 

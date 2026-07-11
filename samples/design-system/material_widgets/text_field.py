@@ -16,6 +16,7 @@ def main(png_path: str = "") -> None:
                     value="",
                     label="Username",
                     leading_icon="person",
+                    on_submit=lambda value: print(f"Submitted: {value}"),
                     width=320,
                 ),
                 nv.TextField(

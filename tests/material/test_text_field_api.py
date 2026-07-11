@@ -63,6 +63,26 @@ def test_text_field_input_handling():
     assert tf._editable._state_internal.value.selection.start == 2
 
 
+def test_text_field_on_submit_fires_with_confirmed_value():
+    seen: list[str] = []
+    tf = TextField(value="", on_submit=seen.append)
+
+    for ch in "search":
+        tf._editable._handle_text(ch)
+    tf._editable._handle_key("enter", 0)
+
+    assert seen == ["search"]
+    # Enter must not alter the value (issue #307).
+    assert tf.value == "search"
+
+
+def test_text_field_on_submit_omitted_is_noop():
+    tf = TextField(value="hi")
+    # No on_submit configured: Enter is harmless and leaves the value intact.
+    tf._editable._handle_key("enter", 0)
+    assert tf.value == "hi"
+
+
 def test_text_field_backspace():
     tf = TextField(value="abc")
     # Move cursor to end
