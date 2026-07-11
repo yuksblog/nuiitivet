@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 import threading
 import warnings
-from typing import Any, Callable, Generic, List, Optional, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, List, Optional, TypeVar, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once
 
 from .contexts import _batch_context, _tracking_context
-from .protocols import CompareFunc, Disposable, ReadOnlyObservableProtocol
+from .protocols import CompareFunc, Disposable, MutableObservableBase, ReadOnlyObservableProtocol
 from . import runtime
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _UNSET = object()
 
 
-class _ObservableValue(Generic[T]):
+class _ObservableValue(MutableObservableBase[T]):
     def __init__(
         self,
         initial: T,

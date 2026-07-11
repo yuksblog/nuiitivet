@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Callable, Generic, Optional, TypeVar, Any, cast
+from typing import Callable, Optional, TypeVar, Any, cast
 
+from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable import runtime
 
@@ -14,11 +15,15 @@ T = TypeVar("T")
 V = TypeVar("V")
 
 
-class Animatable(Generic[T]):
+class Animatable(ObservableBase[T]):
     """Declarative, retargetable animation value.
 
     Assign to ``target`` to retarget motion without reversing.
     ``value`` is read-only and reflects the current animated value.
+
+    Subclasses :class:`ObservableBase` so it is recognised by the pure-C
+    ``isinstance`` fast path used on the widget construction hot path (#324);
+    it also structurally satisfies :class:`ReadOnlyObservableProtocol`.
     """
 
     def __init__(self: "Animatable[float]", initial_value: float, motion: Optional[Motion] = None) -> None:

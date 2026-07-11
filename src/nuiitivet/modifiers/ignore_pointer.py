@@ -23,14 +23,14 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ObservableBase
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
 
 
-IgnorePointerConditionLike = Union[bool, ReadOnlyObservableProtocol[bool]]
+IgnorePointerConditionLike = Union[bool, ObservableBase[bool]]
 
 
 class IgnorePointerBox(Widget):
@@ -49,7 +49,7 @@ class IgnorePointerBox(Widget):
 
     @staticmethod
     def _read_initial(condition: IgnorePointerConditionLike) -> bool:
-        if isinstance(condition, ReadOnlyObservableProtocol):
+        if isinstance(condition, ObservableBase):
             try:
                 return bool(condition.value)
             except Exception:
@@ -63,7 +63,7 @@ class IgnorePointerBox(Widget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        if isinstance(self._condition, ReadOnlyObservableProtocol):
+        if isinstance(self._condition, ObservableBase):
             self.observe(self._condition, self._set_active)
 
     def _set_active(self, value: bool) -> None:

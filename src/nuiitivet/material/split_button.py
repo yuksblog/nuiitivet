@@ -19,7 +19,7 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.observable import MutableObservableBase
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
@@ -97,7 +97,7 @@ class _SplitLeadingButton(InteractiveWidget):
         child: "Widget",
         style: "SplitButtonStyle",
         on_click: Optional[VoidCallback] = None,
-        disabled: "bool | ObservableProtocol[bool]" = False,
+        disabled: "bool | MutableObservableBase[bool]" = False,
     ) -> None:
         """Initialize the leading button segment.
 
@@ -237,8 +237,8 @@ class _SplitTrailingButton(InteractiveWidget):
         self,
         style: "SplitButtonStyle",
         on_menu_toggle: Optional[BoolCallback] = None,
-        menu_open: "bool | ObservableProtocol[bool]" = False,
-        disabled: "bool | ObservableProtocol[bool]" = False,
+        menu_open: "bool | MutableObservableBase[bool]" = False,
+        disabled: "bool | MutableObservableBase[bool]" = False,
     ) -> None:
         """Initialize the trailing button segment.
 
@@ -256,10 +256,10 @@ class _SplitTrailingButton(InteractiveWidget):
         self._own_pressed: bool = False
 
         # Selected state (menu open)
-        self._selected_external: "Optional[ObservableProtocol[bool]]" = None
+        self._selected_external: "Optional[MutableObservableBase[bool]]" = None
         if hasattr(menu_open, "subscribe") and hasattr(menu_open, "value"):
             self._selected_external = menu_open  # type: ignore[assignment]
-            ext_obs: "ObservableProtocol[bool]" = self._selected_external  # type: ignore[assignment]
+            ext_obs: "MutableObservableBase[bool]" = self._selected_external  # type: ignore[assignment]
             self._selected: bool = bool(ext_obs.value)
         else:
             self._selected = bool(menu_open)
@@ -377,9 +377,9 @@ class _SplitTrailingButton(InteractiveWidget):
         # Write back to external observable if mutable
         ext = self._selected_external
         if ext is not None and hasattr(ext, "value"):
-            from nuiitivet.observable import ReadOnlyObservableProtocol
+            from nuiitivet.observable import ObservableBase
 
-            if not isinstance(ext, ReadOnlyObservableProtocol):
+            if not isinstance(ext, ObservableBase):
                 try:
                     ext.value = bool(value)  # type: ignore[assignment]
                 except AttributeError:
@@ -527,8 +527,8 @@ class SplitButton(Box):
         *,
         on_click: Optional[VoidCallback] = None,
         on_menu_toggle: Optional[BoolCallback] = None,
-        menu_open: "bool | ObservableProtocol[bool]" = False,
-        disabled: "bool | ObservableProtocol[bool]" = False,
+        menu_open: "bool | MutableObservableBase[bool]" = False,
+        disabled: "bool | MutableObservableBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[SplitButtonStyle]" = None,
     ) -> None:
@@ -539,12 +539,12 @@ class SplitButton(Box):
                 ``icon`` (or both) must be provided.
             icon: Leading icon for the leading button.  Accepts a
                 :class:`Symbol`, a symbol name string, or a
-                :class:`ReadOnlyObservableProtocol`.
+                :class:`ObservableBase`.
             on_click: Callback invoked when the leading button is clicked.
             on_menu_toggle: Callback invoked with the new ``bool`` menu open
                 state when the trailing button is clicked.
             menu_open: Initial menu open (selected) state of the trailing
-                button.  Pass an :class:`ObservableProtocol` to bind
+                button.  Pass an :class:`MutableObservableBase` to bind
                 externally.
             disabled: Disables both button halves when ``True``.
             width: Optional width sizing for the overall widget.

@@ -16,7 +16,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable.protocols import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -69,9 +69,9 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         self,
         content: Widget,
         *,
-        headline: Union[str, ReadOnlyObservableProtocol[str]],
+        headline: Union[str, ObservableBase[str]],
         on_back: Optional[Callable[[], None]] = None,
-        show_back_button: Union[bool, ReadOnlyObservableProtocol[bool]] = False,
+        show_back_button: Union[bool, ObservableBase[bool]] = False,
         style: Optional[SideSheetStyle] = None,
     ) -> None:
         """Initialize SideSheet.
@@ -99,7 +99,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         return self._user_style if self._user_style is not None else SideSheetStyle()
 
     def _resolve_show_back(self) -> bool:
-        if isinstance(self._show_back_button, ReadOnlyObservableProtocol):
+        if isinstance(self._show_back_button, ObservableBase):
             return bool(self._show_back_button.value)
         return bool(self._show_back_button)
 
@@ -112,7 +112,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
     def on_mount(self) -> None:
         """Mount and subscribe to show_back_button observable if provided."""
         super().on_mount()
-        if isinstance(self._show_back_button, ReadOnlyObservableProtocol):
+        if isinstance(self._show_back_button, ObservableBase):
             sub = self._show_back_button.subscribe(lambda _: self.rebuild())
             self.bind(sub)
 
@@ -191,7 +191,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         self,
         content: Widget,
         *,
-        headline: Union[str, ReadOnlyObservableProtocol[str]],
+        headline: Union[str, ObservableBase[str]],
         style: Optional[BottomSheetStyle] = None,
     ) -> None:
         """Initialize BottomSheet.
@@ -302,9 +302,9 @@ class StandardSideSheet(ComposableWidget):
         self,
         content: Widget,
         *,
-        opened: Union[bool, ObservableProtocol[bool]] = True,
+        opened: Union[bool, MutableObservableBase[bool]] = True,
         on_close_click: Optional[Callable[[], None]] = None,
-        headline: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
+        headline: Optional[Union[str, ObservableBase[str]]] = None,
         side: Literal["right", "left"] = "right",
         style: Optional[StandardSideSheetStyle] = None,
     ) -> None:
@@ -336,7 +336,7 @@ class StandardSideSheet(ComposableWidget):
 
     def _can_auto_close(self) -> bool:
         """Return whether *opened* is writable, i.e. the sheet can close itself."""
-        return isinstance(self._opened, ObservableProtocol)
+        return isinstance(self._opened, MutableObservableBase)
 
     def _show_close_button(self) -> bool:
         return self._on_close_click is not None or self._can_auto_close()
@@ -346,13 +346,13 @@ class StandardSideSheet(ComposableWidget):
         if self._on_close_click is not None:
             self._on_close_click()
             return
-        if isinstance(self._opened, ObservableProtocol):
+        if isinstance(self._opened, MutableObservableBase):
             self._opened.value = False
 
     def on_mount(self) -> None:
         """Mount and subscribe to headline observable if provided."""
         super().on_mount()
-        if isinstance(self._headline, ReadOnlyObservableProtocol):
+        if isinstance(self._headline, ObservableBase):
             sub = self._headline.subscribe(lambda _: self.rebuild())
             self.bind(sub)
 

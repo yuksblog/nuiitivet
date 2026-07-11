@@ -17,6 +17,52 @@ class Disposable:
             self._disposed = True
 
 
+class ObservableBase(Generic[T]):
+    """Concrete base for all observables (read-capable).
+
+    Every built-in observable subclasses this so hot paths can use a pure-C
+    ``isinstance(value, ObservableBase)`` check instead of the much slower
+    ``@runtime_checkable`` Protocol instance check (which, on CPython < 3.12,
+    runs the metaclass ``__instancecheck__`` in Python and ``hasattr``-probes
+    every member on every call).
+
+    The read interface is declared here so an ``ObservableBase`` value is also a
+    structural :class:`ReadOnlyObservableProtocol`, letting callers keep the
+    Protocol as the wider static type where duck typing is still wanted.
+    Subclasses provide the real implementations; the stubs never run.
+    """
+
+    __slots__ = ()
+
+    def subscribe(self, cb: Callable[[T], None]) -> Disposable:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    def changes(self) -> "ReadOnlyObservableProtocol[T]":  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    @property
+    def value(self) -> T:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+
+class MutableObservableBase(ObservableBase[T]):
+    """Concrete base for observables whose ``value`` is writable.
+
+    Runtime counterpart of :class:`ObservableProtocol` (mirrors what
+    :class:`ObservableBase` is to :class:`ReadOnlyObservableProtocol`).
+    """
+
+    __slots__ = ()
+
+    @property
+    def value(self) -> T:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, v: T) -> None:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+
 @runtime_checkable
 class ReadOnlyObservableProtocol(Protocol, Generic[T]):
     def subscribe(self, cb: Callable[[T], None]) -> Disposable: ...

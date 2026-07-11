@@ -21,7 +21,7 @@ import logging
 from typing import ClassVar, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 
 from ..widgeting.widget import Widget
 from ..scrolling import (
@@ -45,11 +45,11 @@ from .scroll_viewport import ScrollViewport
 logger = logging.getLogger(__name__)
 
 
-ScrollbarVisibleLike = Union[bool, ReadOnlyObservableProtocol[bool]]
+ScrollbarVisibleLike = Union[bool, ObservableBase[bool]]
 
 
 def _read_bool(value: ScrollbarVisibleLike) -> bool:
-    if isinstance(value, ReadOnlyObservableProtocol):
+    if isinstance(value, ObservableBase):
         try:
             return bool(value.value)
         except Exception:
@@ -192,7 +192,7 @@ class _ScrollableBase(Widget):
         self._scroll_unsubscribe = axis_state.offset.subscribe(_offset_cb)
 
         # Reactive scrollbar visibility: relayout / repaint when it changes.
-        if isinstance(self._scrollbar_visible, ReadOnlyObservableProtocol):
+        if isinstance(self._scrollbar_visible, ObservableBase):
             self.observe(self._scrollbar_visible, self._on_scrollbar_visible_changed)
 
     def _on_scrollbar_visible_changed(self, _value: bool) -> None:

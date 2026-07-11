@@ -42,7 +42,7 @@ from nuiitivet.animation.animatable import Animatable
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import TransitionVisuals
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ObservableBase
 from nuiitivet.observable.computed import ComputedObservable
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import Widget
@@ -57,11 +57,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-VisibleConditionLike = Union[bool, ReadOnlyObservableProtocol[bool]]
+VisibleConditionLike = Union[bool, ObservableBase[bool]]
 
 
 def _read_initial_condition(condition: VisibleConditionLike) -> bool:
-    if isinstance(condition, ReadOnlyObservableProtocol):
+    if isinstance(condition, ObservableBase):
         try:
             return bool(condition.value)
         except Exception:
@@ -111,7 +111,7 @@ class _AnimatedVisibleBox(Widget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        if isinstance(self._condition, ReadOnlyObservableProtocol):
+        if isinstance(self._condition, ObservableBase):
             self.observe(self._condition, self._on_condition_changed)
 
     def on_unmount(self) -> None:
@@ -307,8 +307,8 @@ def _has_visual_effect(visuals: TransitionVisuals) -> bool:
 
 def _hidden_observable(
     condition: VisibleConditionLike,
-) -> Union[bool, ReadOnlyObservableProtocol[bool]]:
-    if isinstance(condition, ReadOnlyObservableProtocol):
+) -> Union[bool, ObservableBase[bool]]:
+    if isinstance(condition, ObservableBase):
         source = condition
         return ComputedObservable(lambda: not bool(source.value))
     return not bool(condition)
@@ -316,8 +316,8 @@ def _hidden_observable(
 
 def _opacity_observable(
     condition: VisibleConditionLike,
-) -> Union[float, ReadOnlyObservableProtocol[float]]:
-    if isinstance(condition, ReadOnlyObservableProtocol):
+) -> Union[float, ObservableBase[float]]:
+    if isinstance(condition, ObservableBase):
         source = condition
         return ComputedObservable(lambda: 1.0 if bool(source.value) else 0.0)
     return 1.0 if bool(condition) else 0.0

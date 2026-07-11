@@ -30,7 +30,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, STANDARD_BUTTON_GROUP_WIDTH
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import MutableObservableBase, ObservableBase
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, BoolCallback
@@ -96,11 +96,11 @@ class GroupButton(InteractiveWidget):
 
     Args:
         label: Optional text label.  Can be a plain ``str`` or a
-            ``ReadOnlyObservableProtocol[str]`` for dynamic text.
+            ``ObservableBase[str]`` for dynamic text.
         icon: Optional icon.  Accepts a ``Symbol``, ``str`` icon name, or
-            ``ReadOnlyObservableProtocol`` wrapping either.
+            ``ObservableBase`` wrapping either.
         selected: Initial selected (toggle) state.  Pass an
-            ``ObservableProtocol[bool]`` to bind to external state.
+            ``MutableObservableBase[bool]`` to bind to external state.
         on_change: Callback fired with the new ``bool`` selected state after each
             toggle.  In ``ConnectedButtonGroup`` this callback is composed with
             the group-level selection logic.
@@ -112,12 +112,12 @@ class GroupButton(InteractiveWidget):
 
     def __init__(
         self,
-        label: "str | ReadOnlyObservableProtocol[str] | None" = None,
-        icon: "Symbol | str | ReadOnlyObservableProtocol | None" = None,
+        label: "str | ObservableBase[str] | None" = None,
+        icon: "Symbol | str | ObservableBase | None" = None,
         *,
-        selected: "bool | ObservableProtocol[bool]" = False,
+        selected: "bool | MutableObservableBase[bool]" = False,
         on_change: Optional[BoolCallback] = None,
-        disabled: "bool | ObservableProtocol[bool]" = False,
+        disabled: "bool | MutableObservableBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[ButtonGroupStyle]" = None,
     ) -> None:
@@ -146,9 +146,9 @@ class GroupButton(InteractiveWidget):
         self._on_change: Optional[BoolCallback] = on_change
 
         # Selected state
-        self._selected_external: "Optional[ObservableProtocol[bool]]" = None
+        self._selected_external: "Optional[MutableObservableBase[bool]]" = None
         if hasattr(selected, "subscribe") and hasattr(selected, "value"):
-            self._selected_external = cast("ObservableProtocol[bool]", selected)
+            self._selected_external = cast("MutableObservableBase[bool]", selected)
             self._selected: bool = bool(self._selected_external.value)
         else:
             self._selected = bool(selected)
@@ -387,7 +387,7 @@ class GroupButton(InteractiveWidget):
         # Write back to external observable if mutable
         if self._selected_external is not None:
             ext = self._selected_external
-            if hasattr(ext, "value") and not isinstance(ext, ReadOnlyObservableProtocol):
+            if hasattr(ext, "value") and not isinstance(ext, ObservableBase):
                 try:
                     ext.value = bool(value)  # type: ignore[assignment]
                 except AttributeError:

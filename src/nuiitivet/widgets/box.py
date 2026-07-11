@@ -17,7 +17,7 @@ from ..layout.layout_engine import LayoutEngine
 from ..layout.alignment import normalize_alignment
 from ..layout.measure import preferred_size as measure_preferred_size
 from ..widgeting.modifier import Modifier
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 
 _logger = logging.getLogger(__name__)
 
@@ -81,8 +81,8 @@ class Box(CachedPaintMixin, Widget):
         return self._bgcolor
 
     @bgcolor.setter
-    def bgcolor(self, value: Union[Optional[ColorSpec], ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def bgcolor(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "bgcolor", v))
             return
         self._bgcolor = value
@@ -93,8 +93,8 @@ class Box(CachedPaintMixin, Widget):
         return self._border_color
 
     @border_color.setter
-    def border_color(self, value: Union[Optional[ColorSpec], ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def border_color(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "border_color", v))
             return
         self._border_color = value
@@ -105,8 +105,8 @@ class Box(CachedPaintMixin, Widget):
         return self._shadow_color
 
     @shadow_color.setter
-    def shadow_color(self, value: Union[Optional[ColorSpec], ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def shadow_color(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "shadow_color", v))
             return
         self._shadow_color = value
@@ -117,8 +117,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_corner_radius", 0)
 
     @corner_radius.setter
-    def corner_radius(self, value: Union[float, Tuple[float, float, float, float], ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def corner_radius(self, value: Union[float, Tuple[float, float, float, float], ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "corner_radius", v))
             return
         self._corner_radius = value
@@ -129,8 +129,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_border_width", 0.0)
 
     @border_width.setter
-    def border_width(self, value: Union[float, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def border_width(self, value: Union[float, ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "border_width", v))
             return
         self._border_width = float(value) if value is not None else 0.0
@@ -141,8 +141,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_shadow_blur", 0.0)
 
     @shadow_blur.setter
-    def shadow_blur(self, value: Union[float, ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def shadow_blur(self, value: Union[float, ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "shadow_blur", v))
             return
         self._shadow_blur = float(value) if value is not None else 0.0
@@ -153,8 +153,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_shadow_offset", (0.0, 0.0))
 
     @shadow_offset.setter
-    def shadow_offset(self, value: Union[Tuple[float, float], ReadOnlyObservableProtocol]) -> None:
-        if isinstance(value, ReadOnlyObservableProtocol):
+    def shadow_offset(self, value: Union[Tuple[float, float], ObservableBase]) -> None:
+        if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "shadow_offset", v))
             return
         self._shadow_offset = value if value is not None else (0.0, 0.0)

@@ -38,7 +38,7 @@ from nuiitivet.animation.motion import BezierMotion, Motion
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import normalize_alignment
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.skia.geometry import clip_rect, make_rect
 from nuiitivet.widgeting.widget import Widget
 
@@ -59,8 +59,8 @@ _EPSILON = 0.5
 _DEFAULT_MOTION: Motion = BezierMotion(0.38, 1.21, 0.22, 1.00, 0.50)
 
 
-def _read_opened(opened: Union[bool, ReadOnlyObservableProtocol[bool]]) -> bool:
-    if isinstance(opened, ReadOnlyObservableProtocol):
+def _read_opened(opened: Union[bool, ObservableBase[bool]]) -> bool:
+    if isinstance(opened, ObservableBase):
         try:
             return bool(opened.value)
         except Exception:
@@ -86,7 +86,7 @@ class Collapsible(Widget):
         self,
         child: Optional[Widget] = None,
         *,
-        opened: Union[bool, ReadOnlyObservableProtocol[bool]] = True,
+        opened: Union[bool, ObservableBase[bool]] = True,
         motion: Motion = _DEFAULT_MOTION,
         motion_out: Optional[Motion] = None,
         axis: Axis = "both",
@@ -108,7 +108,7 @@ class Collapsible(Widget):
             alignment: Alignment of the child within the animated rectangle.
         """
         super().__init__(max_children=1, overflow_policy="replace_last")
-        self._opened: Union[bool, ReadOnlyObservableProtocol[bool]] = opened
+        self._opened: Union[bool, ObservableBase[bool]] = opened
         self._motion_in = motion
         self._motion_out = motion_out if motion_out is not None else motion
         self._axis: Axis = axis
@@ -141,7 +141,7 @@ class Collapsible(Widget):
         super().on_mount()
         self._width_sub = self._width_anim.subscribe(self._on_tick)
         self._height_sub = self._height_anim.subscribe(self._on_tick)
-        if isinstance(self._opened, ReadOnlyObservableProtocol):
+        if isinstance(self._opened, ObservableBase):
             self.observe(self._opened, self._on_opened_changed)
 
     def on_unmount(self) -> None:
