@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.input.pointer import PointerEvent
@@ -40,6 +41,22 @@ from nuiitivet.theme.types import ColorSpec
 from nuiitivet.common.logging_once import exception_once
 
 _logger = logging.getLogger(__name__)
+
+
+def _strip_control_chars(text: str) -> str:
+    """Remove Unicode control characters (category ``Cc``) from ``text``.
+
+    Backends do not uniformly filter control characters out of the text they
+    deliver. On macOS, for example, pressing Return dispatches ``on_text('\\r')``
+    through a code path that bypasses the control-character guard applied to
+    every other key (see issue #307). Filtering here keeps the widget's value
+    free of stray control characters regardless of which backend feeds it.
+
+    ``EditableText`` is single-line only, so newlines are dropped as well. When
+    multi-line support lands, ``'\\r'`` should be normalized to ``'\\n'`` and only
+    ``'\\n'`` permitted, rather than allowing raw control characters through here.
+    """
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Cc")
 
 
 class EditableText(InteractionHostMixin, Widget):
@@ -393,6 +410,10 @@ class EditableText(InteractionHostMixin, Widget):
             )
 
     def _handle_text(self, text: str) -> bool:
+        text = _strip_control_chars(text)
+        if not text:
+            return False
+
         current_value = self._state_internal.value
         selection = current_value.selection
         full_text = current_value.text
@@ -415,6 +436,8 @@ class EditableText(InteractionHostMixin, Widget):
         return False
 
     def _handle_ime_composition(self, text: str, start: int, length: int) -> bool:
+        text = _strip_control_chars(text)
+
         current_value = self._state_internal.value
         full_text = current_value.text
 
