@@ -35,7 +35,20 @@ class PointerEventType(str, Enum):
 
 @dataclass(frozen=True)
 class PointerEvent:
-    """Immutable pointer event payload delivered to widgets."""
+    """Immutable pointer event payload delivered to widgets.
+
+    Button semantics:
+        ``button`` is the single button that *caused* this event — set on
+        ``PRESS`` and ``RELEASE`` (and carried through the synthesized
+        ``CANCEL``) to a backend-neutral ``BUTTON_*`` code, and ``None``
+        otherwise (``MOVE``/``HOVER``/``ENTER``/``LEAVE``/``SCROLL``, or a
+        synthetic/non-mouse event that carries no button).
+
+        ``buttons`` is a bit mask of the buttons currently *held down*, using
+        the same ``BUTTON_*`` codes OR-ed together. It is populated on ``MOVE``
+        (drag) events so a consumer can tell a right-drag from a left-drag; it
+        is ``0`` when no button is held.
+    """
 
     id: int
     type: PointerEventType
@@ -47,6 +60,7 @@ class PointerEvent:
     scroll_x: float = 0.0
     scroll_y: float = 0.0
     button: Optional[int] = None
+    buttons: int = 0
     timestamp: float = 0.0
     is_primary: bool = True
     modifier_keys: int = 0
@@ -61,6 +75,7 @@ class PointerEvent:
         dx: float = 0.0,
         dy: float = 0.0,
         button: Optional[int] = None,
+        buttons: int = 0,
         timestamp: Optional[float] = None,
         modifier_keys: int = 0,
     ) -> "PointerEvent":
@@ -73,6 +88,7 @@ class PointerEvent:
             dx=dx,
             dy=dy,
             button=button,
+            buttons=buttons,
             timestamp=time.time() if timestamp is None else float(timestamp),
             modifier_keys=modifier_keys,
         )

@@ -47,8 +47,17 @@ from nuiitivet.overlay import OverlayAware
 # State Management
 from nuiitivet.observable import Observable, batch, combine, clock
 
-# Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers)
-from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+# Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers and
+# backend-neutral pointer button codes for ``PointerEvent.button``)
+from nuiitivet.input.codes import (
+    BUTTON_LEFT,
+    BUTTON_MIDDLE,
+    BUTTON_RIGHT,
+    MOD_ALT,
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
+)
 
 # Theme
 from nuiitivet.theme.theme import Theme
@@ -183,6 +192,9 @@ __all__: list[str] = [
     "MOD_CTRL",
     "MOD_ALT",
     "MOD_META",
+    "BUTTON_LEFT",
+    "BUTTON_MIDDLE",
+    "BUTTON_RIGHT",
     # Window / runtime
     "AppScope",
     "OSChrome",

@@ -20,6 +20,9 @@ from nuiitivet.platform import IMEManager
 from nuiitivet.rendering.skia import get_skia
 
 from nuiitivet.input.codes import (
+    BUTTON_LEFT,
+    BUTTON_MIDDLE,
+    BUTTON_RIGHT,
     MOD_ALT,
     MOD_CTRL,
     MOD_META,
@@ -807,16 +810,20 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     @window.event
     def on_mouse_press(x, y, button, modifiers):
         x_log, y_conv = _to_logical(x, y)
+        button_n = _normalize_mouse_button(button)
+        modifier_keys = _normalize_modifiers(modifiers)
         try:
-            app._dispatch_mouse_press(x_log, y_conv)
+            app._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
 
     @window.event
     def on_mouse_release(x, y, button, modifiers):
         x_log, y_conv = _to_logical(x, y)
+        button_n = _normalize_mouse_button(button)
+        modifier_keys = _normalize_modifiers(modifiers)
         try:
-            app._dispatch_mouse_release(x_log, y_conv)
+            app._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_release_dispatch_exc", "Mouse release dispatch raised")
 
@@ -831,8 +838,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     @window.event
     def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
         x_log, y_conv = _to_logical(x, y)
+        buttons_n = _normalize_mouse_buttons(buttons)
+        modifier_keys = _normalize_modifiers(modifiers)
         try:
-            app._dispatch_mouse_motion(x_log, y_conv)
+            app._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_drag_dispatch_exc", "Mouse drag dispatch raised")
 
@@ -1178,6 +1187,44 @@ def _normalize_modifiers(pyglet_modifiers: int) -> int:
         return modifier_keys
     except Exception:
         exception_once(logger, "pyglet_normalize_modifiers_exc", "Failed to normalize modifier mapping")
+        return 0
+
+
+def _normalize_mouse_button(pyglet_button: int) -> Optional[int]:
+    """Translate a single pyglet mouse button into a backend-neutral ``BUTTON_*``.
+
+    Returns ``None`` for an unrecognized button so the event carries no button
+    rather than leaking a raw pyglet value.
+    """
+    try:
+        mouse = pyglet.window.mouse
+
+        if pyglet_button == mouse.LEFT:
+            return BUTTON_LEFT
+        if pyglet_button == mouse.MIDDLE:
+            return BUTTON_MIDDLE
+        if pyglet_button == mouse.RIGHT:
+            return BUTTON_RIGHT
+    except Exception:
+        exception_once(logger, "pyglet_normalize_mouse_button_exc", "Failed to normalize mouse button")
+    return None
+
+
+def _normalize_mouse_buttons(pyglet_buttons: int) -> int:
+    """Translate a pyglet held-button bit mask into a ``BUTTON_*`` bit mask."""
+    try:
+        mouse = pyglet.window.mouse
+
+        buttons = 0
+        if pyglet_buttons & mouse.LEFT:
+            buttons |= BUTTON_LEFT
+        if pyglet_buttons & mouse.MIDDLE:
+            buttons |= BUTTON_MIDDLE
+        if pyglet_buttons & mouse.RIGHT:
+            buttons |= BUTTON_RIGHT
+        return buttons
+    except Exception:
+        exception_once(logger, "pyglet_normalize_mouse_buttons_exc", "Failed to normalize mouse buttons")
         return 0
 
 

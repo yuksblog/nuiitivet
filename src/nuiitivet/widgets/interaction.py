@@ -6,6 +6,7 @@ import logging
 from collections.abc import Awaitable
 from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
+from ..input.codes import is_primary_button
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
@@ -117,6 +118,7 @@ class PointerInputNode(InteractionNode):
         self._hover_enabled = False
         self._click_enabled = False
         self._active_pointer_id: Optional[int] = None
+        self._active_button: Optional[int] = None
 
     @property
     def state(self) -> InteractionState:
@@ -225,6 +227,11 @@ class PointerInputNode(InteractionNode):
         return False
 
     def _handle_press(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
+        # Only a primary (left / synthetic) button activates a click. Secondary
+        # buttons (right / middle) must not press, focus, or capture.
+        if not is_primary_button(event.button):
+            return False
+
         inside = True if bounds is None else self._point_inside(bounds, event.x, event.y)
         if not inside:
             return False
@@ -234,6 +241,7 @@ class PointerInputNode(InteractionNode):
             self.region.request_focus_from_pointer()
 
         self._active_pointer_id = event.id
+        self._active_button = event.button
         self.state.press_position = (event.x, event.y)
         self._set_pressed(True)
         try:
@@ -255,6 +263,11 @@ class PointerInputNode(InteractionNode):
     def _handle_release(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
         if self._active_pointer_id != event.id:
             return False
+        # Ignore a release from a different button than the one that opened the
+        # press (all buttons share one pointer id today). A synthetic release
+        # (button is None) always matches.
+        if event.button is not None and event.button != self._active_button:
+            return False
         inside = True if bounds is None else self._point_inside(bounds, event.x, event.y)
         self._set_pressed(False)
         try:
@@ -269,6 +282,7 @@ class PointerInputNode(InteractionNode):
                 owner_name,
             )
         self._active_pointer_id = None
+        self._active_button = None
 
         for cb in list(self._release_callbacks):
             self._invoke_callback(cb, event, error_key="release_callback", error_msg="Release callback raised")
@@ -282,6 +296,7 @@ class PointerInputNode(InteractionNode):
             return False
         self._set_pressed(False)
         self._active_pointer_id = None
+        self._active_button = None
         return True
 
     def _emit_click(self) -> None:
@@ -354,6 +369,7 @@ class DraggableNode(InteractionNode):
         self._on_drag_end = on_drag_end
         self._hit_test = hit_test
         self._active_pointer_id: Optional[int] = None
+        self._active_button: Optional[int] = None
         self._last_pos: Optional[Tuple[float, float]] = None
 
     def _invoke_callback(self, cb: Callable[..., Any], *args: Any, error_key: str, error_msg: str) -> None:
@@ -373,6 +389,7 @@ class DraggableNode(InteractionNode):
         if self._active_pointer_id is not None:
             return
         self._active_pointer_id = event.id
+        self._active_button = event.button
         self._last_pos = (event.x, event.y)
         self.state.dragging = True
         self.state.pressed = True
@@ -417,11 +434,17 @@ class DraggableNode(InteractionNode):
         if self._active_pointer_id is not None:
             return False
 
+        # Only a primary (left / synthetic) button starts a drag. A right-drag
+        # over e.g. a Slider must not move it.
+        if not is_primary_button(event.button):
+            return False
+
         inside = self._point_inside(bounds, event.x, event.y)
         if not inside:
             return False
 
         self._active_pointer_id = event.id
+        self._active_button = event.button
         self._last_pos = (event.x, event.y)
         self.state.dragging = True
         self.state.pressed = True  # Sync with pressed state usually
@@ -472,6 +495,10 @@ class DraggableNode(InteractionNode):
     def _handle_release(self, event: PointerEvent) -> bool:
         if self._active_pointer_id != event.id:
             return False
+        # A release from a different button than the one that opened the drag
+        # (all buttons share one pointer id) must not end the drag.
+        if event.button is not None and event.button != self._active_button:
+            return False
 
         self._end_drag(event)
         return True
@@ -485,6 +512,7 @@ class DraggableNode(InteractionNode):
 
     def _end_drag(self, event: PointerEvent) -> None:
         self._active_pointer_id = None
+        self._active_button = None
         self._last_pos = None
         self.state.dragging = False
         self.state.pressed = False

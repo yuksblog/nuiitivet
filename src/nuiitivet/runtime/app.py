@@ -779,8 +779,8 @@ class App:
             raise RuntimeError("makeImageSnapshot() returned None")
         return img
 
-    def _dispatch_mouse_motion(self, x: int, y: int):
-        _dispatch_mouse_motion_fn(self, x, y)
+    def _dispatch_mouse_motion(self, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
+        _dispatch_mouse_motion_fn(self, x, y, buttons=buttons, modifier_keys=modifier_keys)
 
     # --- Keyboard / focus helpers ---------------------------------
     def request_focus(self, node: Optional[FocusNode], source: FocusSource = FocusSource.KEYBOARD) -> None:
@@ -1008,11 +1008,11 @@ class App:
                 )
         return False
 
-    def _dispatch_mouse_press(self, x: int, y: int):
-        _dispatch_mouse_press_fn(self, x, y)
+    def _dispatch_mouse_press(self, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+        _dispatch_mouse_press_fn(self, x, y, button=button, modifier_keys=modifier_keys)
 
-    def _dispatch_mouse_release(self, x: int, y: int):
-        _dispatch_mouse_release_fn(self, x, y)
+    def _dispatch_mouse_release(self, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+        _dispatch_mouse_release_fn(self, x, y, button=button, modifier_keys=modifier_keys)
 
     def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float):
         _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y)
@@ -1040,6 +1040,7 @@ class App:
             y=pivot.y,
             pointer_type=pivot.pointer_type,
             button=pivot.button,
+            buttons=pivot.buttons,
             timestamp=time.time(),
             modifier_keys=pivot.modifier_keys,
         )
