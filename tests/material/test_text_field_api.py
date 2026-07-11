@@ -4,11 +4,12 @@ import pytest
 
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
+from nuiitivet.material.buttons import IconButton
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.observable import Observable
 from nuiitivet.input.codes import MOD_META, TEXT_MOTION_BACKSPACE
-from nuiitivet.input.pointer import PointerEvent, PointerEventType
+from nuiitivet.input.pointer import PointerEventType
 
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
@@ -149,7 +150,11 @@ def test_text_field_api_invokes_trailing_icon_callback_on_icon_press() -> None:
     tf.set_layout_rect(0, 0, 200, 56)
     tf.set_last_rect(0, 0, 200, 56)
 
-    ix, iy, iw, ih = tf.trailing_icon.layout_rect
+    trailing = tf.trailing_icon
+    assert isinstance(trailing, IconButton)
+    rect = trailing.layout_rect
+    assert rect is not None
+    ix, iy, iw, ih = rect
     cx, cy = ix + iw / 2, iy + ih / 2
     send_pointer_event_for_test_via_app_routing(root, PointerEventType.PRESS, cx, cy, button=1)
     send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, cx, cy, button=1)

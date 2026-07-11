@@ -13,7 +13,7 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_LEFT,
 )
-from nuiitivet.input.pointer import PointerEvent, PointerEventType
+from nuiitivet.input.pointer import PointerEventType
 
 from tests.helpers.pointer import send_pointer_event_for_test_via_app_routing
 
@@ -236,6 +236,20 @@ def _click_at(root, x: float, y: float) -> None:
     send_pointer_event_for_test_via_app_routing(root, PointerEventType.RELEASE, x, y, button=1)
 
 
+def _icon_button(icon) -> IconButton:
+    """Assert ``icon`` is an IconButton and return it (narrows Optional[Widget])."""
+    assert isinstance(icon, IconButton)
+    return icon
+
+
+def _icon_center(icon, ox: float = 0.0, oy: float = 0.0) -> tuple[float, float]:
+    """Return the root-space center of a tappable icon offset by ``(ox, oy)``."""
+    rect = _icon_button(icon).layout_rect
+    assert rect is not None
+    ix, iy, iw, ih = rect
+    return ox + ix + iw / 2, oy + iy + ih / 2
+
+
 def _mount_field_at(tf: TextField, ox: int, oy: int, w: int = 200, h: int = 56):
     """Place ``tf`` inside a root Box at ``(ox, oy)`` and return the root."""
     root = Box()
@@ -271,8 +285,8 @@ def test_text_field_invokes_icon_tap_callbacks_on_press() -> None:
     root = _mount_field_at(tf, 0, 0)
 
     for icon in (tf.leading_icon, tf.trailing_icon):
-        ix, iy, iw, ih = icon.layout_rect
-        _click_at(root, ix + iw / 2, iy + ih / 2)
+        cx, cy = _icon_center(icon)
+        _click_at(root, cx, cy)
 
     assert leading_tapped is True
     assert trailing_tapped is True
@@ -295,8 +309,8 @@ def test_text_field_invokes_icon_tap_callbacks_when_field_is_offset_from_root() 
     tf = TextField(value="", trailing_icon="close", on_tap_trailing_icon=_on_trailing)
     root = _mount_field_at(tf, 24, 24)
 
-    ix, iy, iw, ih = tf.trailing_icon.layout_rect
-    _click_at(root, 24 + ix + iw / 2, 24 + iy + ih / 2)
+    cx, cy = _icon_center(tf.trailing_icon, 24, 24)
+    _click_at(root, cx, cy)
 
     assert trailing_tapped is True
 
@@ -343,8 +357,8 @@ def test_text_field_does_not_invoke_icon_callbacks_when_disabled() -> None:
     )
     root = _mount_field_at(tf, 0, 0)
 
-    ix, iy, iw, ih = tf.leading_icon.layout_rect
-    _click_at(root, ix + iw / 2, iy + ih / 2)
+    cx, cy = _icon_center(tf.leading_icon)
+    _click_at(root, cx, cy)
 
     assert leading_tapped is False
 
@@ -354,9 +368,8 @@ def test_text_field_tappable_icon_shows_hover_and_press_feedback() -> None:
     tf = TextField(value="", trailing_icon="close", on_tap_trailing_icon=lambda: None)
     root = _mount_field_at(tf, 24, 24)
 
-    icon = tf.trailing_icon
-    ix, iy, iw, ih = icon.layout_rect
-    cx, cy = 24 + ix + iw / 2, 24 + iy + ih / 2
+    icon = _icon_button(tf.trailing_icon)
+    cx, cy = _icon_center(icon, 24, 24)
 
     assert icon.state.hovered is False
     send_pointer_event_for_test_via_app_routing(root, PointerEventType.ENTER, cx, cy)
@@ -380,9 +393,10 @@ def test_text_field_disabling_field_disables_tappable_icon() -> None:
     root = _mount_field_at(tf, 0, 0)
     tf.disabled = True
 
-    assert tf.trailing_icon.disabled is True
-    ix, iy, iw, ih = tf.trailing_icon.layout_rect
-    _click_at(root, ix + iw / 2, iy + ih / 2)
+    icon = _icon_button(tf.trailing_icon)
+    assert icon.disabled is True
+    cx, cy = _icon_center(icon)
+    _click_at(root, cx, cy)
     assert tapped is False
 
 
