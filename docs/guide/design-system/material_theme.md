@@ -51,6 +51,42 @@ App(HomeScreen(), theme=ThemeFactory.dark("#00639B")).run()
 
 ---
 
+## Tuning the Palette
+
+A seed color does not fully determine the palette. Two further inputs shape how roles are derived from it, and both default to the Material 3 defaults.
+
+### Scheme variant
+
+`variant` selects the algorithm that derives the tonal palettes from the seed. It defaults to `SchemeVariant.TONAL_SPOT`, the M3 default, which keeps colors close to the seed's hue at a moderate chroma.
+
+```python
+from nuiitivet.material import App, SchemeVariant, ThemeFactory
+
+App(HomeScreen(), theme=ThemeFactory.light("#6750A4", variant=SchemeVariant.VIBRANT)).run()
+```
+
+| Variant | Character |
+| --- | --- |
+| `TONAL_SPOT` | M3 default; moderate chroma near the seed hue |
+| `NEUTRAL` | Near-grayscale, seed hue barely present |
+| `MONOCHROME` | Pure grayscale |
+| `VIBRANT` | Maximum chroma; strongly saturated |
+| `EXPRESSIVE` | Shifts hue away from the seed for contrast |
+| `FIDELITY` / `CONTENT` | Stays as close to the literal seed color as possible |
+| `RAINBOW` / `FRUIT_SALAD` | Playful multi-hue schemes |
+
+### Contrast level
+
+`contrast_level` accepts a value in `[-1.0, 1.0]` and defaults to `0.0`. Higher values push foreground roles further from their backgrounds, which helps meet accessibility requirements.
+
+```python
+App(HomeScreen(), theme=ThemeFactory.light("#6750A4", contrast_level=0.5)).run()
+```
+
+Both options are accepted by `ThemeFactory.light`, `dark`, `from_seed`, and `from_seed_pair`.
+
+---
+
 ## Switching Themes at Runtime
 
 To switch the active theme, dispatch an intent via `App.of(self).dispatch(intent)`.

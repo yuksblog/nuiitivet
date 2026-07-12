@@ -9,6 +9,11 @@ from nuiitivet.theme.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.material.theme.palette import from_seed
+from nuiitivet.material.theme.scheme_variant import (
+    DEFAULT_CONTRAST_LEVEL,
+    DEFAULT_VARIANT,
+    SchemeVariant,
+)
 
 
 def _material_scrollbar_theme_data() -> ScrollbarThemeData:
@@ -29,9 +34,20 @@ class MaterialThemeFactory:
     """Factory for creating Themes with Material Design configuration."""
 
     @staticmethod
-    def from_seed(seed_color: str, mode: str = "light", name: str = "") -> Theme:
-        """Create Material theme from seed color."""
-        light_roles, dark_roles = from_seed(seed_color)
+    def from_seed(
+        seed_color: str,
+        mode: str = "light",
+        name: str = "",
+        *,
+        variant: SchemeVariant = DEFAULT_VARIANT,
+        contrast_level: float = DEFAULT_CONTRAST_LEVEL,
+    ) -> Theme:
+        """Create a Material theme from a seed color.
+
+        `variant` and `contrast_level` default to the Material 3 defaults; see
+        `nuiitivet.material.theme.palette.from_seed`.
+        """
+        light_roles, dark_roles = from_seed(seed_color, variant=variant, contrast_level=contrast_level)
         roles = dark_roles if mode == "dark" else light_roles
 
         material_data = MaterialThemeData(roles=roles)
@@ -42,17 +58,41 @@ class MaterialThemeFactory:
         )
 
     @staticmethod
-    def light(seed_color: str) -> Theme:
-        return MaterialThemeFactory.from_seed(seed_color, mode="light")
+    def light(
+        seed_color: str,
+        *,
+        variant: SchemeVariant = DEFAULT_VARIANT,
+        contrast_level: float = DEFAULT_CONTRAST_LEVEL,
+    ) -> Theme:
+        return MaterialThemeFactory.from_seed(
+            seed_color, mode="light", variant=variant, contrast_level=contrast_level
+        )
 
     @staticmethod
-    def dark(seed_color: str) -> Theme:
-        return MaterialThemeFactory.from_seed(seed_color, mode="dark")
+    def dark(
+        seed_color: str,
+        *,
+        variant: SchemeVariant = DEFAULT_VARIANT,
+        contrast_level: float = DEFAULT_CONTRAST_LEVEL,
+    ) -> Theme:
+        return MaterialThemeFactory.from_seed(
+            seed_color, mode="dark", variant=variant, contrast_level=contrast_level
+        )
 
     @staticmethod
-    def from_seed_pair(seed_color: str, name: str = "") -> Tuple[Theme, Theme]:
+    def from_seed_pair(
+        seed_color: str,
+        name: str = "",
+        *,
+        variant: SchemeVariant = DEFAULT_VARIANT,
+        contrast_level: float = DEFAULT_CONTRAST_LEVEL,
+    ) -> Tuple[Theme, Theme]:
         """Create light and dark themes from a seed color."""
         return (
-            MaterialThemeFactory.from_seed(seed_color, mode="light", name=name),
-            MaterialThemeFactory.from_seed(seed_color, mode="dark", name=name),
+            MaterialThemeFactory.from_seed(
+                seed_color, mode="light", name=name, variant=variant, contrast_level=contrast_level
+            ),
+            MaterialThemeFactory.from_seed(
+                seed_color, mode="dark", name=name, variant=variant, contrast_level=contrast_level
+            ),
         )
