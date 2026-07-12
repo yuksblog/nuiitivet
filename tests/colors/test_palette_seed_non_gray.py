@@ -11,7 +11,7 @@ def _is_grayscale(hexv: str) -> bool:
 def test_seeds_produce_colored_primaries() -> None:
     """Representative seeds should produce non-grayscale primaries.
 
-    This prevents regressions where the HSL fallback collapses to neutral
+    This prevents regressions where palette generation collapses to neutral
     outputs for many seeds.
     """
     seeds = ["#6750A4", "#00796B", "#FFC107"]  # purple, teal, amber
