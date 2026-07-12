@@ -1255,21 +1255,25 @@ def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
 
 
 def _normalize_text_motion(motion: int) -> int:
+    """Translate a pyglet text-motion constant into nuiitivet's TEXT_MOTION_* code.
+
+    Motions nuiitivet has no code for (word/page/file moves, and the vertical
+    moves the arrow keys emit) pass through unchanged.
+    """
     try:
         keymod = pyglet.window.key
 
-        if motion == keymod.MOTION_BACKSPACE:
-            return TEXT_MOTION_BACKSPACE
-        if motion == keymod.MOTION_DELETE:
-            return TEXT_MOTION_DELETE
-        if motion == keymod.MOTION_LEFT:
-            return TEXT_MOTION_LEFT
-        if motion == keymod.MOTION_RIGHT:
-            return TEXT_MOTION_RIGHT
-        if motion == keymod.MOTION_HOME:
-            return TEXT_MOTION_HOME
-        if motion == keymod.MOTION_END:
-            return TEXT_MOTION_END
+        mapping = {
+            keymod.MOTION_BACKSPACE: TEXT_MOTION_BACKSPACE,
+            keymod.MOTION_DELETE: TEXT_MOTION_DELETE,
+            keymod.MOTION_LEFT: TEXT_MOTION_LEFT,
+            keymod.MOTION_RIGHT: TEXT_MOTION_RIGHT,
+            keymod.MOTION_BEGINNING_OF_LINE: TEXT_MOTION_HOME,
+            keymod.MOTION_END_OF_LINE: TEXT_MOTION_END,
+        }
+        mapped = mapping.get(int(motion))
+        if mapped is not None:
+            return mapped
     except Exception:
         exception_once(logger, "pyglet_normalize_text_motion_exc", "Failed to normalize text motion")
     return int(motion)
