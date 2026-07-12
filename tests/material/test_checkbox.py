@@ -172,6 +172,69 @@ def test_indeterminate_observable_separate_from_checked():
     assert called == [True]
 
 
+def _light_theme():
+    from nuiitivet.material.theme.material_theme import MaterialThemeFactory
+
+    return MaterialThemeFactory.light("#6750A4")
+
+
+def _rgba(spec, alpha: float = 1.0):
+    from nuiitivet.theme.resolver import resolve_color_to_rgba
+
+    return resolve_color_to_rgba((spec, alpha), theme=_light_theme())
+
+
+def test_enabled_box_colors_come_from_style_tokens():
+    from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
+    style = CheckboxStyle()
+    c = Checkbox(style=style)
+    outline, container, mark = c._resolve_box_colors(_light_theme())
+
+    assert outline == _rgba(style.stroke_color, style.stroke_alpha)
+    assert container == _rgba(style.checked_background)
+    assert mark == _rgba(style.checked_foreground)
+
+
+def test_disabled_box_colors_come_from_disabled_tokens():
+    """A disabled checkbox is on-surface @ 38% (outline and container), mark in surface."""
+    from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
+    style = CheckboxStyle()
+    c = Checkbox(disabled=True, style=style)
+    outline, container, mark = c._resolve_box_colors(_light_theme())
+
+    disabled = _rgba(style.disabled_color, style.disabled_alpha)
+    assert outline == disabled
+    assert container == disabled
+    assert mark == _rgba(style.disabled_mark)
+
+
+def test_disabled_box_colors_are_visibly_distinct_from_enabled():
+    from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
+    theme = _light_theme()
+    style = CheckboxStyle()
+    for value in (False, True, None):
+        enabled = Checkbox(checked=bool(value), indeterminate=value is None, style=style)
+        disabled = Checkbox(checked=bool(value), indeterminate=value is None, disabled=True, style=style)
+        assert enabled.value is value
+        assert disabled.value is value
+        assert disabled._resolve_box_colors(theme) != enabled._resolve_box_colors(theme)
+
+
+def test_disabled_box_colors_honor_custom_tokens():
+    from nuiitivet.material.styles.checkbox_style import CheckboxStyle
+
+    style = CheckboxStyle().copy_with(disabled_color="#FF0000", disabled_mark="#00FF00", disabled_alpha=0.5)
+    c = Checkbox(disabled=True, style=style)
+    outline, container, mark = c._resolve_box_colors(_light_theme())
+
+    assert outline == (255, 0, 0, 127)
+    assert container == (255, 0, 0, 127)
+    assert mark == (0, 255, 0, 255)
+
+
 def test_checkbox_padding():
     """Test padding support for Checkbox (M3: space between UI elements)."""
     c1 = Checkbox()

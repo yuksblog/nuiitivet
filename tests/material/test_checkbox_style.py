@@ -2,8 +2,10 @@
 
 from nuiitivet.material import Checkbox
 from nuiitivet.material.styles import CheckboxStyle
+from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
+from nuiitivet.theme.resolver import resolve_color_to_rgba
 from dataclasses import replace
 
 
@@ -57,6 +59,25 @@ def test_theme_with_custom_checkbox_style():
     new_mat_data = replace(mat_data, _checkbox_style=custom_style)
     assert new_mat_data.checkbox_style.default_touch_target == 56
     assert new_mat_data.checkbox_style.hover_alpha == 0.1
+
+
+def test_checkbox_style_disabled_tokens_default_to_m3():
+    """MD3 draws a disabled selection control from on-surface @ 38%, mark in surface."""
+    style = CheckboxStyle()
+    assert style.disabled_color == ColorRole.ON_SURFACE
+    assert style.disabled_mark == ColorRole.SURFACE
+    assert style.disabled_alpha == 0.38
+
+
+def test_checkbox_style_resolve_colors_includes_disabled():
+    """resolve_colors exposes the disabled colors alongside the enabled ones."""
+    light, _ = MaterialThemeFactory.from_seed_pair("#6750A4")
+    colors = CheckboxStyle().resolve_colors(theme=light)
+
+    mat = light.extension(MaterialThemeData)
+    assert mat is not None
+    assert colors["disabled_color"] == resolve_color_to_rgba(mat.roles[ColorRole.ON_SURFACE])
+    assert colors["disabled_mark"] == resolve_color_to_rgba(mat.roles[ColorRole.SURFACE])
 
 
 def test_checkbox_touch_target_from_style():
