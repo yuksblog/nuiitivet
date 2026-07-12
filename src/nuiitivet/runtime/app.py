@@ -291,6 +291,10 @@ class App:
         self._last_hover_target = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
+        # How the user is driving the app right now. A widget that takes focus on
+        # its own (a menu focusing its first item when it opens) inherits it, so a
+        # mouse-opened menu does not come up wearing a keyboard focus ring.
+        self._last_input_source: FocusSource = FocusSource.KEYBOARD
         self._modifier_keys: int = 0
         # Last known pointer position / held buttons (screen coords), used to
         # synthesize the pointer event delivered on a modifier-key mask change.
@@ -908,6 +912,8 @@ class App:
 
         Accepts simple string names: 'tab', 'space', 'enter'. Returns True if handled.
         """
+        self._last_input_source = FocusSource.KEYBOARD
+
         kname = None
         try:
             if isinstance(key, str):
@@ -1278,6 +1284,7 @@ class App:
         return False
 
     def _dispatch_mouse_press(self, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+        self._last_input_source = FocusSource.POINTER
         _dispatch_mouse_press_fn(self, x, y, button=button, modifier_keys=modifier_keys)
 
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):

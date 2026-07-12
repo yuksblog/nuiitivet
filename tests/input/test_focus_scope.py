@@ -161,6 +161,26 @@ def test_focused_item_is_not_marked_selected() -> None:
     assert first._get_active_state_layer_opacity() == first._FOCUS_OPACITY
 
 
+def test_a_mouse_opened_menu_does_not_come_up_looking_keyboard_focused() -> None:
+    """Focus-on-open inherits how the menu was opened: no ring for a mouse-opened menu."""
+    menu = _menu()
+    app = App(content=Container(width=400, height=400))
+    app.root.mount(app)
+    app._last_input_source = FocusSource.POINTER
+
+    Overlay.root().show_modeless(menu)
+    app.root.layout(400, 400)
+    first = menu._focusable_items[0]
+
+    assert first.state.focused is True  # the arrow keys need somewhere to start
+    assert first.should_show_focus_ring is False
+    assert first._get_active_state_layer_opacity() == 0.0
+
+    # Driving it with the keyboard makes it look keyboard-driven again.
+    app._dispatch_key_press("down")
+    assert menu._focusable_items[2].should_show_focus_ring is True
+
+
 def test_menu_arrow_keys_rove_and_skip_disabled_items() -> None:
     """Down/Up rove between enabled items and wrap at the ends."""
     menu = _menu()

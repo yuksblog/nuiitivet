@@ -608,7 +608,7 @@ class Menu(InteractiveWidget):
             return False
 
         self._autofocus_pending = False
-        self._focus_item(item)
+        self._focus_item(item, self._open_focus_source())
         return True
 
     def _first_enabled_item(self) -> MenuItem | None:
@@ -641,7 +641,7 @@ class Menu(InteractiveWidget):
             return
 
         self._autofocus_pending = False
-        self._focus_item(item)
+        self._focus_item(item, self._open_focus_source())
 
     def _rematerialize(self) -> None:
         self.clear_children()
@@ -779,9 +779,9 @@ class Menu(InteractiveWidget):
             return self._focusable_items[self._focus_index]
         return None
 
-    def _focus_item(self, item: MenuItem) -> None:
-        """Focus ``item`` and make it the menu's selected row."""
-        self._set_focus_index(self._focusable_items.index(item))
+    def _focus_item(self, item: MenuItem, source: FocusSource = FocusSource.KEYBOARD) -> None:
+        """Focus ``item`` and make it the menu's current row."""
+        self._set_focus_index(self._focusable_items.index(item), source)
 
     def _on_item_focused(self, item: MenuItem) -> None:
         """Sync the roving index when an item gains focus on its own (e.g. a click)."""
@@ -789,7 +789,19 @@ class Menu(InteractiveWidget):
         if index != self._focus_index:
             self._set_focus_index(index)
 
-    def _set_focus_index(self, index: int) -> None:
+    def _open_focus_source(self) -> FocusSource:
+        """How the user opened the menu, as far as the app can tell.
+
+        Focus-on-open must not make a mouse-opened menu come up with its first item
+        wearing a keyboard focus ring. The item still takes focus — the arrow keys
+        need somewhere to start — it just does not look keyboard-driven until the
+        user actually drives it with the keyboard.
+        """
+        app = getattr(self, "_app", None)
+        source = getattr(app, "_last_input_source", None)
+        return source if isinstance(source, FocusSource) else FocusSource.KEYBOARD
+
+    def _set_focus_index(self, index: int, source: FocusSource = FocusSource.KEYBOARD) -> None:
         # Roving is focus, not selection: the focused item paints the MD3 focus
         # state layer (see MenuItem._get_active_state_layer_opacity), while
         # ``selected`` stays reserved for a genuinely selected entry.
@@ -797,7 +809,7 @@ class Menu(InteractiveWidget):
 
         focus_node = self._focusable_items[index].get_node(FocusNode)
         if isinstance(focus_node, FocusNode):
-            focus_node.request_focus()
+            focus_node.request_focus(source)
 
 
 __all__ = ["Menu", "MenuDivider", "MenuItem", "SubMenuItem"]

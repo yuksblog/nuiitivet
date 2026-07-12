@@ -74,6 +74,8 @@ This split is what makes a group (menu, multi-handle slider) expressible: withou
 
 The source can change **without focus moving** — dragging a slider that Tab focused makes it pointer-driven; Tab-ing between its handles makes it keyboard-driven again. Since both `App.request_focus` and `FocusNode._set_focused` short-circuit when nothing changes, `FocusNode.notify_focus_source(source)` re-announces the source to the widget in that case. Without it, the ring state gets stuck at whatever the last *focus change* said.
 
+A widget that takes focus **on its own**, rather than because focus was routed to it, has no source of its own to report — a `Menu` focusing its first item when it opens is the case in hand. It inherits `App._last_input_source` (the app records whether the last input was a key press or a pointer press), so a mouse-opened menu does not come up wearing a keyboard focus ring. The item is still focused, because the arrow keys need somewhere to start; it simply does not *look* keyboard-driven until the user drives it with the keyboard.
+
 ## Key Event Routing
 
 Key events follow a **Bubbling** model:
