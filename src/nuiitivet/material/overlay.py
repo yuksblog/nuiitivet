@@ -132,26 +132,6 @@ class MaterialOverlay(Overlay):
 
         self._intent_resolver = intent_resolver
 
-    @classmethod
-    def root(cls) -> "MaterialOverlay":
-        overlay = Overlay.root()
-        if not isinstance(overlay, cls):
-            raise RuntimeError(f"Root overlay is not {cls.__name__}")
-        return overlay
-
-    @classmethod
-    def of(cls, context: Widget, root: bool = False) -> "MaterialOverlay":
-        if root:
-            return cls.root()
-
-        found = context.find_ancestor(cls)
-        if found is None:
-            raise RuntimeError(
-                f"No {cls.__name__} found in the widget tree above {context.__class__.__name__}. "
-                "Did you forget to initialize MaterialApp with MaterialOverlay?"
-            )
-        return found
-
     def dialog(
         self,
         dialog: Widget | Any,
