@@ -1,7 +1,7 @@
 import ctypes
 import logging
 import sys
-from typing import Any
+from typing import Any, TypedDict
 
 from nuiitivet.common.logging_once import exception_once
 
@@ -112,10 +112,14 @@ if sys.platform == "linux":
             None, XIC, ctypes.c_void_p, ctypes.POINTER(XIMPreeditCaretCallbackStruct)
         )
 
+        class _CompositionState(TypedDict):
+            text: str
+            cursor: int
+
         # Global references
         _callbacks = []
         _ic_map: dict[Any, Any] = {}  # XIC -> Window
-        _composition_state = {}  # Window -> {text: str, cursor: int}
+        _composition_state: dict[Any, _CompositionState] = {}  # Window -> state
 
         def _preedit_start(ic, client_data, call_data):
             return -1  # No limit
