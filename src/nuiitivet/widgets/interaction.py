@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
 from ..input.codes import is_primary_button
 from ..input.pointer import PointerEvent, PointerEventType
+from ..input.shortcut import Shortcut, ShortcutBinding
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
@@ -973,6 +974,51 @@ class FocusNode(InteractionNode):
         p = self.parent
         if p:
             return p.handle_ime_composition_event(text, start, length)
+        return False
+
+
+class ShortcutNode(InteractionNode):
+    """Holds the focus-scoped keyboard shortcuts bound to a widget subtree.
+
+    The :class:`Application` reaches this node only after the focused
+    :class:`FocusNode` has declined the key press, and only by walking up from
+    the focused node — so a binding fires exactly while its subtree contains
+    focus, and the innermost such subtree wins.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._bindings: dict[Shortcut, ShortcutBinding] = {}
+
+    def bind(self, binding: ShortcutBinding) -> None:
+        """Add ``binding``, replacing any existing binding for the same gesture.
+
+        Keying on the gesture keeps re-application idempotent: recomposition
+        re-applies the modifier with a fresh callback rather than stacking a
+        second binding for the same keystroke.
+        """
+        self._bindings[binding.shortcut] = binding
+
+    def unbind(self, shortcut: Shortcut) -> None:
+        """Remove the binding for ``shortcut``. No-op if it is not bound."""
+        self._bindings.pop(shortcut, None)
+
+    @property
+    def bindings(self) -> tuple[ShortcutBinding, ...]:
+        return tuple(self._bindings.values())
+
+    def handle_shortcut(self, key: str, modifier_keys: int) -> bool:
+        """Trigger the binding matching ``key`` + ``modifier_keys``. Return True if one fired."""
+        for binding in self._bindings.values():
+            if binding.shortcut.matches(key, modifier_keys):
+                owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+                invoke_event_handler(
+                    binding.on_trigger,
+                    error_key="shortcut_trigger_callback",
+                    error_msg="Shortcut trigger callback raised",
+                    owner_name=owner_name,
+                )
+                return True
         return False
 
 

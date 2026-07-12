@@ -53,12 +53,14 @@ from nuiitivet.input.codes import (
     BUTTON_LEFT,
     BUTTON_MIDDLE,
     BUTTON_RIGHT,
+    MOD_ACCEL,
     MOD_ALT,
     MOD_CTRL,
     MOD_META,
     MOD_SHIFT,
 )
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
+from nuiitivet.input.shortcut import Shortcut, ShortcutBinding
 
 # Theme
 from nuiitivet.theme.theme import Theme
@@ -93,6 +95,7 @@ from nuiitivet.modifiers import (
     focusable,
     hoverable,
     ignore_pointer,
+    key_shortcut,
     light_dismiss,
     modeless,
     opacity,
@@ -178,6 +181,7 @@ __all__: list[str] = [
     "focusable",
     "hoverable",
     "ignore_pointer",
+    "key_shortcut",
     "light_dismiss",
     "modeless",
     "opacity",
@@ -195,11 +199,14 @@ __all__: list[str] = [
     "MOD_CTRL",
     "MOD_ALT",
     "MOD_META",
+    "MOD_ACCEL",
     "BUTTON_LEFT",
     "BUTTON_MIDDLE",
     "BUTTON_RIGHT",
     "PointerEvent",
     "PointerEventType",
+    "Shortcut",
+    "ShortcutBinding",
     # Window / runtime
     "AppScope",
     "OSChrome",

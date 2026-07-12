@@ -181,3 +181,73 @@ neither inside nor captured. See the runnable
 
 `pointer_input` composes with `clickable` on the same widget without either
 clobbering the other, so you can keep a semantic click alongside the raw stream.
+
+## Keyboard shortcuts
+
+`focusable(on_key=...)` delivers *raw keys to the focused widget*. A **shortcut**
+is a different thing: a key gesture bound to a **command** (`Ctrl+S` → save).
+`key_shortcut` binds one:
+
+```python
+from nuiitivet.modifiers import key_shortcut
+
+editor.modifier(key_shortcut("Accel+S", on_trigger=self.save))
+```
+
+`Accel` is the primary modifier — **Cmd on macOS, Ctrl everywhere else** — so one
+declaration covers every platform. It is resolved when the key is matched, not
+when the shortcut is built, so a `Shortcut` value stays portable. Write
+`Ctrl`/`Meta` explicitly only when you really mean that one physical key. The
+gesture also accepts a typed form, `Shortcut("s", MOD_ACCEL | MOD_SHIFT)`, when
+you want to build it from masks rather than parse a string.
+
+### Shortcuts are focus-scoped
+
+A `key_shortcut` binding is live **only while the focused widget is inside the
+subtree it is attached to**, and only after the focused widget has *declined* the
+key press. Two consequences worth internalizing:
+
+- A focused `TextField` still eats a bare `s` — the shortcut tier is never
+  reached. An unhandled `Accel+S` falls through to it.
+- With nothing focused, no `key_shortcut` fires at all.
+
+When nested subtrees bind the same gesture, the **innermost** one containing
+focus wins; the outer one does not also fire.
+
+### Which target does the command act on?
+
+This is what focus scoping buys you. Give each editor pane its own Save and
+`Accel+S` saves **the pane that holds focus**, with no collision between panes:
+
+```python
+class TextEditorPane(nv.ComposableWidget):
+    def build(self):
+        return editor_subtree.modifier(
+            key_shortcut("Accel+S", on_trigger=self.save)
+        )
+```
+
+See the runnable
+[two-pane editor sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/key_shortcut.py).
+
+### Bind where the command is owned
+
+**The binding location must follow who owns the command — never "the nearest
+convenient widget."**
+
+Saving a painting is a *document* concern. It is not owned by the Canvas (whose
+concern is drawing) and not owned by the Save menu item (that item is one *UI
+that triggers* the command; menus get unmounted, and `Ctrl+S` must still work).
+Both the menu item and the shortcut merely reference the same callback.
+
+So the owner decides where the gesture lives:
+
+| Owner of the command | Where it belongs |
+| --- | --- |
+| A subtree — the target is decided by **which pane is active** (per-editor Save) | `key_shortcut` |
+| The app — a **single unambiguous target** that must fire with nothing focused (New Window, Open, Quit) | App-level registry |
+
+The anti-pattern to avoid: hanging a singular app command off a leaf widget with
+`key_shortcut` because it was handy. That silently couples the command to that
+widget's focus and mount state — the shortcut stops working the moment focus
+moves elsewhere, which is exactly not what "Quit" means.

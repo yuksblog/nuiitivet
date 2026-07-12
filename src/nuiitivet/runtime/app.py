@@ -20,7 +20,7 @@ from ..theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
-from ..widgets.interaction import FocusNode, InteractionHostMixin, FocusSource
+from ..widgets.interaction import FocusNode, InteractionHostMixin, FocusSource, ShortcutNode
 from nuiitivet.common.logging_once import debug_once, exception_once
 from .app_events import (
     dispatch_mouse_motion as _dispatch_mouse_motion_fn,
@@ -905,6 +905,39 @@ class App:
                     return True
             except Exception:
                 exception_once(logger, "app_focused_node_handle_key_exc", "Focused node handle_key_event raised")
+
+        # 3. Unhandled by the focused widget: offer it to the focus-scoped
+        #    key_shortcut bindings, innermost first.
+        if self._dispatch_shortcut(kname or str(key), modifier_keys):
+            return True
+
+        return False
+
+    def _dispatch_shortcut(self, key: str, modifier_keys: int) -> bool:
+        """Offer a key press to the ``key_shortcut`` bindings enclosing the focused node.
+
+        Walking up from the focused node — rather than consulting a global
+        registry — is what gives shortcuts their scope for free: a binding is
+        reachable only while its subtree contains focus, and the innermost
+        enclosing subtree is met first, so it wins. With nothing focused, no
+        binding fires. Returns True if a binding was triggered.
+        """
+        node = self._focused_node
+        if node is None:
+            return False
+
+        widget: Optional[Widget] = node.owner
+        while widget is not None:
+            try:
+                if isinstance(widget, InteractionHostMixin):
+                    shortcut_node = widget.get_node(ShortcutNode)
+                    if isinstance(shortcut_node, ShortcutNode) and shortcut_node.handle_shortcut(
+                        key, modifier_keys
+                    ):
+                        return True
+            except Exception:
+                exception_once(logger, "app_dispatch_shortcut_exc", "Shortcut dispatch raised")
+            widget = getattr(widget, "_parent", None)
 
         return False
 
