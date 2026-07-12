@@ -110,8 +110,8 @@ def test_an_inline_menu_is_a_single_tab_stop() -> None:
     assert app._collect_focus_nodes() == [_focus_node(button), _focus_node(menu)]
 
 
-def test_tab_enters_an_inline_menu_at_its_first_item_and_leaves_from_the_last() -> None:
-    """Tab into the menu focuses an item; Tab out of it moves on, without dismissing."""
+def test_tab_enters_an_inline_menu_roves_it_and_leaves_from_the_last_item() -> None:
+    """Tab walks into the menu, through its items, and out — it dismisses nothing."""
     before = Checkbox()
     menu = _menu()
     after = Checkbox()
@@ -122,11 +122,17 @@ def test_tab_enters_an_inline_menu_at_its_first_item_and_leaves_from_the_last() 
     assert app._focused_node is _focus_node(menu._focusable_items[0])
 
     app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(menu._focusable_items[2])  # skips "Copy"
+
+    app._dispatch_key_press("tab")
     assert app._focused_node is _focus_node(after)
 
-    # Shift+Tab back in enters at the last item.
+    # Shift+Tab back in enters at the last item and walks back out the same way.
     app._dispatch_key_press("tab", modifier_keys=SHIFT)
     assert app._focused_node is _focus_node(menu._focusable_items[2])
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(menu._focusable_items[0])
 
     app._dispatch_key_press("tab", modifier_keys=SHIFT)
     assert app._focused_node is _focus_node(before)
@@ -161,24 +167,78 @@ def test_focused_item_is_not_marked_selected() -> None:
     assert first._get_active_state_layer_opacity() == first._FOCUS_OPACITY
 
 
-def test_a_mouse_opened_menu_does_not_come_up_looking_keyboard_focused() -> None:
-    """Focus-on-open inherits how the menu was opened: no ring for a mouse-opened menu."""
-    menu = _menu()
+def _popup_menu_opened_with(menu: Menu, source: FocusSource) -> App:
+    """Open ``menu`` as a popup as if the user had opened it with ``source``."""
     app = App(content=Container(width=400, height=400))
     app.root.mount(app)
-    app._last_input_source = FocusSource.POINTER
-
+    app._last_input_source = source
     Overlay.root().show_modeless(menu)
     app.root.layout(400, 400)
+    return app
+
+
+def test_a_mouse_opened_menu_makes_no_item_current() -> None:
+    """Like a desktop menu: opening with the pointer highlights nothing.
+
+    Focus enters the menu — the surface holds it, so the arrows, Escape and Tab
+    all reach the menu — but no item is current, so Enter has nothing to activate.
+    """
+    menu = _menu()
+    app = _popup_menu_opened_with(menu, FocusSource.POINTER)
+
+    assert app._focused_node is _focus_node(menu)
+    assert menu._focus_index == -1
+    assert all(not item.state.focused for item in menu._focusable_items)
+
+    # The arrow keys pick the first item up from there.
+    app._dispatch_key_press("down")
+    first = menu._focusable_items[0]
+    assert app._focused_node is _focus_node(first)
+    assert first.should_show_focus_ring is True
+
+
+def test_a_mouse_opened_menu_does_not_activate_an_item_on_enter() -> None:
+    """Nothing is highlighted, so Enter must not fire the first item."""
+    clicked: list[str] = []
+    menu = Menu(items=[MenuItem("Cut", on_click=lambda: clicked.append("Cut"))])
+    app = _popup_menu_opened_with(menu, FocusSource.POINTER)
+
+    app._dispatch_key_press("enter")
+
+    assert clicked == []
+
+
+def test_a_keyboard_opened_menu_focuses_its_first_item() -> None:
+    """Opening from the keyboard continues the keyboard interaction: first item, ring on."""
+    menu = _menu()
+    app = _popup_menu_opened_with(menu, FocusSource.KEYBOARD)
     first = menu._focusable_items[0]
 
-    assert first.state.focused is True  # the arrow keys need somewhere to start
-    assert first.should_show_focus_ring is False
-    assert first._get_active_state_layer_opacity() == 0.0
+    assert app._focused_node is _focus_node(first)
+    assert first.should_show_focus_ring is True
 
-    # Driving it with the keyboard makes it look keyboard-driven again.
-    app._dispatch_key_press("down")
-    assert menu._focusable_items[2].should_show_focus_ring is True
+
+def test_up_enters_a_menu_from_the_end() -> None:
+    """Up enters at the last item when nothing is current yet."""
+    menu = _menu()
+    app = _popup_menu_opened_with(menu, FocusSource.POINTER)
+
+    app._dispatch_key_press("up")
+
+    assert app._focused_node is _focus_node(menu._focusable_items[2])
+
+
+def test_tab_in_a_mouse_opened_menu_enters_it_rather_than_closing_it() -> None:
+    """Tab is the key the user presses to be given the focus: it must land on an item."""
+    dismissed: list[bool] = []
+    menu = _menu(on_dismiss=lambda: dismissed.append(True))
+    app = _popup_menu_opened_with(menu, FocusSource.POINTER)
+
+    app._dispatch_key_press("tab")
+
+    assert app._focused_node is _focus_node(menu._focusable_items[0])
+    assert menu._focusable_items[0].should_show_focus_ring is True
+    assert dismissed == []
 
 
 def test_menu_arrow_keys_rove_and_skip_disabled_items() -> None:
@@ -196,17 +256,28 @@ def test_menu_arrow_keys_rove_and_skip_disabled_items() -> None:
     assert app._focused_node is _focus_node(menu._focusable_items[2])
 
 
-def test_tab_inside_a_menu_dismisses_it() -> None:
-    """The menu is a single dismiss-on-Tab stop (WAI-ARIA popup menu)."""
+def test_tab_roves_a_menu_and_dismisses_it_at_the_end() -> None:
+    """Tab moves between the items (no wrap) and leaves the popup only past the last one."""
+    dismissed: list[bool] = []
+    menu = _menu(on_dismiss=lambda: dismissed.append(True))
+    app = _menu_in_overlay(menu)  # keyboard-opened: the first item is current
+
+    assert app._dispatch_key_press("tab") is True
+    assert app._focused_node is _focus_node(menu._focusable_items[2])  # skips "Copy"
+    assert dismissed == []
+
+    assert app._dispatch_key_press("tab") is True  # past the last item
+    assert dismissed == [True]
+
+
+def test_shift_tab_at_the_first_item_dismisses_the_menu() -> None:
     dismissed: list[bool] = []
     menu = _menu(on_dismiss=lambda: dismissed.append(True))
     app = _menu_in_overlay(menu)
 
-    assert app._dispatch_key_press("tab") is True
-    assert dismissed == [True]
-
     assert app._dispatch_key_press("tab", modifier_keys=SHIFT) is True
-    assert dismissed == [True, True]
+
+    assert dismissed == [True]
 
 
 def test_menu_escape_still_dismisses() -> None:

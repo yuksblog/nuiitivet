@@ -53,9 +53,9 @@ class MenuDivider:
 class _MenuTraversalPolicy(FocusTraversalPolicy):
     """Traversal policy for a Menu: the members are its enabled items.
 
-    Tab is never a move here — per WAI-ARIA a menu is a single Tab stop whose
-    items are roved with the arrow keys — so every Tab reaches the boundary,
-    where the menu dismisses itself.
+    Tab and the arrow keys both rove them. Stepping past the last item (or before
+    the first) is the boundary, and there a popup dismisses itself while an inline
+    menu lets Tab escape to the next widget in the page.
     """
 
     def __init__(self, menu: "Menu") -> None:
@@ -492,10 +492,16 @@ class SubMenuItem(MenuItem):
 class Menu(InteractiveWidget):
     """Material Design 3 vertical menu popup surface.
 
-    The menu is a focus traversal group: neither the surface nor its items are
-    stops in the global Tab sequence. Opening the menu focuses its first enabled
-    item, Up/Down rove between the items, Right/Left walk into and out of a
-    submenu, and Tab — like Escape — dismisses the menu.
+    The menu is a focus traversal group. Opening a popup moves the focus onto the
+    menu surface, with no item current — nothing is highlighted, as in a desktop
+    menu — unless it was opened from the keyboard, which focuses the first enabled
+    item. Up/Down rove the items (wrapping), Tab/Shift+Tab rove them too (without
+    wrapping) and dismiss the popup once they step past the end, Right/Left walk
+    into and out of a submenu, and Escape dismisses.
+
+    An inline menu (one placed in the page rather than shown as an overlay) is a
+    single Tab stop instead: Tab enters it, roves it, and leaves it for the next
+    widget rather than dismissing anything.
     """
 
     def __init__(
@@ -545,7 +551,11 @@ class Menu(InteractiveWidget):
             traversable=False,
         )
 
-        self._focus_scope = FocusScope(_MenuTraversalPolicy(self), tab_roves=False)
+        # Tab roves the items like everywhere else in the framework: it is the key
+        # the user presses to be given the focus, so the first Tab must land on an
+        # item, not close the menu. Only stepping past the last item is a boundary
+        # (see _MenuTraversalPolicy.on_boundary). The arrow keys wrap; Tab does not.
+        self._focus_scope = FocusScope(_MenuTraversalPolicy(self))
         self.add_node(self._focus_scope)
 
         # Menu surface itself should not paint state layers.
@@ -562,22 +572,42 @@ class Menu(InteractiveWidget):
         if isinstance(node, FocusNode):
             node.traversable = not self._is_popup()
 
+        # Opening a popup moves the focus into the menu, but onto the surface: no
+        # item is current yet. Arrow keys, Escape and Tab all reach the menu from
+        # there, while Enter has nothing to activate — which is what the user sees,
+        # since nothing is highlighted. A keyboard-opened menu goes on to focus its
+        # first item in _item_mounted.
+        if self._autofocus and self._is_popup() and not self._holds_focus():
+            self._focus_surface()
+
     def on_unmount(self) -> None:
-        # A closed menu must not keep a focused item: the instance is reused when
-        # it is shown again (light_dismiss holds on to it), and a stale focused
-        # item would both hold the app's focus and suppress the focus-on-open.
-        if any(item.state.focused for item in self._focusable_items):
+        # A closed menu must not keep the focus: the instance is reused when it is
+        # shown again (light_dismiss holds on to it), and a stale focused item would
+        # both hold the app's focus and suppress the focus-on-open.
+        if self._holds_focus():
             self._clear_focus()
         super().on_unmount()
 
+    @property
+    def should_show_focus_ring(self) -> bool:
+        """Never ring the surface: it holds the focus, but the items show where it is."""
+        return False
+
+    def _focus_surface(self) -> None:
+        """Move the focus into the menu without making any item current."""
+        node = self.get_node(FocusNode)
+        if isinstance(node, FocusNode):
+            self._focus_index = -1
+            node.request_focus(self._open_focus_source())
+
     def _clear_focus(self) -> None:
-        """Blur the focused item and forget the roving position."""
+        """Blur whatever this menu has focused and forget the roving position."""
         app = getattr(self, "_app", None)
         if app is not None:
             app.request_focus(None)
         else:
-            for item in self._focusable_items:
-                node = item.get_node(FocusNode)
+            nodes = [self.get_node(FocusNode)] + [item.get_node(FocusNode) for item in self._focusable_items]
+            for node in nodes:
                 if isinstance(node, FocusNode):
                     node._set_focused(False)
 
@@ -608,7 +638,7 @@ class Menu(InteractiveWidget):
             return False
 
         self._autofocus_pending = False
-        self._focus_item(item, self._open_focus_source())
+        self._focus_item(item)
         return True
 
     def _first_enabled_item(self) -> MenuItem | None:
@@ -617,31 +647,42 @@ class Menu(InteractiveWidget):
                 return item
         return None
 
-    def _holds_focus(self) -> bool:
-        """Return True if focus is already on one of this menu's items, or in a submenu of one."""
+    def _holds_item_focus(self) -> bool:
+        """True if one of this menu's items holds the focus, or a submenu of one does."""
         for item in self._focusable_items:
             if item.state.focused:
                 return True
-            if isinstance(item, SubMenuItem) and item._submenu is not None and item._submenu._holds_focus():
+            if isinstance(item, SubMenuItem) and item._submenu is not None and item._submenu._holds_item_focus():
                 return True
         return False
 
-    def _item_mounted(self, item: MenuItem) -> None:
-        """Focus the item on open, once it exists.
+    def _holds_focus(self) -> bool:
+        """True if the focus is anywhere in this menu — the surface included."""
+        return self.state.focused or self._holds_item_focus()
 
-        Recomposition re-mounts the items while the menu is already open, so this
-        only takes focus when the menu does not have it — otherwise a remount
-        would yank focus back from a submenu the user has walked into.
+    def _item_mounted(self, item: MenuItem) -> None:
+        """Make the first item current when the menu was opened from the keyboard.
+
+        Opening with the pointer leaves the focus on the surface (see ``on_mount``):
+        nothing is highlighted, exactly as in a desktop menu, and the arrow keys pick
+        the first item from there. Recomposition re-mounts the items while the menu
+        is already open, hence the check that no item has the focus yet — a remount
+        must not yank focus back from a submenu the user walked into.
         """
         if item is not self._first_enabled_item():
             return
-        if not (self._autofocus_pending or (self._autofocus and self._is_popup())):
-            return
-        if self._holds_focus():
+        if self._holds_item_focus():
             return
 
-        self._autofocus_pending = False
-        self._focus_item(item, self._open_focus_source())
+        if self._autofocus_pending:
+            # An explicit request (walking into a submenu with Right) that arrived
+            # before the items existed.
+            self._autofocus_pending = False
+            self._focus_item(item)
+            return
+
+        if self._autofocus and self._is_popup() and self._open_focus_source() is FocusSource.KEYBOARD:
+            self._focus_item(item)
 
     def _rematerialize(self) -> None:
         self.clear_children()
@@ -779,15 +820,22 @@ class Menu(InteractiveWidget):
             return self._focusable_items[self._focus_index]
         return None
 
-    def _focus_item(self, item: MenuItem, source: FocusSource = FocusSource.KEYBOARD) -> None:
-        """Focus ``item`` and make it the menu's current row."""
-        self._set_focus_index(self._focusable_items.index(item), source)
+    def _focus_item(self, item: MenuItem) -> None:
+        """Focus ``item`` and make it the menu's current row.
+
+        Items are only ever made current by the keyboard — the arrow keys, Tab into
+        an inline menu, or opening the menu from the keyboard — so the focus is
+        keyboard-driven by construction and the item shows a focus ring.
+        """
+        self._set_focus_index(self._focusable_items.index(item))
 
     def _on_item_focused(self, item: MenuItem) -> None:
-        """Sync the roving index when an item gains focus on its own (e.g. a click)."""
-        index = self._focusable_items.index(item)
-        if index != self._focus_index:
-            self._set_focus_index(index)
+        """Sync the roving index when an item gains focus on its own (e.g. a click).
+
+        Only the index: re-requesting the focus here would announce a keyboard
+        source and ring an item the user just clicked.
+        """
+        self._focus_index = self._focusable_items.index(item)
 
     def _open_focus_source(self) -> FocusSource:
         """How the user opened the menu, as far as the app can tell.
@@ -801,7 +849,7 @@ class Menu(InteractiveWidget):
         source = getattr(app, "_last_input_source", None)
         return source if isinstance(source, FocusSource) else FocusSource.KEYBOARD
 
-    def _set_focus_index(self, index: int, source: FocusSource = FocusSource.KEYBOARD) -> None:
+    def _set_focus_index(self, index: int) -> None:
         # Roving is focus, not selection: the focused item paints the MD3 focus
         # state layer (see MenuItem._get_active_state_layer_opacity), while
         # ``selected`` stays reserved for a genuinely selected entry.
@@ -809,7 +857,7 @@ class Menu(InteractiveWidget):
 
         focus_node = self._focusable_items[index].get_node(FocusNode)
         if isinstance(focus_node, FocusNode):
-            focus_node.request_focus(source)
+            focus_node.request_focus(FocusSource.KEYBOARD)
 
 
 __all__ = ["Menu", "MenuDivider", "MenuItem", "SubMenuItem"]

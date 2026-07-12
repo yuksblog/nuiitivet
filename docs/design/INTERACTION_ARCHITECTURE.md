@@ -134,11 +134,26 @@ When a scope lets Tab escape and the focused node is not itself a stop, traversa
 | | `Menu` (popup) | `Menu` (inline) | `RangeSlider` |
 | :--- | :--- | :--- | :--- |
 | Members | enabled items (real `FocusNode`s) | same | handle indices (virtual stops) |
-| External Tab stops | none — entered by opening it, which focuses the first item | one (the surface); WAI-ARIA makes a permanently visible menu a single stop | one (the slider) |
-| Roving key | Up / Down (`tab_roves=False`) | same | Tab |
+| External Tab stops | none — entered by opening it | one (the surface); WAI-ARIA makes a permanently visible menu a single stop | one (the slider) |
+| Roving keys | Tab (no wrap) and Up/Down (wrap) | same | Tab |
 | At the boundary | dismiss | escape to the next widget | escape to the next widget |
 
 A single-handle `Slider` is a one-member scope: Tab enters, finds no second member, and hands the key straight back to the global sequence. Submenus are nested scopes.
+
+### Menu keyboard model (provisional)
+
+MD3 does not specify a menu's keyboard behavior, and real applications disagree — the WAI-ARIA APG example focuses the first item however the menu was opened and closes it on Tab, while desktop menus (Chrome, macOS, Windows) highlight nothing until the user reaches for the keyboard. **The model below is what nuiitivet does today and is deliberately provisional**: it is a reasonable reading of the desktop convention, not a settled standard, and it may change.
+
+| Trigger | Behavior |
+| :--- | :--- |
+| Opened with the pointer | The focus enters the menu but lands on the **surface**: no item is current, nothing is highlighted. The arrow keys, Tab, Escape and Enter all reach the menu from there — and Enter, having no current item, does nothing. |
+| Opened from the keyboard | The **first enabled item** becomes current, with its focus ring, continuing the keyboard interaction the user is already in. Which one it is comes from `App._last_input_source`. |
+| Up / Down | Rove the enabled items, **wrapping** at the ends. From "no item current" they enter at the first (Down) / last (Up). |
+| Tab / Shift+Tab | Rove the enabled items too, **without wrapping**; stepping past the end is the scope boundary (popup dismisses, inline menu moves on). Tab is the key users press to be handed the focus, so the first Tab in a pointer-opened menu must land on an item rather than close the menu. |
+| Right / Left | Walk into and out of a submenu. |
+| Escape | Dismiss. |
+
+The open question is whether Tab and the arrow keys should both rove, and whether the "nothing is current" state is worth its complexity. Revisit when the accessibility work lands, since a screen reader's expectations (APG) pull the other way.
 
 ### Superseded: Tab interception (`wants_tab`)
 
