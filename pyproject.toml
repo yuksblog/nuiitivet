@@ -20,14 +20,14 @@ dependencies = [
   "pyopengl>=3.1.10",
   "skia-python>=138.0",
 ]
-description = "Intuitive desktop UI framework for Python"
+description = "Intuitive UI framework for Python"
 keywords = ["ui", "desktop", "framework", "graphics", "opengl", "skia", "material design"]
 license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSES/*"]
 name = "nuiitivet"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.11.0"
+version = "0.11.1"
 
 [project.urls]
 Changelog = "https://github.com/yuksblog/nuiitivet/releases"
@@ -59,17 +59,17 @@ docs = [
 ]
 
 [tool.mypy]
+check_untyped_defs = true
 files = ["src", "tests", "samples"]
 mypy_path = "stubs"
-check_untyped_defs = true
 
 # Tests rely on monkeypatching and hand-written stub classes, which do not
 # survive body checking. Keep their bodies unchecked and drop the resulting
 # "untyped body" notes.
 [[tool.mypy.overrides]]
-module = ["tests.*"]
 check_untyped_defs = false
 disable_error_code = ["annotation-unchecked"]
+module = ["tests.*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
