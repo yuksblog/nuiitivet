@@ -35,6 +35,7 @@ from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, BoolCallback
 from nuiitivet.widgets.box import Box
+from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.button_group_style import (
@@ -716,11 +717,17 @@ class _ButtonGroupRow(Row):
 # ---------------------------------------------------------------------------
 
 
-class _ButtonGroupBase(Box):
+class _ButtonGroupBase(InteractionHostMixin, Box):
     """Internal base for StandardButtonGroup and ConnectedButtonGroup.
 
     Validates items, builds the Row layout, and calls ``set_position()`` on
     each item during ``on_mount()``.
+
+    The group is also one focus traversal group: a single Tab stop, with Left and
+    Right roving the items inside it (the group is always a Row). Roving stops at
+    the ends rather than wrapping — the WAI-ARIA toolbar pattern — and moves the
+    focus only: unlike a radio group, the selection follows Enter or Space, not the
+    focus, because a group's items are actions or independent toggles.
     """
 
     def __init__(
@@ -768,6 +775,14 @@ class _ButtonGroupBase(Box):
         )
 
         super().__init__(child=row, width=group_width)
+
+        # The group is the Tab stop; its items are not (see on_mount). Tab lands
+        # here, the scope hands the focus to the first item, and the arrow keys
+        # take over. Tab does not rove: it leaves the group for the next widget.
+        self._focus_node = FocusNode(on_key=self.on_key_event)
+        self.add_node(self._focus_node)
+        self._focus_scope = FocusScope(FocusNodePolicy(self._item_focus_nodes), tab_roves=False)
+        self.add_node(self._focus_scope)
 
         # Propagate the group's sized style to items now, so the tree measures
         # correctly even before mount.  Window auto-sizing calls preferred_size
@@ -817,6 +832,27 @@ class _ButtonGroupBase(Box):
             "pressed_inner_corner_radius": self._style.pressed_inner_corner_radius,
         }
 
+    def _item_focus_nodes(self) -> List[FocusNode]:
+        """Return the FocusNodes of the items the arrow keys can rove.
+
+        A disabled item has no FocusNode at all (see ``Clickable``), which is
+        exactly the set the keyboard should skip.
+        """
+        nodes = [item.get_node(FocusNode) for item in self._items]
+        return [node for node in nodes if isinstance(node, FocusNode)]
+
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
+        """Rove the items with Left and Right, stopping at the ends."""
+        key_name = str(key).lower()
+
+        if key_name == "right":
+            return self._focus_scope.move(1)
+
+        if key_name == "left":
+            return self._focus_scope.move(-1)
+
+        return False
+
     def on_mount(self) -> None:
         """Assign positions, sync size-layout tokens, and set neighbors for all items."""
         super().on_mount()
@@ -825,6 +861,9 @@ class _ButtonGroupBase(Box):
         self._apply_item_sizing()
         n = len(self._items)
         for i, item in enumerate(self._items):
+            # The group owns the Tab stop; the items are roved by its FocusScope.
+            item.set_traversable(False)
+
             if n == 1:
                 pos: ButtonGroupPosition = "only"
             elif i == 0:

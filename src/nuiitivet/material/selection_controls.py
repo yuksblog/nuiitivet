@@ -16,6 +16,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable, ObservableProtocol
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
@@ -456,8 +457,36 @@ class Checkbox(Toggleable, InteractiveWidget):
             return
 
 
-class RadioGroup(Container):
-    """Container that manages a single selected value for descendant RadioButtons."""
+class _RadioTraversalPolicy(FocusNodePolicy):
+    """Traversal over the enabled radios of a group, entered at the selected one.
+
+    WAI-ARIA makes the *selected* radio the group's stop in the Tab sequence, not
+    the first one: Tab into a group with the third option selected lands on the
+    third radio. Only an empty selection enters at an end.
+    """
+
+    def __init__(self, group: "RadioGroup") -> None:
+        super().__init__(group._radio_focus_nodes)
+        self._group = group
+
+    def entry_index(self, backwards: bool) -> int:
+        radios = self._group.radios()
+        for index, radio in enumerate(radios):
+            if radio.option_value == self._group.value:
+                return index
+        return super().entry_index(backwards)
+
+
+class RadioGroup(InteractionHostMixin, Container):
+    """Container that manages a single selected value for descendant RadioButtons.
+
+    The group is one focus traversal group (WAI-ARIA): a single Tab stop, entered
+    at the selected radio, with the arrow keys roving between the radios. Roving
+    also moves the selection ("selection follows focus"), so the arrows are how the
+    keyboard picks an option; Space and Enter select the current one as well. The
+    arrows wrap at the ends, and either axis roves — a radio group may be laid out
+    as a Row or a Column, and the keys must work whichever it is.
+    """
 
     def __init__(
         self,
@@ -487,6 +516,14 @@ class RadioGroup(Container):
         self._value_internal: Observable[object | None] = Observable(initial_value)
         self._on_change = on_change
 
+        # The group is the Tab stop; the radios inside it are not (see
+        # RadioButton.on_mount). Tab lands here, the scope hands the focus to the
+        # selected radio, and the arrow keys take over from there.
+        self._focus_node = FocusNode(on_key=self.on_key_event)
+        self.add_node(self._focus_node)
+        self._focus_scope = FocusScope(_RadioTraversalPolicy(self), tab_roves=False)
+        self.add_node(self._focus_scope)
+
     @property
     def value(self) -> object | None:
         """Current selected value."""
@@ -502,6 +539,57 @@ class RadioGroup(Container):
         super().on_mount()
         if self._value_external is not None:
             self.observe(self._value_external, lambda _v: self._invalidate_descendant_radios())
+
+    def radios(self) -> list["RadioButton"]:
+        """Return the radios the keyboard can rove, in tree order.
+
+        Disabled radios are left out: they are not selectable, so the arrow keys
+        skip over them rather than roving onto a dead option. A disabled radio has
+        no FocusNode either (see :class:`~nuiitivet.widgets.clickable.Clickable`),
+        which keeps this list and :meth:`_radio_focus_nodes` index-aligned.
+        """
+        found: list[RadioButton] = []
+
+        def _walk(node: Widget) -> None:
+            for child in node.children_snapshot():
+                if not isinstance(child, Widget):
+                    continue
+                if isinstance(child, RadioGroup):
+                    continue
+                if isinstance(child, RadioButton):
+                    if isinstance(child.get_node(FocusNode), FocusNode):
+                        found.append(child)
+                _walk(child)
+
+        _walk(self)
+        return found
+
+    def _radio_focus_nodes(self) -> list[FocusNode]:
+        """Return the FocusNodes of :meth:`radios`, in the same order."""
+        return [cast(FocusNode, radio.get_node(FocusNode)) for radio in self.radios()]
+
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
+        """Rove the radios with the arrow keys, moving the selection with the focus."""
+        key_name = str(key).lower()
+
+        if key_name in ("down", "right"):
+            return self._move_focus(1)
+
+        if key_name in ("up", "left"):
+            return self._move_focus(-1)
+
+        return False
+
+    def _move_focus(self, step: int) -> bool:
+        """Focus the next (+1) or previous (-1) radio, wrapping, and select it."""
+        if not self._focus_scope.move(step, wrap=True):
+            return False
+
+        for radio in self.radios():
+            if radio.state.focused:
+                self.select(radio.option_value)
+                break
+        return True
 
     def select(self, new_value: object | None) -> None:
         """Select a new value and notify listeners."""
@@ -609,6 +697,12 @@ class RadioButton(Toggleable, InteractiveWidget):
                     self.invalidate()
             except Exception:
                 pass
+
+        # Inside a group the radio is no Tab stop of its own: the group is the stop
+        # and its FocusScope roves the radios (WAI-ARIA). A radio placed on its own
+        # stays an ordinary stop.
+        self.set_traversable(self.find_ancestor(RadioGroup) is None)
+
         self._sync_selected_state()
 
     def _selected(self) -> bool:

@@ -87,6 +87,19 @@ class Clickable(InteractionHostMixin, Box):
         if not initial_disabled and focusable:
             self.add_node(FocusNode(traversable=self._traversable))
 
+    def set_traversable(self, traversable: bool) -> None:
+        """Set whether the global Tab sequence stops on this widget.
+
+        Membership of a focus traversal group is not always known when the widget
+        is built — a RadioButton only meets its RadioGroup once it is mounted — so
+        the flag can be flipped afterwards. It is kept on the widget as well as on
+        the node because disabling and re-enabling rebuilds the FocusNode.
+        """
+        self._traversable = bool(traversable)
+        node = self.get_node(FocusNode)
+        if isinstance(node, FocusNode):
+            node.traversable = self._traversable
+
     def _apply_disabled(self, value: bool) -> None:
         next_disabled = bool(value)
 
