@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..input.shortcut import ShortcutBinding, ShortcutLike, to_shortcut
+from ..input.shortcut import ShortcutBinding, ShortcutLike, ShortcutScope, to_shortcut
 from ..widgeting.callbacks import VoidCallback
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
@@ -8,7 +8,7 @@ from ..widgets.interaction import ShortcutNode, ensure_interaction_region
 
 
 class KeyShortcutModifier(ModifierElement):
-    """Bind a key gesture to a callback, scoped to the widget's subtree."""
+    """Bind a key gesture to a command, live while the widget's scope condition holds."""
 
     def __init__(self, binding: ShortcutBinding) -> None:
         self.binding = binding
@@ -25,25 +25,25 @@ class KeyShortcutModifier(ModifierElement):
         return region
 
 
-def key_shortcut(shortcut: ShortcutLike, *, on_trigger: VoidCallback) -> KeyShortcutModifier:
-    """Trigger a command when a key gesture fires anywhere inside this subtree.
+def key_shortcut(
+    shortcut: ShortcutLike,
+    *,
+    on_trigger: VoidCallback,
+    scope: ShortcutScope = ShortcutScope.FOREGROUND,
+) -> KeyShortcutModifier:
+    """Trigger a command when a key gesture fires.
 
-    The binding is **focus-scoped**: it fires only while the focused widget is
-    inside the modified subtree, and only after the focused widget has declined
-    the key press — so a focused ``TextField`` still eats a bare ``s`` while an
-    unhandled ``Accel+S`` reaches the command here. When two nested subtrees bind
-    the same gesture, the innermost one containing focus wins and the outer one
-    does not also fire.
+    A shortcut is a *command* bound to a gesture, which is a different thing from
+    `focusable(on_key=...)` — that one delivers raw keys to the focused widget.
+    By default a shortcut does **not** require focus: it is live whenever its
+    subtree is on the topmost interactable layer, so a paint canvas gets its
+    ``Accel+Z`` without anything being focused.
 
-    That scoping is what decides *which* target a shortcut acts on: give each
-    editor pane its own ``key_shortcut("Accel+S", on_trigger=self.save)`` and
-    ``Accel+S`` saves the pane that currently holds focus, with no collision
-    between panes.
+    The focused widget still gets first refusal on every key, so a focused
+    ``TextField`` keeps eating the keys it uses before any shortcut is consulted.
 
     Bind the command where it is **owned**, not on whatever widget is nearest.
-    A singular app-wide command (New Window, Open, Quit) that must fire with
-    nothing focused does not belong here — hanging it off a leaf widget makes it
-    silently depend on that widget's focus and mount state.
+    The owner decides the scope; see ``docs/design/KEYBOARD_SHORTCUTS.md``.
 
     Args:
         shortcut: The gesture, as a spec string (``"Accel+S"``, ``"Ctrl+Shift+Z"``)
@@ -52,8 +52,16 @@ def key_shortcut(shortcut: ShortcutLike, *, on_trigger: VoidCallback) -> KeyShor
         on_trigger: Called with no arguments when the gesture fires. May be sync
             or async; exceptions are logged and contained, as with other key
             callbacks.
+        scope: When the binding is live.
+            :attr:`~nuiitivet.input.shortcut.ShortcutScope.FOREGROUND` (default)
+            covers almost everything.
+            :attr:`~nuiitivet.input.shortcut.ShortcutScope.FOCUS` is for the case
+            where the same command has several targets displayed at once (a
+            dual-pane file manager, a split-view editor) and only focus can pick
+            one. :attr:`~nuiitivet.input.shortcut.ShortcutScope.MOUNT` is for an
+            app-wide command, bound on the content root so it survives navigation.
 
     Returns:
         A :class:`KeyShortcutModifier` to attach via ``.modifier(...)``.
     """
-    return KeyShortcutModifier(ShortcutBinding(to_shortcut(shortcut), on_trigger))
+    return KeyShortcutModifier(ShortcutBinding(to_shortcut(shortcut), on_trigger, scope))

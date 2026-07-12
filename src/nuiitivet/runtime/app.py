@@ -21,7 +21,9 @@ from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
 from ..widgets.interaction import FocusNode, InteractionHostMixin, FocusSource, ShortcutNode
-from nuiitivet.common.logging_once import debug_once, exception_once
+from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope
+from .shortcut_dispatch import is_foreground
+from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
     dispatch_mouse_motion as _dispatch_mouse_motion_fn,
     dispatch_mouse_press as _dispatch_mouse_press_fn,
@@ -906,22 +908,32 @@ class App:
             except Exception:
                 exception_once(logger, "app_focused_node_handle_key_exc", "Focused node handle_key_event raised")
 
-        # 3. Unhandled by the focused widget: offer it to the focus-scoped
-        #    key_shortcut bindings, innermost first.
+        # 3. Unhandled by the focused widget: offer it to the key_shortcut
+        #    bindings, narrowest scope first.
         if self._dispatch_shortcut(kname or str(key), modifier_keys):
             return True
 
         return False
 
     def _dispatch_shortcut(self, key: str, modifier_keys: int) -> bool:
-        """Offer a key press to the ``key_shortcut`` bindings enclosing the focused node.
+        """Offer a key press the focused widget declined to the ``key_shortcut`` bindings.
 
-        Walking up from the focused node — rather than consulting a global
-        registry — is what gives shortcuts their scope for free: a binding is
-        reachable only while its subtree contains focus, and the innermost
-        enclosing subtree is met first, so it wins. With nothing focused, no
-        binding fires. Returns True if a binding was triggered.
+        The scopes are consulted narrowest first, so whatever is closest to the
+        user's attention wins: bindings enclosing the focused node, then bindings
+        on the topmost interactable layer, then merely-mounted ones. The first
+        scope that matches decides; the rest are not consulted. Returns True if a
+        binding was triggered.
         """
+        if self._dispatch_focus_scoped_shortcut(key, modifier_keys):
+            return True
+
+        nodes = self._collect_shortcut_nodes()
+        if self._dispatch_unordered_shortcut(nodes, key, modifier_keys, ShortcutScope.FOREGROUND):
+            return True
+        return self._dispatch_unordered_shortcut(nodes, key, modifier_keys, ShortcutScope.MOUNT)
+
+    def _dispatch_focus_scoped_shortcut(self, key: str, modifier_keys: int) -> bool:
+        """Trigger the innermost FOCUS-scoped binding enclosing the focused node."""
         node = self._focused_node
         if node is None:
             return False
@@ -931,15 +943,104 @@ class App:
             try:
                 if isinstance(widget, InteractionHostMixin):
                     shortcut_node = widget.get_node(ShortcutNode)
-                    if isinstance(shortcut_node, ShortcutNode) and shortcut_node.handle_shortcut(
-                        key, modifier_keys
-                    ):
-                        return True
+                    if isinstance(shortcut_node, ShortcutNode):
+                        binding = shortcut_node.match(key, modifier_keys, ShortcutScope.FOCUS)
+                        if binding is not None:
+                            shortcut_node.trigger(binding)
+                            return True
             except Exception:
-                exception_once(logger, "app_dispatch_shortcut_exc", "Shortcut dispatch raised")
+                exception_once(logger, "app_dispatch_focus_shortcut_exc", "Focus-scoped shortcut dispatch raised")
             widget = getattr(widget, "_parent", None)
 
         return False
+
+    def _dispatch_unordered_shortcut(
+        self,
+        nodes: list[ShortcutNode],
+        key: str,
+        modifier_keys: int,
+        scope: ShortcutScope,
+    ) -> bool:
+        """Trigger the one binding matching ``key`` in ``scope``, if it is unambiguous.
+
+        FOREGROUND and MOUNT bindings have no ordering between them — two
+        displayed panes can bind the same gesture with nothing to choose between
+        them. Rather than picking arbitrarily, an ambiguous match fires nothing
+        and warns (as Qt does). ``ShortcutScope.FOCUS`` is the way to express a
+        gesture whose target depends on which pane is active.
+        """
+        matches: list[Tuple[ShortcutNode, ShortcutBinding]] = []
+        for node in nodes:
+            try:
+                if scope is ShortcutScope.FOREGROUND:
+                    owner = node.owner
+                    if owner is None or not is_foreground(owner):
+                        continue
+                binding = node.match(key, modifier_keys, scope)
+                if binding is not None:
+                    matches.append((node, binding))
+            except Exception:
+                exception_once(logger, "app_dispatch_shortcut_match_exc", "Shortcut match raised")
+
+        if not matches:
+            return False
+
+        if len(matches) > 1:
+            owners = ", ".join(type(node.owner).__name__ for node, _ in matches)
+            warning_once(
+                logger,
+                f"app_ambiguous_shortcut:{scope.value}:{key}:{modifier_keys}",
+                "Ambiguous %s shortcut: %s is bound by %d widgets (%s). Firing none — "
+                "use ShortcutScope.FOCUS if the target depends on which one is active.",
+                scope.value,
+                key,
+                len(matches),
+                owners,
+            )
+            return False
+
+        node, binding = matches[0]
+        node.trigger(binding)
+        return True
+
+    def _collect_shortcut_nodes(self) -> list[ShortcutNode]:
+        """Collect every ShortcutNode in the widget tree, in tree order."""
+        res: list[ShortcutNode] = []
+
+        def walk(w: Widget) -> None:
+            try:
+                if isinstance(w, InteractionHostMixin):
+                    node = w.get_node(ShortcutNode)
+                    if isinstance(node, ShortcutNode):
+                        res.append(node)
+            except Exception:
+                exception_once(logger, "app_collect_shortcut_nodes_walk_exc", "Collecting ShortcutNodes raised")
+            try:
+                for c in w.children_snapshot():
+                    walk(c)
+            except Exception:
+                exception_once(
+                    logger,
+                    "app_collect_shortcut_nodes_children_exc",
+                    "Traversing children_snapshot raised",
+                )
+            try:
+                built = getattr(w, "built_child", None)
+                if built is not None and built is not w:
+                    walk(built)
+            except Exception:
+                exception_once(
+                    logger,
+                    "app_collect_shortcut_nodes_built_child_exc",
+                    "Traversing built_child raised",
+                )
+
+        try:
+            if self.root is not None:
+                walk(self.root)
+        except Exception:
+            exception_once(logger, "app_collect_shortcut_nodes_root_exc", "Collecting ShortcutNodes from root raised")
+        return res
 
     def _dispatch_key_release(self, key, modifier_keys=0) -> bool:
         """Handle key releases, mirroring :meth:`_dispatch_key_press`.

@@ -201,6 +201,10 @@ class _OverlayEntryRoute(Route):
         self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
         self._content_widget: Widget | None = None
+        # Whether input reaches the content behind this entry. Modeless entries
+        # (toasts, banners) pass through; modal and light-dismiss entries do not,
+        # and so occlude everything below them.
+        self._passthrough: bool = True
 
     @property
     def transition_phase_obs(self) -> Observable[TransitionPhase]:
@@ -396,6 +400,26 @@ class Overlay(ComposableWidget):
         for entry, route in reversed(list(self._entry_to_route.items())):
             if route is top:
                 return entry
+        return None
+
+    def occluding_content_widget(self) -> Widget | None:
+        """Return the content of the topmost entry that blocks input, if any.
+
+        A modal or light-dismiss entry swallows interaction with everything below
+        it; a modeless entry (toast, banner) passes input through. Callers that
+        must know "can the user still act on the content behind the overlay"
+        — keyboard-shortcut dispatch, for one — ask this. ``None`` means nothing
+        is blocking and the content below is still reachable.
+        """
+        routes = getattr(self._modal_navigator, "_routes", None)
+        if not isinstance(routes, list):
+            return None
+        for route in reversed(routes):
+            if route is self._base_route:
+                break
+            if getattr(route, "_passthrough", True):
+                continue
+            return getattr(route, "_content_widget", None) or getattr(route, "_widget", None)
         return None
 
     async def _consult_will_pop(self, widget: Widget | None) -> bool:
@@ -708,6 +732,7 @@ class Overlay(ComposableWidget):
         )
         route_holder["route"] = modal_route
         modal_route._content_widget = content_widget
+        modal_route._passthrough = passthrough
 
         # Construct the handle first so OverlayAware widgets receive it
         # before the entry is inserted (i.e. before first build / mount).

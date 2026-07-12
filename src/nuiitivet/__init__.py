@@ -60,7 +60,7 @@ from nuiitivet.input.codes import (
     MOD_SHIFT,
 )
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
-from nuiitivet.input.shortcut import Shortcut, ShortcutBinding
+from nuiitivet.input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 
 # Theme
 from nuiitivet.theme.theme import Theme
@@ -207,6 +207,7 @@ __all__: list[str] = [
     "PointerEventType",
     "Shortcut",
     "ShortcutBinding",
+    "ShortcutScope",
     # Window / runtime
     "AppScope",
     "OSChrome",

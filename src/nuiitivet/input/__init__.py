@@ -24,7 +24,14 @@ from .codes import (
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
 )
-from .shortcut import Shortcut, ShortcutBinding, ShortcutLike, normalize_key_name, to_shortcut
+from .shortcut import (
+    Shortcut,
+    ShortcutBinding,
+    ShortcutLike,
+    ShortcutScope,
+    normalize_key_name,
+    to_shortcut,
+)
 
 __all__ = [
     "BUTTON_LEFT",
@@ -45,6 +52,7 @@ __all__ = [
     "Shortcut",
     "ShortcutBinding",
     "ShortcutLike",
+    "ShortcutScope",
     "accel_mask",
     "is_primary_button",
     "normalize_key_name",

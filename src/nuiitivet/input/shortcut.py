@@ -10,6 +10,7 @@ declared as constants and shared between a menu item and a
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Union
 
 from ..widgeting.callbacks import VoidCallback
@@ -134,9 +135,33 @@ def to_shortcut(shortcut: ShortcutLike) -> Shortcut:
     return Shortcut.parse(shortcut)
 
 
+class ShortcutScope(Enum):
+    """When a :class:`ShortcutBinding` is live.
+
+    The members widen: each is a superset of the one before it. See
+    ``docs/design/KEYBOARD_SHORTCUTS.md`` for the full rationale.
+
+    Args:
+        FOCUS: Live only while the subtree contains the focused node. Needed only
+            when the same command has several targets on screen **at once** (a
+            dual-pane file manager, a split-view editor), so nothing but focus
+            can decide which one acts.
+        FOREGROUND: Live while the subtree is on the topmost interactable layer —
+            not hidden, not on a covered route, not behind a blocking overlay.
+            The default, and the right answer for almost everything.
+        MOUNT: Live while the subtree is in the widget tree at all, displayed or
+            not. How an app-wide command is expressed: bind it on the content
+            root, which stays mounted across navigation.
+    """
+
+    FOCUS = "focus"
+    FOREGROUND = "foreground"
+    MOUNT = "mount"
+
+
 @dataclass(frozen=True)
 class ShortcutBinding:
-    """A gesture bound to the callback it triggers.
+    """A gesture bound to the callback it triggers, and the scope it is live in.
 
     This is the unit the shortcut dispatch tier stores, kept as a type rather
     than a bare callable so richer command semantics (``can_execute``, menu
@@ -146,7 +171,10 @@ class ShortcutBinding:
         shortcut: The gesture that triggers the binding.
         on_trigger: Called with no arguments when the gesture fires. May be sync
             or async.
+        scope: When the binding is live. Defaults to
+            :attr:`ShortcutScope.FOREGROUND`.
     """
 
     shortcut: Shortcut
     on_trigger: VoidCallback = field(compare=False)
+    scope: ShortcutScope = ShortcutScope.FOREGROUND

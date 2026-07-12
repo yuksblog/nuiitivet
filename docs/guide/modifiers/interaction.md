@@ -201,34 +201,69 @@ when the shortcut is built, so a `Shortcut` value stays portable. Write
 gesture also accepts a typed form, `Shortcut("s", MOD_ACCEL | MOD_SHIFT)`, when
 you want to build it from masks rather than parse a string.
 
-### Shortcuts are focus-scoped
+### A shortcut does not need focus
 
-A `key_shortcut` binding is live **only while the focused widget is inside the
-subtree it is attached to**, and only after the focused widget has *declined* the
-key press. Two consequences worth internalizing:
+By default a binding is live whenever its subtree is **displayed** — no focus
+required. A paint canvas gets its `Accel+Z` even though nothing in a paint app is
+ever focused, and it keeps working while the user types in a toolbar text field.
 
-- A focused `TextField` still eats a bare `s` — the shortcut tier is never
-  reached. An unhandled `Accel+S` falls through to it.
-- With nothing focused, no `key_shortcut` fires at all.
+The focused widget still gets **first refusal** on every key, so a focused
+`TextField` keeps eating the keys it uses (`Accel+C`, `Accel+V`, …) before any
+shortcut is consulted.
 
-When nested subtrees bind the same gesture, the **innermost** one containing
-focus wins; the outer one does not also fire.
+### Scopes
 
-### Which target does the command act on?
+`scope` decides *when* a binding is live. The three widen in order:
 
-This is what focus scoping buys you. Give each editor pane its own Save and
-`Accel+S` saves **the pane that holds focus**, with no collision between panes:
+| Scope | Live when | Use for |
+| --- | --- | --- |
+| `FOCUS` | the subtree contains the focused widget | the same command has several targets **displayed at once** |
+| `FOREGROUND` (default) | the subtree is on the topmost interactable layer | almost everything |
+| `MOUNT` | the subtree is in the widget tree at all | app-wide commands that must survive navigation |
+
+`FOREGROUND` excludes a subtree that is hidden by `visible(False)`, that sits on a
+navigation route another route now covers, or that is behind a modal dialog. In
+each case the user cannot act on it, so its commands must not fire.
+
+`MOUNT` is how an **app-wide** command is expressed. `App(content=X)` keeps `X`
+mounted for the life of the app — a route push covers it but does not unmount it
+— so binding there survives navigation:
+
+```python
+App(content=home.modifier(
+    key_shortcut("Accel+Q", on_trigger=quit, scope=ShortcutScope.MOUNT)
+))
+```
+
+### When two panes want the same gesture
+
+`FOREGROUND` bindings have no ordering between them. If two displayed panes both
+bind `Accel+S`, that is **ambiguous**: nothing fires, and a warning is logged
+rather than picking one arbitrarily.
+
+`FOCUS` is the way to express such a case — and the only case that needs it:
+several targets of the same command on screen simultaneously, where only focus
+can decide. A dual-pane file manager (`F5` copies from the focused pane), a
+split-view editor, a two-list picker:
 
 ```python
 class TextEditorPane(nv.ComposableWidget):
     def build(self):
         return editor_subtree.modifier(
-            key_shortcut("Accel+S", on_trigger=self.save)
+            key_shortcut("Accel+S", on_trigger=self.save, scope=ShortcutScope.FOCUS)
         )
 ```
 
+A *tabbed* editor is not one of these: the inactive tab is not displayed, so
+`FOREGROUND` already tells the panes apart. And when the command's target *is*
+the focused widget itself, `focusable(on_key=...)` already suffices.
+
+When nested subtrees bind the same gesture with `FOCUS`, the **innermost** one
+containing focus wins; the outer one does not also fire.
+
 See the runnable
-[two-pane editor sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/key_shortcut.py).
+[sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/key_shortcut.py),
+which shows a `FOREGROUND` canvas and two `FOCUS` editor panes side by side.
 
 ### Bind where the command is owned
 
@@ -240,14 +275,13 @@ concern is drawing) and not owned by the Save menu item (that item is one *UI
 that triggers* the command; menus get unmounted, and `Ctrl+S` must still work).
 Both the menu item and the shortcut merely reference the same callback.
 
-So the owner decides where the gesture lives:
+The owner decides the scope:
 
-| Owner of the command | Where it belongs |
+| Owner of the command | Scope |
 | --- | --- |
-| A subtree — the target is decided by **which pane is active** (per-editor Save) | `key_shortcut` |
-| The app — a **single unambiguous target** that must fire with nothing focused (New Window, Open, Quit) | App-level registry |
+| a subtree, chosen by which pane is active | `FOCUS` |
+| a subtree, unambiguous while displayed | `FOREGROUND` |
+| the app — must survive navigation (New Window, Quit) | `MOUNT`, on the content root |
 
-The anti-pattern to avoid: hanging a singular app command off a leaf widget with
-`key_shortcut` because it was handy. That silently couples the command to that
-widget's focus and mount state — the shortcut stops working the moment focus
-moves elsewhere, which is exactly not what "Quit" means.
+The full rationale, including why there is no application-level registry, is in
+[docs/design/KEYBOARD_SHORTCUTS.md](../../design/KEYBOARD_SHORTCUTS.md).

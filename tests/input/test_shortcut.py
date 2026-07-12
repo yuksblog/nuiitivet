@@ -19,7 +19,13 @@ from nuiitivet.input.codes import (
     accel_mask,
     resolve_modifiers,
 )
-from nuiitivet.input.shortcut import Shortcut, ShortcutBinding, normalize_key_name, to_shortcut
+from nuiitivet.input.shortcut import (
+    Shortcut,
+    ShortcutBinding,
+    ShortcutScope,
+    normalize_key_name,
+    to_shortcut,
+)
 
 
 def test_exported_from_root() -> None:
@@ -91,6 +97,12 @@ def test_to_shortcut_accepts_str_and_shortcut() -> None:
     typed = Shortcut("d", MOD_ACCEL)
     assert to_shortcut("Accel+D") == typed
     assert to_shortcut(typed) is typed
+
+
+def test_binding_defaults_to_foreground_scope() -> None:
+    # The default must not require focus: that is the whole point of the layer.
+    binding = ShortcutBinding(Shortcut.parse("Accel+S"), lambda: None)
+    assert binding.scope is ShortcutScope.FOREGROUND
 
 
 def test_binding_identity_is_the_gesture() -> None:
