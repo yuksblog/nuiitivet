@@ -1019,6 +1019,19 @@ class FocusTraversalPolicy:
         """Make the member at ``index`` current, focusing it if it is a real node."""
         raise NotImplementedError
 
+    def entry_index(self, backwards: bool) -> int:
+        """Return the member Tab enters the scope at: the last one backwards, else the first.
+
+        Which member the group hands the focus to is the policy's decision, not the
+        scope's: a radio group is entered at its *selected* radio (WAI-ARIA), while
+        a menu or a slider is entered at the end the user came from. Return -1 to
+        enter with no member current.
+        """
+        count = len(self.members())
+        if count == 0:
+            return -1
+        return count - 1 if backwards else 0
+
     def on_boundary(self, direction: int) -> bool:
         """Handle Tab stepping past the last (``+1``) or first (``-1``) member.
 
@@ -1108,8 +1121,10 @@ class FocusScope(InteractionNode):
 
     The group is the unit Tab enters and leaves: it is a single stop in the
     global sequence, and the :class:`FocusTraversalPolicy` roves between its
-    members inside. Tab enters the scope at its first member and Shift+Tab at its
-    last. Stepping past the last (or before the first) member hits the boundary,
+    members inside. Tab enters the scope at the member the policy names
+    (:meth:`FocusTraversalPolicy.entry_index` — the first one, or the last one on
+    Shift+Tab, unless the policy says otherwise). Stepping past the last (or
+    before the first) member hits the boundary,
     where the policy either consumes the key (a menu dismisses itself) or lets Tab
     escape to the next stop outside the scope (a slider, a toolbar).
 
@@ -1131,11 +1146,16 @@ class FocusScope(InteractionNode):
         self.tab_roves = bool(tab_roves)
 
     def on_enter(self, backwards: bool = False) -> bool:
-        """Make the entry member current: the last one on Shift+Tab, else the first."""
+        """Make the policy's entry member current — the last one on Shift+Tab, else the first."""
         members = self.policy.members()
         if not members:
             return False
-        self.policy.set_current(len(members) - 1 if backwards else 0)
+
+        index = self.policy.entry_index(backwards)
+        if not 0 <= index < len(members):
+            return False
+
+        self.policy.set_current(index)
         return True
 
     def move(self, step: int, *, wrap: bool = False) -> bool:

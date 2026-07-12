@@ -6,6 +6,8 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.material import Checkbox, Menu, MenuItem, SubMenuItem
+from nuiitivet.material.button_group import ConnectedButtonGroup, GroupButton, StandardButtonGroup
+from nuiitivet.material.selection_controls import RadioButton, RadioGroup
 from nuiitivet.material.slider import HorizontalRangeSlider, HorizontalSlider
 from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App
@@ -429,3 +431,179 @@ def test_single_handle_slider_is_a_pass_through_stop() -> None:
 
     app._dispatch_key_press("tab")
     assert app._focused_node is _focus_node(after)
+
+
+# --- RadioGroup ---------------------------------------------------------------
+
+
+def _radio_group(value: object | None = None, disabled_second: bool = False) -> tuple[RadioGroup, list[RadioButton]]:
+    radios = [
+        RadioButton("a"),
+        RadioButton("b", disabled=disabled_second),
+        RadioButton("c"),
+    ]
+    return RadioGroup(child=Column(list(radios)), value=value), radios
+
+
+def test_a_radio_group_is_a_single_tab_stop() -> None:
+    """WAI-ARIA: the group is one stop, not one stop per radio."""
+    before = Checkbox()
+    group, _radios = _radio_group()
+    app = _mounted_app(Column([before, group]))
+
+    assert app._collect_focus_nodes() == [_focus_node(before), _focus_node(group)]
+
+
+def test_tab_enters_a_radio_group_at_its_selected_radio() -> None:
+    """The selected radio is the group's stop — not the first one."""
+    group, radios = _radio_group(value="c")
+    app = _mounted_app(Column([group]))
+
+    app._dispatch_key_press("tab")
+
+    assert app._focused_node is _focus_node(radios[2])
+
+
+def test_tab_enters_an_unselected_radio_group_at_its_first_radio() -> None:
+    """With nothing selected there is no selected radio to enter at."""
+    group, radios = _radio_group()
+    app = _mounted_app(Column([group]))
+
+    app._dispatch_key_press("tab")
+
+    assert app._focused_node is _focus_node(radios[0])
+
+
+def test_radio_arrow_keys_rove_and_move_the_selection_with_the_focus() -> None:
+    """Selection follows focus (WAI-ARIA), on both axes, wrapping at the ends."""
+    changed: list[object | None] = []
+    radios = [RadioButton("a"), RadioButton("b"), RadioButton("c")]
+    group = RadioGroup(child=Column(list(radios)), value="a", on_change=changed.append)
+    app = _mounted_app(Column([group]))
+    app._dispatch_key_press("tab")
+
+    app._dispatch_key_press("down")
+    assert app._focused_node is _focus_node(radios[1])
+    assert group.value == "b"
+
+    # Either axis roves: a radio group may be laid out as a Row or a Column.
+    app._dispatch_key_press("right")
+    assert app._focused_node is _focus_node(radios[2])
+    assert group.value == "c"
+
+    # The ends wrap.
+    app._dispatch_key_press("down")
+    assert app._focused_node is _focus_node(radios[0])
+    assert group.value == "a"
+
+    app._dispatch_key_press("up")
+    assert app._focused_node is _focus_node(radios[2])
+    assert group.value == "c"
+
+    assert changed == ["b", "c", "a", "c"]
+
+
+def test_radio_arrow_keys_skip_a_disabled_radio() -> None:
+    """A disabled radio is not selectable, so roving must not stop on it."""
+    group, radios = _radio_group(value="a", disabled_second=True)
+    app = _mounted_app(Column([group]))
+    app._dispatch_key_press("tab")
+
+    app._dispatch_key_press("down")
+
+    assert app._focused_node is _focus_node(radios[2])
+    assert group.value == "c"
+
+
+def test_tab_leaves_a_radio_group_rather_than_roving_it() -> None:
+    """Tab is how the group is left; the arrows are how it is roved."""
+    group, radios = _radio_group(value="a")
+    after = Checkbox()
+    app = _mounted_app(Column([group, after]))
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(radios[0])
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(after)
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(radios[0])
+
+
+def test_a_radio_outside_a_group_stays_an_ordinary_tab_stop() -> None:
+    """Only group membership takes a radio out of the global sequence."""
+    radio = RadioButton("a")
+    app = _mounted_app(Column([radio]))
+
+    assert app._collect_focus_nodes() == [_focus_node(radio)]
+
+
+# --- ButtonGroup --------------------------------------------------------------
+
+
+def test_a_button_group_is_a_single_tab_stop() -> None:
+    """Both group types are one stop, entered at the first item."""
+    items = [GroupButton(label="One"), GroupButton(label="Two"), GroupButton(label="Three")]
+    group = ConnectedButtonGroup(items=items)
+    app = _mounted_app(Column([group]))
+
+    assert app._collect_focus_nodes() == [_focus_node(group)]
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(items[0])
+
+
+def test_button_group_arrows_rove_and_stop_at_the_edges() -> None:
+    """The toolbar pattern: Left/Right rove the items, and the ends do not wrap."""
+    items = [GroupButton(label="One"), GroupButton(label="Two"), GroupButton(label="Three")]
+    group = StandardButtonGroup(items=items)
+    app = _mounted_app(Column([group]))
+    app._dispatch_key_press("tab")
+
+    app._dispatch_key_press("left")
+    assert app._focused_node is _focus_node(items[0])  # already at the first item
+
+    app._dispatch_key_press("right")
+    assert app._focused_node is _focus_node(items[1])
+
+    app._dispatch_key_press("right")
+    assert app._focused_node is _focus_node(items[2])
+
+    app._dispatch_key_press("right")
+    assert app._focused_node is _focus_node(items[2])  # stops at the last item
+
+
+def test_button_group_selection_does_not_follow_the_focus() -> None:
+    """Unlike a radio group, roving a button group toggles nothing: Enter does."""
+    toggled: list[tuple[str, bool]] = []
+    items = [
+        GroupButton(label="One", on_change=lambda v: toggled.append(("One", v))),
+        GroupButton(label="Two", on_change=lambda v: toggled.append(("Two", v))),
+    ]
+    group = StandardButtonGroup(items=items)
+    app = _mounted_app(Column([group]))
+
+    app._dispatch_key_press("tab")
+    app._dispatch_key_press("right")
+    assert toggled == []
+
+    app._dispatch_key_press("enter")
+    assert toggled == [("Two", True)]
+
+
+def test_tab_leaves_a_button_group_rather_than_roving_it() -> None:
+    """Tab is a boundary for the group: it leaves for the next widget."""
+    items = [GroupButton(label="One"), GroupButton(label="Two")]
+    group = ConnectedButtonGroup(items=items)
+    after = Checkbox()
+    app = _mounted_app(Column([group, after]))
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(items[0])
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(after)
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(items[1])  # Shift+Tab enters at the last item
