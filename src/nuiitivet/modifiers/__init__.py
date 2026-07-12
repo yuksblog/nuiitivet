@@ -6,6 +6,7 @@ from .corner_radius import corner_radius
 from .focus import focusable
 from .hover import hoverable
 from .ignore_pointer import ignore_pointer
+from .key_shortcut import key_shortcut
 from .pointer_input import pointer_input
 from .popup import modeless, light_dismiss
 from .tooltip import tooltip
@@ -24,6 +25,7 @@ __all__ = [
     "focusable",
     "hoverable",
     "ignore_pointer",
+    "key_shortcut",
     "pointer_input",
     "opacity",
     "modeless",

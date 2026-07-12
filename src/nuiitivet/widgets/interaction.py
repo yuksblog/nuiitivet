@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
 from ..input.codes import is_primary_button
 from ..input.pointer import PointerEvent, PointerEventType
+from ..input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
@@ -974,6 +975,53 @@ class FocusNode(InteractionNode):
         if p:
             return p.handle_ime_composition_event(text, start, length)
         return False
+
+
+class ShortcutNode(InteractionNode):
+    """Holds the keyboard-shortcut bindings attached to a widget subtree.
+
+    The :class:`Application` collects these nodes and decides which ones are live
+    from each binding's :class:`~nuiitivet.input.shortcut.ShortcutScope`. The node
+    itself only stores bindings and reports which of them a keystroke matches.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._bindings: dict[Shortcut, ShortcutBinding] = {}
+
+    def bind(self, binding: ShortcutBinding) -> None:
+        """Add ``binding``, replacing any existing binding for the same gesture.
+
+        Keying on the gesture keeps re-application idempotent: recomposition
+        re-applies the modifier with a fresh callback rather than stacking a
+        second binding for the same keystroke.
+        """
+        self._bindings[binding.shortcut] = binding
+
+    def unbind(self, shortcut: Shortcut) -> None:
+        """Remove the binding for ``shortcut``. No-op if it is not bound."""
+        self._bindings.pop(shortcut, None)
+
+    @property
+    def bindings(self) -> tuple[ShortcutBinding, ...]:
+        return tuple(self._bindings.values())
+
+    def match(self, key: str, modifier_keys: int, scope: ShortcutScope) -> Optional[ShortcutBinding]:
+        """Return this node's binding for ``key`` + ``modifier_keys`` in ``scope``."""
+        for binding in self._bindings.values():
+            if binding.scope is scope and binding.shortcut.matches(key, modifier_keys):
+                return binding
+        return None
+
+    def trigger(self, binding: ShortcutBinding) -> None:
+        """Invoke ``binding``'s callback, containing any exception it raises."""
+        owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+        invoke_event_handler(
+            binding.on_trigger,
+            error_key="shortcut_trigger_callback",
+            error_msg="Shortcut trigger callback raised",
+            owner_name=owner_name,
+        )
 
 
 class InteractionHostMixin:

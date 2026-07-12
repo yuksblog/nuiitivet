@@ -3,6 +3,7 @@ import sys
 import warnings
 
 import pyglet
+import pytest
 
 # Importing pyglet.window creates a shadow window, which needs a display
 # connection and raises NoSuchDisplayException under headless CI. Tests never
@@ -44,3 +45,24 @@ warnings.filterwarnings(
     message=r".*Default typeface.*",
     category=DeprecationWarning,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_app_roots():
+    """Restore the process-global root Overlay/Navigator around every test.
+
+    ``App`` publishes its Overlay and Navigator as class variables, so a test
+    that builds a real ``App`` would otherwise leave them set for every later
+    test — making tests that assert "no overlay in the tree" pass or fail
+    depending on collection order.
+    """
+    from nuiitivet.navigation import Navigator
+    from nuiitivet.overlay import Overlay
+
+    overlay_root = Overlay._root_overlay
+    navigator_root = Navigator._root
+    try:
+        yield
+    finally:
+        Overlay._root_overlay = overlay_root
+        Navigator._root = navigator_root
