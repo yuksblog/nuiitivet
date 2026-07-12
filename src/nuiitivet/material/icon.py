@@ -327,7 +327,6 @@ class Icon(IconBase):
                 symbols_root = None
         except Exception:
             exception_once(logger, "icon_importlib_resources_exc", "Failed to import importlib.resources")
-            resources = None
             symbols_root = None
 
         # Helper to try loading font bytes via importlib.resources and create a
