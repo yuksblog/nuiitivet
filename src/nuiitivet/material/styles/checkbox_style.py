@@ -43,6 +43,11 @@ class CheckboxStyle:
     checked_background: ColorSpec = ColorRole.PRIMARY
     checked_foreground: ColorSpec = ColorRole.ON_PRIMARY
 
+    # Disabled colors (M3: outline and container are on-surface @ 38%, mark is surface)
+    disabled_color: ColorSpec = ColorRole.ON_SURFACE
+    disabled_mark: ColorSpec = ColorRole.SURFACE
+    disabled_alpha: float = 0.38
+
     # State layer (hover/press overlay)
     state_layer_ratio: float = 40.0 / 48.0  # State layer diameter relative to touch target
     hover_alpha: float = 0.08
@@ -65,6 +70,8 @@ class CheckboxStyle:
             "stroke_color": resolve_color_to_rgba(self.stroke_color, theme=theme),
             "checked_background": resolve_color_to_rgba(self.checked_background, theme=theme),
             "checked_foreground": resolve_color_to_rgba(self.checked_foreground, theme=theme),
+            "disabled_color": resolve_color_to_rgba(self.disabled_color, theme=theme),
+            "disabled_mark": resolve_color_to_rgba(self.disabled_mark, theme=theme),
             "focus_color": resolve_color_to_rgba(self.focus_color, theme=theme),
         }
 

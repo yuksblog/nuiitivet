@@ -22,12 +22,21 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
 
 if TYPE_CHECKING:
+    from nuiitivet.theme.theme import Theme
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
     from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
     from nuiitivet.material.styles.switch_style import SwitchStyle
 
 
 _logger = logging.getLogger(__name__)
+
+RGBA = Tuple[int, int, int, int]
+
+
+def _scale_alpha(color: RGBA, factor: float) -> RGBA:
+    """Return `color` with its alpha multiplied by `factor` (0.0..1.0)."""
+    r, g, b, a = color
+    return (r, g, b, max(0, min(255, int(round(a * factor)))))
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -305,6 +314,30 @@ class Checkbox(Toggleable, InteractiveWidget):
             return CheckboxStyle()
         return theme.checkbox_style
 
+    def _resolve_box_colors(self, theme: Optional["Theme"] = None) -> Tuple[RGBA, RGBA, RGBA]:
+        """Resolve the (outline, checked container, mark) colors for the current state.
+
+        MD3 draws a disabled selection control from on-surface at 38%, with the
+        checkmark (or the indeterminate bar) in surface. `theme` defaults to the
+        widget's ambient theme.
+        """
+        from nuiitivet.theme.resolver import resolve_color_to_rgba
+        from nuiitivet.theme.theme import Theme
+
+        style = self.style
+        if theme is None:
+            theme = Theme.of(self)
+
+        if self.disabled:
+            disabled = resolve_color_to_rgba((style.disabled_color, style.disabled_alpha), theme=theme)
+            return (disabled, disabled, resolve_color_to_rgba(style.disabled_mark, theme=theme))
+
+        return (
+            resolve_color_to_rgba((style.stroke_color, style.stroke_alpha), theme=theme),
+            resolve_color_to_rgba(style.checked_background, theme=theme),
+            resolve_color_to_rgba(style.checked_foreground, theme=theme),
+        )
+
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint checkbox with padding support (M3準拠)."""
         try:
@@ -316,6 +349,7 @@ class Checkbox(Toggleable, InteractiveWidget):
                 make_rect,
                 path_line_to,
                 path_move_to,
+                rgba_to_skia_color,
                 skcolor,
             )
 
@@ -345,19 +379,22 @@ class Checkbox(Toggleable, InteractiveWidget):
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
 
-            mat = Theme.of(self).extension(MaterialThemeData)
+            theme = Theme.of(self)
+            mat = theme.extension(MaterialThemeData)
             roles = mat.roles if mat is not None else {}
 
-            fg_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
-            stroke_color = skcolor(fg_hex, 0.54)
-            stroke_p = make_paint(color=stroke_color, style="stroke", stroke_width=stroke_w, aa=True)
+            outline_color, container_color, mark_color = self._resolve_box_colors(theme)
+
+            stroke_p = make_paint(
+                color=rgba_to_skia_color(outline_color), style="stroke", stroke_width=stroke_w, aa=True
+            )
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
             # Check for keyboard focus (Ring visible)
             is_keyboard_focus = self.should_show_focus_ring
 
-            # Determine State Layer opacity
-            overlay_alpha = self._get_active_state_layer_opacity()
+            # Determine State Layer opacity (a disabled checkbox has no state layer per M3)
+            overlay_alpha = 0.0 if self.disabled else self._get_active_state_layer_opacity()
 
             if overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
@@ -401,8 +438,11 @@ class Checkbox(Toggleable, InteractiveWidget):
             val = self.value
             selection_progress = self._get_selection_progress()
             if selection_progress > 1e-6:
-                prim = roles.get(ColorRole.PRIMARY, "#000000")
-                fill_p = make_paint(color=skcolor(prim, selection_progress), style="fill", aa=True)
+                fill_p = make_paint(
+                    color=rgba_to_skia_color(_scale_alpha(container_color, selection_progress)),
+                    style="fill",
+                    aa=True,
+                )
                 if rect is not None and fill_p is not None:
                     draw_round_rect(canvas, rect, corner, fill_p)
 
@@ -420,9 +460,8 @@ class Checkbox(Toggleable, InteractiveWidget):
             if (val is True or val is None) and selection_progress > 1e-6:
                 mark_is_none = val is None
                 mark_style = "stroke" if not mark_is_none else "fill"
-                onp = roles.get(ColorRole.ON_PRIMARY, "#000000")
                 mark_p = make_paint(
-                    color=skcolor(onp, selection_progress),
+                    color=rgba_to_skia_color(_scale_alpha(mark_color, selection_progress)),
                     style=mark_style,
                     stroke_width=max(1.0, icon_sz * 0.12),
                     aa=True,
