@@ -17,7 +17,7 @@ def test_seeds_produce_colored_primaries() -> None:
     seeds = ["#6750A4", "#00796B", "#FFC107"]  # purple, teal, amber
     primaries = []
     for seed in seeds:
-        light, dark = from_seed(seed)
+        light = from_seed(seed)
         primary = light.get(ColorRole.PRIMARY)
         assert primary is not None, f"no primary for seed {seed}"
         assert not _is_grayscale(primary), f"seed {seed} produced grayscale primary {primary}"

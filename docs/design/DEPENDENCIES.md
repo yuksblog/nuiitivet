@@ -9,7 +9,7 @@ This document records the license findings for project dependencies listed in `p
 | pyglet | BSD-3-Clause | GitHub license API (<https://github.com/pyglet/pyglet/blob/master/LICENSE>) — `spdx_id: BSD-3-Clause` | PyPI `info.license` was null; license file in repo confirms BSD-3-Clause. |
 | PyOpenGL | BSD-3-Clause base | Repository license text (<https://raw.githubusercontent.com/mcfletch/pyopengl/master/license.txt>) — inferred BSD-3-Clause from license contents | GitHub API returned `spdx_id: NOASSERTION` for `license.txt`, but the license text matches BSD-3-Clause phrasing; recorded here as `BSD-3-Clause` after manual inference. Also contains the following advisory in its license text: "NOTE: THIS SOFTWARE IS NOT FAULT TOLERANT AND SHOULD NOT BE USED IN ANY SITUATION ENDANGERING HUMAN LIFE OR PROPERTY." |
 | skia-python | BSD-3-Clause | GitHub license API (<https://github.com/kyamagu/skia-python/blob/main/LICENSE>) — `spdx_id: BSD-3-Clause` | PyPI classifiers also indicate BSD. |
-| material-color-utilities | Apache-2.0 | GitHub (<https://github.com/material-foundation/material-color-utilities/blob/main/LICENSE>) PyPI metadata: `license_expression` / package metadata indicates `Apache-2.0` | |
+| materialyoucolor | MIT | GitHub (<https://github.com/T-Dynamos/materialyoucolor-python/blob/main/LICENSE>) — license file is the MIT text; PyPI classifiers also indicate MIT | Pure-Python port of Google's material-color-utilities. Replaced the `material-color-utilities` binding, which shipped no Python 3.14 wheel. |
 | mypy | MIT | PyPI `info.license` and license file (MIT) | Dev dependency. |
 | pytest | MIT | PyPI metadata and license file (MIT) | Dev dependency. |
 | pytest-asyncio | Apache-2.0 | PyPI license expression `Apache-2.0` | Dev dependency. |

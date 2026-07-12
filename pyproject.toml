@@ -15,7 +15,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 dependencies = [
-  "material-color-utilities<=0.2.6",
+  "materialyoucolor>=2.0.10",
   "pyglet>=2.1.14",
   "pyopengl>=3.1.10",
   "skia-python>=138.0",
