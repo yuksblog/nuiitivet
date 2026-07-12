@@ -835,11 +835,19 @@ class DraggableNode(InteractionNode):
 
 
 class FocusNode(InteractionNode):
-    """Handles focus state, traversal, and key events."""
+    """Handles focus state, traversal, and key events.
+
+    Holding focus and being a Tab stop are separate concerns: ``traversable``
+    decides only whether the global Tab sequence stops here. A non-traversable
+    node can still be focused programmatically (e.g. by the
+    :class:`FocusTraversalPolicy` of an enclosing :class:`FocusScope`), still
+    receives key events, and still bubbles them to its ancestors.
+    """
 
     def __init__(
         self,
         *,
+        traversable: bool = True,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_key: Optional[Callable[[str, int], bool]] = None,
         on_key_up: Optional[Callable[[str, int], bool]] = None,
@@ -848,6 +856,7 @@ class FocusNode(InteractionNode):
         on_ime_composition: Optional[Callable[[str, int, int], bool]] = None,
     ) -> None:
         super().__init__()
+        self.traversable = bool(traversable)
         self._on_focus_change = on_focus_change
         self._on_key = on_key
         self._on_key_up = on_key_up
@@ -856,21 +865,6 @@ class FocusNode(InteractionNode):
         self._on_ime_composition = on_ime_composition
         self._children: list["FocusNode"] = []
         self._parent: Optional["FocusNode"] = None
-        self._wants_tab: Optional[Callable[[int], bool]] = None
-
-    def wants_tab(self, modifier_keys: int = 0) -> bool:
-        """Return True if this node wants to consume Tab internally.
-
-        Composite widgets (e.g. RangeSlider) override this via the
-        ``_wants_tab`` callback to intercept Tab before the App moves
-        focus to the next node in the traversal list.
-
-        Args:
-            modifier_keys: Keyboard modifier key flags (e.g. Shift).
-        """
-        if self._wants_tab is not None:
-            return self._wants_tab(modifier_keys)
-        return False
 
     def request_focus(self, source: FocusSource = FocusSource.KEYBOARD) -> None:
         if self.region and hasattr(self.region, "_app") and self.region._app:
@@ -900,6 +894,11 @@ class FocusNode(InteractionNode):
 
     def _set_focused(self, value: bool, source: FocusSource = FocusSource.KEYBOARD) -> None:
         if self.state.focused == value:
+            # Focus did not move, but re-focusing an already-focused node still
+            # says how the user is driving it now (pointer press on a Tab-focused
+            # widget), and that must reach the widget.
+            if value:
+                self.notify_focus_source(source)
             return
         self.state.focused = value
         if self.region:
@@ -914,6 +913,28 @@ class FocusNode(InteractionNode):
                 error_msg="Focus change callback raised",
                 owner_name=owner_name,
             )
+
+    def notify_focus_source(self, source: FocusSource) -> None:
+        """Re-announce the focus of an already-focused node under a new ``source``.
+
+        Focus does not have to move for the way the user is driving it to change:
+        dragging a slider that Tab focused makes it pointer-driven, and Tab-ing
+        within it makes it keyboard-driven again. Widgets key their focus ring off
+        that (see ``InteractiveWidget.should_show_focus_ring``), so the source has
+        to reach them even when the focused node stays the same.
+        """
+        if not self.state.focused or self._on_focus_change is None:
+            return
+
+        owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+        invoke_event_handler(
+            self._on_focus_change,
+            True,
+            source,
+            error_key="focus_source_callback",
+            error_msg="Focus change callback raised",
+            owner_name=owner_name,
+        )
 
     def handle_key_event(self, key: str, modifier_keys: int) -> bool:
         if self._on_key:
@@ -975,6 +996,176 @@ class FocusNode(InteractionNode):
         if p:
             return p.handle_ime_composition_event(text, start, length)
         return False
+
+
+class FocusTraversalPolicy:
+    """Enumerates the members of a :class:`FocusScope` and tracks the current one.
+
+    A member is whatever the owner traverses between: a real child
+    :class:`FocusNode` (menu items) or a virtual stop the owner keeps for itself
+    (slider handle indices). The scope never inspects a member; it only asks the
+    policy how many there are, which one is current, and which to make current.
+    """
+
+    def members(self) -> Sequence[Any]:
+        """Return the scope's members in traversal order."""
+        raise NotImplementedError
+
+    def current_index(self) -> int:
+        """Return the index of the current member, or -1 if the scope has none."""
+        raise NotImplementedError
+
+    def set_current(self, index: int) -> None:
+        """Make the member at ``index`` current, focusing it if it is a real node."""
+        raise NotImplementedError
+
+    def on_boundary(self, direction: int) -> bool:
+        """Handle Tab stepping past the last (``+1``) or first (``-1``) member.
+
+        Return True to consume the key — a menu dismisses itself here. Returning
+        False (the default) lets Tab escape the scope and continue through the
+        global traversal sequence, which is what sliders and toolbars want.
+        """
+        return False
+
+
+class VirtualStopPolicy(FocusTraversalPolicy):
+    """Policy whose members are virtual stops owned by the widget.
+
+    The stops are plain indices — the owner decides what they mean (a slider's
+    handles, for instance) and keeps the focus on its own :class:`FocusNode`
+    while the scope roves between them.
+    """
+
+    def __init__(
+        self,
+        *,
+        count: Callable[[], int],
+        get_current: Callable[[], int],
+        set_current: Callable[[int], None],
+        on_boundary: Optional[Callable[[int], bool]] = None,
+    ) -> None:
+        """Initialize the policy.
+
+        Args:
+            count: Returns the current number of stops.
+            get_current: Returns the index of the active stop.
+            set_current: Makes the stop at the given index active.
+            on_boundary: Optional boundary handler; Tab escapes the scope if omitted.
+        """
+        self._count = count
+        self._get_current = get_current
+        self._set_current = set_current
+        self._on_boundary = on_boundary
+
+    def members(self) -> Sequence[int]:
+        return range(max(0, int(self._count())))
+
+    def current_index(self) -> int:
+        return int(self._get_current())
+
+    def set_current(self, index: int) -> None:
+        self._set_current(int(index))
+
+    def on_boundary(self, direction: int) -> bool:
+        if self._on_boundary is not None:
+            return bool(self._on_boundary(direction))
+        return False
+
+
+class FocusNodePolicy(FocusTraversalPolicy):
+    """Policy whose members are real child :class:`FocusNode` instances.
+
+    Those children are typically non-traversable, so the global Tab sequence
+    skips them and this policy is the only thing that moves focus between them.
+    """
+
+    def __init__(self, nodes: Callable[[], Sequence["FocusNode"]]) -> None:
+        """Initialize the policy.
+
+        Args:
+            nodes: Returns the member nodes, in traversal order.
+        """
+        self._nodes = nodes
+
+    def members(self) -> Sequence["FocusNode"]:
+        return list(self._nodes())
+
+    def current_index(self) -> int:
+        for idx, node in enumerate(self.members()):
+            if node.state.focused:
+                return idx
+        return -1
+
+    def set_current(self, index: int) -> None:
+        members = self.members()
+        if 0 <= index < len(members):
+            members[index].request_focus(FocusSource.KEYBOARD)
+
+
+class FocusScope(InteractionNode):
+    """Marks a subtree as one focus traversal group.
+
+    The group is the unit Tab enters and leaves: it is a single stop in the
+    global sequence, and the :class:`FocusTraversalPolicy` roves between its
+    members inside. Tab enters the scope at its first member and Shift+Tab at its
+    last. Stepping past the last (or before the first) member hits the boundary,
+    where the policy either consumes the key (a menu dismisses itself) or lets Tab
+    escape to the next stop outside the scope (a slider, a toolbar).
+
+    ``tab_roves`` says which key drives the roving. A slider roves on Tab, so its
+    scope reaches the boundary only at the far handle. A menu roves on the arrow
+    keys instead (WAI-ARIA); its scope sets ``tab_roves=False`` so that any Tab is
+    a boundary — which, for a menu, means dismissal.
+    """
+
+    def __init__(self, policy: FocusTraversalPolicy, *, tab_roves: bool = True) -> None:
+        """Initialize the scope.
+
+        Args:
+            policy: Enumerates the members and tracks which one is current.
+            tab_roves: Whether Tab moves between members, or is always a boundary.
+        """
+        super().__init__()
+        self.policy = policy
+        self.tab_roves = bool(tab_roves)
+
+    def on_enter(self, backwards: bool = False) -> bool:
+        """Make the entry member current: the last one on Shift+Tab, else the first."""
+        members = self.policy.members()
+        if not members:
+            return False
+        self.policy.set_current(len(members) - 1 if backwards else 0)
+        return True
+
+    def move(self, step: int, *, wrap: bool = False) -> bool:
+        """Move ``step`` members from the current one. Returns False at the boundary.
+
+        With no current member this enters the scope from the matching end.
+        """
+        members = self.policy.members()
+        if not members:
+            return False
+
+        index = self.policy.current_index()
+        if index < 0:
+            return self.on_enter(backwards=step < 0)
+
+        next_index = index + step
+        if wrap:
+            next_index %= len(members)
+        elif not 0 <= next_index < len(members):
+            return False
+
+        self.policy.set_current(next_index)
+        return True
+
+    def handle_tab(self, backwards: bool = False) -> bool:
+        """Handle a Tab press inside the scope. Returns True if it was consumed."""
+        step = -1 if backwards else 1
+        if self.tab_roves and self.move(step):
+            return True
+        return self.policy.on_boundary(step)
 
 
 class ShortcutNode(InteractionNode):

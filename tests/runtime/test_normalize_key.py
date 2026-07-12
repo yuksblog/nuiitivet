@@ -9,8 +9,19 @@ Slider, and so on).
 import pytest
 from pyglet.window import key as pyglet_key
 
-from nuiitivet.backends.pyglet.runner import _normalize_key, _normalize_modifiers
-from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+from nuiitivet.backends.pyglet.runner import _normalize_key, _normalize_modifiers, _normalize_text_motion
+from nuiitivet.input.codes import (
+    MOD_ALT,
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
+    TEXT_MOTION_BACKSPACE,
+    TEXT_MOTION_DELETE,
+    TEXT_MOTION_END,
+    TEXT_MOTION_HOME,
+    TEXT_MOTION_LEFT,
+    TEXT_MOTION_RIGHT,
+)
 
 
 @pytest.mark.parametrize(
@@ -127,3 +138,25 @@ def test_normalize_key_keeps_modifiers_when_name_lookup_fails(monkeypatch: pytes
 )
 def test_normalize_modifiers(pyglet_modifiers: int, expected_modifier_keys: int) -> None:
     assert _normalize_modifiers(pyglet_modifiers) == expected_modifier_keys
+
+
+@pytest.mark.parametrize(
+    "pyglet_motion, expected_motion",
+    [
+        (pyglet_key.MOTION_BACKSPACE, TEXT_MOTION_BACKSPACE),
+        (pyglet_key.MOTION_DELETE, TEXT_MOTION_DELETE),
+        (pyglet_key.MOTION_LEFT, TEXT_MOTION_LEFT),
+        (pyglet_key.MOTION_RIGHT, TEXT_MOTION_RIGHT),
+        # pyglet spells Home/End as beginning/end of line — there is no MOTION_HOME.
+        (pyglet_key.MOTION_BEGINNING_OF_LINE, TEXT_MOTION_HOME),
+        (pyglet_key.MOTION_END_OF_LINE, TEXT_MOTION_END),
+    ],
+)
+def test_normalize_text_motion(pyglet_motion: int, expected_motion: int) -> None:
+    assert _normalize_text_motion(pyglet_motion) == expected_motion
+
+
+@pytest.mark.parametrize("pyglet_motion", [pyglet_key.MOTION_UP, pyglet_key.MOTION_DOWN])
+def test_normalize_text_motion_passes_unmapped_motions_through(pyglet_motion: int) -> None:
+    """The arrow keys emit vertical motions nuiitivet has no code for: pass, don't raise."""
+    assert _normalize_text_motion(pyglet_motion) == int(pyglet_motion)

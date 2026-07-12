@@ -35,6 +35,7 @@ class Clickable(InteractionHostMixin, Box):
         on_release: Optional[PointerEventCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         focusable: bool = True,
+        traversable: bool = True,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
@@ -77,8 +78,14 @@ class Clickable(InteractionHostMixin, Box):
         else:
             self.enable_hover()
 
+        # Focusable says the widget can hold focus; traversable says the global
+        # Tab sequence stops on it. A widget whose focus an enclosing FocusScope
+        # drives (a menu item) is focusable but not traversable.
+        self._focusable = bool(focusable)
+        self._traversable = bool(traversable)
+
         if not initial_disabled and focusable:
-            self.add_node(FocusNode())
+            self.add_node(FocusNode(traversable=self._traversable))
 
     def _apply_disabled(self, value: bool) -> None:
         next_disabled = bool(value)
@@ -105,8 +112,8 @@ class Clickable(InteractionHostMixin, Box):
 
         else:
             # Lazily add focus support when re-enabled.
-            if self.get_node(FocusNode) is None:
-                self.add_node(FocusNode())
+            if self._focusable and self.get_node(FocusNode) is None:
+                self.add_node(FocusNode(traversable=self._traversable))
 
         self.invalidate()
 

@@ -35,6 +35,7 @@ class MyMaterialWidget(InteractiveWidget):
     * Indicates the widget should display the visual focus indicator (Ring).
     * `True` **only** when focused via Keyboard (Tab) or Programmatic means.
     * `False` when focused via Pointer (Click), preventing "sticky focus" visuals.
+    * The source can change **without focus moving** — dragging a slider that Tab focused, Tab-ing between the handles of that slider afterwards — so it tracks the latest `FocusSource`, not just the last focus change (`FocusNode.notify_focus_source`; see `INTERACTION_ARCHITECTURE.md`).
 
 ### State Layer Hierarchy
 
@@ -44,6 +45,7 @@ Visual overlays (State Layers) are resolved with the following priority in `_get
 2. **Press** (`state.pressed`): While pointer is held down.
 3. **Hover** (`state.hovered`): While pointer is within bounds.
 4. **Key Focus**: (Note: Modern MD3 style often disables the colored State Layer for Focus, preferring just the Ring. Our implementation follows this by default).
+    * Widgets that rove focus with the arrow keys inside a `FocusScope` (e.g. `MenuItem`) **do** layer focus, by overriding `_get_active_state_layer_opacity` to fall back to `_FOCUS_OPACITY` when `should_show_focus_ring`. The roved item must read as focused — and that is focus, not selection: `selected` stays reserved for a genuinely selected entry.
 
 ## 3. Implementation Guide
 

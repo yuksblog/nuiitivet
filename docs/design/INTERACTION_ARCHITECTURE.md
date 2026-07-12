@@ -12,6 +12,7 @@ Logic is split into specialized nodes inheriting from `InteractionNode`:
 
 - **`PointerInputNode`**: Handles pointer events (hover, click, press). Formerly known as `InteractionController`.
 - **`FocusNode`**: Handles focus state, traversal participation, and key events.
+- **`FocusScope`**: Marks a subtree as one traversal group, roving between its members (see [Focus Traversal Groups](#focus-traversal-groups-focusscope)).
 
 ### 2. Hosting Strategy
 
@@ -47,19 +48,33 @@ Pointer events are handled by `PointerInputNode`.
 
 ## Focus System
 
-### Focusability
+### Focusable vs. Traversable
 
-Focusability is explicit. A widget is focusable if and only if it has an attached `FocusNode`.
+Holding focus and being a stop in the Tab sequence are **two separate properties**:
+
+| Property | Carrier | Meaning |
+| :--- | :--- | :--- |
+| Focusable | owning a `FocusNode` | The widget can hold focus, receive key events, and paint a focus ring. |
+| Traversable | `FocusNode.traversable` (default `True`) | The global Tab sequence stops on it. |
+
+`App._collect_focus_nodes` collects only the **traversable** nodes. A node with `traversable=False` is still focusable: it can be focused programmatically (typically by the `FocusScope` that owns it), it still receives keys, and its keys still bubble — Tab merely never lands on it. `Clickable` and `InteractiveWidget` expose `traversable` as a constructor argument.
+
+This split is what makes a group (menu, multi-handle slider) expressible: without it, every focusable part of a widget is unavoidably its own Tab stop.
 
 ### Focus Traversal
 
-- **Order**: Depth-first search (visual order) through the widget tree, collecting all active `FocusNode`s.
+- **Order**: Depth-first search (visual order) through the widget tree, collecting the traversable `FocusNode`s.
 - **Navigation**: `Tab` moves forward, `Shift+Tab` moves backward.
 - **State**: `FocusNode` maintains a `focused` boolean state. This state syncs with `InteractionState.focused` on the host widget to drive visual updates (e.g., focus rings).
+- **Scopes first**: On Tab, the `FocusScope` enclosing the focused node is consulted **before** the global sequence (see below).
 
-### Click-to-Focus
+### Click-to-Focus and the Focus Source
 
-`PointerInputNode` automatically requests focus for its host if a `FocusNode` is present when a press event occurs.
+`PointerInputNode` automatically requests focus for its host if a `FocusNode` is present when a press event occurs. Focus carries a `FocusSource` (`KEYBOARD` / `POINTER`), and MD3 suppresses the focus ring when focus is pointer-driven (`InteractiveWidget.should_show_focus_ring`).
+
+The source can change **without focus moving** — dragging a slider that Tab focused makes it pointer-driven; Tab-ing between its handles makes it keyboard-driven again. Since both `App.request_focus` and `FocusNode._set_focused` short-circuit when nothing changes, `FocusNode.notify_focus_source(source)` re-announces the source to the widget in that case. Without it, the ring state gets stuck at whatever the last *focus change* said.
+
+A widget that takes focus **on its own**, rather than because focus was routed to it, has no source of its own to report — a `Menu` focusing its first item when it opens is the case in hand. It inherits `App._last_input_source` (the app records whether the last input was a key press or a pointer press), so a mouse-opened menu does not come up wearing a keyboard focus ring. The item is still focused, because the arrow keys need somewhere to start; it simply does not *look* keyboard-driven until the user drives it with the keyboard.
 
 ## Key Event Routing
 
@@ -80,30 +95,75 @@ In addition to raw key events (`on_key`), `FocusNode` supports high-level text i
   - `text`: The full text being composed (or the text to be inserted).
   - `start`, `length`: The range within `text` that is currently selected or highlighted by the IME.
 
-## Composite Widgets with Multiple Focus Targets
+## Focus Traversal Groups (`FocusScope`)
 
-Some widgets (e.g., `RangeSlider`) contain multiple interactive sub-elements (handles/thumbs) that the user should be able to navigate independently via the keyboard.
+Some widgets own keyboard navigation *inside* themselves: `RangeSlider` navigates between handles, `Menu` between items. Both are the same problem — a widget that traverses its own parts and decides when Tab escapes to the outside — and both are expressed with one primitive.
 
-### Approaches Considered
+A `FocusScope` is an interaction node marking a subtree as **one group**: the unit Tab enters and leaves. It delegates to a `FocusTraversalPolicy`, which enumerates the group's members and tracks the current one.
 
-| Approach | Description | Pros | Cons |
+### Policy contract
+
+Deliberately small, so that real-node owners and virtual-stop owners implement the same thing:
+
+| Method | Purpose |
+| :--- | :--- |
+| `members()` | The members, in traversal order. |
+| `current_index()` | Index of the current member, or `-1` if none. |
+| `set_current(index)` | Make that member current (focusing it, if it is a real node). |
+| `on_boundary(direction)` | Tab stepped past the last / before the first member: consume it, or let it escape. |
+
+A **member** is whatever the owner traverses between. Two shapes are built in:
+
+- **`FocusNodePolicy`** — members are real child `FocusNode`s (a menu's items), which are marked `traversable=False` so only the policy moves focus between them.
+- **`VirtualStopPolicy`** — members are virtual stops the owner keeps for itself (a slider's handle indices). Focus stays on the owner's own `FocusNode` while the scope roves between them.
+
+### Scope behavior
+
+- **Entry direction** — Tab enters the group at its first member, Shift+Tab at its last (`FocusScope.on_enter`). `App` calls this when traversal focuses a widget that hosts a scope, so Shift+Tab into a `RangeSlider` lands on the far handle.
+- **Roving** — `FocusScope.move(step, wrap=)` moves to the adjacent member. Whether *Tab* does the roving is the scope's `tab_roves` flag: a slider roves on Tab; a menu roves on the arrow keys and sets `tab_roves=False`, so every Tab is a boundary.
+- **Boundary** — the policy decides: returning `False` (the default) lets Tab escape to the next stop outside the group; returning `True` consumes it (a popup menu dismisses itself).
+
+### Dispatch order
+
+`App._dispatch_key_press` consults the scope enclosing the focused node **before** the global traversal, because the focused node may not be a Tab stop at all (a menu item), and the "focused node is not in the traversal list → restart from the first stop" fallback would otherwise fire first and the scope would never get to decide. Scopes resolve innermost-first, so an open submenu answers for the focus inside it rather than its parent menu.
+
+When a scope lets Tab escape and the focused node is not itself a stop, traversal resumes from the scope owner's own stop (`App._scope_owner_node`) rather than restarting at the first stop.
+
+### Applied
+
+| | `Menu` (popup) | `Menu` (inline) | `RangeSlider` |
 | :--- | :--- | :--- | :--- |
-| **A. Tab Interception** | The widget holds a single `FocusNode`. When Tab is pressed, the `App` queries the focused node before performing traversal. If the node indicates it wants to consume Tab internally (via a protocol method), the event is forwarded to the node's key handler instead of advancing to the next widget. | Minimal architecture change. Reusable for other composite widgets (DataGrid, TreeView, TabList). Preserves the "1 widget = 1 FocusNode" invariant. | Non-standard compared to platforms where each sub-element is an independent focusable. Limited semantic information for screen readers. |
-| **B. Multiple FocusNodes per Widget** | Each sub-element has its own `FocusNode`, collected independently during Tab traversal. | Matches platform conventions (Web, Android, Flutter, WPF). Each sub-element can carry its own accessibility label. | Breaks the "1 widget = 1 FocusNode" assumption. Requires significant refactoring of both the focus collection and the widget internals. |
+| Members | enabled items (real `FocusNode`s) | same | handle indices (virtual stops) |
+| External Tab stops | none — entered by opening it | one (the surface); WAI-ARIA makes a permanently visible menu a single stop | one (the slider) |
+| Roving keys | Tab (no wrap) and Up/Down (wrap) | same | Tab |
+| At the boundary | dismiss | escape to the next widget | escape to the next widget |
 
-### Current Decision: Approach A
+A single-handle `Slider` is a one-member scope: Tab enters, finds no second member, and hands the key straight back to the global sequence. Submenus are nested scopes.
 
-Approach A is adopted for the following reasons:
+### Menu keyboard model (provisional)
 
-1. **Architectural fit** — The current interaction system assumes one `FocusNode` per `InteractionHostMixin`. Approach B would require either relaxing this invariant across the framework or splitting RangeSlider into multiple internal widgets, both of which have wide-reaching implications.
-2. **Generality** — The Tab interception mechanism (`FocusNode` protocol for consuming Tab) is reusable by any composite widget that needs internal keyboard navigation, not just sliders.
-3. **Incremental cost** — The change is localized to `App._dispatch_key` (query before traversal) and the widget's `on_key_event` (handle Tab to switch sub-elements). No other widgets are affected.
+MD3 does not specify a menu's keyboard behavior, and real applications disagree — the WAI-ARIA APG example focuses the first item however the menu was opened and closes it on Tab, while desktop menus (Chrome, macOS, Windows) highlight nothing until the user reaches for the keyboard. **The model below is what nuiitivet does today and is deliberately provisional**: it is a reasonable reading of the desktop convention, not a settled standard, and it may change.
 
-Industry frameworks (MUI, Android, Flutter, WPF) use Approach B, but this is primarily because their platforms provide independent focusable primitives by default (e.g., `<input>`, `View`, `Composable`), not because of a deliberate design preference over A.
+| Trigger | Behavior |
+| :--- | :--- |
+| Opened with the pointer | The focus enters the menu but lands on the **surface**: no item is current, nothing is highlighted. The arrow keys, Tab, Escape and Enter all reach the menu from there — and Enter, having no current item, does nothing. |
+| Opened from the keyboard | The **first enabled item** becomes current, with its focus ring, continuing the keyboard interaction the user is already in. Which one it is comes from `App._last_input_source`. |
+| Up / Down | Rove the enabled items, **wrapping** at the ends. From "no item current" they enter at the first (Down) / last (Up). |
+| Tab / Shift+Tab | Rove the enabled items too, **without wrapping**; stepping past the end is the scope boundary (popup dismisses, inline menu moves on). Tab is the key users press to be handed the focus, so the first Tab in a pointer-opened menu must land on an item rather than close the menu. |
+| Right / Left | Walk into and out of a submenu. |
+| Escape | Dismiss. |
+
+The open question is whether Tab and the arrow keys should both rove, and whether the "nothing is current" state is worth its complexity. Revisit when the accessibility work lands, since a screen reader's expectations (APG) pull the other way.
+
+### Superseded: Tab interception (`wants_tab`)
+
+`RangeSlider` originally intercepted Tab through a per-widget `FocusNode._wants_tab` callback, chosen to avoid relaxing the "1 widget = 1 `FocusNode`" invariant. That mechanism is **removed**: it was a hand-rolled focus scope that only solved the virtual-stop case, and it could not express a menu (whose members are real focus nodes that must not be Tab stops). The invariant it protected is preserved by the `focusable`/`traversable` split, which lets a group own real focusable children without turning each into a Tab stop.
 
 ### Future Consideration
 
-When screen reader / accessibility tree support is implemented (via `SemanticsNode`), revisit this decision. Approach B may become necessary to provide per-thumb semantic labels (e.g., "Start value: 30", "End value: 70"). At that point, the `SemanticsNode` design will inform whether multiple `FocusNode`s per widget or a single node with multiple semantic children is the better fit.
+When screen reader / accessibility tree support is implemented (via `SemanticsNode`), revisit how the members of a scope are announced. Virtual stops (slider handles) carry no `FocusNode` and therefore no natural place for a per-thumb semantic label (e.g., "Start value: 30"); the `SemanticsNode` design will decide whether the policy grows a semantics hook or virtual stops become real nodes.
+
+Widget groups not yet on this primitive — segmented buttons, radio groups, toolbars, tab bars — all want roving with a single external stop and should be migrated onto it rather than growing their own navigation.
 
 ## Node Roles & Extensibility
 
@@ -112,7 +172,8 @@ The Node-based architecture allows for future expansion by adding specialized no
 | Node Type | Role & Responsibility | Notes |
 | :--- | :--- | :--- |
 | **`PointerInputNode`** (Core) | **Point Interaction.** Manages hover, click, and press states. Handles simple tap and mouse-over events. | Successor to `InteractionController`. Triggers "Click-to-Focus". |
-| **`FocusNode`** (Core) | **Keyboard & Order.** Manages focus state, Tab traversal order, and key event reception/bubbling. | Primary subject of this task. Gateway for IME integration. |
+| **`FocusNode`** (Core) | **Keyboard & Order.** Manages focus state, Tab traversal order (`traversable`), and key event reception/bubbling. | Gateway for IME integration. Focusable and traversable are separate properties. |
+| **`FocusScope`** (Core) | **Grouped Traversal.** Marks a subtree as a single Tab stop and roves between its members via a `FocusTraversalPolicy`. | Used by `Menu` (real-node members) and `RangeSlider` (virtual stops). Replaces the `wants_tab` interception. |
 | **`DraggableNode`** (Core) | **Movement (Source).** Handles drag start, delta updates, and end detection. Manages drag previews. | Distinct from `PointerInputNode`; handles movement (deltas). Includes long-press initiation logic. |
 | **`DropTargetNode`** (Future) | **Acceptance (Target).** Determines whether dropped data is accepted and processes data on drop. | `InteractionRegion` hit-testing identifies this node as a drop candidate. |
 | **`ScrollableNode`** (Future) | **Scrolling.** Handles mouse wheel, touchpad pan, and inertia calculations. | Collaborates with `ScrollViewport`. Consumes pointer events to produce scroll offsets. |

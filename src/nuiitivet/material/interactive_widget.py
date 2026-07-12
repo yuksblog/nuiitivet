@@ -61,6 +61,7 @@ class InteractiveWidget(Clickable):
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         disabled: bool | Any = False,
         focusable: bool = True,
+        traversable: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -68,6 +69,7 @@ class InteractiveWidget(Clickable):
             on_click=on_click,
             disabled=disabled,
             focusable=focusable,
+            traversable=traversable,
             width=width,
             height=height,
             padding=padding,
@@ -94,16 +96,17 @@ class InteractiveWidget(Clickable):
         return False
 
     def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
-        """Handle focus state changes. Internal — wired to FocusNode._on_focus_change."""
+        """Handle focus state changes. Internal — wired to FocusNode._on_focus_change.
+
+        Also runs when only the source changed (see ``FocusNode.notify_focus_source``),
+        so the focus ring follows how the user is driving the widget right now.
+        """
         self._focus_from_pointer = focused and source == FocusSource.POINTER
         self._on_focused(focused, source)
+        self.invalidate()
 
     def _on_focused(self, focused: bool, source: FocusSource) -> None:
         """Called when the focus state changes. Override in subclasses to react."""
-
-    def request_focus_from_pointer(self) -> None:
-        """Request focus originating from a pointer (e.g. click)."""
-        super().request_focus_from_pointer()
 
     @property
     def should_show_focus_ring(self) -> bool:

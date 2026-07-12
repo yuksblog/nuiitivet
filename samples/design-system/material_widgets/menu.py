@@ -25,7 +25,7 @@ def main(png_path: str = "") -> None:
     app = nv.App(
         content=nv.Container(padding=24, child=menu),
         title="Menu",
-        width=360,
+        width=460,
         height=380,
     )
     if png_path:
