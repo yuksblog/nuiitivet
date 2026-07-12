@@ -1,8 +1,9 @@
 """Pin the generated palette to the Material 3 reference scheme.
 
-MCU's `theme_from_color` defaults to `Variant.VIBRANT` at contrast 0.25, which is
-not the M3 default. These tests fail if we ever stop passing variant/contrast
-explicitly and silently inherit MCU's defaults again.
+Two defaults have to be held down. `materialyoucolor` generates against the M3
+**2025** spec unless told otherwise, which retones most roles, and its schemes
+carry their own variant/contrast defaults. These tests fail if palette generation
+ever stops pinning the 2021 spec, the variant and the contrast level explicitly.
 """
 
 import pytest
@@ -31,34 +32,40 @@ BASELINE_DARK = {
 
 
 def test_default_scheme_matches_m3_reference() -> None:
-    light, dark = from_seed(BASELINE_SEED)
+    light = from_seed(BASELINE_SEED)
+    dark = from_seed(BASELINE_SEED, dark=True)
     for role, expected in BASELINE_LIGHT.items():
         assert light[role].lower() == expected, f"light {role.name}"
     for role, expected in BASELINE_DARK.items():
         assert dark[role].lower() == expected, f"dark {role.name}"
 
 
-def test_default_scheme_is_not_mcu_vibrant_default() -> None:
-    """Guard the specific regression: MCU's own default produced #5700d2."""
-    light, _ = from_seed(BASELINE_SEED)
-    assert light[ColorRole.PRIMARY].lower() != "#5700d2"
+def test_default_scheme_is_not_the_2025_spec() -> None:
+    """Guard the spec pin: under the 2025 spec `onSurface` tones to #34313a."""
+    light = from_seed(BASELINE_SEED)
+    assert light[ColorRole.ON_SURFACE].lower() == "#1d1b20"
 
 
 def test_every_color_role_is_populated() -> None:
-    light, dark = from_seed(BASELINE_SEED)
+    light = from_seed(BASELINE_SEED)
+    dark = from_seed(BASELINE_SEED, dark=True)
     assert set(light) == set(ColorRole)
     assert set(dark) == set(ColorRole)
 
 
-def test_on_background_falls_back_to_on_surface() -> None:
-    """M3 folded `onBackground` into `onSurface`; MCU no longer emits it."""
-    light, _ = from_seed(BASELINE_SEED)
+def test_on_background_matches_on_surface_at_default_contrast() -> None:
+    """M3 pairs `background` with `onSurface`, and both sit at neutral tone 10/90.
+
+    The two only part company away from the default contrast level, where
+    `onBackground` follows a lower-emphasis contrast curve.
+    """
+    light = from_seed(BASELINE_SEED)
     assert light[ColorRole.ON_BACKGROUND] == light[ColorRole.ON_SURFACE]
 
 
 def test_variant_is_honored() -> None:
-    tonal, _ = from_seed(BASELINE_SEED, variant=SchemeVariant.TONAL_SPOT)
-    vibrant, _ = from_seed(BASELINE_SEED, variant=SchemeVariant.VIBRANT)
+    tonal = from_seed(BASELINE_SEED, variant=SchemeVariant.TONAL_SPOT)
+    vibrant = from_seed(BASELINE_SEED, variant=SchemeVariant.VIBRANT)
     assert tonal[ColorRole.PRIMARY] != vibrant[ColorRole.PRIMARY]
 
 
@@ -66,21 +73,36 @@ def test_contrast_level_is_honored() -> None:
     """Raising contrast must darken primary against a light surface."""
     from nuiitivet.colors.utils import contrast_ratio
 
-    low, _ = from_seed(BASELINE_SEED, contrast_level=0.0)
-    high, _ = from_seed(BASELINE_SEED, contrast_level=1.0)
+    low = from_seed(BASELINE_SEED, contrast_level=0.0)
+    high = from_seed(BASELINE_SEED, contrast_level=1.0)
 
     low_ratio = contrast_ratio(low[ColorRole.PRIMARY], low[ColorRole.SURFACE])
     high_ratio = contrast_ratio(high[ColorRole.PRIMARY], high[ColorRole.SURFACE])
     assert high_ratio > low_ratio
 
 
-def test_seed_accepts_css_name_and_short_hex() -> None:
-    from_short, _ = from_seed("#00F")
-    from_long, _ = from_seed("#0000FF")
-    assert from_short == from_long
+def test_dark_scheme_differs_from_light() -> None:
+    light = from_seed(BASELINE_SEED)
+    dark = from_seed(BASELINE_SEED, dark=True)
+    assert light[ColorRole.PRIMARY] != dark[ColorRole.PRIMARY]
+    assert light[ColorRole.SURFACE] != dark[ColorRole.SURFACE]
 
-    named, _ = from_seed("rebeccapurple")
-    assert named[ColorRole.PRIMARY].startswith("#")
+
+def test_seed_accepts_css_name_and_short_hex() -> None:
+    assert from_seed("#00F") == from_seed("#0000FF")
+    assert from_seed("rebeccapurple")[ColorRole.PRIMARY].startswith("#")
+
+
+@pytest.mark.parametrize("variant", list(SchemeVariant))
+@pytest.mark.parametrize("seed", ["white", "black", "#010101"])
+def test_achromatic_seeds_do_not_raise(seed: str, variant: SchemeVariant) -> None:
+    """`materialyoucolor` divides by zero on these seeds; the palette must not.
+
+    A tone-extreme seed collapses the hue sweep in the library's
+    `TemperatureCache`, so such seeds are nudged out of that region.
+    """
+    roles = from_seed(seed, variant=variant)
+    assert set(roles) == set(ColorRole)
 
 
 @pytest.mark.parametrize("bad_seed", ["nonsense", "", "#12345"])

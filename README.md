@@ -191,7 +191,7 @@ Main internal libraries used (drawing/rendering):
 - pyglet
 - PyOpenGL
 - skia-python
-- material-color-utilities
+- materialyoucolor
 
 See [LICENSES/](LICENSES/) for third-party licenses.
 

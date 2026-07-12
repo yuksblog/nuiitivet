@@ -199,7 +199,8 @@ class Theme:
     def from_seed(cls, seed_hex: str, name: str = "") -> Tuple["Theme", "Theme"]:
         """Create light/dark themes from seed."""
         from .palette import from_seed as palette_from_seed
-        light_roles, dark_roles = palette_from_seed(seed_hex)
+        light_roles = palette_from_seed(seed_hex)
+        dark_roles = palette_from_seed(seed_hex, dark=True)
         
         # Create Material 3 button variants
         filled_btn = ButtonStyle(

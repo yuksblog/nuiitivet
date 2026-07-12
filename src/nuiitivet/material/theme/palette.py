@@ -1,20 +1,24 @@
 """Seed-based Material 3 palette generation.
 
-Palettes are produced by `material-color-utilities` (MCU), which implements the
-HCT color space and the Material 3 dynamic color algorithm. MCU is a required
+Palettes are produced by `materialyoucolor`, a pure-Python implementation of the
+HCT color space and the Material 3 dynamic color algorithm. It is a required
 dependency, so it is the only generation path.
 
-MCU's own `theme_from_color` defaults are *not* the Material 3 defaults (it
-ships `Variant.VIBRANT` at contrast `0.25`). `from_seed` always passes variant
-and contrast level explicitly so the generated scheme matches the M3 spec unless
-a caller deliberately asks for something else.
+`materialyoucolor` defaults to the Material 3 **2025** color spec, which retones
+roughly 39% of the roles. nuiitivet targets the 2021 spec, so both the scheme and
+the role definitions are pinned to it explicitly; see `SPEC_VERSION`. Variant and
+contrast level are likewise always passed explicitly, so a generated scheme
+matches the M3 spec unless a caller deliberately asks for something else.
 """
 
 from __future__ import annotations
 
-from typing import Dict, Mapping, Tuple
+from typing import Dict
 
-import material_color_utilities as mcu
+from materialyoucolor.dynamiccolor.dynamic_scheme import DynamicScheme, SpecVersion
+from materialyoucolor.dynamiccolor.material_dynamic_colors import MaterialDynamicColors
+from materialyoucolor.dynamiccolor.variant import Variant
+from materialyoucolor.hct.hct import Hct
 
 from ...colors.utils import hex_to_rgb, normalize_literal_color
 from .color_role import ColorRole
@@ -28,18 +32,23 @@ from .scheme_variant import (
 
 RoleMap = Dict[ColorRole, str]
 
-# MCU exposes every M3 role as a snake_case key matching `ColorRole.name.lower()`.
-# The exceptions below are roles M3 has since folded into another role, which MCU
-# no longer emits under their own name.
-_ROLE_KEY_OVERRIDES: Dict[ColorRole, str] = {
-    # M3 deprecated `onBackground`; `background` now always pairs with `onSurface`.
-    ColorRole.ON_BACKGROUND: "on_surface",
-}
+#: Material 3 color spec the palettes are generated against. `materialyoucolor`
+#: defaults to "2025"; adopting that spec is a deliberate, separate decision.
+SPEC_VERSION: SpecVersion = "2021"
 
+# Every M3 role is a `MaterialDynamicColors` attribute named exactly like the
+# `ColorRole` value, so roles need no key translation. Building the spec walks
+# all 56 role definitions, so it is built once.
+_DYNAMIC_COLORS = MaterialDynamicColors(SPEC_VERSION)
 
-def _role_key(role: ColorRole) -> str:
-    """Return the MCU scheme key that carries `role`."""
-    return _ROLE_KEY_OVERRIDES.get(role, role.name.lower())
+# A seed at a tone extreme (pure black or white) or close to it collapses the hue
+# sweep in `materialyoucolor`'s `TemperatureCache` to a single color, and the
+# library then divides by the resulting zero temperature range. Nudging such a
+# seed just inside the degenerate region keeps it usable. Only seeds that would
+# otherwise raise take this path, so no palette that already works is affected.
+_SAFE_MIN_CHROMA = 2.0
+_SAFE_MIN_TONE = 2.0
+_SAFE_MAX_TONE = 98.0
 
 
 def _normalize_seed(seed: str) -> str:
@@ -63,26 +72,57 @@ def _validate_contrast_level(contrast_level: float) -> float:
     return value
 
 
-def _roles_from_scheme(scheme: Mapping[str, object]) -> RoleMap:
-    """Extract a ColorRole -> hex map from one MCU scheme dict."""
+def _seed_hct(seed_hex: str) -> Hct:
+    r, g, b = hex_to_rgb(seed_hex)
+    return Hct.from_int((0xFF << 24) | (r << 16) | (g << 8) | b)
+
+
+def _nudge_out_of_degenerate_region(seed: Hct) -> Hct:
+    """Return `seed` moved just inside the region where a hue sweep stays distinct."""
+    return Hct.from_hct(
+        seed.hue,
+        max(seed.chroma, _SAFE_MIN_CHROMA),
+        min(max(seed.tone, _SAFE_MIN_TONE), _SAFE_MAX_TONE),
+    )
+
+
+def _build_scheme(seed: Hct, variant: SchemeVariant, dark: bool, contrast_level: float) -> DynamicScheme:
+    def scheme(source: Hct) -> DynamicScheme:
+        return DynamicScheme(
+            source_color_hct=source,
+            variant=Variant[variant.value],
+            contrast_level=contrast_level,
+            is_dark=dark,
+            spec_version=SPEC_VERSION,
+        )
+
+    try:
+        return scheme(seed)
+    except ZeroDivisionError:
+        return scheme(_nudge_out_of_degenerate_region(seed))
+
+
+def _roles_from_scheme(scheme: DynamicScheme) -> RoleMap:
+    """Resolve every `ColorRole` against one scheme."""
     roles: RoleMap = {}
     for role in ColorRole:
-        value = scheme.get(_role_key(role))
-        if isinstance(value, str):
-            roles[role] = value
+        argb = getattr(_DYNAMIC_COLORS, role.value).get_argb(scheme)
+        roles[role] = "#{:06x}".format(argb & 0xFFFFFF)
     return roles
 
 
 def from_seed(
     seed_color: str,
     *,
+    dark: bool = False,
     variant: SchemeVariant = DEFAULT_VARIANT,
     contrast_level: float = DEFAULT_CONTRAST_LEVEL,
-) -> Tuple[RoleMap, RoleMap]:
-    """Generate (light_roles, dark_roles) from a seed color.
+) -> RoleMap:
+    """Generate the color roles of a single scheme from a seed color.
 
     Args:
         seed_color: Source color as hex or CSS color name.
+        dark: Generate the dark scheme instead of the light one.
         variant: Palette derivation algorithm. Defaults to the M3 default,
             `SchemeVariant.TONAL_SPOT`.
         contrast_level: Contrast adjustment in [-1.0, 1.0]. Defaults to the M3
@@ -92,16 +132,9 @@ def from_seed(
         ValueError: If `seed_color` is not a valid color or `contrast_level` is
             out of range.
     """
-    seed_hex = _normalize_seed(seed_color)
+    seed = _seed_hct(_normalize_seed(seed_color))
     level = _validate_contrast_level(contrast_level)
-
-    theme = mcu.theme_from_color(
-        seed_hex,
-        contrast_level=level,
-        variant=getattr(mcu.Variant, variant.value),
-    )
-    schemes = theme.dict()["schemes"]
-    return _roles_from_scheme(schemes["light"]), _roles_from_scheme(schemes["dark"])
+    return _roles_from_scheme(_build_scheme(seed, variant, dark, level))
 
 
-__all__ = ["from_seed", "RoleMap"]
+__all__ = ["from_seed", "RoleMap", "SPEC_VERSION"]

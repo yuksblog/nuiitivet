@@ -47,8 +47,9 @@ class MaterialThemeFactory:
         `variant` and `contrast_level` default to the Material 3 defaults; see
         `nuiitivet.material.theme.palette.from_seed`.
         """
-        light_roles, dark_roles = from_seed(seed_color, variant=variant, contrast_level=contrast_level)
-        roles = dark_roles if mode == "dark" else light_roles
+        roles = from_seed(
+            seed_color, dark=(mode == "dark"), variant=variant, contrast_level=contrast_level
+        )
 
         material_data = MaterialThemeData(roles=roles)
         return Theme(

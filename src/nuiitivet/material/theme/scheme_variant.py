@@ -8,19 +8,19 @@ from enum import Enum
 class SchemeVariant(Enum):
     """Algorithm used to derive a tonal palette from a seed color.
 
-    Each member's value is the corresponding ``material_color_utilities.Variant``
+    Each member's value is the corresponding ``materialyoucolor.Variant``
     attribute name.
     """
 
     MONOCHROME = "MONOCHROME"
     NEUTRAL = "NEUTRAL"
-    TONAL_SPOT = "TONALSPOT"
+    TONAL_SPOT = "TONAL_SPOT"
     VIBRANT = "VIBRANT"
     EXPRESSIVE = "EXPRESSIVE"
     FIDELITY = "FIDELITY"
     CONTENT = "CONTENT"
     RAINBOW = "RAINBOW"
-    FRUIT_SALAD = "FRUITSALAD"
+    FRUIT_SALAD = "FRUIT_SALAD"
 
 
 #: Variant used by Material 3 when none is specified.

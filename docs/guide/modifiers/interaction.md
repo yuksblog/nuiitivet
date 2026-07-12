@@ -94,7 +94,8 @@ class FocusDemo(nv.ComposableWidget):
 
 `clickable` and `hoverable` are convenience layers: they collapse a press and
 release into a single click, and reduce hover to a `bool`. When you need the
-individual pointer events — for example to draw strokes on a canvas — use
+individual pointer events — press, move, release, enter, leave and scroll, each
+carrying its position, the buttons held and the modifier keys — use
 `pointer_input`. It is the low-level "Listener" layer, mirroring Compose's
 `Modifier.pointerInput` and Flutter's `Listener`.
 
@@ -102,21 +103,18 @@ Each callback receives a `PointerEvent` and may be sync or async:
 
 ```python
 import nuiitivet as nv
-from nuiitivet.input import BUTTON_LEFT, MOD_CTRL
+from nuiitivet.input import BUTTON_LEFT
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.modifiers import corner_radius, pointer_input
 
 def on_press(e: PointerEvent) -> None:
-    if e.modifier_keys & MOD_CTRL:
-        pick_color(e.local_x, e.local_y)
-    else:
-        begin_stroke(e.local_x, e.local_y)
+    begin_stroke(e.local_x, e.local_y)
 
 def on_move(e: PointerEvent) -> None:
-    if e.buttons & BUTTON_LEFT:      # a button is held — a stroke is in progress
+    if e.buttons & BUTTON_LEFT:      # a button is held — this is a drag, not a hover
         extend_stroke(e.local_x, e.local_y)
 
-canvas = nv.Image(png_bytes, fit="fill", width=320, height=240).modifier(
+surface = nv.Container(width=320, height=240).modifier(
     corner_radius(8)
     | pointer_input(
         on_press=on_press,
@@ -144,7 +142,7 @@ your fit / aspect-ratio choice) stays your responsibility.
 
 `event.buttons` is a bitmask of the buttons currently held down (OR-ed
 `BUTTON_*` codes). Because a plain hover move and a drag both arrive as moves,
-check `event.buttons` inside `on_move` to tell whether a stroke is actually in
+check `event.buttons` inside `on_move` to tell whether a drag is actually in
 progress. `event.button` (singular) is only the button that caused *this*
 press/release.
 
@@ -152,7 +150,7 @@ press/release.
 
 With `capture=True` (the default) the pointer is captured on press, so `on_move`
 and `on_release` keep arriving even after the pointer leaves the widget bounds —
-essential for a stroke that runs off the edge. With `capture=False`, moving
+essential for a drag that runs off the edge. With `capture=False`, moving
 outside the bounds delivers `on_leave` and stops `on_move`.
 
 ### Reacting to modifier keys while stationary
@@ -171,13 +169,15 @@ from nuiitivet.input import MOD_ALT
 def on_modifier_keys_change(e: PointerEvent) -> None:
     set_cursor(EYEDROPPER if e.modifier_keys & MOD_ALT else BRUSH)
 
-canvas.modifier(pointer_input(on_modifier_keys_change=on_modifier_keys_change))
+surface.modifier(pointer_input(on_modifier_keys_change=on_modifier_keys_change))
 ```
 
-It fires during a capture too (i.e. mid-stroke, even when the pointer is outside
+It fires during a capture too (i.e. mid-drag, even when the pointer is outside
 the widget), and never fires for non-modifier keys or when the pointer is
-neither inside nor captured. See the runnable
-[paint sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/pointer_input.py).
+neither inside nor captured. The runnable
+[event-inspector sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/pointer_input.py)
+prints the whole stream — event type, local and screen coordinates, held buttons
+and modifier mask — as it arrives.
 
 `pointer_input` composes with `clickable` on the same widget without either
 clobbering the other, so you can keep a semantic click alongside the raw stream.

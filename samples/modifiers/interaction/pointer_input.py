@@ -1,113 +1,142 @@
-"""Raw pointer handling with ``pointer_input()``: a tiny paint canvas.
+"""Raw pointer handling with ``pointer_input()``: an event inspector.
 
-The framework ships no canvas widget on purpose — you produce the bitmap
-yourself (here with Pillow) and display it through :class:`Image`. ``pointer_input``
-surfaces the raw press/move/release stream with widget-local coordinates so the
-strokes land where the pointer is.
+Higher-level modifiers (``clickable``, ``hoverable``) hand you an interpreted
+gesture. ``pointer_input`` hands you the raw stream instead — press, move,
+release, enter, leave and scroll — with widget-local coordinates, the buttons
+currently held and the active modifier keys. This sample shows what arrives, so
+the stream is visible.
 
 Interactions:
-    - Drag with the left button to draw.
-    - Hold Ctrl and click to pick the color under the pointer instead of drawing.
-    - ``capture=True`` keeps the stroke going even if the pointer runs off the
-      image edge.
+    - Move, press and drag over the panel with any mouse button.
+    - Hold Shift / Ctrl / Alt while interacting to see the modifier mask.
+    - Scroll over the panel.
+    - ``capture=True`` keeps a drag reporting even after the pointer leaves the
+      panel, so the release lands here too.
 """
 
 from __future__ import annotations
 
-import io
-
-from PIL import Image as PILImage, ImageDraw
+from collections import deque
+from typing import Deque, List, Tuple
 
 import nuiitivet.material as nv
 
-BUTTON_LEFT = nv.BUTTON_LEFT
-MOD_CTRL = nv.MOD_CTRL
+_PANEL_W = 320
+_PANEL_H = 220
+_LOG_LINES = 6
 
-_CANVAS_W = 320
-_CANVAS_H = 240
+_LABEL = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
+_MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
+
+_BUTTONS = [(nv.BUTTON_LEFT, "left"), (nv.BUTTON_MIDDLE, "middle"), (nv.BUTTON_RIGHT, "right")]
+_MODIFIERS = [(nv.MOD_SHIFT, "shift"), (nv.MOD_CTRL, "ctrl"), (nv.MOD_ALT, "alt"), (nv.MOD_META, "meta")]
 
 
-class PaintDemo(nv.ComposableWidget):
+def _names(mask: int, table: List[Tuple[int, str]]) -> str:
+    """Render a bit mask as a readable list of names."""
+    hits = [name for bit, name in table if mask & bit]
+    return " + ".join(hits) if hits else "—"
+
+
+class PointerInspector(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self._bitmap = PILImage.new("RGB", (_CANVAS_W, _CANVAS_H), "#FFFFFF")
-        self._draw = ImageDraw.Draw(self._bitmap)
-        self._brush = "#1565C0"
-        self._last_point: tuple[float, float] | None = None
-        self.png = nv.Observable(self._encode())
-        self.status = nv.Observable("Drag to draw · Ctrl+click to pick a color")
+        self._log: Deque[str] = deque(maxlen=_LOG_LINES)
+        self.event = nv.Observable("—")
+        self.local = nv.Observable("—")
+        self.screen = nv.Observable("—")
+        self.buttons = nv.Observable("—")
+        self.modifiers = nv.Observable("—")
+        self.log = nv.Observable("Waiting for the pointer…")
 
-    def _encode(self) -> bytes:
-        buf = io.BytesIO()
-        self._bitmap.save(buf, format="PNG")
-        return buf.getvalue()
+    def _record(self, kind: str, e: nv.PointerEvent, detail: str = "") -> None:
+        self.event.value = f"{kind}{f'  ({detail})' if detail else ''}"
+        self.local.value = f"{e.local_x:.0f}, {e.local_y:.0f}"
+        self.screen.value = f"{e.x:.0f}, {e.y:.0f}"
+        self.buttons.value = _names(e.buttons, _BUTTONS)
+        self.modifiers.value = _names(e.modifier_keys, _MODIFIERS)
 
-    def _publish(self) -> None:
-        self.png.value = self._encode()
+        self._log.appendleft(f"{kind}  ·  {e.local_x:.0f}, {e.local_y:.0f}{f'  ·  {detail}' if detail else ''}")
+        self.log.value = "\n".join(self._log)
 
-    def _clamp(self, e: nv.PointerEvent) -> tuple[int, int]:
-        # The Image is shown 1:1 here (fixed size == source size), so local
-        # coordinates map straight to source pixels. Clamp to stay in bounds.
-        x = int(min(max(e.local_x, 0), _CANVAS_W - 1))
-        y = int(min(max(e.local_y, 0), _CANVAS_H - 1))
-        return x, y
+    def _on_enter(self, e: nv.PointerEvent) -> None:
+        self._record("enter", e)
+
+    def _on_leave(self, e: nv.PointerEvent) -> None:
+        self._record("leave", e)
 
     def _on_press(self, e: nv.PointerEvent) -> None:
-        x, y = self._clamp(e)
-        if e.modifier_keys & MOD_CTRL:
-            px = self._bitmap.getpixel((x, y))
-            if isinstance(px, tuple):
-                r, g, b = int(px[0]), int(px[1]), int(px[2])
-                self._brush = "#%02X%02X%02X" % (r, g, b)
-                self.status.value = f"Picked {self._brush}"
-            self._last_point = None
-            return
-        self._draw.ellipse((x - 2, y - 2, x + 2, y + 2), fill=self._brush)
-        self._last_point = (x, y)
-        self._publish()
+        self._record("press", e, _names(e.button or 0, _BUTTONS))
 
     def _on_move(self, e: nv.PointerEvent) -> None:
-        # Only extend the stroke while the left button is held down.
-        if not (e.buttons & BUTTON_LEFT):
-            return
-        x, y = self._clamp(e)
-        if self._last_point is not None:
-            self._draw.line((self._last_point[0], self._last_point[1], x, y), fill=self._brush, width=5)
-        self._last_point = (x, y)
-        self._publish()
+        # Fires while hovering and while dragging; `buttons` tells the two apart.
+        self._record("drag" if e.buttons else "move", e)
 
     def _on_release(self, e: nv.PointerEvent) -> None:
-        self._last_point = None
+        self._record("release", e, _names(e.button or 0, _BUTTONS))
 
-    def build(self):
-        canvas = nv.Image(
-            self.png,
-            fit="fill",
-            width=_CANVAS_W,
-            height=_CANVAS_H,
+    def _on_scroll(self, e: nv.PointerEvent) -> None:
+        self._record("scroll", e, f"{e.scroll_x:+.0f}, {e.scroll_y:+.0f}")
+
+    def _field(self, label: str, value: nv.Observable) -> nv.Row:
+        return nv.Row(
+            children=[
+                nv.Text(label, style=_LABEL, type_scale=nv.TypeScale.LABEL_MEDIUM, width=76),
+                nv.Text(value, type_scale=nv.TypeScale.BODY_MEDIUM),
+            ],
+            gap=8,
+            cross_alignment="center",
+        )
+
+    def _panel(self) -> nv.Container:
+        return nv.Container(
+            width=_PANEL_W,
+            height=_PANEL_H,
+            alignment="center",
+            child=nv.Text("Move, drag or scroll here", style=_MUTED),
         ).modifier(
-            nv.corner_radius(8)
+            nv.background(nv.ColorRole.SURFACE_CONTAINER_HIGH)
+            | nv.corner_radius(12)
             | nv.pointer_input(
                 on_press=self._on_press,
                 on_move=self._on_move,
                 on_release=self._on_release,
-                buttons=(BUTTON_LEFT,),
+                on_enter=self._on_enter,
+                on_leave=self._on_leave,
+                on_scroll=self._on_scroll,
                 capture=True,
             )
         )
 
-        return nv.Column(
+    def build(self):
+        readout = nv.Column(
             children=[
-                nv.Text(self.status),
-                canvas,
+                self._field("Event", self.event),
+                self._field("Local", self.local),
+                self._field("Screen", self.screen),
+                self._field("Buttons", self.buttons),
+                self._field("Modifiers", self.modifiers),
             ],
-            gap=12,
-            padding=16,
+            gap=6,
+        )
+
+        history = nv.Column(
+            children=[
+                nv.Text("Recent", style=_LABEL, type_scale=nv.TypeScale.LABEL_MEDIUM),
+                nv.Text(self.log, style=_MUTED, type_scale=nv.TypeScale.BODY_SMALL, max_lines=_LOG_LINES),
+            ],
+            gap=6,
+        )
+
+        return nv.Row(
+            children=[self._panel(), nv.Column(children=[readout, history], gap=20)],
+            gap=24,
+            padding=20,
         )
 
 
 def main(png: str = ""):
-    app = nv.App(content=PaintDemo(), title="pointer_input — paint canvas")
+    app = nv.App(content=PointerInspector(), title="pointer_input — event inspector", width=550)
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
