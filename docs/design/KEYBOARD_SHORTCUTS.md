@@ -156,9 +156,8 @@ Tier 2 is load-bearing: it is what keeps a bare-letter shortcut (`B` for brush)
 from firing while the user types "b" into a text field. This only works if the
 focused widget *claims* the key by returning `True` from `on_key`. `EditableText`
 currently returns `False` for printable keys — its text arrives through the
-separate `on_text` route — so it does not claim them. That is tracked separately;
-until it is fixed, bare-letter shortcuts are unsafe when a text field can hold
-focus.
+separate `on_text` route — so it does not claim them. Tracked in #331; until it is
+fixed, bare-letter shortcuts are unsafe when a text field can hold focus.
 
 ## Value types
 
