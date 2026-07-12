@@ -61,6 +61,15 @@ docs = [
 [tool.mypy]
 files = ["src", "tests", "samples"]
 mypy_path = "stubs"
+check_untyped_defs = true
+
+# Tests rely on monkeypatching and hand-written stub classes, which do not
+# survive body checking. Keep their bodies unchecked and drop the resulting
+# "untyped body" notes.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+check_untyped_defs = false
+disable_error_code = ["annotation-unchecked"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

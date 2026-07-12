@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 import inspect
 import logging
-from typing import Any, Callable, ClassVar, Literal, Mapping
+from typing import Any, Callable, ClassVar, Literal, Mapping, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -17,6 +17,10 @@ from .transition_engine import TransitionEngine, TransitionHandle
 from .transition_spec import EmptyTransitionSpec, TransitionPhase
 
 _logger = logging.getLogger(__name__)
+
+# Lets ``root()``/``of()`` keep the concrete subclass type, so that
+# ``MaterialNavigator.root()`` is a ``MaterialNavigator`` and not a ``Navigator``.
+NavigatorT = TypeVar("NavigatorT", bound="Navigator")
 
 
 @dataclass(slots=True)
@@ -153,14 +157,17 @@ class Navigator(ComposableWidget):
         cls._root = navigator
 
     @classmethod
-    def root(cls) -> Navigator:
-        if cls._root is None:
+    def root(cls: type[NavigatorT]) -> NavigatorT:
+        navigator = cls._root
+        if navigator is None:
             raise RuntimeError("Navigator root is not set")
-        return cls._root
+        if not isinstance(navigator, cls):
+            raise RuntimeError(f"Navigator root is not a {cls.__name__} instance")
+        return navigator
 
     @classmethod
-    def of(cls, context: Widget) -> Navigator:
-        navigator = context.find_ancestor(Navigator)
+    def of(cls: type[NavigatorT], context: Widget) -> NavigatorT:
+        navigator = context.find_ancestor(cls)
         if navigator is None:
             raise RuntimeError("Navigator not found in ancestors")
         return navigator

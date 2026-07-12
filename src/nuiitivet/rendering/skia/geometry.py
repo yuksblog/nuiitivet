@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 Number = Union[int, float]
-RadiiInput = Union[list[Number], tuple[Number], Number, None]
+RadiiInput = Union[list[Number], tuple[Number, ...], Number, None]
 
 
 def _normalize_radii(radii: Sequence[Number]) -> Sequence[float]:

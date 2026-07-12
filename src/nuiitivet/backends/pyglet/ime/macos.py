@@ -3,7 +3,7 @@ import logging
 import sys
 from typing import Any
 
-from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.logging_once import exception_once, warning_once
 
 
 _logger = logging.getLogger(__name__)
@@ -90,16 +90,19 @@ else:
 
             # frame() returns NSRect
             frame = cocoapy.send_message(screen, "frame", restype=NSRect)
-            screen_height = frame.size.height
+            if frame is None:
+                warning_once(_logger, "ime_macos_screen_frame_none", "Screen frame is unavailable; using default rect")
+            else:
+                screen_height = frame.size.height
 
-            # Calculate screen coordinates (Cocoa: bottom-left origin)
-            # Pyglet Window (wx, wy) is top-left of window content area in screen coords (top-left origin).
+                # Calculate screen coordinates (Cocoa: bottom-left origin)
+                # Pyglet Window (wx, wy) is top-left of window content area in screen coords (top-left origin).
 
-            # NSRect origin is bottom-left of the rect.
-            origin_y = (screen_height - wy) - cy - ch
-            origin_x = wx + cx
+                # NSRect origin is bottom-left of the rect.
+                origin_y = (screen_height - wy) - cy - ch
+                origin_x = wx + cx
 
-            rect = NSRect(NSPoint(origin_x, origin_y), NSSize(cw, ch))
+                rect = NSRect(NSPoint(origin_x, origin_y), NSSize(cw, ch))
 
         except Exception:
             exception_once(_logger, "ime_macos_first_rect_exc", "firstRectForCharacterRange failed")

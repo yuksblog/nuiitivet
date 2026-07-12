@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
@@ -29,6 +29,10 @@ from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .transition_state import OverlayTransitionState
 
 logger = logging.getLogger(__name__)
+
+# Lets ``root()``/``of()`` keep the concrete subclass type, so that
+# ``MaterialOverlay.root()`` is a ``MaterialOverlay`` and not an ``Overlay``.
+OverlayT = TypeVar("OverlayT", bound="Overlay")
 
 
 def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
@@ -886,21 +890,24 @@ class Overlay(ComposableWidget):
         cls._root_overlay = overlay
 
     @classmethod
-    def root(cls) -> "Overlay":
-        if cls._root_overlay is None:
-            raise RuntimeError("No root overlay found. Did you forget to initialize the App with an Overlay?")
-        return cls._root_overlay
+    def root(cls: type[OverlayT]) -> OverlayT:
+        overlay = cls._root_overlay
+        if overlay is None:
+            raise RuntimeError(f"No root overlay found. Did you forget to initialize the App with an {cls.__name__}?")
+        if not isinstance(overlay, cls):
+            raise RuntimeError(f"Root overlay is not a {cls.__name__} instance")
+        return overlay
 
     @classmethod
-    def of(cls, context: Widget, root: bool = False) -> "Overlay":
+    def of(cls: type[OverlayT], context: Widget, root: bool = False) -> OverlayT:
         if root:
             return cls.root()
 
-        overlay = context.find_ancestor(Overlay)
+        overlay = context.find_ancestor(cls)
         if overlay is None:
             raise RuntimeError(
-                f"No Overlay found in the widget tree above {context.__class__.__name__}. "
-                "Did you forget to wrap your widget in an Overlay?"
+                f"No {cls.__name__} found in the widget tree above {context.__class__.__name__}. "
+                f"Did you forget to wrap your widget in an {cls.__name__}?"
             )
         return overlay
 
