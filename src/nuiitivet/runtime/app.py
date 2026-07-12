@@ -20,7 +20,7 @@ from ..theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
-from ..widgets.interaction import FocusNode, InteractionHostMixin, FocusSource, ShortcutNode
+from ..widgets.interaction import FocusNode, FocusScope, InteractionHostMixin, FocusSource, ShortcutNode
 from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
@@ -792,6 +792,10 @@ class App:
     def request_focus(self, node: Optional[FocusNode], source: FocusSource = FocusSource.KEYBOARD) -> None:
         """Set focus to the given FocusNode. Pass ``None`` to clear focus."""
         if self._focused_node is node:
+            # Same node, possibly a different source: a pointer press on the widget
+            # that Tab already focused still has to hide its focus ring.
+            if node is not None:
+                node.notify_focus_source(source)
             return
 
         # Blur previous node
@@ -809,7 +813,12 @@ class App:
             self._focused_target = None
 
     def _collect_focus_nodes(self) -> list[FocusNode]:
-        """Return a list of FocusNodes in tree order."""
+        """Return the Tab stops — the traversable FocusNodes — in tree order.
+
+        Nodes marked non-traversable are skipped: they can still hold focus and
+        receive keys, but an enclosing :class:`FocusScope` decides when they do,
+        not the global Tab sequence.
+        """
         res = []
 
         def walk(w):
@@ -821,7 +830,7 @@ class App:
                 # Check for FocusNode
                 if isinstance(w, InteractionHostMixin):
                     node = w.get_node(FocusNode)
-                    if node and isinstance(node, FocusNode):
+                    if node and isinstance(node, FocusNode) and node.traversable:
                         res.append(node)
             except Exception:
                 exception_once(logger, "app_collect_focus_nodes_walk_exc", "Collecting FocusNodes raised")
@@ -846,6 +855,54 @@ class App:
             exception_once(logger, "app_collect_focus_nodes_root_exc", "Collecting FocusNodes from root raised")
         return res
 
+    def _focus_scope_for(self, node: Optional[FocusNode]) -> Optional[FocusScope]:
+        """Return the innermost FocusScope enclosing ``node``, if any.
+
+        Walking up from the node means nested scopes resolve inside-out: with a
+        submenu open, its scope answers for the focus inside it, not the parent
+        menu's.
+        """
+        if node is None:
+            return None
+
+        widget: Optional[Widget] = node.owner
+        while widget is not None:
+            if isinstance(widget, InteractionHostMixin):
+                scope = widget.get_node(FocusScope)
+                if isinstance(scope, FocusScope):
+                    return scope
+            widget = getattr(widget, "_parent", None)
+        return None
+
+    def _scope_owner_node(self, scope: Optional[FocusScope], nodes: list[FocusNode]) -> Optional[FocusNode]:
+        """Return ``scope``'s own Tab stop — the FocusNode of the widget hosting it."""
+        if scope is None:
+            return None
+
+        owner = scope.owner
+        if not isinstance(owner, InteractionHostMixin):
+            return None
+
+        node = owner.get_node(FocusNode)
+        if isinstance(node, FocusNode) and node in nodes:
+            return node
+        return None
+
+    def _focus_traversal_target(self, node: FocusNode, go_back: bool) -> None:
+        """Focus ``node`` as a Tab traversal target, entering its scope if it owns one.
+
+        A scope entered from the outside starts at its last member on Shift+Tab
+        and at its first otherwise, so Shift+Tab into a range slider lands on the
+        far handle rather than walking the whole widget again.
+        """
+        self.request_focus(node, FocusSource.KEYBOARD)
+        try:
+            scope = self._focus_scope_for(node)
+            if scope is not None:
+                scope.on_enter(go_back)
+        except Exception:
+            exception_once(logger, "app_focus_scope_enter_exc", "Focus scope entry raised")
+
     def _dispatch_key_press(self, key, modifier_keys=0):
         """Handle key presses for focus navigation and activation.
 
@@ -866,34 +923,45 @@ class App:
             return True
 
         if kname == "tab":
-            # 1. Try FocusNode traversal (New System)
+            # Treat bit0 as shift (matches pyglet MOD_SHIFT in practice).
+            go_back = bool(int(modifier_keys) & 1)
+
+            # 1. The scope enclosing the focused node decides first. It may rove
+            #    between its own members or consume Tab at its boundary (a menu
+            #    dismisses itself), and it must get the chance before the global
+            #    sequence does — the focused node may not even be a Tab stop.
+            scope = None
+            try:
+                scope = self._focus_scope_for(self._focused_node)
+                if scope is not None and scope.handle_tab(go_back):
+                    # Roving inside the scope leaves the focused node as it is (a
+                    # slider keeps focus while Tab moves between its handles), so
+                    # announce that the focus is keyboard-driven again — the user
+                    # may have been dragging it a moment ago.
+                    if self._focused_node is not None:
+                        self._focused_node.notify_focus_source(FocusSource.KEYBOARD)
+                    return True
+            except Exception:
+                exception_once(logger, "app_dispatch_tab_scope_exc", "Focus scope Tab handling raised")
+
+            # 2. Global traversal over the Tab stops.
             nodes = self._collect_focus_nodes()
             if nodes:
                 try:
                     cur = self._focused_node
-                    # If current focus is not in the list (e.g. detached), start from beginning
                     if cur not in nodes:
-                        cur = None
+                        # The focused node is no Tab stop (a menu item, say). If Tab
+                        # just escaped its scope, resume from the scope's own stop so
+                        # the group is left in the direction the user asked for.
+                        cur = self._scope_owner_node(scope, nodes)
 
                     if cur is None:
-                        self.request_focus(nodes[0], FocusSource.KEYBOARD)
+                        self._focus_traversal_target(nodes[0], go_back)
                         return True
 
-                    # Allow composite widgets to consume Tab internally
-                    # (e.g. RangeSlider switching between handles).
-                    if cur.wants_tab(modifier_keys):
-                        return cur.handle_key_event("tab", modifier_keys)
-
                     idx = nodes.index(cur)
-
-                    # Treat bit0 as shift (matches pyglet MOD_SHIFT in practice).
-                    go_back = bool(int(modifier_keys) & 1)
-
-                    if go_back:
-                        next_idx = (idx - 1) % len(nodes)
-                    else:
-                        next_idx = (idx + 1) % len(nodes)
-                    self.request_focus(nodes[next_idx], FocusSource.KEYBOARD)
+                    next_idx = (idx - 1) % len(nodes) if go_back else (idx + 1) % len(nodes)
+                    self._focus_traversal_target(nodes[next_idx], go_back)
                     return True
                 except Exception:
                     exception_once(logger, "app_dispatch_tab_traversal_exc", "Tab focus traversal raised")

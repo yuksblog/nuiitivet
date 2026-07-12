@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.slider import (
     HorizontalCenteredSlider,
@@ -6,6 +8,7 @@ from nuiitivet.material.slider import (
     VerticalSlider,
 )
 from nuiitivet.observable import Observable
+from nuiitivet.widgets.interaction import FocusScope
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
@@ -237,7 +240,13 @@ def test_range_slider_paint_disabled_does_not_raise() -> None:
     r.paint(_DummyCanvas(), 0, 0, 200, 48)
 
 
-# --- D6: RangeSlider Tab focus between handles ---
+# --- D6: RangeSlider Tab focus between handles (FocusScope over handle indices) ---
+
+
+def _scope(slider) -> FocusScope:
+    node = slider.get_node(FocusScope)
+    assert isinstance(node, FocusScope)
+    return node
 
 
 def test_range_slider_tab_switches_active_handle() -> None:
@@ -246,20 +255,16 @@ def test_range_slider_tab_switches_active_handle() -> None:
 
     assert r._active_handle_index == 0
 
-    result = r.on_key_event("tab", 0)
-
-    assert result is True
+    assert _scope(r).handle_tab(backwards=False) is True
     assert r._active_handle_index == 1
 
 
-def test_range_slider_tab_at_last_handle_does_not_go_beyond() -> None:
-    """Tab at last handle should stay at handle index 1."""
+def test_range_slider_tab_at_last_handle_escapes_the_scope() -> None:
+    """Tab at the last handle should not be consumed: it leaves the slider."""
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
-    result = r.on_key_event("tab", 0)
-
-    assert result is True
+    assert _scope(r).handle_tab(backwards=False) is False
     assert r._active_handle_index == 1
 
 
@@ -268,50 +273,34 @@ def test_range_slider_shift_tab_moves_back() -> None:
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 1
 
-    result = r.on_key_event("tab", 1)  # modifier_keys=1 (MOD_SHIFT)
-
-    assert result is True
+    assert _scope(r).handle_tab(backwards=True) is True
     assert r._active_handle_index == 0
 
 
-def test_range_slider_wants_tab_at_first_handle() -> None:
-    """wants_tab should return True when at first handle (forward)."""
+def test_range_slider_shift_tab_at_first_handle_escapes_the_scope() -> None:
+    """Shift+Tab at the first handle should not be consumed: it leaves the slider."""
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
     r._active_handle_index = 0
 
-    assert r._wants_tab(0) is True
+    assert _scope(r).handle_tab(backwards=True) is False
+    assert r._active_handle_index == 0
 
 
-def test_range_slider_wants_tab_at_last_handle_returns_false() -> None:
-    """wants_tab should return False when at last handle (forward)."""
+def test_range_slider_shift_tab_enters_at_the_last_handle() -> None:
+    """Entering the scope backwards should start at the far handle."""
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
-    r._active_handle_index = 1
 
-    assert r._wants_tab(0) is False
+    _scope(r).on_enter(backwards=True)
 
-
-def test_range_slider_wants_tab_shift_at_first_handle_returns_false() -> None:
-    """Shift+Tab wants_tab should return False when at first handle."""
-    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
-    r._active_handle_index = 0
-
-    assert r._wants_tab(1) is False
+    assert r._active_handle_index == 1
 
 
-def test_range_slider_wants_tab_shift_at_last_handle() -> None:
-    """Shift+Tab wants_tab should return True when at last handle."""
-    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
-    r._active_handle_index = 1
-
-    assert r._wants_tab(1) is True
-
-
-def test_slider_wants_tab_always_false() -> None:
-    """Single-handle Slider should never consume Tab."""
+def test_slider_scope_never_consumes_tab() -> None:
+    """A single-handle Slider is a one-member scope: Tab passes straight through."""
     s = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0)
 
-    assert s._wants_tab(0) is False
-    assert s._wants_tab(1) is False
+    assert _scope(s).handle_tab(backwards=False) is False
+    assert _scope(s).handle_tab(backwards=True) is False
 
 
 def test_range_slider_arrow_key_moves_active_handle_value() -> None:
@@ -319,10 +308,52 @@ def test_range_slider_arrow_key_moves_active_handle_value() -> None:
     r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
 
     # Tab to second handle
-    r.on_key_event("tab", 0)
+    _scope(r).handle_tab(backwards=False)
     assert r._active_handle_index == 1
 
     old_end = r.value_end
     r.on_key_event("right", 0)
 
     assert r.value_end > old_end
+
+
+def test_pressing_a_keyboard_focused_slider_hides_the_focus_ring() -> None:
+    """MD3: pointer input hides the ring, even on the widget that already has focus."""
+    s = HorizontalSlider(value=0.5, min_value=0.0, max_value=100.0, width=200)
+    s.set_layout_rect(0, 0, 200, 48)
+    s.state.focused = True
+    assert s.should_show_focus_ring is True
+
+    send_pointer_event_for_test(s, PointerEventType.PRESS, x=100.0, y=24.0)
+
+    assert s.should_show_focus_ring is False
+
+
+def _painted_handle_widths(slider) -> list[float]:
+    """Paint the slider and return the width of each handle rect it drew."""
+    handle_height = float(slider.style.active_handle_height)
+    widths: list[float] = []
+
+    def _capture(x, y, w, h):
+        if abs(float(h) - handle_height) < 1e-6:
+            widths.append(float(w))
+        return MagicMock()
+
+    slider.set_layout_rect(0, 0, 360, 48)
+    with patch("nuiitivet.rendering.skia.make_rect", side_effect=_capture):
+        slider.paint(MagicMock(), 0, 0, 360, 48)
+    return widths
+
+
+def test_range_slider_focus_narrows_only_the_active_handle() -> None:
+    """The resting handle must keep its width when the other one has focus."""
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+    resting = float(r.style.handle_width)
+    focused_width = float(r.style.handle_width_focused)
+    assert focused_width != resting
+
+    # Skip the width animation: assert on the state the handle animates towards.
+    with patch.object(HorizontalRangeSlider, "_current_handle_width", return_value=focused_width):
+        widths = _painted_handle_widths(r)
+
+    assert widths == [focused_width, resting]

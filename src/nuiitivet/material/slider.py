@@ -15,7 +15,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
-from nuiitivet.widgets.interaction import DraggableNode, PointerInputNode
+from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
 from nuiitivet.animation import Animatable
 
 _logger = logging.getLogger(__name__)
@@ -123,13 +123,18 @@ class _SliderBase(InteractiveWidget):
 
         self._handle_count = 1
 
-        # Wire Tab interception so composite sliders can consume Tab
-        # internally to switch between handles.
-        from nuiitivet.widgets.interaction import FocusNode
-
-        focus_node = self.get_node(FocusNode)
-        if focus_node is not None and isinstance(focus_node, FocusNode):
-            focus_node._wants_tab = self._wants_tab
+        # The handles are the scope's members: Tab roves between them and escapes
+        # to the next widget past the last one. A single-handle slider is a
+        # one-member scope, so Tab passes straight through it.
+        self.add_node(
+            FocusScope(
+                VirtualStopPolicy(
+                    count=lambda: self._handle_count,
+                    get_current=lambda: self._active_handle_index,
+                    set_current=self._set_active_handle_index,
+                )
+            )
+        )
 
     @property
     def style(self) -> SliderStyle:
@@ -224,6 +229,13 @@ class _SliderBase(InteractiveWidget):
                 return True
         return False
 
+    def _handle_dimensions(self, handle_width: float, style: SliderStyle) -> Tuple[float, float]:
+        """Return the (width, height) a handle of ``handle_width`` paints at."""
+        height = float(style.active_handle_height)
+        if self._orientation is Orientation.VERTICAL:
+            return (height, handle_width)
+        return (handle_width, height)
+
     def _current_handle_width(self) -> float:
         target = (
             float(self.style.handle_width_focused)
@@ -239,9 +251,6 @@ class _SliderBase(InteractiveWidget):
             return False
 
         key_name = (key or "").lower()
-
-        if key_name == "tab":
-            return self._handle_tab_key(modifier_keys)
 
         if key_name == "space":
             self._space_accel_armed = True
@@ -259,29 +268,10 @@ class _SliderBase(InteractiveWidget):
         self._space_accel_armed = False
         return True
 
-    def _wants_tab(self, modifier_keys: int = 0) -> bool:
-        """Return True if Tab should be consumed internally.
-
-        For single-handle sliders this always returns False.
-        Multi-handle sliders override to return True when Tab can
-        move focus to the next handle within the widget.
-        """
-        if self._handle_count <= 1:
-            return False
-        go_back = bool(int(modifier_keys) & 1)
-        if go_back:
-            return self._active_handle_index > 0
-        return self._active_handle_index < self._handle_count - 1
-
-    def _handle_tab_key(self, modifier_keys: int = 0) -> bool:
-        """Move active handle index on Tab."""
-        go_back = bool(int(modifier_keys) & 1)
-        if go_back:
-            self._active_handle_index = max(0, self._active_handle_index - 1)
-        else:
-            self._active_handle_index = min(self._handle_count - 1, self._active_handle_index + 1)
+    def _set_active_handle_index(self, index: int) -> None:
+        """Make the handle at ``index`` the keyboard target. Called by the FocusScope."""
+        self._active_handle_index = max(0, min(self._handle_count - 1, int(index)))
         self.invalidate()
-        return True
 
     def _keyboard_step(self, modifier_keys: int, *, large: bool = False) -> float:
         span = max(1e-6, self._max_value - self._min_value)
@@ -500,10 +490,10 @@ class _SliderBase(InteractiveWidget):
                 active_index = max(0, min(self._active_handle_index, len(centers) - 1))
                 cx, cy = centers[active_index]
 
-                handle_w = self._current_handle_width()
-                handle_h = float(style.active_handle_height)
-                if self._orientation is Orientation.VERTICAL:
-                    handle_w, handle_h = handle_h, handle_w
+                # Only the handle the user is on narrows: the others keep the
+                # resting width (a RangeSlider must not shrink both handles).
+                handle_w, handle_h = self._handle_dimensions(self._current_handle_width(), style)
+                idle_w, idle_h = self._handle_dimensions(float(style.handle_width), style)
 
                 if layer_alpha > 0.0:
                     # State layer: same rect and radius as the handle itself.
@@ -514,14 +504,15 @@ class _SliderBase(InteractiveWidget):
                         if layer_paint is not None:
                             draw_round_rect(canvas, layer_rect, min(handle_w, handle_h) / 2.0, layer_paint)
 
-                for hx, hy in centers:
-                    handle_rect = make_rect(hx - handle_w / 2.0, hy - handle_h / 2.0, handle_w, handle_h)
+                for idx, (hx, hy) in enumerate(centers):
+                    w, h = (handle_w, handle_h) if idx == active_index else (idle_w, idle_h)
+                    handle_rect = make_rect(hx - w / 2.0, hy - h / 2.0, w, h)
                     if handle_rect is None:
                         continue
                     handle_alpha = style.disabled_handle_alpha if self.disabled else 1.0
                     handle_paint = make_paint(color=skcolor(handle_hex, handle_alpha), style="fill", aa=True)
                     if handle_paint is not None:
-                        draw_round_rect(canvas, handle_rect, min(handle_w, handle_h) / 2.0, handle_paint)
+                        draw_round_rect(canvas, handle_rect, min(w, h) / 2.0, handle_paint)
 
                 if self.should_show_focus_ring:
                     focus_stroke = max(1.0, float(style.focus_stroke_ratio) * 48.0)
