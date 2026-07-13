@@ -125,6 +125,25 @@ def test_bottom_sheet_build_width():
     assert isinstance(built, Box)
 
 
+def test_bottom_sheet_height_sizing_auto_by_default():
+    """The default height=None keeps the sheet content-sized."""
+    sheet = BottomSheet(Box(), headline="Filters")
+    assert sheet.height_sizing.kind == "auto"
+
+
+def test_bottom_sheet_height_sizing_percentage():
+    """A percentage height is declared on the node, where the overlay reads it."""
+    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(height="50%"))
+    assert sheet.height_sizing.kind == "flex"
+    assert sheet.height_sizing.value == pytest.approx(50.0)
+
+
+def test_bottom_sheet_height_sizing_fixed():
+    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(height=400))
+    assert sheet.height_sizing.kind == "fixed"
+    assert sheet.height_sizing.value == pytest.approx(400.0)
+
+
 def test_bottom_sheet_transition_auto_uses_height():
     """Default transition slides by exactly the sheet's own height (fraction = 1.0)."""
     spec = MaterialTransitions.bottom_sheet()
