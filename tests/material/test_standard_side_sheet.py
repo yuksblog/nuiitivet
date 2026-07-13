@@ -290,6 +290,103 @@ def test_standard_side_sheet_build_no_divider_when_disabled():
     assert isinstance(_container(sheet.build()).children[0], Column)
 
 
+# ---------------------------------------------------------------------------
+# Height resolution tests
+# ---------------------------------------------------------------------------
+
+
+def _layout_in_row(sheet: StandardSideSheet, width: int = 800, height: int = 600) -> tuple[int, int, int, int]:
+    """Mount and lay the sheet out beside a filler widget; return its rect.
+
+    Mounting is required: a composable only builds its subtree on mount, so an
+    unmounted sheet would leave the inner widgets without a layout rect.
+    """
+    from nuiitivet.runtime.app import App
+
+    row = LayoutRow([Box(width="100%", height="100%"), sheet], width=width, height=height)
+    app = App(content=row, width=width, height=height)
+    app.root.mount(app)
+    app.root.layout(width, height)
+    rect = sheet.layout_rect
+    assert rect is not None
+    return rect
+
+
+def _built_container(sheet: StandardSideSheet) -> Box:
+    """Return the container Box of the mounted (laid-out) subtree."""
+    built = sheet._built
+    assert built is not None
+    return _container(built)
+
+
+@pytest.mark.parametrize("show_divider", [True, False])
+def test_standard_side_sheet_fills_parent_height(show_divider: bool):
+    """The default height="100%" fills the parent regardless of the divider.
+
+    The divider is a flex widget whose preferred height matches the available
+    height, which used to be the only reason the sheet appeared full-height.
+    """
+    sheet = StandardSideSheet(
+        Box(width=100, height=100),
+        headline="Filters",
+        style=StandardSideSheetStyle(show_divider=show_divider),
+    )
+    assert _layout_in_row(sheet)[3] == 600
+
+
+@pytest.mark.parametrize("show_divider", [True, False])
+def test_standard_side_sheet_fixed_style_height(show_divider: bool):
+    """A fixed style height wins over both the content and the available height."""
+    sheet = StandardSideSheet(
+        Box(width=100, height=100),
+        headline="Filters",
+        style=StandardSideSheetStyle(height=300, show_divider=show_divider),
+    )
+    assert _layout_in_row(sheet)[3] == 300
+
+
+@pytest.mark.parametrize("show_divider", [True, False])
+def test_standard_side_sheet_content_is_top_aligned(show_divider: bool):
+    """The body starts at the top of a full-height container, not centered."""
+    sheet = StandardSideSheet(
+        Box(width=100, height=100),
+        headline="Filters",
+        style=StandardSideSheetStyle(show_divider=show_divider),
+    )
+    _layout_in_row(sheet)
+    body = _built_container(sheet).children[0]
+    rect = body.layout_rect
+    assert rect is not None
+    assert rect[1] == 0
+
+
+def test_standard_side_sheet_content_can_fill_height():
+    """Content declaring a flex height gets the space left over by the header."""
+    content = Box(width=100, height="100%")
+    sheet = StandardSideSheet(content, headline="Filters")
+    _layout_in_row(sheet)
+    rect = content.layout_rect
+    assert rect is not None
+    # 600px container minus the 72px header row.
+    assert rect[3] == 600 - 72
+
+
+def test_standard_side_sheet_auto_content_keeps_natural_height():
+    """Content without a height stays at its natural height."""
+    content = Box(width=100, height=100)
+    sheet = StandardSideSheet(content, headline="Filters")
+    _layout_in_row(sheet)
+    rect = content.layout_rect
+    assert rect is not None
+    assert rect[3] == 100
+
+
+def test_standard_side_sheet_width_sizing_stays_auto():
+    """The node width must stay auto: the open/close animation drives it."""
+    sheet = StandardSideSheet(Box(width=100, height=100))
+    assert sheet.width_sizing.kind == "auto"
+
+
 def test_standard_side_sheet_namespace_export():
     """StandardSideSheet is accessible via the nuiitivet.material namespace."""
     import nuiitivet.material as m

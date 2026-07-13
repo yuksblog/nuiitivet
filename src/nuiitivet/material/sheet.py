@@ -202,7 +202,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
             style: Container style. Defaults to :class:`BottomSheetStyle`.
         """
         _style = style if style is not None else BottomSheetStyle()
-        super().__init__(width=_style.width)
+        super().__init__(width=_style.width, height=_style.height)
         self._content = content
         self._headline = headline
         self._user_style = style
@@ -321,7 +321,13 @@ class StandardSideSheet(ComposableWidget):
                 Defaults to ``"right"``.
             style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
         """
-        super().__init__()
+        _style = style if style is not None else StandardSideSheetStyle()
+        # Only the height is declared on this node: the parent resolves a
+        # child's cross-axis size from ``height_sizing``, so a percentage
+        # height must be visible there.  The width stays ``auto`` because the
+        # open/close animation works by having ``Collapsible`` report an
+        # animating preferred width to the parent.
+        super().__init__(height=_style.height)
         self._content = content
         self._opened = opened
         self._on_close_click = on_close_click
@@ -390,7 +396,9 @@ class StandardSideSheet(ComposableWidget):
             )
         body_parts.append(self._content)
 
-        content_col = Column(body_parts, width=Sizing.flex(1))
+        # The body fills the container so that content declaring a flex height
+        # gets the space left over by the header.
+        content_col = Column(body_parts, width=Sizing.flex(1), height=Sizing.flex(1))
 
         # Optionally add a vertical Divider on the edge facing the main content.
         if resolved_style.show_divider:
@@ -407,6 +415,7 @@ class StandardSideSheet(ComposableWidget):
             width=resolved_style.width,
             height=resolved_style.height,
             background_color=resolved_style.background_color,
+            alignment="top-left",
         )
 
         # The collapse anchor is the edge the sheet is docked to: the child is
