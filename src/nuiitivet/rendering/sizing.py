@@ -3,6 +3,11 @@
 A Sizing represents the strategy a widget uses to request space along an axis.
 Developers can pass ints, "auto", or percentage strings (e.g. "50%"), which are
 converted into one of the supported Sizing variants.
+
+A percentage is a *flex weight*, not a fraction of the parent: "50%" becomes
+Sizing.flex(50), and the space left over on an axis is split among its flex
+children in proportion to their weights. A lone flex child fills the axis
+whatever its weight. See docs/design/SIZE_POLICY.md 1.1.
 """
 
 from __future__ import annotations

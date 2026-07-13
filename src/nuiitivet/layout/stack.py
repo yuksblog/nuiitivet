@@ -147,13 +147,14 @@ class Stack(Widget):
             target_w = cw
             target_h = ch
 
-            # If child has percentage sizing (flex),
-            # resolve it against stack size
+            # Flex is a weight, not a fraction of the parent. Stacked children
+            # overlap instead of sharing an axis, so each flex child is the sole
+            # claimant on its axis and takes the whole content extent.
             if hasattr(child, "width_sizing") and child.width_sizing.kind == "flex":
-                target_w = int(content_w * (child.width_sizing.value / 100.0))
+                target_w = content_w
 
             if hasattr(child, "height_sizing") and child.height_sizing.kind == "flex":
-                target_h = int(content_h * (child.height_sizing.value / 100.0))
+                target_h = content_h
 
             # Calculate position based on alignment
             x = get_pos(ax, content_w, target_w)
