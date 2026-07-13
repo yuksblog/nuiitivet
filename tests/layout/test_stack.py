@@ -101,13 +101,21 @@ def test_stack_column_spacer_expansion():
     assert button.layout_rect == (0, 180, 50, 20)
 
 
-def test_stack_percentage_sizing():
-    # Child: Container width="50%", height="50%"
+def test_stack_flex_child_fills_regardless_of_weight():
+    # "50%" is a flex weight, not a fraction of the parent. Stacked children do
+    # not share an axis, so the sole flex claimant takes the whole extent -
+    # the same result Row/Column produce for a lone flex child.
     child = Container(width="50%", height="50%")
     stack = Stack(children=[child], width=200, height=200)
     stack.layout(200, 200)
 
-    assert child.layout_rect == (0, 0, 100, 100)
+    assert child.layout_rect == (0, 0, 200, 200)
+
+    full = Container(width="100%", height="100%")
+    stack_full = Stack(children=[full], width=200, height=200)
+    stack_full.layout(200, 200)
+
+    assert full.layout_rect == child.layout_rect
 
 
 def test_stack_spacer_with_percentage_container():

@@ -933,10 +933,13 @@ class _PositionedOverlayContent(Widget):
         target_w = int(cw)
         target_h = int(ch)
 
+        # Flex is a weight, not a fraction of the parent. The overlay content is
+        # the sole claimant on both axes, so a flex child fills the available
+        # extent (see docs/design/SIZE_POLICY.md).
         if hasattr(child, "width_sizing") and child.width_sizing.kind == "flex":
-            target_w = int(width * (child.width_sizing.value / 100.0))
+            target_w = width
         if hasattr(child, "height_sizing") and child.height_sizing.kind == "flex":
-            target_h = int(height * (child.height_sizing.value / 100.0))
+            target_h = height
 
         ax, ay = normalize_alignment(self._alignment, default=("center", "center"))
 

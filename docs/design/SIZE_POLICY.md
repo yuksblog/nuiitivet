@@ -80,6 +80,24 @@ The **Allocated Rect** is the space assigned to the widget by its parent during 
 * **Hit Testing:** The **entire Allocated Rect** is hit-testable.
   * This ensures that expanding a widget (e.g., for easier touch access) works as expected, even if the visual content remains small.
 
+## 1.1 Flex Semantics: A Weight, Not a Fraction of the Parent
+
+`flex` is a **weight** in the spirit of WPF's star (`*`) sizing. A percentage string is just a shorthand for a weight — `parse_sizing("50%")` returns `Sizing.flex(50)`, which carries no memory of the `%` sign.
+
+The rule for an axis is:
+
+1. `fixed` and `auto` children are given the space they ask for.
+2. Whatever remains is split among the `flex` children **in proportion to their weights**.
+
+Two consequences are worth stating plainly, because `"50%"` invites the opposite reading:
+
+* **A lone flex child fills the axis, whatever its weight.** With no flex sibling to share with, it receives the entire remainder. `"50%"`, `"100%"` and `Sizing.flex(1)` are therefore *identical* for an only child. This holds in `Row`, `Column`, `Grid`, `Stack`, and for overlay-presented content (a `Stack` child overlaps its siblings rather than sharing an axis with them, so it is always the sole claimant; the same is true of overlay content).
+* **A percentage is not a fraction of the parent.** `Row([a, b])` with `a="50%"` and `b="150%"` gives `a` a quarter of the row and `b` three quarters — the weights are normalized against each other (200 total), not against 100.
+
+To size a widget to a genuine fraction of its parent, use a number (`height=300`); there is no fraction-of-parent spec.
+
+> Percentages that sum to 100 across siblings (`Grid(rows=["33%", "33%", "33%"])`) read naturally *because* the weights happen to normalize to the same numbers. That coincidence is why the convention is convenient, not a second interpretation.
+
 ## 2. Content Policy (Paint)
 
 Once the Allocated Rect is determined, the widget decides how to draw its content. This is conceptually controlled by a **Content Mode** (often called `fit`).
