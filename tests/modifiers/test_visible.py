@@ -1,4 +1,4 @@
-"""Tests for visible() modifier (composition of opacity + ignore_pointer)."""
+"""Tests for visible() modifier (opacity + block_focus_traversal + ignore_pointer)."""
 
 from __future__ import annotations
 
@@ -7,12 +7,14 @@ from typing import Callable
 from nuiitivet.animation import LinearMotion
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern
+from nuiitivet.modifiers.block_focus_traversal import BlockFocusTraversalBox
 from nuiitivet.modifiers.ignore_pointer import IgnorePointerBox
 from nuiitivet.modifiers.transform import TransformBox
 from nuiitivet.modifiers.visible import _AnimatedVisibleBox, visible
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 
 
@@ -49,6 +51,20 @@ def _make_child() -> Box:
     return Box(width=Sizing.fixed(100), height=Sizing.fixed(50))
 
 
+def _blocker(wrapped: Widget) -> BlockFocusTraversalBox:
+    """Return the BlockFocusTraversalBox nested inside the outer IgnorePointerBox."""
+    box = wrapped.children[0]
+    assert isinstance(box, BlockFocusTraversalBox)
+    return box
+
+
+def _inner(wrapped: Widget) -> Widget:
+    """Return the paint wrapper (TransformBox / _AnimatedVisibleBox) of a visible() chain."""
+    child = _blocker(wrapped).children[0]
+    assert isinstance(child, Widget)
+    return child
+
+
 # ---------------------------------------------------------------------------
 # Static (non-animated) composition
 # ---------------------------------------------------------------------------
@@ -61,7 +77,7 @@ def test_visible_static_true_composes_opacity_and_ignore_pointer() -> None:
     # Outer wrapper is IgnorePointerBox; inside is a TransformBox (opacity).
     assert isinstance(wrapped, IgnorePointerBox)
     assert wrapped._active is False
-    inner = wrapped.children[0]
+    inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
     assert inner._opacity == 1.0
 
@@ -72,7 +88,7 @@ def test_visible_static_false_keeps_layout_and_blocks_input() -> None:
 
     assert isinstance(wrapped, IgnorePointerBox)
     assert wrapped._active is True
-    inner = wrapped.children[0]
+    inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
     assert inner._opacity == 0.0
 
@@ -89,7 +105,7 @@ def test_visible_observable_toggles_input_blocking_and_opacity() -> None:
     child = _make_child()
     wrapped = child.modifier(visible(cond))
     assert isinstance(wrapped, IgnorePointerBox)
-    inner = wrapped.children[0]
+    inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
 
     app = _DummyApp()
@@ -131,7 +147,7 @@ def test_visible_child_stays_mounted_across_hide_show_cycles() -> None:
     app = _DummyApp()
     wrapped.mount(app)
 
-    inner = wrapped.children[0]
+    inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
     # The original child is the inner-most descendant.
     assert child in inner.children
@@ -163,7 +179,7 @@ def test_visible_with_transition_initial_visible_animates_exit() -> None:
 
         # Outer wrapper is IgnorePointerBox; inside is _AnimatedVisibleBox.
         assert isinstance(wrapped, IgnorePointerBox)
-        paint_box = wrapped.children[0]
+        paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
         app = _DummyApp()
@@ -204,7 +220,7 @@ def test_visible_with_transition_enter_animates_progress_up() -> None:
         )
         wrapped = child.modifier(visible(cond, transition=transition))
         assert isinstance(wrapped, IgnorePointerBox)
-        paint_box = wrapped.children[0]
+        paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
         app = _DummyApp()
@@ -243,7 +259,7 @@ def test_visible_transition_out_used_on_exit() -> None:
         )
         wrapped = child.modifier(visible(cond, transition=transition, transition_out=transition_out))
         assert isinstance(wrapped, IgnorePointerBox)
-        paint_box = wrapped.children[0]
+        paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
         app = _DummyApp()
@@ -270,7 +286,7 @@ def test_visible_transition_out_omitted_falls_back_to_transition() -> None:
             pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
         )
         wrapped = child.modifier(visible(cond, transition=transition))
-        paint_box = wrapped.children[0]
+        paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
         # transition_out falls back to transition for the exit direction.
         assert paint_box._transition_out is paint_box._transition_in

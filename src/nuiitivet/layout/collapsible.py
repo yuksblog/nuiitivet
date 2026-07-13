@@ -136,6 +136,20 @@ class Collapsible(Widget):
     def _animates_height(self) -> bool:
         return self._axis in ("both", "vertical")
 
+    # --- Focus traversal ---------------------------------------------------
+    @property
+    def blocks_focus_traversal(self) -> bool:
+        """Keep the child out of the Tab sequence while the collapsible is closed.
+
+        The child stays mounted and laid out at its natural size while closed,
+        so without this its focusable widgets would remain Tab stops behind the
+        clip. Traversal follows the ``opened`` flag rather than the size
+        animation: the content becomes reachable as soon as it starts expanding
+        (it is on screen by then) and unreachable as soon as it starts
+        collapsing.
+        """
+        return not _read_opened(self._opened)
+
     # --- Lifecycle ---------------------------------------------------------
     def on_mount(self) -> None:
         super().on_mount()

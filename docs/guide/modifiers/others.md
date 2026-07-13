@@ -138,9 +138,10 @@ The `alignment` parameter sets the reference point on the **target widget**, and
 ## Visible
 
 The `visible()` modifier conditionally shows or hides a widget.
-It is a thin composition of `opacity()` and `ignore_pointer()`:
-while hidden the widget is rendered fully transparent and ignores all pointer input,
-but it **retains its normal layout space** — the surrounding layout is not affected.
+It is a thin composition of `opacity()`, `block_focus_traversal()` and `ignore_pointer()`:
+while hidden the widget is rendered fully transparent, ignores all pointer input and is
+skipped by Tab traversal, but it **retains its normal layout space** — the surrounding
+layout is not affected.
 
 ### Basic usage
 

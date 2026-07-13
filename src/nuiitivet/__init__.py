@@ -88,6 +88,7 @@ from nuiitivet.animation.transition_pattern import (
 # Modifiers (exposed flat: ``nv.background(...)``, ``nv.corner_radius(...)``, ...)
 from nuiitivet.modifiers import (
     background,
+    block_focus_traversal,
     border,
     clickable,
     clip,
@@ -174,6 +175,7 @@ __all__: list[str] = [
     "FractionalSlidePattern",
     # Modifiers
     "background",
+    "block_focus_traversal",
     "border",
     "clickable",
     "clip",
