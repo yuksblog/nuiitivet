@@ -296,11 +296,13 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
   does not participate in the OS accessibility tree — screen readers and
   VoiceOver cannot inspect the UI. This is a real constraint for domains that
   require assistive-technology support.
-- **Requires an OpenGL/GPU context.** Live rendering goes through pyglet +
-  PyOpenGL + skia and needs an OpenGL/GPU context, which has implications for
-  headless, remote, and old-GPU environments. For GPU-less or software-OpenGL
-  setups you can select a CPU/raster renderer — see
+- **A GPU is recommended, not required.** Live rendering goes through pyglet +
+  PyOpenGL + skia, and by default it uses an OpenGL/GPU context. On GPU-less,
+  software-OpenGL (llvmpipe), or remote setups it falls back to CPU/raster
+  rendering, which you can also select explicitly — see
   [Renderer Selection](docs/guide/window/renderer_selection.md).
+- **A display is required.** `App.run()` opens an OS window, so truly headless
+  environments (no display at all) are not supported in any renderer mode.
 
 ## 5. License
 
