@@ -90,6 +90,54 @@ class FocusDemo(nv.ComposableWidget):
 
 ![Focusable](../../assets/modifier_interaction_focusable.png)
 
+## Blocking focus traversal
+
+`block_focus_traversal()` removes a whole subtree from the Tab sequence while its condition is truthy. Focus held inside the subtree is released, so the focus ring never ends up on something the user cannot reach.
+
+```python
+import nuiitivet.material as nv
+
+
+# TabStop is any focusable widget - see samples/modifiers/interaction/block_focus_traversal.py
+class BlockFocusTraversalDemo(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.blocked = nv.Observable(True)
+
+    def _toggle(self) -> None:
+        self.blocked.value = not self.blocked.value
+
+    def build(self):
+        panel = nv.Column(
+            children=[TabStop("panel field 1"), TabStop("panel field 2")],
+            gap=8,
+            padding=12,
+        ).modifier(
+            nv.background("#F5F5F5")
+            | nv.corner_radius(12)
+            | nv.block_focus_traversal(self.blocked)
+        )
+
+        return nv.Column(
+            children=[
+                nv.Button("Toggle panel", on_click=self._toggle),
+                TabStop("before the panel"),
+                panel,
+                TabStop("after the panel"),
+            ],
+            gap=16,
+            padding=16,
+        )
+```
+
+![Block Focus Traversal](../../assets/modifier_interaction_block_focus_traversal.png)
+
+While `blocked` is `True`, Tab goes from *before the panel* straight to *after the panel*, and focusing a panel field is impossible — focus already inside is released as soon as the subtree becomes blocked.
+
+It only affects keyboard traversal — layout, painting and hit-testing are untouched, so the panel above is still fully visible and clickable while blocked. Use `ignore_pointer()` alongside it to block pointer input as well, or simply use [`visible()`](others.md#visible), which composes both.
+
+Widgets that hide their own subtree already do this: a closed `Collapsible` (and therefore a closed standard side sheet) keeps its content out of the Tab sequence until it is fully open. A custom widget can do the same by overriding the `blocks_focus_traversal` property.
+
 ## Raw pointer input
 
 `clickable` and `hoverable` are convenience layers: they collapse a press and

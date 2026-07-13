@@ -1,11 +1,13 @@
 """visible() modifier - conditional widget visibility with optional animation.
 
-``visible()`` is a *thin composition* over two paint-time / input primitives:
+``visible()`` is a *thin composition* over three paint-time / input primitives:
 
 * :func:`opacity` — drives the visual fade between hidden (``0.0``) and shown
   (``1.0``).
 * :func:`ignore_pointer` — blocks hit-testing while the widget is logically
   hidden so that invisible widgets do not consume input.
+* :func:`block_focus_traversal` — takes the hidden subtree out of the Tab
+  sequence so that keyboard focus cannot land on what nobody can see.
 
 The wrapped widget continues to occupy its normal layout space while hidden;
 ``visible()`` no longer collapses layout to zero size. Use a layout-aware
@@ -13,7 +15,8 @@ Widget for animated layout-size changes.
 
 When *condition* is a static ``bool`` or an ``Observable[bool]`` and no
 *transition* is provided, ``visible()`` collapses to ``opacity(...) |
-ignore_pointer(...)`` exactly. With a *transition* provided, an internal
+block_focus_traversal(...) | ignore_pointer(...)`` exactly. With a *transition*
+provided, an internal
 animation driver wires the ``opacity`` (and any pattern-driven ``scale`` /
 ``translate``) to an :class:`Animatable` retargeted on each condition change.
 
@@ -47,6 +50,7 @@ from nuiitivet.observable.computed import ComputedObservable
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
+from .block_focus_traversal import BlockFocusTraversalBox, block_focus_traversal
 from .ignore_pointer import IgnorePointerBox, ignore_pointer
 from .transform import opacity
 
@@ -333,7 +337,8 @@ class _AnimatedVisibleModifier(ModifierElement):
 
     def apply(self, widget: Widget) -> Widget:
         paint_box = _AnimatedVisibleBox(widget, self.condition, self.transition, self.transition_out)
-        return IgnorePointerBox(paint_box, _hidden_observable(self.condition))
+        hidden = _hidden_observable(self.condition)
+        return IgnorePointerBox(BlockFocusTraversalBox(paint_box, hidden), hidden)
 
 
 def visible(
@@ -342,12 +347,13 @@ def visible(
     transition: Optional[TransitionDefinition] = None,
     transition_out: Optional[TransitionDefinition] = None,
 ) -> ModifierElement:
-    """Toggle a widget's visibility as a thin composition of ``opacity()`` + ``ignore_pointer()``.
+    """Toggle a widget's visibility as a thin composition of paint / input primitives.
 
-    When *condition* is ``False`` the widget is rendered fully transparent and
-    ignores pointer / hit events; when ``True`` it is fully opaque and
-    interactive. The widget continues to occupy its normal layout space in
-    both states (use a layout-aware Widget if you need the layout to collapse).
+    When *condition* is ``False`` the widget is rendered fully transparent,
+    ignores pointer / hit events, and is skipped by Tab traversal; when ``True``
+    it is fully opaque and interactive. The widget continues to occupy its
+    normal layout space in both states (use a layout-aware Widget if you need
+    the layout to collapse).
 
     Args:
         condition: Static ``bool`` or an ``Observable[bool]`` driving visibility.
@@ -360,7 +366,8 @@ def visible(
 
     Returns:
         A :class:`ModifierElement` to apply via ``widget.modifier(...)``. With
-        no *transition* this is literally ``opacity(...) | ignore_pointer(...)``.
+        no *transition* this is literally ``opacity(...) |
+        block_focus_traversal(...) | ignore_pointer(...)``.
 
     Note:
         ``visible()`` is a paint-time / input-time convenience and does *not*
@@ -371,6 +378,7 @@ def visible(
     if transition is None:
         composed: Modifier = Modifier()
         composed = composed.then(opacity(_opacity_observable(condition)))
+        composed = composed.then(block_focus_traversal(_hidden_observable(condition)))
         composed = composed.then(ignore_pointer(_hidden_observable(condition)))
         return composed
     return _AnimatedVisibleModifier(

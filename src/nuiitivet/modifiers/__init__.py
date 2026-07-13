@@ -1,4 +1,5 @@
 from .background import background
+from .block_focus_traversal import block_focus_traversal
 from .border import border
 from .clickable import clickable
 from .clip import clip
@@ -18,6 +19,7 @@ from .will_pop import will_pop
 
 __all__ = [
     "background",
+    "block_focus_traversal",
     "border",
     "clickable",
     "clip",

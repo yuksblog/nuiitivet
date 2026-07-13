@@ -698,6 +698,11 @@ class App:
             warnings.warn(f"root.layout() failed: {e}", RuntimeWarning, stacklevel=2)
 
         try:
+            self._release_focus_if_blocked()
+        except Exception:
+            exception_once(logger, "app_release_focus_if_blocked_exc", "_release_focus_if_blocked raised")
+
+        try:
             self.root.paint(canvas, x, y, w, h)
         except Exception as e:
             warnings.warn(f"root.paint() failed: {e}", RuntimeWarning, stacklevel=2)
@@ -822,6 +827,10 @@ class App:
         Nodes marked non-traversable are skipped: they can still hold focus and
         receive keys, but an enclosing :class:`FocusScope` decides when they do,
         not the global Tab sequence.
+
+        A widget whose ``blocks_focus_traversal`` is set hides its subtree (a
+        closed :class:`~nuiitivet.layout.collapsible.Collapsible`, a hidden
+        ``visible()``), so the walk does not descend into it at all.
         """
         res = []
 
@@ -829,6 +838,10 @@ class App:
             try:
                 # skip disabled widgets
                 if getattr(w, "_disabled", False):
+                    return
+
+                # skip subtrees hidden from keyboard traversal
+                if getattr(w, "blocks_focus_traversal", False):
                     return
 
                 # Check for FocusNode
@@ -858,6 +871,24 @@ class App:
         except Exception:
             exception_once(logger, "app_collect_focus_nodes_root_exc", "Collecting FocusNodes from root raised")
         return res
+
+    def _release_focus_if_blocked(self) -> None:
+        """Clear focus when the focused widget sits inside a hidden subtree.
+
+        Hiding happens outside the focus system — a ``Collapsible`` closes, a
+        ``visible()`` flips to ``False`` — so focus has to be dropped here
+        rather than being left stranded on a widget nobody can see.
+        """
+        node = self._focused_node
+        if node is None:
+            return
+
+        widget: Optional[Widget] = node.owner
+        while widget is not None:
+            if getattr(widget, "blocks_focus_traversal", False):
+                self.request_focus(None)
+                return
+            widget = getattr(widget, "_parent", None)
 
     def _focus_scope_for(self, node: Optional[FocusNode]) -> Optional[FocusScope]:
         """Return the innermost FocusScope enclosing ``node``, if any.

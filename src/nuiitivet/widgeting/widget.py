@@ -64,6 +64,17 @@ class Widget(
     def layout_cache_token(self) -> int:
         return int(self._layout_cache_token)
 
+    @property
+    def blocks_focus_traversal(self) -> bool:
+        """Whether Tab traversal stops at this widget instead of entering it.
+
+        Widgets that hide their subtree (a closed ``Collapsible``, a hidden
+        ``visible()``) override this to return ``True`` while hidden: the
+        subtree keeps its FocusNodes, but they are removed from the global Tab
+        sequence, and focus currently held inside is released.
+        """
+        return False
+
     def mark_needs_layout(self) -> None:
         """Mark this widget as needing layout recalculation."""
         already_dirty = self._needs_layout
