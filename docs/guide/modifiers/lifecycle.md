@@ -4,7 +4,7 @@ Lifecycle modifiers run a callback when a widget enters or leaves the widget tre
 
 ## On Mount / On Unmount
 
-`on_mount()` and `on_unmount()` register a callback on the widget they are applied to. Unlike most modifiers they do **not** wrap the target in a new widget — the same instance is returned, so no extra node appears in the tree and layout, painting and hit-testing are unaffected.
+`on_mount()` and `on_unmount()` register a callback on the widget they are applied to.
 
 This screen polls a sensor while it is on screen, and stops as soon as it is popped:
 
@@ -77,10 +77,4 @@ An `on_mount()` override belongs to the `ComposableWidget` itself, which survive
         self._update_summary()
 ```
 
-Press *Rebuild* in `samples/modifiers/lifecycle/on_mount_caveat.py` and the two counters diverge. So `on_mount` means "this widget instance entered the tree", **not** "this component appeared for the first time".
-
-### Modifier or override?
-
-Use the modifier for work tied to a widget instance's presence in the tree — starting a poll, opening a subscription, registering with a service — especially when the widget is one you merely composed. Use the override when you are already writing a widget class, or when the work must happen exactly once per component.
-
-Only the modifier supports coroutines with automatic cancellation; an override has to manage its own task.
+Press *Rebuild* in `samples/modifiers/lifecycle/on_mount_caveat.py` and the two counters diverge. So `on_mount` means "this widget instance entered the tree", **not** "this component appeared for the first time" — if the work must happen once per component, put it in the `ComposableWidget`'s `on_mount()` override instead.
