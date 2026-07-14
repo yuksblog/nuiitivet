@@ -1,12 +1,10 @@
 # Lifecycle Modifiers
 
-Lifecycle modifiers run a callback when a widget enters or leaves the widget tree, without forcing you to subclass a widget just to override `on_mount()` / `on_unmount()`.
-
-The examples below are excerpts from the runnable sample at `samples/modifiers/lifecycle/live_view.py`.
+Lifecycle modifiers run a callback when a widget enters or leaves the widget tree, so you no longer have to subclass a widget just to override `on_mount()` / `on_unmount()`.
 
 ## On Mount / On Unmount
 
-`on_mount()` and `on_unmount()` register a callback on the widget they are applied to. Unlike most modifiers they do **not** wrap the target in a new widget — the same instance is returned, so no extra node appears in the tree and layout, painting and hit-testing are completely unaffected.
+`on_mount()` and `on_unmount()` register a callback on the widget they are applied to. Unlike most modifiers they do **not** wrap the target in a new widget — the same instance is returned, so no extra node appears in the tree and layout, painting and hit-testing are unaffected.
 
 This screen polls a sensor while it is on screen, and stops as soon as it is popped:
 
@@ -48,42 +46,19 @@ class LiveScreen(nv.ComposableWidget):
         ).modifier(nv.on_mount(self._poll) | nv.on_unmount(self._stopped))
 ```
 
-The callback takes no arguments. Timing is exactly that of the corresponding override:
+Callbacks take no arguments and fire at exactly the same point as the corresponding override: `on_mount` right after the widget's `on_mount()` hook and before its children mount, `on_unmount` right after `on_unmount()` and before its children unmount. Multiple callbacks on one widget run in registration order, and an exception in any of them is logged and contained.
 
-- `on_mount` callbacks run right after the widget's `on_mount()` hook, **before** its children are mounted.
-- `on_unmount` callbacks run right after the widget's `on_unmount()` hook, **before** its children are unmounted.
-
-Multiple callbacks on the same widget fire in registration order. An exception in one callback is logged and contained — it does not abort the mount, nor prevent the remaining callbacks from running.
-
-## Async Callbacks
+### Async callbacks
 
 `on_mount()` also accepts a coroutine function. The framework starts it as a task on mount and **cancels that task on unmount**, which covers polling, subscriptions and async loading without any manual bookkeeping.
 
-That is what `_poll` above relies on — it loops forever and never stops itself:
+That is what `_poll` above relies on: it loops forever and never stops itself. Cancellation is automatic, so there is no need for an `on_unmount()` that tears the task down — put cleanup in a `finally` block instead. The `on_unmount` callback (`_stopped`) fires first, and the task is cancelled immediately afterwards.
 
-```python
-    async def _poll(self) -> None:
-        # Started as a task on mount, cancelled automatically on unmount.
-        LOG.add("poll started")
-        try:
-            while True:
-                self.reading.value = f"{random.uniform(20.0, 25.0):.2f} °C"
-                await asyncio.sleep(0.5)
-        finally:
-            LOG.add("poll cancelled")
-```
+`on_unmount()` accepts a coroutine function too, but it is scheduled as a fire-and-forget task that may outlive the widget — and may never complete if the app is shutting down. **Prefer a synchronous callback for cleanup that must complete.**
 
-There is no need to pair this with an `on_unmount()` that cancels the task — cancellation is automatic, and the `finally` block runs when it happens. Note the ordering: the `on_unmount` callback (`_stopped`) fires first, and the task is cancelled immediately afterwards.
+### Mount is not "once per component"
 
-`on_unmount()` accepts a coroutine function too, but it is scheduled as a fire-and-forget task that may outlive the widget (and may not complete at all if the app is shutting down). **Prefer a synchronous callback for cleanup that must complete.**
-
-## Caveat: Mount Is Not "Once Per Component"
-
-This is the one thing to internalize before using these modifiers.
-
-When a `ComposableWidget` rebuilds, it unmounts the subtree it previously built and mounts the **freshly created** widget instances returned by the new `build()` call. The widget your modifier was attached to is a new object, so its mount callback runs again.
-
-The sample at `samples/modifiers/lifecycle/rebuild_caveat.py` puts the two side by side. The modifier is attached to the `Column` that `build()` returns, so it fires on every rebuild:
+When a `ComposableWidget` rebuilds, it unmounts the subtree it previously built and mounts the **freshly created** instances returned by the new `build()`. The widget your modifier was attached to is a new object, so its mount callback runs again:
 
 ```python
     def _child_mounted(self) -> None:
@@ -92,7 +67,7 @@ The sample at `samples/modifiers/lifecycle/rebuild_caveat.py` puts the two side 
         self._update_summary()
 ```
 
-The `on_mount()` override, on the other hand, belongs to the `ComposableWidget` itself — an instance that survives its own rebuilds — so it fires once:
+An `on_mount()` override belongs to the `ComposableWidget` itself, which survives its own rebuilds, so it fires once:
 
 ```python
     def on_mount(self) -> None:
@@ -102,19 +77,10 @@ The `on_mount()` override, on the other hand, belongs to the `ComposableWidget` 
         self._update_summary()
 ```
 
-Press *Rebuild* in the sample and the two counters diverge: the override stays at 1 while the modifier keeps climbing.
+Press *Rebuild* in `samples/modifiers/lifecycle/on_mount_caveat.py` and the two counters diverge. So `on_mount` means "this widget instance entered the tree", **not** "this component appeared for the first time".
 
-So `on_mount` means "this widget instance entered the tree", **not** "this logical component appeared for the first time". Use the modifier for work tied to the instance's presence in the tree — starting a subscription, beginning a poll, registering with a service — and the override for genuine one-time initialization.
+### Modifier or override?
 
-## Relationship to `on_mount()` / `on_unmount()` Overrides
+Use the modifier for work tied to a widget instance's presence in the tree — starting a poll, opening a subscription, registering with a service — especially when the widget is one you merely composed. Use the override when you are already writing a widget class, or when the work must happen exactly once per component.
 
-The modifiers do not replace the override hooks — they are a declarative entry point to the same lifecycle.
-
-| | Override (`def on_mount(self)`) | Modifier (`on_mount(cb)`) |
-| --- | --- | --- |
-| Applies to | The widget you are subclassing | Any widget, including composed ones |
-| Requires a subclass | Yes | No |
-| Async support | No (write your own task) | Yes, with automatic cancellation |
-| Survives a parent rebuild | Yes, if defined on the `ComposableWidget` | Only if the instance itself survives |
-
-Reach for the override when you are already writing a widget class, and for the modifier when you want to attach a callback to a widget you merely composed.
+Only the modifier supports coroutines with automatic cancellation; an override has to manage its own task.
