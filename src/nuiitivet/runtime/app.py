@@ -20,7 +20,14 @@ from ..theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainColorRole, PlainTheme
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
-from ..widgets.interaction import FocusNode, FocusScope, InteractionHostMixin, FocusSource, ShortcutNode
+from ..widgets.interaction import (
+    FocusNode,
+    FocusScope,
+    FocusSource,
+    FocusTraversalBlocker,
+    InteractionHostMixin,
+    ShortcutNode,
+)
 from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
@@ -828,20 +835,17 @@ class App:
         receive keys, but an enclosing :class:`FocusScope` decides when they do,
         not the global Tab sequence.
 
-        A widget whose ``blocks_focus_traversal`` is set hides its subtree (a
-        closed :class:`~nuiitivet.layout.collapsible.Collapsible`, a hidden
+        A :class:`FocusTraversalBlocker` that is currently blocking hides its
+        subtree (a disabled ``Clickable``, a closed
+        :class:`~nuiitivet.layout.collapsible.Collapsible`, a hidden
         ``visible()``), so the walk does not descend into it at all.
         """
         res = []
 
         def walk(w):
             try:
-                # skip disabled widgets
-                if getattr(w, "_disabled", False):
-                    return
-
                 # skip subtrees hidden from keyboard traversal
-                if getattr(w, "blocks_focus_traversal", False):
+                if isinstance(w, FocusTraversalBlocker) and w.blocks_focus_traversal:
                     return
 
                 # Check for FocusNode
@@ -885,7 +889,7 @@ class App:
 
         widget: Optional[Widget] = node.owner
         while widget is not None:
-            if getattr(widget, "blocks_focus_traversal", False):
+            if isinstance(widget, FocusTraversalBlocker) and widget.blocks_focus_traversal:
                 self.request_focus(None)
                 return
             widget = getattr(widget, "_parent", None)

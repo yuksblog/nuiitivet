@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
 from enum import Enum
 import logging
@@ -832,6 +833,25 @@ class DraggableNode(InteractionNode):
             return False
         rx, ry, rw, rh = rect
         return rx <= x <= rx + rw and ry <= y <= ry + rh
+
+
+class FocusTraversalBlocker(ABC):
+    """Mixin for widgets whose subtree can drop out of the global Tab sequence.
+
+    Inherit it to declare that this widget decides, at runtime, whether Tab
+    reaches it and everything below it. While it blocks, the subtree keeps its
+    :class:`FocusNode` instances — they are simply not collected as Tab stops —
+    and focus currently held inside it is released.
+
+    The property is abstract because blocking is always conditional: a closed
+    ``Collapsible``, a disabled ``Clickable``. A widget that always blocks (or
+    never does) has no reason to inherit this at all.
+    """
+
+    @property
+    @abstractmethod
+    def blocks_focus_traversal(self) -> bool:
+        """Whether Tab must skip this widget and its whole subtree right now."""
 
 
 class FocusNode(InteractionNode):

@@ -25,6 +25,7 @@ from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import ObservableBase
+from nuiitivet.widgets.interaction import FocusTraversalBlocker
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 BlockFocusTraversalConditionLike = Union[bool, ObservableBase[bool]]
 
 
-class BlockFocusTraversalBox(Widget):
+class BlockFocusTraversalBox(FocusTraversalBlocker, Widget):
     """Wrapper widget that hides its child subtree from focus traversal while *active*."""
 
     def __init__(self, child: Widget, condition: BlockFocusTraversalConditionLike = True) -> None:

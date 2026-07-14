@@ -40,6 +40,7 @@ from nuiitivet.layout.alignment import normalize_alignment
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.skia.geometry import clip_rect, make_rect
+from nuiitivet.widgets.interaction import FocusTraversalBlocker
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ def _read_opened(opened: Union[bool, ObservableBase[bool]]) -> bool:
     return bool(opened)
 
 
-class Collapsible(Widget):
+class Collapsible(FocusTraversalBlocker, Widget):
     """Single-child widget that animates its layout size open and closed.
 
     The child is always mounted and laid out at its own natural size; the
