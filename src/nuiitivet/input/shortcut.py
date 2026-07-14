@@ -49,6 +49,10 @@ _KEY_ALIASES: dict[str, str] = {
 }
 
 
+#: Keys that yield text without being a single character.
+_TEXT_KEY_NAMES: frozenset[str] = frozenset({"space"})
+
+
 def normalize_key_name(key: str) -> str:
     """Normalize a key name to the form shortcuts are matched in.
 
@@ -62,6 +66,40 @@ def normalize_key_name(key: str) -> str:
     if len(name) > 1 and name.startswith("_"):
         name = name[1:]
     return _KEY_ALIASES.get(name, name)
+
+
+def produces_text(key: str, modifier_keys: int) -> bool:
+    """Return True if this key press may be consumed as text input.
+
+    This keeps the shortcut tier off keys a focused text field is about to turn
+    into characters. Text insertion arrives through the separate ``on_text``
+    route, so the ``on_key`` return value the dispatcher sees cannot tell it that
+    the key was consumed after all (see #331).
+
+    The answer cannot be exact. Windows reports AltGr as ``Ctrl+Alt``, and a
+    German layout turns ``AltGr+Q`` into ``@``; macOS ``Option`` both produces
+    characters (``Option+A`` → ``å``) and starts dead-key compositions that
+    resolve only on the *next* keystroke; and the active layout can change at
+    runtime. So this errs **toward** text: a misjudgement must cost a shortcut
+    that does not fire — recoverable, and obvious to the user — never a keystroke
+    that silently runs a command.
+
+    Args:
+        key: The key name, as delivered by the backend.
+        modifier_keys: The physical modifier-key mask held with it. ``MOD_ACCEL``
+            is not expected here; backends never emit it.
+    """
+    if modifier_keys & MOD_ALT:
+        # Alt is text on macOS (Option), and Windows/X11 spell AltGr as Ctrl+Alt,
+        # so no Alt gesture can be ruled out as non-text on any platform.
+        return True
+    if modifier_keys & (MOD_CTRL | MOD_META):
+        # Ctrl/Cmd without Alt produce no text on any platform.
+        return False
+
+    # Bare or Shift-only: text iff the key is one the layout can insert.
+    name = normalize_key_name(key)
+    return len(name) == 1 or name in _TEXT_KEY_NAMES
 
 
 @dataclass(frozen=True)
@@ -121,6 +159,17 @@ class Shortcut:
         ``Accel+Shift+S``.
         """
         return normalize_key_name(key) == self.key and modifier_keys == resolve_modifiers(self.modifiers)
+
+    @property
+    def conflicts_with_text_input(self) -> bool:
+        """Return True if this gesture is one a focused text field would type.
+
+        Such a gesture does not fire while a text field holds focus — the field
+        turns it into a character instead. ``Alt`` gestures count as conflicting
+        on every platform, so they are unavailable there too; see
+        :func:`produces_text` for why that cannot be narrowed down safely.
+        """
+        return produces_text(self.key, resolve_modifiers(self.modifiers))
 
 
 #: What :func:`~nuiitivet.modifiers.key_shortcut` accepts: a typed gesture or its

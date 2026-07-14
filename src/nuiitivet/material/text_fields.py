@@ -313,7 +313,11 @@ class TextField(InteractiveWidget):
             value=value,
             on_change=self._handle_editable_change,
             on_focus_change=self._on_editable_focus_change,
-            on_submit=self._handle_editable_submit,
+            # Only forward a handler when there is something to submit to.
+            # EditableText claims Enter iff it has an on_submit, and declines it
+            # otherwise so the key can reach a shortcut — a dialog's default
+            # action. Wrapping unconditionally would claim Enter and drop it.
+            on_submit=self._handle_editable_submit if on_submit is not None else None,
             text_color=style.text_color,
             cursor_color=style.error_cursor_color if self.is_error else style.cursor_color,
             selection_color=style.selection_color,

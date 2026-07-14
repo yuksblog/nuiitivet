@@ -133,31 +133,104 @@ refusal.**
 1. `Escape` / `Tab` special-casing.
 2. The focused `FocusNode` and its ancestors (`focusable(on_key=...)`). If
    consumed, stop — a focused text field still eats a bare `s`.
-3. `FOCUS`-scoped bindings enclosing the focused node, **innermost first**.
-4. `FOREGROUND`-scoped bindings whose subtree is on the topmost interactable
+3. **Text-input guard**: if the focused chain takes text and this key is one text
+   input may claim, stop. No binding is consulted. See below.
+4. `FOCUS`-scoped bindings enclosing the focused node, **innermost first**.
+5. `FOREGROUND`-scoped bindings whose subtree is on the topmost interactable
    layer.
-5. `MOUNT`-scoped bindings.
+6. `MOUNT`-scoped bindings.
 
 The first tier that matches wins; later tiers are not consulted.
 
 ### Ambiguity
 
-Within tier 3 the innermost binding wins, which is always well-defined.
+Within tier 4 the innermost binding wins, which is always well-defined.
 
-Within tiers 4 and 5 there is no such ordering: two displayed panes can both bind
+Within tiers 5 and 6 there is no such ordering: two displayed panes can both bind
 `Accel+S` with no way to choose between them. Following Qt's "ambiguous shortcut
 overload", this **fires nothing and logs a warning** rather than picking
 arbitrarily. `FOCUS` is the escape hatch that makes such a case expressible — and
 that is precisely why the scope exists.
 
-### A focused widget must consume the keys it uses
+### The text-input guard (tier 3)
 
-Tier 2 is load-bearing: it is what keeps a bare-letter shortcut (`B` for brush)
-from firing while the user types "b" into a text field. This only works if the
-focused widget *claims* the key by returning `True` from `on_key`. `EditableText`
-currently returns `False` for printable keys — its text arrives through the
-separate `on_text` route — so it does not claim them. Tracked in #331; until it is
-fixed, bare-letter shortcuts are unsafe when a text field can hold focus.
+Tier 2 rests on the focused widget *claiming* the keys it uses by returning
+`True` from `on_key`. A text field cannot honour that on its own, because its key
+consumption is split across two routes: `on_key` carries `Enter` and the `Accel`
+editing combos, while the **characters themselves arrive on `on_text`**. So when
+a printable key arrives, `EditableText.on_key` truthfully returns `False` (it
+really does nothing on that route) and then `on_text` inserts the character
+anyway. Read at face value, that `False` would hand a bare `b` to the shortcut
+tier — the letter is typed *and* `key_shortcut("b", ...)` fires (#331).
+
+Tier 3 closes this by withholding such keys from the bindings outright. It asks
+two questions, and **both** must hold:
+
+- **Does the focused chain take text?** `FocusNode.accepts_text_input` walks the
+  same `parent` chain that `handle_text_event` delivers along, so what it reports
+  and where the text actually goes cannot drift apart. This is a fact.
+- **Can this key be text?** `produces_text(key, modifier_keys)`. This one is an
+  **approximation**, and deliberately so.
+
+Nothing is asked of `EditableText`: it keeps returning `False` for printable
+keys. Any widget that registers an `on_text` handler on its `FocusNode` is
+covered automatically, and IME composition is covered for free — the handler
+stays registered throughout.
+
+#### Why `produces_text` cannot be exact, and which way it errs
+
+Whether a key yields a character is not decidable from the key and the
+modifier-key mask:
+
+- Windows and X11 report **AltGr as `Ctrl+Alt`**, and on a German layout
+  `AltGr+Q` types `@`. So even a `Ctrl`-bearing gesture can be text.
+- macOS **`Option` types characters** (`Option+A` → `å`) and starts **dead-key**
+  compositions that resolve only on the *next* keystroke.
+- The active keyboard layout can change at runtime, so no static table is ever
+  more than an approximation of one layout at one moment.
+
+The design decision is therefore not to chase precision but to **fix the
+direction of the error**: a misjudgement must cost a shortcut that does not fire
+— recoverable, and obvious to the user, who can unfocus the field — never a
+keystroke that silently runs a command. `produces_text` is biased toward text:
+
+| Gesture | Text? |
+| --- | --- |
+| bare printable (`b`), `Shift`+printable (`Shift+B`), `Space` | yes |
+| **anything with `Alt`** (`Alt+X`, `Ctrl+Alt+X`) | **yes** — see above |
+| `Ctrl`/`Cmd` without `Alt` (`Accel+S`) | no |
+| function and navigation keys (`F5`, arrows, `Escape`, `Enter`) | no |
+
+**Consequence, and the accepted cost:** `Alt`-based shortcuts do not fire while a
+text field holds focus. This is narrow — `Ctrl+Alt` gestures already collide with
+AltGr on European layouts and are discouraged for that reason (Qt says the same)
+— and it is the price of never stealing a keystroke from the user's typing.
+
+The exact alternative — defer the shortcut tiers until `on_text` has (or has not)
+arrived, and use *that* as the answer — was considered and rejected: it delays
+every shortcut by an event cycle, forces a redesign of what `on_key_press`
+returns to the backend, and leans on platform-specific ordering guarantees
+between `on_key_press` and `on_text`. Not worth it to recover the `Alt` case
+alone.
+
+#### Known limitation: `Enter` through a field that does not use it
+
+`produces_text` classifies `Enter` as non-text, so it reaches the shortcut tier
+unless the focused field claims it on the `on_key` route first. `EditableText` is
+single-line: it claims `Enter` only when an `on_submit` is set (there is a
+callback to run), and declines it otherwise. A field with no `on_submit`
+therefore lets `Enter` fall through to a `key_shortcut("enter", ...)`.
+
+The *outcome* is often what one wants — the `Enter` a plain field does nothing
+with is exactly the one a dialog's default action should get. But this is a
+**limitation, not a designed behaviour**: it makes the destination of `Enter`
+depend on how the focused field happens to be configured, which is not something
+the author of the shortcut can see. There is no notion of a default action in the
+framework yet; when one is added, `Enter` should route through it explicitly
+rather than arriving by way of a field that declined it.
+
+Until then, `Enter` is not a dependable gesture on a screen that also holds text
+fields.
 
 ## Value types
 
@@ -165,7 +238,7 @@ fixed, bare-letter shortcuts are unsafe when a text field can hold focus.
   `Shortcut.parse("Accel+Shift+S")` builds one from a spec string;
   `key_shortcut()` accepts the spec directly, so the common case needs no
   explicit parse.
-- `MOD_ACCEL` — the logical primary modifier. It is resolved to `MOD_META` on
+- `MOD_ACCEL` — the logical primary modifier key. It is resolved to `MOD_META` on
   macOS and `MOD_CTRL` elsewhere **at match time**, never baked in at
   construction, so one `Shortcut` value stays portable across platforms.
 - `ShortcutBinding` — a gesture plus the callback it triggers plus its scope.

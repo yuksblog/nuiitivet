@@ -28,7 +28,7 @@ from ..widgets.interaction import (
     InteractionHostMixin,
     ShortcutNode,
 )
-from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope
+from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope, produces_text
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
@@ -1032,7 +1032,15 @@ class App:
         on the topmost interactable layer, then merely-mounted ones. The first
         scope that matches decides; the rest are not consulted. Returns True if a
         binding was triggered.
+
+        A focused text field declines printable keys on the ``on_key`` route even
+        though it is about to insert them as text through ``on_text``, so
+        "declined" cannot be taken at face value here: a key the field will type
+        is withheld from the bindings outright (see #331).
         """
+        if self._text_input_claims(key, modifier_keys):
+            return False
+
         if self._dispatch_focus_scoped_shortcut(key, modifier_keys):
             return True
 
@@ -1040,6 +1048,25 @@ class App:
         if self._dispatch_unordered_shortcut(nodes, key, modifier_keys, ShortcutScope.FOREGROUND):
             return True
         return self._dispatch_unordered_shortcut(nodes, key, modifier_keys, ShortcutScope.MOUNT)
+
+    def _text_input_claims(self, key: str, modifier_keys: int) -> bool:
+        """Return True if the focused node will consume ``key`` as text input.
+
+        Two questions, both of which must hold: does the focused chain take text
+        at all (a fact — it is the chain ``on_text`` is delivered along), and is
+        this key one that text input may claim (an approximation, deliberately
+        biased toward text; see :func:`produces_text`).
+        """
+        node = self._focused_node
+        if node is None:
+            return False
+        try:
+            if not node.accepts_text_input:
+                return False
+        except Exception:
+            exception_once(logger, "app_accepts_text_input_exc", "FocusNode.accepts_text_input raised")
+            return False
+        return produces_text(key, modifier_keys)
 
     def _dispatch_focus_scoped_shortcut(self, key: str, modifier_keys: int) -> bool:
         """Trigger the innermost FOCUS-scoped binding enclosing the focused node."""

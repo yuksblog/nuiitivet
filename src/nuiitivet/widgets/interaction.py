@@ -912,6 +912,24 @@ class FocusNode(InteractionNode):
             current = getattr(current, "_parent", None)
         return None
 
+    @property
+    def accepts_text_input(self) -> bool:
+        """Return True if this node, or an ancestor it bubbles to, consumes text.
+
+        The dispatcher asks this before offering a key to the ``key_shortcut``
+        tier: a node that takes text will turn a printable key into a character
+        through the ``on_text`` route, and must not have that key stolen by a
+        shortcut (see #331). It walks the same ``parent`` chain that
+        :meth:`handle_text_event` delivers along, so what it reports and where
+        the text actually goes cannot drift apart.
+        """
+        node: Optional["FocusNode"] = self
+        while node is not None:
+            if node._on_text is not None:
+                return True
+            node = node.parent
+        return False
+
     def _set_focused(self, value: bool, source: FocusSource = FocusSource.KEYBOARD) -> None:
         if self.state.focused == value:
             # Focus did not move, but re-focusing an already-focused node still
