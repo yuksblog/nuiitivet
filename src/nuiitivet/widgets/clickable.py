@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import (
+    FocusTraversalBlocker,
     InteractionHostMixin,
     InteractionState,
     FocusNode,
@@ -20,7 +21,7 @@ from nuiitivet.widgeting.widget import Widget
 logger = logging.getLogger(__name__)
 
 
-class Clickable(InteractionHostMixin, Box):
+class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
     """
     A basic interactive widget that handles clicks, hovers, and focus.
     It does not enforce any specific visual style beyond what Box provides.
@@ -52,7 +53,6 @@ class Clickable(InteractionHostMixin, Box):
         else:
             initial_disabled = bool(disabled)
 
-        # Used by App focus traversal (see App._collect_focus_nodes).
         self._disabled = bool(initial_disabled)
 
         self._state = InteractionState(disabled=bool(initial_disabled))
@@ -99,6 +99,11 @@ class Clickable(InteractionHostMixin, Box):
         node = self.get_node(FocusNode)
         if isinstance(node, FocusNode):
             node.traversable = self._traversable
+
+    @property
+    def blocks_focus_traversal(self) -> bool:
+        """Keep a disabled widget, and anything nested in it, out of the Tab sequence."""
+        return self._disabled
 
     def _apply_disabled(self, value: bool) -> None:
         next_disabled = bool(value)

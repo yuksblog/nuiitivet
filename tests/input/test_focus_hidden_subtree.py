@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.material.sheet import StandardSideSheet
@@ -11,7 +13,7 @@ from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.clickable import Clickable
-from nuiitivet.widgets.interaction import FocusNode, FocusSource
+from nuiitivet.widgets.interaction import FocusNode, FocusSource, FocusTraversalBlocker
 
 SHIFT = 1
 
@@ -155,3 +157,16 @@ def test_closed_standard_side_sheet_does_not_expose_its_content_to_tab() -> None
 
     assert _focus_node(inside) not in app._collect_focus_nodes()
     assert _focus_node(outside) in app._collect_focus_nodes()
+
+
+# --- FocusTraversalBlocker contract --------------------------------------------
+
+
+def test_focus_traversal_blocker_subclass_must_implement_the_property() -> None:
+    """Inheriting the mixin means committing to an answer — no silent default."""
+
+    class Forgetful(FocusTraversalBlocker, Box):
+        pass
+
+    with pytest.raises(TypeError):
+        Forgetful()  # type: ignore[abstract]  # mypy rejects it too — that is the point

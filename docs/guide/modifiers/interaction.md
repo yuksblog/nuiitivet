@@ -136,8 +136,6 @@ While `blocked` is `True`, Tab goes from *before the panel* straight to *after t
 
 It only affects keyboard traversal — layout, painting and hit-testing are untouched, so the panel above is still fully visible and clickable while blocked. Use `ignore_pointer()` alongside it to block pointer input as well, or simply use [`visible()`](others.md#visible), which composes both.
 
-Widgets that hide their own subtree already do this: a closed `Collapsible` (and therefore a closed standard side sheet) keeps its content out of the Tab sequence until it is fully open. A custom widget can do the same by overriding the `blocks_focus_traversal` property.
-
 ## Raw pointer input
 
 `clickable` and `hoverable` are convenience layers: they collapse a press and
