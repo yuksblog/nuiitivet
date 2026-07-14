@@ -2,33 +2,50 @@
 
 Lifecycle modifiers run a callback when a widget enters or leaves the widget tree, without forcing you to subclass a widget just to override `on_mount()` / `on_unmount()`.
 
+The examples below are excerpts from the runnable sample at `samples/modifiers/lifecycle/live_view.py`.
+
 ## On Mount / On Unmount
 
 `on_mount()` and `on_unmount()` register a callback on the widget they are applied to. Unlike most modifiers they do **not** wrap the target in a new widget — the same instance is returned, so no extra node appears in the tree and layout, painting and hit-testing are completely unaffected.
 
+This screen polls a sensor while it is on screen, and stops as soon as it is popped:
+
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import on_mount, on_unmount
-from nuiitivet.observable import Observable
+class LiveScreen(nv.ComposableWidget):
+    """Polls a sensor while it is on screen, and stops as soon as it is popped."""
 
-
-class Dashboard(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.status = Observable("idle")
+        self.reading = nv.Observable("--")
 
-    def _start(self) -> None:
-        self.status.value = "connected"
+    async def _poll(self) -> None:
+        # Started as a task on mount, cancelled automatically on unmount.
+        LOG.add("poll started")
+        try:
+            while True:
+                self.reading.value = f"{random.uniform(20.0, 25.0):.2f} °C"
+                await asyncio.sleep(0.5)
+        finally:
+            LOG.add("poll cancelled")
 
-    def _stop(self) -> None:
-        self.status.value = "idle"
+    def _stopped(self) -> None:
+        LOG.add("live view unmounted")
 
     def build(self) -> nv.Widget:
         return nv.Column(
-            children=[md.Text(self.status)],
+            children=[
+                nv.Text("Live reading (updates every 0.5s):"),
+                nv.Text(self.reading),
+                nv.Button(
+                    "Back",
+                    on_click=lambda: nv.Navigator.root().pop(),
+                    style=nv.ButtonStyle.text(),
+                ),
+            ],
+            gap=14,
+            cross_alignment="start",
             padding=24,
-        ).modifier(on_mount(self._start) | on_unmount(self._stop))
+        ).modifier(nv.on_mount(self._poll) | nv.on_unmount(self._stopped))
 ```
 
 The callback takes no arguments. Timing is exactly that of the corresponding override:
@@ -42,34 +59,21 @@ Multiple callbacks on the same widget fire in registration order. An exception i
 
 `on_mount()` also accepts a coroutine function. The framework starts it as a task on mount and **cancels that task on unmount**, which covers polling, subscriptions and async loading without any manual bookkeeping.
 
+That is what `_poll` above relies on — it loops forever and never stops itself:
+
 ```python
-import asyncio
-
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import on_mount
-from nuiitivet.observable import Observable
-
-
-class PriceTicker(nv.ComposableWidget):
-    def __init__(self) -> None:
-        super().__init__()
-        self.price = Observable("--")
-
     async def _poll(self) -> None:
-        # Cancelled automatically when the widget unmounts.
-        while True:
-            self.price.value = await fetch_price()
-            await asyncio.sleep(5)
-
-    def build(self) -> nv.Widget:
-        return nv.Column(
-            children=[md.Text(self.price)],
-            padding=24,
-        ).modifier(on_mount(self._poll))
+        # Started as a task on mount, cancelled automatically on unmount.
+        LOG.add("poll started")
+        try:
+            while True:
+                self.reading.value = f"{random.uniform(20.0, 25.0):.2f} °C"
+                await asyncio.sleep(0.5)
+        finally:
+            LOG.add("poll cancelled")
 ```
 
-There is no need to pair this with an `on_unmount()` that cancels the task — cancellation is automatic. Write cleanup that must run inside a `finally` block in the coroutine, or in a separate synchronous `on_unmount()` callback.
+There is no need to pair this with an `on_unmount()` that cancels the task — cancellation is automatic, and the `finally` block runs when it happens. Note the ordering: the `on_unmount` callback (`_stopped`) fires first, and the task is cancelled immediately afterwards.
 
 `on_unmount()` accepts a coroutine function too, but it is scheduled as a fire-and-forget task that may outlive the widget (and may not complete at all if the app is shutting down). **Prefer a synchronous callback for cleanup that must complete.**
 
@@ -77,33 +81,30 @@ There is no need to pair this with an `on_unmount()` that cancels the task — c
 
 This is the one thing to internalize before using these modifiers.
 
-When a `ComposableWidget` rebuilds, it unmounts the subtree it previously built and mounts the **freshly created** widget instances returned by the new `build()` call. The widget your modifier was attached to is a new object, so its mount callback runs again:
+When a `ComposableWidget` rebuilds, it unmounts the subtree it previously built and mounts the **freshly created** widget instances returned by the new `build()` call. The widget your modifier was attached to is a new object, so its mount callback runs again.
+
+The sample at `samples/modifiers/lifecycle/rebuild_caveat.py` puts the two side by side. The modifier is attached to the `Column` that `build()` returns, so it fires on every rebuild:
 
 ```python
-class Screen(nv.ComposableWidget):
-    def build(self) -> nv.Widget:
-        # A new Column instance on every rebuild → _load() runs on every rebuild.
-        return nv.Column(children=[...]).modifier(on_mount(self._load))
+    def _child_mounted(self) -> None:
+        # build() returns a new Column on every rebuild, so this runs every time.
+        self.modifier_count += 1
+        self._update_summary()
 ```
 
-So `on_mount` means "this widget instance entered the tree", **not** "this logical component appeared for the first time". Use it for work tied to the instance's presence in the tree — starting a subscription, beginning a poll, registering with a service.
-
-For genuine one-time initialization, put the work in the owning `ComposableWidget` instead, since that instance survives rebuilds:
+The `on_mount()` override, on the other hand, belongs to the `ComposableWidget` itself — an instance that survives its own rebuilds — so it fires once:
 
 ```python
-class Screen(nv.ComposableWidget):
-    def __init__(self) -> None:
-        super().__init__()
-        self.items = Observable([])
-
-    # Runs once for the lifetime of this Screen instance.
     def on_mount(self) -> None:
+        # Runs once for the lifetime of this RebuildCaveat instance.
         super().on_mount()
-        self.load_items()
-
-    def build(self) -> nv.Widget:
-        return nv.Column(children=[...])
+        self.override_count += 1
+        self._update_summary()
 ```
+
+Press *Rebuild* in the sample and the two counters diverge: the override stays at 1 while the modifier keeps climbing.
+
+So `on_mount` means "this widget instance entered the tree", **not** "this logical component appeared for the first time". Use the modifier for work tied to the instance's presence in the tree — starting a subscription, beginning a poll, registering with a service — and the override for genuine one-time initialization.
 
 ## Relationship to `on_mount()` / `on_unmount()` Overrides
 
