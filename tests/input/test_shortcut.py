@@ -24,6 +24,7 @@ from nuiitivet.input.shortcut import (
     ShortcutBinding,
     ShortcutScope,
     normalize_key_name,
+    produces_text,
     to_shortcut,
 )
 
@@ -112,3 +113,51 @@ def test_binding_identity_is_the_gesture() -> None:
     b = ShortcutBinding(Shortcut.parse("Accel+S"), lambda: None)
     assert a == b
     assert hash(a) == hash(b)
+
+
+# ``produces_text`` — the static half of the #331 guard.
+
+
+@pytest.mark.parametrize(
+    "key, modifiers",
+    [
+        ("b", 0),  # bare letter: the paint-app idiom, and the original bug
+        ("b", MOD_SHIFT),  # Shift+letter still types a character ("B")
+        ("_1", 0),  # digits, in the backend's own spelling
+        ("space", 0),  # types " " despite the multi-character key name
+        ("b", MOD_ALT),  # macOS Option+B types a character
+        ("b", MOD_CTRL | MOD_ALT),  # Windows/X11 spell AltGr as Ctrl+Alt
+        ("b", MOD_META | MOD_ALT),
+    ],
+)
+def test_produces_text_claims_keys_a_field_would_type(key: str, modifiers: int) -> None:
+    assert produces_text(key, modifiers) is True
+
+
+@pytest.mark.parametrize(
+    "key, modifiers",
+    [
+        ("s", MOD_CTRL),  # the accelerator idiom: no text on any platform
+        ("s", MOD_META),
+        ("s", MOD_CTRL | MOD_SHIFT),
+        ("f5", 0),  # function keys type nothing
+        ("f5", MOD_SHIFT),
+        ("escape", 0),  # nor do navigation keys
+        ("enter", 0),  # Enter is a command key here; EditableText is single-line
+        ("delete", 0),
+    ],
+)
+def test_produces_text_declines_keys_a_field_would_not_type(key: str, modifiers: int) -> None:
+    assert produces_text(key, modifiers) is False
+
+
+def test_conflicts_with_text_input_resolves_accel_first() -> None:
+    # Accel is Cmd on macOS and Ctrl elsewhere; either way it is not text, so the
+    # predicate must resolve the bit rather than read MOD_ACCEL as "no modifier".
+    assert Shortcut.parse("Accel+S").conflicts_with_text_input is False
+    assert Shortcut.parse("Accel+Shift+S").conflicts_with_text_input is False
+
+    assert Shortcut.parse("B").conflicts_with_text_input is True
+    assert Shortcut.parse("Shift+B").conflicts_with_text_input is True
+    assert Shortcut.parse("Alt+B").conflicts_with_text_input is True
+    assert Shortcut.parse("F5").conflicts_with_text_input is False

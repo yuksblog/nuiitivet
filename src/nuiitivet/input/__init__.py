@@ -30,6 +30,7 @@ from .shortcut import (
     ShortcutLike,
     ShortcutScope,
     normalize_key_name,
+    produces_text,
     to_shortcut,
 )
 
@@ -56,6 +57,7 @@ __all__ = [
     "accel_mask",
     "is_primary_button",
     "normalize_key_name",
+    "produces_text",
     "resolve_modifiers",
     "to_shortcut",
     "TEXT_MOTION_BACKSPACE",

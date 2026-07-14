@@ -202,12 +202,12 @@ outside the bounds delivers `on_leave` and stops `on_move`.
 ### Reacting to modifier keys while stationary
 
 Reading `event.modifier_keys` handles `Ctrl`+click for free — the mask rides on
-every pointer event, so you never track modifier state yourself (that state
+every pointer event, so you never track modifier-key state yourself (that state
 desyncs on focus change and window deactivation). The one case it misses is the
-pointer sitting **still** while the user presses a modifier: no pointer event is
-generated. `on_modifier_keys_change` fills that gap — it fires whenever the held
-modifier-key mask changes while the pointer is inside or captured, delivering a
-`PointerEvent` synthesized at the current position:
+pointer sitting **still** while the user presses a modifier key: no pointer event
+is generated. `on_modifier_keys_change` fills that gap — it fires whenever the
+held modifier-key mask changes while the pointer is inside or captured,
+delivering a `PointerEvent` synthesized at the current position:
 
 ```python
 from nuiitivet.input import MOD_ALT
@@ -223,7 +223,7 @@ the widget), and never fires for non-modifier keys or when the pointer is
 neither inside nor captured. The runnable
 [event-inspector sample](https://github.com/yuksblog/nuiitivet/blob/main/samples/modifiers/interaction/pointer_input.py)
 prints the whole stream — event type, local and screen coordinates, held buttons
-and modifier mask — as it arrives.
+and modifier-key mask — as it arrives.
 
 `pointer_input` composes with `clickable` on the same widget without either
 clobbering the other, so you can keep a semantic click alongside the raw stream.
@@ -240,12 +240,12 @@ from nuiitivet.modifiers import key_shortcut
 editor.modifier(key_shortcut("Accel+S", on_trigger=self.save))
 ```
 
-`Accel` is the primary modifier — **Cmd on macOS, Ctrl everywhere else** — so one
-declaration covers every platform. It is resolved when the key is matched, not
-when the shortcut is built, so a `Shortcut` value stays portable. Write
+`Accel` is the primary modifier key — **Cmd on macOS, Ctrl everywhere else** — so
+one declaration covers every platform. It is resolved when the key is matched,
+not when the shortcut is built, so a `Shortcut` value stays portable. Write
 `Ctrl`/`Meta` explicitly only when you really mean that one physical key. The
 gesture also accepts a typed form, `Shortcut("s", MOD_ACCEL | MOD_SHIFT)`, when
-you want to build it from masks rather than parse a string.
+you want to build it from modifier-key masks rather than parse a string.
 
 ### A shortcut does not need focus
 
@@ -256,6 +256,45 @@ ever focused, and it keeps working while the user types in a toolbar text field.
 The focused widget still gets **first refusal** on every key, so a focused
 `TextField` keeps eating the keys it uses (`Accel+C`, `Accel+V`, …) before any
 shortcut is consulted.
+
+### Typing never fires a shortcut
+
+A bare-letter gesture is the standard paint/vector idiom — `B` for brush, `V` for
+select — and it is safe to bind:
+
+```python
+canvas.modifier(key_shortcut("b", on_trigger=self.select_brush))
+```
+
+While a text field holds focus, the keys it would **type** are withheld from the
+shortcut layer entirely. Typing "brush" into a field inserts the letters and
+fires nothing. Unfocus the field and `B` selects the brush again.
+
+This covers bare letters, `Shift`+letter, and `Space`. Gestures using the `Accel`
+modifier key are unaffected: `Accel+S` produces no text, so it reaches your
+binding even while the user is typing.
+
+### Current limitations
+
+Two rough edges, both of which follow from the same thing: whether a key press
+will become text cannot be decided from the key and the modifier keys alone.
+
+**`Alt` gestures do not fire while a text field has focus.** `Alt` cannot be
+treated as a safe "command" modifier key: on macOS `Option` types characters
+(`Option+A` → `å`), and Windows and X11 report `AltGr` as `Ctrl+Alt`, so
+`Ctrl+Alt+Q` is how a German layout types `@`. Rather than risk a keystroke
+silently running a command while you type, every gesture holding the `Alt`
+modifier key — including `Ctrl+Alt` — is treated as text input and withheld.
+Prefer `Accel` for commands; if you must bind `Alt`, expect it to be inert while
+a field is focused.
+
+**`Enter` reaches a shortcut when the focused field does not use it.** A
+`key_shortcut("enter", ...)` fires even with a `TextField` focused, unless that
+field claims `Enter` itself — which it only does when an `on_submit` is set. So
+whether `Enter` reaches your binding depends on how the *field* was configured,
+which is easy to trip over. There is no notion of a dialog "default action" yet;
+until there is, do not rely on `Enter` as a shortcut in a screen that also has
+text fields.
 
 ### Scopes
 
