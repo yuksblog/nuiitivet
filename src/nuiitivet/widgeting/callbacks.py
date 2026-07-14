@@ -39,7 +39,7 @@ def invoke_event_handler(
     error_key: str,
     error_msg: str,
     owner_name: str = "<unknown>",
-) -> None:
+) -> Optional["asyncio.Task[None]"]:
     """Invoke an event handler, scheduling it as a task if it is async.
 
     This helper handles:
@@ -47,6 +47,11 @@ def invoke_event_handler(
     2. Asynchronous execution (scheduling as task).
     3. Detaching from the current batch context for async tasks.
     4. Error logging.
+
+    Returns:
+        The scheduled task when *cb* is async and an event loop is running,
+        otherwise ``None``. Callers that need to cancel the handler later
+        (e.g. on unmount) should keep the returned task.
     """
     try:
         result = cb(*args)
@@ -58,6 +63,8 @@ def invoke_event_handler(
                 detach_batch()
                 try:
                     await result
+                except asyncio.CancelledError:
+                    raise
                 except Exception:
                     exception_once(
                         logger,
@@ -68,10 +75,10 @@ def invoke_event_handler(
 
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(_wrapper())
             except RuntimeError:
                 # Event loop might not be running (e.g. during tests or shutdown)
-                pass
+                return None
+            return loop.create_task(_wrapper())
     except Exception:
         exception_once(
             logger,
@@ -79,3 +86,4 @@ def invoke_event_handler(
             f"{error_msg} (owner=%s)",
             owner_name,
         )
+    return None

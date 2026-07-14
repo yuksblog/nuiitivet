@@ -30,4 +30,5 @@ Modifiers are categorized into the following types:
 - **[Interaction](interaction.md)**: Add interaction capabilities like clickable, hoverable, focusable, and keyboard shortcuts.
 - **[Transform](transform.md)**: Apply paint-only transformations like opacity, rotate, scale, and translate.
 - **[Popup](popup.md)**: Attach anchored transient overlays like menus, dropdowns, and tooltips.
+- **[Lifecycle](lifecycle.md)**: Run callbacks when a widget is mounted or unmounted, including async tasks.
 - **[Others](others.md)**: Other functionalities like scrollable, will_pop, and stick.

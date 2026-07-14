@@ -164,6 +164,7 @@ nav:
           - Interaction: guide/modifiers/interaction.md
           - Transform: guide/modifiers/transform.md
           - Popup: guide/modifiers/popup.md
+          - Lifecycle: guide/modifiers/lifecycle.md
           - Others: guide/modifiers/others.md
       - State Management:
           - guide/state-management/index.md
