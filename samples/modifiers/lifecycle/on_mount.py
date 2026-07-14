@@ -20,7 +20,7 @@ LOG = EventLog()
 
 
 class LiveScreen(nv.ComposableWidget):
-    """Polls a sensor while it is on screen, and stops as soon as it is popped."""
+    """Polls a sensor for as long as the polled Column is in the tree."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -37,18 +37,27 @@ class LiveScreen(nv.ComposableWidget):
             LOG.add("poll cancelled")
 
     def _stopped(self) -> None:
-        LOG.add("live view unmounted")
+        LOG.add("column unmounted")
 
     def build(self) -> nv.Widget:
+        # Every rebuild produces a *new* Column, so the callbacks fire again:
+        # press Rebuild and watch the log.
         return nv.Column(
             children=[
                 nv.Text("Live reading (updates every 0.5s):"),
                 nv.Text(self.reading),
-                nv.Button(
-                    "Back",
-                    on_click=lambda: nv.Navigator.root().pop(),
-                    style=nv.ButtonStyle.text(),
+                nv.Row(
+                    children=[
+                        nv.Button("Rebuild", on_click=self.rebuild, style=nv.ButtonStyle.text()),
+                        nv.Button(
+                            "Back",
+                            on_click=lambda: nv.Navigator.root().pop(),
+                            style=nv.ButtonStyle.text(),
+                        ),
+                    ],
+                    gap=10,
                 ),
+                nv.Text(LOG.text),
             ],
             gap=14,
             cross_alignment="start",
@@ -60,7 +69,7 @@ class HomeScreen(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         return nv.Column(
             children=[
-                nv.Text("Open the live view, then come back. Polling follows the widget."),
+                nv.Text("Open the live view, then rebuild it, then come back."),
                 nv.Button(
                     "Open live view",
                     on_click=lambda: nv.Navigator.root().push(LiveScreen()),
