@@ -252,12 +252,20 @@ class ForEach(ComposableWidget):
         if len(current) == len(children) and all(a is b for a, b in zip(current, children)):
             self._provider_children = list(children)
             return
+        # Reconcile incrementally: unmount only departed fragments and mount only
+        # newly arrived ones, leaving surviving fragments mounted in place. This
+        # avoids the mount/unmount churn a full clear + re-add would inflict on
+        # survivors when a single item is appended, inserted or removed.
         try:
-            self.clear_children()
+            self._children_store.reconcile(children)
         except Exception:
-            logger.exception("failed clearing ForEach children during sync")
-        for child in children:
-            self.add_child(child)
+            logger.exception("failed reconciling ForEach children during sync")
+            try:
+                self.clear_children()
+            except Exception:
+                logger.exception("failed clearing ForEach children during sync")
+            for child in children:
+                self.add_child(child)
         self._provider_children = list(children)
 
     def _dispose_entry(self, entry: _ForEachEntry) -> None:
@@ -337,7 +345,12 @@ class ForEach(ComposableWidget):
                 logger.exception("items.subscribe failed")
                 unsub = None
         self._items_unsub = unsub
-        self.invalidate()
+        # Children are normally built and mounted during build() before on_mount()
+        # runs, so an unconditional invalidate() here would force a redundant
+        # second build pass that re-mounts every item. Only rebuild when nothing
+        # was built yet (e.g. mounted without a prior build()).
+        if not self._ordered_entries:
+            self.invalidate()
 
     def on_unmount(self) -> None:
         if self._items_unsub:

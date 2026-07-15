@@ -31,12 +31,22 @@ class LifecycleHostMixin:
         self._dispose_callbacks = []
         self._mount_tasks = []
         self._unmounted = False
+        self._mounted = False
 
     # --- Lifecycle ---------------------------------------------------------
     def mount(self, app) -> None:
         if __debug__:
             assert_ui_thread()
+        # Mounting is idempotent: a widget already mounted to this app must not
+        # re-run its lifecycle. Providers such as ForEach add their children to
+        # the child store (mounting them eagerly) and are then walked again by
+        # the parent's mount loop; without this guard every such child would
+        # fire on_mount twice. (``app`` may legitimately be None, so a dedicated
+        # flag rather than ``_app`` tracks whether we are already mounted.)
+        if self._mounted and self._app is app:
+            return
         self._unmounted = False
+        self._mounted = True
         self._app = app
         self._safe_call(self.on_mount)
         for callback in list(self._mount_callbacks):
@@ -89,6 +99,7 @@ class LifecycleHostMixin:
                 )
         self._app = None
         self._unmounted = True
+        self._mounted = False
 
     def on_mount(self) -> None:  # pragma: no cover - default no-op
         return None
