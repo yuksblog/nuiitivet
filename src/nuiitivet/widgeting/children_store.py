@@ -369,3 +369,30 @@ class ChildrenStore:
     def extend(self, items: Iterable) -> None:
         for it in items:
             self.add(it)
+
+    def reconcile(self, desired: Sequence) -> None:
+        """Reconcile children to ``desired``, mounting/unmounting only the diff.
+
+        Children already present keep their mounted state and are merely
+        reordered to match ``desired``. Children absent from ``desired`` are
+        removed (and unmounted); children newly present are added (and mounted).
+        This avoids the unmount/remount churn of ``clear()`` + re-add when only
+        a few items enter or leave.
+        """
+        desired_list = list(desired)
+        desired_ids = {id(w) for w in desired_list}
+
+        # Remove (and unmount) children that are no longer wanted.
+        for child in list(self._items):
+            if id(child) not in desired_ids:
+                self.remove(child)
+
+        # Add (and mount) children that newly appeared, preserving survivors.
+        current_ids = {id(child) for child in self._items}
+        for widget in desired_list:
+            if id(widget) not in current_ids:
+                self.add(widget)
+
+        # Reorder in place to match ``desired`` without touching lifecycle state.
+        self._items = deque(desired_list)
+        self._mark_dirty()
