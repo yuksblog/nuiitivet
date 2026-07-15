@@ -292,6 +292,12 @@ class App:
 
         self._scale = 1.0
         self._dirty = False
+        # Content dirtiness is distinct from ``_dirty``: ``_dirty`` means "a frame
+        # was requested", while ``_paint_dirty`` means "the widget tree changed and
+        # must be re-painted". A surface-loss redraw (window show/activate) requests
+        # a frame without changing content, letting the GPU path re-blit its cached
+        # full frame instead of re-walking the tree. See ``draw_gpu_frame``.
+        self._paint_dirty = True
         self._window = None
         self._event_loop: Any = None
         # On-demand drawing by default: a clean tree produces zero frames. A
@@ -724,7 +730,7 @@ class App:
                 warnings.warn(f"root.unmount() failed: {e}", RuntimeWarning, stacklevel=2)
 
     # --- Window / interactive runtime ---------------------------------
-    def invalidate(self, immediate: bool = False):
+    def invalidate(self, immediate: bool = False, content: bool = True):
         """Request that the next frame be redrawn.
 
         This sets an internal dirty flag which the render loop checks to
@@ -732,8 +738,14 @@ class App:
 
         Args:
             immediate: If True and running in pyglet, bypass FPS throttle for next draw
+            content: If True (default), mark the widget tree as changed so the next
+                frame is fully re-painted. Pass False for surface-loss redraws
+                (window show/activate) where the tree is unchanged and the GPU path
+                may re-blit its cached full frame instead of re-walking the tree.
         """
         self._dirty = True
+        if content:
+            self._paint_dirty = True
         self._debug_record_invalidate()
         loop = self._event_loop
         if loop is not None:

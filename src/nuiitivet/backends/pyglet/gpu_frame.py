@@ -53,6 +53,17 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
         return False
 
     canvas = surf.getCanvas()
+
+    # Fast path: the widget tree is unchanged and only a surface-loss redraw
+    # (window show/activate) requested this frame. Re-blit the cached full frame
+    # 1:1 in device pixels instead of walking the whole tree. This fills the
+    # entire back buffer, so the flip invariant (never flip a buffer you did not
+    # just draw) is preserved -- see docs/design/RENDERING_PIPELINE.md.
+    if _try_reblit_cached_frame(app, canvas, phys_w, phys_h, skia):
+        _flush_gpu(app, gr_context)
+        app._dirty = False
+        return True
+
     if getattr(app, "_scale", 1.0) != 1.0:
         canvas.scale(getattr(app, "_scale", 1.0), getattr(app, "_scale", 1.0))
 
@@ -150,6 +161,56 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
             except Exception:
                 exception_once(logger, "gpu_frame_chrome_border_exc", "Failed to draw CustomChrome border")
 
+    # Cache this fully-painted frame so a later surface-loss redraw can re-blit it
+    # instead of walking the tree again. The snapshot captures the surface at its
+    # physical (device-pixel) resolution regardless of the canvas scale transform.
+    _store_frame_cache(app, surf, phys_w, phys_h)
+    app._paint_dirty = False
+
+    _flush_gpu(app, gr_context)
+    app._dirty = False
+    return True
+
+
+def _store_frame_cache(app: Any, surf: Any, phys_w: int, phys_h: int) -> None:
+    """Snapshot the just-painted surface into the app's full-frame GPU cache."""
+
+    try:
+        snapshot = surf.makeImageSnapshot()
+    except Exception:
+        exception_once(logger, "gpu_frame_snapshot_exc", "surf.makeImageSnapshot raised")
+        snapshot = None
+    app._gpu_frame_cache = snapshot
+    app._gpu_frame_cache_size = (phys_w, phys_h) if snapshot is not None else None
+
+
+def _try_reblit_cached_frame(app: Any, canvas: Any, phys_w: int, phys_h: int, skia: Any) -> bool:
+    """Re-blit the cached full frame 1:1 when the tree is unchanged.
+
+    Returns True when the cached frame was drawn (caller should flip); False when
+    no valid cache exists and a full paint is required.
+    """
+
+    if getattr(app, "_paint_dirty", True):
+        return False
+    cache = getattr(app, "_gpu_frame_cache", None)
+    if cache is None:
+        return False
+    if getattr(app, "_gpu_frame_cache_size", None) != (phys_w, phys_h):
+        return False
+    try:
+        # Clear to transparent then blit at device resolution with the identity
+        # matrix so 1 canvas unit == 1 device pixel. Any transparency baked into
+        # the snapshot (e.g. CustomChrome rounded corners) is reproduced exactly.
+        canvas.clear(skia.Color(0, 0, 0, 0))
+        canvas.drawImage(cache, 0.0, 0.0)
+        return True
+    except Exception:
+        exception_once(logger, "gpu_frame_reblit_exc", "Failed to re-blit cached GPU frame")
+        return False
+
+
+def _flush_gpu(app: Any, gr_context: Any) -> None:
     try:
         gr_context.flush()
     except Exception:
@@ -157,6 +218,3 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
             gr_context.submit()
         except Exception:
             exception_once(logger, "gpu_frame_submit_exc", "gr_context.submit raised")
-
-    app._dirty = False
-    return True

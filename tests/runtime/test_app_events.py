@@ -12,6 +12,7 @@ class FakeCanvas:
     def __init__(self):
         self.scaled = False
         self.cleared = False
+        self.drawn_images = []
 
     def scale(self, sx, sy):
         self.scaled = (sx, sy)
@@ -19,13 +20,34 @@ class FakeCanvas:
     def clear(self, col):
         self.cleared = True
 
+    def drawImage(self, image, x, y):
+        self.drawn_images.append((image, x, y))
+
+
+class FakeImage:
+    def __init__(self, w, h):
+        self._w = w
+        self._h = h
+
+    def width(self):
+        return self._w
+
+    def height(self):
+        return self._h
+
 
 class FakeSurface:
-    def __init__(self, canvas):
+    def __init__(self, canvas, snapshot_size=(100, 80)):
         self._canvas = canvas
+        self._snapshot_size = snapshot_size
+        self.snapshot_count = 0
 
     def getCanvas(self):
         return self._canvas
+
+    def makeImageSnapshot(self):
+        self.snapshot_count += 1
+        return FakeImage(*self._snapshot_size)
 
 
 class FakeSkiaModule:
@@ -34,6 +56,10 @@ class FakeSkiaModule:
         self.kRGBA_8888_ColorType = object()
         self.ColorWHITE = 0
         self._make_returns = make_surface_returns
+
+    @staticmethod
+    def Color(r, g, b, a):
+        return (r, g, b, a)
 
     class GrGLFramebufferInfo:
         def __init__(self, a, b):
@@ -141,6 +167,84 @@ def test_draw_gpu_frame_fallback(monkeypatch):
 
     ok = draw_gpu_frame(app, gr, gl, skia)
     assert ok is False
+
+
+def _make_gpu_env():
+    app = DummyApp()
+    canvas = FakeCanvas()
+    surf = FakeSurface(canvas, snapshot_size=(app.width, app.height))
+    skia = FakeSkiaModule()
+    skia.Surface.MakeFromBackendRenderTarget = staticmethod(lambda *a, **k: surf)
+    gr = DummyGrContext()
+    gl = DummyGL(fb=1, samples=4, stencil=8)
+    return app, canvas, surf, skia, gr, gl
+
+
+def test_gpu_frame_caches_after_full_paint():
+    app, canvas, surf, skia, gr, gl = _make_gpu_env()
+    app._paint_dirty = True
+
+    ok = draw_gpu_frame(app, gr, gl, skia)
+
+    assert ok is True
+    assert app.root.painted is True
+    # A clean full frame is cached and paint-dirtiness is cleared.
+    assert app._gpu_frame_cache is not None
+    assert app._gpu_frame_cache_size == (app.width, app.height)
+    assert app._paint_dirty is False
+    assert surf.snapshot_count == 1
+
+
+def test_gpu_frame_reblits_cached_frame_when_clean():
+    app, canvas, surf, skia, gr, gl = _make_gpu_env()
+
+    # First frame: full paint populates the cache.
+    app._paint_dirty = True
+    draw_gpu_frame(app, gr, gl, skia)
+    app.root.painted = False
+
+    # Second frame with clean content: must re-blit, not re-walk the tree.
+    app._paint_dirty = False
+    ok = draw_gpu_frame(app, gr, gl, skia)
+
+    assert ok is True
+    assert app.root.painted is False  # tree walk skipped
+    assert len(canvas.drawn_images) == 1  # cached frame blitted 1:1
+    assert canvas.drawn_images[0][1:] == (0.0, 0.0)
+
+
+def test_gpu_frame_repaints_when_size_changes():
+    app, canvas, surf, skia, gr, gl = _make_gpu_env()
+
+    app._paint_dirty = True
+    draw_gpu_frame(app, gr, gl, skia)
+    app.root.painted = False
+
+    # Clean content but the physical size no longer matches the cache -> repaint.
+    app._paint_dirty = False
+    app.width = 200
+    ok = draw_gpu_frame(app, gr, gl, skia)
+
+    assert ok is True
+    assert app.root.painted is True
+    assert not canvas.drawn_images  # no stale-size re-blit
+
+
+def test_invalidate_content_flag_controls_paint_dirty():
+    from nuiitivet.runtime.app import App
+
+    class LeafWidget(Widget):
+        def paint(self, canvas, x, y, w, h):
+            pass
+
+    app = App(LeafWidget(), title="t")
+    app._paint_dirty = False
+    app.invalidate(content=False)
+    assert app._paint_dirty is False  # surface-loss redraw leaves content clean
+    assert app._dirty is True
+
+    app.invalidate()  # default content=True
+    assert app._paint_dirty is True
 
 
 def test_draw_raster_frame_success(monkeypatch):
