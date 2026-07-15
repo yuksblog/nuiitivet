@@ -88,3 +88,36 @@ The phase where actual drawing to the screen is performed based on the finalized
 * **Cache Invalidation**: Caches are discarded if `_paint_dependencies` change, or if property setters or Modifiers call `invalidate_paint_cache()`.
 * **Hit Testing**: Cached layers do not affect hit-testing; `_last_rect` remains the single source of truth.
 * **Theme Awareness**: Widgets referencing ColorRoles are responsible for subscribing to the `ThemeManager` and invalidating the cache upon theme changes.
+
+## 4. Frame Scheduling
+
+*Status: Implemented (on-demand drawing)*
+
+The framework draws **on demand**. A frame is produced only when something has invalidated the tree; an idle window — nothing animating, no interaction — draws **zero frames per second**, so a static screen costs no CPU or battery.
+
+### Invalidation Drives Frames
+
+Every visual state change routes to a redraw request:
+
+* `Widget.invalidate()` → `App.invalidate()` → `ResponsiveEventLoop.request_draw()` sets `_draw_pending`.
+* Most state changes reach `invalidate()` indirectly: `Observable` and `Animatable` properties notify subscribers, and those subscriptions call `invalidate()`. This is why interaction modules (hover/press/focus, scrolling, slider drag, overlay transitions, animations) contain few or no explicit `invalidate()` calls — the observable graph carries the signal. Scroll offset, for example, is an `Observable`; the scrollable subscribes and invalidates on change.
+* Animations tick on the UI clock (`runtime.clock`, installed as the event loop's clock). Each tick updates an `Animatable` value → subscriber `invalidate()` → one frame. When the animation completes it unschedules itself, the clock goes idle, and the loop returns to zero frames.
+
+### `draw_fps` is an Upper Bound, not a Mandate
+
+`App.run(draw_fps=...)` (and `set_draw_fps`) configure an **upper-bound throttle**, never a mandate to draw:
+
+* `draw_fps=None` (the default): pure on-demand. Draw as soon as a request arrives.
+* `draw_fps=N`: still only draws when something invalidated, but coalesces requests so no more than `N` frames per second are produced.
+
+`ResponsiveEventLoop._should_draw()` returns `False` whenever `_draw_pending` is clear, regardless of cadence. `_compute_sleep_timeout()` correspondingly refuses to wake the loop for a cadence deadline when nothing is pending — otherwise an idle app would spin at `draw_fps` doing nothing.
+
+### The Flip Invariant
+
+The GPU and raster backends both present via a double-buffered `window.flip()` (buffer swap). After a swap, the contents of the new back buffer are **undefined**. The rendering loop upholds a single invariant:
+
+> **Never flip without drawing.** A frame is always a full repaint of the back buffer followed by a flip; the loop never presents a buffer it did not just draw.
+
+On-demand drawing satisfies this trivially: when the tree is clean the loop draws *nothing and flips nothing*, so the front buffer keeps showing the last complete frame. The historical belief that "the GPU must redraw every frame" conflated this invariant with a fixed cadence — but redrawing every frame was never required, only *not flipping stale buffers*.
+
+Surface-loss paths that can leave an undefined front buffer (window show, activation, resize, DPI change) explicitly `invalidate()` so the next frame repaints from scratch rather than relying on retained buffer contents.

@@ -427,13 +427,20 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 break
 
     def _should_draw(self, now: float) -> bool:
-        # If no draw cadence is configured, draw only when explicitly requested.
-        if self._draw_interval is None or self._next_draw_deadline is None:
-            return bool(self._draw_pending)
+        # A frame is only produced when something has invalidated. Without a
+        # pending request the tree is clean, so there is nothing to draw and no
+        # buffer to flip — the front buffer keeps showing the last frame.
+        if not self._draw_pending:
+            return False
 
-        # With a cadence, draw when the deadline is reached.
-        # Also respect explicit requests for an immediate frame.
-        return bool(self._draw_pending) or now >= self._next_draw_deadline
+        # No cadence: draw as soon as a request arrives.
+        if self._draw_interval is None or self._next_draw_deadline is None:
+            return True
+
+        # With a cadence, the deadline *throttles* rather than triggers: draw
+        # only once enough time has elapsed since the last frame. `draw_fps` is
+        # therefore an upper bound on frame rate, not a mandate to draw.
+        return now >= self._next_draw_deadline
 
     def _perform_draw(self, dt: float, now: float) -> None:
         self._draw_pending = False
@@ -451,17 +458,19 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         if clock_timeout is not None and clock_timeout < 0:
             clock_timeout = 0.0
 
-        # When a draw cadence is configured, always wake for draw deadlines.
-        if self._draw_interval is not None and self._next_draw_deadline is not None:
-            remaining = self._next_draw_deadline - now
-            draw_timeout = 0.0 if remaining <= 0 else remaining
-            if clock_timeout is None:
-                return draw_timeout
-            return min(clock_timeout, draw_timeout)
-
-        # No cadence: draw only when explicitly requested.
+        # A draw is only produced when something is pending. When nothing is
+        # pending the tree is clean, so there is no reason to wake for a draw at
+        # all — regardless of any configured cadence. Waking on the cadence
+        # deadline here would spin the loop at `draw_fps` doing nothing, which is
+        # exactly the idle CPU cost on-demand drawing is meant to avoid.
         if self._draw_pending:
-            draw_timeout = 0.0
+            if self._draw_interval is not None and self._next_draw_deadline is not None:
+                # Cadence configured: wake when the throttle deadline is reached.
+                remaining = self._next_draw_deadline - now
+                draw_timeout = 0.0 if remaining <= 0 else remaining
+            else:
+                # No cadence: draw as soon as possible.
+                draw_timeout = 0.0
             if clock_timeout is None:
                 return draw_timeout
             return min(clock_timeout, draw_timeout)
