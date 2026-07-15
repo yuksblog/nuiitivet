@@ -121,3 +121,16 @@ The GPU and raster backends both present via a double-buffered `window.flip()` (
 On-demand drawing satisfies this trivially: when the tree is clean the loop draws *nothing and flips nothing*, so the front buffer keeps showing the last complete frame. The historical belief that "the GPU must redraw every frame" conflated this invariant with a fixed cadence — but redrawing every frame was never required, only *not flipping stale buffers*.
 
 Surface-loss paths that can leave an undefined front buffer (window show, activation, resize, DPI change) explicitly `invalidate()` so the next frame repaints from scratch rather than relying on retained buffer contents.
+
+### GPU Full-Frame Paint Cache
+
+A surface-loss redraw must fill the whole back buffer (to uphold the flip invariant), but the *content* it draws is unchanged — the tree did not change, the compositor merely discarded our buffer. Re-walking the entire widget tree in Python just to reproduce the same pixels is wasteful; on a large tree that walk dominates frame cost.
+
+The GPU path (`draw_gpu_frame`) therefore keeps a **full-frame cache**: after each real paint it snapshots the surface at physical (device-pixel) resolution into `app._gpu_frame_cache`. When a later frame is requested with the tree still clean, it re-blits that snapshot 1:1 into the back buffer instead of calling `root.paint()`. This fills the whole buffer (flip invariant preserved) and reproduces any baked-in transparency (e.g. `CustomChrome` rounded corners) exactly. It mirrors what the raster path achieves with `_last_image`.
+
+To know when a redraw is content-unchanged, `invalidate()` distinguishes two kinds of dirtiness:
+
+* `_dirty` — "a frame was requested" (drives the on-demand loop).
+* `_paint_dirty` — "the widget tree changed and must be re-painted".
+
+Content invalidations (`invalidate()`, default `content=True`) set both; surface-loss redraws (window show/activation) call `invalidate(content=False)`, setting only `_dirty`. `draw_gpu_frame` re-blits the cache when `_paint_dirty` is clear and the cached snapshot matches the current physical size, and otherwise does a full paint that refreshes the cache and clears `_paint_dirty`. A genuine content change still pays a full `root.paint()` walk — eliminating *that* cost for partial updates (subtree/dirty-region caching) is tracked separately.

@@ -342,6 +342,12 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             if gr_context is None:
                 gr_context = skia.GrDirectContext.MakeGL(None)
             gpu_enabled = gr_context is not None and GL is not None
+            # The cached full frame is a GPU image bound to the old context; it is
+            # invalid on the new one. Drop it and force a fresh full paint so the
+            # next frame re-snapshots against the recreated context.
+            setattr(app, "_gpu_frame_cache", None)
+            setattr(app, "_gpu_frame_cache_size", None)
+            setattr(app, "_paint_dirty", True)
         except Exception:
             gpu_enabled = False
             exception_once(logger, "pyglet_recreate_gl_context_exc", "Failed to recreate GL context")
@@ -739,8 +745,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # On-demand drawing skips frames while clean, so a newly shown window
         # (which may have a discarded/undefined back buffer) must explicitly
         # request a repaint rather than relying on a cadence frame arriving.
+        # The tree content is unchanged, so the GPU path may re-blit its cached
+        # full frame (content=False) instead of re-walking the tree.
         try:
-            app.invalidate(immediate=True)
+            app.invalidate(immediate=True, content=False)
         except Exception:
             exception_once(logger, "pyglet_on_show_invalidate_exc", "app.invalidate raised")
 
@@ -760,8 +768,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             exception_once(logger, "pyglet_on_activate_resize_exc", "Failed to sync size on activate")
         # Regaining focus can follow the compositor discarding our surface; force
         # a repaint so on-demand drawing does not leave a stale frame on screen.
+        # The tree content is unchanged, so the GPU path may re-blit its cached
+        # full frame (content=False) instead of re-walking the tree.
         try:
-            app.invalidate(immediate=True)
+            app.invalidate(immediate=True, content=False)
         except Exception:
             exception_once(logger, "pyglet_on_activate_invalidate_exc", "app.invalidate raised")
 
