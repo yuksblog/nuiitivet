@@ -294,7 +294,10 @@ class App:
         self._dirty = False
         self._window = None
         self._event_loop: Any = None
-        self._preferred_draw_fps: Optional[float] = 30.0
+        # On-demand drawing by default: a clean tree produces zero frames. A
+        # positive value (via `App.run(draw_fps=...)` or `set_draw_fps`) acts as
+        # an upper-bound throttle, not a mandate to draw every frame.
+        self._preferred_draw_fps: Optional[float] = None
         self._last_hover_target = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
@@ -1436,7 +1439,11 @@ class App:
         """Run an interactive window using the pyglet backend.
 
         Args:
-            draw_fps: Optional fixed draw rate. ``None`` draws on demand.
+            draw_fps: Upper-bound frame-rate throttle. ``None`` (the default)
+                draws purely on demand — a clean widget tree produces zero
+                frames. A positive value caps the frame rate but still only
+                draws when something has invalidated; it is a throttle, not a
+                mandate to draw every frame.
             renderer: Renderer selection.
 
                 - ``"auto"`` (default): try the GPU and silently fall back to

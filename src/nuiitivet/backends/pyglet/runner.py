@@ -736,6 +736,13 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             _update_app_size_from_window("on_show", window.width, window.height)
         except Exception:
             exception_once(logger, "pyglet_on_show_resize_exc", "Failed to sync size on show")
+        # On-demand drawing skips frames while clean, so a newly shown window
+        # (which may have a discarded/undefined back buffer) must explicitly
+        # request a repaint rather than relying on a cadence frame arriving.
+        try:
+            app.invalidate(immediate=True)
+        except Exception:
+            exception_once(logger, "pyglet_on_show_invalidate_exc", "app.invalidate raised")
 
     @window.event
     def on_hide():
@@ -751,6 +758,12 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             _update_app_size_from_window("on_activate", window.width, window.height)
         except Exception:
             exception_once(logger, "pyglet_on_activate_resize_exc", "Failed to sync size on activate")
+        # Regaining focus can follow the compositor discarding our surface; force
+        # a repaint so on-demand drawing does not leave a stale frame on screen.
+        try:
+            app.invalidate(immediate=True)
+        except Exception:
+            exception_once(logger, "pyglet_on_activate_invalidate_exc", "app.invalidate raised")
 
     @window.event
     def on_deactivate():
