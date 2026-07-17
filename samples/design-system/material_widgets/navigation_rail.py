@@ -16,7 +16,6 @@ def main(png_path: str = "") -> None:
         index=nv.Observable(0),
         expanded=nv.Observable(False),
         show_menu_button=True,
-        height=nv.Sizing.flex(1),
     )
     body = nv.Card(
         nv.Column(
@@ -36,7 +35,6 @@ def main(png_path: str = "") -> None:
         content=nv.Row([rail, body], width=nv.Sizing.flex(1), height=nv.Sizing.flex(1)),
         title="NavigationRail",
         width=560,
-        height=320,
     )
     if png_path:
         app.render_to_png(png_path)

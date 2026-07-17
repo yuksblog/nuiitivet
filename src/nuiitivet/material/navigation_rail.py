@@ -626,6 +626,34 @@ class _NavigationRailLayout(Widget):
         self.mark_needs_layout()
         self.invalidate()
 
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return the intrinsic content size using the collapsed metrics.
+
+        Mirrors the running cursor used in :meth:`layout` so that ``auto`` height
+        sizes the rail to its content instead of collapsing to zero (which would
+        leave it painted but invisible to hit-testing).
+        """
+        gap = float(self._style.gap_collapsed)
+
+        height = float(self._style.top_padding)
+        if self._menu_button is not None:
+            height += float(self._style.menu_button_size) + gap
+
+        item_count = len(self._item_buttons)
+        if item_count > 0:
+            height += item_count * float(self._style.item_height)
+            height += (item_count - 1) * gap
+
+        width = float(self._style.container_width_collapsed)
+
+        pref_w = int(width)
+        pref_h = int(height)
+        if max_width is not None:
+            pref_w = min(pref_w, int(max_width))
+        if max_height is not None:
+            pref_h = min(pref_h, int(max_height))
+        return (pref_w, pref_h)
+
     def layout(self, width: int, height: int) -> None:
         Widget.layout(self, width, height)
 
