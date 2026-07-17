@@ -486,6 +486,74 @@ def test_animation_transition_expanded_to_collapsed_container_width():
 
 
 # ---------------------------------------------------------------------------
+# Intrinsic (auto) height — preferred_size (#377)
+# ---------------------------------------------------------------------------
+# Without an explicit height the rail resolves to Sizing.auto() ("size to
+# preferred"). Before #377 the custom layout reported height 0, so the rail
+# painted but had a 0-height rect that missed all pointer hit-testing.
+
+
+def test_preferred_size_reports_intrinsic_content_height():
+    """auto height sizes the rail to its content instead of collapsing to 0.
+
+    Default style, 3 items, menu button shown:
+        top_padding(44)
+        + menu_button_size(56) + gap_collapsed(4)
+        + 3 * item_height(56)
+        + (3 - 1) * gap_collapsed(4)
+        = 280
+    """
+    items = [
+        RailItem(icon="home", label="Home"),
+        RailItem(icon="search", label="Search"),
+        RailItem(icon="settings", label="Settings"),
+    ]
+    rail = NavigationRail(children=items, expanded=False)
+
+    pref_w, pref_h = rail.preferred_size()
+    assert pref_w == 96
+    assert pref_h == 280
+
+
+def test_preferred_size_excludes_menu_button_when_hidden():
+    """Hiding the menu button drops its size and gap from the intrinsic height.
+
+        top_padding(44) + 2 * item_height(56) + 1 * gap_collapsed(4) = 160
+    """
+    items = [
+        RailItem(icon="home", label="Home"),
+        RailItem(icon="search", label="Search"),
+    ]
+    rail = NavigationRail(children=items, expanded=False, show_menu_button=False)
+
+    _pref_w, pref_h = rail.preferred_size()
+    assert pref_h == 160
+
+
+def test_auto_height_layout_is_non_zero_and_hittable():
+    """Under auto height the laid-out rect matches the intrinsic content height.
+
+    Regression for #377: a 0-height rect is painted but invisible to pointer
+    hit-testing. The rail's layout_rect height must equal its preferred height.
+    """
+    from nuiitivet.layout.row import Row
+
+    items = [
+        RailItem(icon="home", label="Home"),
+        RailItem(icon="search", label="Search"),
+    ]
+    rail = NavigationRail(children=items, expanded=False)  # height defaults to auto
+    row = Row(children=[rail], width=Sizing.flex(1), height=Sizing.flex(1))
+    row.layout(400, 300)
+
+    assert rail.layout_rect is not None
+    _x, _y, _w, h = rail.layout_rect
+    assert h > 0
+    # top_padding(44) + menu(56) + gap(4) + 2*56 + 1*4 = 220
+    assert h == 220
+
+
+# ---------------------------------------------------------------------------
 # Long-label truncation (#276)
 # ---------------------------------------------------------------------------
 
