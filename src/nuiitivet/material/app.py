@@ -11,7 +11,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
-from nuiitivet.runtime.app import App, _UNSET
+from nuiitivet.runtime.app import App, RootFactory, _UNSET
 from nuiitivet.runtime.window import WindowPosition, WindowSizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
@@ -43,7 +43,7 @@ class MaterialApp(App):
 
     def __init__(
         self,
-        content: Widget,
+        content: "Widget | RootFactory",
         *,
         overlay_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
         width: WindowSizingLike = "auto",
@@ -58,10 +58,15 @@ class MaterialApp(App):
         """Initialize a MaterialApp.
 
         Args:
-            content: The root content. Can be a ``Widget`` (used as the initial
-                screen under an implicit ``MaterialNavigator``) or a
-                ``Navigator`` (e.g. ``Navigator.routes(...)`` or
-                ``Navigator.intents(...)``) to customize the navigation stack.
+            content: The root content. Accepts a ``Widget`` instance or a **root
+                factory** (a zero-argument callable returning the root widget,
+                e.g. ``App(content=Home)`` or ``App(content=build_root)``) —
+                passing a factory enables hot reload under
+                ``python -m nuiitivet.dev``. The resolved root can be a ``Widget``
+                (used as the initial screen under an implicit
+                ``MaterialNavigator``) or a ``Navigator`` (e.g.
+                ``Navigator.routes(...)`` / ``Navigator.intents(...)``) to
+                customize the navigation stack.
             overlay_routes: Optional mapping of Intent types to overlay builder functions.
             width: Window width specification ("auto", fixed integer, etc.).
             height: Window height specification.

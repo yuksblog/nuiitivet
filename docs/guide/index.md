@@ -36,3 +36,4 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 - [Async & Threading](advanced/threading.md)
 - [Interaction](advanced/interaction_region.md)
+- [Hot Reload](advanced/hot_reload.md)

@@ -54,6 +54,12 @@ logger = logging.getLogger(__name__)
 
 _UNSET = object()
 
+# A root factory is any zero-argument callable returning the root Widget. Passing
+# a factory (rather than a Widget instance) is what enables hot reload: the dev
+# runner re-invokes it to rebuild the tree after a module reload. A bare Widget
+# subclass qualifies (``App(content=CounterApp)``), as does a function or lambda.
+RootFactory = Callable[[], Widget]
+
 
 # NOTE: compatibility wrapper removed. Use `resolve_color_to_rgba` from
 # `nuiitivet.theme.resolver` to resolve theme ColorRole/ColorLike values to
@@ -96,6 +102,9 @@ class AppScope(Widget):
 
 class App:
     """Application runner."""
+
+    # Set when a CustomChrome is in use (see :meth:`_wrap_with_chrome_and_scope`).
+    _window_drag_area: Optional[WindowDragArea] = None
 
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
@@ -166,6 +175,56 @@ class App:
 
         root_widget = Stack(children=[navigator, overlay], width="100%", height="100%")
         return root_widget, initial_route_widget
+
+    def _wrap_with_chrome_and_scope(self, root: Widget) -> Widget:
+        """Wrap a content root with the window chrome and the AppScope.
+
+        Applies the :class:`CustomChrome` header + drag area (when a custom
+        chrome is in use) and finally the :class:`AppScope` that exposes the App
+        to the widget tree. Reused by both initial construction and hot reload so
+        a rebuilt content subtree is wrapped identically. ``self.chrome`` must be
+        set before calling.
+
+        Args:
+            root: The content root (the Navigator/Overlay stack).
+
+        Returns:
+            The wrapped root widget.
+        """
+        if isinstance(self.chrome, CustomChrome):
+
+            def on_drag(dx: float, dy: float) -> None:
+                win = getattr(self, "_window", None)
+                if win is not None:
+                    try:
+                        wx, wy = win.get_location()
+                        # Note: We assume dx/dy and get_location/set_location use the same units (logical or physical).
+                        # If there is a mismatch (e.g. HiDPI), this might need adjustment.
+                        win.set_location(int(wx + dx), int(wy + dy))
+
+                        # Notify the drag area to adjust internal state to prevent jitter
+                        if self._window_drag_area:
+                            self._window_drag_area.notify_window_moved(dx, dy)
+                    except Exception:
+                        exception_once(logger, "app_custom_chrome_drag_exc", "Failed to move window")
+
+            self._window_drag_area = WindowDragArea(
+                child=self.chrome.header,
+                on_drag=on_drag,
+                width="100%",
+            )
+
+            root = Column(
+                children=[
+                    self._window_drag_area,
+                    Container(child=root, width="100%", height="100%"),
+                ],
+                width="100%",
+                height="100%",
+            )
+
+        # Wrap the root widget with AppScope to provide access to the App instance
+        return AppScope(app=self, child=root)
 
     def _init_common(
         self,
@@ -249,43 +308,14 @@ class App:
         self.resizable = resizable
 
         self.chrome: OSChrome | CustomChrome | None = chrome
+        # Reset the drag-area reference (class default is None); a CustomChrome
+        # rebuilds it in :meth:`_wrap_with_chrome_and_scope`.
+        self._window_drag_area = None
 
-        if isinstance(self.chrome, CustomChrome):
-            # We need a reference to the drag area to notify it of window moves
-            self._window_drag_area: Optional[WindowDragArea] = None
-
-            def on_drag(dx: float, dy: float):
-                win = getattr(self, "_window", None)
-                if win is not None:
-                    try:
-                        wx, wy = win.get_location()
-                        # Note: We assume dx/dy and get_location/set_location use the same units (logical or physical).
-                        # If there is a mismatch (e.g. HiDPI), this might need adjustment.
-                        win.set_location(int(wx + dx), int(wy + dy))
-
-                        # Notify the drag area to adjust internal state to prevent jitter
-                        if self._window_drag_area:
-                            self._window_drag_area.notify_window_moved(dx, dy)
-                    except Exception:
-                        exception_once(logger, "app_custom_chrome_drag_exc", "Failed to move window")
-
-            self._window_drag_area = WindowDragArea(
-                child=self.chrome.header,
-                on_drag=on_drag,
-                width="100%",
-            )
-
-            self.root = Column(
-                children=[
-                    self._window_drag_area,
-                    Container(child=self.root, width="100%", height="100%"),
-                ],
-                width="100%",
-                height="100%",
-            )
-
-        # Wrap the root widget with AppScope to provide access to the App instance
-        self.root = AppScope(app=self, child=self.root)
+        # Apply the chrome decoration and AppScope wrapping. This is factored out
+        # so hot reload can re-wrap a freshly rebuilt content subtree with the
+        # same (preserved) chrome shell. See :meth:`_rebuild_content_root`.
+        self.root = self._wrap_with_chrome_and_scope(self.root)
 
         self._title_value: str | None | ObservableBase[str | None] = title
         self._title_disposable: Optional[Disposable] = None
@@ -448,7 +478,7 @@ class App:
 
     def __init__(
         self,
-        content: Widget,
+        content: "Widget | RootFactory",
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
@@ -463,7 +493,16 @@ class App:
         """Initialize the App.
 
         Args:
-            content: The root content. Can be either:
+            content: The root content. Accepts either a ready ``Widget`` instance
+                or a **root factory** — a zero-argument callable returning the
+                root ``Widget`` (e.g. a ``Widget`` subclass ``App(content=Home)``,
+                a function, or ``lambda: Home(config)``). Passing a factory is
+                what enables hot reload under ``python -m nuiitivet.dev``: the
+                runner re-invokes it to rebuild the tree after a module reload.
+                Passing a Widget instance still works but the tree cannot be
+                rebuilt, so hot reload is inert for that root.
+
+                Whichever form is used, the resulting root may be:
                 - A ``Navigator`` (including factory-built variants like
                   ``Navigator.routes(...)`` / ``Navigator.intents(...)``), which
                   is used directly as the root Navigator.
@@ -487,15 +526,33 @@ class App:
             window_position: Initial window position.
             resizable: Whether the window can be resized.
         """
-        if not isinstance(content, Widget):
-            raise TypeError("'content' must be a Widget instance.")
+        # Normalize ``content`` to a root factory. A Widget instance is wrapped in
+        # a factory that always returns that same instance (so hot reload is a
+        # no-op for it); a callable is stored as-is. ``self._root_factory`` is the
+        # single source of truth the reload path re-invokes.
+        if callable(content) and not isinstance(content, Widget):
+            self._root_factory: RootFactory = content
+        elif isinstance(content, Widget):
+            instance = content
+            self._root_factory = lambda: instance
+        else:
+            raise TypeError(
+                "'content' must be a Widget instance or a callable returning a Widget."
+            )
+        # Overlay factory is retained so the reload path can rebuild the
+        # Navigator/Overlay stack identically. See :meth:`_rebuild_content_root`.
+        self._overlay_factory = overlay_factory
+
+        content_root = self._root_factory()
+        if not isinstance(content_root, Widget):
+            raise TypeError("root factory must return a Widget instance.")
 
         from nuiitivet.navigation import Navigator
 
-        if isinstance(content, Navigator):
-            navigator = content
+        if isinstance(content_root, Navigator):
+            navigator = content_root
         else:
-            navigator = self._build_default_navigator(content)
+            navigator = self._build_default_navigator(content_root)
 
         root_widget, initial_route_widget = self._build_root_navigation_stack(
             navigator=navigator,
@@ -1467,11 +1524,133 @@ class App:
                 For GPU-less, software-GL, or remote environments (with a
                 display) prefer ``"cpu"``. Truly headless environments cannot use
                 ``run()`` at all — render offscreen via :meth:`render_to_png`.
+
+        When launched under ``python -m nuiitivet.dev`` (hot reload), this method
+        does **not** block. It hands the App and its root factory to the active
+        dev session and returns; the dev runner then drives the real event loop,
+        file watching, and reloads. In production (no dev session) it blocks on
+        the pyglet loop as usual.
         """
+
+        resolved_renderer = parse_renderer_mode(renderer)
+
+        # Hot-reload handoff: if the dev runner installed a session, give it the
+        # App + factory and return without blocking. See nuiitivet.dev.
+        try:
+            from nuiitivet.dev import current_dev_session
+        except Exception:
+            current_dev_session = None  # type: ignore[assignment]
+        if current_dev_session is not None:
+            session = current_dev_session()
+            if session is not None:
+                session.attach(
+                    app=self,
+                    root_factory=self._root_factory,
+                    draw_fps=draw_fps,
+                    renderer=resolved_renderer,
+                )
+                return
 
         from ..backends.pyglet.runner import run_app
 
-        run_app(self, draw_fps=draw_fps, renderer=parse_renderer_mode(renderer))
+        run_app(self, draw_fps=draw_fps, renderer=resolved_renderer)
+
+    def _rebuild_content_root(self, new_factory: "RootFactory | None" = None) -> Widget:
+        """Rebuild the content subtree from the root factory.
+
+        Re-invokes the root factory, rebuilds the Navigator/Overlay stack (which
+        resets the process-global ``Navigator``/``Overlay`` roots to the new
+        instances) and re-wraps it with the preserved chrome shell and AppScope.
+        The App shell — window, chrome, theme — is left untouched. The returned
+        root is **not** mounted or swapped in; call :meth:`_commit_content_root`
+        to do that. Splitting build from commit lets the hot-reload orchestrator
+        snapshot old state and restore it into the new tree before it is mounted.
+
+        Args:
+            new_factory: Optional replacement factory re-fetched from a reloaded
+                module. When given, it becomes the new source of truth (the
+                factory captured at construction may reference stale module
+                globals after a reload). When ``None``, the current factory is
+                reused.
+
+        Returns:
+            The freshly built root widget (chrome + AppScope wrapped).
+        """
+        if new_factory is not None:
+            self._root_factory = new_factory
+
+        content_root = self._root_factory()
+        if not isinstance(content_root, Widget):
+            raise TypeError("root factory must return a Widget instance.")
+
+        from nuiitivet.navigation import Navigator
+
+        if isinstance(content_root, Navigator):
+            navigator = content_root
+        else:
+            navigator = self._build_default_navigator(content_root)
+
+        root_widget, _ = self._build_root_navigation_stack(
+            navigator=navigator,
+            overlay_factory=self._overlay_factory,
+        )
+        return self._wrap_with_chrome_and_scope(root_widget)
+
+    def _commit_content_root(self, new_root: Widget) -> None:
+        """Swap in a rebuilt content root: unmount the old tree, mount the new.
+
+        The counterpart to :meth:`_rebuild_content_root`. Unmounts the previous
+        root, installs ``new_root`` as ``self.root``, mounts it against this App,
+        and forces a repaint. Intended for the hot-reload path; the App shell and
+        window are preserved across the swap.
+
+        Args:
+            new_root: A root produced by :meth:`_rebuild_content_root`.
+        """
+        old_root = self.root
+        if old_root is not None and old_root is not new_root:
+            try:
+                old_root.unmount()
+            except Exception:
+                exception_once(logger, "app_reload_unmount_exc", "old root.unmount() raised")
+
+        # Drop interaction state that pointed into the now-unmounted tree.
+        # These are strong references (focus/hover/pressed targets), so leaving
+        # them set would retain the old tree until the next interaction replaces
+        # them — a leak counter to the reload's "no stale old-tree references"
+        # goal. Pointer captures are weak but are released too so a subsequent
+        # motion/release does not route to a dead capture.
+        self._reset_interaction_state()
+
+        self.root = new_root
+        try:
+            new_root.mount(self)
+        except Exception:
+            exception_once(logger, "app_reload_mount_exc", "new root.mount() raised")
+
+        self._last_layout_size = None
+        self._paint_dirty = True
+        self.invalidate()
+
+    def _reset_interaction_state(self) -> None:
+        """Clear focus/hover/pressed targets and pointer captures.
+
+        Used by the hot-reload swap so no strong reference into the old,
+        unmounted tree survives. Safe to call at any time; it only nulls
+        App-held references and drops capture records (without dispatching a
+        cancel to the — now unmounted — captured widgets).
+        """
+        self._focused_node = None
+        self._focused_target = None
+        self._last_hover_target = None
+        self._pressed_target = None
+        manager = getattr(self, "_pointer_capture_manager", None)
+        if manager is not None:
+            try:
+                for pointer_id in manager.captured_pointer_ids():
+                    manager.release(pointer_id)
+            except Exception:
+                exception_once(logger, "app_reload_capture_release_exc", "pointer capture release raised")
 
     def exit(self, exit_code: int = 0) -> None:
         """Exit the application."""
