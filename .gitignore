@@ -16,6 +16,9 @@ wheels/
 .mypy_cache/
 .pytest_cache/
 
+# Dev bridge runtime files (python -m nuiitivet.dev)
+.nuiitivet/
+
 # GitHub configuration files
 .github/copilot-instructions.md
 .github/instructions/
