@@ -41,15 +41,6 @@ SPEC_VERSION: SpecVersion = "2021"
 # all 56 role definitions, so it is built once.
 _DYNAMIC_COLORS = MaterialDynamicColors(SPEC_VERSION)
 
-# A seed at a tone extreme (pure black or white) or close to it collapses the hue
-# sweep in `materialyoucolor`'s `TemperatureCache` to a single color, and the
-# library then divides by the resulting zero temperature range. Nudging such a
-# seed just inside the degenerate region keeps it usable. Only seeds that would
-# otherwise raise take this path, so no palette that already works is affected.
-_SAFE_MIN_CHROMA = 2.0
-_SAFE_MIN_TONE = 2.0
-_SAFE_MAX_TONE = 98.0
-
 
 def _normalize_seed(seed: str) -> str:
     """Validate a seed color and return it as an "#RRGGBB" string.
@@ -77,29 +68,14 @@ def _seed_hct(seed_hex: str) -> Hct:
     return Hct.from_int((0xFF << 24) | (r << 16) | (g << 8) | b)
 
 
-def _nudge_out_of_degenerate_region(seed: Hct) -> Hct:
-    """Return `seed` moved just inside the region where a hue sweep stays distinct."""
-    return Hct.from_hct(
-        seed.hue,
-        max(seed.chroma, _SAFE_MIN_CHROMA),
-        min(max(seed.tone, _SAFE_MIN_TONE), _SAFE_MAX_TONE),
-    )
-
-
 def _build_scheme(seed: Hct, variant: SchemeVariant, dark: bool, contrast_level: float) -> DynamicScheme:
-    def scheme(source: Hct) -> DynamicScheme:
-        return DynamicScheme(
-            source_color_hct=source,
-            variant=Variant[variant.value],
-            contrast_level=contrast_level,
-            is_dark=dark,
-            spec_version=SPEC_VERSION,
-        )
-
-    try:
-        return scheme(seed)
-    except ZeroDivisionError:
-        return scheme(_nudge_out_of_degenerate_region(seed))
+    return DynamicScheme(
+        source_color_hct=seed,
+        variant=Variant[variant.value],
+        contrast_level=contrast_level,
+        is_dark=dark,
+        spec_version=SPEC_VERSION,
+    )
 
 
 def _roles_from_scheme(scheme: DynamicScheme) -> RoleMap:
