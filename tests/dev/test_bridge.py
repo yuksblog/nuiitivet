@@ -25,6 +25,12 @@ class _FakeNode:
         for name, value in identity.items():
             setattr(self, name, value)
 
+    def layout(self, width: int, height: int) -> None:
+        pass
+
+    def clear_needs_layout(self) -> None:
+        pass
+
 
 class _FakeApp:
     """Stand-in App: exposes ``.root`` and a cheap ``_render_to_png_bytes``."""
@@ -32,10 +38,35 @@ class _FakeApp:
     _PNG = b"\x89PNG\r\n\x1a\n-fake-image-bytes"
 
     def __init__(self) -> None:
-        self.root = _FakeNode(label="increment")
+        self.root = _FakeNode(key="submit", label="increment")
+        self.width = 100
+        self.height = 100
+        self.presses: list[tuple] = []
+        self.texts: list[str] = []
+        self.key_presses: list[tuple] = []
 
     def _render_to_png_bytes(self) -> bytes:
         return self._PNG
+
+    def _dispatch_mouse_press(self, x: int, y: int, *, button: Any = None) -> None:
+        self.presses.append((x, y, button))
+
+    def _dispatch_mouse_release(self, x: int, y: int, *, button: Any = None) -> None:
+        pass
+
+    def _dispatch_text(self, text: str) -> bool:
+        self.texts.append(text)
+        return True
+
+    def _dispatch_key_press(self, key: str, modifiers: int) -> bool:
+        self.key_presses.append((key, modifiers))
+        return True
+
+    def _dispatch_key_release(self, key: str, modifiers: int) -> bool:
+        return False
+
+    def invalidate(self) -> None:
+        pass
 
 
 def _fake_app() -> Any:
@@ -115,6 +146,53 @@ def test_bridge_describe_tree_and_screenshot(tmp_path: Path, dev_run: None) -> N
 
             png = client.screenshot()
             assert png == _FakeApp._PNG
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_click_by_key(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            result = client.click(key="submit")
+            # Center of the root's (0, 0, 10, 10) rect is (5, 5).
+            assert result["x"] == 5 and result["y"] == 5
+            assert result["clicked"]["key"] == "submit"
+            assert app.presses == [(5, 5, None)]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_type_and_key(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            assert client.type_text("hi")["typed"] == "hi"
+            assert app.texts == ["hi"]
+
+            result = client.key("enter", modifiers=["accel"])
+            assert result["handled"] is True
+            assert app.key_presses and app.key_presses[0][0] == "enter"
+            assert app.key_presses[0][1] != 0  # a modifier mask was applied
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_click_missing_target_is_404(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="no widget matched"):
+                client.click(key="does-not-exist")
     finally:
         bridge.shutdown()
 

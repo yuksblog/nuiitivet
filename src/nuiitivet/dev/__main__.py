@@ -7,13 +7,16 @@ Subcommands::
     python -m nuiitivet.dev --module yourpkg.app    # dotted module name
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
+    python -m nuiitivet.dev click --label increment # click a widget by identifier
+    python -m nuiitivet.dev type "hello"            # type into the focused widget
+    python -m nuiitivet.dev key enter --mod accel   # press a key (with modifiers)
 
 ``run`` imports the user's app module under its real name (never ``__main__``,
 so importing it does not run ``main()``), installs a dev session, calls the
 entry once, then drives the event loop with file watching and the dev bridge
-enabled. ``describe-tree`` and ``screenshot`` are bridge clients: they talk to an
-already-running ``run`` process over localhost. See ``docs/design/HOT_RELOAD.md``
-and #374.
+enabled. ``describe-tree`` / ``screenshot`` (perception) and ``click`` / ``type``
+/ ``key`` (action) are bridge clients: they talk to an already-running ``run``
+process over localhost. See ``docs/design/HOT_RELOAD.md``, #374 and #375.
 """
 
 from __future__ import annotations
@@ -25,12 +28,12 @@ from typing import Optional, Sequence
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
-from .loader import load_app_module, resolve_entry
+from .loader import find_discovery_root, load_app_module, resolve_entry
 from .session import DevSession, set_dev_session
 
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
-_SUBCOMMANDS = frozenset({"run", "screenshot", "describe-tree"})
+_SUBCOMMANDS = frozenset({"run", "screenshot", "describe-tree", "click", "type", "key"})
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -72,6 +75,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Where to write the PNG (default: screenshot.png; '-' for stdout).",
     )
 
+    click = subparsers.add_parser("click", help="Click a widget in the running app by key/label.")
+    target = click.add_mutually_exclusive_group(required=True)
+    target.add_argument("--key", help="Target the widget whose key matches.")
+    target.add_argument("--label", help="Target the widget whose label/text/title matches.")
+    target.add_argument(
+        "--xy",
+        nargs=2,
+        type=float,
+        metavar=("X", "Y"),
+        help="Raw root coordinates (fallback; breaks on layout changes).",
+    )
+
+    typ = subparsers.add_parser("type", help="Type text into the running app's focused widget.")
+    typ.add_argument("text", help="The text to type.")
+
+    key = subparsers.add_parser("key", help="Press a key (e.g. enter, tab, a) in the running app.")
+    key.add_argument("name", help="Key name (e.g. enter, tab, escape, a).")
+    key.add_argument(
+        "--mod",
+        action="append",
+        default=[],
+        metavar="MODIFIER",
+        help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
+    )
+
     return parser
 
 
@@ -109,7 +137,11 @@ def _run(args: argparse.Namespace) -> int:
             session.root_factory,
             poll_interval=args.poll_interval,
         )
-        bridge = DevBridge(app, loaded.project_root)
+        # The bridge's discovery file anchors to the user-facing project root (so
+        # a client finds it by searching upward, like git), which is not always
+        # Python's import root -- see :func:`find_discovery_root`.
+        discovery_root = find_discovery_root(loaded.project_root)
+        bridge = DevBridge(app, discovery_root)
 
         print(
             f"[nuiitivet.dev] hot reload active for '{loaded.name}' "
@@ -124,7 +156,7 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(describe-tree / screenshot).",
+            "(describe-tree / screenshot / click / type / key).",
             file=sys.stderr,
         )
         try:
@@ -167,12 +199,51 @@ def _screenshot(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_action(action: str, call) -> int:  # type: ignore[no-untyped-def]
+    """Discover the bridge, invoke ``call(client)``, and print the JSON result.
+
+    Shared by ``click`` / ``type`` / ``key``: each is a one-shot bridge client
+    call whose only differences are the arguments and the result payload.
+    """
+    import json
+
+    try:
+        client = BridgeClient.discover()
+        result = call(client)
+    except (BridgeNotFoundError, OSError, ValueError, RuntimeError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def _click(args: argparse.Namespace) -> int:
+    if args.xy is not None:
+        x, y = args.xy
+        return _run_action("click", lambda c: c.click(x=x, y=y))
+    return _run_action("click", lambda c: c.click(key=args.key, label=args.label))
+
+
+def _type(args: argparse.Namespace) -> int:
+    return _run_action("type", lambda c: c.type_text(args.text))
+
+
+def _key(args: argparse.Namespace) -> int:
+    return _run_action("key", lambda c: c.key(args.name, modifiers=args.mod))
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
     if args.command == "describe-tree":
         return _describe_tree(args)
     if args.command == "screenshot":
         return _screenshot(args)
+    if args.command == "click":
+        return _click(args)
+    if args.command == "type":
+        return _type(args)
+    if args.command == "key":
+        return _key(args)
     return _run(args)
 
 

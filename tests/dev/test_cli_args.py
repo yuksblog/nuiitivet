@@ -34,3 +34,56 @@ def test_screenshot_default_output() -> None:
 def test_describe_tree_subcommand() -> None:
     args = _parse_args(["describe-tree"])
     assert args.command == "describe-tree"
+
+
+def test_click_by_label() -> None:
+    args = _parse_args(["click", "--label", "increment"])
+    assert args.command == "click"
+    assert args.label == "increment"
+    assert args.key is None
+    assert args.xy is None
+
+
+def test_click_by_key() -> None:
+    args = _parse_args(["click", "--key", "submit"])
+    assert args.command == "click"
+    assert args.key == "submit"
+
+
+def test_click_by_xy() -> None:
+    args = _parse_args(["click", "--xy", "10", "20"])
+    assert args.command == "click"
+    assert args.xy == [10.0, 20.0]
+
+
+def test_click_targets_are_mutually_exclusive() -> None:
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _parse_args(["click", "--key", "a", "--label", "b"])
+
+
+def test_click_requires_a_target() -> None:
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _parse_args(["click"])
+
+
+def test_type_subcommand() -> None:
+    args = _parse_args(["type", "hello world"])
+    assert args.command == "type"
+    assert args.text == "hello world"
+
+
+def test_key_subcommand_with_modifiers() -> None:
+    args = _parse_args(["key", "enter", "--mod", "accel", "--mod", "shift"])
+    assert args.command == "key"
+    assert args.name == "enter"
+    assert args.mod == ["accel", "shift"]
+
+
+def test_key_subcommand_defaults_no_modifiers() -> None:
+    args = _parse_args(["key", "tab"])
+    assert args.command == "key"
+    assert args.mod == []

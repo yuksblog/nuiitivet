@@ -256,16 +256,21 @@ changes are not observed (its internal widget changes still are).
 
 Snapshot walks the mounted tree — both `children` and `built_child` (where
 `ComposableWidget` state lives) — and records the value of every mutable
-`Observable` held as a widget attribute, keyed by a structural path (child
-index + widget type, plus the attribute name). Restore walks the rebuilt tree the
-same way and writes each snapshot value back into the observable at the matching
-path.
+`Observable` held as a widget attribute, keyed by a structural path. Each path
+segment is a widget's stable `key` when it has one, and otherwise its child
+index + widget type; the trailing segment is the attribute name. Restore walks
+the rebuilt tree the same way and writes each snapshot value back into the
+observable at the matching path.
 
 When the tree structure is unchanged (the common "tweak a padding" case) every
-path matches and state is fully restored. When widgets are added, removed, or
-reordered, unmatched paths keep the new tree's initial value — a deliberate,
-documented degradation. Only in-tree observables are handled; module-level
-observables are re-initialised by `importlib.reload` and are out of scope.
+path matches and state is fully restored. A widget given a `key` — the same
+reconciliation identity the dev action bridge targets (#375), set via
+`ComposableWidget(key=...)` or the `keyed("…")` modifier — keeps its path across
+a reorder or a sibling insertion, so its state survives those structural edits
+too. When keyless widgets are added, removed, or reordered, unmatched paths keep
+the new tree's initial value — a deliberate, documented degradation. Only in-tree
+observables are handled; module-level observables are re-initialised by
+`importlib.reload` and are out of scope.
 
 ## 8. Module loading and launch-target resolution
 
@@ -298,10 +303,12 @@ successful reload.
 
 ## 11. Limitations & future work
 
-- **Structural edits reset the affected state.** State restore is by structural
-  path (§7.4); adding, removing, or reordering widgets loses the state at those
-  positions. A stable `key` / testID would anchor restore across structural
-  changes — tracked in [#375](https://github.com/yuksblog/nuiitivet/issues/375).
+- **Structural edits reset the affected state of keyless widgets.** State restore
+  is by structural path (§7.4). A widget given a stable `key` — via
+  `ComposableWidget(key=...)` or the `keyed("…")` modifier — anchors its state
+  across structural changes (reorder, sibling insertion), landed in
+  [#375](https://github.com/yuksblog/nuiitivet/issues/375). Keyless widgets still
+  lose state when their position changes — add a `key` to opt into durable state.
 - **Navigation stack and open overlays reset.** A reload rebuilds a fresh
   `Navigator` at its initial route and a fresh `Overlay`, so pushed routes and
   open dialogs are dropped. Overlays are transient and bound to an in-flight

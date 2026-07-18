@@ -9,6 +9,12 @@ and save. The UI updates in place and ``count`` keeps its value because it is an
 ``Observable`` snapshotted and restored across the reload. See
 ``docs/guide/advanced/hot_reload.md``.
 
+The increment button carries a stable ``key`` so the dev action bridge can drive
+it without pixel coordinates (#375)::
+
+    python -m nuiitivet.dev click --key increment-btn   # or: --label increment
+    python -m nuiitivet.dev describe-tree                # Count went up
+
 ``main`` also accepts a ``png`` path so the sample harness can render it offscreen.
 """
 
@@ -35,7 +41,7 @@ class Counter(nv.ComposableWidget):
                     "increment",
                     on_click=lambda: self._increment(),
                     style=nv.ButtonStyle.filled(),
-                ),
+                ).modifier(nv.keyed("increment-btn")),
             ],
         )
 
