@@ -96,10 +96,11 @@ def test_seed_accepts_css_name_and_short_hex() -> None:
 @pytest.mark.parametrize("variant", list(SchemeVariant))
 @pytest.mark.parametrize("seed", ["white", "black", "#010101"])
 def test_achromatic_seeds_do_not_raise(seed: str, variant: SchemeVariant) -> None:
-    """`materialyoucolor` divides by zero on these seeds; the palette must not.
+    """Tone-extreme seeds must generate a full palette without raising.
 
-    A tone-extreme seed collapses the hue sweep in the library's
-    `TemperatureCache`, so such seeds are nudged out of that region.
+    These seeds once tripped a `ZeroDivisionError` in `materialyoucolor`'s
+    `TemperatureCache` (a collapsed hue sweep); the fix landed upstream in
+    3.0.3. This guards against a regression in the dependency.
     """
     roles = from_seed(seed, variant=variant)
     assert set(roles) == set(ColorRole)
