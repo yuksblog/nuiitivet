@@ -64,7 +64,9 @@ _SERVER_INSTRUCTIONS = (
     "label -- it is a compact JSON tree and cheap in tokens. Reserve "
     "`screenshot` for occasional visual spot checks; image tokens are "
     "expensive. Act with `click`, `type`, and `key`, then re-`describe_tree` to "
-    "verify the effect."
+    "verify the effect. In a pair session the human may edit and save while you "
+    "work; call `reload_log` to see whether the code hot-reloaded under you (and "
+    "whether it even compiled) before trusting a stale `describe_tree`."
 )
 
 
@@ -106,6 +108,27 @@ def build_server() -> "FastMCP":
         to see pixels.
         """
         return _client().describe_tree()
+
+    @server.tool()
+    def reload_log(limit: Optional[int] = None) -> dict[str, Any]:
+        """Return recent hot-reload events in the running app, oldest-first.
+
+        Use this to notice edits the human made between your turns: in a pair
+        session they may save a file while you work, so your last `describe_tree`
+        and your assumptions about the source can go stale. Each event is
+        ``{"seq", "timestamp", "outcome": "success"|"error", optional "modules",
+        "changed", optional "error"}``. ``seq`` is monotonic -- compare it to the
+        last one you saw to tell whether new reloads happened. ``changed`` lists
+        the modules whose *source actually changed*: an empty ``changed`` is a
+        no-op save (mtime bumped but bytes identical -- an editor autosave or
+        formatter), so you can skip re-reading; a non-empty ``changed`` pinpoints
+        which file(s) to re-read. An ``"error"`` outcome means the human's save
+        did *not* compile and the previous UI is still running, so the live tree
+        does not reflect the code you are reading; re-read the files (and
+        re-`describe_tree`) before acting. ``limit`` caps the result to the
+        newest N events.
+        """
+        return {"events": _client().reload_log(limit=limit)}
 
     @server.tool()
     def screenshot() -> Image:

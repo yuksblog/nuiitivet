@@ -20,14 +20,16 @@ On any error during 2–3 the previous tree is kept and the error is surfaced
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import sys
 import threading
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, cast
+from typing import TYPE_CHECKING, Iterable, Optional, cast
 
 from .error_overlay import clear_reload_error, show_reload_error
+from .journal import ReloadJournal
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
 from .watcher import FileWatcher
@@ -49,11 +51,22 @@ class HotReloadController:
         *,
         poll_interval: float = 0.4,
         drain_interval: float = 0.1,
+        journal: Optional[ReloadJournal] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
         self._factory: "RootFactory" = initial_factory
         self._drain_interval = drain_interval
+        # Optional pull-able record of reload outcomes for an AI pair (#388).
+        # When present, every reload -- success or failure -- is recorded so the
+        # assistant can notice the code changed under it between turns.
+        self._journal = journal
+        # Per-module source hashes from the last reload, so the next one can
+        # report which files' *content* actually changed vs. a no-op save (the
+        # watcher fires on mtime, which an editor autosave/formatter bumps even
+        # when the bytes are identical). Seeded at install() with the initial
+        # on-disk state.
+        self._source_hashes: dict[str, str] = {}
         # Coalesces bursts of saves into a single reload; set on the watcher
         # thread, consumed on the UI thread.
         self._pending = threading.Event()
@@ -84,6 +97,9 @@ class HotReloadController:
 
     def _do_reload(self) -> None:
         app = self._app
+        # Determine which files' content actually changed before reloading, so
+        # every recorded event -- success or failure -- can carry it.
+        changed = self._detect_changed_modules()
         snapshot = snapshot_observables(app.root)
 
         try:
@@ -95,7 +111,9 @@ class HotReloadController:
             )
             new_root = app._rebuild_content_root(new_factory)
         except Exception:
-            show_reload_error(app, traceback.format_exc())
+            tb = traceback.format_exc()
+            self._record_error(tb, changed)
+            show_reload_error(app, tb)
             return
 
         try:
@@ -103,12 +121,16 @@ class HotReloadController:
             restored = restore_observables(app.root, snapshot)
         except Exception:
             # The new root is already committed; report but stay alive.
-            show_reload_error(app, traceback.format_exc())
+            tb = traceback.format_exc()
+            self._record_error(tb, changed)
+            show_reload_error(app, tb)
             return
 
         self._factory = new_factory
         clear_reload_error(app)
         app.invalidate()
+        if self._journal is not None:
+            self._journal.record_success(result.reloaded, changed=changed)
         print(
             f"[nuiitivet.dev] reloaded {len(result.reloaded)} module(s), "
             f"restored {restored} value(s).",
@@ -116,11 +138,47 @@ class HotReloadController:
             flush=True,
         )
 
+    def _record_error(self, traceback_text: str, changed: list[str]) -> None:
+        """Record a failed reload into the journal, if one is attached."""
+        if self._journal is not None:
+            self._journal.record_error(traceback_text, changed=changed)
+
+    def _current_source_hashes(self) -> dict[str, str]:
+        """Content hash of every watched user module, keyed by module name."""
+        hashes: dict[str, str] = {}
+        for name, module in identify_user_modules(self._project_root).items():
+            file = getattr(module, "__file__", None)
+            if not file:
+                continue
+            try:
+                data = Path(file).read_bytes()
+            except OSError:
+                continue
+            hashes[name] = hashlib.sha256(data).hexdigest()
+        return hashes
+
+    def _detect_changed_modules(self) -> list[str]:
+        """Names of modules whose source changed since the last reload.
+
+        Compares current file-content hashes against the previous snapshot and
+        adopts the new snapshot as the baseline. An empty result means a no-op
+        save (mtime bumped, bytes unchanged).
+        """
+        current = self._current_source_hashes()
+        changed = sorted(
+            name for name, digest in current.items() if self._source_hashes.get(name) != digest
+        )
+        self._source_hashes = current
+        return changed
+
     def install(self) -> None:
         """Register the UI-thread drain and start the watcher thread."""
         if self._installed:
             return
         self._installed = True
+        # Seed the baseline from the initial on-disk state so the first reload
+        # reports only what actually changed, not "everything".
+        self._source_hashes = self._current_source_hashes()
         import pyglet
 
         pyglet.clock.schedule_interval(self._drain, self._drain_interval)

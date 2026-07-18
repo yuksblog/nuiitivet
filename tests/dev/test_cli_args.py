@@ -36,6 +36,18 @@ def test_describe_tree_subcommand() -> None:
     assert args.command == "describe-tree"
 
 
+def test_reload_log_subcommand_defaults_to_all() -> None:
+    args = _parse_args(["reload-log"])
+    assert args.command == "reload-log"
+    assert args.limit is None
+
+
+def test_reload_log_subcommand_accepts_limit() -> None:
+    args = _parse_args(["reload-log", "--limit", "5"])
+    assert args.command == "reload-log"
+    assert args.limit == 5
+
+
 def test_click_by_label() -> None:
     args = _parse_args(["click", "--label", "increment"])
     assert args.command == "click"

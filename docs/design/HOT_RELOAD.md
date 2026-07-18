@@ -345,16 +345,38 @@ edit again.
   centre, so it survives layout changes; raw coordinates are a fallback. Every
   verb `settle`s (flush reactive work + relayout) so the next `describe_tree`
   observes the updated state.
+- **Reload journal** (`dev/journal.py`, [#388](https://github.com/yuksblog/nuiitivet/issues/388)).
+  The bridge is AI-initiated — the assistant reads and acts on its own turns and
+  cannot see what the *human* did between them. In a pair session the human edits
+  and saves while the assistant is mid-task, so its cached `describe_tree` and its
+  assumptions about the source go stale; the worst case is a *failed* reload,
+  where the previous UI keeps running against code the assistant is no longer
+  reading. The controller records each reload — success (with the reloaded module
+  names) or error (with the capped traceback) — into a bounded, thread-safe ring
+  buffer (`ReloadJournal`, one shared instance injected into both the controller
+  and the bridge). The bridge exposes it as a pull-able perception surface at
+  `GET /reload_log` (optional `?limit=N`). An AI pair acts in turns, not a
+  continuous attention loop, and MCP is request/response — so a pull-able log is
+  the right model, not a live push. Each event carries a monotonic `seq` so a
+  client can tell whether new reloads happened since its last turn, and a
+  `changed` list — the modules whose *source content actually changed*, detected
+  by per-file hash. The watcher fires on mtime, which an editor autosave or
+  formatter bumps even when the bytes are identical, so an empty `changed` marks
+  a no-op save the assistant can ignore, while a non-empty `changed` pinpoints
+  which file the human edited (the reloader reloads *all* user modules on any
+  change, so `modules` alone cannot). Recording the diff *content* is
+  deliberately out of scope — that is a token/size firehose; the boolean-grade
+  `changed` signal is the cheap middle ground.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
-  `screenshot`, `click`, `type`, and `key` are one-shot subcommands that discover
-  the running app and issue plain HTTP, dependency-free (`urllib`).
+  `reload-log`, `screenshot`, `click`, `type`, and `key` are one-shot subcommands
+  that discover the running app and issue plain HTTP, dependency-free (`urllib`).
 
 ### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
 
 `dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
-exposes `describe_tree`, `screenshot`, `click`, `type`, and `key` as MCP tools so
-any host (Claude Desktop, IDE integrations, other agents) — not just a shell with
-the CLI — can drive a running app. It holds no app logic; each tool forwards to a
+exposes `describe_tree`, `reload_log`, `screenshot`, `click`, `type`, and `key`
+as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
+just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
 `mcp` SDK is an optional dependency (the `[mcp]` extra); importing the module
 without it raises a `MissingMCPDependencyError` pointing at
@@ -404,5 +426,6 @@ The server starts even when no app is running; each tool call then reports a
 | CLI entry / startup flow | `dev/__main__.py` |
 | dev bridge (localhost, UI-thread marshalling, discovery) | `dev/bridge.py` + `dev/client.py` |
 | perception (`describe_tree` / `screenshot`) | `dev/perception.py` |
+| reload journal (pull-able reload events for an AI pair) | `dev/journal.py` (recorded by `dev/controller.py`) |
 | action (`click` / `type` / `key`, target resolution) | `dev/action.py` |
 | MCP server (bridge as MCP tools, stdio) | `dev/mcp_server.py` |
