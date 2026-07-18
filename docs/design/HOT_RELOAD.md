@@ -319,6 +319,16 @@ successful reload.
   instance-based `push(Screen())` is fundamentally unrestorable (same
   instance-vs-factory constraint as the root).
 - **Module-level state is not restored** (§7.4).
+- **The interaction journal (§12) records only the action-verb primitives.** It
+  deliberately mirrors `click` / `key` / `text` and leaves higher-level *semantic*
+  events (navigate / dialog open-close / submit) unrecorded, since they are
+  derivable from a click sequence plus `describe_tree`. Promoting selected
+  semantic events to first-class entries, and deciding whether to unify the reload
+  and interaction journals under one `recent_activity` surface, are the open
+  follow-ups from [#390](https://github.com/yuksblog/nuiitivet/issues/390).
+- **The interaction journal is wired at the pyglet backend's input handlers.** A
+  second backend would need to drive the same `InteractionRecorder` from its own
+  real-input path; the recorder and journal themselves are backend-agnostic.
 
 ## 12. Dev bridge & MCP server
 
@@ -367,14 +377,44 @@ edit again.
   change, so `modules` alone cannot). Recording the diff *content* is
   deliberately out of scope — that is a token/size firehose; the boolean-grade
   `changed` signal is the cheap middle ground.
+- **Interaction journal** (`dev/interaction.py`, [#390](https://github.com/yuksblog/nuiitivet/issues/390)).
+  The reload journal closes the "the *code* changed under me" gap; this closes the
+  complementary one — "the *human drove the app* under me." In a pair session the
+  human often reproduces a bug or navigates a screen while the assistant is
+  mid-task, so its cached `describe_tree` is of a stale screen and it cannot tell
+  *how* the human reached the current state. An `InteractionRecorder` attached to
+  the app records the human's coarse UI actions into a bounded, thread-safe ring
+  buffer (`InteractionJournal`), served pull-ably at `GET /interaction_log`
+  (optional `?limit=N`) with the same monotonic-`seq` turn model as the reload
+  journal. Two design choices are load-bearing:
+  - **A mirror of the action vocabulary, not a semantic taxonomy.** It records
+    exactly the inbound of `click` / `key` / `type`: a `click` resolved to a
+    widget identity (`{type, key?, label?}` — reusing the same identity walk as
+    perception, *never* a coordinate), a `key` (only shortcuts and navigation
+    keys), and a content-free `text` marker. Whatever the human does that the
+    assistant must reproduce, it reproduces *through those same verbs*, so this set
+    is necessary and sufficient to replay a path. Higher-level semantic events
+    (navigate / dialog open-close / submit) are deliberately *not* recorded — they
+    are states derivable from a click sequence plus `describe_tree`, not primitive
+    inputs.
+  - **Recorded at the real-input layer, so the human only.** The recorder is
+    driven from the backend's real input handlers (`on_mouse_press` /
+    `on_key_press` / `on_text`), which the assistant's synthesized actions bypass
+    (those enter below at `app._dispatch_*`). So the journal captures the human
+    with no synthetic/real tagging. **Typed content never enters it:** a bare
+    printable key with no command modifier is dropped (recording it would leak
+    field text a keystroke at a time), and a burst of `on_text` collapses to one
+    content-free marker.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
-  `reload-log`, `screenshot`, `click`, `type`, and `key` are one-shot subcommands
-  that discover the running app and issue plain HTTP, dependency-free (`urllib`).
+  `reload-log`, `interaction-log`, `screenshot`, `click`, `type`, and `key` are
+  one-shot subcommands that discover the running app and issue plain HTTP,
+  dependency-free (`urllib`).
 
 ### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
 
 `dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
-exposes `describe_tree`, `reload_log`, `screenshot`, `click`, `type`, and `key`
+exposes `describe_tree`, `reload_log`, `interaction_log`, `screenshot`, `click`,
+`type`, and `key`
 as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
 just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
@@ -427,5 +467,6 @@ The server starts even when no app is running; each tool call then reports a
 | dev bridge (localhost, UI-thread marshalling, discovery) | `dev/bridge.py` + `dev/client.py` |
 | perception (`describe_tree` / `screenshot`) | `dev/perception.py` |
 | reload journal (pull-able reload events for an AI pair) | `dev/journal.py` (recorded by `dev/controller.py`) |
+| interaction journal (pull-able human UI actions for an AI pair) | `dev/interaction.py` (recorded from the backend input handlers) |
 | action (`click` / `type` / `key`, target resolution) | `dev/action.py` |
 | MCP server (bridge as MCP tools, stdio) | `dev/mcp_server.py` |

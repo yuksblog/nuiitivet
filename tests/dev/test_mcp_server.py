@@ -42,6 +42,9 @@ def _fake_client() -> Any:
             "changed": ["pkg.a"],
         },
     ]
+    client.interaction_log.return_value = [
+        {"seq": 1, "timestamp": 1.0, "kind": "click", "target": {"type": "Button"}},
+    ]
     return client
 
 
@@ -64,7 +67,15 @@ def _call_content(server: Any, name: str, arguments: dict[str, Any]) -> Any:
 def test_build_server_registers_the_tools() -> None:
     server = mcp_server.build_server()
     names = {tool.name for tool in asyncio.run(server.list_tools())}
-    assert names == {"describe_tree", "reload_log", "screenshot", "click", "type", "key"}
+    assert names == {
+        "describe_tree",
+        "reload_log",
+        "interaction_log",
+        "screenshot",
+        "click",
+        "type",
+        "key",
+    }
 
 
 def test_describe_tree_forwards_to_client() -> None:
@@ -83,6 +94,15 @@ def test_reload_log_forwards_to_client() -> None:
         result = _call(server, "reload_log", {"limit": 5})
     assert result["events"][0]["outcome"] == "success"
     client.reload_log.assert_called_once_with(limit=5)
+
+
+def test_interaction_log_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "interaction_log", {"limit": 3})
+    assert result["events"][0]["kind"] == "click"
+    client.interaction_log.assert_called_once_with(limit=3)
 
 
 def test_screenshot_returns_png_image_content() -> None:
