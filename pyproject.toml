@@ -39,6 +39,11 @@ Repository = "https://github.com/yuksblog/nuiitivet"
 [project.entry-points."pyinstaller40"]
 hook-dirs = "nuiitivet._pyinstaller:get_hook_dirs"
 
+[project.optional-dependencies]
+mcp = [
+    "mcp>=1.2.0",
+]
+
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
@@ -70,6 +75,15 @@ mypy_path = "stubs"
 check_untyped_defs = false
 disable_error_code = ["annotation-unchecked"]
 module = ["tests.*"]
+
+# 'mcp' is an optional dependency (the [mcp] extra); CI type-checks without it
+# installed. Treat its imports as resolvable so the optional dev/mcp_server.py
+# module still type-checks. When the SDK *is* installed (a contributor working
+# on the MCP server), mypy uses its real types -- this override only suppresses
+# the "missing stub" error when it is absent.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["mcp.*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

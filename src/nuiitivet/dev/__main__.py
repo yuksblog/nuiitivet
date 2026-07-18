@@ -10,13 +10,15 @@ Subcommands::
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev type "hello"            # type into the focused widget
     python -m nuiitivet.dev key enter --mod accel   # press a key (with modifiers)
+    python -m nuiitivet.dev mcp                      # serve the bridge as MCP tools
 
 ``run`` imports the user's app module under its real name (never ``__main__``,
 so importing it does not run ``main()``), installs a dev session, calls the
 entry once, then drives the event loop with file watching and the dev bridge
 enabled. ``describe-tree`` / ``screenshot`` (perception) and ``click`` / ``type``
 / ``key`` (action) are bridge clients: they talk to an already-running ``run``
-process over localhost. See ``docs/design/HOT_RELOAD.md``, #374 and #375.
+process over localhost. ``mcp`` serves those same primitives as MCP tools over
+stdio for MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
 """
 
 from __future__ import annotations
@@ -33,7 +35,7 @@ from .session import DevSession, set_dev_session
 
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
-_SUBCOMMANDS = frozenset({"run", "screenshot", "describe-tree", "click", "type", "key"})
+_SUBCOMMANDS = frozenset({"run", "screenshot", "describe-tree", "click", "type", "key", "mcp"})
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -98,6 +100,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="MODIFIER",
         help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
+    )
+
+    subparsers.add_parser(
+        "mcp",
+        help="Serve the dev bridge as MCP tools over stdio (needs the 'mcp' extra).",
     )
 
     return parser
@@ -232,6 +239,12 @@ def _key(args: argparse.Namespace) -> int:
     return _run_action("key", lambda c: c.key(args.name, modifiers=args.mod))
 
 
+def _mcp(_args: argparse.Namespace) -> int:
+    from .mcp_server import run as run_mcp
+
+    return run_mcp()
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
     if args.command == "describe-tree":
@@ -244,6 +257,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _type(args)
     if args.command == "key":
         return _key(args)
+    if args.command == "mcp":
+        return _mcp(args)
     return _run(args)
 
 

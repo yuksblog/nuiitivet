@@ -320,7 +320,75 @@ successful reload.
   instance-vs-factory constraint as the root).
 - **Module-level state is not restored** (§7.4).
 
-## 12. Implementation map
+## 12. Dev bridge & MCP server
+
+Hot reload lets an author *edit* a live app; the **dev bridge** lets a tool *see*
+and *drive* it, closing a perception–action loop over reload: edit (reload) →
+`describe_tree` / `screenshot` (see) → `click` / `type` / `key` (act) → verify →
+edit again.
+
+- **Bridge** (`dev/bridge.py`, [#374](https://github.com/yuksblog/nuiitivet/issues/374)).
+  A localhost-only `ThreadingHTTPServer` on an ephemeral port, started by the dev
+  runner alongside hot reload. It refuses to start without an active dev session,
+  so it is never opened in production. Each request that touches the widget tree
+  is marshalled onto the UI thread (same watcher-thread → clock-drain primitive
+  hot reload uses; see §9). The bound port is published to
+  `<project_root>/.nuiitivet/dev-bridge.json` for clients to discover.
+- **Perception** (`dev/perception.py`, #374). `describe_tree` walks the mounted
+  tree into compact JSON — per node its type, human identity (`key` / `label` /
+  `text` / `title`) and `rect` `[x, y, w, h]` in root coordinates. This is the
+  semantic, low-token view a tool reasons over and resolves action targets from.
+  `screenshot` renders the current frame to PNG.
+- **Action** (`dev/action.py`, [#375](https://github.com/yuksblog/nuiitivet/issues/375)).
+  `click` / `type` / `key` synthesize the same input the real backend delivers.
+  Targeting is by *stable identifier* (`key` / `label`), resolved to a rect
+  centre, so it survives layout changes; raw coordinates are a fallback. Every
+  verb `settle`s (flush reactive work + relayout) so the next `describe_tree`
+  observes the updated state.
+- **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
+  `screenshot`, `click`, `type`, and `key` are one-shot subcommands that discover
+  the running app and issue plain HTTP, dependency-free (`urllib`).
+
+### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
+
+`dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
+exposes `describe_tree`, `screenshot`, `click`, `type`, and `key` as MCP tools so
+any host (Claude Desktop, IDE integrations, other agents) — not just a shell with
+the CLI — can drive a running app. It holds no app logic; each tool forwards to a
+freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
+`mcp` SDK is an optional dependency (the `[mcp]` extra); importing the module
+without it raises a `MissingMCPDependencyError` pointing at
+`pip install 'nuiitivet[mcp]'`.
+
+**Usage guidance is part of the surface.** The server and tool descriptions steer
+the model to default to `describe_tree` for reasoning and target resolution (a
+cheap JSON tree) and to reserve `screenshot` for occasional visual spot checks,
+because image tokens are expensive.
+
+Served over stdio (the transport every MCP host supports):
+
+```
+python -m nuiitivet.dev mcp        # serve the running app's bridge as MCP tools
+```
+
+MCP host config (the app itself is launched separately with
+`python -m nuiitivet.dev yourapp/app.py`):
+
+```json
+{
+  "mcpServers": {
+    "nuiitivet-dev": {
+      "command": "python",
+      "args": ["-m", "nuiitivet.dev", "mcp"]
+    }
+  }
+}
+```
+
+The server starts even when no app is running; each tool call then reports a
+"no running app" error until one is up, so a host may launch the server first.
+
+## 13. Implementation map
 
 | Design area | Module |
 | --- | --- |
@@ -334,3 +402,7 @@ successful reload.
 | file watching (background thread → UI thread) | `dev/watcher.py` + `dev/controller.py` |
 | error resilience | `dev/error_overlay.py` |
 | CLI entry / startup flow | `dev/__main__.py` |
+| dev bridge (localhost, UI-thread marshalling, discovery) | `dev/bridge.py` + `dev/client.py` |
+| perception (`describe_tree` / `screenshot`) | `dev/perception.py` |
+| action (`click` / `type` / `key`, target resolution) | `dev/action.py` |
+| MCP server (bridge as MCP tools, stdio) | `dev/mcp_server.py` |

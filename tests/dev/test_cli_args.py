@@ -87,3 +87,8 @@ def test_key_subcommand_defaults_no_modifiers() -> None:
     args = _parse_args(["key", "tab"])
     assert args.command == "key"
     assert args.mod == []
+
+
+def test_mcp_subcommand() -> None:
+    args = _parse_args(["mcp"])
+    assert args.command == "mcp"
