@@ -7,6 +7,7 @@ Subcommands::
     python -m nuiitivet.dev --module yourpkg.app    # dotted module name
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
+    python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev type "hello"            # type into the focused widget
@@ -31,6 +32,7 @@ from typing import Optional, Sequence
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
+from .interaction import InteractionJournal, InteractionRecorder
 from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .session import DevSession, set_dev_session
@@ -38,7 +40,17 @@ from .session import DevSession, set_dev_session
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
 _SUBCOMMANDS = frozenset(
-    {"run", "screenshot", "describe-tree", "reload-log", "click", "type", "key", "mcp"}
+    {
+        "run",
+        "screenshot",
+        "describe-tree",
+        "reload-log",
+        "interaction-log",
+        "click",
+        "type",
+        "key",
+        "mcp",
+    }
 )
 
 
@@ -77,6 +89,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "reload-log", help="Print the running app's recent hot-reload events as JSON."
     )
     reload_log.add_argument(
+        "-n",
+        "--limit",
+        type=int,
+        default=None,
+        help="Return only the newest N events (default: all retained).",
+    )
+
+    interaction_log = subparsers.add_parser(
+        "interaction-log", help="Print the human's recent UI actions in the running app as JSON."
+    )
+    interaction_log.add_argument(
         "-n",
         "--limit",
         type=int,
@@ -164,11 +187,22 @@ def _run(args: argparse.Namespace) -> int:
             poll_interval=args.poll_interval,
             journal=journal,
         )
+        # The complementary surface (#390): the recorder captures the human's
+        # coarse UI actions from the real input path, and the bridge serves them
+        # at ``/interaction_log`` so an AI pair can see how the human drove the
+        # app between its turns.
+        interaction_journal = InteractionJournal()
+        app._interaction_recorder = InteractionRecorder(interaction_journal)
         # The bridge's discovery file anchors to the user-facing project root (so
         # a client finds it by searching upward, like git), which is not always
         # Python's import root -- see :func:`find_discovery_root`.
         discovery_root = find_discovery_root(loaded.project_root)
-        bridge = DevBridge(app, discovery_root, journal=journal)
+        bridge = DevBridge(
+            app,
+            discovery_root,
+            journal=journal,
+            interaction_journal=interaction_journal,
+        )
 
         print(
             f"[nuiitivet.dev] hot reload active for '{loaded.name}' "
@@ -183,7 +217,7 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(describe-tree / screenshot / click / type / key).",
+            "(describe-tree / screenshot / click / type / key / interaction-log).",
             file=sys.stderr,
         )
         try:
@@ -213,6 +247,19 @@ def _reload_log(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
         events = client.reload_log(limit=args.limit)
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(events, indent=2))
+    return 0
+
+
+def _interaction_log(args: argparse.Namespace) -> int:
+    try:
+        client = BridgeClient.discover()
+        events = client.interaction_log(limit=args.limit)
     except (BridgeNotFoundError, OSError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
@@ -284,6 +331,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _describe_tree(args)
     if args.command == "reload-log":
         return _reload_log(args)
+    if args.command == "interaction-log":
+        return _interaction_log(args)
     if args.command == "screenshot":
         return _screenshot(args)
     if args.command == "click":

@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .action import TargetNotFoundError, click, press_key, type_text
+from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_tree
 from .session import current_dev_session
@@ -149,9 +150,11 @@ def _parse_limit(query: str) -> Optional[int]:
 
 
 def _make_handler(
-    marshaller: _UIThreadMarshaller, journal: Optional[ReloadJournal]
+    marshaller: _UIThreadMarshaller,
+    journal: Optional[ReloadJournal],
+    interaction_journal: Optional[InteractionJournal],
 ) -> type[BaseHTTPRequestHandler]:
-    """Build the request handler class bound to ``marshaller`` and ``journal``."""
+    """Build the request handler class bound to ``marshaller`` and the journals."""
 
     class _Handler(BaseHTTPRequestHandler):
         # Silence the default stderr access log; the runner owns dev output.
@@ -254,6 +257,16 @@ def _make_handler(
                         journal.recent(_parse_limit(query)) if journal is not None else []
                     )
                     self._send_json(200, {"events": [event.to_dict() for event in events]})
+                elif path == "/interaction_log":
+                    # Like ``/reload_log``: a plain buffer read, no UI-thread hop.
+                    # Absent when the bridge runs without a recorder (e.g. tests),
+                    # which reads as an empty log.
+                    actions = (
+                        interaction_journal.recent(_parse_limit(query))
+                        if interaction_journal is not None
+                        else []
+                    )
+                    self._send_json(200, {"events": [action.to_dict() for action in actions]})
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
             except TimeoutError as exc:
@@ -280,6 +293,7 @@ class DevBridge:
         *,
         host: str = "127.0.0.1",
         journal: Optional[ReloadJournal] = None,
+        interaction_journal: Optional[InteractionJournal] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -287,6 +301,10 @@ class DevBridge:
         # Shared with the hot-reload controller, which records reload outcomes
         # into it; the bridge serves them at ``/reload_log`` (#388).
         self._journal = journal
+        # Shared with the app's ``InteractionRecorder``, which records the human's
+        # coarse UI actions into it; the bridge serves them at
+        # ``/interaction_log`` (#390).
+        self._interaction_journal = interaction_journal
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -314,7 +332,7 @@ class DevBridge:
         if self._server is not None:
             return
 
-        handler = _make_handler(self._marshaller, self._journal)
+        handler = _make_handler(self._marshaller, self._journal, self._interaction_journal)
         self._server = ThreadingHTTPServer((self._host, 0), handler)
         self._thread = threading.Thread(
             target=self._server.serve_forever,

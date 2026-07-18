@@ -839,6 +839,15 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             app._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
+        # Dev-only: record the human's click for the interaction journal (#390).
+        # Only the real input path reaches here; the assistant's synthesized
+        # clicks enter below at ``_dispatch_*``, so this captures the human alone.
+        recorder = getattr(app, "_interaction_recorder", None)
+        if recorder is not None:
+            try:
+                recorder.on_mouse_press(app, x_log, y_conv)
+            except Exception:
+                exception_once(logger, "pyglet_on_mouse_press_record_exc", "Interaction record raised")
 
     @window.event
     def on_mouse_release(x, y, button, modifiers):
@@ -885,6 +894,17 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             app._set_modifier_keys(modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
+
+        # Dev-only: record semantic keys (shortcuts / navigation) for the
+        # interaction journal (#390). Recorded here -- before the escape latch and
+        # dispatch -- so escape is captured too; bare typing is dropped inside the
+        # recorder so field content never enters the journal.
+        recorder = getattr(app, "_interaction_recorder", None)
+        if recorder is not None:
+            try:
+                recorder.on_key_press(key_name, modifier_keys)
+            except Exception:
+                exception_once(logger, "pyglet_on_key_press_record_exc", "Interaction record raised")
 
         nonlocal esc_down
         if str(key_name).strip().lower() == "escape":
@@ -987,6 +1007,18 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         except Exception:
             exception_once(logger, "pyglet_on_text_dispatch_exc", "Text dispatch raised")
             handled = False
+        # Dev-only: record a content-free "typed here" marker (#390). Only the
+        # printable/non-control payload counts as typing -- Enter/Tab emit control
+        # characters (\r, \t) through on_text on some platforms, which would leave
+        # a phantom "text" marker beside every commit. The text itself is never
+        # passed to the recorder, so field values never leak; we branch on it only
+        # to tell real typing from a control key.
+        recorder = getattr(app, "_interaction_recorder", None)
+        if recorder is not None and any(ch.isprintable() for ch in text):
+            try:
+                recorder.on_text()
+            except Exception:
+                exception_once(logger, "pyglet_on_text_record_exc", "Interaction record raised")
         if handled:
             try:
                 app.invalidate()

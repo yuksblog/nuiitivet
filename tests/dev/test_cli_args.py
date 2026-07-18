@@ -48,6 +48,18 @@ def test_reload_log_subcommand_accepts_limit() -> None:
     assert args.limit == 5
 
 
+def test_interaction_log_subcommand_defaults_to_all() -> None:
+    args = _parse_args(["interaction-log"])
+    assert args.command == "interaction-log"
+    assert args.limit is None
+
+
+def test_interaction_log_subcommand_accepts_limit() -> None:
+    args = _parse_args(["interaction-log", "--limit", "5"])
+    assert args.command == "interaction-log"
+    assert args.limit == 5
+
+
 def test_click_by_label() -> None:
     args = _parse_args(["click", "--label", "increment"])
     assert args.command == "click"

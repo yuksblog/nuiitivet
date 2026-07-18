@@ -342,6 +342,11 @@ class App:
         # mouse-opened menu does not come up wearing a keyboard focus ring.
         self._last_input_source: FocusSource = FocusSource.KEYBOARD
         self._modifier_keys: int = 0
+        # Dev-only observer for the interaction journal (#390). The dev runner
+        # attaches an ``InteractionRecorder`` here so the human's coarse UI
+        # actions can be recorded for an AI pair to pull; ``None`` -- and zero
+        # overhead -- in production.
+        self._interaction_recorder: Optional[Any] = None
         # Last known pointer position / held buttons (screen coords), used to
         # synthesize the pointer event delivered on a modifier-key mask change.
         self._last_pointer_pos: Optional[Tuple[float, float]] = None

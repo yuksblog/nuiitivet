@@ -15,6 +15,7 @@ import pytest
 from nuiitivet.dev import session as dev_session
 from nuiitivet.dev.bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME, DevBridge
 from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discovery_file
+from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.journal import ReloadJournal
 
 
@@ -192,6 +193,52 @@ def test_bridge_reload_log_empty_without_journal(tmp_path: Path, dev_run: None) 
     try:
         client = BridgeClient("127.0.0.1", _port_of(bridge))
         assert client.reload_log() == []
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_interaction_log_serves_journal(tmp_path: Path, dev_run: None) -> None:
+    interaction = InteractionJournal()
+    interaction.record_click({"type": "Button", "label": "increment"})
+    interaction.record_key("s", ("ctrl",))
+    interaction.record_text()
+
+    bridge = DevBridge(_fake_app(), tmp_path, interaction_journal=interaction)
+    bridge.start()
+    try:
+        # /interaction_log does not touch the UI thread, so no pump is needed.
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.interaction_log()
+        assert [e["kind"] for e in events] == ["click", "key", "text"]
+        assert events[0]["target"] == {"type": "Button", "label": "increment"}
+        assert events[1]["key"] == "s" and events[1]["modifiers"] == ["ctrl"]
+        assert "target" not in events[2] and "key" not in events[2]
+        assert events[0]["seq"] < events[2]["seq"]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_interaction_log_respects_limit(tmp_path: Path, dev_run: None) -> None:
+    interaction = InteractionJournal()
+    for _ in range(4):
+        interaction.record_text()
+
+    bridge = DevBridge(_fake_app(), tmp_path, interaction_journal=interaction)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.interaction_log(limit=2)
+        assert [e["seq"] for e in events] == [3, 4]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_interaction_log_empty_without_journal(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        assert client.interaction_log() == []
     finally:
         bridge.shutdown()
 

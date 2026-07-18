@@ -66,7 +66,10 @@ _SERVER_INSTRUCTIONS = (
     "expensive. Act with `click`, `type`, and `key`, then re-`describe_tree` to "
     "verify the effect. In a pair session the human may edit and save while you "
     "work; call `reload_log` to see whether the code hot-reloaded under you (and "
-    "whether it even compiled) before trusting a stale `describe_tree`."
+    "whether it even compiled) before trusting a stale `describe_tree`. The human "
+    "may also drive the app itself between your turns; call `interaction_log` to "
+    "see their recent clicks, keys, and typing so you can tell where they are and "
+    "how they got there before acting."
 )
 
 
@@ -129,6 +132,29 @@ def build_server() -> "FastMCP":
         newest N events.
         """
         return {"events": _client().reload_log(limit=limit)}
+
+    @server.tool()
+    def interaction_log(limit: Optional[int] = None) -> dict[str, Any]:
+        """Return the human's recent coarse UI actions in the running app, oldest-first.
+
+        Use this to see what the human *did in the app* between your turns: in a
+        pair session they may click through a screen or reproduce a bug while you
+        work, so your last `describe_tree` can be of a stale screen. It lets you
+        answer "where is the human now, and how did they get here?" and re-sync
+        before acting -- e.g. so you do not dismiss a dialog they just opened.
+
+        Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
+        ``"click"``, ``"key"``, or ``"text"``. ``seq`` is monotonic -- compare it
+        to the last one you saw to tell whether new actions happened. A ``click``
+        carries ``target`` (the resolved widget ``{"type", optional "key"/
+        "label"}``, never a coordinate); a ``key`` carries ``key`` and optional
+        ``modifiers`` (only shortcuts and navigation keys are recorded); a
+        ``text`` marker means the human typed into a field -- the content is
+        deliberately never recorded. Semantic transitions (navigation, dialogs)
+        are not recorded; infer them from the click sequence plus `describe_tree`.
+        ``limit`` caps the result to the newest N events.
+        """
+        return {"events": _client().interaction_log(limit=limit)}
 
     @server.tool()
     def screenshot() -> Image:
