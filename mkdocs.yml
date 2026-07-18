@@ -184,6 +184,7 @@ nav:
           - Theme Extensions: guide/design-system/theme_extensions.md
           - Font Configuration: guide/design-system/font_configuration.md
       - Advanced:
+          - Hot Reload: guide/advanced/hot_reload.md
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md
       - Packaging:
