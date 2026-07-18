@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from nuiitivet.dev.perception import describe_tree
+from nuiitivet.dev.perception import describe_tree, find_target
 
 
 class _Obs:
@@ -83,3 +83,43 @@ def test_describe_tree_truncates_long_identity() -> None:
     tree = describe_tree(root)
     assert len(tree["text"]) <= 120
     assert tree["text"].endswith("…")
+
+
+def test_find_target_by_key() -> None:
+    target = _Node(key="submit")
+    root = _Node(children=[_Node(key="cancel"), target])
+    assert find_target(root, key="submit") is target
+
+
+def test_find_target_by_label_matches_text_and_title() -> None:
+    by_text = _Node(text="increment")
+    by_title = _Node(title="Settings")
+    root = _Node(children=[by_text, by_title])
+    assert find_target(root, label="increment") is by_text
+    assert find_target(root, label="Settings") is by_title
+
+
+def test_find_target_unwraps_observable_identity() -> None:
+    target = _Node(label=_Obs("increment"))
+    root = _Node(children=[target])
+    assert find_target(root, label="increment") is target
+
+
+def test_find_target_descends_built_child() -> None:
+    target = _Node(key="deep")
+    root = _Node(built_child=_Node(children=[target]))
+    assert find_target(root, key="deep") is target
+
+
+def test_find_target_returns_first_match_depth_first() -> None:
+    first = _Node(label="dup")
+    second = _Node(label="dup")
+    root = _Node(children=[first, second])
+    assert find_target(root, label="dup") is first
+
+
+def test_find_target_no_match_or_no_query() -> None:
+    root = _Node(children=[_Node(key="a")])
+    assert find_target(root, key="missing") is None
+    assert find_target(root) is None
+    assert find_target(None, key="a") is None

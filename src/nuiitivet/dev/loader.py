@@ -17,11 +17,21 @@ root's parent is placed on ``sys.path`` so the import resolves.
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Callable
+from typing import Callable, Optional
+
+# Environment override for the dev-bridge discovery anchor (see
+# :func:`find_discovery_root`).
+_DISCOVERY_ROOT_ENV = "NUIITIVET_DEV_ROOT"
+
+# Files that mark the root of a user-facing project. Searched nearest-first so
+# the most specific boundary wins (a package in a monorepo over the repo root).
+# ``.git`` may be a file (git worktrees), so existence -- not is-dir -- is checked.
+_PROJECT_MARKERS = (".git", "pyproject.toml", ".hg", "setup.py", "setup.cfg")
 
 
 @dataclass(frozen=True)
@@ -97,6 +107,42 @@ def load_app_module(target: str, *, is_module: bool) -> LoadedApp:
 
     module = importlib.import_module(module_name)
     return LoadedApp(module=module, name=module_name, project_root=project_root)
+
+
+def find_discovery_root(import_root: Path, *, env: Optional[dict[str, str]] = None) -> Path:
+    """Anchor for the dev-bridge discovery file, decoupled from the import root.
+
+    The discovery file must live where a client can find it by searching *upward*
+    from its cwd (like ``git`` finding ``.git``). Python's import root -- the
+    ``sys.path`` entry a module loads from -- is the wrong anchor for this: a
+    nested bare script (``samples/advanced/app.py`` with no ``__init__.py``)
+    imports from its own directory, so the file would land *below* the repo root
+    and an upward search from there would never reach it.
+
+    The anchor is resolved, in order:
+
+    1. the ``NUIITIVET_DEV_ROOT`` environment variable, if it names a directory;
+    2. the nearest ancestor of ``import_root`` (inclusive) holding a project
+       marker (``.git`` / ``pyproject.toml`` / ...), so the file lands at the
+       user-facing project root;
+    3. ``import_root`` itself, unchanged, when no marker is found.
+
+    The common packaged-app case (an ``app.py`` at the workspace root) already
+    has ``import_root`` == the workspace root, so this returns it either way --
+    behavior there is identical to anchoring on the import root directly.
+    """
+    environ = os.environ if env is None else env
+    override = environ.get(_DISCOVERY_ROOT_ENV)
+    if override:
+        candidate = Path(override).expanduser()
+        if candidate.is_dir():
+            return candidate.resolve()
+
+    import_root = import_root.resolve()
+    for directory in (import_root, *import_root.parents):
+        if any((directory / marker).exists() for marker in _PROJECT_MARKERS):
+            return directory
+    return import_root
 
 
 def resolve_entry(module: ModuleType, entry_name: str = "main") -> Callable[[], object]:

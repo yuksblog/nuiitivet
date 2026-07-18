@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 from urllib.error import URLError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from .bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME
 
@@ -124,6 +124,23 @@ def _unlink_quietly(path: Optional[Path]) -> None:
         pass
 
 
+def _extract_error(exc: URLError) -> str:
+    """Pull the server's ``{"error": ...}`` message out of a failed response.
+
+    HTTP error responses still carry a body; the bridge puts a human-readable
+    reason there. Fall back to the raw exception text if it cannot be decoded.
+    """
+    body = getattr(exc, "read", None)
+    if callable(body):
+        try:
+            payload = json.loads(exc.read().decode("utf-8"))  # type: ignore[attr-defined]
+            if isinstance(payload, dict) and payload.get("error"):
+                return str(payload["error"])
+        except Exception:
+            pass
+    return str(exc)
+
+
 class BridgeClient:
     """A thin HTTP client for one discovered dev bridge."""
 
@@ -187,6 +204,30 @@ class BridgeClient:
                 raise BridgeNotFoundError(_NOT_RUNNING_HINT) from exc
             raise
 
+    def _post(self, endpoint: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST ``payload`` as JSON to ``endpoint``; return the decoded response.
+
+        A connection refused is treated as a dead bridge (see :meth:`_get`). An
+        error status carries the server's ``{"error": ...}`` message through as a
+        :class:`RuntimeError` so the CLI can print something actionable.
+        """
+        data = json.dumps(payload).encode("utf-8")
+        request = Request(
+            f"{self._base}{endpoint}",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self._timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except URLError as exc:
+            if isinstance(exc.reason, ConnectionError):
+                _unlink_quietly(self._discovery_path)
+                raise BridgeNotFoundError(_NOT_RUNNING_HINT) from exc
+            message = _extract_error(exc)
+            raise RuntimeError(message) from exc
+
     def describe_tree(self) -> dict[str, Any]:
         """Fetch the structural tree description from the running app."""
         body, _ = self._get("/describe_tree")
@@ -199,3 +240,37 @@ class BridgeClient:
         if "image/png" not in content_type:
             raise RuntimeError(f"expected image/png, got {content_type!r}: {body[:200]!r}")
         return body
+
+    def click(
+        self,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
+        button: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """Click a widget by ``key`` / ``label`` (or raw ``x`` / ``y``)."""
+        payload: dict[str, Any] = {}
+        if key is not None:
+            payload["key"] = key
+        if label is not None:
+            payload["label"] = label
+        if x is not None:
+            payload["x"] = x
+        if y is not None:
+            payload["y"] = y
+        if button is not None:
+            payload["button"] = button
+        return self._post("/click", payload)
+
+    def type_text(self, text: str) -> dict[str, Any]:
+        """Type ``text`` into the running app's focused widget."""
+        return self._post("/type", {"text": text})
+
+    def key(self, name: str, modifiers: Optional[list[str]] = None) -> dict[str, Any]:
+        """Press a key ``name`` with optional modifier names (e.g. ``["accel"]``)."""
+        payload: dict[str, Any] = {"key": name}
+        if modifiers:
+            payload["modifiers"] = modifiers
+        return self._post("/key", payload)

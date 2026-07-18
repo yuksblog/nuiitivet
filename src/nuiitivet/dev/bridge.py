@@ -37,6 +37,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
+from .action import TargetNotFoundError, click, press_key, type_text
 from .perception import describe_tree
 from .session import current_dev_session
 
@@ -155,6 +156,64 @@ def _make_handler(marshaller: _UIThreadMarshaller) -> type[BaseHTTPRequestHandle
 
         def _fail(self, status: int, message: str) -> None:
             self._send_json(status, {"error": message})
+
+        def _read_json_body(self) -> dict[str, Any]:
+            """Parse the request body as a JSON object (``{}`` when empty)."""
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except (TypeError, ValueError):
+                length = 0
+            if length <= 0:
+                return {}
+            raw = self.rfile.read(length)
+            if not raw:
+                return {}
+            payload = json.loads(raw.decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("request body must be a JSON object")
+            return payload
+
+        def do_POST(self) -> None:  # noqa: N802 (http.server API)
+            path = self.path.split("?", 1)[0].rstrip("/")
+            try:
+                body = self._read_json_body()
+            except ValueError as exc:
+                self._fail(400, f"invalid JSON body: {exc}")
+                return
+            try:
+                if path == "/click":
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: click(
+                            app,
+                            key=body.get("key"),
+                            label=body.get("label"),
+                            x=body.get("x"),
+                            y=body.get("y"),
+                            button=body.get("button"),
+                        )
+                    )
+                elif path == "/type":
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: type_text(app, body.get("text", ""))
+                    )
+                elif path == "/key":
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: press_key(app, body.get("key", ""), body.get("modifiers", 0))
+                    )
+                else:
+                    self._fail(404, f"unknown endpoint: {path}")
+                    return
+            except TimeoutError as exc:
+                self._fail(504, str(exc))
+            except TargetNotFoundError as exc:
+                self._fail(404, str(exc))
+            except (ValueError, KeyError) as exc:
+                self._fail(400, f"{type(exc).__name__}: {exc}")
+            except Exception as exc:
+                logger.debug("dev bridge: action failed", exc_info=True)
+                self._fail(500, f"{type(exc).__name__}: {exc}")
+            else:
+                self._send_json(200, result)
 
         def do_GET(self) -> None:  # noqa: N802 (http.server API)
             path = self.path.split("?", 1)[0].rstrip("/")

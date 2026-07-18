@@ -5,10 +5,12 @@ carried over. "Preserving state" therefore means: read the *values* of every
 mutable ``Observable`` in the old tree, keyed by a structural path, then write
 them back into the matching observables of the freshly built tree.
 
-Paths are position + type based. When the tree structure is unchanged (the common
-"tweak a padding" case) every path matches and state is fully restored. When the
-structure changes (widgets added/removed/reordered), unmatched paths simply keep
-the new tree's initial values — the documented, acceptable degradation (§9.5).
+Paths prefer a widget's stable ``key`` and otherwise fall back to position + type.
+When the tree structure is unchanged (the common "tweak a padding" case) every
+path matches and state is fully restored. A widget given a ``key`` keeps its path
+across a reorder or a sibling insertion, so its state survives such edits too;
+keyless widgets that move lose their state — unmatched paths keep the new tree's
+initial values, the documented, acceptable degradation (§9.5).
 
 Only in-tree observables (held as widget instance attributes) are handled;
 module-level observables are out of scope (§9.5).
@@ -46,13 +48,29 @@ def iter_child_widgets(node: Any) -> Iterator[Any]:
         yield built
 
 
+def _segment(node: Any, positional: str) -> str:
+    """Return the path segment for ``node``, preferring its stable ``key``.
+
+    A widget given a ``key`` (§7.4/#375) anchors its state to that identifier
+    rather than its position, so restore survives a reorder or the insertion of a
+    sibling before it. Without a key the segment falls back to ``positional``
+    (index/slot + type), the original position-based identity — so a keyless
+    reorder still breaks the match rather than mis-restoring.
+    """
+    key = getattr(node, "key", None)
+    if isinstance(key, str) and key:
+        return f"@{key}:{type(node).__name__}"
+    return positional
+
+
 def _walk(widget: Any) -> Iterator[tuple[Path, Any]]:
     """Yield ``(path, widget)`` for every widget in the mounted tree.
 
     Traverses both ``children`` (containers) and ``built_child`` (the subtree a
     :class:`ComposableWidget` produced), which is where composable state lives.
-    Path segments include the child index/slot and the widget class name so a
-    reordering or type change breaks the match rather than mis-restoring.
+    Path segments prefer a widget's stable ``key`` and otherwise fall back to the
+    child index/slot plus the widget class name, so a reordering or type change of
+    keyless widgets breaks the match rather than mis-restoring.
     """
     seen: set[int] = set()
 
@@ -64,12 +82,13 @@ def _walk(widget: Any) -> Iterator[tuple[Path, Any]]:
 
         children = getattr(node, "children", ()) or ()
         for index, child in enumerate(children):
-            seg = f"{index}:{type(child).__name__}"
+            seg = _segment(child, f"{index}:{type(child).__name__}")
             yield from visit(child, path + (seg,))
 
         built = getattr(node, "built_child", None)
         if built is not None and built is not node and id(built) not in seen:
-            yield from visit(built, path + (f"#built:{type(built).__name__}",))
+            seg = _segment(built, f"#built:{type(built).__name__}")
+            yield from visit(built, path + (seg,))
 
     yield from visit(widget, ())
 

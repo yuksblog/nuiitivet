@@ -49,9 +49,15 @@ class Widget(
         padding: Union[PaddingLike, ReadOnlyObservableProtocol] = None,
         max_children: Optional[int] = None,
         overflow_policy: str = "none",
+        key: Optional[str] = None,
     ) -> None:
         self._layout_cache_token = 0
         self._needs_layout = True
+        # A stable, layout-independent identity (a "testID"). It serves two
+        # purposes: the dev action bridge targets widgets by ``key`` instead of
+        # brittle pixel coordinates (#375), and hot reload uses it as a stable
+        # anchor so state survives a structural edit (HOT_RELOAD.md §7.4/§11).
+        self.key: Optional[str] = str(key) if key is not None else None
         super().__init__(
             width=width,
             height=height,

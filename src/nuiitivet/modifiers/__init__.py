@@ -8,6 +8,7 @@ from .focus import focusable
 from .hover import hoverable
 from .ignore_pointer import ignore_pointer
 from .key_shortcut import key_shortcut
+from .keyed import keyed
 from .lifecycle import on_mount, on_unmount
 from .pointer_input import pointer_input
 from .popup import modeless, light_dismiss
@@ -29,6 +30,7 @@ __all__ = [
     "hoverable",
     "ignore_pointer",
     "key_shortcut",
+    "keyed",
     "on_mount",
     "on_unmount",
     "pointer_input",
