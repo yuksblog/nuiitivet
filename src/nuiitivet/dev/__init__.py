@@ -16,12 +16,15 @@ runner installs a session. ``App.run()`` only consults :func:`current_dev_sessio
 from __future__ import annotations
 
 from .bridge import DevBridge
+from .journal import ReloadEvent, ReloadJournal
 from .perception import describe_tree
 from .session import DevSession, current_dev_session, set_dev_session
 
 __all__ = [
     "DevBridge",
     "DevSession",
+    "ReloadEvent",
+    "ReloadJournal",
     "current_dev_session",
     "describe_tree",
     "set_dev_session",

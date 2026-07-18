@@ -234,6 +234,20 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return payload.get("tree", {})
 
+    def reload_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
+        """Fetch recent hot-reload events from the running app (#388).
+
+        Each event is ``{"seq", "timestamp", "outcome", optional "modules",
+        "changed", optional "error"}``, oldest-first. ``changed`` lists the
+        modules whose source actually changed (empty for a no-op save). ``limit``
+        caps the result to the newest ``limit`` events; ``None`` returns all
+        retained events.
+        """
+        endpoint = "/reload_log" if limit is None else f"/reload_log?limit={int(limit)}"
+        body, _ = self._get(endpoint)
+        payload = json.loads(body.decode("utf-8"))
+        return payload.get("events", [])
+
     def screenshot(self) -> bytes:
         """Fetch a PNG screenshot of the running app's current frame."""
         body, content_type = self._get("/screenshot")

@@ -15,6 +15,7 @@ import pytest
 from nuiitivet.dev import session as dev_session
 from nuiitivet.dev.bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME, DevBridge
 from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discovery_file
+from nuiitivet.dev.journal import ReloadJournal
 
 
 class _FakeNode:
@@ -146,6 +147,51 @@ def test_bridge_describe_tree_and_screenshot(tmp_path: Path, dev_run: None) -> N
 
             png = client.screenshot()
             assert png == _FakeApp._PNG
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_reload_log_serves_journal(tmp_path: Path, dev_run: None) -> None:
+    journal = ReloadJournal()
+    journal.record_success(["pkg.a", "pkg.b"], changed=["pkg.a"])
+    journal.record_error("Traceback...\nValueError: boom")
+
+    bridge = DevBridge(_fake_app(), tmp_path, journal=journal)
+    bridge.start()
+    try:
+        # /reload_log does not touch the UI thread, so no pump is needed.
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.reload_log()
+        assert [e["outcome"] for e in events] == ["success", "error"]
+        assert events[0]["modules"] == ["pkg.a", "pkg.b"]
+        assert events[0]["changed"] == ["pkg.a"]
+        assert "ValueError: boom" in events[1]["error"]
+        assert events[0]["seq"] < events[1]["seq"]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_reload_log_respects_limit(tmp_path: Path, dev_run: None) -> None:
+    journal = ReloadJournal()
+    for i in range(4):
+        journal.record_success([f"m{i}"])
+
+    bridge = DevBridge(_fake_app(), tmp_path, journal=journal)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.reload_log(limit=2)
+        assert [e["seq"] for e in events] == [3, 4]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_reload_log_empty_without_journal(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        assert client.reload_log() == []
     finally:
         bridge.shutdown()
 

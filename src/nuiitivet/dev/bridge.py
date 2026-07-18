@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .action import TargetNotFoundError, click, press_key, type_text
+from .journal import ReloadJournal
 from .perception import describe_tree
 from .session import current_dev_session
 
@@ -131,8 +132,26 @@ class _UIThreadMarshaller:
             done.set()
 
 
-def _make_handler(marshaller: _UIThreadMarshaller) -> type[BaseHTTPRequestHandler]:
-    """Build the request handler class bound to ``marshaller``."""
+def _parse_limit(query: str) -> Optional[int]:
+    """Extract an integer ``limit`` from a URL query string, if present.
+
+    Returns ``None`` when absent or unparseable, meaning "no cap -- return all".
+    """
+    from urllib.parse import parse_qs
+
+    values = parse_qs(query).get("limit")
+    if not values:
+        return None
+    try:
+        return int(values[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _make_handler(
+    marshaller: _UIThreadMarshaller, journal: Optional[ReloadJournal]
+) -> type[BaseHTTPRequestHandler]:
+    """Build the request handler class bound to ``marshaller`` and ``journal``."""
 
     class _Handler(BaseHTTPRequestHandler):
         # Silence the default stderr access log; the runner owns dev output.
@@ -216,7 +235,8 @@ def _make_handler(marshaller: _UIThreadMarshaller) -> type[BaseHTTPRequestHandle
                 self._send_json(200, result)
 
         def do_GET(self) -> None:  # noqa: N802 (http.server API)
-            path = self.path.split("?", 1)[0].rstrip("/")
+            raw_path, _, query = self.path.partition("?")
+            path = raw_path.rstrip("/")
             try:
                 if path in ("", "/health"):
                     self._send_json(200, {"status": "ok"})
@@ -226,6 +246,14 @@ def _make_handler(marshaller: _UIThreadMarshaller) -> type[BaseHTTPRequestHandle
                 elif path == "/screenshot":
                     png = marshaller.call_on_ui_thread(lambda app: app._render_to_png_bytes())
                     self._send_png(png)
+                elif path == "/reload_log":
+                    # A plain buffer read -- no UI-thread hop needed; the journal
+                    # is its own lock. Absent when the bridge runs without a
+                    # controller (e.g. tests), which reads as an empty log.
+                    events = (
+                        journal.recent(_parse_limit(query)) if journal is not None else []
+                    )
+                    self._send_json(200, {"events": [event.to_dict() for event in events]})
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
             except TimeoutError as exc:
@@ -245,10 +273,20 @@ class DevBridge:
     event loop runs, and :meth:`shutdown` after it exits.
     """
 
-    def __init__(self, app: "App", project_root: Path, *, host: str = "127.0.0.1") -> None:
+    def __init__(
+        self,
+        app: "App",
+        project_root: Path,
+        *,
+        host: str = "127.0.0.1",
+        journal: Optional[ReloadJournal] = None,
+    ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
         self._host = host
+        # Shared with the hot-reload controller, which records reload outcomes
+        # into it; the bridge serves them at ``/reload_log`` (#388).
+        self._journal = journal
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -276,7 +314,7 @@ class DevBridge:
         if self._server is not None:
             return
 
-        handler = _make_handler(self._marshaller)
+        handler = _make_handler(self._marshaller, self._journal)
         self._server = ThreadingHTTPServer((self._host, 0), handler)
         self._thread = threading.Thread(
             target=self._server.serve_forever,

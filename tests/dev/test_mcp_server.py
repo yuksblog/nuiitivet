@@ -33,6 +33,15 @@ def _fake_client() -> Any:
     client.click.return_value = {"clicked": {"key": "submit"}, "x": 5, "y": 5}
     client.type_text.return_value = {"typed": "hi", "handled": True}
     client.key.return_value = {"key": "enter", "modifiers": 2, "handled": True}
+    client.reload_log.return_value = [
+        {
+            "seq": 1,
+            "timestamp": 1.0,
+            "outcome": "success",
+            "modules": ["pkg.a"],
+            "changed": ["pkg.a"],
+        },
+    ]
     return client
 
 
@@ -52,10 +61,10 @@ def _call_content(server: Any, name: str, arguments: dict[str, Any]) -> Any:
     return asyncio.run(server.call_tool(name, arguments))
 
 
-def test_build_server_registers_the_five_tools() -> None:
+def test_build_server_registers_the_tools() -> None:
     server = mcp_server.build_server()
     names = {tool.name for tool in asyncio.run(server.list_tools())}
-    assert names == {"describe_tree", "screenshot", "click", "type", "key"}
+    assert names == {"describe_tree", "reload_log", "screenshot", "click", "type", "key"}
 
 
 def test_describe_tree_forwards_to_client() -> None:
@@ -65,6 +74,15 @@ def test_describe_tree_forwards_to_client() -> None:
         result = _call(server, "describe_tree", {})
     assert result == {"type": "Root", "label": "increment"}
     client.describe_tree.assert_called_once_with()
+
+
+def test_reload_log_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "reload_log", {"limit": 5})
+    assert result["events"][0]["outcome"] == "success"
+    client.reload_log.assert_called_once_with(limit=5)
 
 
 def test_screenshot_returns_png_image_content() -> None:

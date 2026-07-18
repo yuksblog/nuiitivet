@@ -6,6 +6,7 @@ Subcommands::
     python -m nuiitivet.dev path/to/app.py          # same (run is the default)
     python -m nuiitivet.dev --module yourpkg.app    # dotted module name
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
+    python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev type "hello"            # type into the focused widget
@@ -30,12 +31,15 @@ from typing import Optional, Sequence
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
+from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .session import DevSession, set_dev_session
 
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
-_SUBCOMMANDS = frozenset({"run", "screenshot", "describe-tree", "click", "type", "key", "mcp"})
+_SUBCOMMANDS = frozenset(
+    {"run", "screenshot", "describe-tree", "reload-log", "click", "type", "key", "mcp"}
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -68,6 +72,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser("describe-tree", help="Print the running app's widget tree as JSON.")
+
+    reload_log = subparsers.add_parser(
+        "reload-log", help="Print the running app's recent hot-reload events as JSON."
+    )
+    reload_log.add_argument(
+        "-n",
+        "--limit",
+        type=int,
+        default=None,
+        help="Return only the newest N events (default: all retained).",
+    )
 
     shot = subparsers.add_parser("screenshot", help="Save a PNG screenshot of the running app.")
     shot.add_argument(
@@ -138,17 +153,22 @@ def _run(args: argparse.Namespace) -> int:
             return 1
 
         app = session.app
+        # One journal shared by both: the controller records reload outcomes
+        # into it, the bridge serves them at ``/reload_log`` so an AI pair can
+        # notice the code changed between its turns (#388).
+        journal = ReloadJournal()
         controller = HotReloadController(
             app,
             loaded.project_root,
             session.root_factory,
             poll_interval=args.poll_interval,
+            journal=journal,
         )
         # The bridge's discovery file anchors to the user-facing project root (so
         # a client finds it by searching upward, like git), which is not always
         # Python's import root -- see :func:`find_discovery_root`.
         discovery_root = find_discovery_root(loaded.project_root)
-        bridge = DevBridge(app, discovery_root)
+        bridge = DevBridge(app, discovery_root, journal=journal)
 
         print(
             f"[nuiitivet.dev] hot reload active for '{loaded.name}' "
@@ -186,6 +206,19 @@ def _describe_tree(_args: argparse.Namespace) -> int:
     import json
 
     print(json.dumps(tree, indent=2))
+    return 0
+
+
+def _reload_log(args: argparse.Namespace) -> int:
+    try:
+        client = BridgeClient.discover()
+        events = client.reload_log(limit=args.limit)
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(events, indent=2))
     return 0
 
 
@@ -249,6 +282,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
     if args.command == "describe-tree":
         return _describe_tree(args)
+    if args.command == "reload-log":
+        return _reload_log(args)
     if args.command == "screenshot":
         return _screenshot(args)
     if args.command == "click":
