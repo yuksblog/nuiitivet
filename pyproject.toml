@@ -39,6 +39,11 @@ Repository = "https://github.com/yuksblog/nuiitivet"
 [project.entry-points."pyinstaller40"]
 hook-dirs = "nuiitivet._pyinstaller:get_hook_dirs"
 
+[project.optional-dependencies]
+mcp = [
+    "mcp>=1.2.0",
+]
+
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
