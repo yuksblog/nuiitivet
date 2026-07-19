@@ -188,6 +188,12 @@ features (not knowledge), set up separately:
   `key`). Register it once in your MCP host with `python -m nuiitivet.dev mcp`
   (needs `pip install 'nuiitivet[mcp]'`); it is development-only and forwards to
   the running dev process. See the dev-bridge / MCP server docs for setup.
+- **Make a widget targetable** — attach a stable `key` with the `keyed()`
+  modifier (`widget.modifier(keyed("increment-btn"))`) so the bridge can drive it
+  by `key`, and its state survives a reorder across hot reload. Add it on demand
+  and remove it once that need is gone. When chained with wrapping modifiers,
+  apply `keyed()` **last**. See the
+  [Other Modifiers guide](https://yuksblog.github.io/nuiitivet/guide/modifiers/others/#keyed).
 
 With those in place the loop is **edit (hot reload) → see → act → verify → edit**,
 and this skill keeps the "edit" step producing the correct widgets.

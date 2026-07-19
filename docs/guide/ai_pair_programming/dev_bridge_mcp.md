@@ -67,7 +67,8 @@ The bridge exposes seven tools, split across the loop:
 - **`click`** / **`type`** / **`key`** — synthesize the same input the real
   backend delivers. Targeting is by **stable identifier** (`key` / `label`),
   resolved to the widget's centre, so it survives layout changes; raw
-  coordinates are a fallback. Each verb settles the app (flushes reactive work
+  coordinates are a fallback. Attach a `key` to a widget with the
+  [`keyed()` modifier](../modifiers/others.md#keyed). Each verb settles the app (flushes reactive work
   and relayout) before returning, so the next `describe_tree` observes the
   updated state.
 

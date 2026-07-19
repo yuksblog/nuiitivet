@@ -94,7 +94,9 @@ save made while stopped at a breakpoint is queued and applied when you resume.
 - **`Observable` state** whose position in the tree is unchanged. State is
   snapshotted by structural path and restored into the rebuilt tree. If you
   add, remove, or reorder widgets, the affected state falls back to its initial
-  value.
+  value — unless you give the widget a stable `key` (via the
+  [`keyed()` modifier](../modifiers/others.md#keyed)), which anchors its state
+  across a reorder or sibling insertion.
 - **Breakpoints** — keyed by file and line, so they fire in reloaded code.
 
 ## What is *not* reloaded
