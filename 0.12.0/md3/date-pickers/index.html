@@ -1,0 +1,4724 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A declarative, reactive Python UI framework.">
+      
+      
+        <meta name="author" content="yuksblog">
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.12.0/md3/date-pickers/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Date pickers - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#date-pickers-md3-specs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Date pickers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/overlay/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlay
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overlay
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/navigation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/route/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Route & Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/nested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/window/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/chrome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window Chrome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/renderer_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/modifiers/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/popup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Popup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/state-management/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/basic_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/practical_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/thread_safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/patterns_and_recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/design-system/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design System
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_overlay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Overlay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_navigator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Navigator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/theme_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theme Extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/font_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Font Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/ai_pair_programming/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI pair-programming
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI pair-programming
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/hot_reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot Reload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/dev_bridge_mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Bridge MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/nuiitivet_app_skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The nuiitivet-app skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threading Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction Region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packaging
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tokens-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tokens &amp; Specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tokens &amp; Specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-sets-discovered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token sets discovered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extracted-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracted tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measurements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-derived-measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token-derived measurements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-derived-measurements-from-measurement-screenshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image-derived measurements (from measurement screenshots)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/yuksblog/nuiitivet/edit/main/docs/md3/date-pickers.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!-- markdownlint-disable MD060 -->
+
+<h1 id="date-pickers-md3-specs">Date Pickers MD3 Specs<a class="headerlink" href="#date-pickers-md3-specs" title="Permanent link">&para;</a></h1>
+<p>Source: <a href="https://m3.material.io/components/date-pickers/specs">https://m3.material.io/components/date-pickers/specs</a>
+Collected: 2026-03-12</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The primary token viewer exposes three non-deprecated token sets: <code>Date picker - Docked</code>, <code>Date picker - Modal</code>, and <code>Date picker - Modal input</code>.</li>
+<li>Docked pickers use a <code>360dp x 456dp</code> container with <code>48dp</code> day cells, a <code>40dp</code> month/year menu button height, and <code>48dp</code> menu-list item height.</li>
+<li>Modal pickers use a <code>360dp x 524dp</code> container with <code>40dp</code> day cells, <code>72dp x 36dp</code> year chips, a <code>128dp</code> range-selection header, and a <code>40dp</code> in-range active indicator height.</li>
+<li>Modal date input uses a narrower <code>328dp x 512dp</code> container with a <code>328dp x 120dp</code> header block.</li>
+<li>Hover state-layer opacity is consistently <code>0.08</code>; focus and pressed state-layer opacity are consistently <code>0.1</code> where exposed.</li>
+<li>The Measurements sections expose figure captions in accessible text, but most numeric callouts are only available through the token viewer rather than the images themselves.</li>
+</ul>
+<h2 id="tokens-specs">Tokens &amp; Specs<a class="headerlink" href="#tokens-specs" title="Permanent link">&para;</a></h2>
+<h3 id="token-sets-discovered">Token sets discovered<a class="headerlink" href="#token-sets-discovered" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Date picker - Docked</td>
+<td>Context shown in viewer: <code>Default, Light</code>. States exposed: <code>Enabled</code>, <code>Disabled</code>, <code>Hovered</code>, <code>Focused</code>, <code>Pressed (ripple)</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Context shown in viewer: <code>Default, Light</code>. States exposed: <code>Enabled</code>, <code>Hovered</code>, <code>Focused</code>, <code>Pressed (ripple)</code>. Includes range-selection and year-selection tokens.</td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Context shown in viewer: <code>Default, Light</code>. Accessible viewer content exposes enabled-state tokens only.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="extracted-tokens">Extracted tokens<a class="headerlink" href="#extracted-tokens" title="Permanent link">&para;</a></h3>
+<h4 id="date-picker-docked">Date picker - Docked<a class="headerlink" href="#date-picker-docked" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Group</th>
+<th>Label</th>
+<th>Token</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container color</td>
+<td>md.comp.date-picker.docked.container.color</td>
+<td>#ECE6F0</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container elevation</td>
+<td>md.comp.date-picker.docked.container.elevation</td>
+<td>6dp</td>
+<td>Resolves via <code>md.sys.elevation.level3</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container surface tint layer color</td>
+<td>md.comp.date-picker.docked.container.surface-tint-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container shape</td>
+<td>md.comp.date-picker.docked.container.shape</td>
+<td>Large rounding</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date container shape</td>
+<td>md.comp.date-picker.docked.date.container.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date today container outline color</td>
+<td>md.comp.date-picker.docked.date.today.container.outline.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date today container outline width</td>
+<td>md.comp.date-picker.docked.date.today.container.outline.width</td>
+<td>1dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date selected container color</td>
+<td>md.comp.date-picker.docked.date.selected.container.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Menu button container shape</td>
+<td>md.comp.date-picker.docked.menu-button.container.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Menu list item selected container color</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.container.color</td>
+<td>#E7E0EC</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container width</td>
+<td>md.comp.date-picker.docked.container.width</td>
+<td>360dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Container height</td>
+<td>md.comp.date-picker.docked.container.height</td>
+<td>456dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date container width</td>
+<td>md.comp.date-picker.docked.date.container.width</td>
+<td>48dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Date container height</td>
+<td>md.comp.date-picker.docked.date.container.height</td>
+<td>48dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Menu button container height</td>
+<td>md.comp.date-picker.docked.menu-button.container.height</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Container</td>
+<td>Menu list item container height</td>
+<td>md.comp.date-picker.docked.menu.list-item.container.height</td>
+<td>48dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Weekdays label text color</td>
+<td>md.comp.date-picker.docked.weekdays.label-text.color</td>
+<td>#1D1B20</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Date unselected label text color</td>
+<td>md.comp.date-picker.docked.date.unselected.label-text.color</td>
+<td>#1D1B20</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Date unselected outside month label text color</td>
+<td>md.comp.date-picker.docked.date.unselected.outside-month.label-text.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Date unselected outside month label text opacity</td>
+<td>md.comp.date-picker.docked.date.unselected.outside-month.label-text.opacity</td>
+<td>0.38</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Date today label text color</td>
+<td>md.comp.date-picker.docked.date.today.label-text.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Date selected label text color</td>
+<td>md.comp.date-picker.docked.date.selected.label-text.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Menu button label text color</td>
+<td>md.comp.date-picker.docked.menu-button.label-text.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>14pt / 20pt</code>, <code>500</code>, <code>0.1pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Label text</td>
+<td>Menu list item label text color</td>
+<td>md.comp.date-picker.docked.menu.list-item.label-text.color</td>
+<td>#1D1B20</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Icon</td>
+<td>Menu button icon color</td>
+<td>md.comp.date-picker.docked.menu-button.icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Icon</td>
+<td>Menu button icon size</td>
+<td>md.comp.date-picker.docked.menu-button.icon.size</td>
+<td>18dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Leading icon</td>
+<td>Menu list item selected leading icon color</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.leading-icon.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Leading icon</td>
+<td>Menu list item selected leading icon size</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.leading-icon.size</td>
+<td>24dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / State layer</td>
+<td>Date state layer shape</td>
+<td>md.comp.date-picker.docked.date.state-layer.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / State layer</td>
+<td>Date state layer width</td>
+<td>md.comp.date-picker.docked.date.state-layer.width</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / State layer</td>
+<td>Date state layer height</td>
+<td>md.comp.date-picker.docked.date.state-layer.height</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Enabled / Header</td>
+<td>Header height</td>
+<td>md.comp.date-picker.docked.header.height</td>
+<td>64dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Disabled / Label text</td>
+<td>Menu button disabled label text color</td>
+<td>md.comp.date-picker.docked.menu-button.disabled.label-text.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Disabled / Label text</td>
+<td>Menu button disabled label text opacity</td>
+<td>md.comp.date-picker.docked.menu-button.disabled.label-text.opacity</td>
+<td>0.38</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Disabled / Icon</td>
+<td>Menu button disabled icon color</td>
+<td>md.comp.date-picker.docked.menu-button.disabled.icon.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Disabled / Icon</td>
+<td>Menu button disabled icon opacity</td>
+<td>md.comp.date-picker.docked.menu-button.disabled.icon.opacity</td>
+<td>0.38</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / Label text</td>
+<td>Menu button hover label text color</td>
+<td>md.comp.date-picker.docked.menu-button.hover.label-text.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / Label text</td>
+<td>Menu list item hover label text color</td>
+<td>md.comp.date-picker.docked.menu.list-item.hover.label-text.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Date unselected hover state layer color</td>
+<td>md.comp.date-picker.docked.date.unselected.hover.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Date selected hover state layer color</td>
+<td>md.comp.date-picker.docked.date.selected.hover.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Date today hover state layer color</td>
+<td>md.comp.date-picker.docked.date.today.hover.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Date hover state layer opacity</td>
+<td>md.comp.date-picker.docked.date.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Menu button hover state layer color</td>
+<td>md.comp.date-picker.docked.menu-button.hover.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Menu button hover state layer opacity</td>
+<td>md.comp.date-picker.docked.menu-button.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Menu list item hover state layer color</td>
+<td>md.comp.date-picker.docked.menu.list-item.hover.state-layer.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / State layer</td>
+<td>Menu list item hover state layer opacity</td>
+<td>md.comp.date-picker.docked.menu.list-item.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / Icon</td>
+<td>Menu button hover icon color</td>
+<td>md.comp.date-picker.docked.menu-button.hover.icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Hovered / Leading icon</td>
+<td>Menu list item selected hover leading icon color</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.hover.leading-icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / Label text</td>
+<td>Menu button focus label text color</td>
+<td>md.comp.date-picker.docked.menu-button.focus.label-text.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / Label text</td>
+<td>Menu list item focus label text color</td>
+<td>md.comp.date-picker.docked.menu.list-item.focus.label-text.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Date unselected focus state layer color</td>
+<td>md.comp.date-picker.docked.date.unselected.focus.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Date selected focus state layer color</td>
+<td>md.comp.date-picker.docked.date.selected.focus.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Date today focus state layer color</td>
+<td>md.comp.date-picker.docked.date.today.focus.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Date focus state layer opacity</td>
+<td>md.comp.date-picker.docked.date.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Menu button focus state layer color</td>
+<td>md.comp.date-picker.docked.menu-button.focus.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Menu button focus state layer opacity</td>
+<td>md.comp.date-picker.docked.menu-button.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Menu list item focus state layer color</td>
+<td>md.comp.date-picker.docked.menu.list-item.focus.state-layer.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / State layer</td>
+<td>Menu list item focus state layer opacity</td>
+<td>md.comp.date-picker.docked.menu.list-item.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / Icon</td>
+<td>Menu button focus icon color</td>
+<td>md.comp.date-picker.docked.menu-button.focus.icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Focused / Leading icon</td>
+<td>Menu list item selected focus leading icon color</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.focus.leading-icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / Label text</td>
+<td>Menu button pressed label text color</td>
+<td>md.comp.date-picker.docked.menu-button.pressed.label-text.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / Label text</td>
+<td>Menu list item pressed label text color</td>
+<td>md.comp.date-picker.docked.menu.list-item.pressed.label-text.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date unselected pressed state layer color</td>
+<td>md.comp.date-picker.docked.date.unselected.pressed.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date selected pressed state layer color</td>
+<td>md.comp.date-picker.docked.date.selected.pressed.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date today pressed state layer color</td>
+<td>md.comp.date-picker.docked.date.today.pressed.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date pressed state layer opacity</td>
+<td>md.comp.date-picker.docked.date.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Menu button pressed state layer color</td>
+<td>md.comp.date-picker.docked.menu-button.pressed.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Menu button pressed state layer opacity</td>
+<td>md.comp.date-picker.docked.menu-button.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Menu list item pressed state layer color</td>
+<td>md.comp.date-picker.docked.menu.list-item.pressed.state-layer.color</td>
+<td>#1D1B20</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Menu list item pressed state layer opacity</td>
+<td>md.comp.date-picker.docked.menu.list-item.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / Icon</td>
+<td>Menu button pressed icon color</td>
+<td>md.comp.date-picker.docked.menu-button.pressed.icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Docked</td>
+<td>Pressed (ripple) / Leading icon</td>
+<td>Menu list item selected pressed leading icon color</td>
+<td>md.comp.date-picker.docked.menu.list-item.selected.pressed.leading-icon.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="date-picker-modal">Date picker - Modal<a class="headerlink" href="#date-picker-modal" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Group</th>
+<th>Label</th>
+<th>Token</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container color</td>
+<td>md.comp.date-picker.modal.container.color</td>
+<td>#ECE6F0</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container elevation</td>
+<td>md.comp.date-picker.modal.container.elevation</td>
+<td>6dp</td>
+<td>Resolves via <code>md.sys.elevation.level3</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container surface tint layer color</td>
+<td>md.comp.date-picker.modal.container.surface-tint-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container shape</td>
+<td>md.comp.date-picker.modal.container.shape</td>
+<td>Extra large rounding</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection container elevation</td>
+<td>md.comp.date-picker.modal.range-selection.container.elevation</td>
+<td>0dp</td>
+<td>Resolves via <code>md.sys.elevation.level0</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection container shape</td>
+<td>md.comp.date-picker.modal.range-selection.container.shape</td>
+<td>No rounding</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date container shape</td>
+<td>md.comp.date-picker.modal.date.container.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date today container outline color</td>
+<td>md.comp.date-picker.modal.date.today.container.outline.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date today container outline width</td>
+<td>md.comp.date-picker.modal.date.today.container.outline.width</td>
+<td>1dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date selected container color</td>
+<td>md.comp.date-picker.modal.date.selected.container.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection active indicator container color</td>
+<td>md.comp.date-picker.modal.range-selection.active-indicator.container.color</td>
+<td>#E8DEF8</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection active indicator container shape</td>
+<td>md.comp.date-picker.modal.range-selection.active-indicator.container.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Year selection year selected container color</td>
+<td>md.comp.date-picker.modal.year-selection.year.selected.container.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container width</td>
+<td>md.comp.date-picker.modal.container.width</td>
+<td>360dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Container height</td>
+<td>md.comp.date-picker.modal.container.height</td>
+<td>524dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Header container width</td>
+<td>md.comp.date-picker.modal.header.container.width</td>
+<td>360dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Header container height</td>
+<td>md.comp.date-picker.modal.header.container.height</td>
+<td>120dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection header container height</td>
+<td>md.comp.date-picker.modal.range-selection.header.container.height</td>
+<td>128dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date container width</td>
+<td>md.comp.date-picker.modal.date.container.width</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Date container height</td>
+<td>md.comp.date-picker.modal.date.container.height</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Year selection year container width</td>
+<td>md.comp.date-picker.modal.year-selection.year.container.width</td>
+<td>72dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Year selection year container height</td>
+<td>md.comp.date-picker.modal.year-selection.year.container.height</td>
+<td>36dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Container</td>
+<td>Range selection active indicator container height</td>
+<td>md.comp.date-picker.modal.range-selection.active-indicator.container.height</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Weekdays label text color</td>
+<td>md.comp.date-picker.modal.weekdays.label-text.color</td>
+<td>#1D1B20</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Date unselected label text color</td>
+<td>md.comp.date-picker.modal.date.unselected.label-text.color</td>
+<td>#1D1B20</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Date today label text color</td>
+<td>md.comp.date-picker.modal.date.today.label-text.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Date selected label text color</td>
+<td>md.comp.date-picker.modal.date.selected.label-text.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Range selection date in range label text color</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.label-text.color</td>
+<td>#4A4458</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Year selection year selected label text color</td>
+<td>md.comp.date-picker.modal.year-selection.year.selected.label-text.color</td>
+<td>#FFFFFF</td>
+<td>Typography family: Roboto, <code>16pt / 24pt</code>, <code>400</code>, <code>0.5pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Label text</td>
+<td>Year selection year unselected label text color</td>
+<td>md.comp.date-picker.modal.year-selection.year.unselected.label-text.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Subhead</td>
+<td>Range selection month subhead color</td>
+<td>md.comp.date-picker.modal.range-selection.month.subhead.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>14pt / 20pt</code>, <code>500</code>, <code>0.1pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Headline</td>
+<td>Header headline color</td>
+<td>md.comp.date-picker.modal.header.headline.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>32pt / 40pt</code>, <code>400</code>, <code>0</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Headline</td>
+<td>Range selection header headline font metrics</td>
+<td>md.comp.date-picker.modal.range-selection.header.headline.type</td>
+<td>Roboto, 22pt / 28pt, 400, 0</td>
+<td>Viewer shows a composite preview token plus matching font, size, line-height, weight, and tracking rows.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / Header</td>
+<td>Header supporting text color</td>
+<td>md.comp.date-picker.modal.header.supporting-text.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>14pt / 20pt</code>, <code>500</code>, <code>0.1pt</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Date state layer shape</td>
+<td>md.comp.date-picker.modal.date.state-layer.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Year selection year state layer shape</td>
+<td>md.comp.date-picker.modal.year-selection.year.state-layer.shape</td>
+<td>Fully rounded</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Date state layer width</td>
+<td>md.comp.date-picker.modal.date.state-layer.width</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Date state layer height</td>
+<td>md.comp.date-picker.modal.date.state-layer.height</td>
+<td>40dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Year selection year state layer width</td>
+<td>md.comp.date-picker.modal.year-selection.year.state-layer.width</td>
+<td>72dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Enabled / State layer</td>
+<td>Year selection year state layer height</td>
+<td>md.comp.date-picker.modal.year-selection.year.state-layer.height</td>
+<td>36dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Date unselected hover state layer color</td>
+<td>md.comp.date-picker.modal.date.unselected.hover.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Date selected hover state layer color</td>
+<td>md.comp.date-picker.modal.date.selected.hover.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Date today hover state layer color</td>
+<td>md.comp.date-picker.modal.date.today.hover.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Date hover state layer opacity</td>
+<td>md.comp.date-picker.modal.date.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Range selection date in range hover state layer color</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.hover.state-layer.color</td>
+<td>#4F378B</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Range selection date in range hover state layer opacity</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td>Page also exposes a duplicate misspelled <code>opcaity</code> token/label variant.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Year selection year unselected hover state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.unselected.hover.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Year selection year selected hover state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.selected.hover.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Hovered / State layer</td>
+<td>Year selection year hover state layer opacity</td>
+<td>md.comp.date-picker.modal.year-selection.year.hover.state-layer.opacity</td>
+<td>0.08</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Date unselected focus state layer color</td>
+<td>md.comp.date-picker.modal.date.unselected.focus.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Date selected focus state layer color</td>
+<td>md.comp.date-picker.modal.date.selected.focus.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Date today focus state layer color</td>
+<td>md.comp.date-picker.modal.date.today.focus.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Date focus state layer opacity</td>
+<td>md.comp.date-picker.modal.date.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Range selection date in range focus state layer color</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.focus.state-layer.color</td>
+<td>#4F378B</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Range selection date in range focus state layer opacity</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td>Page also exposes a duplicate misspelled <code>opcaity</code> token/label variant.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Year selection year unselected focus state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.unselected.focus.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Year selection year selected focus state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.selected.focus.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Focused / State layer</td>
+<td>Year selection year focus state layer opacity</td>
+<td>md.comp.date-picker.modal.year-selection.year.focus.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date unselected pressed state layer color</td>
+<td>md.comp.date-picker.modal.date.unselected.pressed.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date selected pressed state layer color</td>
+<td>md.comp.date-picker.modal.date.selected.pressed.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date today pressed state layer color</td>
+<td>md.comp.date-picker.modal.date.today.pressed.state-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Date pressed state layer opacity</td>
+<td>md.comp.date-picker.modal.date.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Range selection date in range pressed state layer color</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.pressed.state-layer.color</td>
+<td>#4F378B</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Range selection date in range pressed state layer opacity</td>
+<td>md.comp.date-picker.modal.range-selection.date.in-range.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td>Page also exposes a duplicate misspelled <code>opcaity</code> token/label variant.</td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Year selection year unselected pressed state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.unselected.pressed.state-layer.color</td>
+<td>#49454F</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Year selection year selected pressed state layer color</td>
+<td>md.comp.date-picker.modal.year-selection.year.selected.pressed.state-layer.color</td>
+<td>#FFFFFF</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal</td>
+<td>Pressed (ripple) / State layer</td>
+<td>Year selection year pressed state layer opacity</td>
+<td>md.comp.date-picker.modal.year-selection.year.pressed.state-layer.opacity</td>
+<td>0.1</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="date-picker-modal-input">Date picker - Modal input<a class="headerlink" href="#date-picker-modal-input" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Group</th>
+<th>Label</th>
+<th>Token</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container color</td>
+<td>md.comp.date-input.modal.container.color</td>
+<td>#ECE6F0</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container elevation</td>
+<td>md.comp.date-input.modal.container.elevation</td>
+<td>6dp</td>
+<td>Resolves via <code>md.sys.elevation.level3</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container surface tint layer color</td>
+<td>md.comp.date-input.modal.container.surface-tint-layer.color</td>
+<td>#6750A4</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container shape</td>
+<td>md.comp.date-input.modal.container.shape</td>
+<td>Extra large rounding</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container width</td>
+<td>md.comp.date-input.modal.container.width</td>
+<td>328dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Container height</td>
+<td>md.comp.date-input.modal.container.height</td>
+<td>512dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Header container width</td>
+<td>md.comp.date-input.modal.header.container.width</td>
+<td>328dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Container</td>
+<td>Header container height</td>
+<td>md.comp.date-input.modal.header.container.height</td>
+<td>120dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Headline</td>
+<td>Header headline color</td>
+<td>md.comp.date-input.modal.header.headline.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>32pt / 40pt</code>, <code>400</code>, <code>0</code>.</td>
+</tr>
+<tr>
+<td>Date picker - Modal input</td>
+<td>Enabled / Supporting text</td>
+<td>Header supporting text color</td>
+<td>md.comp.date-input.modal.header.supporting-text.color</td>
+<td>#49454F</td>
+<td>Typography family: Roboto, <code>14pt / 20pt</code>, <code>500</code>, <code>0.1pt</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">&para;</a></h2>
+<h3 id="token-derived-measurements">Token-derived measurements<a class="headerlink" href="#token-derived-measurements" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docked</td>
+<td>Container size</td>
+<td>360dp x 456dp</td>
+<td>Token value. Measurement image shows 460dp — token appears to be a bug; use 460dp for implementation.</td>
+</tr>
+<tr>
+<td>Docked</td>
+<td>Date cell size</td>
+<td>48dp x 48dp</td>
+<td>Touch target. Inner selection circle is 40dp (state-layer size); 4dp margin each side gives 48dp outer cell.</td>
+</tr>
+<tr>
+<td>Docked</td>
+<td>Menu button height</td>
+<td>40dp</td>
+<td>From <code>md.comp.date-picker.docked.menu-button.container.height</code>.</td>
+</tr>
+<tr>
+<td>Docked</td>
+<td>Menu list item height</td>
+<td>48dp</td>
+<td>From <code>md.comp.date-picker.docked.menu.list-item.container.height</code>.</td>
+</tr>
+<tr>
+<td>Docked</td>
+<td>Header height</td>
+<td>64dp</td>
+<td>From <code>md.comp.date-picker.docked.header.height</code>.</td>
+</tr>
+<tr>
+<td>Docked</td>
+<td>State-layer size</td>
+<td>40dp x 40dp</td>
+<td>From docked date state-layer width and height tokens.</td>
+</tr>
+<tr>
+<td>Docked measurements section</td>
+<td>Day and month-menu figures</td>
+<td>Caption only</td>
+<td>Accessible page text exposes figure captions but not the numeric callouts drawn in the images.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Container size</td>
+<td>360dp x 524dp</td>
+<td>From <code>md.comp.date-picker.modal.container.width</code> and <code>.height</code>.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Header size</td>
+<td>360dp x 120dp</td>
+<td>From modal header container tokens.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Range header height</td>
+<td>128dp</td>
+<td>From <code>md.comp.date-picker.modal.range-selection.header.container.height</code>.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Date cell size</td>
+<td>40dp x 40dp</td>
+<td>Touch target equals state-layer size. No outer margin unlike docked.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Year chip size</td>
+<td>72dp x 36dp</td>
+<td>From modal year-selection year container tokens.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Range active indicator height</td>
+<td>40dp</td>
+<td>From <code>md.comp.date-picker.modal.range-selection.active-indicator.container.height</code>.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Date state-layer size</td>
+<td>40dp x 40dp</td>
+<td>From modal date state-layer width and height tokens.</td>
+</tr>
+<tr>
+<td>Modal</td>
+<td>Year state-layer size</td>
+<td>72dp x 36dp</td>
+<td>From modal year-selection state-layer width and height tokens.</td>
+</tr>
+<tr>
+<td>Modal measurements section</td>
+<td>Day, year, and range figures</td>
+<td>Caption only</td>
+<td>Accessible page text exposes the figure titles but not additional numeric annotations beyond tokenized values.</td>
+</tr>
+<tr>
+<td>Modal input</td>
+<td>Container size</td>
+<td>328dp x 512dp</td>
+<td>From <code>md.comp.date-input.modal.container.width</code> and <code>.height</code>.</td>
+</tr>
+<tr>
+<td>Modal input</td>
+<td>Header size</td>
+<td>328dp x 120dp</td>
+<td>From modal-input header container tokens.</td>
+</tr>
+<tr>
+<td>Modal input measurements section</td>
+<td>Padding and size figure</td>
+<td>Caption only</td>
+<td>Accessible page text exposes the figure title only.</td>
+</tr>
+<tr>
+<td>Interaction</td>
+<td>Hover state-layer opacity</td>
+<td>0.08</td>
+<td>Consistent across docked and modal hover tokens where exposed.</td>
+</tr>
+<tr>
+<td>Interaction</td>
+<td>Focus state-layer opacity</td>
+<td>0.1</td>
+<td>Consistent across docked and modal focus tokens where exposed.</td>
+</tr>
+<tr>
+<td>Interaction</td>
+<td>Pressed state-layer opacity</td>
+<td>0.1</td>
+<td>Consistent across docked and modal pressed tokens where exposed.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="image-derived-measurements-from-measurement-screenshots">Image-derived measurements (from measurement screenshots)<a class="headerlink" href="#image-derived-measurements-from-measurement-screenshots" title="Permanent link">&para;</a></h3>
+<h4 id="docked-calendar-view">Docked — calendar view<a class="headerlink" href="#docked-calendar-view" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Outer container</td>
+<td>Container size</td>
+<td>360dp x 460dp</td>
+<td>Measurement image. Overrides token value of 456dp (token appears to be a spec bug).</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(20, 12, 15, 12)</td>
+<td>Between container edge and header content.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Month button label + dropdown icon</td>
+<td>Active; color = ON_SURFACE</td>
+<td>Shows <code>Month ▾</code>. Left chevron (24dp) + Month label + dropdown icon (18dp from token) + right chevron (24dp).</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Dropdown arrow icon size</td>
+<td>18dp</td>
+<td>From token <code>md.comp.date-picker.docked.menu-button.icon.size</code>. Resolves measurement "size=?" annotation.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Year label + dropdown icon</td>
+<td>Inactive; color = ON_SURFACE_VARIANT (grayed)</td>
+<td>Shows <code>Year ▾</code> in gray. Same structure as month group: [← Year ▾ →].</td>
+</tr>
+<tr>
+<td>Weekday labels row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(15, 12, 8, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Calendar cell area</td>
+<td>Container padding (left, top, right, bottom)</td>
+<td>(8, 12, 4, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Calendar cells</td>
+<td>UniformFlow cell gap</td>
+<td>4dp (main and cross)</td>
+<td>4dp gap between each 40dp circle gives 48dp effective cell spacing.</td>
+</tr>
+<tr>
+<td>Calendar cells</td>
+<td>UniformFlow inner padding</td>
+<td>4dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(4, 12, 12, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Button gap</td>
+<td>16dp</td>
+<td>Between Cancel and OK buttons.</td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Buttons</td>
+<td>Cancel + OK</td>
+<td>MD3 Expressive Docked picker includes action buttons.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="docked-monthyear-menu-overlay">Docked — month/year menu overlay<a class="headerlink" href="#docked-monthyear-menu-overlay" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overlay size</td>
+<td>Width x Height</td>
+<td>360dp x 460dp</td>
+<td>Replaces calendar area; same outer container dimensions.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(20, 16, 15, 16)</td>
+<td></td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Leading back-chevron icon size</td>
+<td>24dp x 24dp</td>
+<td>Left-aligned; tapping closes the menu and returns to calendar.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Month label (month-menu active)</td>
+<td>dropdown icon ▾</td>
+<td>Shows <code>Month ▾</code>; grayed-out year label alongside.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Year label (year-menu active)</td>
+<td>dropdown icon ▾</td>
+<td>Shows <code>Year ▾</code>; grayed-out month label alongside.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Gap between back-chevron and labels</td>
+<td>16dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Scrollable padding</td>
+<td>Left, Right</td>
+<td>(15, 20)</td>
+<td><code>padding=(15, 0, 20, 0)</code> on the VerticalScrollable.</td>
+</tr>
+<tr>
+<td>List item</td>
+<td>Height</td>
+<td>48dp</td>
+<td>From <code>md.comp.date-picker.docked.menu.list-item.container.height</code>.</td>
+</tr>
+<tr>
+<td>List item</td>
+<td>Padding-start (before check icon)</td>
+<td>16dp</td>
+<td><code>padding=(0, 16, 0, 0)</code> (left-aligned row with leading space).</td>
+</tr>
+<tr>
+<td>List item</td>
+<td>Check icon size</td>
+<td>24dp</td>
+<td>From <code>md.comp.date-picker.docked.menu.list-item.selected.leading-icon.size</code>. Selected only.</td>
+</tr>
+<tr>
+<td>List item</td>
+<td>Gap between check icon and label</td>
+<td>16dp</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="modal-calendar-view">Modal — calendar view<a class="headerlink" href="#modal-calendar-view" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(16, 12, 6, 24)</td>
+<td></td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Supporting text + headline column gap</td>
+<td>36dp</td>
+<td>Vertical gap between supporting text and headline text within the header column.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Edit icon</td>
+<td><code>edit</code>, size=48</td>
+<td>Bottom-aligned within 48dp x 92dp container. Material Symbols icon name: <code>edit</code>.</td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Gap between headline column and edit icon</td>
+<td>8dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Nav header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(6, 12, 2, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Nav header row</td>
+<td>Combined Month+Year toggle button + chevrons</td>
+<td>height=40dp</td>
+<td>Left: <code>Month Year ▾/▴</code> text button. Right: 48dp left/right chevron icon buttons.</td>
+</tr>
+<tr>
+<td>Weekday labels row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(2, 12, 2, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Calendar cell area</td>
+<td>Container padding (left, top, right, bottom)</td>
+<td>(2, 12, 4, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Calendar cells</td>
+<td>UniformFlow cell gap</td>
+<td>4dp (main and cross)</td>
+<td></td>
+</tr>
+<tr>
+<td>Calendar cells</td>
+<td>UniformFlow inner padding</td>
+<td>4dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(4, 12, 12, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Button gap</td>
+<td>8dp</td>
+<td>Between Cancel and OK buttons.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="modal-year-selection-view">Modal — year-selection view<a class="headerlink" href="#modal-year-selection-view" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(16, 24, 6, 24)</td>
+<td></td>
+</tr>
+<tr>
+<td>Header row</td>
+<td>Edit icon size in year-selection view</td>
+<td>24dp</td>
+<td>Smaller than calendar-view edit icon (48dp); bottom-aligned.</td>
+</tr>
+<tr>
+<td>Nav header row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(6, 12, 8, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Nav header row</td>
+<td>Toggle button label height</td>
+<td>24dp</td>
+<td><code>Month Year ▾/▴</code> row is shorter than in calendar view.</td>
+</tr>
+<tr>
+<td>Year chip grid</td>
+<td>UniformFlow main_gap</td>
+<td>30dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Year chip grid</td>
+<td>UniformFlow cross_gap</td>
+<td>30dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Year chip grid</td>
+<td>UniformFlow inner padding</td>
+<td>30dp</td>
+<td></td>
+</tr>
+<tr>
+<td>Year chip grid</td>
+<td>Scrollable padding (left, right)</td>
+<td>(15, 4)</td>
+<td><code>padding=(15, 12, 4, 12)</code> on the VerticalScrollable.</td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(4, 12, 12, 12)</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Button gap</td>
+<td>16dp</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="modal-date-input">Modal Date Input<a class="headerlink" href="#modal-date-input" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Supporting text</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(16, 24, 18, 24)</td>
+<td>Above headline; inferred from image and other modal header proportions.</td>
+</tr>
+<tr>
+<td>Headline row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(18, 24, 5, 24)</td>
+<td>Headline text + calendar icon (<code>calendar_today</code>, 24dp) right-aligned.</td>
+</tr>
+<tr>
+<td>Headline row</td>
+<td>Calendar icon</td>
+<td><code>calendar_today</code>, size=24dp</td>
+<td>Right-aligned; switches to calendar picker. Inferred from MD3 date-input spec.</td>
+</tr>
+<tr>
+<td>Text field</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(5, 24, 4, 24)</td>
+<td>Text field inset within container.</td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Padding (left, top, right, bottom)</td>
+<td>(4, 24, 12, 24)</td>
+<td></td>
+</tr>
+<tr>
+<td>Action row</td>
+<td>Button gap</td>
+<td>16dp</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-notes">Implementation Notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Treat docked and modal variants as separate layout systems. Docked uses <code>48dp</code> dates and dropdown-menu affordances; modal uses <code>40dp</code> dates, <code>72dp x 36dp</code> year chips, and explicit range-selection geometry.</li>
+<li>The type-style rows in the viewer are composite previews rather than directly useful scalar values. Use the accompanying font, size, line-height, weight, and tracking tokens for implementation.</li>
+<li>Modal range selection adds distinct container and in-range tokens, including <code>md.comp.date-picker.modal.range-selection.container.shape</code>, <code>md.comp.date-picker.modal.range-selection.active-indicator.container.color</code>, and in-range state-layer colors.</li>
+<li>Modal and modal-input surfaces both resolve their main container elevation through <code>md.sys.elevation.level3</code>; the modal range-selection container resolves through <code>md.sys.elevation.level0</code>.</li>
+<li>The MD3 page currently exposes duplicated misspelled <code>opcaity</code> token/label variants for modal range-selection hover, focus, and pressed state-layer opacity. Preserve the canonical token names from the page if you need to mirror the source exactly.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 yuksblog
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/yuksblog/nuiitivet" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tracking", "navigation.path", "navigation.instant", "navigation.instant.progress", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

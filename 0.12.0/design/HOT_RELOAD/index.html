@@ -1,0 +1,3568 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A declarative, reactive Python UI framework.">
+      
+      
+        <meta name="author" content="yuksblog">
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.12.0/design/HOT_RELOAD/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Hot Reload - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hot-reload" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Hot Reload
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/overlay/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlay
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overlay
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/navigation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/route/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Route & Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/nested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/window/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/chrome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window Chrome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/renderer_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/modifiers/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/popup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Popup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/state-management/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/basic_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/practical_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/thread_safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/patterns_and_recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/design-system/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design System
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_overlay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Overlay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_navigator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Navigator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/theme_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theme Extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/font_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Font Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/ai_pair_programming/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI pair-programming
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI pair-programming
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/hot_reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot Reload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/dev_bridge_mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Bridge MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/nuiitivet_app_skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The nuiitivet-app skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/threading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threading Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction Region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packaging
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Goal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Design principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-user-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. User contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. User contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-project-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Project layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-pass-a-factory-not-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Pass a factory, not an instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-side-effects-run-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Side effects run once
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-launching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Launching
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-runtime-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Runtime flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-app-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. App API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-content-subtree-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Content-subtree rebuild
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-reload-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Reload sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Reload sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-identifying-user-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Identifying user modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-dependency-ordered-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Dependency-ordered reload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-re-fetching-the-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Re-fetching the factory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-state-snapshot-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 State snapshot &amp; restore
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-navigation-stack-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 Navigation stack restore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-module-loading-and-launch-target-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Module loading and launch-target resolution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-threading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Threading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Error handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-limitations-future-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Limitations &amp; future work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-dev-bridge-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Dev bridge &amp; MCP server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Dev bridge &amp; MCP server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-mcp-server-376" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 MCP server (#376)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-implementation-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Implementation map
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/yuksblog/nuiitivet/edit/main/docs/design/HOT_RELOAD.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="hot-reload">Hot Reload<a class="headerlink" href="#hot-reload" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Status: Implemented
+Related: <a href="https://github.com/yuksblog/nuiitivet/issues/359">#359</a>
+User guide: <a href="../../guide/ai_pair_programming/hot_reload/">docs/guide/ai_pair_programming/hot_reload.md</a></p>
+</blockquote>
+<h2 id="1-goal">1. Goal<a class="headerlink" href="#1-goal" title="Permanent link">&para;</a></h2>
+<p>Provide Flutter-style hot reload: when a developer edits UI code and saves, the
+widget tree is rebuilt in place and the change appears immediately, while the
+window, the GL context, the debugger session, and the app's <code>Observable</code> state
+all survive.</p>
+<p>The design is optimised for the <strong>VSCode F5</strong> experience: the app launches under
+the standard <code>debugpy</code> adapter, breakpoints fire as usual, and a save reloads the
+tree. No custom debug adapter and no editor extension are required — reloading
+modules and rebuilding a tree is ordinary Python, so <code>debugpy</code> needs nothing
+special, and breakpoints (keyed by file and line) keep firing in reloaded code.</p>
+<h2 id="2-design-principles">2. Design principles<a class="headerlink" href="#2-design-principles" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Single codebase.</strong> The user does not maintain separate production and dev
+   entry points. The same <code>main()</code> serves both paths.</li>
+<li><strong>Import is not execution.</strong> Importing the user's module must not start the
+   event loop or run <code>main()</code>. The runner controls when execution happens.</li>
+<li><strong>Reload via factory.</strong> The tree is rebuilt by re-invoking a retained <strong>root
+   factory</strong>, not by re-executing the whole user module.</li>
+<li><strong>Side effects once.</strong> Non-App side effects (global init, logging setup, DI
+   wiring, window creation) run once at startup and never again on reload.</li>
+</ol>
+<h2 id="3-user-contract">3. User contract<a class="headerlink" href="#3-user-contract" title="Permanent link">&para;</a></h2>
+<h3 id="31-project-layout">3.1 Project layout<a class="headerlink" href="#31-project-layout" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>yourapp/
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  __main__.py   # thin entry guard: just calls main()
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  app.py        # main() and the root factory live here
+</span></code></pre></div>
+<p><code>app.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">nuiitivet.material</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nv</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_root</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">nv</span><span class="o">.</span><span class="n">Widget</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="c1"># Build the root widget here. Close over any constructor arguments.</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="k">return</span> <span class="n">MyRootWidget</span><span class="p">()</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="c1"># Non-App side effects (init, DI, logging) may go here; they run once at</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="c1"># startup and never again on reload (§3.3).</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">nv</span><span class="o">.</span><span class="n">App</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">build_root</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span></code></pre></div>
+<p><code>__main__.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">.app</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">main</span><span class="p">()</span>
+</span></code></pre></div>
+<h3 id="32-pass-a-factory-not-an-instance">3.2 Pass a factory, not an instance<a class="headerlink" href="#32-pass-a-factory-not-an-instance" title="Permanent link">&para;</a></h3>
+<p><code>App(content=...)</code> takes a <strong>root factory</strong> — a zero-argument callable returning
+the root widget:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">nv</span><span class="o">.</span><span class="n">App</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">build_root</span><span class="p">)</span>                                  <span class="c1"># function (preferred)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">nv</span><span class="o">.</span><span class="n">App</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">MyRootWidget</span><span class="p">)</span>                                <span class="c1"># a Widget subclass is a factory</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">nv</span><span class="o">.</span><span class="n">App</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">MyRootWidget</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="n">dark</span><span class="p">))</span>    <span class="c1"># args via a closure</span>
+</span></code></pre></div>
+<p>Passing a <code>Widget</code> instance still works for backward compatibility, but the tree
+cannot be rebuilt from an instance, so hot reload is inert for that root; under
+the dev runner this emits a one-time warning.</p>
+<blockquote>
+<p>Do not pass <code>App(content=build_root())</code> — the parentheses call the factory and
+hand over an instance.</p>
+</blockquote>
+<p>A factory that needs arguments should use <code>lambda:</code>.</p>
+<h3 id="33-side-effects-run-once">3.3 Side effects run once<a class="headerlink" href="#33-side-effects-run-once" title="Permanent link">&para;</a></h3>
+<p>Any non-App side effect inside <code>main()</code> runs <strong>once at startup</strong> and is <strong>not</strong>
+re-run on reload, because the runner never re-invokes <code>main()</code> — it only calls
+the retained factory again. Initialization that must run per tree build belongs
+in the factory, not in <code>main()</code>.</p>
+<h3 id="34-launching">3.4 Launching<a class="headerlink" href="#34-launching" title="Permanent link">&para;</a></h3>
+<p>Production / normal run (unchanged; <code>App.run()</code> blocks on the event loop):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python -m yourapp
+</span></code></pre></div>
+<p>Development / hot reload:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python -m nuiitivet.dev yourapp/app.py        # file path
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>python -m nuiitivet.dev --module yourapp.app  # or a dotted module name
+</span></code></pre></div>
+<p>VSCode <code>launch.json</code>:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nuiitivet: hot reload&quot;</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debugpy&quot;</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;module&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nuiitivet.dev&quot;</span><span class="p">,</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;${workspaceFolder}/yourapp/app.py&quot;</span><span class="p">],</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nt">&quot;console&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;integratedTerminal&quot;</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">}</span>
+</span></code></pre></div>
+<h2 id="4-runtime-flow">4. Runtime flow<a class="headerlink" href="#4-runtime-flow" title="Permanent link">&para;</a></h2>
+<p>The production and dev paths differ only inside <code>App.run()</code>; user code carries no
+dev/prod branch.</p>
+<p><strong>Normal run:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python -m yourapp
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  → __main__.py: main()
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>      → App(content=build_root)   # App retains the factory
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>      → App.run()                 # no dev session → run_app() blocks
+</span></code></pre></div>
+<p><strong>Hot reload run:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python -m nuiitivet.dev yourapp/app.py
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  → runner installs a dev session (process-global)
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  → runner imports the user module under its real name (main() does NOT run)
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  → runner calls main() exactly once
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>      → App(content=build_root)   # App retains the factory
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>      → App.run()                 # dev session present → hands the App + factory
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>                                  #   to the session and returns without blocking
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  → runner drives the real event loop, file watching, and reloads
+</span></code></pre></div>
+<h2 id="5-app-api">5. App API<a class="headerlink" href="#5-app-api" title="Permanent link">&para;</a></h2>
+<p><code>content</code> accepts a <code>Widget</code> or a factory:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">RootFactory</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Widget</span><span class="p">]</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="s2">&quot;Widget | RootFactory&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">Widget</span><span class="p">):</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_root_factory</span> <span class="o">=</span> <span class="n">content</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">Widget</span><span class="p">):</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        <span class="n">instance</span> <span class="o">=</span> <span class="n">content</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_root_factory</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">instance</span>   <span class="c1"># backward-compat; reload inert</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>App.run()</code> consults the dev session and hands off instead of blocking when one
+is active:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">draw_fps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">renderer</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">):</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">session</span> <span class="o">=</span> <span class="n">current_dev_session</span><span class="p">()</span>       <span class="c1"># None outside the dev runner</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="k">if</span> <span class="n">session</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="n">session</span><span class="o">.</span><span class="n">attach</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_factory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_factory</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>                       <span class="n">draw_fps</span><span class="o">=</span><span class="n">draw_fps</span><span class="p">,</span> <span class="n">renderer</span><span class="o">=</span><span class="n">parse_renderer_mode</span><span class="p">(</span><span class="n">renderer</span><span class="p">))</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        <span class="k">return</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">run_app</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">draw_fps</span><span class="o">=</span><span class="n">draw_fps</span><span class="p">,</span> <span class="n">renderer</span><span class="o">=</span><span class="n">parse_renderer_mode</span><span class="p">(</span><span class="n">renderer</span><span class="p">))</span>
+</span></code></pre></div>
+<p>The dev session is a process-global handoff object (<code>nuiitivet.dev.session</code>); it
+is <code>None</code> in production, which is what keeps <code>App.run()</code> blocking normally.</p>
+<h2 id="6-content-subtree-rebuild">6. Content-subtree rebuild<a class="headerlink" href="#6-content-subtree-rebuild" title="Permanent link">&para;</a></h2>
+<p>Only the user's content tree is rebuilt on reload; the App shell — window,
+chrome, theme — is preserved. <code>App</code> exposes two primitives:</p>
+<ul>
+<li><strong><code>_rebuild_content_root(new_factory=None)</code></strong> re-invokes the factory, rebuilds
+  the Navigator/Overlay stack (which resets the process-global <code>Navigator</code> and
+  <code>Overlay</code> roots to the new instances), and re-wraps it with the preserved
+  chrome shell and <code>AppScope</code>. It returns the new root without mounting it, so
+  the reload orchestrator can snapshot old state and restore it before mount.</li>
+<li><strong><code>_commit_content_root(new_root)</code></strong> unmounts the old tree, clears App-held
+  interaction state that pointed into it (focus / hover / pressed targets and
+  pointer captures — otherwise the old tree leaks and stale focus bleeds into the
+  new tree), installs and mounts the new root, and forces a repaint.</li>
+</ul>
+<h2 id="7-reload-sequence">7. Reload sequence<a class="headerlink" href="#7-reload-sequence" title="Permanent link">&para;</a></h2>
+<p>On a save detected by the file watcher, the runner (on the UI thread):</p>
+<ol>
+<li><strong>Snapshot</strong> every mutable <code>Observable</code> value in the live tree, keyed by a
+   structural path (§7.4), and the declarative navigation stack (§7.5).</li>
+<li><strong>Reload</strong> the user's modules in dependency order (§7.1–7.2) and re-fetch the
+   factory (§7.3).</li>
+<li><strong>Rebuild</strong> the content root (<code>_rebuild_content_root</code>), which also resets the
+   global Navigator/Overlay roots.</li>
+<li><strong>Restore</strong> snapshot values into the matching observables of the new tree and
+   replay the navigation stack onto the rebuilt navigator (§7.5).</li>
+<li><strong>Commit</strong> the new root (<code>_commit_content_root</code>) and repaint.</li>
+</ol>
+<p><code>main()</code> is never called in this sequence. Every widget and <code>Observable</code> is
+recreated by the factory; "preserving state" means copying <code>Observable</code> <em>values</em>
+across, not carrying live objects.</p>
+<p>On any error during steps 2–3 the previous tree is kept and the error is surfaced
+(§9); the app and debug session stay alive.</p>
+<h3 id="71-identifying-user-modules">7.1 Identifying user modules<a class="headerlink" href="#71-identifying-user-modules" title="Permanent link">&para;</a></h3>
+<p>A module is treated as the user's — and therefore reloadable — when its
+<code>__file__</code> lives under the launched project root and it is outside the standard
+library / <code>site-packages</code>. A name blacklist (<code>nuiitivet</code>, <code>skia</code>, <code>pyglet</code>) is
+applied in addition, so the framework and the C-extension modules are never
+reloaded even if a file happens to sit under the project root. This double net
+satisfies the requirement that <code>nuiitivet</code>, <code>skia</code>, and <code>pyglet</code> are never
+reloaded.</p>
+<p>The file watcher's watch set is built dynamically from these modules' <code>__file__</code>
+values, so newly imported user modules become watched automatically.</p>
+<h3 id="72-dependency-ordered-reload">7.2 Dependency-ordered reload<a class="headerlink" href="#72-dependency-ordered-reload" title="Permanent link">&para;</a></h3>
+<p>All user modules are reloaded on every change, in <strong>dependency order</strong> (a
+depended-upon leaf such as <code>widgets</code> before its dependent <code>app</code>). Reloading only
+the saved file would leave a dependent's <code>from .widgets import W</code> bound to the
+stale class — the classic <code>importlib.reload</code> ordering hazard. The dependency
+graph is approximated from each module's globals (imported submodules and the
+<code>__module__</code> of imported classes/functions) and reloaded leaves-first via a DFS
+post-order; import cycles are broken arbitrarily.</p>
+<p>Before reloading, each user module's cached <code>.pyc</code> is removed and
+<code>importlib.invalidate_caches()</code> is called. <code>importlib.reload</code> only recompiles
+from source when it judges the <code>.pyc</code> stale, and that check uses
+second-granularity mtimes — a save in the same wall-clock second as the last
+compile can be missed, reloading stale bytecode. Dropping the <code>.pyc</code> forces a
+fresh compile from the edited source.</p>
+<h3 id="73-re-fetching-the-factory">7.3 Re-fetching the factory<a class="headerlink" href="#73-re-fetching-the-factory" title="Permanent link">&para;</a></h3>
+<p>The factory captured at startup resolves its module globals at call time, so
+changes <em>inside</em> the widgets it builds are picked up automatically. Changes to
+the <strong>factory definition itself</strong> (a different root, changed arguments) are
+picked up by re-fetching the factory by name from its reloaded module. This
+requires the factory to be a module-level named symbol; an anonymous
+(<code>lambda</code>) or locally-defined factory cannot be re-fetched, so its own definition
+changes are not observed (its internal widget changes still are).</p>
+<h3 id="74-state-snapshot-restore">7.4 State snapshot &amp; restore<a class="headerlink" href="#74-state-snapshot-restore" title="Permanent link">&para;</a></h3>
+<p>Snapshot walks the mounted tree — both <code>children</code> and <code>built_child</code> (where
+<code>ComposableWidget</code> state lives) — and records the value of every mutable
+<code>Observable</code> held as a widget attribute, keyed by a structural path. Each path
+segment is a widget's stable <code>key</code> when it has one, and otherwise its child
+index + widget type; the trailing segment is the attribute name. Restore walks
+the rebuilt tree the same way and writes each snapshot value back into the
+observable at the matching path.</p>
+<h3 id="75-navigation-stack-restore">7.5 Navigation stack restore<a class="headerlink" href="#75-navigation-stack-restore" title="Permanent link">&para;</a></h3>
+<p>The rebuilt tree starts a fresh <code>Navigator</code> at its initial route, so pushed
+routes would be lost. For <strong>declarative</strong> navigation the stack is instead
+snapshotted and replayed, mirroring the <code>Observable</code> restore above (#378):</p>
+<ul>
+<li>The navigator logs a <strong>restore descriptor</strong> for every route added via <code>push</code>.
+  A declarative push — <code>push(SomeIntent(...))</code> against a
+  <code>Navigator.intents(...)</code> / <code>Navigator.routes(...)</code> route table — records the
+  intent <em>value</em> plus its type's fully-qualified name. An imperative push of a
+  raw <code>Route</code>/<code>Widget</code> instance records an <strong>opaque</strong> marker: it was built from
+  the old code with no factory to rebuild it, so it is not restorable (the same
+  instance-vs-factory constraint as the root, §7.3). The log tracks only pushed
+  routes; the initial construction stack is rebuilt by the factory.</li>
+<li>Before the swap, <code>snapshot_navigation()</code> reads the root navigator's log. After
+  the commit, <code>restore_navigation()</code> replays each descriptor onto the freshly
+  built navigator, resolving the intent <strong>by qualified name</strong> — reloading
+  redefines the intent class, so the live <code>type(intent)</code> no longer equals the
+  new route-table key; matching on the qualified name bridges the old value to
+  the new builder. Each restored route is pushed without animation.</li>
+<li>Replay <strong>stops at the first non-restorable entry</strong> — an opaque push, or an
+  intent whose route is no longer registered — leaving the rest collapsed. This
+  is the documented degradation, analogous to unmatched <code>Observable</code> paths.</li>
+<li>Open overlays/dialogs are out of scope and keep resetting (§11): they are
+  transient UI bound to an in-flight awaited coroutine, and dropping that
+  continuation is the safe default (Flutter behaves the same).</li>
+</ul>
+<p>When the tree structure is unchanged (the common "tweak a padding" case) every
+path matches and state is fully restored. A widget given a <code>key</code> — the same
+reconciliation identity the dev action bridge targets (#375), set via
+<code>ComposableWidget(key=...)</code> or the <code>keyed("…")</code> modifier — keeps its path across
+a reorder or a sibling insertion, so its state survives those structural edits
+too. When keyless widgets are added, removed, or reordered, unmatched paths keep
+the new tree's initial value — a deliberate, documented degradation. Only in-tree
+observables are handled; module-level observables are re-initialised by
+<code>importlib.reload</code> and are out of scope.</p>
+<h2 id="8-module-loading-and-launch-target-resolution">8. Module loading and launch-target resolution<a class="headerlink" href="#8-module-loading-and-launch-target-resolution" title="Permanent link">&para;</a></h2>
+<p>The dev runner accepts either a file path (matching the documented <code>launch.json</code>)
+or a dotted module name (<code>--module</code>). Either way the module is imported under a
+<strong>real, stable name</strong> — never <code>__main__</code> — so that <code>importlib.reload</code> can re-run
+it and relative imports resolve.</p>
+<p>For a file path, the dotted module name is recovered by walking up the directory
+tree while <code>__init__.py</code> files are present (so <code>pkg/sub/app.py</code> in a package
+becomes <code>pkg.sub.app</code>, and a bare script becomes its file stem); the package
+root's parent is placed on <code>sys.path</code> so the import succeeds.</p>
+<h2 id="9-threading">9. Threading<a class="headerlink" href="#9-threading" title="Permanent link">&para;</a></h2>
+<p>Widget-tree mutation is main-thread-only (<code>docs/design/THREADING_MODEL.md</code>). The
+file watcher runs on a background thread and only <em>signals</em> that a file changed;
+it never touches the tree. A <code>pyglet.clock</code> callback on the UI thread drains the
+signal and performs the reload. A useful consequence: a save made while stopped
+at a breakpoint (event loop paused) is queued and applied on resume.</p>
+<h2 id="10-error-handling">10. Error handling<a class="headerlink" href="#10-error-handling" title="Permanent link">&para;</a></h2>
+<p>Editing is a half-broken-code activity, so a syntax or build error on save must
+not tear down the app or the debug session. When a reload fails the previous tree
+is kept (the orchestrator never commits the broken one) and the error is reported
+two ways: the full traceback on <code>stderr</code> (visible in the VSCode debug console /
+terminal) and a best-effort banner over the still-running UI, cleared on the next
+successful reload.</p>
+<h2 id="11-limitations-future-work">11. Limitations &amp; future work<a class="headerlink" href="#11-limitations-future-work" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Structural edits reset the affected state of keyless widgets.</strong> State restore
+  is by structural path (§7.4). A widget given a stable <code>key</code> — via
+  <code>ComposableWidget(key=...)</code> or the <code>keyed("…")</code> modifier — anchors its state
+  across structural changes (reorder, sibling insertion), landed in
+  <a href="https://github.com/yuksblog/nuiitivet/issues/375">#375</a>. Keyless widgets still
+  lose state when their position changes — add a <code>key</code> to opt into durable state.</li>
+<li><strong>Declarative navigation stack is restored; imperative pushes and open
+  overlays reset.</strong> A reload replays the <strong>declarative</strong> navigation stack —
+  routes pushed as intents against a route table — onto the rebuilt navigator
+  (§7.5, <a href="https://github.com/yuksblog/nuiitivet/issues/378">#378</a>). Imperative
+  instance-based <code>push(Screen())</code> is fundamentally unrestorable (same
+  instance-vs-factory constraint as the root); it is recorded as opaque and
+  stops the replay, leaving routes above it collapsed. A fresh <code>Overlay</code> is
+  rebuilt too, so open dialogs are dropped — they are transient and bound to an
+  in-flight awaited coroutine, so resetting them is the intended, safe default.</li>
+<li><strong>Module-level state is not restored</strong> (§7.4).</li>
+<li><strong>The interaction journal (§12) records only the action-verb primitives.</strong> It
+  deliberately mirrors <code>click</code> / <code>key</code> / <code>text</code> and leaves higher-level <em>semantic</em>
+  events (navigate / dialog open-close / submit) unrecorded, since they are
+  derivable from a click sequence plus <code>describe_tree</code>. Promoting selected
+  semantic events to first-class entries, and deciding whether to unify the reload
+  and interaction journals under one <code>recent_activity</code> surface, are the open
+  follow-ups from <a href="https://github.com/yuksblog/nuiitivet/issues/390">#390</a>.</li>
+<li><strong>The interaction journal is wired at the pyglet backend's input handlers.</strong> A
+  second backend would need to drive the same <code>InteractionRecorder</code> from its own
+  real-input path; the recorder and journal themselves are backend-agnostic.</li>
+</ul>
+<h2 id="12-dev-bridge-mcp-server">12. Dev bridge &amp; MCP server<a class="headerlink" href="#12-dev-bridge-mcp-server" title="Permanent link">&para;</a></h2>
+<p>Hot reload lets an author <em>edit</em> a live app; the <strong>dev bridge</strong> lets a tool <em>see</em>
+and <em>drive</em> it, closing a perception–action loop over reload: edit (reload) →
+<code>describe_tree</code> / <code>screenshot</code> (see) → <code>click</code> / <code>type</code> / <code>key</code> (act) → verify →
+edit again.</p>
+<ul>
+<li><strong>Bridge</strong> (<code>dev/bridge.py</code>, <a href="https://github.com/yuksblog/nuiitivet/issues/374">#374</a>).
+  A localhost-only <code>ThreadingHTTPServer</code> on an ephemeral port, started by the dev
+  runner alongside hot reload. It refuses to start without an active dev session,
+  so it is never opened in production. Each request that touches the widget tree
+  is marshalled onto the UI thread (same watcher-thread → clock-drain primitive
+  hot reload uses; see §9). The bound port is published to
+  <code>&lt;project_root&gt;/.nuiitivet/dev-bridge.json</code> for clients to discover.</li>
+<li><strong>Perception</strong> (<code>dev/perception.py</code>, #374). <code>describe_tree</code> walks the mounted
+  tree into compact JSON — per node its type, human identity (<code>key</code> / <code>label</code> /
+  <code>text</code> / <code>title</code>) and <code>rect</code> <code>[x, y, w, h]</code> in root coordinates. This is the
+  semantic, low-token view a tool reasons over and resolves action targets from.
+  <code>screenshot</code> renders the current frame to PNG.</li>
+<li><strong>Action</strong> (<code>dev/action.py</code>, <a href="https://github.com/yuksblog/nuiitivet/issues/375">#375</a>).
+  <code>click</code> / <code>type</code> / <code>key</code> synthesize the same input the real backend delivers.
+  Targeting is by <em>stable identifier</em> (<code>key</code> / <code>label</code>), resolved to a rect
+  centre, so it survives layout changes; raw coordinates are a fallback. Every
+  verb <code>settle</code>s (flush reactive work + relayout) so the next <code>describe_tree</code>
+  observes the updated state.</li>
+<li><strong>Reload journal</strong> (<code>dev/journal.py</code>, <a href="https://github.com/yuksblog/nuiitivet/issues/388">#388</a>).
+  The bridge is AI-initiated — the assistant reads and acts on its own turns and
+  cannot see what the <em>human</em> did between them. In a pair session the human edits
+  and saves while the assistant is mid-task, so its cached <code>describe_tree</code> and its
+  assumptions about the source go stale; the worst case is a <em>failed</em> reload,
+  where the previous UI keeps running against code the assistant is no longer
+  reading. The controller records each reload — success (with the reloaded module
+  names) or error (with the capped traceback) — into a bounded, thread-safe ring
+  buffer (<code>ReloadJournal</code>, one shared instance injected into both the controller
+  and the bridge). The bridge exposes it as a pull-able perception surface at
+  <code>GET /reload_log</code> (optional <code>?limit=N</code>). An AI pair acts in turns, not a
+  continuous attention loop, and MCP is request/response — so a pull-able log is
+  the right model, not a live push. Each event carries a monotonic <code>seq</code> so a
+  client can tell whether new reloads happened since its last turn, and a
+  <code>changed</code> list — the modules whose <em>source content actually changed</em>, detected
+  by per-file hash. The watcher fires on mtime, which an editor autosave or
+  formatter bumps even when the bytes are identical, so an empty <code>changed</code> marks
+  a no-op save the assistant can ignore, while a non-empty <code>changed</code> pinpoints
+  which file the human edited (the reloader reloads <em>all</em> user modules on any
+  change, so <code>modules</code> alone cannot). Recording the diff <em>content</em> is
+  deliberately out of scope — that is a token/size firehose; the boolean-grade
+  <code>changed</code> signal is the cheap middle ground.</li>
+<li><strong>Interaction journal</strong> (<code>dev/interaction.py</code>, <a href="https://github.com/yuksblog/nuiitivet/issues/390">#390</a>).
+  The reload journal closes the "the <em>code</em> changed under me" gap; this closes the
+  complementary one — "the <em>human drove the app</em> under me." In a pair session the
+  human often reproduces a bug or navigates a screen while the assistant is
+  mid-task, so its cached <code>describe_tree</code> is of a stale screen and it cannot tell
+  <em>how</em> the human reached the current state. An <code>InteractionRecorder</code> attached to
+  the app records the human's coarse UI actions into a bounded, thread-safe ring
+  buffer (<code>InteractionJournal</code>), served pull-ably at <code>GET /interaction_log</code>
+  (optional <code>?limit=N</code>) with the same monotonic-<code>seq</code> turn model as the reload
+  journal. Two design choices are load-bearing:</li>
+<li><strong>A mirror of the action vocabulary, not a semantic taxonomy.</strong> It records
+    exactly the inbound of <code>click</code> / <code>key</code> / <code>type</code>: a <code>click</code> resolved to a
+    widget identity (<code>{type, key?, label?}</code> — reusing the same identity walk as
+    perception, <em>never</em> a coordinate), a <code>key</code> (only shortcuts and navigation
+    keys), and a content-free <code>text</code> marker. Whatever the human does that the
+    assistant must reproduce, it reproduces <em>through those same verbs</em>, so this set
+    is necessary and sufficient to replay a path. Higher-level semantic events
+    (navigate / dialog open-close / submit) are deliberately <em>not</em> recorded — they
+    are states derivable from a click sequence plus <code>describe_tree</code>, not primitive
+    inputs.</li>
+<li><strong>Recorded at the real-input layer, so the human only.</strong> The recorder is
+    driven from the backend's real input handlers (<code>on_mouse_press</code> /
+    <code>on_key_press</code> / <code>on_text</code>), which the assistant's synthesized actions bypass
+    (those enter below at <code>app._dispatch_*</code>). So the journal captures the human
+    with no synthetic/real tagging. <strong>Typed content never enters it:</strong> a bare
+    printable key with no command modifier is dropped (recording it would leak
+    field text a keystroke at a time), and a burst of <code>on_text</code> collapses to one
+    content-free marker.</li>
+<li><strong>CLI clients</strong> (<code>dev/client.py</code>, <code>dev/__main__.py</code>). <code>describe-tree</code>,
+  <code>reload-log</code>, <code>interaction-log</code>, <code>screenshot</code>, <code>click</code>, <code>type</code>, and <code>key</code> are
+  one-shot subcommands that discover the running app and issue plain HTTP,
+  dependency-free (<code>urllib</code>).</li>
+</ul>
+<h3 id="121-mcp-server-376">12.1 MCP server (<a href="https://github.com/yuksblog/nuiitivet/issues/376">#376</a>)<a class="headerlink" href="#121-mcp-server-376" title="Permanent link">&para;</a></h3>
+<p><code>dev/mcp_server.py</code> is the MCP-host-facing surface over the same bridge: it
+exposes <code>describe_tree</code>, <code>reload_log</code>, <code>interaction_log</code>, <code>screenshot</code>, <code>click</code>,
+<code>type</code>, and <code>key</code>
+as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
+just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
+freshly discovered <code>BridgeClient</code>, inheriting the bridge's dev-session gate. The
+<code>mcp</code> SDK is an optional dependency (the <code>[mcp]</code> extra); importing the module
+without it raises a <code>MissingMCPDependencyError</code> pointing at
+<code>pip install 'nuiitivet[mcp]'</code>.</p>
+<p><strong>Usage guidance is part of the surface.</strong> The server and tool descriptions steer
+the model to default to <code>describe_tree</code> for reasoning and target resolution (a
+cheap JSON tree) and to reserve <code>screenshot</code> for occasional visual spot checks,
+because image tokens are expensive.</p>
+<p>Served over stdio (the transport every MCP host supports):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python -m nuiitivet.dev mcp        # serve the running app&#39;s bridge as MCP tools
+</span></code></pre></div>
+<p>MCP host config (the app itself is launched separately with
+<code>python -m nuiitivet.dev yourapp/app.py</code>):</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="p">{</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="nt">&quot;nuiitivet-dev&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nuiitivet.dev&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp&quot;</span><span class="p">]</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The server starts even when no app is running; each tool call then reports a
+"no running app" error until one is up, so a host may launch the server first.</p>
+<h2 id="13-implementation-map">13. Implementation map<a class="headerlink" href="#13-implementation-map" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Design area</th>
+<th>Module</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dev-session detection / handoff</td>
+<td><code>App.run()</code> (<code>runtime/app.py</code>) → <code>dev/session.py</code></td>
+</tr>
+<tr>
+<td>factory-accepting <code>content</code></td>
+<td><code>App.__init__</code> / <code>RootFactory</code> (<code>runtime/app.py</code>)</td>
+</tr>
+<tr>
+<td>content-subtree rebuild/commit</td>
+<td><code>App._rebuild_content_root</code> / <code>_commit_content_root</code></td>
+</tr>
+<tr>
+<td>launch-target resolution (path / <code>--module</code>)</td>
+<td><code>dev/loader.py</code></td>
+</tr>
+<tr>
+<td>user-module identification</td>
+<td><code>dev/reloader.py</code> (<code>identify_user_modules</code>)</td>
+</tr>
+<tr>
+<td>dependency-ordered reload + <code>.pyc</code> invalidation</td>
+<td><code>dev/reloader.py</code> (<code>_topological_order</code>, <code>reload_user_modules</code>)</td>
+</tr>
+<tr>
+<td>state snapshot / restore</td>
+<td><code>dev/snapshot.py</code></td>
+</tr>
+<tr>
+<td>file watching (background thread → UI thread)</td>
+<td><code>dev/watcher.py</code> + <code>dev/controller.py</code></td>
+</tr>
+<tr>
+<td>error resilience</td>
+<td><code>dev/error_overlay.py</code></td>
+</tr>
+<tr>
+<td>CLI entry / startup flow</td>
+<td><code>dev/__main__.py</code></td>
+</tr>
+<tr>
+<td>dev bridge (localhost, UI-thread marshalling, discovery)</td>
+<td><code>dev/bridge.py</code> + <code>dev/client.py</code></td>
+</tr>
+<tr>
+<td>perception (<code>describe_tree</code> / <code>screenshot</code>)</td>
+<td><code>dev/perception.py</code></td>
+</tr>
+<tr>
+<td>reload journal (pull-able reload events for an AI pair)</td>
+<td><code>dev/journal.py</code> (recorded by <code>dev/controller.py</code>)</td>
+</tr>
+<tr>
+<td>interaction journal (pull-able human UI actions for an AI pair)</td>
+<td><code>dev/interaction.py</code> (recorded from the backend input handlers)</td>
+</tr>
+<tr>
+<td>action (<code>click</code> / <code>type</code> / <code>key</code>, target resolution)</td>
+<td><code>dev/action.py</code></td>
+</tr>
+<tr>
+<td>MCP server (bridge as MCP tools, stdio)</td>
+<td><code>dev/mcp_server.py</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 yuksblog
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/yuksblog/nuiitivet" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tracking", "navigation.path", "navigation.instant", "navigation.instant.progress", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
