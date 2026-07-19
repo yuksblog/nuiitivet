@@ -8,13 +8,14 @@ There are two popular tools for packaging Python applications: **PyInstaller** a
 
 | Feature | PyInstaller | Nuitka |
 | :--- | :--- | :--- |
-| **Build Speed** | 🚀 Fast | 🐢 Slow (Compiles to C) |
-| **Startup Speed** | 😐 Normal | 🚀 Fast |
-| **Setup** | Easy | Moderate |
-| **Obfuscation** | Low | High |
+| **Build Speed** | 🚀 Fast | 🐢 Slow (compiles to C) |
+| **Startup / Runtime Speed** | 😐 Normal | 🚀 Fast |
+| **C Compiler** | Not required | Required |
 
-- **Use PyInstaller** for quick prototyping, testing, or internal tools.
-- **Use Nuitka** for public releases where startup performance and code protection matter.
+The rule of thumb follows your development lifecycle:
+
+- **During development, use PyInstaller.** Builds are fast, so you can iterate quickly.
+- **For production releases, use Nuitka.** Startup and runtime are faster, which is what your users experience.
 
 ## Using PyInstaller
 
@@ -33,24 +34,32 @@ uv add --dev pyinstaller
 
 ### 2. Build
 
-Run the following command to build a single executable file:
+Run the following command. We recommend `--onedir` for faster startup:
 
 ```bash
-pyinstaller main.py --name "MyApp" --onefile --noconsole --clean
+# Works on every OS: --noconsole hides the console on Windows,
+# builds a .app bundle on macOS, and is ignored on Linux.
+pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 
 # Or with uv
-uv run pyinstaller main.py --name "MyApp" --onefile --noconsole --clean
+uv run pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 ```
 
-### Options
+### Common Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
-| `--onefile` | No | Bundle everything into a single executable. <br> **Pros:** Easy distribution. **Cons:** Slower startup (unpacks to temp dir). |
-| `--onedir` | No | (Default) Create a directory with the executable and dependencies. <br> **Pros:** Faster startup. **Cons:** Must distribute the whole folder. |
-| `--noconsole` | No | Hide the terminal window. Recommended for GUI apps. |
+| `--onedir` | No | (Recommended, default) Create a directory with the executable and dependencies. <br> **Pros:** Faster startup. **Cons:** Must distribute the whole folder. |
+| `--onefile` | No | Bundle everything into a single executable. <br> **Pros:** Easy distribution. **Cons:** Slower startup (unpacks to a temp dir). |
 | `--clean` | No | Clean PyInstaller cache before building. |
 | `--name "Name"` | No | Specify the name of the executable. |
+| `--icon path/to/icon` | No | Set the app icon. Cross-platform flag; only the file format differs (`.ico` on Windows, `.icns` on macOS). |
+
+### Platform-Specific Options
+
+| Option | Required? | Description |
+| :--- | :--- | :--- |
+| `--windowed` (alias `--noconsole`) | No | Recommended for GUI apps; combine freely with `--onedir` or `--onefile`. **Windows:** hide the console window. **macOS:** hide the console *and* build a `.app` bundle. **Linux:** ignored, so you can omit it. |
 
 ### 3. Result
 
@@ -58,7 +67,7 @@ The executable will be created in the `dist/` directory.
 
 ## Using Nuitka
 
-Nuitka compiles your Python code to C, resulting in faster execution and harder-to-reverse-engineer binaries.
+Nuitka compiles your Python code to C, resulting in faster startup and execution.
 
 ### 1. Install Nuitka
 
@@ -69,16 +78,20 @@ pip install nuitka
 uv add --dev nuitka
 ```
 
+Nuitka compiles to C, so it needs a **C compiler**. The required compiler differs per OS (MSVC/MinGW64 on Windows, Clang via Xcode on macOS, GCC on Linux). See Nuitka's [Requirements](https://nuitka.net/user-documentation/user-manual.html#requirements) for the details.
+
 ### 2. Build
 
-Run Nuitka with the following recommended flags. Since Nuiitivet relies on data files (like icons), we ensure package data is included.
+Run Nuitka with the following recommended flags. `--standalone` (without `--onefile`) produces a directory, which starts faster. Since Nuiitivet relies on data files (like icons), we ensure package data is included.
 
 ```bash
+# This example targets Windows. On macOS, drop --windows-console-mode=disable
+# and add --macos-create-app-bundle (see Platform-Specific Options).
 python -m nuitka main.py \
     --standalone \
-    --onefile \
     --include-package=nuiitivet \
     --include-package-data=nuiitivet \
+    --windows-console-mode=disable \
     --output-dir=dist \
     --output-filename=MyApp \
     --enable-plugin=anti-bloat
@@ -87,16 +100,24 @@ python -m nuitka main.py \
 # uv run python -m nuitka ...
 ```
 
-### Options
+### Common Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
-| `--standalone` | **YES** | Make the executable standalone (includes Python runtime). |
+| `--standalone` | **YES** | Make the executable standalone (includes Python runtime). Produces a directory (recommended for faster startup). |
 | `--include-package=nuiitivet` | **YES** | Must be set to `nuiitivet`. Forces inclusion of the package to handle lazy imports. |
 | `--include-package-data=nuiitivet`| **YES** | Must be set to `nuiitivet`. Bundles assets like fonts and icons. |
-| `--onefile` | No | Create a single executable file. |
+| `--onefile` | No | Bundle into a single executable. Easier to distribute, but slower to start (unpacks to a temp dir). |
 | `--output-dir` | No | Directory to put the result in (e.g., `dist`). |
 | `--enable-plugin` | No | `anti-bloat` is recommended to reduce file size. |
+
+### Platform-Specific Options
+
+| Option | Required? | Description |
+| :--- | :--- | :--- |
+| `--windows-console-mode=disable` | No | **Windows only.** Hide the console window for GUI apps. Ignored on macOS/Linux — no need to write it there. |
+| `--macos-create-app-bundle` | No | **macOS only.** Build a `.app` bundle. A `.app` is a directory, so pair it with the recommended `--standalone` build (not with `--onefile`). |
+| `--macos-app-icon=icon` / `--windows-icon-from-ico=icon` | No | Set the app icon on macOS / Windows. Nuitka has no Linux icon flag — on Linux, the icon is set via a `.desktop` file, not embedded in the binary. |
 
 ### 3. Result
 
