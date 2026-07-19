@@ -29,7 +29,7 @@ class Counter(nv.ComposableWidget):
         return nv.Column(
             padding=16,
             children=[
-                nv.Text(f"Count: {self.count.value}"),
+                nv.Text(self.count.map(lambda n: f"Count: {n}")),
                 nv.Button("increment", on_click=lambda: self._inc()),
             ],
         )
