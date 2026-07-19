@@ -249,3 +249,46 @@ class MyWidget(ComposableWidget):
 > **Note:** `visible()` never collapses the widget's layout size.
 > If you need the widget to also shrink or grow in the layout during the animation,
 > use a layout-aware widget instead.
+
+## Keyed
+
+The `keyed()` modifier attaches a stable `key` — a layout-independent identifier — to a widget. A key is central to the AI pair-programming loop and serves two roles:
+
+- **Action targeting** — the dev bridge drives a widget by its `key` instead of brittle pixel coordinates (e.g. `click(key="increment-btn")`), so targeting survives layout changes.
+- **Hot-reload state restoration** — a `key` anchors a widget's `Observable` state across a structural edit (a reorder or a sibling insertion), where a position-based match would otherwise break.
+
+`keyed()` is applied on demand: add it when a widget needs to be targeted or state-stabilized, and remove it once that need is gone.
+
+### Usage
+
+Apply `keyed()` to any already-built widget:
+
+```python
+import nuiitivet.material as md
+from nuiitivet.modifiers import keyed
+
+md.Button("increment").modifier(keyed("increment-btn"))
+md.TextField(label="Email").modifier(keyed("email"))
+```
+
+Choose a key that is unique enough to disambiguate the widget among its realistic targets (think "testID").
+
+### Ordering rule
+
+When you combine `keyed()` with modifiers that **wrap** the widget (such as `background`, `visible`, or `stick`), apply `keyed()` **last** so the key lands on the outermost node:
+
+```python
+widget.modifier(clickable(on_click=...) | keyed("row"))
+```
+
+This ordering is required for hot-reload state restoration to survive a reorder. Used alone, `keyed()` has nothing to wrap, so the order does not matter.
+
+### Relationship to `ComposableWidget(key=...)`
+
+A `ComposableWidget` that owns state takes its key through the constructor:
+
+```python
+MyItem(key="item-1")
+```
+
+Use `keyed()` when you instead need to key an already-built widget inline.
