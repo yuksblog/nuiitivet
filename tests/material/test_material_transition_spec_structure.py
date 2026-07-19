@@ -8,6 +8,7 @@ from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import (
     FadePattern,
     ScalePattern,
+    SlidePattern,
     CompositePattern,
 )
 from nuiitivet.animation.motion import BezierMotion
@@ -54,13 +55,22 @@ def test_page_spec_defaults():
     assert isinstance(spec, MaterialTransitionSpec)
     assert spec.barrier_mode == "none"
 
-    # Page Default Enter is just Fade
-    # Wait, check implementation: Is it FadePattern or Composite?
-    # _default_page_enter uses just FadePattern.
-    assert isinstance(spec.enter.pattern, FadePattern)
+    # Page default is MD3 Shared Axis (X): a fade-through composed with a subtle
+    # horizontal slide, not a plain fade. The composite carries the Fade first.
+    assert isinstance(spec.enter.pattern, CompositePattern)
+    assert isinstance(spec.enter.pattern.first, FadePattern)
+    assert isinstance(spec.enter.pattern.second, SlidePattern)
+    # Fade-through: incoming fades in over the later part of the transition.
+    assert spec.enter.pattern.first.start_alpha == 0.0
+    assert spec.enter.pattern.first.end_alpha == 1.0
+    assert spec.enter.pattern.first.start_progress > 0.0
+    # Incoming slides in from the right (positive x) toward rest (0).
+    assert spec.enter.pattern.second.start_x > 0.0
+    assert spec.enter.pattern.second.end_x == 0.0
 
-    assert spec.enter.pattern.start_alpha == 0.0
-    assert spec.enter.pattern.end_alpha == 1.0
+    # Direction-aware: backward (pop) variants are populated for the default.
+    assert isinstance(spec.enter_back, TransitionDefinition)
+    assert isinstance(spec.exit_back, TransitionDefinition)
 
 
 def test_page_spec_custom():
@@ -71,6 +81,9 @@ def test_page_spec_custom():
     spec = MaterialTransitions.page(enter=custom)
 
     assert spec.enter is custom
-    # Exit should be default
-    assert isinstance(spec.exit_.pattern, FadePattern)
-    assert spec.exit_.pattern.start_alpha == 1.0
+    # Exit should be the default Shared Axis Z outgoing (Fade | Scale).
+    assert isinstance(spec.exit_.pattern, CompositePattern)
+    assert isinstance(spec.exit_.pattern.first, FadePattern)
+    assert spec.exit_.pattern.first.start_alpha == 1.0
+    # A custom forward enter with no enter_back is mirrored onto pop.
+    assert spec.enter_back is custom

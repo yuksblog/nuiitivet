@@ -7,7 +7,11 @@ import logging
 from typing import Any
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.navigation.layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
+from nuiitivet.navigation.layer_composer import (
+    NavigationLayerComposer,
+    NavigationLayerCompositionContext,
+    NavigationTransitionKind,
+)
 from nuiitivet.navigation.transition_spec import TransitionPhase, TransitionSpec
 from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
@@ -112,12 +116,14 @@ class MaterialNavigationVisualMapper:
         *,
         phase: TransitionPhase,
         progress: float,
+        kind: NavigationTransitionKind | None = None,
     ) -> NavigationVisualState:
         """Convert lifecycle inputs to Material visual parameters."""
         visual = resolve_material_transition_visual_spec(
             transition_spec,
             phase=phase,
             progress=progress,
+            kind=kind,
         )
         return NavigationVisualState(
             content_opacity=float(visual.content_opacity),
@@ -140,11 +146,13 @@ class MaterialNavigationLayerComposer(NavigationLayerComposer):
             context.from_transition_spec,
             phase=context.from_phase,
             progress=context.progress,
+            kind=context.kind,
         )
         to_state = self._mapper.map_lifecycle(
             context.to_transition_spec,
             phase=context.to_phase,
             progress=context.progress,
+            kind=context.kind,
         )
         self._paint_with_visual_state(
             context.canvas,
