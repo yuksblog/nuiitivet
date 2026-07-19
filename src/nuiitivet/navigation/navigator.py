@@ -18,6 +18,14 @@ from .transition_spec import EmptyTransitionSpec, TransitionPhase
 
 _logger = logging.getLogger(__name__)
 
+# Transition phase → spec attribute name. The exit definition is stored under
+# ``exit_`` (``exit`` is a builtin), so a bare ``getattr(phase.value)`` would
+# miss it and fall back to the engine default motion.
+_TRANSITION_PHASE_ATTR: dict[TransitionPhase, str] = {
+    TransitionPhase.ENTER: "enter",
+    TransitionPhase.EXIT: "exit_",
+}
+
 # Lets ``root()``/``of()`` keep the concrete subclass type, so that
 # ``MaterialNavigator.root()`` is a ``MaterialNavigator`` and not a ``Navigator``.
 NavigatorT = TypeVar("NavigatorT", bound="Navigator")
@@ -299,9 +307,25 @@ class Navigator(ComposableWidget):
     def _is_animated_transition(self, route: Route) -> bool:
         return not isinstance(route.transition_spec, EmptyTransitionSpec)
 
+    def _on_transition_progress(self, value: float) -> None:
+        # ``progress`` is a plain attribute, not a widget-bound observable, so
+        # mutating it never requests a frame. Repaint every tween step so the
+        # transition fades continuously instead of only at its endpoints.
+        transition = self._transition
+        if transition is None:
+            return
+        transition.progress = float(value)
+        self.invalidate()
+
     def _get_motion(self, route: Route, phase: TransitionPhase) -> Any | None:
+        # Phase → spec attribute. The exit definition lives under ``exit_``
+        # (trailing underscore), so ``phase.value`` ("exit") would miss. Mirror
+        # the mapping in ``material/transition_visual_spec.py``.
+        attr = _TRANSITION_PHASE_ATTR.get(phase)
+        if attr is None:
+            return None
         try:
-            definition = getattr(route.transition_spec, phase.value, None)
+            definition = getattr(route.transition_spec, attr, None)
             if definition is None:
                 return None
             return getattr(definition, "motion", None)
@@ -338,7 +362,7 @@ class Navigator(ComposableWidget):
             self._transition_handle = self._transition_engine.start(
                 start=0.0,
                 target=1.0,
-                apply=lambda v: setattr(self._transition, "progress", float(v)) if self._transition else None,
+                apply=self._on_transition_progress,
                 on_complete=self._finish_transition,
                 motion=self._get_motion(route, TransitionPhase.ENTER),
             )
@@ -519,7 +543,7 @@ class Navigator(ComposableWidget):
             self._transition_handle = self._transition_engine.start(
                 start=1.0,
                 target=0.0,
-                apply=lambda v: setattr(self._transition, "progress", float(v)) if self._transition else None,
+                apply=self._on_transition_progress,
                 on_complete=self._finish_pop,
                 motion=self._get_motion(outgoing, TransitionPhase.EXIT),
             )
