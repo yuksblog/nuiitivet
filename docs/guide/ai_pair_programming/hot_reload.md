@@ -118,5 +118,4 @@ debug session is never torn down.
 
 ## See also
 
-- [Async & Threading](threading.md) — why reloads are applied on the UI thread.
-- Design record: `docs/design/HOT_RELOAD.md`.
+- [AI pair-programming](index.md) — the edit → see → act loop hot reload drives.

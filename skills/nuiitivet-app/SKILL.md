@@ -86,7 +86,7 @@ Rules that keep hot reload working:
 - Launch for development with `python -m nuiitivet.dev path/to/app.py` (or
   `--module pkg.app`); production launch (`App.run()`) is unchanged.
 
-See the [Hot Reload guide](https://yuksblog.github.io/nuiitivet/guide/advanced/hot_reload/).
+See the [Hot Reload guide](https://yuksblog.github.io/nuiitivet/guide/ai_pair_programming/hot_reload/).
 
 ## Widget catalog — reach for the right one
 

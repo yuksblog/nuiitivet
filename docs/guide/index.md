@@ -32,8 +32,14 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 - [Window](window/index.md)
 - [Modifiers](modifiers/index.md)
 
+## AI pair-programming
+
+- [Overview](ai_pair_programming/index.md)
+- [Hot Reload](ai_pair_programming/hot_reload.md)
+- [Dev Bridge MCP](ai_pair_programming/dev_bridge_mcp.md)
+- [The `nuiitivet-app` skill](ai_pair_programming/nuiitivet_app_skill.md)
+
 ## Advanced
 
 - [Async & Threading](advanced/threading.md)
 - [Interaction](advanced/interaction_region.md)
-- [Hot Reload](advanced/hot_reload.md)

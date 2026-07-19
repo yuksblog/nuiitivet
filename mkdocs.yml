@@ -183,8 +183,12 @@ nav:
           - Material Widgets: guide/design-system/material_widgets.md
           - Theme Extensions: guide/design-system/theme_extensions.md
           - Font Configuration: guide/design-system/font_configuration.md
+      - AI pair-programming:
+          - Overview: guide/ai_pair_programming/index.md
+          - Hot Reload: guide/ai_pair_programming/hot_reload.md
+          - Dev Bridge MCP: guide/ai_pair_programming/dev_bridge_mcp.md
+          - The nuiitivet-app skill: guide/ai_pair_programming/nuiitivet_app_skill.md
       - Advanced:
-          - Hot Reload: guide/advanced/hot_reload.md
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md
       - Packaging:

@@ -242,16 +242,42 @@ class CounterApp(nv.ComposableWidget):
         )
 
 def main():
-    # Create counter app
-    counter_app = CounterApp()
-    
-    # Start with App
-    app = nv.App(content=counter_app)
+    # Start with App (pass the class as a factory so hot reload can rebuild it)
+    app = nv.App(content=CounterApp)
     app.run()
 
 if __name__ == "__main__":
     main()
 ```
+
+### 2.4 AI pair-programming
+
+Once your app runs, you develop it in a live loop built for pairing with an AI
+assistant. Launch with the dev runner instead of running the module directly:
+
+```bash
+python -m nuiitivet.dev path/to/app.py
+```
+
+Now you and the assistant work on the same running window:
+
+- **You watch the assistant work in real time.** Every edit it makes and every
+  screen it drives shows up live — the window rebuilds in place on each save and
+  your `Observable` state survives, and even a screen you are stepping through
+  under the VSCode **F5** debugger keeps updating. No restart, no lost state.
+- **Your turn is hands-on too.** You direct the assistant, but you can just as
+  well edit code and manually test the screen yourself in the same session.
+- **The assistant sees what *you* did.** Beyond your instructions, it can read
+  which files you changed and which UI actions you took, so you stay on the same
+  page and the conversation gets sharper.
+
+Three pieces make this work:
+
+- **Hot reload**: real-time screen updates.
+- **MCP Dev Bridge**: lets the assistant read and drive the running app, and read your edit/interaction logs.
+- **`nuiitivet-app` skill**: an AI skill that keeps the assistant's code idiomatic.
+
+See [AI pair-programming](docs/guide/ai_pair_programming/index.md) for the full workflow.
 
 ## 3. Documentation
 
@@ -288,6 +314,7 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 | Guide | Summary |
 | ----- | ------- |
 | [Async & Threading](docs/guide/advanced/threading.md) | Safe UI updates from background work. |
+| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Live edit-save-see, the MCP dev bridge, and the `nuiitivet-app` skill. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
 ## 4. Known Limitations
