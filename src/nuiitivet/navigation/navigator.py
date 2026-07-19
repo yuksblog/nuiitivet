@@ -33,6 +33,26 @@ class _NavTransition:
     progress: float
 
 
+@dataclass(slots=True)
+class _PushDescriptor:
+    """A restorable record of one declaratively pushed route (#378).
+
+    Captures the intent *value* pushed via :meth:`Navigator.push` together with
+    its type's fully-qualified name. The qualname — not the class identity — is
+    what a hot reload matches against, because reloading redefines the intent
+    class so the live ``type(intent)`` no longer equals the freshly registered
+    route-table key (§8 of ``docs/design/HOT_RELOAD.md``).
+    """
+
+    intent: Any
+    type_qualname: str
+
+
+def _type_qualname(tp: type[Any]) -> str:
+    """Fully-qualified name of ``tp`` (``module.QualName``), stable across reload."""
+    return f"{tp.__module__}.{tp.__qualname__}"
+
+
 class _DefaultNavigationLayerComposer:
     """Fallback core composer with minimal, design-agnostic rendering."""
 
@@ -92,6 +112,12 @@ class Navigator(ComposableWidget):
         self._pending_pop_requests: int = 0
         self._exiting_route: Route | None = None
         self._layer_composer: NavigationLayerComposer = layer_composer or _DefaultNavigationLayerComposer()
+        # Ordered restore descriptors for routes added via ``push`` (not the
+        # initial construction stack, which a hot reload rebuilds from the
+        # factory). One entry per pushed route: a ``_PushDescriptor`` for a
+        # declarative (intent) push, or ``None`` for an opaque, non-restorable
+        # push (a raw ``Route``/``Widget`` instance). See :meth:`snapshot_stack`.
+        self._restore_log: list[_PushDescriptor | None] = []
 
         initial_routes: list[Route] = []
         if screen is not None:
@@ -222,6 +248,40 @@ class Navigator(ComposableWidget):
             return resolved
         return self._route_from_widget(resolved)
 
+    def _descriptor_for_push(self, route_or_widget_or_intent: Route | Widget | Any) -> _PushDescriptor | None:
+        """Restore descriptor for a ``push`` input, or ``None`` if non-restorable.
+
+        A ``Route``/``Widget`` instance is opaque — it was built from code that a
+        reload replaces, with no factory to rebuild it against — so it is recorded
+        as ``None``. An intent is declarative: it is captured by value plus its
+        type's qualified name so the stack can be replayed after reload (#378).
+        """
+        if isinstance(route_or_widget_or_intent, (Route, Widget)):
+            return None
+        intent = route_or_widget_or_intent
+        return _PushDescriptor(intent=intent, type_qualname=_type_qualname(type(intent)))
+
+    def _resolve_descriptor_to_route(self, descriptor: _PushDescriptor) -> Route | None:
+        """Rebuild a route from a restore descriptor against the current route table.
+
+        Matches by the intent's qualified name rather than class identity so a
+        descriptor captured before a reload resolves against the intent classes
+        registered on the freshly built navigator. Returns ``None`` when no route
+        is registered for that qualified name (route table changed under the
+        stack), which the caller treats as a restore stopping point.
+        """
+        factory = None
+        for intent_type, builder in self._intent_routes.items():
+            if _type_qualname(intent_type) == descriptor.type_qualname:
+                factory = builder
+                break
+        if factory is None:
+            return None
+        resolved = factory(descriptor.intent)
+        if isinstance(resolved, Route):
+            return resolved
+        return self._route_from_widget(resolved)
+
     def _normalize_to_route(self, route_or_widget_or_intent: Route | Widget | Any) -> Route:
         """Normalize external push input to a Route.
 
@@ -255,6 +315,7 @@ class Navigator(ComposableWidget):
         previous_widget = None if previous_route is None else self._route_widget(previous_route)
 
         route = self._normalize_to_route(route_or_widget_or_intent)
+        self._restore_log.append(self._descriptor_for_push(route_or_widget_or_intent))
 
         self._stack.push(route)
         self._stack.mark_active(route)
@@ -286,6 +347,51 @@ class Navigator(ComposableWidget):
 
         self.mark_needs_layout()
         self.invalidate()
+
+    def snapshot_stack(self) -> list[_PushDescriptor | None]:
+        """Capture the restorable descriptors of routes pushed onto this navigator.
+
+        Returns an ordered list, one entry per route added via :meth:`push`
+        (bottom to top): a :class:`_PushDescriptor` for a declarative (intent)
+        push, or ``None`` for an opaque, non-restorable push. Routes from the
+        initial construction stack are excluded — a hot reload rebuilds those
+        from the factory. Pair with :meth:`restore_stack` across a reload (#378).
+        """
+        return list(self._restore_log)
+
+    def restore_stack(self, descriptors: Sequence[_PushDescriptor | None]) -> int:
+        """Replay pushed routes from descriptors onto the freshly built navigator.
+
+        Each restorable descriptor is resolved against the current route table
+        (by intent qualified name) and pushed without animation, rebuilding the
+        stack the author had before a reload. Replay stops at the first entry
+        that cannot be restored — an opaque (``None``) push or an intent whose
+        route is no longer registered — leaving the remainder collapsed, the
+        documented degradation analogous to unmatched ``Observable`` paths.
+
+        Args:
+            descriptors: The list returned by :meth:`snapshot_stack` before the
+                reload rebuilt the tree.
+
+        Returns:
+            The number of routes restored (pushed) onto the stack.
+        """
+        restored = 0
+        for descriptor in descriptors:
+            if descriptor is None:
+                break
+            route = self._resolve_descriptor_to_route(descriptor)
+            if route is None:
+                break
+            self._restore_log.append(descriptor)
+            self._stack.push(route)
+            self._stack.mark_active(route)
+            self._route_widget(route)
+            restored += 1
+        if restored:
+            self.mark_needs_layout()
+            self.invalidate()
+        return restored
 
     def pop(self) -> None:
         asyncio.create_task(self.request_back())
@@ -446,6 +552,11 @@ class Navigator(ComposableWidget):
 
         widget = route.build_widget()
         self._stack.complete_exit(route)
+        # Keep the restore log aligned with the committed stack. A pop can dip
+        # below the pushed routes into the initial construction stack (which is
+        # not logged); guard so those pops leave the empty log untouched.
+        if self._restore_log:
+            self._restore_log.pop()
         try:
             self.remove_child(widget)
         except Exception:

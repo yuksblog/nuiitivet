@@ -61,10 +61,14 @@ def _patched_reload(
 
     ``reload`` / ``reload_side_effect`` control ``reload_user_modules``;
     ``restore`` / ``restore_side_effect`` control ``restore_observables``. The
-    error-overlay hooks are stubbed so the tree is never actually touched.
+    error-overlay hooks are stubbed so the tree is never actually touched, and
+    the navigation snapshot/restore glue is stubbed so it never reads the
+    process-global ``Navigator`` root.
     """
     with contextlib.ExitStack() as stack:
         stack.enter_context(mock.patch.object(controller_mod, "snapshot_observables", return_value={}))
+        stack.enter_context(mock.patch.object(controller_mod, "snapshot_navigation", return_value=[]))
+        stack.enter_context(mock.patch.object(controller_mod, "restore_navigation", return_value=0))
         stack.enter_context(mock.patch.object(controller_mod, "clear_reload_error"))
         stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
         # No real user modules to hash: change detection is exercised separately.
@@ -100,6 +104,27 @@ def test_successful_reload_records_modules() -> None:
     assert len(events) == 1
     assert events[0].outcome == "success"
     assert events[0].modules == ("pkg.a", "pkg.b")
+
+
+def test_successful_reload_replays_navigation_snapshot() -> None:
+    """The nav stack captured before the swap is replayed after the commit (#378)."""
+    controller = _make_controller(None)
+    result = ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)
+    sentinel = [object(), object()]
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(mock.patch.object(controller_mod, "snapshot_observables", return_value={}))
+        stack.enter_context(mock.patch.object(controller_mod, "clear_reload_error"))
+        stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
+        stack.enter_context(mock.patch.object(controller_mod, "identify_user_modules", return_value={}))
+        stack.enter_context(mock.patch.object(controller_mod, "reload_user_modules", return_value=result))
+        stack.enter_context(mock.patch.object(controller_mod, "restore_observables", return_value=0))
+        stack.enter_context(mock.patch.object(controller_mod, "snapshot_navigation", return_value=sentinel))
+        restore = stack.enter_context(mock.patch.object(controller_mod, "restore_navigation", return_value=2))
+
+        controller._do_reload()
+
+    restore.assert_called_once_with(sentinel)
 
 
 def test_failed_reload_records_error_traceback() -> None:

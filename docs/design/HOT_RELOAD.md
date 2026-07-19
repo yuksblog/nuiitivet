@@ -197,12 +197,13 @@ chrome, theme — is preserved. `App` exposes two primitives:
 On a save detected by the file watcher, the runner (on the UI thread):
 
 1. **Snapshot** every mutable `Observable` value in the live tree, keyed by a
-   structural path (§7.4).
+   structural path (§7.4), and the declarative navigation stack (§7.5).
 2. **Reload** the user's modules in dependency order (§7.1–7.2) and re-fetch the
    factory (§7.3).
 3. **Rebuild** the content root (`_rebuild_content_root`), which also resets the
    global Navigator/Overlay roots.
-4. **Restore** snapshot values into the matching observables of the new tree.
+4. **Restore** snapshot values into the matching observables of the new tree and
+   replay the navigation stack onto the rebuilt navigator (§7.5).
 5. **Commit** the new root (`_commit_content_root`) and repaint.
 
 `main()` is never called in this sequence. Every widget and `Observable` is
@@ -262,6 +263,33 @@ index + widget type; the trailing segment is the attribute name. Restore walks
 the rebuilt tree the same way and writes each snapshot value back into the
 observable at the matching path.
 
+### 7.5 Navigation stack restore
+
+The rebuilt tree starts a fresh `Navigator` at its initial route, so pushed
+routes would be lost. For **declarative** navigation the stack is instead
+snapshotted and replayed, mirroring the `Observable` restore above (#378):
+
+- The navigator logs a **restore descriptor** for every route added via `push`.
+  A declarative push — `push(SomeIntent(...))` against a
+  `Navigator.intents(...)` / `Navigator.routes(...)` route table — records the
+  intent *value* plus its type's fully-qualified name. An imperative push of a
+  raw `Route`/`Widget` instance records an **opaque** marker: it was built from
+  the old code with no factory to rebuild it, so it is not restorable (the same
+  instance-vs-factory constraint as the root, §7.3). The log tracks only pushed
+  routes; the initial construction stack is rebuilt by the factory.
+- Before the swap, `snapshot_navigation()` reads the root navigator's log. After
+  the commit, `restore_navigation()` replays each descriptor onto the freshly
+  built navigator, resolving the intent **by qualified name** — reloading
+  redefines the intent class, so the live `type(intent)` no longer equals the
+  new route-table key; matching on the qualified name bridges the old value to
+  the new builder. Each restored route is pushed without animation.
+- Replay **stops at the first non-restorable entry** — an opaque push, or an
+  intent whose route is no longer registered — leaving the rest collapsed. This
+  is the documented degradation, analogous to unmatched `Observable` paths.
+- Open overlays/dialogs are out of scope and keep resetting (§11): they are
+  transient UI bound to an in-flight awaited coroutine, and dropping that
+  continuation is the safe default (Flutter behaves the same).
+
 When the tree structure is unchanged (the common "tweak a padding" case) every
 path matches and state is fully restored. A widget given a `key` — the same
 reconciliation identity the dev action bridge targets (#375), set via
@@ -309,15 +337,15 @@ successful reload.
   across structural changes (reorder, sibling insertion), landed in
   [#375](https://github.com/yuksblog/nuiitivet/issues/375). Keyless widgets still
   lose state when their position changes — add a `key` to opt into durable state.
-- **Navigation stack and open overlays reset.** A reload rebuilds a fresh
-  `Navigator` at its initial route and a fresh `Overlay`, so pushed routes and
-  open dialogs are dropped. Overlays are transient and bound to an in-flight
-  awaited coroutine, so resetting them is the intended, safe default. Restoring
-  the navigation stack is feasible for declarative (intent / route-table)
-  navigation and is tracked in
-  [#378](https://github.com/yuksblog/nuiitivet/issues/378); imperative
+- **Declarative navigation stack is restored; imperative pushes and open
+  overlays reset.** A reload replays the **declarative** navigation stack —
+  routes pushed as intents against a route table — onto the rebuilt navigator
+  (§7.5, [#378](https://github.com/yuksblog/nuiitivet/issues/378)). Imperative
   instance-based `push(Screen())` is fundamentally unrestorable (same
-  instance-vs-factory constraint as the root).
+  instance-vs-factory constraint as the root); it is recorded as opaque and
+  stops the replay, leaving routes above it collapsed. A fresh `Overlay` is
+  rebuilt too, so open dialogs are dropped — they are transient and bound to an
+  in-flight awaited coroutine, so resetting them is the intended, safe default.
 - **Module-level state is not restored** (§7.4).
 - **The interaction journal (§12) records only the action-verb primitives.** It
   deliberately mirrors `click` / `key` / `text` and leaves higher-level *semantic*
