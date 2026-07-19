@@ -7,11 +7,12 @@ the main-thread-only rule for tree mutation (``docs/design/THREADING_MODEL.md``)
 
 The reload sequence (§8 of HOT_RELOAD.md):
 
-1. snapshot ``Observable`` state from the live tree;
+1. snapshot ``Observable`` state and the declarative navigation stack from the
+   live tree;
 2. reload user modules in dependency order and re-fetch the factory (§9.6/§9.1);
 3. rebuild the content root (resets Navigator/Overlay roots, unmounts the old
    tree on commit);
-4. restore snapshot state into the new tree;
+4. restore snapshot state and replay the navigation stack into the new tree;
 5. repaint.
 
 On any error during 2–3 the previous tree is kept and the error is surfaced
@@ -30,6 +31,7 @@ from typing import TYPE_CHECKING, Iterable, Optional, cast
 
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
+from .navigation_snapshot import restore_navigation, snapshot_navigation
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
 from .watcher import FileWatcher
@@ -101,6 +103,9 @@ class HotReloadController:
         # every recorded event -- success or failure -- can carry it.
         changed = self._detect_changed_modules()
         snapshot = snapshot_observables(app.root)
+        # Capture the declarative navigation stack before the rebuild resets the
+        # global Navigator root to a fresh instance at its initial route (#378).
+        nav_snapshot = snapshot_navigation()
 
         try:
             result = reload_user_modules(self._project_root, old_factory=self._factory)
@@ -119,6 +124,7 @@ class HotReloadController:
         try:
             app._commit_content_root(new_root)
             restored = restore_observables(app.root, snapshot)
+            restored_routes = restore_navigation(nav_snapshot)
         except Exception:
             # The new root is already committed; report but stay alive.
             tb = traceback.format_exc()
@@ -133,7 +139,7 @@ class HotReloadController:
             self._journal.record_success(result.reloaded, changed=changed)
         print(
             f"[nuiitivet.dev] reloaded {len(result.reloaded)} module(s), "
-            f"restored {restored} value(s).",
+            f"restored {restored} value(s), {restored_routes} route(s).",
             file=sys.stderr,
             flush=True,
         )
