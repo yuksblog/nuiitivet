@@ -2,7 +2,7 @@
 
 > Status: Implemented
 > Related: [#359](https://github.com/yuksblog/nuiitivet/issues/359)
-> User guide: [docs/guide/advanced/hot_reload.md](../guide/advanced/hot_reload.md)
+> User guide: [docs/guide/ai_pair_programming/hot_reload.md](../guide/ai_pair_programming/hot_reload.md)
 
 ## 1. Goal
 
