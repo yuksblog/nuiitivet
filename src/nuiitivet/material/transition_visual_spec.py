@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from nuiitivet.navigation.layer_composer import NavigationTransitionKind
 from nuiitivet.navigation.transition_spec import (
     EmptyTransitionSpec,
     TransitionPhase,
@@ -29,8 +30,19 @@ def resolve_material_transition_visual_spec(
     *,
     phase: TransitionPhase,
     progress: float,
+    kind: NavigationTransitionKind | None = None,
 ) -> MaterialTransitionVisualSpec:
-    """Resolve material visual parameters from a lifecycle transition token."""
+    """Resolve material visual parameters from a lifecycle transition token.
+
+    Args:
+        transition_spec: The lifecycle token to resolve.
+        phase: Whether the widget is entering or exiting this frame.
+        progress: Normalized progress in ``[0.0, 1.0]``.
+        kind: Navigation direction. On ``"pop"`` the backward-direction
+            definitions (``enter_back`` / ``exit_back``) are used when present,
+            so directional patterns such as Shared Axis (Z) reverse correctly
+            instead of replaying the forward motion.
+    """
     p = _clamp01(progress)
 
     if isinstance(transition_spec, EmptyTransitionSpec):
@@ -52,11 +64,17 @@ def resolve_material_transition_visual_spec(
             barrier_opacity=None,
         )
 
-    # Resolve enter/exit definition
+    # Resolve enter/exit definition. On a backward navigation (pop) prefer the
+    # direction-specific variant so reversible patterns (Shared Axis X) play in
+    # reverse; fall back to the forward definition when no back variant is set
+    # (symmetric transitions: dialog, sheets, snackbar).
+    is_back = kind == "pop"
     if phase is TransitionPhase.ENTER:
-        definition = transition_spec.enter
+        back = transition_spec.enter_back
+        definition = back if is_back and back is not None else transition_spec.enter
     elif phase is TransitionPhase.EXIT:
-        definition = transition_spec.exit_
+        back = transition_spec.exit_back
+        definition = back if is_back and back is not None else transition_spec.exit_
     else:
         definition = None
 

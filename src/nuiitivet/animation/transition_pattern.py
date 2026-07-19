@@ -68,14 +68,38 @@ class CompositePattern:
 
 
 class FadePattern:
-    """Controls opacity based on progress."""
+    """Controls opacity based on progress.
 
-    def __init__(self, start_alpha: float = 0.0, end_alpha: float = 1.0) -> None:
+    The optional ``start_progress`` / ``end_progress`` window confines the fade
+    to a sub-range of the overall progress, holding ``start_alpha`` before it and
+    ``end_alpha`` after it. This expresses the MD3 "fade through" timing, where
+    the outgoing element fades out over the first part of the transition and the
+    incoming element fades in over the later part, so the two never sit at half
+    opacity simultaneously. The defaults (``0.0`` → ``1.0``) keep a plain linear
+    fade over the full progress.
+    """
+
+    def __init__(
+        self,
+        start_alpha: float = 0.0,
+        end_alpha: float = 1.0,
+        *,
+        start_progress: float = 0.0,
+        end_progress: float = 1.0,
+    ) -> None:
         self.start_alpha = start_alpha
         self.end_alpha = end_alpha
+        self.start_progress = start_progress
+        self.end_progress = end_progress
 
     def resolve(self, progress: float) -> TransitionVisuals:
-        opacity = self.start_alpha + (self.end_alpha - self.start_alpha) * progress
+        span = self.end_progress - self.start_progress
+        if span <= 0.0:
+            local_t = 1.0 if progress >= self.end_progress else 0.0
+        else:
+            local_t = (progress - self.start_progress) / span
+            local_t = max(0.0, min(1.0, local_t))
+        opacity = self.start_alpha + (self.end_alpha - self.start_alpha) * local_t
         return TransitionVisuals(opacity=opacity)
 
     def __or__(self, other: TransitionPattern) -> TransitionPattern:

@@ -23,6 +23,24 @@ def test_fade_pattern_resolve():
     assert vis_end.opacity == 0.8
 
 
+def test_fade_pattern_progress_window():
+    """A fade confined to a sub-range holds before/after and interpolates within."""
+    # Fade out over the first 40% of progress (MD3 fade-through style).
+    pattern = FadePattern(start_alpha=1.0, end_alpha=0.0, start_progress=0.0, end_progress=0.4)
+
+    assert pattern.resolve(0.0).opacity == 1.0
+    assert abs(pattern.resolve(0.2).opacity - 0.5) < 1e-6
+    assert pattern.resolve(0.4).opacity == 0.0
+    # Held at the end value past the window.
+    assert pattern.resolve(0.7).opacity == 0.0
+
+    # Fade in over the last 60% of progress.
+    fade_in = FadePattern(start_alpha=0.0, end_alpha=1.0, start_progress=0.4, end_progress=1.0)
+    assert fade_in.resolve(0.3).opacity == 0.0  # held transparent before the window
+    assert fade_in.resolve(0.4).opacity == 0.0
+    assert fade_in.resolve(1.0).opacity == 1.0
+
+
 def test_slide_pattern_resolve():
     pattern = SlidePattern(start_x=10, start_y=20, end_x=30, end_y=40)
 
