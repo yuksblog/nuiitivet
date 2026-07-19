@@ -1114,7 +1114,7 @@ def _draw_raster_frame(app: Any, skia: Any) -> bool:
         render_snapshot = getattr(app, "_render_snapshot", None)
         if callable(render_snapshot):
             scale = max(1.0, float(getattr(app, "_scale", 1.0)))
-            snapshot = render_snapshot(scale=scale)
+            snapshot = render_snapshot(scale=scale, for_display=True)
 
             # Fast path: avoid PNG encode/decode and upload raw pixels directly.
             # skia.Image.tobytes() returns RGBA (top-to-bottom).

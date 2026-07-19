@@ -167,6 +167,7 @@ def click(
     ix, iy = int(round(px)), int(round(py))
     app._dispatch_mouse_press(ix, iy, button=button)
     app._dispatch_mouse_release(ix, iy, button=button)
+    _visualize_click(app, px, py, target_info)
     settle(app)
     return {"clicked": target_info, "x": ix, "y": iy}
 
@@ -178,6 +179,7 @@ def type_text(app: Any, text: str) -> dict[str, Any]:
     focused the app has nowhere to route the text and ``handled`` is ``False``.
     """
     handled = bool(app._dispatch_text(str(text)))
+    _visualize_type(app)
     settle(app)
     return {"typed": str(text), "handled": handled}
 
@@ -195,8 +197,64 @@ def press_key(app: Any, key: str, modifiers: Any = 0) -> dict[str, Any]:
         app._dispatch_key_release(name, mask)
     except Exception:
         logger.debug("press_key: key release dispatch failed", exc_info=True)
+    _visualize_key(app, name, mask)
     settle(app)
     return {"key": name, "modifiers": mask, "handled": handled}
+
+
+def _visualize_click(app: Any, px: float, py: float, target_info: dict[str, Any]) -> None:
+    """Record a human-only click marker (best-effort; never breaks the action)."""
+    try:
+        from . import action_overlay
+
+        target = target_info.get("key") if isinstance(target_info, dict) else None
+        action_overlay.record_click(app, px, py, target=target)
+    except Exception:
+        logger.debug("action: click visualization failed", exc_info=True)
+
+
+def _visualize_type(app: Any) -> None:
+    """Record a human-only type marker near the focused widget (best-effort).
+
+    The typed content is deliberately never passed to the overlay.
+    """
+    try:
+        from . import action_overlay
+
+        x, y = _focus_anchor(app)
+        action_overlay.record_type(app, x=x, y=y)
+    except Exception:
+        logger.debug("action: type visualization failed", exc_info=True)
+
+
+def _visualize_key(app: Any, key: str, mask: int) -> None:
+    """Record a human-only key marker rendering the modifier combo (best-effort)."""
+    try:
+        from . import action_overlay
+
+        action_overlay.record_key(app, key, mask)
+    except Exception:
+        logger.debug("action: key visualization failed", exc_info=True)
+
+
+def _focus_anchor(app: Any) -> tuple[Optional[float], Optional[float]]:
+    """Anchor point for the ``type`` marker on the focused widget, or ``(None, None)``.
+
+    The focus system reports the *editable text region* as the focused target,
+    whose rect already starts at the text origin (no left padding). So the caret
+    is placed just to the **left** of that origin -- before the first glyph --
+    rather than inset into it (which would land the caret in the middle of the
+    typed text) or at the geometric centre (a stray flash in a wide field).
+    """
+    target = getattr(app, "_focused_target", None)
+    if target is None:
+        return (None, None)
+    rect = getattr(target, "last_rect", None) or getattr(target, "global_layout_rect", None)
+    if rect is None or len(rect) < 4:
+        return (None, None)
+    x, y, w, h = rect
+    # Sit the caret just left of the text origin so it never overlaps the glyphs.
+    return (x - 6.0, y + h / 2.0)
 
 
 def _no_match_message(key: Optional[str], label: Optional[str]) -> str:
