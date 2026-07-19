@@ -161,6 +161,8 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
             except Exception:
                 exception_once(logger, "gpu_frame_chrome_border_exc", "Failed to draw CustomChrome border")
 
+    _paint_dev_action_overlay(app, canvas)
+
     # Cache this fully-painted frame so a later surface-loss redraw can re-blit it
     # instead of walking the tree again. The snapshot captures the surface at its
     # physical (device-pixel) resolution regardless of the canvas scale transform.
@@ -170,6 +172,21 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
     _flush_gpu(app, gr_context)
     app._dirty = False
     return True
+
+
+def _paint_dev_action_overlay(app: Any, canvas: Any) -> None:
+    """Paint the human-only dev action overlay onto the live frame.
+
+    Only the on-screen frame paths call this; the off-screen ``screenshot``
+    render deliberately does not, so markers never enter the assistant's
+    perception. A no-op (import guarded) when the dev overlay is unavailable.
+    """
+    try:
+        from nuiitivet.dev import action_overlay
+
+        action_overlay.paint_markers(app, canvas, int(app.width), int(app.height))
+    except Exception:
+        exception_once(logger, "gpu_frame_dev_action_overlay_exc", "dev action overlay paint raised")
 
 
 def _store_frame_cache(app: Any, surf: Any, phys_w: int, phys_h: int) -> None:

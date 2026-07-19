@@ -90,6 +90,39 @@ between them. Two pull-able logs close that gap.
   never enters it** — a bare printable keystroke is dropped and a burst of typing
   collapses to one marker, so field text never leaks.
 
+## Watch the assistant act (on-screen)
+
+`interaction_log` closes the loop in one direction — it lets the assistant catch
+up on what *you* did. The **action overlay** closes the reverse direction: it
+lets *you* see what the *assistant* is doing. When the assistant drives the app,
+hot reload makes the screen update on its own, but without the overlay you cannot
+tell at a glance which action caused it. The overlay draws a short-lived,
+human-only marker for each verb:
+
+- **`click`** — a pulse at the resolved target, plus the target's
+  `key` / `label`. A raw-coordinate click shows a bare point.
+- **`type`** — a caret marker near the focused widget. The **typed content is
+  never drawn** (consistent with `interaction_log`, and so it never leaks into a
+  screenshot).
+- **`key`** — the keystroke, rendered as a human-readable combo (e.g.
+  `Ctrl+Enter`), in the corner caption stack.
+
+Each marker fades on its own timeline, so actions that fire in quick succession
+(a scripted CLI loop) accumulate into a readable **trail** rather than replacing
+one another. An ordered caption stack in the bottom-left corner keeps the
+sequence legible even when the spatial markers overlap.
+
+The overlay is **for the human only** and never enters the assistant's
+perception:
+
+- Markers live outside the widget tree, so `describe_tree` never sees them.
+- They are painted only on the live on-screen frame and are **excluded from
+  `screenshot`**, so the assistant never sees its own residue nor pays image
+  tokens for it.
+
+It is on by default in a dev session and is a no-op under headless / automated
+runs. Set `NUIITIVET_DEV_ACTION_OVERLAY=0` to turn it off.
+
 ## No MCP host? Use the CLI
 
 Some environments have no MCP host. The same primitives are available as one-shot

@@ -828,11 +828,18 @@ class App:
             raise RuntimeError("encodeToData() returned None (failed to encode image)")
         return bytes(data)
 
-    def _render_snapshot(self, scale: float = 1.0):
+    def _render_snapshot(self, scale: float = 1.0, *, for_display: bool = False):
         """Create a Skia image snapshot for the current root at given scale.
 
         Returns an image object. Raises RuntimeError if Skia is missing or
         snapshot/encoding fails.
+
+        Args:
+            scale: Device-pixel scale factor for the raster surface.
+            for_display: When ``True`` this snapshot is being drawn to the live
+                on-screen window (the CPU/raster frame path), so the human-only
+                dev action overlay is painted over it. Screenshot callers leave
+                this ``False`` so the overlay never leaks into ``screenshot``.
         """
         try:
             flush_binding_invalidations()
@@ -872,6 +879,15 @@ class App:
             self._mount_paint_unmount(canvas, 0, 0, self.width, self.height)
         except Exception:
             exception_once(logger, "app_snapshot_mount_paint_unmount_exc", "_mount_paint_unmount raised")
+
+        # Human-only dev action overlay: on-screen frames only, never screenshots.
+        if for_display:
+            try:
+                from nuiitivet.dev import action_overlay
+
+                action_overlay.paint_markers(canvas=canvas, app=self, width=self.width, height=self.height)
+            except Exception:
+                exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
 
         img = surface.makeImageSnapshot()
         if img is None:
