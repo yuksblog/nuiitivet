@@ -2,7 +2,7 @@
 
 Run with hot reload::
 
-    python -m nuiitivet.dev samples/advanced/hot_reload_counter.py
+    python -m nuiitivet.dev samples/ai_pair_programming/hot_reload_counter.py
 
 Then edit ``build()`` below — tweak the padding, the label, the button style —
 and save. The UI updates in place and ``count`` keeps its value because it is an

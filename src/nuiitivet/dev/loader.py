@@ -115,9 +115,9 @@ def find_discovery_root(import_root: Path, *, env: Optional[dict[str, str]] = No
     The discovery file must live where a client can find it by searching *upward*
     from its cwd (like ``git`` finding ``.git``). Python's import root -- the
     ``sys.path`` entry a module loads from -- is the wrong anchor for this: a
-    nested bare script (``samples/advanced/app.py`` with no ``__init__.py``)
-    imports from its own directory, so the file would land *below* the repo root
-    and an upward search from there would never reach it.
+    nested bare script (``examples/demo/app.py`` with no ``__init__.py``)
+    imports from its own directory, so the file would land *below* the project
+    root and an upward search from there would never reach it.
 
     The anchor is resolved, in order:
 
