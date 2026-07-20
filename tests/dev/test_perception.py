@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from nuiitivet.dev.perception import describe_state, describe_tree, find_target
+import pytest
+
+from nuiitivet.dev.perception import (
+    describe_state,
+    describe_tree,
+    find_target,
+    match_condition,
+)
 from nuiitivet.observable.value import Observable
 
 
@@ -124,6 +131,51 @@ def test_find_target_no_match_or_no_query() -> None:
     assert find_target(root, key="missing") is None
     assert find_target(root) is None
     assert find_target(None, key="a") is None
+
+
+# --- match_condition (wait_for predicate) ---------------------------------
+
+
+def test_match_condition_present_by_key() -> None:
+    root = _Node(children=[_Node(key="spinner"), _Node(key="done")])
+    assert match_condition(root, key="done") is True
+    assert match_condition(root, key="missing") is False
+
+
+def test_match_condition_present_by_label() -> None:
+    root = _Node(children=[_Node(text="Loading…"), _Node(label="Saved")])
+    assert match_condition(root, label="Saved") is True
+    assert match_condition(root, label="Nope") is False
+
+
+def test_match_condition_text_is_substring() -> None:
+    root = _Node(children=[_Node(text="Loaded 42 rows")])
+    assert match_condition(root, text="42 rows") is True
+    assert match_condition(root, text="0 rows") is False
+
+
+def test_match_condition_absent_inverts() -> None:
+    root = _Node(children=[_Node(key="spinner")])
+    # present=False is satisfied only once the target is gone.
+    assert match_condition(root, key="spinner", present=False) is False
+    assert match_condition(root, key="gone", present=False) is True
+
+
+def test_match_condition_combines_fields() -> None:
+    # A node must satisfy every supplied field together.
+    root = _Node(children=[_Node(key="row", text="Alice"), _Node(key="row", text="Bob")])
+    assert match_condition(root, key="row", text="Bob") is True
+    assert match_condition(root, key="row", text="Carol") is False
+
+
+def test_match_condition_unwraps_observable_identity() -> None:
+    root = _Node(children=[_Node(label=_Obs("Ready"))])
+    assert match_condition(root, label="Ready") is True
+
+
+def test_match_condition_requires_a_field() -> None:
+    with pytest.raises(ValueError, match="needs one of"):
+        match_condition(_Node())
 
 
 # --- describe_state -------------------------------------------------------

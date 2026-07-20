@@ -33,11 +33,12 @@ import logging
 import os
 import queue
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from .action import TargetNotFoundError, click, press_key, type_text
+from .action import TargetNotFoundError, check_condition, click, press_key, type_text
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
@@ -60,6 +61,12 @@ _UI_CALL_TIMEOUT = 5.0
 
 # Type of a unit of UI-thread work: takes the App, returns anything.
 _UIJob = Callable[["App"], Any]
+
+# ``wait_for`` defaults: how long to keep polling before giving up, and how long
+# the worker thread sleeps between polls (leaving the UI thread free to advance
+# async work). Both are overridable per request.
+_WAIT_FOR_DEFAULT_TIMEOUT = 3.0
+_WAIT_FOR_DEFAULT_INTERVAL = 0.05
 
 
 class _UIThreadMarshaller:
@@ -151,6 +158,71 @@ def _parse_limit(query: str) -> Optional[int]:
         return None
 
 
+def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
+    """Poll a tree condition until it holds or the timeout elapses.
+
+    The loop lives here on the HTTP worker thread -- *not* inside a single
+    UI-thread job -- on purpose: each poll marshals a short
+    :func:`~nuiitivet.dev.action.check_condition` onto the UI thread (settle +
+    evaluate), then the worker ``sleep``s. Blocking the UI thread instead would
+    freeze the very async work (network, timers, animation ticks) the caller is
+    waiting on, so the condition could never become true. With no global
+    scheduler hook to await, polling a predicate is the portable signal for
+    "async settled" (#413).
+
+    Returns a structured result (never raises on timeout): ``satisfied`` is the
+    outcome, ``timed_out`` distinguishes a miss from a hit, and ``waited`` /
+    ``polls`` report the effort so the assistant can decide its next step.
+
+    Raises:
+        ValueError: If the condition is empty or the numeric params are invalid.
+    """
+    key = body.get("key")
+    label = body.get("label")
+    text = body.get("text")
+    present = bool(body.get("present", True))
+    if key is None and label is None and text is None:
+        raise ValueError("wait_for needs one of: key, label, text")
+    timeout = max(0.0, float(body.get("timeout", _WAIT_FOR_DEFAULT_TIMEOUT)))
+    interval = max(0.0, float(body.get("interval", _WAIT_FOR_DEFAULT_INTERVAL)))
+
+    condition = {"present": present}
+    for name, value in (("key", key), ("label", label), ("text", text)):
+        if value is not None:
+            condition[name] = value
+
+    started = time.monotonic()
+    deadline = started + timeout
+    polls = 0
+    while True:
+        polls += 1
+        satisfied = bool(
+            marshaller.call_on_ui_thread(
+                lambda app: check_condition(
+                    app, key=key, label=label, text=text, present=present
+                )
+            )
+        )
+        waited = time.monotonic() - started
+        if satisfied:
+            return {
+                "satisfied": True,
+                "timed_out": False,
+                "waited": round(waited, 3),
+                "polls": polls,
+                "condition": condition,
+            }
+        if time.monotonic() >= deadline:
+            return {
+                "satisfied": False,
+                "timed_out": True,
+                "waited": round(waited, 3),
+                "polls": polls,
+                "condition": condition,
+            }
+        time.sleep(interval)
+
+
 def _make_handler(
     marshaller: _UIThreadMarshaller,
     journal: Optional[ReloadJournal],
@@ -226,6 +298,10 @@ def _make_handler(
                     result = marshaller.call_on_ui_thread(
                         lambda app: press_key(app, body.get("key", ""), body.get("modifiers", 0))
                     )
+                elif path == "/wait_for":
+                    # Its own worker-thread poll loop; it marshals each poll onto
+                    # the UI thread rather than running as one UI-thread job.
+                    result = _run_wait_for(marshaller, body)
                 elif path == "/runtime_log/verbose":
                     # A process-wide de-dup toggle -- no UI-thread hop, no app
                     # state touched. Absent when the bridge runs without capture

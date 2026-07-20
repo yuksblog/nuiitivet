@@ -137,6 +137,59 @@ def find_target(root: Any, *, key: Optional[str] = None, label: Optional[str] = 
     return None
 
 
+def _node_matches(
+    node: Any,
+    *,
+    key: Optional[str],
+    label: Optional[str],
+    text: Optional[str],
+) -> bool:
+    """Return whether ``node`` satisfies every provided identity constraint.
+
+    ``key`` / ``label`` match the same way :func:`find_target` does (``key``
+    exactly, ``label`` against a visible identity). ``text`` matches when a
+    visible identity *contains* it as a substring (case-sensitive). Constraints
+    that are ``None`` are ignored, so all supplied ones must hold together.
+    """
+    if key is not None and _coerce_display(getattr(node, "key", None)) != key:
+        return False
+    identities = _identity_values(node)
+    if label is not None and label not in identities:
+        return False
+    if text is not None and not any(text in value for value in identities):
+        return False
+    return True
+
+
+def match_condition(
+    root: Any,
+    *,
+    key: Optional[str] = None,
+    label: Optional[str] = None,
+    text: Optional[str] = None,
+    present: bool = True,
+) -> bool:
+    """Evaluate a ``wait_for`` condition against ``root``'s mounted tree.
+
+    A condition names a target by identity (``key`` / ``label``) and/or by a
+    ``text`` substring of a visible identity; a node must satisfy every supplied
+    field (see :func:`_node_matches`). The condition is satisfied when such a
+    node exists (``present=True``, the default) or when none does
+    (``present=False`` -- e.g. waiting a spinner or loading overlay out).
+
+    Must be called on the UI thread (it reads live observable/layout state).
+
+    Raises:
+        ValueError: If none of ``key`` / ``label`` / ``text`` is given.
+    """
+    if key is None and label is None and text is None:
+        raise ValueError("a wait_for condition needs one of: key, label, text")
+    found = any(
+        _node_matches(node, key=key, label=label, text=text) for node in _iter_tree(root)
+    )
+    return found if present else not found
+
+
 def describe_tree(root: Any) -> dict[str, Any]:
     """Return a nested JSON-serializable description of ``root``'s mounted tree.
 

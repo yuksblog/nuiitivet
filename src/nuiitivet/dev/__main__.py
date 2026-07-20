@@ -14,6 +14,7 @@ Subcommands::
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev type "hello"            # type into the focused widget
     python -m nuiitivet.dev key enter --mod accel   # press a key (with modifiers)
+    python -m nuiitivet.dev wait-for --label Done    # wait for a tree condition
     python -m nuiitivet.dev mcp                      # serve the bridge as MCP tools
 
 ``run`` imports the user's app module under its real name (never ``__main__``,
@@ -54,6 +55,7 @@ _SUBCOMMANDS = frozenset(
         "click",
         "type",
         "key",
+        "wait-for",
         "runtime-log",
         "mcp",
     }
@@ -171,6 +173,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
     )
 
+    wait = subparsers.add_parser(
+        "wait-for",
+        help="Wait for a tree condition (key/label/text) after an async action.",
+    )
+    wait.add_argument("--key", help="Wait for the widget whose key matches.")
+    wait.add_argument("--label", help="Wait for a widget with this visible label/text/title.")
+    wait.add_argument("--text", help="Wait for this substring to appear in a visible identity.")
+    wait.add_argument(
+        "--absent",
+        action="store_true",
+        help="Wait for the target to disappear instead of appear (e.g. a spinner).",
+    )
+    wait.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="How long to poll before giving up (default 3.0).",
+    )
+
     subparsers.add_parser(
         "mcp",
         help="Serve the dev bridge as MCP tools over stdio (needs the 'mcp' extra).",
@@ -258,7 +280,7 @@ def _run(args: argparse.Namespace) -> int:
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
             "(describe-tree / describe-state / screenshot / click / type / key / "
-            "interaction-log / runtime-log).",
+            "wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
         try:
@@ -391,6 +413,25 @@ def _key(args: argparse.Namespace) -> int:
     return _run_action("key", lambda c: c.key(args.name, modifiers=args.mod))
 
 
+def _wait_for(args: argparse.Namespace) -> int:
+    if args.key is None and args.label is None and args.text is None:
+        print(
+            "[nuiitivet.dev] wait-for needs one of --key / --label / --text",
+            file=sys.stderr,
+        )
+        return 1
+    return _run_action(
+        "wait-for",
+        lambda c: c.wait_for(
+            key=args.key,
+            label=args.label,
+            text=args.text,
+            present=not args.absent,
+            timeout=args.timeout,
+        ),
+    )
+
+
 def _mcp(_args: argparse.Namespace) -> int:
     from .mcp_server import run as run_mcp
 
@@ -417,6 +458,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _type(args)
     if args.command == "key":
         return _key(args)
+    if args.command == "wait-for":
+        return _wait_for(args)
     if args.command == "mcp":
         return _mcp(args)
     return _run(args)

@@ -137,6 +137,24 @@ def test_key_subcommand_defaults_no_modifiers() -> None:
     assert args.mod == []
 
 
+def test_wait_for_subcommand_by_label() -> None:
+    args = _parse_args(["wait-for", "--label", "Done"])
+    assert args.command == "wait-for"
+    assert args.label == "Done"
+    assert args.key is None
+    assert args.text is None
+    assert args.absent is False
+    assert args.timeout is None
+
+
+def test_wait_for_subcommand_absent_and_timeout() -> None:
+    args = _parse_args(["wait-for", "--key", "spinner", "--absent", "--timeout", "5"])
+    assert args.command == "wait-for"
+    assert args.key == "spinner"
+    assert args.absent is True
+    assert args.timeout == 5.0
+
+
 def test_mcp_subcommand() -> None:
     args = _parse_args(["mcp"])
     assert args.command == "mcp"

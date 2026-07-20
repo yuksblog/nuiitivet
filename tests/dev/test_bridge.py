@@ -404,6 +404,91 @@ def test_bridge_click_missing_target_is_404(tmp_path: Path, dev_run: None) -> No
         bridge.shutdown()
 
 
+def test_bridge_wait_for_satisfied_immediately(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            result = client.wait_for(label="increment", timeout=1.0)
+            assert result["satisfied"] is True
+            assert result["timed_out"] is False
+            assert result["condition"] == {"present": True, "label": "increment"}
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_wait_for_times_out(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            result = client.wait_for(label="never", timeout=0.15, interval=0.02)
+            assert result["satisfied"] is False
+            assert result["timed_out"] is True
+            assert result["polls"] >= 1
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_wait_for_becomes_present(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+
+    def add_later() -> None:
+        time.sleep(0.1)
+        app.root.children.append(_FakeNode(label="Loaded"))
+
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            worker = threading.Thread(target=add_later)
+            worker.start()
+            result = client.wait_for(label="Loaded", timeout=2.0, interval=0.02)
+            worker.join()
+            assert result["satisfied"] is True
+            assert result["polls"] >= 2  # it did not pass on the first poll
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_wait_for_absent(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    app.root.children.append(_FakeNode(key="spinner"))
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+
+    def clear_later() -> None:
+        time.sleep(0.1)
+        app.root.children.clear()
+
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            worker = threading.Thread(target=clear_later)
+            worker.start()
+            result = client.wait_for(key="spinner", present=False, timeout=2.0, interval=0.02)
+            worker.join()
+            assert result["satisfied"] is True
+            assert result["condition"] == {"present": False, "key": "spinner"}
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_wait_for_empty_condition_is_400(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        # No key/label/text: the bridge rejects it before touching the UI thread.
+        with pytest.raises(RuntimeError, match="one of"):
+            client.wait_for()
+    finally:
+        bridge.shutdown()
+
+
 def test_bridge_request_timeout_without_pump(tmp_path: Path, dev_run: None) -> None:
     # No pump: the UI-thread job never runs, so the request times out (504).
     bridge = DevBridge(_fake_app(), tmp_path)

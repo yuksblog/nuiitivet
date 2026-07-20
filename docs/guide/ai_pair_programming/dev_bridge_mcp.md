@@ -2,8 +2,9 @@
 
 Hot reload lets *you* edit a running app; the **dev bridge** lets an **AI
 assistant** see and drive that same app — read the widget tree, screenshot it,
-click and type, and catch up on what you did between its turns. It is the
-perception–action half of the [AI pair-programming](index.md) loop.
+click and type, wait for async work to settle, and catch up on what you did
+between its turns. It is the perception–action half of the
+[AI pair-programming](index.md) loop.
 
 The bridge is a localhost-only HTTP server that the dev runner starts alongside
 hot reload. It **refuses to start without an active dev session**, so it is never
@@ -50,7 +51,7 @@ and you can start the app whenever you like.
 
 ## What the assistant can do
 
-The bridge exposes nine tools, split across the loop:
+The bridge exposes ten tools, split across the loop:
 
 ### See
 
@@ -81,6 +82,36 @@ The bridge exposes nine tools, split across the loop:
   [`keyed()` modifier](../modifiers/others.md#keyed). Each verb settles the app (flushes reactive work
   and relayout) before returning, so the next `describe_tree` observes the
   updated state.
+
+### Wait
+
+The settle each action does flushes **synchronous** reactive work and relayout —
+it does *not* wait for **asynchronous** work (network, timers, `asyncio` tasks,
+multi-frame animations). As soon as an action kicks off async loading, an
+immediate `describe_tree` can race it and observe a spinner or a stale tree, not
+the finished result.
+
+- **`wait_for`** — bridges that gap. Name a condition over the tree by `key`,
+  `label`, and/or `text` (a substring of a visible identity); the bridge polls —
+  re-settling each time — until it holds or `timeout` seconds elapse (default
+  `3.0`). Because the poll loop lives on the bridge's worker thread and only
+  briefly hops the UI thread per check, the app's own async work keeps advancing
+  between polls, so the condition can actually become true. Set `present=False`
+  to wait for a target to **disappear** (e.g. a loading spinner clearing).
+
+  It returns `{"satisfied", "timed_out", "waited", "polls", "condition"}`. A
+  plain timeout is reported as `satisfied: false` — **not** an error — so the
+  assistant follows up with `describe_tree` to see the state the app actually
+  reached. **Animations are waited *out*, not skipped**: `wait_for` only reports
+  satisfied once the predicate holds on a settled frame, so a value mid-transition
+  is not mistaken for its final state.
+
+  There is deliberately **no** `assert` or `tree-diff` tool. An assistant already
+  reads the whole tree with `describe_tree` and can verify an expectation or diff
+  two snapshots by reasoning over it; a built-in assert/diff would only duplicate
+  that at the cost of a larger tool surface. `wait_for` earns its place because
+  *waiting* for async work is the one thing the assistant cannot synthesize from
+  a single tree read.
 
 ### Catch up on your turn
 
@@ -174,6 +205,8 @@ python -m nuiitivet.dev screenshot -o out.png
 python -m nuiitivet.dev click --label increment
 python -m nuiitivet.dev type "hello"
 python -m nuiitivet.dev key enter --mod accel
+python -m nuiitivet.dev wait-for --label Done
+python -m nuiitivet.dev wait-for --key spinner --absent --timeout 5
 ```
 
 Each subcommand talks to an already-running `python -m nuiitivet.dev <app.py>`
