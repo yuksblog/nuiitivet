@@ -50,7 +50,7 @@ and you can start the app whenever you like.
 
 ## What the assistant can do
 
-The bridge exposes eight tools, split across the loop:
+The bridge exposes nine tools, split across the loop:
 
 ### See
 
@@ -59,6 +59,16 @@ The bridge exposes eight tools, split across the loop:
   `[x, y, w, h]` in root coordinates. This is the low-token view the assistant
   reasons over and resolves action targets from. Prefer it for everything except
   a genuine visual check.
+- **`describe_state`** — the reactive companion to `describe_tree`. Where the
+  tree is the *output*, this is the *state that produced it*: the live
+  `Observable` values reachable from the mounted tree. It returns the same nested
+  shape as `describe_tree` — pruned to nodes that hold state (or contain one that
+  does) — so the two views join node-for-node by type and identity. Each node's
+  `state` maps a name to its current value (e.g. `{"checked": true}`); a
+  derived/computed value is instead `{"value", "kind": "computed"}`. Reach for it
+  when the tree looks right but behaves wrong, or looks wrong but the code seems
+  right — the classic "the value updated but the UI didn't" (or the reverse)
+  reactive bug, where the tree alone cannot tell you which side is at fault.
 - **`screenshot`** — renders the current frame to PNG. Reserve it for occasional
   visual spot checks; image tokens are expensive.
 
@@ -155,6 +165,7 @@ free (standard-library `urllib` only), no `[mcp]` extra required:
 
 ```bash
 python -m nuiitivet.dev describe-tree
+python -m nuiitivet.dev describe-state
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log

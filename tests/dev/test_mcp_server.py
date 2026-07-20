@@ -29,6 +29,10 @@ def _fake_client() -> Any:
     """A stand-in BridgeClient with canned responses for every forwarded call."""
     client = mock.Mock(spec=BridgeClient)
     client.describe_tree.return_value = {"type": "Root", "label": "increment"}
+    client.describe_state.return_value = {
+        "type": "Root",
+        "state": {"count": 3, "doubled": {"value": 6, "kind": "computed"}},
+    }
     client.screenshot.return_value = b"\x89PNG\r\n\x1a\n-fake-image-bytes"
     client.click.return_value = {"clicked": {"key": "submit"}, "x": 5, "y": 5}
     client.type_text.return_value = {"typed": "hi", "handled": True}
@@ -81,6 +85,7 @@ def test_build_server_registers_the_tools() -> None:
     names = {tool.name for tool in asyncio.run(server.list_tools())}
     assert names == {
         "describe_tree",
+        "describe_state",
         "reload_log",
         "interaction_log",
         "runtime_log",
@@ -99,6 +104,16 @@ def test_describe_tree_forwards_to_client() -> None:
         result = _call(server, "describe_tree", {})
     assert result == {"type": "Root", "label": "increment"}
     client.describe_tree.assert_called_once_with()
+
+
+def test_describe_state_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "describe_state", {})
+    assert result["state"]["count"] == 3
+    assert result["state"]["doubled"] == {"value": 6, "kind": "computed"}
+    client.describe_state.assert_called_once_with()
 
 
 def test_reload_log_forwards_to_client() -> None:

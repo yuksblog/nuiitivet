@@ -324,7 +324,7 @@ class MyWidget(nv.ComposableWidget):
         print("[my_widget debug]" + " ".join(f"{k}={v}" for k, v in debug_fields.items()), file=sys.stderr)
 
 
-if __name__ == "__main__":
+def main() -> None:
     logging.basicConfig(level=logging.INFO)
     model = MyWidgetModel()
     widget = MyWidget(model)
@@ -343,3 +343,7 @@ if __name__ == "__main__":
             print("Rendered out_widget.png")
         except Exception:
             print("Could not run app: missing interactive/render deps (pyglet/skia).")
+
+
+if __name__ == "__main__":
+    main()

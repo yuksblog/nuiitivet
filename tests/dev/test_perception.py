@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from nuiitivet.dev.perception import describe_tree, find_target
+from nuiitivet.dev.perception import describe_state, describe_tree, find_target
+from nuiitivet.observable.value import Observable
 
 
 class _Obs:
@@ -123,3 +124,135 @@ def test_find_target_no_match_or_no_query() -> None:
     assert find_target(root, key="missing") is None
     assert find_target(root) is None
     assert find_target(None, key="a") is None
+
+
+# --- describe_state -------------------------------------------------------
+
+
+def test_describe_state_none_root_is_empty() -> None:
+    assert describe_state(None) == {}
+
+
+def test_describe_state_reports_observable_values() -> None:
+    root = _Node()
+    # Descriptor storage (``_obs_<name>``) reports under the bare name; a
+    # directly-assigned observable drops its leading underscore.
+    root._obs_count = Observable(3)  # type: ignore[attr-defined]
+    root._enabled = Observable(True)  # type: ignore[attr-defined]
+
+    state = describe_state(root)
+    assert state["type"] == "_Node"
+    assert state["state"] == {"count": 3, "enabled": True}
+
+
+def test_describe_state_marks_computed_observables() -> None:
+    root = _Node()
+    count = Observable(2)
+    root._obs_count = count  # type: ignore[attr-defined]
+    root._obs_doubled = Observable.compute(lambda: count.value * 2)  # type: ignore[attr-defined]
+
+    state = describe_state(root)
+    assert state["state"]["count"] == 2
+    assert state["state"]["doubled"] == {"value": 4, "kind": "computed"}
+
+
+def test_describe_state_prunes_stateless_nodes_but_keeps_ancestors() -> None:
+    leaf = _Node(key="deep")
+    leaf._obs_value = Observable("x")  # type: ignore[attr-defined]
+    middle = _Node(children=[_Node(), leaf])  # a stateless sibling is dropped
+    root = _Node(children=[middle])
+
+    state = describe_state(root)
+    # The ancestor chain to the stateful leaf is retained...
+    assert len(state["children"]) == 1
+    middle_out = state["children"][0]
+    # ...but the stateless sibling of the leaf is pruned.
+    assert len(middle_out["children"]) == 1
+    leaf_out = middle_out["children"][0]
+    assert leaf_out["key"] == "deep"
+    assert leaf_out["state"] == {"value": "x"}
+
+
+def test_describe_state_empty_when_no_state_anywhere() -> None:
+    root = _Node(children=[_Node(), _Node()])
+    assert describe_state(root) == {}
+
+
+def test_describe_state_carries_identity() -> None:
+    root = _Node(key="toggle", label="Agree")
+    root._obs_checked = Observable(False)  # type: ignore[attr-defined]
+    state = describe_state(root)
+    assert state["key"] == "toggle"
+    assert state["label"] == "Agree"
+    assert state["state"] == {"checked": False}
+
+
+def test_describe_state_truncates_long_string_value() -> None:
+    root = _Node()
+    root._obs_text = Observable("x" * 500)  # type: ignore[attr-defined]
+    value = describe_state(root)["state"]["text"]
+    assert len(value) <= 200
+    assert value.endswith("…")
+
+
+def test_describe_state_caps_container_breadth() -> None:
+    root = _Node()
+    root._obs_items = Observable(list(range(100)))  # type: ignore[attr-defined]
+    items = describe_state(root)["state"]["items"]
+    assert len(items) == 21  # 20 items + one "… (+80 more)" marker
+    assert items[-1] == "… (+80 more)"
+
+
+def test_describe_state_renders_opaque_value_as_type_repr() -> None:
+    class _Opaque:
+        def __repr__(self) -> str:
+            return "<opaque>"
+
+    root = _Node()
+    root._obs_thing = Observable(_Opaque())  # type: ignore[attr-defined]
+    value = describe_state(root)["state"]["thing"]
+    assert value == "_Opaque: <opaque>"
+
+
+def test_describe_state_skips_unreadable_observable() -> None:
+    from nuiitivet.observable.protocols import ObservableBase
+
+    class _RaisingObs(ObservableBase):  # type: ignore[type-arg]
+        @property
+        def value(self) -> Any:
+            raise RuntimeError("nope")
+
+        def subscribe(self, cb: Any) -> Any:  # pragma: no cover - never called
+            return None
+
+        def changes(self) -> Any:  # pragma: no cover - never called
+            return self
+
+    root = _Node()
+    root._obs_ok = Observable(1)  # type: ignore[attr-defined]
+    # A real observable whose getter raises is dropped, not fatal.
+    root._obs_boom = _RaisingObs()  # type: ignore[attr-defined]
+    state = describe_state(root)
+    assert state["state"] == {"ok": 1}
+
+
+def test_describe_state_ignores_non_observable_duck_type() -> None:
+    class _Duck:
+        """Has ``.value`` but is not an ``ObservableBase`` -- must be ignored."""
+
+        value = 7
+
+    root = _Node()
+    root._duck = _Duck()  # type: ignore[attr-defined]
+    root._obs_real = Observable(1)  # type: ignore[attr-defined]
+    state = describe_state(root)
+    assert state["state"] == {"real": 1}
+
+
+def test_describe_state_is_cycle_safe() -> None:
+    a = _Node()
+    a._obs_v = Observable(1)  # type: ignore[attr-defined]
+    b = _Node(children=[a])
+    a.children.append(b)  # cycle a -> b -> a
+    state = describe_state(a)
+    assert state["state"] == {"v": 1}

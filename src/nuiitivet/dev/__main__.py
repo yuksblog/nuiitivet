@@ -6,6 +6,7 @@ Subcommands::
     python -m nuiitivet.dev path/to/app.py          # same (run is the default)
     python -m nuiitivet.dev --module yourpkg.app    # dotted module name
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
+    python -m nuiitivet.dev describe-state          # dump the running app's observable state
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
@@ -47,6 +48,7 @@ _SUBCOMMANDS = frozenset(
         "run",
         "screenshot",
         "describe-tree",
+        "describe-state",
         "reload-log",
         "interaction-log",
         "click",
@@ -88,6 +90,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser("describe-tree", help="Print the running app's widget tree as JSON.")
+
+    subparsers.add_parser(
+        "describe-state", help="Print the running app's reactive observable state as JSON."
+    )
 
     reload_log = subparsers.add_parser(
         "reload-log", help="Print the running app's recent hot-reload events as JSON."
@@ -251,8 +257,8 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(describe-tree / screenshot / click / type / key / interaction-log / "
-            "runtime-log).",
+            "(describe-tree / describe-state / screenshot / click / type / key / "
+            "interaction-log / runtime-log).",
             file=sys.stderr,
         )
         try:
@@ -276,6 +282,19 @@ def _describe_tree(_args: argparse.Namespace) -> int:
     import json
 
     print(json.dumps(tree, indent=2))
+    return 0
+
+
+def _describe_state(_args: argparse.Namespace) -> int:
+    try:
+        client = BridgeClient.discover()
+        state = client.describe_state()
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(state, indent=2))
     return 0
 
 
@@ -382,6 +401,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
     if args.command == "describe-tree":
         return _describe_tree(args)
+    if args.command == "describe-state":
+        return _describe_state(args)
     if args.command == "reload-log":
         return _reload_log(args)
     if args.command == "interaction-log":

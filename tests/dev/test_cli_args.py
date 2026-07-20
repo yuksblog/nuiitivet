@@ -36,6 +36,11 @@ def test_describe_tree_subcommand() -> None:
     assert args.command == "describe-tree"
 
 
+def test_describe_state_subcommand() -> None:
+    args = _parse_args(["describe-state"])
+    assert args.command == "describe-state"
+
+
 def test_reload_log_subcommand_defaults_to_all() -> None:
     args = _parse_args(["reload-log"])
     assert args.command == "reload-log"

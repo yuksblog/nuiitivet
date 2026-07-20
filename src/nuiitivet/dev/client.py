@@ -234,6 +234,19 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return payload.get("tree", {})
 
+    def describe_state(self) -> dict[str, Any]:
+        """Fetch the reactive ``Observable`` state of the running app (#410).
+
+        Complements :meth:`describe_tree`: it returns the live observable values
+        behind the tree, in the same nested shape (``{"type", optional identity,
+        optional "state", optional "children"}``) pruned to state-bearing nodes,
+        so the two views join structurally. A ``state`` entry is a name -> value
+        map; a derived value is ``{"value", "kind": "computed"}``.
+        """
+        body, _ = self._get("/describe_state")
+        payload = json.loads(body.decode("utf-8"))
+        return payload.get("state", {})
+
     def reload_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
         """Fetch recent hot-reload events from the running app (#388).
 

@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 from .action import TargetNotFoundError, click, press_key, type_text
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
-from .perception import describe_tree
+from .perception import describe_state, describe_tree
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .session import current_dev_session
@@ -260,6 +260,9 @@ def _make_handler(
                 elif path == "/describe_tree":
                     tree = marshaller.call_on_ui_thread(lambda app: describe_tree(app.root))
                     self._send_json(200, {"tree": tree})
+                elif path == "/describe_state":
+                    state = marshaller.call_on_ui_thread(lambda app: describe_state(app.root))
+                    self._send_json(200, {"state": state})
                 elif path == "/screenshot":
                     png = marshaller.call_on_ui_thread(lambda app: app._render_to_png_bytes())
                     self._send_png(png)
