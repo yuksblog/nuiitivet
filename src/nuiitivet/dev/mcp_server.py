@@ -5,7 +5,7 @@ it turns the localhost control channel into first-class tools any MCP host
 (Claude Desktop, IDE integrations, other agents) can call to close the
 perception-action loop over hot reload -- edit code (hot reload) ->
 ``describe_tree`` / ``screenshot`` (see) -> ``click`` / ``type`` / ``key``
-(act) -> verify -> edit again.
+(act) -> ``wait_for`` (settle async work) -> verify -> edit again.
 
 The server holds no app logic. Every tool is a thin forward to a freshly
 discovered :class:`~nuiitivet.dev.client.BridgeClient`, which talks to the
@@ -265,6 +265,35 @@ def build_server() -> "FastMCP":
         shortcuts and focus traversal behave like real key events.
         """
         return _client().key(name, modifiers=modifiers)
+
+    @server.tool()
+    def wait_for(
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        text: Optional[str] = None,
+        present: bool = True,
+        timeout: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Wait for a tree condition after an action that starts async work.
+
+        After a `click` / `type` / `key` that kicks off async loading (network,
+        a timer, an animation), the tree updates over several frames -- an
+        immediate `describe_tree` can race it and see a spinner or stale value.
+        Call this first to wait for the settled state.
+
+        Name the condition by ``key`` (a widget's key/testID), ``label`` (its
+        visible label/text/title), and/or ``text`` (a substring of a visible
+        identity). The bridge polls -- re-settling each time -- until it holds or
+        ``timeout`` seconds elapse (default 3.0). Set ``present=False`` to wait
+        for the target to *disappear* (e.g. a loading spinner).
+
+        Returns ``{"satisfied", "timed_out", "waited", "polls", "condition"}``.
+        A plain timeout is reported as ``satisfied: false`` (not an error) --
+        follow up with `describe_tree` to see what state the app is actually in.
+        """
+        return _client().wait_for(
+            key=key, label=label, text=text, present=present, timeout=timeout
+        )
 
     return server
 

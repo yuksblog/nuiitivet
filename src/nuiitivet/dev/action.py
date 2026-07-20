@@ -134,6 +134,31 @@ def settle(app: Any) -> None:
         logger.debug("settle: invalidate failed", exc_info=True)
 
 
+def check_condition(
+    app: Any,
+    *,
+    key: Optional[str] = None,
+    label: Optional[str] = None,
+    text: Optional[str] = None,
+    present: bool = True,
+) -> bool:
+    """Settle the app, then evaluate a ``wait_for`` condition once (one poll).
+
+    This is a *single* poll meant to run on the UI thread. Settling first flushes
+    the synchronous reactive work an in-flight async update may have just
+    produced, so the condition sees the freshest tree; the caller (the bridge's
+    ``/wait_for`` loop) re-invokes this across the worker thread, sleeping between
+    polls so the UI thread is free to advance asynchronous work between them.
+
+    Raises:
+        ValueError: If none of ``key`` / ``label`` / ``text`` is given.
+    """
+    from .perception import match_condition
+
+    settle(app)
+    return match_condition(app.root, key=key, label=label, text=text, present=present)
+
+
 def click(
     app: Any,
     *,

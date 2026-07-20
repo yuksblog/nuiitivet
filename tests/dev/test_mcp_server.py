@@ -61,6 +61,13 @@ def _fake_client() -> Any:
         },
     ]
     client.set_runtime_log_verbose.return_value = True
+    client.wait_for.return_value = {
+        "satisfied": True,
+        "timed_out": False,
+        "waited": 0.12,
+        "polls": 3,
+        "condition": {"present": True, "label": "Saved"},
+    }
     return client
 
 
@@ -94,6 +101,7 @@ def test_build_server_registers_the_tools() -> None:
         "click",
         "type",
         "key",
+        "wait_for",
     }
 
 
@@ -190,6 +198,19 @@ def test_key_forwards_name_and_modifiers() -> None:
         result = _call(server, "key", {"name": "enter", "modifiers": ["accel"]})
     assert result["handled"] is True
     client.key.assert_called_once_with("enter", modifiers=["accel"])
+
+
+def test_wait_for_forwards_condition() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(
+            server, "wait_for", {"label": "Saved", "present": False, "timeout": 2.0}
+        )
+    assert result["satisfied"] is True
+    client.wait_for.assert_called_once_with(
+        key=None, label="Saved", text=None, present=False, timeout=2.0
+    )
 
 
 def test_tool_surfaces_bridge_not_found() -> None:

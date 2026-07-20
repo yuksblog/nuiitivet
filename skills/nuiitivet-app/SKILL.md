@@ -185,9 +185,20 @@ features (not knowledge), set up separately:
 - **Write** — hot reload rebuilds the running app on save (see above).
 - **See / act** — the dev bridge and its MCP server let an assistant inspect and
   drive the running app (`describe_tree` / `describe_state` / `screenshot` /
-  `click` / `type` / `key`). Register it once in your MCP host with `python -m nuiitivet.dev mcp`
+  `click` / `type` / `key` / `wait_for`). After an action that starts async work
+  (network, a timer, an animation), call `wait_for` — naming a `key` / `label` /
+  `text` condition, or `present=False` to wait one *out* — before `describe_tree`,
+  so you observe the settled state instead of racing a spinner. Register it once
+  in your MCP host with `python -m nuiitivet.dev mcp`
   (needs `pip install 'nuiitivet[mcp]'`); it is development-only and forwards to
   the running dev process. See the dev-bridge / MCP server docs for setup.
+  - **Waiting on the human, not async work?** `wait_for` blocks your turn
+    synchronously for up to `timeout` (default 3s), so it fits app-driven
+    settling, not a person deciding when to click. To wait for a *human* action,
+    keep each `wait_for` short and poll in a loop (re-issuing it, checking
+    `interaction_log` between tries) rather than parking one call on a long
+    `timeout` — the condition must land inside a call's live window to be seen,
+    and a single long block ties up the turn while it waits.
 - **Make a widget targetable** — attach a stable `key` with the `keyed()`
   modifier (`widget.modifier(keyed("increment-btn"))`) so the bridge can drive it
   by `key`, and its state survives a reorder across hot reload. Add it on demand

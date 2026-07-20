@@ -8,6 +8,7 @@ import pytest
 
 from nuiitivet.dev.action import (
     TargetNotFoundError,
+    check_condition,
     click,
     press_key,
     resolve_modifiers,
@@ -163,3 +164,21 @@ def test_actions_settle_after_dispatch() -> None:
     # settle() ran: a layout pass + a repaint request followed the click.
     assert app.root.laid_out is True
     assert app.invalidated == 1
+
+
+def test_check_condition_settles_then_evaluates() -> None:
+    root = _Node()
+    root.children = [_Node(label="Done")]
+    app = _App(root)
+
+    assert check_condition(app, label="Done") is True
+    # A settle ran as part of the poll (layout pass + repaint request).
+    assert root.laid_out is True
+    assert app.invalidated == 1
+
+
+def test_check_condition_absent() -> None:
+    app = _App(_Node())
+    app.root.children = [_Node(key="spinner", rect=(0, 0, 10, 10))]
+    assert check_condition(app, key="spinner", present=False) is False
+    assert check_condition(app, key="spinner", present=True) is True

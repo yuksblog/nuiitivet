@@ -24,7 +24,11 @@ from typing import Any, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from .bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME
+from .bridge import (
+    DISCOVERY_DIRNAME,
+    DISCOVERY_FILENAME,
+    _WAIT_FOR_DEFAULT_TIMEOUT,
+)
 
 
 class BridgeNotFoundError(RuntimeError):
@@ -204,12 +208,18 @@ class BridgeClient:
                 raise BridgeNotFoundError(_NOT_RUNNING_HINT) from exc
             raise
 
-    def _post(self, endpoint: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _post(
+        self, endpoint: str, payload: dict[str, Any], *, timeout: Optional[float] = None
+    ) -> dict[str, Any]:
         """POST ``payload`` as JSON to ``endpoint``; return the decoded response.
 
         A connection refused is treated as a dead bridge (see :meth:`_get`). An
         error status carries the server's ``{"error": ...}`` message through as a
         :class:`RuntimeError` so the CLI can print something actionable.
+
+        ``timeout`` overrides the socket read timeout for endpoints that block
+        server-side (``/wait_for`` polls up to its own deadline); ``None`` uses
+        the client default.
         """
         data = json.dumps(payload).encode("utf-8")
         request = Request(
@@ -219,7 +229,7 @@ class BridgeClient:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=self._timeout) as response:
+            with urlopen(request, timeout=timeout or self._timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except URLError as exc:
             if isinstance(exc.reason, ConnectionError):
@@ -350,3 +360,36 @@ class BridgeClient:
         if modifiers:
             payload["modifiers"] = modifiers
         return self._post("/key", payload)
+
+    def wait_for(
+        self,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        text: Optional[str] = None,
+        present: bool = True,
+        timeout: Optional[float] = None,
+        interval: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Wait until a tree condition holds (or absent, with ``present=False``).
+
+        Bridges the gap between an action that kicks off async work (network,
+        timers, animation) and the ``describe_tree`` that should observe its
+        result: the bridge polls the condition, re-settling each time, until it
+        holds or ``timeout`` (seconds) elapses. Returns the bridge's structured
+        result -- ``satisfied`` / ``timed_out`` / ``waited`` / ``polls`` -- and
+        never raises on a plain timeout (only on transport failure).
+        """
+        payload: dict[str, Any] = {"present": present}
+        for name, value in (("key", key), ("label", label), ("text", text)):
+            if value is not None:
+                payload[name] = value
+        if timeout is not None:
+            payload["timeout"] = timeout
+        if interval is not None:
+            payload["interval"] = interval
+        # Give the socket headroom beyond the server-side poll deadline so the
+        # HTTP read never fires before the bridge returns its own timeout result.
+        server_deadline = timeout if timeout is not None else _WAIT_FOR_DEFAULT_TIMEOUT
+        socket_timeout = self._timeout + max(0.0, server_deadline)
+        return self._post("/wait_for", payload, timeout=socket_timeout)
