@@ -18,7 +18,7 @@ from __future__ import annotations
 from .bridge import DevBridge
 from .interaction import InteractionEvent, InteractionJournal, InteractionRecorder
 from .journal import ReloadEvent, ReloadJournal
-from .perception import describe_tree
+from .perception import describe_state, describe_tree
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeEvent, RuntimeJournal
 from .session import DevSession, current_dev_session, set_dev_session
@@ -35,6 +35,7 @@ __all__ = [
     "RuntimeJournal",
     "RuntimeLogCapture",
     "current_dev_session",
+    "describe_state",
     "describe_tree",
     "set_dev_session",
 ]

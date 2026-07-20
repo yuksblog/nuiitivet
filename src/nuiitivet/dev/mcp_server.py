@@ -63,7 +63,12 @@ _SERVER_INSTRUCTIONS = (
     "reasoning about the UI and for resolving click/type targets by key or "
     "label -- it is a compact JSON tree and cheap in tokens. Reserve "
     "`screenshot` for occasional visual spot checks; image tokens are "
-    "expensive. Act with `click`, `type`, and `key`, then re-`describe_tree` to "
+    "expensive. When the displayed tree looks wrong but you need to know whether "
+    "the *state* behind it is wrong too -- a reactive bug where the value "
+    "updated but the UI did not, or the reverse -- call `describe_state`: it "
+    "returns the live `Observable` values behind the tree, in the same shape as "
+    "`describe_tree` so you can join them node-for-node. Act with `click`, "
+    "`type`, and `key`, then re-`describe_tree` to "
     "verify the effect. In a pair session the human may edit and save while you "
     "work; call `reload_log` to see whether the code hot-reloaded under you (and "
     "whether it even compiled) before trusting a stale `describe_tree`. The human "
@@ -116,6 +121,27 @@ def build_server() -> "FastMCP":
         to see pixels.
         """
         return _client().describe_tree()
+
+    @server.tool()
+    def describe_state() -> dict[str, Any]:
+        """Return the running app's reactive `Observable` state as structural JSON.
+
+        The complement to `describe_tree`: where that gives the UI *output*
+        (types, identities, rects), this gives the *state that produced it* -- the
+        live observable values behind the tree. Use it to diagnose reactive bugs
+        where the tree looks wrong but you need to know whether the underlying
+        state is wrong too: "the value updated but the UI didn't", or the reverse.
+
+        The result mirrors `describe_tree`'s nested shape -- each node is
+        ``{"type", optional "key"/"label"/"text"/"title", optional "state",
+        optional "children"}`` -- but is pruned to nodes that hold state (or
+        contain one that does), so you can join it to `describe_tree` node-for-node
+        by type and identity. ``state`` maps a name to its current value (e.g.
+        ``{"checked": true}``); a derived/computed value is instead
+        ``{"value", "kind": "computed"}``. Values are length- and depth-capped and
+        opaque objects render as ``type: repr``.
+        """
+        return _client().describe_state()
 
     @server.tool()
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:

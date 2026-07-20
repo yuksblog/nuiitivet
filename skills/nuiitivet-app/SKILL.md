@@ -184,8 +184,8 @@ features (not knowledge), set up separately:
 
 - **Write** — hot reload rebuilds the running app on save (see above).
 - **See / act** — the dev bridge and its MCP server let an assistant inspect and
-  drive the running app (`describe_tree` / `screenshot` / `click` / `type` /
-  `key`). Register it once in your MCP host with `python -m nuiitivet.dev mcp`
+  drive the running app (`describe_tree` / `describe_state` / `screenshot` /
+  `click` / `type` / `key`). Register it once in your MCP host with `python -m nuiitivet.dev mcp`
   (needs `pip install 'nuiitivet[mcp]'`); it is development-only and forwards to
   the running dev process. See the dev-bridge / MCP server docs for setup.
 - **Make a widget targetable** — attach a stable `key` with the `keyed()`

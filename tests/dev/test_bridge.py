@@ -153,6 +153,23 @@ def test_bridge_describe_tree_and_screenshot(tmp_path: Path, dev_run: None) -> N
         bridge.shutdown()
 
 
+def test_bridge_describe_state(tmp_path: Path, dev_run: None) -> None:
+    from nuiitivet.observable.value import Observable
+
+    app: Any = _FakeApp()
+    app.root._obs_count = Observable(7)
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            state = client.describe_state()
+            assert state["type"] == "_FakeNode"
+            assert state["state"] == {"count": 7}
+    finally:
+        bridge.shutdown()
+
+
 def test_bridge_reload_log_serves_journal(tmp_path: Path, dev_run: None) -> None:
     journal = ReloadJournal()
     journal.record_success(["pkg.a", "pkg.b"], changed=["pkg.a"])

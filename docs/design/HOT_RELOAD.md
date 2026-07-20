@@ -377,6 +377,23 @@ edit again.
   `text` / `title`) and `rect` `[x, y, w, h]` in root coordinates. This is the
   semantic, low-token view a tool reasons over and resolves action targets from.
   `screenshot` renders the current frame to PNG.
+- **State perception** (`dev/perception.py`, [#410](https://github.com/yuksblog/nuiitivet/issues/410)).
+  `describe_tree` reports the *output* — the widget tree — but not the reactive
+  state that produced it, and "the value updated but the UI didn't" (or the
+  reverse) is exactly the bug the tree alone cannot diagnose. `describe_state`
+  walks the *same* mounted tree and reports the live `Observable` values reachable
+  from it: it scans each widget's `__dict__` for observable-valued attributes
+  (both the `_obs_<name>` descriptor storage and directly-assigned bindings — the
+  same in-tree observables the reload snapshot preserves, §8), served pull-ably at
+  `GET /describe_state`. The result mirrors `describe_tree`'s nested shape — pruned
+  to nodes that hold state or contain one that does — so the two views join
+  node-for-node by type and identity. A mutable source observable reports its
+  current value directly; a derived one (`compute` / `map` / `combine`) is
+  `{"value", "kind": "computed"}`. Values are length- and depth-capped and opaque
+  objects render as `type: repr`, so no single value can bloat or break the dump.
+  Read-only: poking values (`set_state`) is deliberately out of scope. Because
+  semantic widget state (`Checkbox.checked`, text-field value, toggles) is already
+  `Observable`-backed, this surfaces it automatically.
 - **Action** (`dev/action.py`, [#375](https://github.com/yuksblog/nuiitivet/issues/375)).
   `click` / `type` / `key` synthesize the same input the real backend delivers.
   Targeting is by *stable identifier* (`key` / `label`), resolved to a rect
@@ -459,16 +476,16 @@ edit again.
   process-wide **verbose** switch (`POST /runtime_log/verbose`) flips
   `set_log_once_enabled(False)` so a debugging session can see every occurrence.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
-  `reload-log`, `interaction-log`, `runtime-log`, `screenshot`, `click`, `type`,
-  and `key` are one-shot subcommands that discover the running app and issue plain
-  HTTP, dependency-free (`urllib`).
+  `describe-state`, `reload-log`, `interaction-log`, `runtime-log`, `screenshot`,
+  `click`, `type`, and `key` are one-shot subcommands that discover the running
+  app and issue plain HTTP, dependency-free (`urllib`).
 
 ### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
 
 `dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
-exposes `describe_tree`, `reload_log`, `interaction_log`, `runtime_log`,
-`set_runtime_log_verbose`, `screenshot`, `click`, `type`, and `key`
-as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
+exposes `describe_tree`, `describe_state`, `reload_log`, `interaction_log`,
+`runtime_log`, `set_runtime_log_verbose`, `screenshot`, `click`, `type`, and
+`key` as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
 just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
 `mcp` SDK is an optional dependency (the `[mcp]` extra); importing the module
@@ -518,7 +535,7 @@ The server starts even when no app is running; each tool call then reports a
 | error resilience | `dev/error_overlay.py` |
 | CLI entry / startup flow | `dev/__main__.py` |
 | dev bridge (localhost, UI-thread marshalling, discovery) | `dev/bridge.py` + `dev/client.py` |
-| perception (`describe_tree` / `screenshot`) | `dev/perception.py` |
+| perception (`describe_tree` / `describe_state` / `screenshot`) | `dev/perception.py` |
 | reload journal (pull-able reload events for an AI pair) | `dev/journal.py` (recorded by `dev/controller.py`) |
 | interaction journal (pull-able human UI actions for an AI pair) | `dev/interaction.py` (recorded from the backend input handlers) |
 | action (`click` / `type` / `key`, target resolution) | `dev/action.py` |
