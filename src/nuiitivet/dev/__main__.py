@@ -8,6 +8,7 @@ Subcommands::
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
+    python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev type "hello"            # type into the focused widget
@@ -35,6 +36,8 @@ from .controller import HotReloadController
 from .interaction import InteractionJournal, InteractionRecorder
 from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
+from .runtime_capture import RuntimeLogCapture
+from .runtime_journal import RuntimeJournal
 from .session import DevSession, set_dev_session
 
 # Subcommands that may appear as the first token. Anything else is treated as a
@@ -49,6 +52,7 @@ _SUBCOMMANDS = frozenset(
         "click",
         "type",
         "key",
+        "runtime-log",
         "mcp",
     }
 )
@@ -105,6 +109,27 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Return only the newest N events (default: all retained).",
+    )
+
+    runtime_log = subparsers.add_parser(
+        "runtime-log",
+        help="Print the running app's recent log output and uncaught exceptions as JSON.",
+    )
+    runtime_log.add_argument(
+        "-n",
+        "--limit",
+        type=int,
+        default=None,
+        help="Return only the newest N events (default: all retained).",
+    )
+    runtime_log.add_argument(
+        "--verbose",
+        choices=("on", "off"),
+        default=None,
+        help=(
+            "Set verbose capture and exit (does not print the log). 'on' records "
+            "every repeated failure; 'off' restores the de-duplicated default."
+        ),
     )
 
     shot = subparsers.add_parser("screenshot", help="Save a PNG screenshot of the running app.")
@@ -193,6 +218,12 @@ def _run(args: argparse.Namespace) -> int:
         # app between its turns.
         interaction_journal = InteractionJournal()
         app._interaction_recorder = InteractionRecorder(interaction_journal)
+        # The runtime log (#409): capture taps route the app's log output and
+        # uncaught exceptions (UI, background threads, asyncio) into this journal,
+        # which the bridge serves at ``/runtime_log`` so an AI pair can see *why*
+        # an action it drove had no visible effect.
+        runtime_journal = RuntimeJournal()
+        runtime_capture = RuntimeLogCapture(runtime_journal)
         # The bridge's discovery file anchors to the user-facing project root (so
         # a client finds it by searching upward, like git), which is not always
         # Python's import root -- see :func:`find_discovery_root`.
@@ -202,6 +233,8 @@ def _run(args: argparse.Namespace) -> int:
             discovery_root,
             journal=journal,
             interaction_journal=interaction_journal,
+            runtime_journal=runtime_journal,
+            runtime_capture=runtime_capture,
         )
 
         print(
@@ -213,17 +246,20 @@ def _run(args: argparse.Namespace) -> int:
         from nuiitivet.backends.pyglet.runner import run_app
 
         controller.install()
+        runtime_capture.install()
         bridge.install()
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(describe-tree / screenshot / click / type / key / interaction-log).",
+            "(describe-tree / screenshot / click / type / key / interaction-log / "
+            "runtime-log).",
             file=sys.stderr,
         )
         try:
             run_app(app, draw_fps=session.draw_fps, renderer=session.renderer)
         finally:
             bridge.shutdown()
+            runtime_capture.shutdown()
             controller.shutdown()
         return 0
     finally:
@@ -265,6 +301,23 @@ def _interaction_log(args: argparse.Namespace) -> int:
         return 1
     import json
 
+    print(json.dumps(events, indent=2))
+    return 0
+
+
+def _runtime_log(args: argparse.Namespace) -> int:
+    import json
+
+    try:
+        client = BridgeClient.discover()
+        if args.verbose is not None:
+            verbose = client.set_runtime_log_verbose(args.verbose == "on")
+            print(json.dumps({"verbose": verbose}, indent=2))
+            return 0
+        events = client.runtime_log(limit=args.limit)
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
     print(json.dumps(events, indent=2))
     return 0
 
@@ -333,6 +386,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _reload_log(args)
     if args.command == "interaction-log":
         return _interaction_log(args)
+    if args.command == "runtime-log":
+        return _runtime_log(args)
     if args.command == "screenshot":
         return _screenshot(args)
     if args.command == "click":

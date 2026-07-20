@@ -265,6 +265,38 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return payload.get("events", [])
 
+    def runtime_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
+        """Fetch the running app's recent log output and uncaught exceptions (#409).
+
+        Each event is ``{"seq", "timestamp", "level", "source", "thread",
+        "message", optional "logger"/"exc_type"/"traceback"}``, oldest-first.
+        ``source`` is ``"logging"`` (a captured log record), ``"thread"`` (a
+        background thread's uncaught exception), or ``"excepthook"`` (the main
+        thread's). ``seq`` is monotonic -- compare it to the last one you saw to
+        tell whether new output happened. ``limit`` caps the result to the newest
+        ``limit`` events; ``None`` returns all retained events.
+        """
+        endpoint = "/runtime_log" if limit is None else f"/runtime_log?limit={int(limit)}"
+        body, _ = self._get(endpoint)
+        payload = json.loads(body.decode("utf-8"))
+        return payload.get("events", [])
+
+    def set_runtime_log_verbose(self, enabled: bool) -> bool:
+        """Turn verbose runtime-log capture on/off; return the resulting state.
+
+        Verbose disables once-per-process de-duplication in the running app, so
+        every repeated failure is recorded rather than only its first occurrence
+        -- use it when a flood-collapsed error is hiding the one you need.
+        """
+        result = self._post("/runtime_log/verbose", {"enabled": bool(enabled)})
+        return bool(result.get("verbose", False))
+
+    def runtime_log_verbose(self) -> bool:
+        """Return whether verbose runtime-log capture is currently active."""
+        body, _ = self._get("/runtime_log/verbose")
+        payload = json.loads(body.decode("utf-8"))
+        return bool(payload.get("verbose", False))
+
     def screenshot(self) -> bytes:
         """Fetch a PNG screenshot of the running app's current frame."""
         body, content_type = self._get("/screenshot")

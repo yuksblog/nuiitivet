@@ -50,7 +50,7 @@ and you can start the app whenever you like.
 
 ## What the assistant can do
 
-The bridge exposes seven tools, split across the loop:
+The bridge exposes eight tools, split across the loop:
 
 ### See
 
@@ -89,6 +89,30 @@ between them. Two pull-able logs close that gap.
   the assistant can replay how you reached the current screen. **Typed content
   never enters it** — a bare printable keystroke is dropped and a burst of typing
   collapses to one marker, so field text never leaks.
+
+### See why an action did nothing
+
+`describe_tree` shows the tree *after* an action — but when the assistant drives
+a `click` / `type` / `key` and the callback it triggers **raises**, the framework
+swallows the exception to keep the app alive (a broken handler must not tear down
+the window). The tree then looks unchanged and the traceback goes to a console
+the assistant cannot read: it can see *that* nothing happened, not *why*.
+
+- **`runtime_log`** — the running app's recent log output and uncaught
+  exceptions, oldest-first. Each event is `{"seq", "timestamp", "level",
+  "source", "thread", "message", …}` with an optional `exc_type` / `traceback`
+  when it carries a failure. `source` distinguishes a captured `logging` record
+  from an uncaught exception on a background `thread` or via the main-thread
+  `excepthook`, and `thread` names where it happened — so a UI-thread callback
+  error, a crashed worker thread, and an unretrieved asyncio task exception are
+  all visible through one surface. A monotonic `seq` lets the assistant tell what
+  is new since its last turn.
+
+  Repeated identical failures **collapse to one entry** by default, so a handler
+  that raises every frame cannot bury the rest of the log. When a collapsed entry
+  is hiding a distinct error you are chasing, **`set_runtime_log_verbose(True)`**
+  turns de-duplication off process-wide so every occurrence is recorded; call it
+  with `False` to restore the quiet default.
 
 ## Watch the assistant act (on-screen)
 
@@ -133,6 +157,8 @@ free (standard-library `urllib` only), no `[mcp]` extra required:
 python -m nuiitivet.dev describe-tree
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
+python -m nuiitivet.dev runtime-log
+python -m nuiitivet.dev runtime-log --verbose on
 python -m nuiitivet.dev screenshot -o out.png
 python -m nuiitivet.dev click --label increment
 python -m nuiitivet.dev type "hello"

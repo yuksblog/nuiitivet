@@ -433,16 +433,41 @@ edit again.
     printable key with no command modifier is dropped (recording it would leak
     field text a keystroke at a time), and a burst of `on_text` collapses to one
     content-free marker.
+- **Runtime journal** (`dev/runtime_journal.py`, `dev/runtime_capture.py`, [#409](https://github.com/yuksblog/nuiitivet/issues/409)).
+  The reload and interaction journals surface what *changed* and what the human
+  *did*; this surfaces what the app *emitted*. When an assistant-driven `click` /
+  `type` / `key` triggers a callback that raises, the framework swallows the
+  exception to keep the app alive (`invoke_event_handler`) and logs it — to a
+  console the assistant, driving over MCP, cannot read. The post-action
+  `describe_tree` then shows an unchanged tree: the assistant sees *that* nothing
+  happened, not *why*. A `RuntimeLogCapture` installs three taps that route into a
+  bounded, thread-safe `RuntimeJournal`, served pull-ably at `GET /runtime_log`
+  (optional `?limit=N`) with the same monotonic-`seq` turn model as the other
+  journals:
+  - a **`logging.Handler`** on the root logger (WARNING+) — the primary net,
+    capturing framework and app records from any thread; asyncio reports an
+    unretrieved task exception by *logging* it at ERROR, so those land here too;
+  - **`threading.excepthook`** and **`sys.excepthook`** — uncaught exceptions on
+    a background or the main thread, which Python does not route through
+    `logging`. Both chain to the previous hook, so console output is unchanged.
+
+  De-dup is *not* in the journal; it lives at the emit sites (`logging_once`). A
+  record suppressed there never reaches the handler, so by default the log shows
+  each distinct failure once rather than a flood of the same one — and the
+  callback boundary keys by *distinct exception* (`exception_once_per_exc`), so a
+  new error from the same handler after a hot-reload fix still surfaces. A
+  process-wide **verbose** switch (`POST /runtime_log/verbose`) flips
+  `set_log_once_enabled(False)` so a debugging session can see every occurrence.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
-  `reload-log`, `interaction-log`, `screenshot`, `click`, `type`, and `key` are
-  one-shot subcommands that discover the running app and issue plain HTTP,
-  dependency-free (`urllib`).
+  `reload-log`, `interaction-log`, `runtime-log`, `screenshot`, `click`, `type`,
+  and `key` are one-shot subcommands that discover the running app and issue plain
+  HTTP, dependency-free (`urllib`).
 
 ### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
 
 `dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
-exposes `describe_tree`, `reload_log`, `interaction_log`, `screenshot`, `click`,
-`type`, and `key`
+exposes `describe_tree`, `reload_log`, `interaction_log`, `runtime_log`,
+`set_runtime_log_verbose`, `screenshot`, `click`, `type`, and `key`
 as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
 just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The

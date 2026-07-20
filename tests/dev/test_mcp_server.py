@@ -45,6 +45,18 @@ def _fake_client() -> Any:
     client.interaction_log.return_value = [
         {"seq": 1, "timestamp": 1.0, "kind": "click", "target": {"type": "Button"}},
     ]
+    client.runtime_log.return_value = [
+        {
+            "seq": 1,
+            "timestamp": 1.0,
+            "level": "ERROR",
+            "source": "logging",
+            "thread": "MainThread",
+            "message": "boom",
+            "exc_type": "ValueError",
+        },
+    ]
+    client.set_runtime_log_verbose.return_value = True
     return client
 
 
@@ -71,6 +83,8 @@ def test_build_server_registers_the_tools() -> None:
         "describe_tree",
         "reload_log",
         "interaction_log",
+        "runtime_log",
+        "set_runtime_log_verbose",
         "screenshot",
         "click",
         "type",
@@ -103,6 +117,24 @@ def test_interaction_log_forwards_to_client() -> None:
         result = _call(server, "interaction_log", {"limit": 3})
     assert result["events"][0]["kind"] == "click"
     client.interaction_log.assert_called_once_with(limit=3)
+
+
+def test_runtime_log_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "runtime_log", {"limit": 10})
+    assert result["events"][0]["exc_type"] == "ValueError"
+    client.runtime_log.assert_called_once_with(limit=10)
+
+
+def test_set_runtime_log_verbose_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "set_runtime_log_verbose", {"enabled": True})
+    assert result == {"verbose": True}
+    client.set_runtime_log_verbose.assert_called_once_with(True)
 
 
 def test_screenshot_returns_png_image_content() -> None:
