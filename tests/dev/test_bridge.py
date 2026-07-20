@@ -17,6 +17,7 @@ from nuiitivet.dev.bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME, DevBridg
 from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discovery_file
 from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.journal import ReloadJournal
+from nuiitivet.dev.runtime_journal import RuntimeJournal
 
 
 class _FakeNode:
@@ -239,6 +240,102 @@ def test_bridge_interaction_log_empty_without_journal(tmp_path: Path, dev_run: N
     try:
         client = BridgeClient("127.0.0.1", _port_of(bridge))
         assert client.interaction_log() == []
+    finally:
+        bridge.shutdown()
+
+
+class _FakeCapture:
+    """Stand-in for RuntimeLogCapture: records verbose toggles without globals."""
+
+    def __init__(self, verbose: bool = False) -> None:
+        self._verbose = verbose
+
+    def set_verbose(self, enabled: bool) -> bool:
+        self._verbose = bool(enabled)
+        return self._verbose
+
+    def is_verbose(self) -> bool:
+        return self._verbose
+
+
+def test_bridge_runtime_log_serves_journal(tmp_path: Path, dev_run: None) -> None:
+    runtime = RuntimeJournal()
+    runtime.record(level="WARNING", source="logging", thread="MainThread", message="heads up")
+    runtime.record(
+        level="ERROR",
+        source="thread",
+        thread="worker",
+        message="RuntimeError: boom",
+        exc_type="RuntimeError",
+        traceback="Traceback...\nRuntimeError: boom",
+    )
+
+    bridge = DevBridge(_fake_app(), tmp_path, runtime_journal=runtime)
+    bridge.start()
+    try:
+        # /runtime_log does not touch the UI thread, so no pump is needed.
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.runtime_log()
+        assert [e["source"] for e in events] == ["logging", "thread"]
+        assert events[0]["message"] == "heads up"
+        assert events[1]["exc_type"] == "RuntimeError"
+        assert "RuntimeError: boom" in events[1]["traceback"]
+        assert events[0]["seq"] < events[1]["seq"]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_runtime_log_respects_limit(tmp_path: Path, dev_run: None) -> None:
+    runtime = RuntimeJournal()
+    for i in range(4):
+        runtime.record(level="WARNING", source="logging", thread="t", message=f"m{i}")
+
+    bridge = DevBridge(_fake_app(), tmp_path, runtime_journal=runtime)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        events = client.runtime_log(limit=2)
+        assert [e["seq"] for e in events] == [3, 4]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_runtime_log_empty_without_journal(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        assert client.runtime_log() == []
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_runtime_log_verbose_roundtrips(tmp_path: Path, dev_run: None) -> None:
+    capture: Any = _FakeCapture()
+    bridge = DevBridge(_fake_app(), tmp_path, runtime_capture=capture)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        assert client.runtime_log_verbose() is False
+        assert client.set_runtime_log_verbose(True) is True
+        assert client.runtime_log_verbose() is True
+        assert client.set_runtime_log_verbose(False) is False
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_runtime_log_verbose_without_capture_is_404(
+    tmp_path: Path, dev_run: None
+) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        # No capture wired: reading state is a benign False...
+        assert client.runtime_log_verbose() is False
+        # ...but attempting to set it is refused rather than silently ignored.
+        with pytest.raises(RuntimeError, match="not enabled"):
+            client.set_runtime_log_verbose(True)
     finally:
         bridge.shutdown()
 

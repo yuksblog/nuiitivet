@@ -69,7 +69,12 @@ _SERVER_INSTRUCTIONS = (
     "whether it even compiled) before trusting a stale `describe_tree`. The human "
     "may also drive the app itself between your turns; call `interaction_log` to "
     "see their recent clicks, keys, and typing so you can tell where they are and "
-    "how they got there before acting."
+    "how they got there before acting. When an action seems to do nothing, call "
+    "`runtime_log`: a callback that raised is swallowed to keep the app alive and "
+    "reported there, so it tells you *why* nothing changed, not just that it "
+    "didn't -- it also carries background-thread and asyncio failures and general "
+    "log output. If a repeated error has collapsed to one line and you need every "
+    "occurrence, call `set_runtime_log_verbose(True)`."
 )
 
 
@@ -155,6 +160,40 @@ def build_server() -> "FastMCP":
         ``limit`` caps the result to the newest N events.
         """
         return {"events": _client().interaction_log(limit=limit)}
+
+    @server.tool()
+    def runtime_log(limit: Optional[int] = None) -> dict[str, Any]:
+        """Return the running app's recent log output and uncaught exceptions, oldest-first.
+
+        Use this to see *why* an action had no visible effect. When an
+        assistant-driven `click` / `type` / `key` triggers a callback that
+        raises, the framework swallows it (the app stays alive) and reports it
+        here -- so a `describe_tree` that looks unchanged is explained by an
+        exception in this log, not a no-op. It also carries uncaught
+        background-thread and asyncio failures and general WARNING+ log output.
+
+        Each event is ``{"seq", "timestamp", "level", "source", "thread",
+        "message", optional "logger"/"exc_type"/"traceback"}``. ``source`` is
+        ``"logging"``, ``"thread"``, or ``"excepthook"``. ``seq`` is monotonic --
+        compare it to the last one you saw to tell whether new output happened
+        since your turn. Repeated identical failures collapse to one entry by
+        default; if that hides one you need, call `set_runtime_log_verbose(True)`.
+        ``limit`` caps the result to the newest N events.
+        """
+        return {"events": _client().runtime_log(limit=limit)}
+
+    @server.tool()
+    def set_runtime_log_verbose(enabled: bool) -> dict[str, Any]:
+        """Enable or disable verbose `runtime_log` capture; return the new state.
+
+        By default the running app de-duplicates repeated failures, so a callback
+        that raises every frame shows once rather than flooding the log. Enabling
+        verbose turns that off process-wide so *every* occurrence is recorded --
+        use it when a collapsed entry is hiding a distinct error you are chasing,
+        then disable it again to restore the quiet default. Returns
+        ``{"verbose": true|false}``.
+        """
+        return {"verbose": _client().set_runtime_log_verbose(enabled)}
 
     @server.tool()
     def screenshot() -> Image:

@@ -6,7 +6,7 @@ import logging
 from collections.abc import Awaitable
 from typing import Any, Callable, Optional, Union
 
-from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.logging_once import exception_once_per_exc
 from nuiitivet.observable import detach_batch
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ def invoke_event_handler(
                 except asyncio.CancelledError:
                     raise
                 except Exception:
-                    exception_once(
+                    exception_once_per_exc(
                         logger,
                         f"async_{error_key}_exc:{owner_name}",
                         f"Async {error_msg} (owner=%s)",
@@ -80,7 +80,7 @@ def invoke_event_handler(
                 return None
             return loop.create_task(_wrapper())
     except Exception:
-        exception_once(
+        exception_once_per_exc(
             logger,
             f"{error_key}_exc:{owner_name}",
             f"{error_msg} (owner=%s)",

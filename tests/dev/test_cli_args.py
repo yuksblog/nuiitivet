@@ -60,6 +60,25 @@ def test_interaction_log_subcommand_accepts_limit() -> None:
     assert args.limit == 5
 
 
+def test_runtime_log_subcommand_defaults() -> None:
+    args = _parse_args(["runtime-log"])
+    assert args.command == "runtime-log"
+    assert args.limit is None
+    assert args.verbose is None
+
+
+def test_runtime_log_subcommand_accepts_limit() -> None:
+    args = _parse_args(["runtime-log", "--limit", "5"])
+    assert args.command == "runtime-log"
+    assert args.limit == 5
+
+
+def test_runtime_log_subcommand_accepts_verbose() -> None:
+    args = _parse_args(["runtime-log", "--verbose", "on"])
+    assert args.command == "runtime-log"
+    assert args.verbose == "on"
+
+
 def test_click_by_label() -> None:
     args = _parse_args(["click", "--label", "increment"])
     assert args.command == "click"

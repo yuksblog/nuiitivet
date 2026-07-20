@@ -41,6 +41,8 @@ from .action import TargetNotFoundError, click, press_key, type_text
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_tree
+from .runtime_capture import RuntimeLogCapture
+from .runtime_journal import RuntimeJournal
 from .session import current_dev_session
 
 if TYPE_CHECKING:
@@ -153,6 +155,8 @@ def _make_handler(
     marshaller: _UIThreadMarshaller,
     journal: Optional[ReloadJournal],
     interaction_journal: Optional[InteractionJournal],
+    runtime_journal: Optional[RuntimeJournal],
+    runtime_capture: Optional[RuntimeLogCapture],
 ) -> type[BaseHTTPRequestHandler]:
     """Build the request handler class bound to ``marshaller`` and the journals."""
 
@@ -222,6 +226,16 @@ def _make_handler(
                     result = marshaller.call_on_ui_thread(
                         lambda app: press_key(app, body.get("key", ""), body.get("modifiers", 0))
                     )
+                elif path == "/runtime_log/verbose":
+                    # A process-wide de-dup toggle -- no UI-thread hop, no app
+                    # state touched. Absent when the bridge runs without capture
+                    # (e.g. tests), reported as unsupported rather than silently
+                    # ignored so a client is not misled about the mode.
+                    if runtime_capture is None:
+                        self._fail(404, "runtime log capture is not enabled")
+                        return
+                    enabled = bool(body.get("enabled", False))
+                    result = {"verbose": runtime_capture.set_verbose(enabled)}
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
                     return
@@ -267,6 +281,21 @@ def _make_handler(
                         else []
                     )
                     self._send_json(200, {"events": [action.to_dict() for action in actions]})
+                elif path == "/runtime_log":
+                    # Like ``/reload_log``: a plain buffer read, no UI-thread hop.
+                    # Absent when the bridge runs without capture (e.g. tests),
+                    # which reads as an empty log.
+                    runtime_events = (
+                        runtime_journal.recent(_parse_limit(query))
+                        if runtime_journal is not None
+                        else []
+                    )
+                    self._send_json(
+                        200, {"events": [event.to_dict() for event in runtime_events]}
+                    )
+                elif path == "/runtime_log/verbose":
+                    verbose = runtime_capture.is_verbose() if runtime_capture is not None else False
+                    self._send_json(200, {"verbose": verbose})
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
             except TimeoutError as exc:
@@ -294,6 +323,8 @@ class DevBridge:
         host: str = "127.0.0.1",
         journal: Optional[ReloadJournal] = None,
         interaction_journal: Optional[InteractionJournal] = None,
+        runtime_journal: Optional[RuntimeJournal] = None,
+        runtime_capture: Optional[RuntimeLogCapture] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -305,6 +336,11 @@ class DevBridge:
         # coarse UI actions into it; the bridge serves them at
         # ``/interaction_log`` (#390).
         self._interaction_journal = interaction_journal
+        # Written by the runtime-log capture taps (log records + uncaught
+        # exceptions); the bridge serves them at ``/runtime_log`` and toggles
+        # verbose capture via the capture handle at ``/runtime_log/verbose`` (#409).
+        self._runtime_journal = runtime_journal
+        self._runtime_capture = runtime_capture
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -332,7 +368,13 @@ class DevBridge:
         if self._server is not None:
             return
 
-        handler = _make_handler(self._marshaller, self._journal, self._interaction_journal)
+        handler = _make_handler(
+            self._marshaller,
+            self._journal,
+            self._interaction_journal,
+            self._runtime_journal,
+            self._runtime_capture,
+        )
         self._server = ThreadingHTTPServer((self._host, 0), handler)
         self._thread = threading.Thread(
             target=self._server.serve_forever,
