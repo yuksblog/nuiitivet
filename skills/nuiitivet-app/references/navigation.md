@@ -91,8 +91,9 @@ class ItemViewModel:
         self.navigator.push(DetailsIntent(item_id=item_id))
 
 def main():
+    # rule 6: pass a factory, not an already-built Navigator, so live development works
     app = nv.App(
-        nv.Navigator.intents(
+        content=lambda: nv.Navigator.intents(
             initial_route=HomeIntent(),
             routes={
                 HomeIntent:    lambda _: HomeScreen(),
@@ -105,6 +106,4 @@ def main():
 ```
 
 The same Intent approach applies to dialogs from a ViewModel via `IOverlay` and an
-overlay intent resolver — see the
-[Intent-Based Navigation guide](https://yuksblog.github.io/nuiitivet/guide/navigation/intent/)
-and the [Navigation guide](https://yuksblog.github.io/nuiitivet/guide/navigation/).
+overlay intent resolver.

@@ -48,7 +48,7 @@ code — no per-session setup.
 
 ## What it front-loads
 
-`SKILL.md` opens with five core rules the assistant must not violate:
+`SKILL.md` opens with six core rules the assistant must not violate:
 
 1. **One import root** — `import nuiitivet.material as nv`; reach every symbol
    through `nv`.
@@ -57,13 +57,17 @@ code — no per-session setup.
 3. **State is `Observable`, and the UI binds to it — never push** — no
    `setState`, no `subscribe()` just to shove a value into a widget.
 4. **Size, spacing, and alignment are widget *parameters*, not wrapper widgets**
-   — no `Padding`/`SizedBox`/`Container`/`EdgeInsets`.
+   — no `Padding`/`SizedBox`/`EdgeInsets`. (`Container` *does* exist as a plain
+   layout box; background/border/clipping are modifiers, not its job.)
 5. **Decoration and behavior attach via `.modifier(...)` chained with `|`** — do
    not wrap a widget to decorate it.
+6. **The app root is a factory, not an instance** — pass `App(content=build_root)`,
+   never `App(content=build_root())`.
 
-It also covers hot-reload authoring (write a root **factory**, not an instance)
-and links to topical references (layout, state, navigation, anti-patterns) the
-assistant reads on demand.
+It links to topical references (layout, state, navigation, anti-patterns) the
+assistant reads on demand. *Running* the app under hot reload and driving it while
+you debug is the companion [`nuiitivet-debug`](nuiitivet_debug_skill.md) skill's
+job, not this one.
 
 ## The idioms linter
 
@@ -81,5 +85,7 @@ resolve every finding by hand.
 
 - [AI pair-programming](index.md) — where this skill fits the
   edit → see → act loop.
+- [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) — the companion skill
+  that runs, hot-reloads, and drives the app you write with this one.
 - [Hot Reload](hot_reload.md) — the factory contract the skill's authoring
   guidance depends on.
