@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-app
-description: Build, edit, and review applications with the Nuiitivet Python UI framework. Nuiitivet blends ideas from Flutter (widgets), SwiftUI/Compose (modifiers), and WPF ReactiveProperty (Observable state), so agents frequently leak idioms from those other frameworks. Use this skill whenever writing or modifying Nuiitivet UI code (ComposableWidget, Observable, App, Column/Row, modifiers, Navigator/Overlay), or when reviewing Nuiitivet code for foreign-framework patterns. Triggers include: creating a Nuiitivet app or widget, wiring state, adding navigation/dialogs, or checking that existing code follows Nuiitivet idioms rather than Flutter/React/Rx habits.
+description: Build, edit, and review Nuiitivet (Python UI framework) code with the correct idioms. Its surface resembles Flutter/SwiftUI/Compose/Rx, so agents leak foreign patterns; this skill front-loads Nuiitivet's own idioms (ComposableWidget, Observable, Column/Row, modifiers, Navigator/Overlay) and ships a linter to catch leaks. Use whenever writing or reviewing Nuiitivet UI code. For running, hot-reloading, and debugging a Nuiitivet app, see the nuiitivet-debug skill.
 ---
 
 # Building Nuiitivet Apps
@@ -10,7 +10,7 @@ its idioms are its own. The single biggest failure mode is writing valid Python
 that follows Flutter / React / Rx / Compose habits instead of Nuiitivet's. This
 skill front-loads the correct idioms and provides a linter to catch leaks.
 
-## The 5 core rules
+## The 6 core rules
 
 1. **One import root.** `import nuiitivet.material as nv` — every symbol (layout,
    state, widgets, styles, modifiers) is reached through `nv`. Do not import
@@ -28,21 +28,25 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
 
 4. **Size, spacing, and alignment are widget *parameters*, not wrapper widgets.**
    Write `nv.Text("Hi", padding=12, width=200)`. Do **not** wrap in `Padding`,
-   `SizedBox`, `Container`, or `EdgeInsets` — that Flutter nesting does not exist.
+   `SizedBox`, or `EdgeInsets` — that Flutter nesting does not exist. (`Container`
+   *does* exist as a plain layout box, but reach for it only when you need a
+   distinct single-child box, not merely to add padding or a size.)
 
 5. **Decoration and behavior attach via `.modifier(...)` chained with `|`.**
    `nv.Button("OK").modifier(tooltip("Submit") | background("#2196F3"))`. Do not
    wrap a widget to decorate it.
 
+6. **The app root is a factory, not an instance.** Pass a zero-argument callable
+   (or a `Widget` subclass) to `nv.App(content=...)` **without calling it** —
+   `App(content=build_root)`, never `App(content=build_root())`. Passing an
+   already-constructed widget is what silently disables live development. The
+   *why* (hot reload keeps `Observable` state alive across edits) and *how to run*
+   live in the **nuiitivet-debug** skill.
+
 The one-line mental model: **Logic → UI is declarative (Observable binding); UI →
 logic is imperative (event handlers).**
 
-## Hot-reload authoring — write a root factory, not a root instance
-
-Nuiitivet apps are developed under in-process hot reload: edit a widget, save,
-and the running window updates while `Observable` state survives. This works only
-if the root is a **factory** — a zero-argument callable returning the root widget
-— passed to `App(content=...)` **without calling it**:
+## A complete minimal app
 
 ```python
 import nuiitivet.material as nv
@@ -64,7 +68,7 @@ class Counter(nv.ComposableWidget):
     def _inc(self) -> None:
         self.count.value += 1
 
-def build_root() -> nv.Widget:                     # <- the factory
+def build_root() -> nv.Widget:                     # <- the factory (rule 6)
     return Counter()
 
 def main() -> None:
@@ -74,19 +78,10 @@ if __name__ == "__main__":
     main()
 ```
 
-Rules that keep hot reload working:
-
-- **Pass a factory, not an instance.** `App(content=build_root())` (with the
-  call) yields a widget instance the reloader cannot rebuild — hot reload goes
-  inert. A `Widget` *subclass* works directly too: `App(content=Counter)`. A
-  factory needing arguments closes over them: `App(content=lambda: Home(cfg))`.
-- **Per-tree init goes in the factory / widget `__init__`, not `main()`.**
-  `main()` runs **once** at startup and never again on reload; side effects and
-  module-level state there are not restored.
-- Launch for development with `python -m nuiitivet.dev path/to/app.py` (or
-  `--module pkg.app`); production launch (`App.run()`) is unchanged.
-
-See the [Hot Reload guide](https://yuksblog.github.io/nuiitivet/guide/ai_pair_programming/hot_reload/).
+`main()` runs **once**; per-tree state and side effects belong in the factory /
+widget `__init__`, not in `main()`. A `Widget` subclass works as `content`
+directly (`App(content=Counter)`); a factory needing arguments closes over them
+(`App(content=lambda: Home(cfg))`).
 
 ## Widget catalog — reach for the right one
 
@@ -98,7 +93,7 @@ All widgets hang off `nv`. This is the working set; every symbol is importable a
 | Need | Widget | Canonical construction |
 | --- | --- | --- |
 | Vertical / horizontal stack | `Column` / `Row` | `nv.Column([a, b], gap=8, padding=12)` |
-| Single-child box (background, sizing, clipping) | `Container` | `nv.Container(child, width=200, padding=16)` |
+| Single-child layout box (sizing, padding, alignment) | `Container` | `nv.Container(child, width=200, padding=16)` |
 | Overlapping layers | `Stack` | `nv.Stack([base, floating])` |
 | Wrapping / flowing children | `Flow` / `UniformFlow` | `nv.UniformFlow.builder(items, fn, columns=3)` |
 | Switch between children by index (tabs/wizard) | `Deck` | `nv.Deck(index=obs, children=[PageA(), PageB()])` |
@@ -106,6 +101,10 @@ All widgets hang off `nv`. This is the working set; every symbol is importable a
 | Override one child's cross-axis position | `CrossAligned` | `nv.CrossAligned(child, "center")` |
 | Rule / separator | `HorizontalDivider` / `VerticalDivider` | `nv.HorizontalDivider()` |
 | Dynamic list from data | `Column.builder` (also `Row`/`Stack`/`Flow`/`UniformFlow`) | `nv.Column.builder(items_obs, lambda item, i: nv.Text(item))` |
+
+Background, border, shadow, and clipping are **modifiers** (`background`,
+`border`, `shadow`, `corner_radius`, `clip`), not a job for `Container` — its box
+is layout-only.
 
 **Content & media**
 
@@ -160,69 +159,38 @@ Notes:
 - There is **no** `IndexedStack` or `BottomNavigationBar`; use `Deck` +
   `NavigationRail`.
 - Wrappers (`FadeIn`/`FadeOut`/`ScaleIn`/`ScaleOut`/`SlideIn…`) animate a child's
-  entry/exit; theming is `nv.ThemeFactory`. Consult the docs site for the full
-  parameter set of any widget above.
+  entry/exit; theming is `nv.ThemeFactory`. When a widget's exact parameters
+  aren't covered here, the topical references below carry the day-to-day set.
 
 ## Threading & drawing gotchas
 
 - **Widget-tree mutation is main-thread only.** Never build, mount, or reassign
   `Observable.value` that drives the tree from a background thread. Do async work
   off-thread, then hop back to the UI thread to update state. Reads are fine
-  anywhere; mutation is not. See the
-  [Threading guide](https://yuksblog.github.io/nuiitivet/guide/advanced/threading/).
+  anywhere; mutation is not.
 - **Drawing is on-demand.** Frames are painted when state changes, not on a
   fixed loop — do not write per-frame `while` loops or drive animation by busy
   polling; bind to an `Observable` and let the framework repaint.
-- **Factory vs instance** (see hot reload above) — a stray `content=build_root()`
-  silently disables reload.
+- **Factory, not instance** (rule 6) — a stray `content=build_root()` silently
+  disables live development.
 
-## How this fits the collaborative loop
+## Running, hot-reloading & debugging
 
-This skill is the **authoring leg** of pair-programming over hot reload — it makes
-the assistant *write the right nuiitivet code*. The other legs are framework
-features (not knowledge), set up separately:
-
-- **Write** — hot reload rebuilds the running app on save (see above).
-- **See / act** — the dev bridge and its MCP server let an assistant inspect and
-  drive the running app (`status` / `describe_tree` / `describe_state` /
-  `screenshot` / `click` / `type` / `key` / `wait_for`). Three ways to *check*
-  the app, cheapest first: **is it up and healthy?** → `status` (liveness, title,
-  last-reload outcome, error count, and a `blank` flag for a white screen — no
-  tree, no image); **is the right thing on screen?** → `describe_tree` (the
-  structure, and how you resolve action targets); **do the pixels look right?** →
-  `screenshot` (a last resort for genuine visual/layout checks — image tokens are
-  expensive). Reach for `status` after startup or an edit, not `screenshot`.
-  After an action that starts async work
-  (network, a timer, an animation), call `wait_for` — naming a `key` / `label` /
-  `text` condition, or `present=False` to wait one *out* — before `describe_tree`,
-  so you observe the settled state instead of racing a spinner. Register it once
-  in your MCP host with `python -m nuiitivet.dev mcp`
-  (needs `pip install 'nuiitivet[mcp]'`); it is development-only and forwards to
-  the running dev process. See the dev-bridge / MCP server docs for setup.
-  - **Waiting on the human, not async work?** `wait_for` blocks your turn
-    synchronously for up to `timeout` (default 3s), so it fits app-driven
-    settling, not a person deciding when to click. To wait for a *human* action,
-    keep each `wait_for` short and poll in a loop (re-issuing it, checking
-    `interaction_log` between tries) rather than parking one call on a long
-    `timeout` — the condition must land inside a call's live window to be seen,
-    and a single long block ties up the turn while it waits.
-- **Make a widget targetable** — attach a stable `key` with the `keyed()`
-  modifier (`widget.modifier(keyed("increment-btn"))`) so the bridge can drive it
-  by `key`, and its state survives a reorder across hot reload. Add it on demand
-  and remove it once that need is gone. When chained with wrapping modifiers,
-  apply `keyed()` **last**. See the
-  [Other Modifiers guide](https://yuksblog.github.io/nuiitivet/guide/modifiers/others/#keyed).
-
-With those in place the loop is **edit (hot reload) → see → act → verify → edit**,
-and this skill keeps the "edit" step producing the correct widgets.
+Writing the code is this skill's job. *Running* the app under hot reload,
+inspecting and driving it through the dev bridge / MCP server (`status`,
+`describe_tree`, `screenshot`, `click`, `wait_for`, …), and the
+edit → see → act → verify loop live in the **nuiitivet-debug** skill. Reach for
+it once there is an app to run.
 
 ## Workflow
 
 1. Before writing, if the task touches an area below, read the matching reference.
-2. Write the code following the 5 rules and the reference idioms.
-3. **Always run the linter as the final step** and resolve every finding:
+2. Write the code following the 6 rules and the reference idioms.
+3. **Always run the linter as the final step** and resolve every finding. Run the
+   bundled script (`scripts/check_idioms.py`, sitting next to this `SKILL.md`) —
+   invoke it by its path in *your* install, e.g.:
    ```
-   python skills/nuiitivet-app/scripts/check_idioms.py <files-or-dirs>
+   python .claude/skills/nuiitivet-app/scripts/check_idioms.py <files-or-dirs>
    ```
    It reports foreign-framework patterns (warnings only — it does not edit code)
    and points at the correct Nuiitivet idiom. Fix each one by hand.
@@ -231,7 +199,9 @@ and this skill keeps the "edit" step producing the correct widgets.
 
 These files are **self-contained** — everything needed to write correct
 day-to-day nuiitivet code is here, offline. Read the local reference; you do not
-need to fetch anything to do the work.
+need to fetch anything to do the work. If a case genuinely isn't covered, that
+gap is a signal to extend these references (via the maintainer workflow), not to
+go looking elsewhere.
 
 - **Any confusion about "how would another framework do this?"** →
   [references/anti-patterns.md](references/anti-patterns.md) — the core
@@ -244,9 +214,3 @@ need to fetch anything to do the work.
 - **Navigation, dialogs, snackbars, overlays** →
   [references/navigation.md](references/navigation.md) — Navigator, Intent-based
   routing, Overlay.
-
-The `https://yuksblog.github.io/nuiitivet/` links scattered through these files
-are **optional deep-dives** for genuine edge cases (exhaustive parameter tables,
-rare options) — open one only when the local reference doesn't cover your case,
-not as a routine step. Reaching for the docs site every time wastes time and
-tokens; the references exist precisely so you don't have to.

@@ -12,19 +12,24 @@ git-ignored — so framework users can adopt them.
 
 | Skill | Purpose |
 | --- | --- |
-| [`nuiitivet-app/`](nuiitivet-app/) | Build, edit, and review Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
+| [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
+| [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `wait_for`) for the see → act → verify loop. |
+
+`nuiitivet-app` *writes* the code; `nuiitivet-debug` *runs and debugs* what was
+written. They are independent — install either or both.
 
 ## How to use a skill
 
 **Claude Code** — copy the skill into your project's skills directory so the
-agent discovers it automatically:
+agent discovers it automatically (copy each skill you want):
 
 ```
-cp -r skills/nuiitivet-app <your-project>/.claude/skills/nuiitivet-app
+cp -r skills/nuiitivet-app   <your-project>/.claude/skills/nuiitivet-app
+cp -r skills/nuiitivet-debug <your-project>/.claude/skills/nuiitivet-debug
 ```
 
-The agent loads `SKILL.md`, follows the referenced material in `references/`, and
-runs the bundled linter as the final step:
+The agent loads each `SKILL.md`, follows any referenced material in `references/`,
+and — for `nuiitivet-app` — runs the bundled linter as the final step:
 
 ```
 python .claude/skills/nuiitivet-app/scripts/check_idioms.py <files-or-dirs>

@@ -188,6 +188,7 @@ nav:
           - Hot Reload: guide/ai_pair_programming/hot_reload.md
           - Dev Bridge MCP: guide/ai_pair_programming/dev_bridge_mcp.md
           - The nuiitivet-app skill: guide/ai_pair_programming/nuiitivet_app_skill.md
+          - The nuiitivet-debug skill: guide/ai_pair_programming/nuiitivet_debug_skill.md
       - Advanced:
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md

@@ -51,8 +51,7 @@ child; its values are also `start`/`center`/`end` only.
 
 Use `nv.Sizing` for flexible/auto sizing rather than hardcoding when a widget
 should fill or hug its content: `nv.Sizing.auto()`, `nv.Sizing.fixed(n)`,
-`nv.Sizing.flex()`, e.g. `width=nv.Sizing.flex()`. See the
-[Sizing guide](https://yuksblog.github.io/nuiitivet/guide/layout/sizing/).
+`nv.Sizing.flex()`, e.g. `width=nv.Sizing.flex()`.
 
 ## Dynamic lists
 
@@ -96,5 +95,4 @@ nv.Button("OK").modifier(
 `padding`/`width` stay as **parameters**; modifiers are for things like
 `background`, `corner_radius`, `clip`, `border`, `shadow`, `tooltip`, `clickable`,
 `focusable`, `hoverable`, `opacity`, `translate`, `rotate`, `scale`, and popups.
-(The corner-rounding modifier is `corner_radius`, **not** `radius`.) See the
-[Modifiers guide](https://yuksblog.github.io/nuiitivet/guide/modifiers/).
+(The corner-rounding modifier is `corner_radius`, **not** `radius`.)
