@@ -733,6 +733,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c5/ef/b4379797c7a910ef16c72ec55c306e6bee15b4ebe72c2e2dd4a96b03b2fb/materialyoucolor-3.0.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:faf65e7ff8885b0bd6cb13f5d0f9b8333222402c9c14530da53031e18ecaf582", size = 1267725, upload-time = "2026-07-15T19:05:07.4Z" },
     { url = "https://files.pythonhosted.org/packages/c6/79/cd4616cc801b450949cf6ad1e0ab03b4e11390e13f0c32950200a5af4121/materialyoucolor-3.0.3-cp313-cp313-win32.whl", hash = "sha256:09f26b67e03183a05deda4390e8166e62565cf09ae6116a6d4738f70a4cf8442", size = 354876, upload-time = "2026-07-15T19:05:09.099Z" },
     { url = "https://files.pythonhosted.org/packages/0a/4d/b222e7ad801bfe9a2fd60d863c63f22ffee287b5d4a698279fee22bea3ee/materialyoucolor-3.0.3-cp313-cp313-win_amd64.whl", hash = "sha256:91dc5eb16bb289fcf19d65d4784baad53cd06192ebafb3967b1b827ad7cb7bc9", size = 376269, upload-time = "2026-07-15T19:05:10.529Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/d6/b0fe16bed199533efbcbe890201b69024ebe57a99f2a22d5ff98d0ad4951/materialyoucolor-3.0.3-cp314-cp314-android_24_arm64_v8a.whl", hash = "sha256:9b9fd5f8af846d7d6372ee174cfbb8c15813562fdb31ad9da10365f293442041", size = 420505, upload-time = "2026-07-20T17:09:32.524Z" },
+    { url = "https://files.pythonhosted.org/packages/00/8c/71cdd6efb91ca253b11672af6d4ad30a745b869d3490fce8db86f4a46101/materialyoucolor-3.0.3-cp314-cp314-android_24_x86_64.whl", hash = "sha256:cf03b4aaf3e8b3dd24549e54f533cb4fd284a0c8e50aff4b5970974381808b69", size = 398058, upload-time = "2026-07-20T17:19:29.132Z" },
     { url = "https://files.pythonhosted.org/packages/60/6b/394b5cdcff07633b3b472e76b5b0bdf8a83759bbaa3aba5bface93fb3143/materialyoucolor-3.0.3-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:77ac14637ac5e6e1127332f195f2d0407d0a3b3914b884a0c9ba014a9cfe4af2", size = 216864, upload-time = "2026-07-15T19:05:12.234Z" },
     { url = "https://files.pythonhosted.org/packages/7b/e1/b1cdaf4fb4a0f635cd1558a92287cd6a8924ca67bad4ef3e70e9d8b1ba32/materialyoucolor-3.0.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:5219aa8ebf4c733afdff12e717118499fad3e83338fa096cfa3fc54ef42ed109", size = 207346, upload-time = "2026-07-15T19:05:13.616Z" },
     { url = "https://files.pythonhosted.org/packages/34/57/2292d5e334d76263f93755fd50c0709f355d471952df72b9bde0578612cc/materialyoucolor-3.0.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6a599f8f3f34d41332c548ca3bfdfa0c787088ddc461fd245458041de49b149a", size = 235324, upload-time = "2026-07-15T19:05:15.015Z" },
@@ -986,7 +988,7 @@ wheels = [
 
 [[package]]
 name = "nuiitivet"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "." }
 dependencies = [
     { name = "materialyoucolor" },
