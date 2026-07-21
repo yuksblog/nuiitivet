@@ -51,15 +51,41 @@ and you can start the app whenever you like.
 
 ## What the assistant can do
 
-The bridge exposes ten tools, split across the loop:
+The bridge exposes eleven tools, split across the loop.
+
+There are three ways to "check the app", cheapest first — reach for them in this
+order rather than defaulting to a screenshot:
+
+- **Is it up and healthy?** → `status` (below) — no tree, no image.
+- **Is the right thing on screen?** → `describe_tree` — the structure, cheap in
+  tokens.
+- **Do the pixels look right?** → `screenshot` — a last resort for genuine
+  visual/layout checks; image tokens are expensive.
+
+### Check it's up
+
+- **`status`** — the cheapest health check, and the first thing to call after
+  starting the app or after an edit. It returns, without the tree or an image:
+  `running` (always `true` when the call succeeds — a stopped app fails the call
+  instead), `title` (the current window title, so you can confirm *which* app is
+  running), `last_reload` (`{"seq", "outcome"}` of the newest hot-reload, so
+  `outcome: "error"` tells you the last save did not compile), `error_count` (the
+  number of retained `ERROR`/`CRITICAL` runtime events — nonzero means something
+  failed at runtime), and `blank` (`true` when the frame is a single uniform
+  color — a **white/blank screen** where nothing painted). `blank` is the one
+  signal the tree cannot give: the tree can look right while a swallowed paint
+  exception leaves the screen blank, and `status` catches that without a
+  screenshot. It is a heuristic — an intentionally solid-color screen also reads
+  blank.
 
 ### See
 
 - **`describe_tree`** — walks the mounted tree into compact JSON: each node's
   type, human identity (`key` / `label` / `text` / `title`), and rect
   `[x, y, w, h]` in root coordinates. This is the low-token view the assistant
-  reasons over and resolves action targets from. Prefer it for everything except
-  a genuine visual check.
+  reasons over and resolves action targets from. Use it to check the right thing
+  is on screen and to target actions — prefer it over a screenshot for
+  everything except a genuine visual check.
 - **`describe_state`** — the reactive companion to `describe_tree`. Where the
   tree is the *output*, this is the *state that produced it*: the live
   `Observable` values reachable from the mounted tree. It returns the same nested
@@ -70,8 +96,11 @@ The bridge exposes ten tools, split across the loop:
   when the tree looks right but behaves wrong, or looks wrong but the code seems
   right — the classic "the value updated but the UI didn't" (or the reverse)
   reactive bug, where the tree alone cannot tell you which side is at fault.
-- **`screenshot`** — renders the current frame to PNG. Reserve it for occasional
-  visual spot checks; image tokens are expensive.
+- **`screenshot`** — renders the current frame to PNG. A **last resort**, only
+  when you genuinely need to see pixels — a visual or layout check the structure
+  cannot express; image tokens are expensive. Do not reach for it to confirm the
+  app started or is healthy (`status` answers that, and its `blank` flag already
+  catches a white screen) or to read on-screen structure (`describe_tree`).
 
 ### Act
 
@@ -195,6 +224,7 @@ CLI subcommands that discover the running app and issue plain HTTP — dependenc
 free (standard-library `urllib` only), no `[mcp]` extra required:
 
 ```bash
+python -m nuiitivet.dev status
 python -m nuiitivet.dev describe-tree
 python -m nuiitivet.dev describe-state
 python -m nuiitivet.dev reload-log

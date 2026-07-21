@@ -44,12 +44,17 @@ class _FakeApp:
         self.root = _FakeNode(key="submit", label="increment")
         self.width = 100
         self.height = 100
+        self.title = "Counter"
+        self.blank = False
         self.presses: list[tuple] = []
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
 
     def _render_to_png_bytes(self) -> bytes:
         return self._PNG
+
+    def _frame_is_blank(self) -> bool:
+        return self.blank
 
     def _dispatch_mouse_press(self, x: int, y: int, *, button: Any = None) -> None:
         self.presses.append((x, y, button))
@@ -166,6 +171,49 @@ def test_bridge_describe_state(tmp_path: Path, dev_run: None) -> None:
             state = client.describe_state()
             assert state["type"] == "_FakeNode"
             assert state["state"] == {"count": 7}
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_status_aggregates_signals(tmp_path: Path, dev_run: None) -> None:
+    journal = ReloadJournal()
+    journal.record_success(["pkg.a"])
+    journal.record_error("Traceback...\nValueError: boom")
+    runtime = RuntimeJournal()
+    runtime.record(level="WARNING", source="logging", thread="t", message="noise")
+    runtime.record(level="ERROR", source="thread", thread="w", message="RuntimeError: x")
+    runtime.record(level="CRITICAL", source="excepthook", thread="MainThread", message="dead")
+
+    app: Any = _FakeApp()
+    app.blank = True
+    bridge = DevBridge(app, tmp_path, journal=journal, runtime_journal=runtime)
+    bridge.start()
+    try:
+        with _Pump(bridge):  # title + blank probe hop the UI thread
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            status = client.status()
+            assert status["running"] is True
+            assert status["title"] == "Counter"
+            assert status["blank"] is True
+            # Newest reload only, as {seq, outcome}; the failed save is latest.
+            assert status["last_reload"] == {"seq": 2, "outcome": "error"}
+            # ERROR + CRITICAL count; the WARNING is excluded as noise.
+            assert status["error_count"] == 2
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_status_defaults_without_journals(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            status = client.status()
+            assert status["running"] is True
+            assert status["last_reload"] is None
+            assert status["error_count"] == 0
+            assert status["blank"] is False
     finally:
         bridge.shutdown()
 

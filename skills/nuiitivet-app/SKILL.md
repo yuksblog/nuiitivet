@@ -184,8 +184,15 @@ features (not knowledge), set up separately:
 
 - **Write** — hot reload rebuilds the running app on save (see above).
 - **See / act** — the dev bridge and its MCP server let an assistant inspect and
-  drive the running app (`describe_tree` / `describe_state` / `screenshot` /
-  `click` / `type` / `key` / `wait_for`). After an action that starts async work
+  drive the running app (`status` / `describe_tree` / `describe_state` /
+  `screenshot` / `click` / `type` / `key` / `wait_for`). Three ways to *check*
+  the app, cheapest first: **is it up and healthy?** → `status` (liveness, title,
+  last-reload outcome, error count, and a `blank` flag for a white screen — no
+  tree, no image); **is the right thing on screen?** → `describe_tree` (the
+  structure, and how you resolve action targets); **do the pixels look right?** →
+  `screenshot` (a last resort for genuine visual/layout checks — image tokens are
+  expensive). Reach for `status` after startup or an edit, not `screenshot`.
+  After an action that starts async work
   (network, a timer, an animation), call `wait_for` — naming a `key` / `label` /
   `text` condition, or `present=False` to wait one *out* — before `describe_tree`,
   so you observe the settled state instead of racing a spinner. Register it once

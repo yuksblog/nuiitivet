@@ -5,6 +5,7 @@ Subcommands::
     python -m nuiitivet.dev run path/to/app.py     # launch with hot reload
     python -m nuiitivet.dev path/to/app.py          # same (run is the default)
     python -m nuiitivet.dev --module yourpkg.app    # dotted module name
+    python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
@@ -47,6 +48,7 @@ from .session import DevSession, set_dev_session
 _SUBCOMMANDS = frozenset(
     {
         "run",
+        "status",
         "screenshot",
         "describe-tree",
         "describe-state",
@@ -89,6 +91,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.4,
         help="File-watch poll interval in seconds (default: 0.4).",
+    )
+
+    subparsers.add_parser(
+        "status",
+        help="Print a cheap liveness/health snapshot of the running app as JSON.",
     )
 
     subparsers.add_parser("describe-tree", help="Print the running app's widget tree as JSON.")
@@ -279,8 +286,8 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(describe-tree / describe-state / screenshot / click / type / key / "
-            "wait-for / interaction-log / runtime-log).",
+            "(status / describe-tree / describe-state / screenshot / click / type / "
+            "key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
         try:
@@ -292,6 +299,19 @@ def _run(args: argparse.Namespace) -> int:
         return 0
     finally:
         set_dev_session(None)
+
+
+def _status(_args: argparse.Namespace) -> int:
+    try:
+        client = BridgeClient.discover()
+        status = client.status()
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(status, indent=2))
+    return 0
 
 
 def _describe_tree(_args: argparse.Namespace) -> int:
@@ -440,6 +460,8 @@ def _mcp(_args: argparse.Namespace) -> int:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
+    if args.command == "status":
+        return _status(args)
     if args.command == "describe-tree":
         return _describe_tree(args)
     if args.command == "describe-state":

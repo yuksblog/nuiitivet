@@ -238,6 +238,22 @@ class BridgeClient:
             message = _extract_error(exc)
             raise RuntimeError(message) from exc
 
+    def status(self) -> dict[str, Any]:
+        """Fetch a cheap liveness/health snapshot of the running app (#420).
+
+        Aggregates ``{running, title, last_reload, error_count, blank}`` without
+        the widget tree or a screenshot: ``running`` is always ``True`` when this
+        returns (a stopped app surfaces as :class:`BridgeNotFoundError` from
+        :meth:`discover`); ``title`` is the resolved window title; ``last_reload``
+        is the newest reload's ``{"seq", "outcome"}`` (or ``None``);
+        ``error_count`` is the number of retained ERROR/CRITICAL runtime events;
+        ``blank`` flags a single-uniform-color frame (a "white screen"). The
+        positively-named answer to "is the app up and healthy?" -- prefer it over
+        ``screenshot`` for startup/liveness checks.
+        """
+        body, _ = self._get("/status")
+        return json.loads(body.decode("utf-8"))
+
     def describe_tree(self) -> dict[str, Any]:
         """Fetch the structural tree description from the running app."""
         body, _ = self._get("/describe_tree")

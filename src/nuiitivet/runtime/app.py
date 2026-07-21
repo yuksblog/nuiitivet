@@ -724,6 +724,25 @@ class App:
         except Exception:
             exception_once(logger, "app_title_subscribe_exc", "Observable title subscribe raised")
 
+    @property
+    def title(self) -> "str | None":
+        """The window title's current value, or ``None`` if unset.
+
+        Resolves the title given at construction: a plain string is returned as
+        is; an :class:`~nuiitivet.observable.protocols.ObservableBase` is
+        unwrapped to its current value. Exposed for dev tooling -- the dev
+        bridge's ``status`` reports it so an assistant can confirm *which* app is
+        running -- and never raises: an observable whose read fails reports
+        ``None`` rather than propagating.
+        """
+        value = self._title_value
+        if isinstance(value, ObservableBase):
+            try:
+                value = value.value
+            except Exception:
+                return None
+        return str(value) if value is not None else None
+
     def _apply_window_title(self, title: "str | None") -> None:
         window = getattr(self, "_window", None)
         if window is not None:
@@ -893,6 +912,43 @@ class App:
         if img is None:
             raise RuntimeError("makeImageSnapshot() returned None")
         return img
+
+    # Longest-side pixel budget for the blank-frame probe. Small on purpose: it
+    # only decides whether the frame is a single uniform color, not what it is.
+    _BLANK_PROBE_MAX_DIM = 64
+
+    def _frame_is_blank(self) -> bool:
+        """Return whether the current frame is a single uniform color.
+
+        A render that produced nothing -- a build that returned no content, or a
+        paint that raised and was swallowed -- leaves the frame filled with only
+        the background clear color, so every pixel is identical. Any real content
+        paints at least one differing pixel, so "one color everywhere" is a
+        reliable "the screen is blank" signal that the widget tree alone cannot
+        give (the tree can look right while nothing paints).
+
+        Renders a small downscaled snapshot and reads its raw pixels -- no PNG
+        encode, so no image tokens -- returning ``True`` only when the whole
+        frame is one color. A splash or demo screen that is *intentionally* one
+        solid color reads as blank too, so treat this as a heuristic hint, not a
+        hard failure.
+
+        Must be called on the UI thread (it renders the live tree). Never
+        raises: if pixels cannot be read on this backend it reports ``False``
+        (do not claim blank) rather than propagating.
+        """
+        longest = max(int(self.width), int(self.height), 1)
+        scale = min(1.0, self._BLANK_PROBE_MAX_DIM / longest)
+        img = self._render_snapshot(scale=scale)
+        tobytes = getattr(img, "tobytes", None)
+        if not callable(tobytes):
+            return False
+        rgba = tobytes()  # 4 bytes/pixel (RGBA); byte order is irrelevant here
+        if len(rgba) < 8:
+            return False
+        # A single uniform color == the buffer equals its first pixel repeated.
+        first = rgba[:4]
+        return rgba == first * (len(rgba) // 4)
 
     def _dispatch_mouse_motion(self, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
         _dispatch_mouse_motion_fn(self, x, y, buttons=buttons, modifier_keys=modifier_keys)

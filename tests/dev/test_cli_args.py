@@ -31,6 +31,11 @@ def test_screenshot_default_output() -> None:
     assert args.output == "screenshot.png"
 
 
+def test_status_subcommand() -> None:
+    args = _parse_args(["status"])
+    assert args.command == "status"
+
+
 def test_describe_tree_subcommand() -> None:
     args = _parse_args(["describe-tree"])
     assert args.command == "describe-tree"
