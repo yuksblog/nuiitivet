@@ -4,8 +4,10 @@ Two concerns live here:
 
 - **Identification (§9.8):** decide which loaded modules are the *user's* and are
   therefore safe to reload. ``nuiitivet``, ``skia`` and ``pyglet`` are never
-  reloaded (they wrap C extensions); this is enforced by both a name blacklist
-  and a "file must live under the project root" check.
+  reloaded (they wrap C extensions); this is enforced by a name blacklist, a
+  "file must not live under a site-packages directory" check (so a project-local
+  ``.venv/`` is excluded — #422), and a "file must live under the project root"
+  check.
 
 - **Ordering (§9.6, case 1):** reload user modules in dependency order — a
   depended-upon module (a leaf like ``widgets``) before its dependents (``app``)
@@ -24,8 +26,11 @@ import importlib
 import importlib.util
 import logging
 import os
+import site
 import sys
+import sysconfig
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Optional
@@ -36,6 +41,52 @@ logger = logging.getLogger(__name__)
 # extensions; ``nuiitivet`` is the framework itself. This is the hard safety net
 # required by #359 regardless of where the files happen to live.
 _BLACKLIST_ROOTS = frozenset({"nuiitivet", "skia", "skia_python", "pyglet"})
+
+
+@lru_cache(maxsize=1)
+def _site_directories() -> tuple[Path, ...]:
+    """Resolved install directories where dependencies live (#422).
+
+    Third-party and stdlib packages install under the interpreter's site
+    directories. When the virtualenv lives *inside* the project root (e.g.
+    ``uv``'s default project-local ``.venv/``), those directories are under
+    ``project_root``, so the plain "file is under project_root" check
+    misclassifies every dependency as reloadable user code. Rejecting anything
+    under a real site directory fixes that independently of the package manager
+    and without guessing from folder names.
+
+    Combines ``sysconfig`` (``purelib``/``platlib``) with ``site``
+    (``getsitepackages()`` + the per-user site for ``pip install --user``).
+    """
+    candidates: list[str] = []
+    paths = sysconfig.get_paths()
+    for key in ("purelib", "platlib", "stdlib", "platstdlib"):
+        path = paths.get(key)
+        if path:
+            candidates.append(path)
+    # ``getsitepackages`` is absent in some virtualenvs; guard it.
+    getsitepackages = getattr(site, "getsitepackages", None)
+    if getsitepackages is not None:
+        try:
+            candidates.extend(getsitepackages())
+        except Exception:
+            pass
+    try:
+        candidates.append(site.getusersitepackages())
+    except Exception:
+        pass
+
+    resolved: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved_path = Path(candidate).resolve()
+        except Exception:
+            continue
+        if resolved_path not in seen:
+            seen.add(resolved_path)
+            resolved.append(resolved_path)
+    return tuple(resolved)
 
 
 @dataclass
@@ -66,6 +117,17 @@ def _is_user_module(module: ModuleType, project_root: Path) -> bool:
     try:
         resolved = Path(file).resolve()
     except Exception:
+        return False
+    # Reject dependencies by their real install location *before* the
+    # project-root check, so a project-local ``.venv/`` (site-packages under the
+    # project root) is still excluded (#422). Editable installs (``pip install
+    # -e``) whose source lives in the tree resolve outside these directories, so
+    # they stay reloadable — that source is genuinely the user's code.
+    for site_dir in _site_directories():
+        try:
+            resolved.relative_to(site_dir)
+        except ValueError:
+            continue
         return False
     try:
         resolved.relative_to(project_root)
