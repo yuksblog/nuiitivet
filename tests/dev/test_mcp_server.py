@@ -28,6 +28,13 @@ from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError  # noqa: E402
 def _fake_client() -> Any:
     """A stand-in BridgeClient with canned responses for every forwarded call."""
     client = mock.Mock(spec=BridgeClient)
+    client.status.return_value = {
+        "running": True,
+        "title": "Counter",
+        "blank": False,
+        "last_reload": {"seq": 3, "outcome": "success"},
+        "error_count": 0,
+    }
     client.describe_tree.return_value = {"type": "Root", "label": "increment"}
     client.describe_state.return_value = {
         "type": "Root",
@@ -91,6 +98,7 @@ def test_build_server_registers_the_tools() -> None:
     server = mcp_server.build_server()
     names = {tool.name for tool in asyncio.run(server.list_tools())}
     assert names == {
+        "status",
         "describe_tree",
         "describe_state",
         "reload_log",
@@ -103,6 +111,19 @@ def test_build_server_registers_the_tools() -> None:
         "key",
         "wait_for",
     }
+
+
+def test_status_forwards_to_client() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "status", {})
+    assert result["running"] is True
+    assert result["title"] == "Counter"
+    assert result["blank"] is False
+    assert result["last_reload"] == {"seq": 3, "outcome": "success"}
+    assert result["error_count"] == 0
+    client.status.assert_called_once_with()
 
 
 def test_describe_tree_forwards_to_client() -> None:

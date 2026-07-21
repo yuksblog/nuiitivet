@@ -158,6 +158,82 @@ def _parse_limit(query: str) -> Optional[int]:
         return None
 
 
+# Runtime-log levels that count as a real failure for ``status``'s error_count,
+# so ordinary WARNING noise does not read as "the app died".
+_STATUS_ERROR_LEVELS = frozenset({"ERROR", "CRITICAL"})
+
+
+def _probe_app(app: "App") -> tuple[Optional[str], bool]:
+    """Read the two live signals ``status`` needs off the app (UI thread).
+
+    Returns ``(title, blank)``: the resolved window title and whether the
+    current frame is a single uniform color (see :meth:`App._frame_is_blank`).
+    The blank probe renders, so it is defended -- a render failure reports
+    ``blank=False`` (do not claim blank) rather than aborting the status call.
+    """
+    title = app.title
+    try:
+        blank = bool(app._frame_is_blank())
+    except Exception:
+        logger.debug("dev bridge: blank-frame probe raised", exc_info=True)
+        blank = False
+    return title, blank
+
+
+def _latest_reload(journal: Optional[ReloadJournal]) -> Optional[dict[str, Any]]:
+    """Return the newest reload as ``{"seq", "outcome"}``, or ``None`` if none.
+
+    A compact roll-up of :class:`ReloadJournal` for ``status``: ``outcome ==
+    "error"`` flags that the last save did not compile (the live UI is stale),
+    and ``seq`` lets a client tell a new reload from the one it already saw.
+    """
+    if journal is None:
+        return None
+    events = journal.recent(1)
+    if not events:
+        return None
+    event = events[-1]
+    return {"seq": event.seq, "outcome": event.outcome}
+
+
+def _error_count(runtime_journal: Optional[RuntimeJournal]) -> int:
+    """Count retained runtime events at ERROR/CRITICAL for ``status``.
+
+    Covers both uncaught exceptions (excepthook / background thread) and
+    swallowed callback exceptions the framework logs at ERROR, while excluding
+    WARNING noise -- a nonzero count means "something failed at runtime". The
+    count is cumulative over the journal's retained tail (a presence signal);
+    drill into ``runtime_log`` for the detail.
+    """
+    if runtime_journal is None:
+        return 0
+    return sum(1 for event in runtime_journal.recent() if event.level in _STATUS_ERROR_LEVELS)
+
+
+def _build_status(
+    marshaller: _UIThreadMarshaller,
+    journal: Optional[ReloadJournal],
+    runtime_journal: Optional[RuntimeJournal],
+) -> dict[str, Any]:
+    """Aggregate a cheap liveness/health snapshot of the running app.
+
+    A thin roll-up over existing primitives -- the app (title + blank-frame
+    probe, read on the UI thread), the reload journal (newest reload outcome),
+    and the runtime journal (retained error count) -- so an assistant can answer
+    "is it up and healthy?" without the widget tree or a screenshot. Reaching
+    this code at all means the bridge is up, so ``running`` is always ``True``;
+    a *stopped* app surfaces earlier as a failed discovery on the client.
+    """
+    title, blank = marshaller.call_on_ui_thread(_probe_app)
+    return {
+        "running": True,
+        "title": title,
+        "blank": blank,
+        "last_reload": _latest_reload(journal),
+        "error_count": _error_count(runtime_journal),
+    }
+
+
 def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
     """Poll a tree condition until it holds or the timeout elapses.
 
@@ -333,6 +409,14 @@ def _make_handler(
             try:
                 if path in ("", "/health"):
                     self._send_json(200, {"status": "ok"})
+                elif path == "/status":
+                    # A cheap liveness/health roll-up: title + blank-frame probe
+                    # (one UI-thread hop) plus the reload/runtime journals. The
+                    # positively-named alternative to a screenshot for "is it up
+                    # and healthy?" (#420).
+                    self._send_json(
+                        200, _build_status(marshaller, journal, runtime_journal)
+                    )
                 elif path == "/describe_tree":
                     tree = marshaller.call_on_ui_thread(lambda app: describe_tree(app.root))
                     self._send_json(200, {"tree": tree})

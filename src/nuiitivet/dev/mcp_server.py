@@ -53,16 +53,23 @@ _INSTALL_HINT = (
     "Install it with: pip install 'nuiitivet[mcp]'"
 )
 
-# Guidance surfaced to the calling model so it spends tokens wisely: the
-# structural tree is the default lens for reasoning and target resolution;
-# screenshots are for occasional visual spot checks because image tokens are
-# expensive. Kept in one place so every tool's docstring stays consistent.
+# Guidance surfaced to the calling model so it spends tokens wisely. Three ways
+# to "check the app", cheapest first: `status` answers "is it up and healthy?",
+# `describe_tree` answers "is the right thing on screen?" (and resolves action
+# targets), and `screenshot` is a last resort for genuine pixel-level checks
+# because image tokens are expensive. Kept in one place so every tool's docstring
+# stays consistent.
 _SERVER_INSTRUCTIONS = (
     "Tools to drive a running nuiitivet dev app (started with "
-    "'python -m nuiitivet.dev <app.py>'). Default to `describe_tree` for "
-    "reasoning about the UI and for resolving click/type targets by key or "
-    "label -- it is a compact JSON tree and cheap in tokens. Reserve "
-    "`screenshot` for occasional visual spot checks; image tokens are "
+    "'python -m nuiitivet.dev <app.py>'). To confirm the app is up and healthy "
+    "-- after starting it, or after an edit -- call `status`: it is the cheapest "
+    "check and returns liveness, the current title, the last hot-reload outcome, "
+    "an error count, and a `blank` flag for a white/blank screen, all without the "
+    "tree or an image. To reason about the UI or check that the right thing is on "
+    "screen, and to resolve click/type targets by key or label, use "
+    "`describe_tree` -- a compact JSON tree, cheap in tokens. Reserve "
+    "`screenshot` as a last resort, only when you genuinely need to see pixels "
+    "(a visual/layout check `describe_tree` cannot express); image tokens are "
     "expensive. When the displayed tree looks wrong but you need to know whether "
     "the *state* behind it is wrong too -- a reactive bug where the value "
     "updated but the UI did not, or the reverse -- call `describe_state`: it "
@@ -108,6 +115,35 @@ def build_server() -> "FastMCP":
     _require_mcp()
 
     server = FastMCP("nuiitivet-dev", instructions=_SERVER_INSTRUCTIONS)
+
+    @server.tool()
+    def status() -> dict[str, Any]:
+        """Return a cheap liveness/health snapshot of the running app.
+
+        The first thing to call to confirm the app is up and healthy -- after
+        starting it, or after an edit -- and the positively-named alternative to
+        `screenshot` for that. Cheaper than `describe_tree` (no tree) and orders
+        of magnitude cheaper than `screenshot` (no image). Returns:
+
+        - ``running`` -- always ``True`` when this returns; if the app is not up,
+          the call fails instead with a "no running dev app" error.
+        - ``title`` -- the current window title, so you can confirm *which* app is
+          running (or ``null`` if unset).
+        - ``last_reload`` -- the newest hot-reload as ``{"seq", "outcome"}`` (or
+          ``null``); ``outcome: "error"`` means your last save did not compile and
+          the live UI is stale. Compare ``seq`` to tell a new reload from an old.
+        - ``error_count`` -- number of retained ERROR/CRITICAL runtime events
+          (uncaught exceptions and swallowed callback errors, not WARNING noise);
+          nonzero means something failed at runtime -- see `runtime_log`.
+        - ``blank`` -- ``True`` if the frame is a single uniform color, i.e. a
+          white/blank screen where nothing painted (a build that produced no
+          content, or a paint that raised). A heuristic: an intentionally solid
+          screen also reads blank.
+
+        Use `describe_tree` when you need the actual on-screen structure, and
+        `screenshot` only for a genuine pixel-level look.
+        """
+        return _client().status()
 
     @server.tool()
     def describe_tree() -> dict[str, Any]:
@@ -225,9 +261,12 @@ def build_server() -> "FastMCP":
     def screenshot() -> Image:
         """Return a PNG screenshot of the running app's current frame.
 
-        Use sparingly, for visual spot checks -- image tokens are expensive.
-        For structure and for choosing action targets, use `describe_tree`
-        instead.
+        A last resort, for when you genuinely need to see pixels -- a visual or
+        layout check the structure cannot express; image tokens are expensive.
+        Do *not* reach for it to confirm the app started or is healthy: `status`
+        answers that far more cheaply (and its `blank` flag already catches a
+        white screen). For on-screen structure and for choosing action targets,
+        use `describe_tree`.
         """
         return Image(data=_client().screenshot(), format="png")
 
