@@ -1,4 +1,4 @@
-# Anti-patterns: foreign framework habits → the Nuiitivet way
+# Translating foreign-framework habits into Nuiitivet
 
 This is the core reference. Nuiitivet borrows *surface* ideas from Flutter,
 SwiftUI, Jetpack Compose, React, and Rx — so the wrong version below is almost
