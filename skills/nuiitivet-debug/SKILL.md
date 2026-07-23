@@ -63,23 +63,15 @@ top to bottom.
 | Is the app up and running? | `status` — liveness, title, last-reload outcome, error count, a `blank` flag for a white screen |
 | Is the widget tree built as intended? | `describe_tree` — the structure, and how you resolve action targets |
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree |
-| My `click` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output |
+| My `click` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers, so you re-sync instead of acting on a stale screen |
-| A visual problem was reported and tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` (pixels — image tokens are expensive) |
+| A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — a human's report is what puts it in play |
 
-The first three answer almost everything about *your own* changes — "did it
-start", "did my change land", "is the value right". The `*_log` tools cover what
-happened **outside your turn or silently**: `runtime_log` when an action seems to
-do nothing (a handler raised), and `reload_log` / `interaction_log` to catch edits
-or clicks the human made while you worked — either makes your last `describe_tree`
-stale. (If a repeated failure is collapsed in `runtime_log`, call
-`set_runtime_log_verbose(True)` to see every occurrence.) `screenshot` stays the
-genuine last resort: even for a reported visual bug, confirm tree and state first
-— the cause is usually there, not the pixels.
+### Blind spots
 
-Three blind spots make these tools lie by omission — read their output as *what
-was recorded / built*, not as *what happened / is on screen*:
+These tools lie by omission — read their output as *what was recorded / built*,
+not as *what happened / is on screen*:
 
 - **`error_count` is cumulative, and a green build does not reset it.** It counts
   every ERROR/CRITICAL retained since launch, so a clean `last_reload: success`
@@ -92,9 +84,10 @@ was recorded / built*, not as *what happened / is on screen*:
   pages, overlays, and z-order are all listed as-is, so the tree alone can't say
   which one is on screen. Decide the visible page from `describe_state` — a
   `Deck`'s selected index shows up there, joined against the child order in the
-  tree — not from a `screenshot`. Its `rect` can also read `0` or stale right
-  after a measurement, so never diagnose a layout bug from a single `rect` value;
-  re-observe after things settle.
+  tree.
+- **A node's `rect` can read `0` or stale right after a measurement.** Never
+  diagnose a layout bug from a single `rect` value; re-observe after things
+  settle.
 
 ### Acting
 
