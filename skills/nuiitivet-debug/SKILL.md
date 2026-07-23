@@ -78,10 +78,36 @@ stale. (If a repeated failure is collapsed in `runtime_log`, call
 genuine last resort: even for a reported visual bug, confirm tree and state first
 — the cause is usually there, not the pixels.
 
+Three blind spots make these tools lie by omission — read their output as *what
+was recorded / built*, not as *what happened / is on screen*:
+
+- **`error_count` is cumulative, and a green build does not reset it.** It counts
+  every ERROR/CRITICAL retained since launch, so a clean `last_reload: success`
+  can still report `error_count: 2` from *before* your fix. Judge your own change
+  not by that number but with a watermark: note the newest `runtime_log` seq
+  before you edit, then after the reload check whether any ERROR with a *higher*
+  seq appeared. (`runtime_log` and `reload_log` seqs are separate counters — don't
+  compare across them; the watermark stays within `runtime_log`.)
+- **`describe_tree` is structure, not rendering or visibility.** Inactive `Deck`
+  pages, overlays, and z-order are all listed as-is, so the tree alone can't say
+  which one is on screen. Decide the visible page from `describe_state` — a
+  `Deck`'s selected index shows up there, joined against the child order in the
+  tree — not from a `screenshot`. Its `rect` can also read `0` or stale right
+  after a measurement, so never diagnose a layout bug from a single `rect` value;
+  re-observe after things settle.
+
 ### Acting
 
 `click`, `type`, `key` drive the app. Resolve targets from `describe_tree`, or by
 a stable `key` (see below).
+
+A returned node is **not** proof the intended handler fired. `click` resolves the
+first depth-first match, then dispatches at that node's center — so a duplicate
+`label` can resolve to the wrong (or a non-interactive) node and come back looking
+successful while the screen does nothing. Prefer a `key` when a label repeats; if
+there is none, coordinate-target the center of the node's `describe_tree` `rect`.
+Always verify the effect after acting — don't trust the `{"clicked": …}` return
+alone.
 
 ### `wait_for` — settle before you observe
 
