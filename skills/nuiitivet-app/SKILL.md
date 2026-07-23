@@ -156,8 +156,7 @@ Notes:
   (A typed constant `nv.Symbols.home` also exists for the same glyph.)
 - "Add a menu on the left" → `NavigationRail`. "Bottom tabs" don't have a
   dedicated bar widget — switch content with a `Deck` keyed on an `Observable`.
-- There is **no** `IndexedStack` or `BottomNavigationBar`; use `Deck` +
-  `NavigationRail`.
+  (See **Intentionally absent** below for `IndexedStack`/`BottomNavigationBar`.)
 - Wrappers (`FadeIn`/`FadeOut`/`ScaleIn`/`ScaleOut`/`SlideIn…`) animate a child's
   entry/exit; theming is `nv.ThemeFactory`. When a widget's exact parameters
   aren't covered here, the topical references below carry the day-to-day set.
@@ -194,6 +193,29 @@ it once there is an app to run.
    ```
    It reports foreign-framework patterns (warnings only — it does not edit code)
    and points at the correct Nuiitivet idiom. Fix each one by hand.
+
+## Intentionally absent
+
+Documented so absence isn't rediscovered by grepping — no docstring can teach it.
+
+- **`IndexedStack` / `BottomNavigationBar`** — don't exist. Use `Deck` +
+  `NavigationRail`.
+- **Reactive size / window size** *(interim — revisit when #430/#431 land)*: no
+  public `Observable` for a widget's measured or window size. Do adaptive layout
+  by (a) user-selected switching, or (b) overriding `set_layout_rect` on a leaf
+  to bridge to your own `Observable` (re-entrancy caution). Tracked in #430
+  (window size) and #431 (`LayoutBuilder`).
+
+When a referenced feature ships, update or remove its entry in the same PR.
+
+## Confirming an exact signature
+
+The catalog names *what* to reach for; for exact params or a docstring,
+introspect the installed package instead of trusting transcribed text:
+
+```
+python -c "import inspect, nuiitivet.material as nv; print(inspect.signature(nv.NavigationRail.__init__)); print(inspect.getdoc(nv.NavigationRail))"
+```
 
 ## References — read the one matching the task
 
