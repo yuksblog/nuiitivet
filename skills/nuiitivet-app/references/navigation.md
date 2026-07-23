@@ -49,8 +49,8 @@ nv.Overlay.root().snackbar("Saved successfully!")            # optional: duratio
 nv.IconButton(icon="edit").modifier(tooltip("Click to edit"))
 ```
 
-Icons are **string names** (`icon="edit"`); the typed constant `nv.Symbols.edit`
-resolves to the same glyph.
+Name an icon with a string (`icon="edit"`) or the typed constant
+`nv.Symbols.edit` — both resolve to the same glyph.
 
 ## Navigation patterns (pick by requirement)
 

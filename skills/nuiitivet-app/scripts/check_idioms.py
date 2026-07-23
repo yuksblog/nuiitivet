@@ -7,7 +7,7 @@ check won't catch them. This linter looks for high-confidence foreign signatures
 that have no legitimate use in Nuiitivet, and points at the correct idiom.
 
 It only WARNS. It never edits code. Fix each finding by hand using the pointer
-and the skill's references/anti-patterns.md.
+and the skill's references/translation.md.
 
 Deliberately NOT flagged (legitimate in Nuiitivet, would be noisy):
   - `.of(self)`           -> Navigator.of / Overlay.of are real APIs
@@ -131,7 +131,7 @@ def main(argv: list[str]) -> int:
 
     if findings:
         print(f"\n{findings} foreign-idiom warning(s). See "
-              "skills/nuiitivet-app/references/anti-patterns.md")
+              "skills/nuiitivet-app/references/translation.md")
         return 1
     print("No foreign-framework idioms detected.")
     return 0
