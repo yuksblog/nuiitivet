@@ -4,8 +4,12 @@ This is the polished, MCP-host-facing surface over the dev bridge (#374, #375):
 it turns the localhost control channel into first-class tools any MCP host
 (Claude Desktop, IDE integrations, other agents) can call to close the
 perception-action loop over hot reload -- edit code (hot reload) ->
-``describe_tree`` / ``screenshot`` (see) -> ``click`` / ``type`` / ``key``
+``describe_tree`` / ``describe_state`` (see) -> ``click`` / ``type`` / ``key``
 (act) -> ``wait_for`` (settle async work) -> verify -> edit again.
+
+``screenshot`` serves a separate purpose: investigating a human-reported
+visual/layout discrepancy that ``describe_tree`` + ``describe_state`` cannot
+explain (see its docstring).
 
 The server holds no app logic. Every tool is a thin forward to a freshly
 discovered :class:`~nuiitivet.dev.client.BridgeClient`, which talks to the
@@ -53,12 +57,20 @@ _INSTALL_HINT = (
     "Install it with: pip install 'nuiitivet[mcp]'"
 )
 
-# Guidance surfaced to the calling model so it spends tokens wisely. Three ways
-# to "check the app", cheapest first: `status` answers "is it up and healthy?",
-# `describe_tree` answers "is the right thing on screen?" (and resolves action
-# targets), and `screenshot` is a last resort for genuine pixel-level checks
-# because image tokens are expensive. Kept in one place so every tool's docstring
-# stays consistent.
+# Guidance surfaced to the calling model. Two ways to "check the app": `status`
+# answers "is it up and healthy?" and `describe_tree` answers "is the right thing
+# on screen?" (and resolves action targets); `describe_state` covers the reactive
+# values behind the tree.
+#
+# Design note (#437), for maintainers -- do not fold this into the model-facing
+# text below: `screenshot` is classified by trigger, not cost. It is described
+# only by its own job -- a human-reported visual discrepancy tree+state can't
+# explain -- and is kept out of every see/verify/cost description entirely. The
+# reason for silence rather than a disclaimer: naming it even to say "not a
+# see-option" re-associates it with the loop, and "expensive see-option" framing
+# puts it back on a cost gradient whose top is always a legal move. So it is
+# absent here by design; do not reintroduce it as the pricey alternative to
+# `status`/`describe_tree`.
 _SERVER_INSTRUCTIONS = (
     "Tools to drive a running nuiitivet dev app (started with "
     "'python -m nuiitivet.dev <app.py>'). To confirm the app is up and healthy "
@@ -67,10 +79,11 @@ _SERVER_INSTRUCTIONS = (
     "an error count, and a `blank` flag for a white/blank screen, all without the "
     "tree or an image. To reason about the UI or check that the right thing is on "
     "screen, and to resolve click/type targets by key or label, use "
-    "`describe_tree` -- a compact JSON tree, cheap in tokens. Reserve "
-    "`screenshot` as a last resort, only when you genuinely need to see pixels "
-    "(a visual/layout check `describe_tree` cannot express); image tokens are "
-    "expensive. When the displayed tree looks wrong but you need to know whether "
+    "`describe_tree` -- a compact JSON tree, cheap in tokens. Use `screenshot` "
+    "for one thing: investigating a human-reported visual/layout discrepancy that "
+    "`describe_tree` + `describe_state` cannot explain; a human's report is what "
+    "puts it in play. When the displayed tree looks wrong but you need to know "
+    "whether "
     "the *state* behind it is wrong too -- a reactive bug where the value "
     "updated but the UI did not, or the reverse -- call `describe_state`: it "
     "returns the live `Observable` values behind the tree, in the same shape as "
@@ -121,9 +134,8 @@ def build_server() -> "FastMCP":
         """Return a cheap liveness/health snapshot of the running app.
 
         The first thing to call to confirm the app is up and healthy -- after
-        starting it, or after an edit -- and the positively-named alternative to
-        `screenshot` for that. Cheaper than `describe_tree` (no tree) and orders
-        of magnitude cheaper than `screenshot` (no image). Returns:
+        starting it, or after an edit -- and the right tool for a health check.
+        Cheaper than `describe_tree` (no tree). Returns:
 
         - ``running`` -- always ``True`` when this returns; if the app is not up,
           the call fails instead with a "no running dev app" error.
@@ -140,8 +152,7 @@ def build_server() -> "FastMCP":
           content, or a paint that raised). A heuristic: an intentionally solid
           screen also reads blank.
 
-        Use `describe_tree` when you need the actual on-screen structure, and
-        `screenshot` only for a genuine pixel-level look.
+        Use `describe_tree` when you need the actual on-screen structure.
         """
         return _client().status()
 
@@ -153,8 +164,7 @@ def build_server() -> "FastMCP":
         resolving `click` / `type` targets. Each node is
         ``{"type", optional "key"/"label"/"text"/"title", optional "rect",
         optional "children"}`` where ``rect`` is ``[x, y, w, h]`` in root
-        coordinates. Prefer this over `screenshot` unless you specifically need
-        to see pixels.
+        coordinates. This is the default for reading what is on screen.
         """
         return _client().describe_tree()
 
@@ -261,12 +271,13 @@ def build_server() -> "FastMCP":
     def screenshot() -> Image:
         """Return a PNG screenshot of the running app's current frame.
 
-        A last resort, for when you genuinely need to see pixels -- a visual or
-        layout check the structure cannot express; image tokens are expensive.
-        Do *not* reach for it to confirm the app started or is healthy: `status`
-        answers that far more cheaply (and its `blank` flag already catches a
-        white screen). For on-screen structure and for choosing action targets,
-        use `describe_tree`.
+        Use it for one job: investigating a *human-reported* visual or layout
+        discrepancy that `describe_tree` + `describe_state` cannot explain. A
+        human's report is the trigger that puts it in play; the pixels are where
+        you look once tree and state have failed to reproduce what they saw. For
+        everything else the other tools are the answer -- `status` (with its
+        `blank` flag) for whether the app started or is healthy, `describe_tree`
+        for on-screen structure and action targets.
         """
         return Image(data=_client().screenshot(), format="png")
 
