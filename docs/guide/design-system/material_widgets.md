@@ -203,7 +203,7 @@ Vertical navigation bar with collapsed / expanded states, badges, and an optiona
 
 ## Toolbar
 
-Action bar of icon buttons. `DockedToolbar` stretches to its container; `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` are pill-shaped overlays laid out along their respective axis.
+Action bar of icon buttons. `DockedToolbar` stretches to its container; `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` are pill-shaped overlays laid out along their respective axis. `Button` / `IconButton` children are recommended per MD3; other widgets (including tooltip-wrapped buttons) are laid out as-is.
 
 ![Toolbar](../../assets/material_widgets_toolbar.png)
 
