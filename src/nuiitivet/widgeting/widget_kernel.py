@@ -227,11 +227,36 @@ class WidgetKernel:
         y = int(current[1]) if current is not None else 0
         self.set_layout_rect(x, y, width, height)
 
+    # --- Hit testing -------------------------------------------------------
+    #
+    # Hit participation factors into two internal axes (issue #448):
+    #   S -- self surface: does this widget's own rect become the hit target?
+    #   C -- children:     does hit-testing descend into this subtree?
+    #
+    # The default resolves S as ``auto``: a widget catches on its own surface
+    # only when it paints a visible surface or is interactive; a bare,
+    # non-painting layout/alignment container defers to its children. The
+    # S tri-state (none/painted/all) is intentionally internal -- there is no
+    # public string enum or raw S API here.
+
     def hit_test(self, x: int, y: int):
-        """Return the widget located at the coordinate if any."""
+        """Return the widget located at the coordinate if any.
+
+        Resolves the internal S x C hit-participation model: descends into
+        children first, then falls back to this widget's own surface via the
+        ``auto`` policy (see :meth:`_hit_self_opaque`).
+        """
+
+        return self._resolve_hit(x, y, child_hit=self._hit_test_children(x, y))
+
+    def _hit_test_children(self, x: int, y: int):
+        """Descend into children (C axis) and return the first hit, or ``None``.
+
+        Children are visited top-most first (reverse order) for correct
+        Z-order hit testing.
+        """
 
         children: Tuple = getattr(self, "children", tuple())
-        # Iterate in reverse order (top-most first) for correct Z-order hit testing
         for child in reversed(children):
             # Try to use layout rect for coordinate translation
             rect = getattr(child, "layout_rect", None)
@@ -252,20 +277,67 @@ class WidgetKernel:
                 if hit:
                     return hit
 
-        # Check if we hit self (in local coordinates)
-        # We need to know our own size.
-        # If we are a Widget, we have _layout_rect, but that's our rect in PARENT.
-        # But we are checking hit in LOCAL coordinates.
-        # So we need (0, 0, width, height).
-
-        # Try to get size from _layout_rect (if we are a Widget)
-        my_rect = getattr(self, "layout_rect", None)
-        if my_rect:
-            _, _, w, h = my_rect
-            if 0 <= x < w and 0 <= y < h:
-                return self
-
         return None
+
+    def _resolve_hit(
+        self,
+        x: int,
+        y: int,
+        *,
+        child_hit: Optional["WidgetKernel"],
+        self_opaque: Optional[bool] = None,
+    ) -> Optional["WidgetKernel"]:
+        """Combine a child-descent result (C) with the self-surface policy (S).
+
+        Args:
+            child_hit: The target found by descending into children, or ``None``.
+            self_opaque: Whether this widget's own surface catches the hit
+                (resolved S). ``None`` resolves it via the ``auto`` default
+                (:meth:`_hit_self_opaque`); pass ``False`` for pure pass-through
+                wrappers that must never become the hit target.
+        """
+
+        if child_hit is not None:
+            return child_hit
+
+        opaque = self._hit_self_opaque() if self_opaque is None else self_opaque
+
+        if opaque and self._in_local_bounds(x, y):
+            return self
+        return None
+
+    def _hit_self_opaque(self) -> bool:
+        """Resolve the ``auto`` policy for this widget's own surface (S axis).
+
+        Returns ``True`` when this widget should catch a hit on its own rect.
+        A widget catches when it is interactive (see :meth:`_hit_is_interactive`);
+        widgets that also paint a visible surface (e.g. :class:`Box`) widen this.
+        The bare widget paints only its children, so it defers by default.
+        """
+
+        return self._hit_is_interactive()
+
+    def _hit_is_interactive(self) -> bool:
+        """Whether this widget participates in pointer input (drives ``auto``).
+
+        Overridden by :class:`InputHubMixin` to detect pointer/scroll handling.
+        The bare kernel has no input surface, so it reports ``False``.
+        """
+
+        return False
+
+    def _in_local_bounds(self, x: int, y: int) -> bool:
+        """Whether the local point ``(x, y)`` lies within this widget's rect.
+
+        ``x``/``y`` are in this widget's local coordinate space, so the rect is
+        evaluated at the origin using the widget's own size.
+        """
+
+        my_rect = getattr(self, "layout_rect", None)
+        if not my_rect:
+            return False
+        _, _, w, h = my_rect
+        return 0 <= x < w and 0 <= y < h
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Render this widget; default implementation paints children."""

@@ -10,7 +10,7 @@ def test_clip_modifier_on_column_prevents_hit_test_outside():
     correctly clips hit testing for overflowing children.
     """
     # Child: 100x100 Box
-    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(100))
+    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(100), background_color=(255, 0, 0, 255))
     child.name = "child_box"
 
     # Column: Fixed 50x50, containing the large child.

@@ -174,14 +174,9 @@ class _ModalNavigator(ComposableWidget):
             return Container()
         return Stack(children=layers, alignment="center", width="100%", height="100%")
 
-    def hit_test(self, x: int, y: int):
-        """Hit test that passes through if no overlay layer is hit."""
-        hit = super().hit_test(x, y)
-        if hit is self:
-            return None
-        if self.built_child and hit is self.built_child:
-            return None
-        return hit
+    # No hit_test override needed: the navigator and its transparent Stack/Container
+    # wrapper both defer under the ``auto`` default, so input passes through
+    # whenever no actual overlay layer is hit (issue #448).
 
 
 class _OverlayEntryRoute(Route):
@@ -760,16 +755,15 @@ class Overlay(ComposableWidget):
         return handle
 
     def hit_test(self, x: int, y: int):
-        """Hit test that passes through if no entry is hit."""
+        """Hit test that passes through if no entry is hit.
+
+        With no entries the overlay is fully transparent and short-circuits.
+        Otherwise it delegates to the composed subtree, which passes input
+        through under the ``auto`` default whenever no overlay layer is hit.
+        """
         if not self.has_entries():
             return None
-
-        hit = super().hit_test(x, y)
-        if hit is self:
-            return None
-        if self.built_child and hit is self.built_child:
-            return None
-        return hit
+        return super().hit_test(x, y)
 
     def build(self) -> Widget:
         return self._modal_navigator
@@ -969,8 +963,5 @@ class _PositionedOverlayContent(Widget):
         if callable(setter):
             setter(int(x) + int(cx), int(y) + int(cy), int(cw), int(ch))
 
-    def hit_test(self, x: int, y: int):
-        hit = super().hit_test(x, y)
-        if hit is self:
-            return None
-        return hit
+    # No hit_test override needed: a transparent full-screen positioning wrapper
+    # defers to its child under the ``auto`` default and never catches on self.

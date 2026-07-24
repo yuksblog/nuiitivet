@@ -208,6 +208,31 @@ class Box(CachedPaintMixin, Widget):
         except Exception:
             exception_once(_logger, "box_on_unmount_super_exc", "Box on_unmount super call failed")
 
+    def _paints_visible_surface(self) -> bool:
+        """Whether this Box paints a surface that should catch pointer hits.
+
+        Presence-based (issue #448): a Box catches when it has a background,
+        a border, or a shadow. Alpha is not resolved -- a deliberately
+        transparent Box that must pass clicks through should defer explicitly.
+        """
+        if self._bgcolor is not None:
+            return True
+        if self.border_width > 0:
+            return True
+        if self._shadow_color is not None:
+            return True
+        return False
+
+    def _hit_self_opaque(self) -> bool:
+        """Catch on the Box's own surface only when it actually paints one.
+
+        A bare, non-painting Box defers to its children (the ``auto`` default);
+        painted Boxes keep catching so "painted = clickable" is preserved.
+        """
+        if self._paints_visible_surface():
+            return True
+        return super()._hit_self_opaque()
+
     def hit_test(self, x: int, y: int):
         if self.clip_content:
             rect = self.last_rect

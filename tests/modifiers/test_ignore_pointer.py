@@ -18,7 +18,7 @@ class _DummyApp:
 
 
 def _make_child() -> Box:
-    return Box(width=Sizing.fixed(100), height=Sizing.fixed(50))
+    return Box(width=Sizing.fixed(100), height=Sizing.fixed(50), background_color=(255, 0, 0, 255))
 
 
 def test_ignore_pointer_default_blocks_hit_test() -> None:

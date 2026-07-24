@@ -189,15 +189,19 @@ class Deck(Widget):
         selected_child.set_last_rect(abs_x, abs_y, w, h)
         selected_child.paint(canvas, abs_x, abs_y, w, h)
 
-    def hit_test(self, x: int, y: int) -> bool:
-        """Only allow hit testing on the selected child."""
+    def hit_test(self, x: int, y: int):
+        """Only allow hit testing on the selected child.
+
+        The Deck itself never becomes the hit target (S = none); it defers to
+        the selected child only (C descends into one child), routed through the
+        shared hit-participation helper (issue #448).
+        """
         children = expand_layout_children(self.children_snapshot())
         if not children or self._current_index >= len(children):
-            return False
+            return None
 
-        # Only the selected child should participate in hit testing
         selected_child = children[self._current_index]
-        return selected_child.hit_test(x, y)
+        return self._resolve_hit(x, y, child_hit=selected_child.hit_test(x, y), self_opaque=False)
 
     def dispose(self) -> None:
         """Clean up subscriptions."""
