@@ -46,6 +46,12 @@ or `baseline`.
 | `main_alignment` (Row) | `start`, `center`, `end`, `space-between`, `space-around`, `space-evenly` |
 | `main_alignment` (Column) | `start`, `center`, `end`, `space-between` |
 | `cross_alignment` (Row/Column) | `start`, `center`, `end` |
+| `origin` (`rotate`/`scale`) | same nine-point tokens (e.g. `top-left`, `bottom-center`), or an `(x, y)` tuple in local coords |
+
+The **hyphen form is canonical** (`top-left`, `bottom-center`, ...). The
+underscore form (`top_left`) is accepted as an alias for back-compat, but new
+code should use hyphens. Unrecognized tokens emit a warning and fall back
+rather than silently centering.
 
 ```python
 # Wrong (CSS reflex): the alignment can't stretch the child to fill the cross axis

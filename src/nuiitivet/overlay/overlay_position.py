@@ -4,17 +4,14 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Tuple
 
-from nuiitivet.layout.alignment import AlignmentLike, NINE_POINT_ALIGNMENTS, normalize_alignment
+from nuiitivet.layout.alignment import (
+    AlignmentLike,
+    NINE_POINT_ALIGNMENTS,
+    alignment_to_point as _alignment_to_point,
+    normalize_alignment,
+)
 from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
 from nuiitivet.widgeting.widget import Widget
-
-
-def _alignment_to_point(alignment: Tuple[str, str], width: int, height: int) -> Tuple[float, float]:
-    """Compute the (x, y) point corresponding to *alignment* within a box of the given size."""
-    ax, ay = alignment
-    px = float(width) / 2.0 if ax == "center" else (float(width) if ax == "end" else 0.0)
-    py = float(height) / 2.0 if ay == "center" else (float(height) if ay == "end" else 0.0)
-    return (px, py)
 
 
 class OverlayPosition:

@@ -91,7 +91,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
         motion: Motion = _DEFAULT_MOTION,
         motion_out: Optional[Motion] = None,
         axis: Axis = "both",
-        alignment: Union[str, Tuple[str, str]] = "top_left",
+        alignment: Union[str, Tuple[str, str]] = "top-left",
     ) -> None:
         """Initialize a Collapsible.
 

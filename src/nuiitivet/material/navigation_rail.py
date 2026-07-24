@@ -252,7 +252,7 @@ class _RailItemButton(InteractiveWidget):
             child=self._vertical_content,
             width=Sizing.fixed(eff_style.container_width_collapsed),
             height=Sizing.fixed(eff_style.label_height),
-            alignment="top_center",
+            alignment="top-center",
         )
         self._vertical_label_container.clip_content = True
 
@@ -260,13 +260,13 @@ class _RailItemButton(InteractiveWidget):
             child=self._horizontal_label,
             width=Sizing.fixed(expanded_label_width),
             height=Sizing.fixed(eff_style.label_height),
-            alignment="center_left",
+            alignment="center-left",
         )
         self._horizontal_label_container = Box(
             child=self._horizontal_content,
             width=Sizing.fixed(expanded_label_width),
             height=Sizing.fixed(eff_style.label_height),
-            alignment="center_left",
+            alignment="center-left",
         )
         self._horizontal_label_container.clip_content = True
 
@@ -917,7 +917,7 @@ class NavigationRail(Widget):
             background_color=bg_color,
             width=Sizing.flex(1),
             height=Sizing.flex(1),
-            alignment="top_left",
+            alignment="top-left",
         )
 
         self.add_child(rail_bg)

@@ -3,31 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from nuiitivet.layout.alignment import AlignmentLike, normalize_alignment
+from nuiitivet.layout.alignment import AlignmentLike, alignment_to_point, normalize_alignment
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
-
-
-def _alignment_to_point(alignment: tuple[str, str], width: int, height: int) -> tuple[float, float]:
-    ax, ay = alignment
-
-    if ax == "center":
-        px = float(width) / 2.0
-    elif ax == "end":
-        px = float(width)
-    else:
-        px = 0.0
-
-    if ay == "center":
-        py = float(height) / 2.0
-    elif ay == "end":
-        py = float(height)
-    else:
-        py = 0.0
-
-    return (px, py)
 
 
 class StickBox(Widget):
@@ -66,8 +46,8 @@ class StickBox(Widget):
         sticker_w, sticker_h = measure_preferred_size(self._sticker_child)
         self._sticker_child.layout(sticker_w, sticker_h)
 
-        tx, ty = _alignment_to_point(self._target_alignment, width, height)
-        ax, ay = _alignment_to_point(self._sticker_anchor, sticker_w, sticker_h)
+        tx, ty = alignment_to_point(self._target_alignment, width, height)
+        ax, ay = alignment_to_point(self._sticker_anchor, sticker_w, sticker_h)
         dx, dy = self._offset
 
         px = int(round(tx - ax + dx))
