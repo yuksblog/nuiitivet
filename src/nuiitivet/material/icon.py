@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
 import logging
 import os
 
@@ -25,6 +25,18 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.icon_style import IconStyle
 
 DEFAULT_ICON_PX = 24
+
+
+# Canonical union of everything an icon-accepting widget can take: a static
+# ``Symbol`` or ligature ``str``, or an observable of either. Shared by all
+# Material widgets that delegate to :class:`Icon` (buttons, menus, FAB menu,
+# navigation rail) so the accepted icon surface stays consistent.
+IconLike = Union[
+    Symbol,
+    str,
+    ReadOnlyObservableProtocol[Symbol],
+    ReadOnlyObservableProtocol[str],
+]
 
 
 logger = logging.getLogger(__name__)

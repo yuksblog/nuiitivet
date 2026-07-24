@@ -9,8 +9,8 @@ from nuiitivet.rendering.sizing import SizingLike, Sizing, parse_sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
-from nuiitivet.material.text import Text
-from nuiitivet.material.icon import Icon
+from nuiitivet.material.text import Text, LabelLike
+from nuiitivet.material.icon import Icon, IconLike
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import InteractionHostMixin, InteractionState
 from nuiitivet.material.theme.color_role import ColorRole
@@ -87,8 +87,8 @@ class RailItem(Widget):
 
     def __init__(
         self,
-        icon: str,
-        label: str,
+        icon: IconLike,
+        label: LabelLike,
         *,
         small_badge: Optional[ReadOnlyObservableProtocol[bool]] = None,
         large_badge: Optional[ReadOnlyObservableProtocol[Optional[str]]] = None,
@@ -97,8 +97,9 @@ class RailItem(Widget):
         """Initialize RailItem.
 
         Args:
-            icon: The icon name to display.
-            label: The label text to display.
+            icon: The icon to display. May be a :class:`Symbol`, a ligature
+                string, or an observable of either (mirroring ``IconButton``).
+            label: The label to display. May be a string or an observable string.
             small_badge: Optional Observable controlling small dot badge visibility.
             large_badge: Optional Observable with badge text. ``None`` or ``""`` hides the badge.
                 When both ``small_badge`` and ``large_badge`` are provided,
@@ -106,11 +107,6 @@ class RailItem(Widget):
             style: Optional style override for this item.
         """
         super().__init__()
-
-        if not isinstance(icon, str):
-            raise TypeError(f"icon must be str, got {type(icon)}")
-        if not isinstance(label, str):
-            raise TypeError(f"label must be str, got {type(label)}")
 
         self.icon_spec = icon
         self.label_spec = label

@@ -3,8 +3,6 @@
 from enum import IntEnum
 from typing import Optional
 
-import pytest
-
 from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -116,22 +114,36 @@ def test_navigation_rail_index_validation():
     assert rail.current_index == 1  # Max valid index
 
 
-def test_navigation_rail_custom_icon_widget():
-    """NavigationRail should reject Widget instances in RailItem."""
-    from nuiitivet.material.icon import Icon
+def test_navigation_rail_item_accepts_symbol_icon():
+    """RailItem should accept a static Symbol icon, like IconButton."""
+    from nuiitivet.material.symbols import Symbols
 
-    custom_icon = Icon("home", size=32)
-    with pytest.raises(TypeError):
-        RailItem(icon=custom_icon, label="Home")  # type: ignore[arg-type]
+    item = RailItem(icon=Symbols.home, label="Home")
+
+    assert item.icon_spec is Symbols.home
 
 
-def test_navigation_rail_custom_label_widget():
-    """NavigationRail should reject Widget instances in RailItem."""
-    from nuiitivet.material.text import Text
+def test_navigation_rail_item_accepts_observable_icon():
+    """RailItem should accept an Observable icon (Symbol or str)."""
+    from nuiitivet.material.symbols import Symbols
 
-    custom_label = Text("Custom Home")
-    with pytest.raises(TypeError):
-        RailItem(icon="home", label=custom_label)  # type: ignore[arg-type]
+    symbol_source = _ObservableValue(Symbols.home)
+    str_source = _ObservableValue("search")
+
+    symbol_item = RailItem(icon=symbol_source, label="Home")
+    str_item = RailItem(icon=str_source, label="Search")
+
+    assert symbol_item.icon_spec is symbol_source
+    assert str_item.icon_spec is str_source
+
+
+def test_navigation_rail_item_accepts_observable_label():
+    """RailItem should accept an Observable[str] label."""
+    label_source = _ObservableValue("Home")
+
+    item = RailItem(icon="home", label=label_source)
+
+    assert item.label_spec is label_source
 
 
 def test_navigation_rail_width_calculation():

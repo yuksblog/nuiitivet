@@ -17,6 +17,13 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.text_style import TextStyle
 
 
+# Canonical union for anything a text/label-accepting widget can take: a static
+# ``str`` or an observable string. Shared by Material widgets that surface a
+# label (FAB menu, navigation rail) so the accepted label surface stays
+# consistent with :class:`Text`.
+LabelLike = Union[str, ReadOnlyObservableProtocol[str]]
+
+
 class Text(TextBase):
     """Material text widget.
 

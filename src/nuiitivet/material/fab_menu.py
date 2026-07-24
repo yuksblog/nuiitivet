@@ -30,12 +30,14 @@ from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import warning_once
 from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
+from nuiitivet.material.icon import IconLike
 from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.symbols import Symbols
+from nuiitivet.material.text import LabelLike
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.modifiers.popup import light_dismiss
 from nuiitivet.modifiers.transform import opacity, translate
-from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import Observable, ObservableProtocol
 from nuiitivet.observable import runtime
 from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import Widget
@@ -46,14 +48,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-IconLike = Union[
-    "Symbol",
-    str,
-    ReadOnlyObservableProtocol["Symbol"],
-    ReadOnlyObservableProtocol[str],
-]
-LabelLike = Union[str, ReadOnlyObservableProtocol[str]]
 
 # Vertical distance (px) each item slides up while fading in.
 _ITEM_REVEAL_RISE = 16.0
