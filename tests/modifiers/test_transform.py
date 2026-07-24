@@ -238,14 +238,40 @@ def test_transform_origin_custom_tuple():
     assert oy == 75.0
 
 
-def test_transform_origin_invalid_fallback():
-    """Test transform origin falls back to center for invalid values."""
+def test_transform_origin_hyphen_form():
+    """Canonical hyphen tokens resolve identically to their underscore aliases."""
+    widget = MockWidget()
+
+    box = TransformBox(widget, rotation=45, transform_origin="top-right")
+    assert box._resolve_origin(100, 100) == (100.0, 0.0)
+
+    box2 = TransformBox(widget, rotation=45, transform_origin="bottom-left")
+    assert box2._resolve_origin(100, 100) == (0.0, 100.0)
+
+
+def test_transform_origin_edge_centers():
+    """Origin now supports the full nine-point vocabulary, incl. edge centers."""
+    widget = MockWidget()
+
+    box_top = TransformBox(widget, rotation=45, transform_origin="top-center")
+    assert box_top._resolve_origin(100, 100) == (50.0, 0.0)
+
+    box_bottom = TransformBox(widget, scale=2.0, transform_origin="bottom-center")
+    assert box_bottom._resolve_origin(100, 100) == (50.0, 100.0)
+
+    box_left = TransformBox(widget, rotation=45, transform_origin="center-left")
+    assert box_left._resolve_origin(100, 100) == (0.0, 50.0)
+
+
+def test_transform_origin_invalid_warns():
+    """Unrecognized origin tokens warn instead of silently falling back."""
+    import pytest
+
     widget = MockWidget()
     box = TransformBox(widget, rotation=45, transform_origin="invalid")
 
-    ox, oy = box._resolve_origin(100, 100)
-    assert ox == 50.0
-    assert oy == 50.0
+    with pytest.warns(UserWarning, match="Unrecognized alignment"):
+        box._resolve_origin(100, 100)
 
 
 def test_has_transforms_false():

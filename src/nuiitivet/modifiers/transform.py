@@ -5,6 +5,7 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.layout.alignment import alignment_to_point, normalize_alignment
 from nuiitivet.observable import ObservableBase
 from ..rendering.sizing import SizingLike
 from ..widgeting.modifier import ModifierElement
@@ -184,17 +185,8 @@ class TransformBox(Widget):
 
     def _resolve_origin(self, width: int, height: int) -> Tuple[float, float]:
         if isinstance(self._transform_origin, str):
-            if self._transform_origin == "center":
-                return (float(width) / 2.0, float(height) / 2.0)
-            if self._transform_origin == "top_left":
-                return (0.0, 0.0)
-            if self._transform_origin == "top_right":
-                return (float(width), 0.0)
-            if self._transform_origin == "bottom_left":
-                return (0.0, float(height))
-            if self._transform_origin == "bottom_right":
-                return (float(width), float(height))
-            return (float(width) / 2.0, float(height) / 2.0)
+            axes = normalize_alignment(self._transform_origin, default=("center", "center"))
+            return alignment_to_point(axes, width, height)
         try:
             ox, oy = self._transform_origin
             return (float(ox), float(oy))
@@ -341,8 +333,12 @@ def rotate(angle: AngleLike, origin: OriginLike = "center") -> TransformModifier
 
     Args:
         angle: Rotation angle in degrees, or an observable providing degrees.
-        origin: Rotation origin. Supported: "center", "top_left", "top_right",
-            "bottom_left", "bottom_right", or a (x, y) tuple in local coords.
+        origin: Rotation origin. Accepts any of the nine-point alignment tokens
+            in canonical hyphen form ("center", "top-left", "top-center",
+            "top-right", "center-left", "center-right", "bottom-left",
+            "bottom-center", "bottom-right"); the underscore form ("top_left")
+            is accepted as an alias. Alternatively an (x, y) tuple in local
+            coords. Defaults to "center".
 
     Note:
         Rotation is paint-only. Layout and hit-testing remain untransformed.
@@ -355,8 +351,12 @@ def scale(factor: ScaleLike, origin: OriginLike = "center") -> TransformModifier
 
     Args:
         factor: Scale factor (uniform) or (sx, sy) tuple, or an observable.
-        origin: Scale origin. Supported: "center", "top_left", "top_right",
-            "bottom_left", "bottom_right", or a (x, y) tuple in local coords.
+        origin: Scale origin. Accepts any of the nine-point alignment tokens
+            in canonical hyphen form ("center", "top-left", "top-center",
+            "top-right", "center-left", "center-right", "bottom-left",
+            "bottom-center", "bottom-right"); the underscore form ("top_left")
+            is accepted as an alias. Alternatively an (x, y) tuple in local
+            coords. Defaults to "center".
 
     Note:
         Scale is paint-only. Layout and hit-testing remain untransformed.
