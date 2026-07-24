@@ -18,6 +18,10 @@ class DummyWidget(Widget):
         self.set_last_rect(x, y, w, h)
         self.painted = True
 
+    def _hit_self_opaque(self) -> bool:
+        # This double stands in for a painted leaf, so it catches its own rect.
+        return True
+
 
 def test_row_allocation_and_hit_test():
     a = DummyWidget(80, 40)

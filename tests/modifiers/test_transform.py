@@ -18,7 +18,7 @@ class MockWidget(Box):
     """Mock widget for testing."""
 
     def __init__(self):
-        super().__init__(width=Sizing.fixed(100), height=Sizing.fixed(100))
+        super().__init__(width=Sizing.fixed(100), height=Sizing.fixed(100), background_color=(255, 0, 0, 255))
 
 
 def test_rotate_modifier_basic():

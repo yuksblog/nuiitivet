@@ -94,11 +94,9 @@ class _AnchoredPositionedContent(Widget):
         if callable(setter):
             setter(int(x) + cx, int(y) + cy, cw, ch)
 
-    def hit_test(self, x: int, y: int):
-        hit = super().hit_test(x, y)
-        if hit is self:
-            return None
-        return hit
+    # No hit_test override needed: this is a transparent full-screen positioning
+    # wrapper, so the ``auto`` default (defer to children) already passes hits
+    # through to the positioned content and never catches on self. See #448.
 
 
 class AnchoredOverlayPosition:

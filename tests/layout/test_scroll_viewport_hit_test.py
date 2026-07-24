@@ -12,7 +12,7 @@ def test_scroll_viewport_hit_test_clips_content():
     # Content size: 100x200
     # Scroll offset: 0
 
-    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(200))
+    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(200), background_color=(255, 0, 0, 255))
     child.name = "child_box"
 
     controller = ScrollController()
@@ -55,7 +55,7 @@ def test_scroll_viewport_hit_test_with_scroll():
     """
     Verify hit testing works correctly when scrolled.
     """
-    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(200))
+    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(200), background_color=(255, 0, 0, 255))
     controller = ScrollController()
     viewport = ScrollViewport(
         child=child,

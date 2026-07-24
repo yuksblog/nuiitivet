@@ -12,7 +12,7 @@ def test_clip_modifier_prevents_hit_test_outside():
     # Container size: 100x50
     # Child size: 100x100 (overflows vertically)
 
-    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(100))
+    child = Box(width=Sizing.fixed(100), height=Sizing.fixed(100), background_color=(255, 0, 0, 255))
     # Mark child so we can identify it
     child.name = "child_box"
 

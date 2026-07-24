@@ -45,7 +45,7 @@ def test_clip_content_hit_test_uses_local_coordinates():
     offset.  Regression test for clipped widgets (e.g. ExtendedFab) becoming
     unclickable when laid out inside a Row/Column/Container.
     """
-    box = Box(child=DummyChild(), corner_radius=8)
+    box = Box(child=DummyChild(), corner_radius=8, background_color=(255, 0, 0, 255))
     box.clip_content = True
     # Simulate a layout placing the box far from the origin.
     box.set_layout_rect(200, 50, 120, 40)

@@ -1307,6 +1307,14 @@ class InteractionHostMixin:
     def state(self) -> InteractionState:
         return self._state
 
+    def _hit_self_opaque(self) -> bool:
+        """Interactive hosts catch on their own surface (S = all).
+
+        A widget that hosts interaction nodes is a hit target regardless of
+        whether it paints, so pointer events reach its handlers. See issue #448.
+        """
+        return True
+
     def enable_hover(self, *, on_change: Optional[BoolCallback] = None) -> None:
         self._pointer_node.enable_hover(on_change=on_change)
 
