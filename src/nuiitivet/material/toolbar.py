@@ -6,7 +6,6 @@ from typing import Literal, Optional, Sequence
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import MaterialButtonBase
 from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
@@ -17,17 +16,9 @@ from nuiitivet.widgeting.widget import Widget
 _ToolbarOrientation = Literal["horizontal", "vertical"]
 
 
-def _validate_buttons(buttons: Sequence[MaterialButtonBase]) -> list[MaterialButtonBase]:
-    normalized = list(buttons)
-    for button in normalized:
-        if not isinstance(button, MaterialButtonBase):
-            raise TypeError("buttons must contain only MaterialButtonBase instances")
-    return normalized
-
-
 def _resolve_content_padding(
     style: ToolbarStyle,
-    buttons: Sequence[MaterialButtonBase],
+    buttons: Sequence[Widget],
 ) -> tuple[int, int, int, int]:
     """Resolve content padding with a shared edge-inset rule.
 
@@ -57,20 +48,22 @@ class DockedToolbar(Box):
 
     def __init__(
         self,
-        buttons: Sequence[MaterialButtonBase],
+        buttons: Sequence[Widget],
         *,
         style: Optional[ToolbarStyle] = None,
     ) -> None:
         """Initialize DockedToolbar.
 
         Args:
-            buttons: Action buttons placed inside the toolbar.
+            buttons: Widgets placed inside the toolbar. Prefer ``Button`` or
+                ``IconButton``; other widgets (including tooltip-wrapped buttons)
+                are laid out as-is, but the edge-inset heuristic assumes
+                button-sized children and degrades gracefully for larger ones.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
         """
         self._user_style = style
         effective_style = self.style
-        children = _validate_buttons(buttons)
-        row_children: list[Widget] = list(children)
+        row_children: list[Widget] = list(buttons)
 
         content = Row(
             row_children,
@@ -108,7 +101,7 @@ class _FloatingToolbarBase(Box):
 
     def __init__(
         self,
-        buttons: Sequence[MaterialButtonBase],
+        buttons: Sequence[Widget],
         *,
         orientation: _ToolbarOrientation,
         padding: PaddingLike = 0,
@@ -117,7 +110,10 @@ class _FloatingToolbarBase(Box):
         """Initialize shared floating toolbar state.
 
         Args:
-            buttons: Action buttons placed inside the toolbar.
+            buttons: Widgets placed inside the toolbar. Prefer ``Button`` or
+                ``IconButton``; other widgets (including tooltip-wrapped buttons)
+                are laid out as-is, but the edge-inset heuristic assumes
+                button-sized children and degrades gracefully for larger ones.
             orientation: Layout orientation for action buttons, fixed by the subclass.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
@@ -125,9 +121,8 @@ class _FloatingToolbarBase(Box):
         self._user_style = style
         self.orientation = orientation
         effective_style = self.style
-        children = _validate_buttons(buttons)
-        content_padding = _resolve_content_padding(effective_style, children)
-        layout_children: list[Widget] = list(children)
+        layout_children: list[Widget] = list(buttons)
+        content_padding = _resolve_content_padding(effective_style, layout_children)
 
         if orientation == "horizontal":
             layout_content: Widget = Row(
@@ -184,7 +179,7 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
 
     def __init__(
         self,
-        buttons: Sequence[MaterialButtonBase],
+        buttons: Sequence[Widget],
         *,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
@@ -192,7 +187,10 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
         """Initialize HorizontalFloatingToolbar.
 
         Args:
-            buttons: Action buttons placed inside the toolbar.
+            buttons: Widgets placed inside the toolbar. Prefer ``Button`` or
+                ``IconButton``; other widgets (including tooltip-wrapped buttons)
+                are laid out as-is, but the edge-inset heuristic assumes
+                button-sized children and degrades gracefully for larger ones.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
         """
@@ -207,7 +205,7 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
 
     def __init__(
         self,
-        buttons: Sequence[MaterialButtonBase],
+        buttons: Sequence[Widget],
         *,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
@@ -215,7 +213,10 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
         """Initialize VerticalFloatingToolbar.
 
         Args:
-            buttons: Action buttons placed inside the toolbar.
+            buttons: Widgets placed inside the toolbar. Prefer ``Button`` or
+                ``IconButton``; other widgets (including tooltip-wrapped buttons)
+                are laid out as-is, but the edge-inset heuristic assumes
+                button-sized children and degrades gracefully for larger ones.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
         """

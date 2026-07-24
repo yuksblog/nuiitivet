@@ -10,6 +10,8 @@ from nuiitivet.material.toolbar import (
     VerticalFloatingToolbar,
 )
 from nuiitivet.material.styles.button_style import IconButtonStyle
+from nuiitivet.material.text import Text
+from nuiitivet.modifiers.tooltip import TooltipBox, tooltip
 from nuiitivet.widgets.box import Box
 
 
@@ -75,3 +77,14 @@ def test_floating_toolbar_padding_rule_is_shared_across_orientations() -> None:
     assert isinstance(horizontal_content, Row)
     assert isinstance(vertical_content, Column)
     assert horizontal_content.padding == vertical_content.padding
+
+
+def test_toolbar_accepts_tooltip_wrapped_button() -> None:
+    wrapped = IconButton("add").modifier(tooltip(Text("Add")))
+    toolbar = HorizontalFloatingToolbar([wrapped])
+
+    row = toolbar.children[0].children[0]
+
+    assert isinstance(row, Row)
+    assert len(row.children) == 1
+    assert isinstance(row.children[0], TooltipBox)
