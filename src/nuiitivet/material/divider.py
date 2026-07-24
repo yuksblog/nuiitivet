@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Tuple
 
 from nuiitivet.material.styles.divider_style import DividerStyle
-from nuiitivet.rendering.padding import parse_padding
+from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.rendering.skia import make_paint, make_rect
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
-
-PaddingLike = Union[int, Tuple[int, int], Tuple[int, int, int, int]]
 
 
 class _DividerBase(Widget):

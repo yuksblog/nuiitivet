@@ -4,17 +4,15 @@ Provides the DialogStyle dataclass for Dialog widget styling.
 """
 
 from dataclasses import dataclass, replace
-from typing import Optional, Tuple, Union, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.theme.types import ColorSpec
 from ..theme.color_role import ColorRole
 from .text_style import TextStyle
 
 if TYPE_CHECKING:
     from ...theme import Theme
-
-
-PaddingLike = Union[int, Tuple[int, int], Tuple[int, int, int, int]]
 
 
 @dataclass(frozen=True)

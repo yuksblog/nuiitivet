@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Iterable, Optional, Tuple, Type, TypeVar, Union
 
+from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.events import FocusEvent
@@ -15,7 +16,7 @@ from .widget_binding import BindingHostMixin
 from .widget_builder import BuilderHostMixin
 from .widget_children import ChildContainerMixin
 from .widget_input import InputHubMixin
-from .widget_kernel import PaddingLike, WidgetKernel
+from .widget_kernel import WidgetKernel
 from .widget_lifecycle import LifecycleHostMixin
 
 T = TypeVar("T")

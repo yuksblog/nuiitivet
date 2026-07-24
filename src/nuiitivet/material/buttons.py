@@ -31,6 +31,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
@@ -211,7 +212,7 @@ def build_button_child(
 
 def resolve_button_style_params(
     style: Optional[ButtonStyle],
-    padding: Optional[Union[int, Tuple[int, int, int, int]]],
+    padding: PaddingLike,
     height: SizingLike,
     disabled: bool | ObservableProtocol[bool],
 ) -> dict[str, Any]:

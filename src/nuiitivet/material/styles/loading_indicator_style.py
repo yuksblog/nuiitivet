@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
+from typing import Optional, Sequence, TYPE_CHECKING
 
 from ..theme.color_role import ColorRole
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.animation.motion import Motion
 from nuiitivet.material.motion import EXPRESSIVE_SLOW_SPATIAL
@@ -13,8 +14,6 @@ from nuiitivet.material.motion import EXPRESSIVE_SLOW_SPATIAL
 if TYPE_CHECKING:
     from ...theme import Theme
     from ..shapes import MaterialShapeId
-
-PaddingLike = Union[int, Tuple[int, int, int, int]]
 
 
 @dataclass(frozen=True)

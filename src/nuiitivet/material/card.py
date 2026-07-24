@@ -14,12 +14,12 @@ from typing import Callable, Optional, Tuple, Union
 
 from ..widgeting.widget import ComposableWidget, Widget
 from .theme.elevation import md3_elevation_to_shadow
+from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..widgets.box import Box
 from nuiitivet.material.styles.card_style import CardStyle
 
 ChildSpec = Union[Widget, Callable[[], Widget], None]
-PaddingLike = Union[int, Tuple[int, int], Tuple[int, int, int, int]]
 AlignmentLike = Union[str, Tuple[str, str]]
 
 _logger = logging.getLogger(__name__)

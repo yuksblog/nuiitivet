@@ -3,6 +3,7 @@
 from typing import List, Tuple, Optional, Union
 
 from ..widgeting.widget import Widget
+from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
@@ -31,7 +32,7 @@ class Row(Widget):
         *,
         width: SizingLike = None,
         height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        padding: PaddingLike = 0,
         gap: Union[int, ObservableBase] = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
@@ -79,7 +80,7 @@ class Row(Widget):
         *,
         width: SizingLike = None,
         height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        padding: PaddingLike = 0,
         gap: int = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
