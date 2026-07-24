@@ -21,6 +21,18 @@ nv.Column([a, b, c], gap=20, padding=20, cross_alignment="center")
 nv.Row([x, y], gap=8, cross_alignment="center")
 ```
 
+### padding tuple order — horizontal-first, NOT CSS
+
+`padding` takes three forms:
+
+- `int` → all four sides
+- `(h, v)` → **horizontal** (left/right), then **vertical** (top/bottom)
+- `(l, t, r, b)` → left, top, right, bottom
+
+The 2-tuple is **horizontal-first**, the *opposite* of CSS's
+`padding: <vertical> <horizontal>`. `padding=(16, 8)` = 16px left/right, 8px
+top/bottom — do not carry over the CSS order. `None` means no padding.
+
 ## Alignment is positioning only — never sizing
 
 Alignment answers *where to place* content in the remaining space. It does **not**

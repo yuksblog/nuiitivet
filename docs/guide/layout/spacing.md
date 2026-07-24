@@ -27,6 +27,31 @@ content = nv.Column(
 
 ![Padding example](../../assets/layout_spacing_padding.png)
 
+### padding value forms
+
+`padding` accepts three forms:
+
+| Form | Meaning |
+| --- | --- |
+| `int` | Same padding on all four sides |
+| `(h, v)` | `h` = left **and** right (horizontal), `v` = top **and** bottom (vertical) |
+| `(l, t, r, b)` | left, top, right, bottom individually |
+
+Passing `None` (or omitting `padding`) means no padding (`0` on all sides).
+
+> **Warning:** The two-element form is **horizontal-first** (`(horizontal, vertical)`),
+> which is the *opposite* of CSS's `padding: <vertical> <horizontal>` shorthand. If you
+> have web experience, `padding=(16, 8)` here means 16px left/right and 8px top/bottom —
+> not the CSS meaning of 16px top/bottom and 8px left/right.
+
+```python
+import nuiitivet as nv
+
+nv.Container(child=..., padding=16)              # 16px on all sides
+nv.Container(child=..., padding=(16, 8))         # 16px left/right, 8px top/bottom
+nv.Container(child=..., padding=(8, 16, 8, 24))  # left=8, top=16, right=8, bottom=24
+```
+
 ## gap (Spacing Between Elements)
 
 Creates uniform space between child elements.

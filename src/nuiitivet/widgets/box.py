@@ -12,6 +12,7 @@ from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
 from ..rendering.background_renderer import BackgroundRenderer
 from ..rendering.skia.geometry import clip_round_rect, make_rect
+from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..layout.layout_engine import LayoutEngine
 from ..layout.alignment import normalize_alignment
@@ -38,7 +39,7 @@ class Box(CachedPaintMixin, Widget):
         child: Optional[Widget] = None,
         width: SizingLike = None,
         height: SizingLike = None,
-        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        padding: PaddingLike = 0,
         # Visual properties
         background_color: Optional[ColorSpec] = None,
         border_width: float = 0,

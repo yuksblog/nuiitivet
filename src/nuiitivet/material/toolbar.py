@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Sequence, Union
+from typing import Literal, Optional, Sequence
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.buttons import MaterialButtonBase
 from nuiitivet.material.styles.toolbar_style import ToolbarStyle
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import Widget
 
-PaddingLike = Union[int, tuple[int, int], tuple[int, int, int, int]]
 _ToolbarOrientation = Literal["horizontal", "vertical"]
 
 

@@ -14,7 +14,7 @@ container / icon / spacing values from
 """
 
 from dataclasses import dataclass, replace
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from .button_size import (
     BUTTON_SIZE_TOKENS,
@@ -22,9 +22,8 @@ from .button_size import (
     ICON_BUTTON_SIZE_TOKENS,
 )
 from ..theme.color_role import ColorRole
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.theme.types import ColorSpec
-
-PaddingLike = Union[int, tuple[int, int, int, int]]
 
 if TYPE_CHECKING:
     from ...theme import Theme

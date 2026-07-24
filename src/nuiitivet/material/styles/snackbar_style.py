@@ -1,12 +1,11 @@
 """Snackbar style definition."""
 
 from dataclasses import dataclass, replace
-from typing import Optional, Union
+from typing import Optional
 
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.theme.types import ColorSpec
-
-PaddingLike = Union[int, tuple[int, int, int, int]]
 
 
 @dataclass(frozen=True)

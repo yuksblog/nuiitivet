@@ -6,7 +6,7 @@ import logging
 from typing import Any, Optional, Tuple, TypeAlias, Union
 
 from ..common.logging_once import exception_once
-from ..rendering.padding import parse_padding
+from ..rendering.padding import PaddingLike, parse_padding
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
 from nuiitivet.observable.protocols import ObservableBase
@@ -14,7 +14,6 @@ from nuiitivet.observable.protocols import ObservableBase
 
 _logger = logging.getLogger(__name__)
 
-PaddingLike = Union[int, Tuple[int, int], Tuple[int, int, int, int], None]
 Rect: TypeAlias = Tuple[int, int, int, int]
 
 
