@@ -17,7 +17,6 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.container import Container
 from nuiitivet.navigation import Route
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
 
 class NestedHome(ComposableWidget):
@@ -33,8 +32,7 @@ class NestedHome(ComposableWidget):
 
 class NestedDetails(ComposableWidget):
     def build(self):
-        return Box(
-            background_color="#F5F7FF",
+        return Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -45,12 +43,11 @@ class NestedDetails(ComposableWidget):
                     Button("Back (Nested)", on_click=lambda: Navigator.of(self).pop(), style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#F5F7FF"))
 
 class FullScreenDetails(ComposableWidget):
     def build(self):
-        return Box(
-            background_color="#EEF7F0",
+        return Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -61,7 +58,7 @@ class FullScreenDetails(ComposableWidget):
                     Button("Back (Full Screen)", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#EEF7F0"))
 
 class MainScreen(ComposableWidget):
     def build(self):
