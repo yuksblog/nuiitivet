@@ -61,14 +61,14 @@ def _is_occluded_by_overlay(widget: Widget) -> bool:
 
 def _is_displayed(widget: Widget) -> bool:
     """Walk to the root, rejecting any ancestor that hides ``widget``."""
-    from nuiitivet.modifiers.ignore_pointer import IgnorePointerBox
+    from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
 
     parent: Optional[Widget] = getattr(widget, "_parent", None)
     while parent is not None:
         # An inert subtree is not on the interactable layer. This is also how
         # visible(False) presents itself: it composes to opacity(0) +
-        # ignore_pointer(True).
-        if isinstance(parent, IgnorePointerBox) and parent._active:
+        # passthrough_pointer(True).
+        if isinstance(parent, PassthroughPointerBox) and parent._active:
             return False
         if _covers(parent, widget):
             return False

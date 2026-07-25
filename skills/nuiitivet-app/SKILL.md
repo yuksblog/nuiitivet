@@ -175,6 +175,16 @@ and spacing stay widget *parameters*, not modifiers.
 | Hover handling | `hoverable` | `hoverable(on_hover)` |
 | Tooltip on hover | `tooltip` | `tooltip("Submit")` |
 
+**Pointer participation**
+which widget catches a click when layers overlap (default is `auto`; each takes `bool` / `Observable[bool]`)
+
+| Need | Modifier | Example |
+| --- | --- | --- |
+| Transparent overlay must not steal clicks; children still work | `defer_pointer` | `defer_pointer()` |
+| Composite acts as one non-interactive slab (children absorbed) | `absorb_pointer` | `absorb_pointer(disabled)` |
+| Scrim / blocker: catch everywhere, block what's behind | `block_pointer` | `block_pointer(is_modal)` |
+| Whole subtree is click-through (passes to what's behind) | `passthrough_pointer` | `passthrough_pointer(hidden)` |
+
 **Transform**
 
 | Need | Modifier | Example |

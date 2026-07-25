@@ -4,8 +4,8 @@
 
 * :func:`opacity` — drives the visual fade between hidden (``0.0``) and shown
   (``1.0``).
-* :func:`ignore_pointer` — blocks hit-testing while the widget is logically
-  hidden so that invisible widgets do not consume input.
+* :func:`passthrough_pointer` — lets clicks pass through while the widget is
+  logically hidden so that invisible widgets do not consume input.
 * :func:`block_focus_traversal` — takes the hidden subtree out of the Tab
   sequence so that keyboard focus cannot land on what nobody can see.
 
@@ -15,7 +15,7 @@ Widget for animated layout-size changes.
 
 When *condition* is a static ``bool`` or an ``Observable[bool]`` and no
 *transition* is provided, ``visible()`` collapses to ``opacity(...) |
-block_focus_traversal(...) | ignore_pointer(...)`` exactly. With a *transition*
+block_focus_traversal(...) | passthrough_pointer(...)`` exactly. With a *transition*
 provided, an internal
 animation driver wires the ``opacity`` (and any pattern-driven ``scale`` /
 ``translate``) to an :class:`Animatable` retargeted on each condition change.
@@ -51,7 +51,7 @@ from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
 from .block_focus_traversal import BlockFocusTraversalBox, block_focus_traversal
-from .ignore_pointer import IgnorePointerBox, ignore_pointer
+from .passthrough_pointer import PassthroughPointerBox, passthrough_pointer
 from .transform import opacity
 
 if TYPE_CHECKING:
@@ -85,7 +85,7 @@ class _AnimatedVisibleBox(Widget):
     (opacity / scale / translate, and translate-as-fraction-of-size) are
     derived from the supplied :class:`TransitionDefinition` and applied at
     paint time. Hit-test blocking while hidden is the responsibility of an
-    outer ``ignore_pointer`` wrapper applied by :class:`_AnimatedVisibleModifier`.
+    outer ``passthrough_pointer`` wrapper applied by :class:`_AnimatedVisibleModifier`.
     """
 
     def __init__(
@@ -329,7 +329,7 @@ def _opacity_observable(
 
 @dataclass(slots=True)
 class _AnimatedVisibleModifier(ModifierElement):
-    """Animated branch of :func:`visible`. Wraps with a paint box and ignore_pointer."""
+    """Animated branch of :func:`visible`. Wraps with a paint box and passthrough_pointer."""
 
     condition: VisibleConditionLike
     transition: TransitionDefinition
@@ -338,7 +338,7 @@ class _AnimatedVisibleModifier(ModifierElement):
     def apply(self, widget: Widget) -> Widget:
         paint_box = _AnimatedVisibleBox(widget, self.condition, self.transition, self.transition_out)
         hidden = _hidden_observable(self.condition)
-        return IgnorePointerBox(BlockFocusTraversalBox(paint_box, hidden), hidden)
+        return PassthroughPointerBox(BlockFocusTraversalBox(paint_box, hidden), hidden)
 
 
 def visible(
@@ -367,7 +367,7 @@ def visible(
     Returns:
         A :class:`ModifierElement` to apply via ``widget.modifier(...)``. With
         no *transition* this is literally ``opacity(...) |
-        block_focus_traversal(...) | ignore_pointer(...)``.
+        block_focus_traversal(...) | passthrough_pointer(...)``.
 
     Note:
         ``visible()`` is a paint-time / input-time convenience and does *not*
@@ -379,7 +379,7 @@ def visible(
         composed: Modifier = Modifier()
         composed = composed.then(opacity(_opacity_observable(condition)))
         composed = composed.then(block_focus_traversal(_hidden_observable(condition)))
-        composed = composed.then(ignore_pointer(_hidden_observable(condition)))
+        composed = composed.then(passthrough_pointer(_hidden_observable(condition)))
         return composed
     return _AnimatedVisibleModifier(
         condition=condition,
