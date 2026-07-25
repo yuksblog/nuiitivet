@@ -18,13 +18,11 @@ from nuiitivet.navigation import Route
 from nuiitivet.material import (Text, MaterialTransitions, FadeIn, SlideInVertically, FadeOut, SlideOutVertically, Button)
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
 
 class AnimatedScreen(ComposableWidget):
     def build(self):
-        return Box(
-            background_color="#F5F7FF",
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -35,7 +33,7 @@ class AnimatedScreen(ComposableWidget):
                     Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#F5F7FF"))
 
 def navigate_with_custom_animation():
     # Create a custom transition: Slide up and fade in on enter, slide down and fade out on exit
@@ -63,13 +61,11 @@ from nuiitivet.navigation import Route, Transitions
 from nuiitivet.material import Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
 
 class InstantScreen(ComposableWidget):
     def build(self):
-        return Box(
-            background_color="#F5F7FF",
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -80,7 +76,7 @@ class InstantScreen(ComposableWidget):
                     Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#F5F7FF"))
 
 def navigate_instantly():
     route = Route(

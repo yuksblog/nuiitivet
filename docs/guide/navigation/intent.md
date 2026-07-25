@@ -27,7 +27,6 @@ from dataclasses import dataclass
 
 from nuiitivet.material import App, Text, Button, Navigator
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
 
 
@@ -57,8 +56,7 @@ class DetailsScreen(ComposableWidget):
         self.intent = intent
 
     def build(self):
-        return Box(
-            background_color="#F5F7FF",
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -69,7 +67,7 @@ class DetailsScreen(ComposableWidget):
                     Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#F5F7FF"))
 
 app = App(
     Navigator.intents(

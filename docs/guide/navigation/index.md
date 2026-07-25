@@ -24,7 +24,6 @@ import nuiitivet as nv
 from nuiitivet.material import Navigator, Text, Button
 from nuiitivet.layout.column import Column
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import Box
 from nuiitivet.material import ButtonStyle
 
 class HomeScreen(ComposableWidget):
@@ -55,8 +54,7 @@ class DetailsScreen(ComposableWidget):
             # Pop the current screen off the navigation stack
             Navigator.root().pop()
 
-        return Box(
-            background_color="#F5F7FF",
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             child=Column(
@@ -67,7 +65,7 @@ class DetailsScreen(ComposableWidget):
                     Button("Back", on_click=go_back, style=ButtonStyle.filled()),
                 ],
             ),
-        )
+        ).modifier(nv.background("#F5F7FF"))
 ```
 
 ## The Stack Structure
