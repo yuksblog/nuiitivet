@@ -5,31 +5,26 @@
 ## Basic Usage
 
 ```python
-import nuiitivet as nv
-from nuiitivet.material import App, Button, Text
-from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.container import Container
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
 
-class HomeScreen(ComposableWidget):
-    def build(self) -> Widget:
-        return Container(
+class HomeScreen(nv.ComposableWidget):
+    def build(self) -> nv.Widget:
+        return nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=Column(
+            child=nv.Column(
                 gap=16,
                 children=[
-                    Text("Hello, Material Design!"),
-                    Button("Get Started", style=ButtonStyle.filled()),
+                    nv.Text("Hello, Material Design!"),
+                    nv.Button("Get Started", style=nv.ButtonStyle.filled()),
                 ],
             ),
         )
 
 
-App(HomeScreen(), title_bar=nv.DefaultTitleBar(title="Material App")).run()
+nv.App(HomeScreen(), title="Material App").run()
 ```
 
 ![Material App Basic Usage](../../assets/material_app_basic_usage.png)
@@ -39,9 +34,10 @@ App(HomeScreen(), title_bar=nv.DefaultTitleBar(title="Material App")).run()
 Control the window size, position, and resize behavior:
 
 ```python
+import nuiitivet.material as nv
 from nuiitivet.runtime.window import WindowPosition
 
-App(
+nv.App(
     HomeScreen(),
     width=1280,
     height=800,
@@ -52,30 +48,35 @@ App(
 
 See [Window](../window/index.md) for detailed usage.
 
-## Title Bar
+## Window Chrome
 
-### Default Title Bar
+By default `App` uses OS-managed chrome (`OSChrome`), which draws the standard OS title bar. Set its text with the `title=` parameter:
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
-App(HomeScreen(), title_bar=nv.DefaultTitleBar(title="My App")).run()
+nv.App(HomeScreen(), title="My App").run()
 ```
 
-### Custom Title Bar
+### Custom Chrome
 
-Replace the OS title bar with any widget:
+Replace the OS title bar with your own header widget via `chrome=CustomChrome(...)`. Nuiitivet wraps the header in a drag area so the window can still be moved by dragging it:
 
 ```python
-import nuiitivet as nv
-from nuiitivet.material import Text
+import nuiitivet.material as nv
 
-App(
+header = nv.Row(
+    children=[nv.Text("My App")],
+    cross_alignment="center",
+    width="100%",
+    height=40,
+    padding=(12, 0),
+).modifier(nv.background("#1a237e"))
+
+nv.App(
     HomeScreen(),
-    title_bar=nv.CustomTitleBar(
-        content=Text("My App"),
-        title="My App",
-    ),
+    title="My App",
+    chrome=nv.CustomChrome(header=header, corner_radius=8),
 ).run()
 ```
 
@@ -86,9 +87,9 @@ See [Window Chrome](../window/chrome.md) for detailed usage.
 Pass a `ThemeFactory` to change the seed color or switch to dark mode:
 
 ```python
-from nuiitivet.material import App, ThemeFactory
+import nuiitivet.material as nv
 
-App(HomeScreen(), theme=ThemeFactory.dark("#00639B")).run()
+nv.App(HomeScreen(), theme=nv.ThemeFactory.dark("#00639B")).run()
 ```
 
 See [Material Theme](material_theme.md) for detailed usage.
@@ -98,13 +99,12 @@ See [Material Theme](material_theme.md) for detailed usage.
 Register custom overlay intents that can be dispatched from anywhere in the widget tree:
 
 ```python
-from nuiitivet.material import App
-from nuiitivet.material.dialogs import BasicDialog
+import nuiitivet.material as nv
 
-App(
+nv.App(
     HomeScreen(),
     overlay_routes={
-        MyIntent: lambda intent: BasicDialog(title=intent.title, message=intent.message),
+        MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
     },
 ).run()
 ```

@@ -12,11 +12,11 @@ You can control how the window is sized and where it appears on the screen using
 ### Fixed Size Example
 
 ```python
-from nuiitivet import App, WindowSizing
-from nuiitivet.widgets import Text
+import nuiitivet.material as nv
+from nuiitivet.runtime.window import WindowSizing
 
-app = App(
-    root=Text("Fixed Size Window"),
+app = nv.App(
+    root=nv.Text("Fixed Size Window"),
     width=WindowSizing.fixed(800), # Or simply width=800
     height=WindowSizing.fixed(600) # Or simply height=600
 )
@@ -28,12 +28,12 @@ app.run()
 When using `"auto"`, the window will calculate its size based on the preferred size of its root widget.
 
 ```python
-from nuiitivet import App, WindowSizing
-from nuiitivet.widgets import Text, Container
+import nuiitivet.material as nv
+from nuiitivet.runtime.window import WindowSizing
 
-app = App(
-    root=Container(
-        child=Text("Auto Sized Window"),
+app = nv.App(
+    root=nv.Container(
+        child=nv.Text("Auto Sized Window"),
         padding=50
     ),
     width=WindowSizing.auto(), # Or simply width="auto"
@@ -53,11 +53,11 @@ app.run()
 ### Positioning Example
 
 ```python
-from nuiitivet import App, WindowPosition
-from nuiitivet.widgets import Text
+import nuiitivet.material as nv
+from nuiitivet.runtime.window import WindowPosition
 
-app = App(
-    root=Text("Positioned Window"),
+app = nv.App(
+    root=nv.Text("Positioned Window"),
     width=400,
     height=300,
     window_position=WindowPosition.alignment(

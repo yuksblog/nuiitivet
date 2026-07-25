@@ -8,27 +8,19 @@ You can handle back navigation (e.g., pressing the Esc key) using the `will_pop`
 In this example, an editor screen is pushed on a `Navigator`. Pop is blocked while there are unsaved changes, and allowed after Save or Discard.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material.buttons import Button
-from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.material import Overlay, Navigator
-from nuiitivet.material.text_fields import TextField
-from nuiitivet.modifiers import will_pop
-from nuiitivet.observable import Observable
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def _open_editor() -> None:
-            Navigator.root().push(EditScreen())
+            nv.Navigator.root().push(EditScreen())
 
         return nv.Container(
             padding=24,
             child=nv.Column(
                 children=[
-                    md.Text("Open editor, edit text, then try Esc or Back."),
-                    Button("Open editor", on_click=_open_editor, style=ButtonStyle.filled()),
+                    nv.Text("Open editor, edit text, then try Esc or Back."),
+                    nv.Button("Open editor", on_click=_open_editor, style=nv.ButtonStyle.filled()),
                 ],
                 gap=14,
                 cross_alignment="start",
@@ -38,7 +30,7 @@ class HomeScreen(nv.ComposableWidget):
 class EditScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.text = Observable("Hello")
+        self.text = nv.Observable("Hello")
         self._initial_text = str(self.text.value)
 
     def _is_dirty(self) -> bool:
@@ -51,13 +43,13 @@ class EditScreen(nv.ComposableWidget):
         if not self._is_dirty():
             return True
 
-        result = await Overlay.root().dialog(
-            BasicDialog(
+        result = await nv.Overlay.root().dialog(
+            nv.BasicDialog(
                 title="Discard changes?",
                 message="You have unsaved changes.",
                 actions=[
-                    Button("Cancel", on_click=lambda: Overlay.root().close(False), style=ButtonStyle.text()),
-                    Button("Discard", on_click=lambda: Overlay.root().close(True), style=ButtonStyle.filled()),
+                    nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(False), style=nv.ButtonStyle.text()),
+                    nv.Button("Discard", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.filled()),
                 ],
             ),
             dismiss_on_outside_tap=False,
@@ -69,8 +61,8 @@ class EditScreen(nv.ComposableWidget):
             padding=24,
             child=nv.Column(
                 children=[
-                    md.Text("Edit text. Back/Esc asks confirmation when unsaved."),
-                    TextField.two_way(
+                    nv.Text("Edit text. Back/Esc asks confirmation when unsaved."),
+                    nv.TextField.two_way(
                         self.text,
                         width=420,
                         height=52,
@@ -78,8 +70,8 @@ class EditScreen(nv.ComposableWidget):
                     ),
                     nv.Row(
                         children=[
-                            Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.text()),
-                            Button("Save", on_click=self._save, style=ButtonStyle.filled()),
+                            nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.text()),
+                            nv.Button("Save", on_click=self._save, style=nv.ButtonStyle.filled()),
                         ],
                         gap=10,
                     ),
@@ -87,10 +79,10 @@ class EditScreen(nv.ComposableWidget):
                 gap=14,
                 cross_alignment="start",
             ),
-        ).modifier(will_pop(on_will_pop=self._on_will_pop))
+        ).modifier(nv.will_pop(on_will_pop=self._on_will_pop))
 
 def main() -> None:
-    md.App(
+    nv.App(
         HomeScreen(),
     ).run()
 ```
@@ -104,30 +96,27 @@ The `stick` modifier overlays any widget on top of a target widget at a specifie
 The following example composes a custom symbol by layering a smaller icon over a larger base icon. Because the result is a fixed, decorative composition — not a value that changes at runtime — it is a good fit for `stick`. (Avoid using it for dynamic indicators such as badges or status dots; those represent changing state and belong in transient UI instead.) Any widget can be passed as the overlay.
 
 ```python
-import nuiitivet as nv
-from nuiitivet.material import Icon
-from nuiitivet.material.styles.icon_style import IconStyle
-from nuiitivet.modifiers import stick
+import nuiitivet.material as nv
 
 def _base_icon(name: str) -> nv.Widget:
-    return Icon(name, size=64, style=IconStyle(color="#5F6368"))
+    return nv.Icon(name, size=64, style=nv.IconStyle(color="#5F6368"))
 
 def _overlay_icon(name: str, color: str) -> nv.Widget:
-    return Icon(name, size=30, style=IconStyle(color=color))
+    return nv.Icon(name, size=30, style=nv.IconStyle(color=color))
 
 # cloud + upward arrow = "upload to cloud"
 upload = _base_icon("cloud").modifier(
-    stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center")
 )
 
 # folder + star = "favorite folder"
 favorite_folder = _base_icon("folder").modifier(
-    stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center")
 )
 
 # photo + pencil = "edit photo"
 edit_photo = _base_icon("photo").modifier(
-    stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center")
 )
 ```
 
@@ -148,29 +137,25 @@ layout is not affected.
 Pass a `bool` or an `Observable[bool]` as the condition:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import Card, CardStyle
-from nuiitivet.modifiers import visible
-from nuiitivet.material.styles.text_style import TextStyle
+import nuiitivet.material as nv
 
 
 def _panel(label: str) -> nv.Widget:
-    return Card(
-        child=md.Text(label, style=TextStyle(font_size=14)),
+    return nv.Card(
+        child=nv.Text(label, style=nv.TextStyle(font_size=14)),
         padding=16,
         width=180,
-        style=CardStyle.filled(),
+        style=nv.CardStyle.filled(),
     )
 
 
 content = nv.Column(
     children=[
-        md.Text("visible(True) — always shown", style=TextStyle(font_size=12)),
-        _panel("Always shown").modifier(visible(True)),
-        md.Text("visible(False) — hidden, but layout space preserved", style=TextStyle(font_size=12)),
-        _panel("Never shown").modifier(visible(False)),
-        md.Text("Sibling below: layout space of hidden widget is reserved", style=TextStyle(font_size=12)),
+        nv.Text("visible(True) — always shown", style=nv.TextStyle(font_size=12)),
+        _panel("Always shown").modifier(nv.visible(True)),
+        nv.Text("visible(False) — hidden, but layout space preserved", style=nv.TextStyle(font_size=12)),
+        _panel("Never shown").modifier(nv.visible(False)),
+        nv.Text("Sibling below: layout space of hidden widget is reserved", style=nv.TextStyle(font_size=12)),
     ],
     gap=12,
     cross_alignment="start",
@@ -183,11 +168,11 @@ content = nv.Column(
 To make visibility reactive, pass an `Observable[bool]`:
 
 ```python
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-is_visible: Observable[bool] = Observable(True)
+is_visible: nv.Observable[bool] = nv.Observable(True)
 
-widget.modifier(visible(is_visible))
+widget.modifier(nv.visible(is_visible))
 ```
 
 Whenever `is_visible.value` changes, the widget instantly appears or disappears (no animation).
@@ -198,46 +183,35 @@ Pass a `TransitionDefinition` to animate the transition between hidden and shown
 The example below combines a fade and a scale animation:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.animation import LinearMotion
-from nuiitivet.animation.transition_definition import TransitionDefinition
-from nuiitivet.animation.transition_pattern import FadePattern, ScalePattern
-from nuiitivet.material import Card, CardStyle
-from nuiitivet.modifiers import visible
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.observable import Observable
-from nuiitivet.widgeting.widget import ComposableWidget
+import nuiitivet.material as nv
 
-_FADE_SCALE = TransitionDefinition(
-    motion=LinearMotion(0.25),
-    pattern=FadePattern(start_alpha=0.0, end_alpha=1.0)
-    | ScalePattern(start_scale_x=0.9, start_scale_y=0.9, end_scale_x=1.0, end_scale_y=1.0),
+_FADE_SCALE = nv.TransitionDefinition(
+    motion=nv.LinearMotion(0.25),
+    pattern=nv.FadePattern(start_alpha=0.0, end_alpha=1.0)
+    | nv.ScalePattern(start_scale_x=0.9, start_scale_y=0.9, end_scale_x=1.0, end_scale_y=1.0),
 )
 
 
-class MyWidget(ComposableWidget):
-    is_visible: Observable[bool] = Observable(True)
+class MyWidget(nv.ComposableWidget):
+    is_visible: nv.Observable[bool] = nv.Observable(True)
 
     def build(self) -> nv.Widget:
-        from nuiitivet.material.buttons import Button
-        from nuiitivet.material import ButtonStyle
 
         def toggle() -> None:
             self.is_visible.value = not self.is_visible.value
 
-        panel = Card(
-            child=md.Text("Animated widget", style=TextStyle(font_size=14)),
+        panel = nv.Card(
+            child=nv.Text("Animated widget", style=nv.TextStyle(font_size=14)),
             padding=16,
             width=220,
-            style=CardStyle.filled(),
+            style=nv.CardStyle.filled(),
         )
 
         return nv.Column(
             children=[
-                Button("Toggle visibility", on_click=toggle, style=ButtonStyle.filled()),
-                panel.modifier(visible(self.is_visible, transition=_FADE_SCALE)),
-                md.Text("↑ Layout space is always reserved", style=TextStyle(font_size=12)),
+                nv.Button("Toggle visibility", on_click=toggle, style=nv.ButtonStyle.filled()),
+                panel.modifier(nv.visible(self.is_visible, transition=_FADE_SCALE)),
+                nv.Text("↑ Layout space is always reserved", style=nv.TextStyle(font_size=12)),
             ],
             gap=12,
             cross_alignment="start",
@@ -264,11 +238,10 @@ The `keyed()` modifier attaches a stable `key` — a layout-independent identifi
 Apply `keyed()` to any already-built widget:
 
 ```python
-import nuiitivet.material as md
-from nuiitivet.modifiers import keyed
+import nuiitivet.material as nv
 
-md.Button("increment").modifier(keyed("increment-btn"))
-md.TextField(label="Email").modifier(keyed("email"))
+nv.Button("increment").modifier(nv.keyed("increment-btn"))
+nv.TextField(label="Email").modifier(nv.keyed("email"))
 ```
 
 Choose a key that is unique enough to disambiguate the widget among its realistic targets (think "testID").
@@ -278,7 +251,7 @@ Choose a key that is unique enough to disambiguate the widget among its realisti
 When you combine `keyed()` with modifiers that **wrap** the widget (such as `background`, `visible`, or `stick`), apply `keyed()` **last** so the key lands on the outermost node:
 
 ```python
-widget.modifier(clickable(on_click=...) | keyed("row"))
+widget.modifier(nv.clickable(on_click=...) | nv.keyed("row"))
 ```
 
 This ordering is required for hot-reload state restoration to survive a reorder. Used alone, `keyed()` has nothing to wrap, so the order does not matter.

@@ -11,29 +11,29 @@ The most straightforward way to show a dialog is to create an `BasicDialog` widg
 The `dialog()` method is **awaitable**, meaning you can wait for the user to close the dialog and receive a result.
 
 ```python
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 # samples/overlay/dialogs/basic_usage.py (Excerpt)
 
-class BasicDialogDemo(ComposableWidget):
-    result_text: Observable[str] = Observable("Ready")
+class BasicDialogDemo(nv.ComposableWidget):
+    result_text: nv.Observable[str] = nv.Observable("Ready")
 
     async def _show_dialog(self):
         # Overlay.root() finds the globally unique Overlay
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
 
         # Create the dialog widget
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="CONFIRMATION",
             message="Do you want to proceed with this action?",
             actions=[
-                Button(
+                nv.Button(
                     "CANCEL",
                     on_click=lambda: overlay.close("Canceled"),
-                 style=ButtonStyle.text()),
-                Button(
+                 style=nv.ButtonStyle.text()),
+                nv.Button(
                     "OK",
                     on_click=lambda: overlay.close("Confirmed"),
-                 style=ButtonStyle.text()),
+                 style=nv.ButtonStyle.text()),
             ],
         )
 
@@ -44,18 +44,18 @@ class BasicDialogDemo(ComposableWidget):
         if result.value:
             self.result_text.value = f"Last Action: {result.value}"
 
-    def build(self) -> Widget:
+    def build(self) -> nv.Widget:
         # User Interface building code...
-        return Container(
+        return nv.Container(
             alignment="center",
-            child=Column(
+            child=nv.Column(
                 gap=20,
                 children=[
-                    Text(self.result_text),
-                    Button(
+                    nv.Text(self.result_text),
+                    nv.Button(
                         "Show Alert Dialog",
                         on_click=self._show_dialog,
-                     style=ButtonStyle.filled()),
+                     style=nv.ButtonStyle.filled()),
                 ],
             )
         )
@@ -74,37 +74,37 @@ class BasicDialogDemo(ComposableWidget):
 You are not limited to `BasicDialog`. Any Widget can be shown in the overlay. This is useful for custom forms, interactive tools, or specialized prompts.
 
 ```python
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 # samples/overlay/dialogs/custom_dialog.py (Excerpt)
 
-class CustomDialogContent(ComposableWidget):
+class CustomDialogContent(nv.ComposableWidget):
     """A completely custom widget to be used as a dialog."""
     
-    def __init__(self, overlay: Overlay):
+    def __init__(self, overlay: nv.Overlay):
         super().__init__()
         self.overlay = overlay
-        self.counter = Observable(0)
+        self.counter = nv.Observable(0)
 
     def _increment(self):
         self.counter.value += 1
 
-    def build(self) -> Widget:
-        return Card(
-            child=Container(
+    def build(self) -> nv.Widget:
+        return nv.Card(
+            child=nv.Container(
                 padding=24,
-                child=Column(
+                child=nv.Column(
                     gap=16,
                     children=[
-                        Text("Custom Interactive Dialog"),
-                        Row(
+                        nv.Text("Custom Interactive Dialog"),
+                        nv.Row(
                             gap=10,
-                            children=[Text("Count:"), Text(self.counter.map(str))],
+                            children=[nv.Text("Count:"), nv.Text(self.counter.map(str))],
                         ),
-                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
-                        Button(
+                        nv.Button("Increment", on_click=self._increment, style=nv.ButtonStyle.filled()),
+                        nv.Button(
                             "Close & Return Count", 
                             on_click=lambda: self.overlay.close(self.counter.value)
-                        , style=ButtonStyle.outlined()),
+                        , style=nv.ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -132,31 +132,30 @@ The type parameter `T` describes the result type returned from
 ```python
 # samples/overlay/dialogs/custom_dialog_overlay_aware.py (Excerpt)
 
-from nuiitivet.overlay import OverlayAware
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 
 
-class CounterDialog(ComposableWidget, OverlayAware[int]):
+class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
     """A self-contained dialog that closes itself via OverlayAware."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.counter = Observable(0)
+        self.counter = nv.Observable(0)
 
     def _close(self) -> None:
         # No Overlay reference needed — the framework injected the handle.
         self.overlay_handle.close(self.counter.value)
 
-    def build(self) -> Widget:
-        return Card(
-            child=Container(
+    def build(self) -> nv.Widget:
+        return nv.Card(
+            child=nv.Container(
                 padding=24,
-                child=Column(
+                child=nv.Column(
                     gap=16,
                     children=[
-                        Text("Self-Closing Dialog"),
-                        Button("Increment", on_click=self._increment, style=ButtonStyle.filled()),
-                        Button("Close & Return Count", on_click=self._close, style=ButtonStyle.outlined()),
+                        nv.Text("Self-Closing Dialog"),
+                        nv.Button("Increment", on_click=self._increment, style=nv.ButtonStyle.filled()),
+                        nv.Button("Close & Return Count", on_click=self._close, style=nv.ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -191,7 +190,7 @@ One approach is to have the ViewModel create Widgets directly. While simple to i
 **Direct Widget Creation Example:**
 
 ```python
-from nuiitivet.material import ButtonStyle
+import nuiitivet.material as nv
 # samples/overlay/dialogs/view_model_direct.py (Excerpt)
 
 class CoupledViewModel:
@@ -201,25 +200,25 @@ class CoupledViewModel:
     """
     
     def __init__(self):
-        self.status = Observable("Ready")
+        self.status = nv.Observable("Ready")
 
-    async def process_action(self, overlay: Overlay):
+    async def process_action(self, overlay: nv.Overlay):
         self.status.value = "Processing..."
         
         # Logic creates UI components directly
-        dialog = BasicDialog(
+        dialog = nv.BasicDialog(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
-            actions=[Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text())]
+            actions=[nv.Button("OK", on_click=lambda: overlay.close(True), style=nv.ButtonStyle.text())]
         )
         
         await overlay.dialog(dialog)
         self.status.value = "Finished"
 
-class DirectViewModelDemo(ComposableWidget):
+class DirectViewModelDemo(nv.ComposableWidget):
     async def _on_run_click(self):
-        overlay = Overlay.root()
+        overlay = nv.Overlay.root()
         await self.vm.process_action(overlay)
 ```
 
@@ -234,7 +233,7 @@ By using `BasicDialogIntent`, the ViewModel remains pure logic.
 ```python
 # samples/overlay/dialogs/view_model_intent.py (Excerpt)
 
-from nuiitivet.material.intents import BasicDialogIntent
+import nuiitivet.material as nv
 
 class DecoupledViewModel:
     """
@@ -243,13 +242,13 @@ class DecoupledViewModel:
     """
     
     def __init__(self):
-        self.status = Observable("Ready")
+        self.status = nv.Observable("Ready")
 
-    async def process_action(self, overlay: Overlay):
+    async def process_action(self, overlay: nv.Overlay):
         self.status.value = "Processing..."
         
         # We just create a data description of what we want
-        intent = BasicDialogIntent(
+        intent = nv.BasicDialogIntent(
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle"
@@ -281,16 +280,16 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 2. **Map Intent to Dialog**: Register the connection between the Intent data and its Widget in `App`.
 
    ```python
-   def create_counter_dialog(intent: CounterIntent) -> Widget:
+   def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
        # This function knows about Widgets, but ViewModel doesn't
        return CustomDialogContent(
-           Overlay.root(),
+           nv.Overlay.root(),
            initial=intent.initial_value
        )
 
-   class IntentDemoApp(ComposableWidget):
-       def build(self) -> Widget:
-           return App(
+   class IntentDemoApp(nv.ComposableWidget):
+       def build(self) -> nv.Widget:
+           return nv.App(
                content=HomeView(),
                overlay_routes={
                    CounterIntent: create_counter_dialog
@@ -302,7 +301,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 
    ```python
    class MyViewModel:
-       async def open_counter(self, overlay: Overlay):
+       async def open_counter(self, overlay: nv.Overlay):
            # Pure logic, using our custom intent
            result = await overlay.dialog(CounterIntent(initial_value=5))
            

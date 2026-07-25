@@ -6,7 +6,7 @@
     All widgets shown below are exported from `nuiitivet.material`:
 
     ```python
-    from nuiitivet.material import Button, Card, TextField  # etc.
+    import nuiitivet.material as nv
     ```
 
 ---
@@ -236,11 +236,11 @@ API References: [Tooltip](../../api/material.md#nuiitivet.material.Tooltip) ・ 
 Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Pass a writable `Observable[bool]` as `opened` and the sheet animates its own width open and closed, staying mounted throughout.
 
 ```python
-opened: Observable[bool] = Observable(True)
+opened: nv.Observable[bool] = nv.Observable(True)
 
-Row([
+nv.Row([
     main_content,
-    StandardSideSheet(panel_content, headline="Filters", opened=opened),
+    nv.StandardSideSheet(panel_content, headline="Filters", opened=opened),
 ])
 ```
 
@@ -253,7 +253,7 @@ def confirm_close() -> None:
     else:
         opened.value = False
 
-StandardSideSheet(panel_content, opened=opened, on_close_click=confirm_close)
+nv.StandardSideSheet(panel_content, opened=opened, on_close_click=confirm_close)
 ```
 
 With a literal `opened=True` and no `on_close_click`, no close button is rendered: a press would have nothing to act on.
@@ -269,8 +269,8 @@ With a literal `opened=True` and no `on_close_click`, no close button is rendere
 A text field with a trailing calendar icon button. Tapping the icon opens a `DatePicker` in a dropdown anchored below the field; the date can also be typed directly. `value` is the single source of truth for both routes.
 
 ```python
-selected: Observable[date | None] = Observable(None)
-DockedDatePicker(value=selected, min_date=date(2026, 1, 1))
+selected: nv.Observable[date | None] = nv.Observable(None)
+nv.DockedDatePicker(value=selected, min_date=date(2026, 1, 1))
 ```
 
 `value` is keyword-only.

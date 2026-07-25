@@ -6,8 +6,7 @@
     Import `App` and `Overlay` from `nuiitivet.material`.
 
     ```python
-    from nuiitivet.material import App
-    from nuiitivet.material import Overlay
+    import nuiitivet.material as nv
     ```
 
     The rest of this guide follows this convention.
@@ -22,16 +21,16 @@ The base `Overlay` exposes three primitives: `show_modal`, `show_modeless`, and 
 `App` registers an `Overlay` instance as the root overlay. In most cases, use `Overlay.root()` to retrieve it directly.
 
 ```python
-from nuiitivet.material import Overlay
+import nuiitivet.material as nv
 
-overlay = Overlay.root()
+overlay = nv.Overlay.root()
 ```
 
 `Overlay.of(self)` walks up the widget tree and returns the nearest ancestor `Overlay`. Use this only when you have intentionally nested an `Overlay` inside the widget tree and need to reach that inner instance rather than the root.
 
 ```python
 # Only needed when an Overlay is nested in the widget tree
-overlay = Overlay.of(self)
+overlay = nv.Overlay.of(self)
 ```
 
 ## Shortcuts at a Glance
@@ -60,15 +59,15 @@ For a full treatment of the handle/await pattern and MVVM architecture, see [Dia
 Displays a modal dialog with a scrim. This is the most common use case; refer to [Dialogs](../overlay/dialogs.md) for the complete guide including custom dialogs, `OverlayAware`, and MVVM patterns.
 
 ```python
-from nuiitivet.material import BasicDialog, Button, ButtonStyle, Overlay
+import nuiitivet.material as nv
 
 overlay.dialog(
-    BasicDialog(
+    nv.BasicDialog(
         title="Delete item?",
         message="This action cannot be undone.",
         actions=[
-            Button("Cancel", on_click=lambda: Overlay.root().close(None), style=ButtonStyle.text()),
-            Button("Delete", on_click=lambda: Overlay.root().close(True), style=ButtonStyle.text()),
+            nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(None), style=nv.ButtonStyle.text()),
+            nv.Button("Delete", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.text()),
         ],
     )
 )
@@ -92,9 +91,9 @@ overlay.snackbar("Item deleted")
 Pass a `Snackbar` widget for more control over appearance:
 
 ```python
-from nuiitivet.material.snackbar import Snackbar
+import nuiitivet.material as nv
 
-overlay.snackbar(Snackbar("Upload complete"))
+overlay.snackbar(nv.Snackbar("Upload complete"))
 ```
 
 | Parameter | Type | Default | Description |
@@ -109,12 +108,12 @@ overlay.snackbar(Snackbar("Upload complete"))
 Displays a modal sheet that slides in from a side edge. The slide-in edge is a placement concern owned by `side_sheet()`: the `side` argument drives three things at once — the slide direction of the transition, the screen-edge alignment, and which (inner, away-from-edge) corners are rounded. The corner rounding is applied by `side_sheet()` via the `corner_radius` modifier, so the `SideSheet` widget itself renders a square container and no longer takes a `side` parameter.
 
 ```python
-from nuiitivet.material import SideSheet, Text
+import nuiitivet.material as nv
 
 overlay.side_sheet(
-    SideSheet(
+    nv.SideSheet(
         headline="Settings",
-        content=Text("Sheet content here"),
+        content=nv.Text("Sheet content here"),
     ),
     side="right",
 )
@@ -133,12 +132,12 @@ overlay.side_sheet(
 Displays a modal sheet that slides up from the bottom edge. The same principle as `side_sheet()` applies: the transition direction (slide from bottom), screen-edge position (bottom-center), and corner radii (top two corners rounded, bottom edge flush) must all stay consistent. Because all three are determined solely by the fact that it is a bottom sheet, `bottom_sheet()` accepts only a `BottomSheet` widget rather than an arbitrary `OverlayRoute`.
 
 ```python
-from nuiitivet.material import BottomSheet, Text
+import nuiitivet.material as nv
 
 overlay.bottom_sheet(
-    BottomSheet(
+    nv.BottomSheet(
         headline="Options",
-        content=Text("Sheet content here"),
+        content=nv.Text("Sheet content here"),
     )
 )
 ```
@@ -167,14 +166,14 @@ handle.close(None)
 `while_loading()` shows the indicator and guarantees it is dismissed when the block exits, even on exceptions:
 
 ```python
-async with Overlay.of(self).while_loading():
+async with nv.Overlay.of(self).while_loading():
     await fetch_data()
 ```
 
 ### Custom Indicator
 
 ```python
-async with Overlay.of(self).while_loading(my_custom_widget):
+async with nv.Overlay.of(self).while_loading(my_custom_widget):
     await fetch_data()
 ```
 
@@ -208,9 +207,9 @@ Intents let view models request overlays without importing widget classes. Pass 
 | `LoadingIntent` | Built-in `LoadingIndicator` | `loading()` |
 
 ```python
-from nuiitivet.material.intents import BasicDialogIntent
+import nuiitivet.material as nv
 
-overlay.dialog(BasicDialogIntent(title="Error", message="Something went wrong."))
+overlay.dialog(nv.BasicDialogIntent(title="Error", message="Something went wrong."))
 ```
 
 ### Custom Intents
@@ -219,7 +218,7 @@ Register a mapping from intent type to widget factory in `App`:
 
 ```python
 from dataclasses import dataclass
-from nuiitivet.material import App, BasicDialog, Button, ButtonStyle, Overlay
+import nuiitivet.material as nv
 
 
 @dataclass(frozen=True)
@@ -227,15 +226,15 @@ class ConfirmIntent:
     message: str
 
 
-App(
+nv.App(
     HomeScreen(),
     overlay_routes={
-        ConfirmIntent: lambda intent: BasicDialog(
+        ConfirmIntent: lambda intent: nv.BasicDialog(
             title="Confirm",
             message=intent.message,
             actions=[
-                Button("Cancel", on_click=lambda: Overlay.root().close(False), style=ButtonStyle.text()),
-                Button("OK", on_click=lambda: Overlay.root().close(True), style=ButtonStyle.text()),
+                nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(False), style=nv.ButtonStyle.text()),
+                nv.Button("OK", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.text()),
             ],
         ),
     },
@@ -246,7 +245,7 @@ Dispatch from anywhere in the widget tree:
 
 ```python
 async def on_submit(self) -> None:
-    handle = Overlay.of(self).dialog(ConfirmIntent(message="Submit form?"))
+    handle = nv.Overlay.of(self).dialog(ConfirmIntent(message="Submit form?"))
     result = await handle
     if result.value is True:
         self.submit()

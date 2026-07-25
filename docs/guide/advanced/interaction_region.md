@@ -43,9 +43,10 @@ region.enable_click(on_click=lambda: print("clicked"))
 InteractionRegion internally uses `InteractionController` to translate pointer events into `InteractionState` updates. You usually do not need to touch it, but advanced widgets (such as `BaseButton`) can embed the controller directly to keep their concrete class (and public API) intact:
 
 ```python
+import nuiitivet.material as nv
 from nuiitivet.widgets.interaction import InteractionController, InteractionState
 
-class FancyControl(Widget):
+class FancyControl(nv.Widget):
     def __init__(self):
         super().__init__()
         self.interaction_state = InteractionState()
@@ -53,7 +54,7 @@ class FancyControl(Widget):
         self._interaction.enable_hover()
         self._interaction.enable_click(on_click=self._on_activate)
 
-    def on_pointer_event(self, event: PointerEvent) -> bool:
+    def on_pointer_event(self, event: nv.PointerEvent) -> bool:
         return self._interaction.handle_pointer_event(event, getattr(self, "_last_rect", None))
 ```
 

@@ -10,16 +10,15 @@ Creates spacing between itself and its child elements (inside).
 In components with background colors or borders, this becomes the distance to the content.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Creates 16px spacing inside the container (spacing between buttons is zero)
 content = nv.Column(
     children=[
-        md.Button("Button 1", style=md.ButtonStyle.filled()),
-        md.Button("Button 2", style=md.ButtonStyle.filled()),
-        md.Button("Button 3", style=md.ButtonStyle.outlined()),  # Only this one has different style
-        md.Button("Button 4", style=md.ButtonStyle.filled()),
+        nv.Button("Button 1", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 2", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 3", style=nv.ButtonStyle.outlined()),  # Only this one has different style
+        nv.Button("Button 4", style=nv.ButtonStyle.filled()),
     ],
     padding=16,
 )
@@ -45,7 +44,7 @@ Passing `None` (or omitting `padding`) means no padding (`0` on all sides).
 > not the CSS meaning of 16px top/bottom and 8px left/right.
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
 nv.Container(child=..., padding=16)              # 16px on all sides
 nv.Container(child=..., padding=(16, 8))         # 16px left/right, 8px top/bottom
@@ -58,16 +57,15 @@ Creates uniform space between child elements.
 There is no need to set spacing for each child element, and you can adjust the overall spacing in one place.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Creates a 12px gap between buttons
 content = nv.Column(
     children=[
-        md.Button("Button 1", style=md.ButtonStyle.filled()),
-        md.Button("Button 2", style=md.ButtonStyle.filled()),
-        md.Button("Button 3", style=md.ButtonStyle.outlined()),
-        md.Button("Button 4", style=md.ButtonStyle.filled()),
+        nv.Button("Button 1", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 2", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 3", style=nv.ButtonStyle.outlined()),
+        nv.Button("Button 4", style=nv.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,
@@ -85,18 +83,17 @@ content = nv.Column(
 Place a `Spacer` if you want to widen the interval between adjacent elements only at a specific location.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Widen interval only before and after Button 3
 content = nv.Column(
     children=[
-        md.Button("Button 1", style=md.ButtonStyle.filled()),
-        md.Button("Button 2", style=md.ButtonStyle.filled()),
+        nv.Button("Button 1", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 2", style=nv.ButtonStyle.filled()),
         nv.Spacer(height=24),  # Widen only here
-        md.Button("Button 3", style=md.ButtonStyle.outlined()),
+        nv.Button("Button 3", style=nv.ButtonStyle.outlined()),
         nv.Spacer(height=24),  # Widen only here
-        md.Button("Button 4", style=md.ButtonStyle.filled()),
+        nv.Button("Button 4", style=nv.ButtonStyle.filled()),
     ],
     gap=12,  # Basic interval
     padding=16,
@@ -110,19 +107,18 @@ content = nv.Column(
 If you want spacing only around a specific element (so-called margin-like usage), wrap that element in a `Container` and set `padding` on the `Container`.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Create spacing only around Button 3 (top, bottom, left, right)
 content = nv.Column(
     children=[
-        md.Button("Button 1", style=md.ButtonStyle.filled()),
-        md.Button("Button 2", style=md.ButtonStyle.filled()),
+        nv.Button("Button 1", style=nv.ButtonStyle.filled()),
+        nv.Button("Button 2", style=nv.ButtonStyle.filled()),
         nv.Container(
-            child=md.Button("Button 3", style=md.ButtonStyle.outlined()),
+            child=nv.Button("Button 3", style=nv.ButtonStyle.outlined()),
             padding=24,  # Secure 24px around this element only
         ),
-        md.Button("Button 4", style=md.ButtonStyle.filled()),
+        nv.Button("Button 4", style=nv.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,

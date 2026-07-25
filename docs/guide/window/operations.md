@@ -23,46 +23,39 @@ The following intents are available in `nuiitivet.runtime.intents` for window ma
 Here is an example of how to use these intents with buttons to control the window:
 
 ```python
-from nuiitivet import App
-from nuiitivet.widgets import Column, Button, Text
-from nuiitivet.runtime.intents import (
-    MaximizeWindowIntent,
-    MinimizeWindowIntent,
-    RestoreWindowIntent,
-    CloseWindowIntent,
-    CenterWindowIntent
-)
+import nuiitivet.material as nv
+from nuiitivet.runtime.intents import CenterWindowIntent, CloseWindowIntent, MaximizeWindowIntent, MinimizeWindowIntent, RestoreWindowIntent
 
 def build_window_controls():
-    return Column(
+    return nv.Column(
         children=[
-            Text("Window Controls"),
-            Button(
-                child=Text("Maximize"),
-                on_click=lambda ctx: App.of(ctx).dispatch(MaximizeWindowIntent())
+            nv.Text("Window Controls"),
+            nv.Button(
+                child=nv.Text("Maximize"),
+                on_click=lambda ctx: nv.App.of(ctx).dispatch(MaximizeWindowIntent())
             ),
-            Button(
-                child=Text("Minimize"),
-                on_click=lambda ctx: App.of(ctx).dispatch(MinimizeWindowIntent())
+            nv.Button(
+                child=nv.Text("Minimize"),
+                on_click=lambda ctx: nv.App.of(ctx).dispatch(nv.MinimizeWindowIntent())
             ),
-            Button(
-                child=Text("Restore"),
-                on_click=lambda ctx: App.of(ctx).dispatch(RestoreWindowIntent())
+            nv.Button(
+                child=nv.Text("Restore"),
+                on_click=lambda ctx: nv.App.of(ctx).dispatch(RestoreWindowIntent())
             ),
-            Button(
-                child=Text("Center"),
-                on_click=lambda ctx: App.of(ctx).dispatch(CenterWindowIntent())
+            nv.Button(
+                child=nv.Text("Center"),
+                on_click=lambda ctx: nv.App.of(ctx).dispatch(CenterWindowIntent())
             ),
-            Button(
-                child=Text("Close"),
-                on_click=lambda ctx: App.of(ctx).dispatch(CloseWindowIntent())
+            nv.Button(
+                child=nv.Text("Close"),
+                on_click=lambda ctx: nv.App.of(ctx).dispatch(nv.CloseWindowIntent())
             ),
         ],
         spacing=10,
         padding=20
     )
 
-app = App(
+app = nv.App(
     root=build_window_controls(),
     width=400,
     height=400

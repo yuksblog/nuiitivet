@@ -9,16 +9,14 @@ Displays content with a blocking modal barrier. Background interaction is disabl
 Use `show_modal` for actions that require user attention before the application can continue: confirmation dialogs, error alerts, bottom sheets.
 
 ```python
-from nuiitivet.overlay import Overlay, OverlayPosition
-from nuiitivet.layout.container import Container
-from nuiitivet.material.text import Text
+import nuiitivet.material as nv
 
-overlay = Overlay.root()
+overlay = nv.Overlay.root()
 
 handle = overlay.show_modal(
-    Container(
+    nv.Container(
         width=300, height=200,
-        child=Text("Modal content"),
+        child=nv.Text("Modal content"),
     ),
 )
 
@@ -41,13 +39,13 @@ Displays content above the widget tree without blocking background interaction. 
 Use `show_modeless` for informational overlays that do not require user action: toasts, progress indicators, snackbar messages.
 
 ```python
-from nuiitivet.overlay import Overlay, OverlayPosition
-from nuiitivet.material.text import Text
+import nuiitivet.material as nv
+from nuiitivet.overlay import OverlayPosition
 
-overlay = Overlay.root()
+overlay = nv.Overlay.root()
 
 handle = overlay.show_modeless(
-    Text("Operation complete"),
+    nv.Text("Operation complete"),
     timeout=3.0,
     position=OverlayPosition.alignment("bottom-center", offset=(0, -24)),
 )
@@ -67,9 +65,10 @@ Displays content with an invisible full-screen hit layer. Tapping outside the co
 Use `show_light_dismiss` for menus and dropdowns that should close when the user clicks away.
 
 ```python
-from nuiitivet.overlay import Overlay, OverlayPosition
+import nuiitivet.material as nv
+from nuiitivet.overlay import OverlayPosition
 
-overlay = Overlay.root()
+overlay = nv.Overlay.root()
 
 handle = overlay.show_light_dismiss(
     MenuWidget(),
@@ -125,13 +124,12 @@ position = OverlayPosition.alignment("bottom-center", offset=(0, -24))
 Widgets that need to close themselves can implement `OverlayAware[T]`. When displayed through any `Overlay` show API, the framework automatically injects the handle into the widget before mounting:
 
 ```python
-from nuiitivet.overlay import OverlayAware
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
-class MyDialog(ComposableWidget, OverlayAware[str]):
+class MyDialog(nv.ComposableWidget, nv.OverlayAware[str]):
     def on_confirm(self) -> None:
         self.overlay_handle.close("confirmed")
 
-    def build(self) -> Widget:
+    def build(self) -> nv.Widget:
         ...
 ```

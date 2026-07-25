@@ -11,42 +11,36 @@ Nuiitivet provides built-in transition effects such as `FadeIn`, `FadeOut`, `Sca
 ![Navigation Route](../../assets/navigation_route.png)
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
-from nuiitivet.material import Navigator
-from nuiitivet.navigation import Route
-from nuiitivet.material import (Text, MaterialTransitions, FadeIn, SlideInVertically, FadeOut, SlideOutVertically, Button)
-from nuiitivet.layout.column import Column
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.material import ButtonStyle
 
-class AnimatedScreen(ComposableWidget):
+class AnimatedScreen(nv.ComposableWidget):
     def build(self):
         return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Animated Screen"),
-                    Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
+                    nv.Text("Animated Screen"),
+                    nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
 
 def navigate_with_custom_animation():
     # Create a custom transition: Slide up and fade in on enter, slide down and fade out on exit
-    custom_transition = MaterialTransitions.page(
-        enter=FadeIn() | SlideInVertically(initial_offset_y=50.0),
-        exit=FadeOut() | SlideOutVertically(target_offset_y=50.0)
+    custom_transition = nv.MaterialTransitions.page(
+        enter=nv.FadeIn() | nv.SlideInVertically(initial_offset_y=50.0),
+        exit=nv.FadeOut() | nv.SlideOutVertically(target_offset_y=50.0)
     )
 
-    route = Route(
+    route = nv.Route(
         builder=lambda: AnimatedScreen(),
         transition_spec=custom_transition
     )
-    Navigator.root().push(route)
+    nv.Navigator.root().push(route)
 ```
 
 ## Disabling Animations
@@ -54,36 +48,30 @@ def navigate_with_custom_animation():
 If you want to transition to a new screen instantly without any animation, you can use `Transitions.empty()`.
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
-from nuiitivet.material import Navigator
-from nuiitivet.navigation import Route, Transitions
-from nuiitivet.material import Text, Button
-from nuiitivet.layout.column import Column
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.material import ButtonStyle
 
-class InstantScreen(ComposableWidget):
+class InstantScreen(nv.ComposableWidget):
     def build(self):
         return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Instant Screen"),
-                    Button("Back", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
+                    nv.Text("Instant Screen"),
+                    nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
 
 def navigate_instantly():
-    route = Route(
+    route = nv.Route(
         builder=lambda: InstantScreen(),
-        transition_spec=Transitions.empty()
+        transition_spec=nv.Transitions.empty()
     )
-    Navigator.root().push(route)
+    nv.Navigator.root().push(route)
 ```
 
 Using `Route` and `TransitionSpec` allows you to create smooth, visually appealing transitions or optimize for speed by disabling them entirely.

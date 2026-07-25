@@ -13,8 +13,7 @@ Sizing (stretching/shrinking) is the role of `Sizing`, while `Alignment` is resp
 When there is only one child element inside a parent, you can specify 9 positions using the `alignment` property.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 alignments = [
     "top-left",
@@ -29,9 +28,9 @@ alignments = [
 ]
 
 
-def _tile(alignment: str) -> md.Card:
-    return md.Card(
-        md.Text(alignment, padding=8),
+def _tile(alignment: str) -> nv.Card:
+    return nv.Card(
+        nv.Text(alignment, padding=8),
         width=160,
         height=96,
         alignment=alignment,
@@ -67,8 +66,7 @@ When arranging multiple elements, different properties are used for the "arrangi
 #### Examples of `main_alignment`
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 main_alignments = [
     "start",
@@ -91,9 +89,9 @@ def _demo_row(alignment: str) -> nv.Row:
     )
 
 
-def _tile(label: str) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _tile(label: str) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         width=56,
         height=40,
         alignment="center",
@@ -104,10 +102,10 @@ nv.Column(
     gap=12,
     cross_alignment="start",
     children=[
-        md.Card(
+        nv.Card(
             nv.Column(
                 children=[
-                    md.Text(a),
+                    nv.Text(a),
                     _demo_row(a),
                 ],
                 gap=8,
@@ -115,7 +113,7 @@ nv.Column(
                 width="100%",
             ),
             padding=12,
-            style=md.CardStyle.outlined(),
+            style=nv.CardStyle.outlined(),
         )
         for a in main_alignments
     ],
@@ -127,8 +125,7 @@ nv.Column(
 #### Examples of `cross_alignment`
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 cross_alignments = [
     "start",
@@ -149,25 +146,25 @@ def _demo_row(alignment: str) -> nv.Row:
     )
 
 
-def _bar(label: str, h: int) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _bar(label: str, h: int) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         width=72,
         height=h,
         alignment="center",
     )
 
 
-def _panel(alignment: str) -> md.Card:
-    return md.Card(
+def _panel(alignment: str) -> nv.Card:
+    return nv.Card(
         nv.Column(
-            children=[md.Text(alignment), _demo_row(alignment)],
+            children=[nv.Text(alignment), _demo_row(alignment)],
             gap=8,
             cross_alignment="start",
             width="100%",
         ),
         padding=12,
-        style=md.CardStyle.outlined(),
+        style=nv.CardStyle.outlined(),
     )
 
 
@@ -196,8 +193,7 @@ nv.Column(
 #### `main_alignment` Examples
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 main_alignments = [
     "start",
@@ -219,26 +215,26 @@ def _demo_column(alignment: str) -> nv.Column:
     )
 
 
-def _tile(label: str, *, width: int = 72, height: int = 32) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _tile(label: str, *, width: int = 72, height: int = 32) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         width=width,
         height=height,
         alignment="center",
     )
 
 
-def _panel(alignment: str) -> md.Card:
-    return md.Card(
+def _panel(alignment: str) -> nv.Card:
+    return nv.Card(
         nv.Column(
-            children=[md.Text(alignment), _demo_column(alignment)],
+            children=[nv.Text(alignment), _demo_column(alignment)],
             gap=8,
             cross_alignment="start",
             width="100%",
         ),
         width=150,
         padding=12,
-        style=md.CardStyle.outlined(),
+        style=nv.CardStyle.outlined(),
     )
 
 
@@ -262,8 +258,7 @@ nv.Column(
 #### `cross_alignment` Examples
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 cross_alignments = [
     "start",
@@ -283,26 +278,26 @@ def _demo_column(alignment: str) -> nv.Column:
     )
 
 
-def _tile(label: str, *, width: int = 72, height: int = 32) -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _tile(label: str, *, width: int = 72, height: int = 32) -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         width=width,
         height=height,
         alignment="center",
     )
 
 
-def _panel(alignment: str) -> md.Card:
-    return md.Card(
+def _panel(alignment: str) -> nv.Card:
+    return nv.Card(
         nv.Column(
-            children=[md.Text(alignment), _demo_column(alignment)],
+            children=[nv.Text(alignment), _demo_column(alignment)],
             gap=8,
             cross_alignment="start",
             width="100%",
         ),
         width=200,
         padding=12,
-        style=md.CardStyle.outlined(),
+        style=nv.CardStyle.outlined(),
     )
 
 
@@ -334,12 +329,11 @@ nv.Column(
 Use `CrossAligned` to override the cross-axis alignment of **one specific child** without changing the rest.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 
-def _tile(label: str) -> md.Card:
-    return md.Card(md.Text(label), width=160, height=40, alignment="center")
+def _tile(label: str) -> nv.Card:
+    return nv.Card(nv.Text(label), width=160, height=40, alignment="center")
 
 
 # Column with cross_alignment="start", but the middle tile is centered.

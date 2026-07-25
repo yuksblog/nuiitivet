@@ -13,13 +13,12 @@ The size is determined by the specified pixel value.
 Specify a number like `100`.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
-md.Card(
+nv.Card(
     width=200,   # Fix width to 200px
     height=100,  # Fix height to 100px
-    child=md.Text("Fixed Size Box"),
+    child=nv.Text("Fixed Size Box"),
     padding=16,
     alignment="center",
 )
@@ -34,10 +33,10 @@ Specify `"auto"`.
 
 ```python
 # The box grows to fit the text size inside
-md.Card(
+nv.Card(
     width="auto",
     height="auto",
-    child=md.Text("This box fits the content"),
+    child=nv.Text("This box fits the content"),
     padding=16,
     alignment="center",
 )
@@ -54,9 +53,9 @@ Since it is a ratio, it is not a problem if the total exceeds 100%.
 
 ```python
 # Expands to full width (100%)
-md.Card(
+nv.Card(
     width="100%", 
-    child=md.Text("Full Width Box"),
+    child=nv.Text("Full Width Box"),
     padding=16,
     alignment="center",
 )

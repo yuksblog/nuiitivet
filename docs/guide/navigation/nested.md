@@ -9,84 +9,77 @@ You can create a nested navigation area by placing a `Navigator` widget anywhere
 ![Nested Navigation](../../assets/navigation_sub.png)
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
-from nuiitivet.material import Text, Button, Navigator
-from nuiitivet.layout.column import Column
-from nuiitivet.layout.row import Row
-from nuiitivet.layout.container import Container
-from nuiitivet.navigation import Route
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.material import ButtonStyle
 
-class NestedHome(ComposableWidget):
+class NestedHome(nv.ComposableWidget):
     def build(self):
-        return Column(
+        return nv.Column(
             padding=16,
             gap=12,
             children=[
-                Text("Nested Home"),
-                Button("Go Deeper (Nested)", on_click=lambda: Navigator.of(self).push(NestedDetails()), style=ButtonStyle.filled()),
+                nv.Text("Nested Home"),
+                nv.Button("Go Deeper (Nested)", on_click=lambda: nv.Navigator.of(self).push(NestedDetails()), style=nv.ButtonStyle.filled()),
             ],
         )
 
-class NestedDetails(ComposableWidget):
+class NestedDetails(nv.ComposableWidget):
     def build(self):
-        return Container(
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Nested Details"),
-                    Button("Back (Nested)", on_click=lambda: Navigator.of(self).pop(), style=ButtonStyle.filled()),
+                    nv.Text("Nested Details"),
+                    nv.Button("Back (Nested)", on_click=lambda: nv.Navigator.of(self).pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
 
-class FullScreenDetails(ComposableWidget):
+class FullScreenDetails(nv.ComposableWidget):
     def build(self):
-        return Container(
+        return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=20,
                 gap=12,
                 children=[
-                    Text("Full Screen Details"),
-                    Button("Back (Full Screen)", on_click=lambda: Navigator.root().pop(), style=ButtonStyle.filled()),
+                    nv.Text("Full Screen Details"),
+                    nv.Button("Back (Full Screen)", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#EEF7F0"))
 
-class MainScreen(ComposableWidget):
+class MainScreen(nv.ComposableWidget):
     def build(self):
-        return Row(
+        return nv.Row(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
             gap=12,
             padding=12,
             children=[
                 # Left side: Static menu
-                Container(
+                nv.Container(
                     width=200,
                     height=nv.Sizing.flex(1),
-                    child=Column(
+                    child=nv.Column(
                         padding=12,
                         gap=10,
                         children=[
-                            Text("Sidebar Menu"),
-                            Button("Open Full Screen", on_click=lambda: Navigator.root().push(FullScreenDetails()), style=ButtonStyle.filled()),
+                            nv.Text("Sidebar Menu"),
+                            nv.Button("Open Full Screen", on_click=lambda: nv.Navigator.root().push(FullScreenDetails()), style=nv.ButtonStyle.filled()),
                         ],
                     ),
                 ),
                 # Right side: Nested Navigator
-                Container(
+                nv.Container(
                     width=nv.Sizing.flex(1),
                     height=nv.Sizing.flex(1),
-                    child=Navigator(
-                        routes=[Route(builder=lambda: NestedHome())]
+                    child=nv.Navigator(
+                        routes=[nv.Route(builder=lambda: NestedHome())]
                     ),
                 ),
             ],

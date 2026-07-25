@@ -7,8 +7,7 @@
     Import and use them by these names throughout your code.
 
     ```python
-    from nuiitivet.material import App          # MaterialApp
-    from nuiitivet.material import ThemeFactory  # MaterialThemeFactory
+    import nuiitivet.material as nv
     ```
 
     The rest of this guide follows this convention.
@@ -22,9 +21,9 @@ Pass a `Theme` to `App` via the `theme` parameter to apply it to the entire appl
 When `theme` is omitted, `App` applies the default M3 light theme (`#6750A4`).
 
 ```python
-from nuiitivet.material import App
+import nuiitivet.material as nv
 
-App(HomeScreen()).run()
+nv.App(HomeScreen()).run()
 ```
 
 ![No Theme](../../assets/material_theme_no_theme.png)
@@ -34,9 +33,9 @@ App(HomeScreen()).run()
 Pass a different seed color to generate a distinct M3 palette:
 
 ```python
-from nuiitivet.material import App, ThemeFactory
+import nuiitivet.material as nv
 
-App(HomeScreen(), theme=ThemeFactory.light("#00639B")).run()
+nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#00639B")).run()
 ```
 
 ![Seed Color](../../assets/material_theme_seed_color.png)
@@ -44,7 +43,7 @@ App(HomeScreen(), theme=ThemeFactory.light("#00639B")).run()
 ### Dark mode
 
 ```python
-App(HomeScreen(), theme=ThemeFactory.dark("#00639B")).run()
+nv.App(HomeScreen(), theme=nv.ThemeFactory.dark("#00639B")).run()
 ```
 
 ![Dark Mode](../../assets/material_theme_dark_mode.png)
@@ -60,9 +59,9 @@ A seed color does not fully determine the palette. Two further inputs shape how 
 `variant` selects the algorithm that derives the tonal palettes from the seed. It defaults to `SchemeVariant.TONAL_SPOT`, the M3 default, which keeps colors close to the seed's hue at a moderate chroma.
 
 ```python
-from nuiitivet.material import App, SchemeVariant, ThemeFactory
+import nuiitivet.material as nv
 
-App(HomeScreen(), theme=ThemeFactory.light("#6750A4", variant=SchemeVariant.VIBRANT)).run()
+nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#6750A4", variant=nv.SchemeVariant.VIBRANT)).run()
 ```
 
 | Variant | Character |
@@ -80,7 +79,7 @@ App(HomeScreen(), theme=ThemeFactory.light("#6750A4", variant=SchemeVariant.VIBR
 `contrast_level` accepts a value in `[-1.0, 1.0]` and defaults to `0.0`. Higher values push foreground roles further from their backgrounds, which helps meet accessibility requirements.
 
 ```python
-App(HomeScreen(), theme=ThemeFactory.light("#6750A4", contrast_level=0.5)).run()
+nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#6750A4", contrast_level=0.5)).run()
 ```
 
 Both options are accepted by `ThemeFactory.light`, `dark`, `from_seed`, and `from_seed_pair`.
@@ -96,21 +95,18 @@ To switch the active theme, dispatch an intent via `App.of(self).dispatch(intent
 `from_seed_pair` generates both a light and a dark `Theme` from a single seed color. Use an `Observable[str]` for the button label so it updates reactively without a full rebuild:
 
 ```python
-from nuiitivet.material import App, Button, ThemeFactory
-from nuiitivet.observable import Observable
-from nuiitivet.theme.intents import ThemeModeIntent
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
-light, dark = ThemeFactory.from_seed_pair("#6750A4")
+light, dark = nv.ThemeFactory.from_seed_pair("#6750A4")
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     _is_dark = False
 
     def on_toggle() -> None:
         next_theme = light if self._is_dark else dark
-        App.of(self).dispatch(ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
 
-App(HomeScreen(), theme=light).run()
+nv.App(HomeScreen(), theme=light).run()
 ```
 
 See the full runnable demo: `samples/design-system/material_theme/light_dark_toggle.py`
@@ -120,16 +116,15 @@ See the full runnable demo: `samples/design-system/material_theme/light_dark_tog
 When themes are too many to hold in local scope everywhere, register them by name with `ThemeRegistryIntent` and switch by string key:
 
 ```python
-from nuiitivet.material import App, ThemeFactory
-from nuiitivet.theme.intents import ThemeRegistryIntent, ThemeModeIntent
+import nuiitivet.material as nv
 
-ocean_light, ocean_dark   = ThemeFactory.from_seed_pair("#00639B")
-forest_light, forest_dark = ThemeFactory.from_seed_pair("#386A20")
+ocean_light, ocean_dark   = nv.ThemeFactory.from_seed_pair("#00639B")
+forest_light, forest_dark = nv.ThemeFactory.from_seed_pair("#386A20")
 
-app = App(HomeScreen(), theme=ocean_light)
+app = nv.App(HomeScreen(), theme=ocean_light)
 
 # Register before run() — app.dispatch() is safe before the event loop starts
-app.dispatch(ThemeRegistryIntent(themes={
+app.dispatch(nv.ThemeRegistryIntent(themes={
     "ocean-light":  ocean_light,
     "ocean-dark":   ocean_dark,
     "forest-light": forest_light,
@@ -140,7 +135,7 @@ app.run()
 
 
 # Switch from anywhere in the widget tree
-App.of(self).dispatch(ThemeModeIntent(theme="forest-dark"))
+nv.App.of(self).dispatch(nv.ThemeModeIntent(theme="forest-dark"))
 ```
 
 See the full runnable demo: `samples/design-system/material_theme/multiple_themes.py`
@@ -149,7 +144,7 @@ See the full runnable demo: `samples/design-system/material_theme/multiple_theme
     `from_seed_pair` accepts an optional `name` argument, but it assigns the **same** label to both the light and dark `Theme` — no `-light` / `-dark` suffix is appended automatically. The dictionary keys in `ThemeRegistryIntent` are the actual lookup keys; choose them freely.
 
     ```python
-    light, dark = ThemeFactory.from_seed_pair("#6750A4", name="brand")
+    light, dark = nv.ThemeFactory.from_seed_pair("#6750A4", name="brand")
     light.name  # "brand"
     dark.name   # "brand"  ← same, not "brand-dark"
     ```
@@ -171,9 +166,9 @@ See the full runnable demo: `samples/design-system/material_theme/multiple_theme
 Inside any mounted widget, `Theme.of(self)` returns the active `Theme`:
 
 ```python
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 
-theme = Theme.of(self)
+theme = nv.Theme.of(self)
 is_dark = theme.mode == "dark"
 ```
 
@@ -182,19 +177,18 @@ is_dark = theme.mode == "dark"
 Call `theme.extension(MaterialThemeData)` to retrieve M3-specific data, then look up a `ColorRole`:
 
 ```python
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 from nuiitivet.material.theme.theme_data import MaterialThemeData
-from nuiitivet.material.theme.color_role import ColorRole
 
-mat = Theme.of(self).extension(MaterialThemeData)
+mat = nv.Theme.of(self).extension(MaterialThemeData)
 if mat is not None:
-    surface_color = mat.roles.get(ColorRole.SURFACE_CONTAINER)
+    surface_color = mat.roles.get(nv.ColorRole.SURFACE_CONTAINER)
 ```
 
 `ColorRole` also provides a `resolve` shorthand that combines both steps:
 
 ```python
-color = ColorRole.SURFACE_CONTAINER.resolve(Theme.of(self))  # str | None
+color = nv.ColorRole.SURFACE_CONTAINER.resolve(nv.Theme.of(self))  # str | None
 ```
 
 Both `extension()` and `resolve()` return `None` outside an initialized widget tree (e.g. during construction), so always guard against `None`.
@@ -202,20 +196,17 @@ Both `extension()` and `resolve()` return `None` outside an initialized widget t
 ### Example: theme-aware custom widget
 
 ```python
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.layout.container import Container
-from nuiitivet.theme.theme import Theme
-from nuiitivet.material.theme.color_role import ColorRole
+import nuiitivet.material as nv
 
 
-class ThemedCard(ComposableWidget):
-    def __init__(self, child: Widget) -> None:
+class ThemedCard(nv.ComposableWidget):
+    def __init__(self, child: nv.Widget) -> None:
         super().__init__()
         self.child = child
 
-    def build(self) -> Widget:
-        bg = ColorRole.SURFACE_CONTAINER.resolve(Theme.of(self)) or "#FFFFFF"
-        return Container(color=bg, padding=16, child=self.child)
+    def build(self) -> nv.Widget:
+        bg = nv.ColorRole.SURFACE_CONTAINER.resolve(nv.Theme.of(self)) or "#FFFFFF"
+        return nv.Container(color=bg, padding=16, child=self.child)
 ```
 
 ### Available Color Roles

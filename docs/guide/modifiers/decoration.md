@@ -7,17 +7,17 @@ Decoration modifiers are used to add visual styling to Widgets, such as backgrou
 You can add a background color using the `background` modifier and a border using the `border` modifier.
 
 ```python
-from nuiitivet.modifiers import background, border
+import nuiitivet.material as nv
 
 # Background only
-box1 = Container(child=Text("Background")).modifier(background("#E0E0E0"))
+box1 = nv.Container(child=nv.Text("Background")).modifier(nv.background("#E0E0E0"))
 
 # Border only
-box2 = Container(child=Text("Border")).modifier(border(color="#F44336", width=4))
+box2 = nv.Container(child=nv.Text("Border")).modifier(nv.border(color="#F44336", width=4))
 
 # Both background and border
-box3 = Container(child=Text("Both")).modifier(
-    background("#E0E0E0") | border(color="#4CAF50", width=2)
+box3 = nv.Container(child=nv.Text("Both")).modifier(
+    nv.background("#E0E0E0") | nv.border(color="#4CAF50", width=2)
 )
 ```
 
@@ -28,16 +28,16 @@ box3 = Container(child=Text("Both")).modifier(
 You can round the corners of a Widget using the `corner_radius` modifier. If you want to clip the content of the Widget to its bounds, use the `clip` modifier.
 
 ```python
-from nuiitivet.modifiers import background, corner_radius, clip
+import nuiitivet.material as nv
 
 # Corner radius
-box1 = Container(child=Text("Radius")).modifier(
-    background("#2196F3") | corner_radius(16)
+box1 = nv.Container(child=nv.Text("Radius")).modifier(
+    nv.background("#2196F3") | nv.corner_radius(16)
 )
 
 # Clip content
-box2 = Container(child=Text("Clip")).modifier(
-    background("#FF9800") | clip()
+box2 = nv.Container(child=nv.Text("Clip")).modifier(
+    nv.background("#FF9800") | nv.clip()
 )
 ```
 
@@ -48,16 +48,16 @@ box2 = Container(child=Text("Clip")).modifier(
 You can add a drop shadow to a Widget using the `shadow` modifier. It takes parameters like `color`, `blur`, and `offset`.
 
 ```python
-from nuiitivet.modifiers import background, shadow, corner_radius
+import nuiitivet.material as nv
 
 # Simple shadow
-box1 = Container(child=Text("Shadow")).modifier(
-    background("#FFFFFF") | shadow(color="#000000", blur=8, offset=(0, 4))
+box1 = nv.Container(child=nv.Text("Shadow")).modifier(
+    nv.background("#FFFFFF") | nv.shadow(color="#000000", blur=8, offset=(0, 4))
 )
 
 # Shadow with corner radius
-box2 = Container(child=Text("With Radius")).modifier(
-    background("#FFFFFF") | corner_radius(16) | shadow(color="#000000", blur=12, offset=(0, 6))
+box2 = nv.Container(child=nv.Text("With Radius")).modifier(
+    nv.background("#FFFFFF") | nv.corner_radius(16) | nv.shadow(color="#000000", blur=12, offset=(0, 6))
 )
 ```
 
