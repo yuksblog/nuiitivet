@@ -8,14 +8,13 @@ Use them when you want to add decorations like background color or corner radius
 You can add functionality to a Widget by passing a Modifier to the `modifier()` method that all Widgets have. If you want to attach multiple Modifiers, you can chain them with the `|` operator.
 
 ```python
-from nuiitivet.material import Text
-from nuiitivet.modifiers import background, corner_radius
+import nuiitivet.material as nv
 
 # Add background color with background
-text1 = Text("Hello").modifier(background("#FF5722"))
+text1 = nv.Text("Hello").modifier(nv.background("#FF5722"))
 
 # Add corner radius with corner_radius
-text2 = Text("Rounded Box").modifier(background("#2196F3") | corner_radius(8))
+text2 = nv.Text("Rounded Box").modifier(nv.background("#2196F3") | nv.corner_radius(8))
 ```
 
 ![Modifier Basic Usage](../../assets/modifier_basic.png)

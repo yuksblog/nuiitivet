@@ -16,8 +16,7 @@ By specifying `"33%"` or `"50%"` in `rows` and `columns` arguments, we divide th
 
 ```python
 # Define a 3-row x 2-column grid
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 nv.Grid(
     rows=["33%", "33%", "33%"],
@@ -47,9 +46,9 @@ nv.Grid(
 )
 
 # Helper for creating cards
-def _card(label: str, width="100%", height="100%") -> md.Card:
-    return md.Card(
-        md.Text(label),
+def _card(label: str, width="100%", height="100%") -> nv.Card:
+    return nv.Card(
+        nv.Text(label),
         padding=12,
         alignment="center",
         width=width,
@@ -163,8 +162,7 @@ Here we set it as follows:
   - height: `"100%"`
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 nv.Grid(
     # Rows: [Header fixed 60px, Main rest, Footer auto]

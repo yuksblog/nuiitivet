@@ -19,25 +19,21 @@ The most common navigation operations are `push` and `pop`.
 To navigate to a new screen, you use the `push()` method. This adds a new route to the top of the navigator's stack, making it the currently visible screen.
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
-from nuiitivet.material import Navigator, Text, Button
-from nuiitivet.layout.column import Column
-from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.material import ButtonStyle
 
-class HomeScreen(ComposableWidget):
+class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_to_details():
             # Push a new widget directly onto the navigation stack
-            Navigator.root().push(DetailsScreen())
+            nv.Navigator.root().push(DetailsScreen())
 
-        return Column(
+        return nv.Column(
             padding=16,
             gap=12,
             children=[
-                Text("Home Screen"),
-                Button("Go to Details", on_click=navigate_to_details, style=ButtonStyle.filled()),
+                nv.Text("Home Screen"),
+                nv.Button("Go to Details", on_click=navigate_to_details, style=nv.ButtonStyle.filled()),
             ],
         )
 ```
@@ -47,22 +43,22 @@ class HomeScreen(ComposableWidget):
 To return to the previous screen, you use the `pop()` method. This removes the top route from the navigator's stack, revealing the route beneath it. Let's look at the `DetailsScreen` that we pushed in the previous example.
 
 ```python
-from nuiitivet.material import ButtonStyle
-class DetailsScreen(ComposableWidget):
+import nuiitivet.material as nv
+class DetailsScreen(nv.ComposableWidget):
     def build(self):
         def go_back():
             # Pop the current screen off the navigation stack
-            Navigator.root().pop()
+            nv.Navigator.root().pop()
 
         return nv.Container(
             width=nv.Sizing.flex(1),
             height=nv.Sizing.flex(1),
-            child=Column(
+            child=nv.Column(
                 padding=16,
                 gap=12,
                 children=[
-                    Text("Details Screen"),
-                    Button("Back", on_click=go_back, style=ButtonStyle.filled()),
+                    nv.Text("Details Screen"),
+                    nv.Button("Back", on_click=go_back, style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))

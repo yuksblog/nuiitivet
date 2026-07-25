@@ -13,11 +13,11 @@ This pattern makes responsibilities clear:
 As a result, code becomes easier to test, reason about, and maintain.
 
 ```python
-from nuiitivet.observable import Observable, batch
+import nuiitivet.material as nv
 
 class TodoViewModel:
-    items = Observable([])
-    selected_item = Observable(None)
+    items = nv.Observable([])
+    selected_item = nv.Observable(None)
 
     def __init__(self):
         self.items.dispatch_to_ui()
@@ -26,7 +26,7 @@ class TodoViewModel:
         self.has_items = self.item_count.map(lambda count: count > 0)
 
     def add_item(self, text: str):
-        with batch():
+        with nv.batch():
             current = self.items.value
             self.items.value = current + [{"text": text, "done": False}]
 ```
@@ -35,8 +35,7 @@ In this structure, the View does not mutate low-level state directly.
 It only invokes ViewModel methods, while rendering uses Observable-derived values.
 
 ```python
-import nuiitivet as nv
-from nuiitivet import material
+import nuiitivet.material as nv
 
 class TodoView:
     def __init__(self, vm: TodoViewModel):
@@ -45,11 +44,11 @@ class TodoView:
     def build(self):
         return nv.Column(
             children=[
-                material.Text(text=self.vm.item_count.map(lambda c: f"Items: {c}")),
-                material.Button(
+                nv.Text(text=self.vm.item_count.map(lambda c: f"Items: {c}")),
+                nv.Button(
                     text="Add",
                     on_click=lambda: self.vm.add_item("New item")
-                , style=material.ButtonStyle.filled()),
+                , style=nv.ButtonStyle.filled()),
             ]
         )
 ```
@@ -61,17 +60,17 @@ This keeps calculation logic in one place and avoids duplicating the same formul
 It also makes changes safer because you only update the derivation once.
 
 ```python
-from nuiitivet.observable import Observable, combine
+import nuiitivet.material as nv
 
 class ShoppingCart:
-    items = Observable([])
-    tax_rate = Observable(0.1)
+    items = nv.Observable([])
+    tax_rate = nv.Observable(0.1)
 
     def __init__(self):
         self.subtotal = self.items.map(
             lambda items: sum(item["price"] * item["qty"] for item in items)
         )
-        self.total = combine(self.subtotal, self.tax_rate).compute(
+        self.total = nv.combine(self.subtotal, self.tax_rate).compute(
             lambda sub, rate: sub * (1 + rate)
         )
 ```
@@ -83,12 +82,13 @@ By registering disposables in one place, you can release resources deterministic
 This pattern is especially useful for screens or services with explicit lifecycle boundaries.
 
 ```python
-from nuiitivet.observable import Disposable, Observable
+import nuiitivet.material as nv
+from nuiitivet.observable import Disposable
 
 class ViewModel(Disposable):
     def __init__(self):
         super().__init__()
-        self.count = Observable(0)
+        self.count = nv.Observable(0)
         self.doubled = self.count.map(lambda x: x * 2)
         self.add_disposable(self.doubled)
 
@@ -104,12 +104,12 @@ This gives you predictable rendering for success, loading, and failure paths.
 
 ```python
 import threading
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 class DataViewModel:
-    data = Observable([])
-    loading = Observable(False)
-    error = Observable(None)
+    data = nv.Observable([])
+    loading = nv.Observable(False)
+    error = nv.Observable(None)
 
     def __init__(self):
         self.data.dispatch_to_ui()

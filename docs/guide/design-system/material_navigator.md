@@ -9,8 +9,7 @@ The only difference from the base `Navigator` is the default transition: when yo
     Import and use them by these names throughout your code.
 
     ```python
-    from nuiitivet.material import App       # MaterialApp
-    from nuiitivet.material import Navigator # MaterialNavigator
+    import nuiitivet.material as nv
     ```
 
     The rest of this guide follows this convention.
@@ -20,9 +19,9 @@ The only difference from the base `Navigator` is the default transition: when yo
 Passing a plain `Widget` to `App` is all that is needed. `App` wraps it in a `MaterialNavigator` automatically.
 
 ```python
-from nuiitivet.material import App
+import nuiitivet.material as nv
 
-App(HomeScreen()).run()
+nv.App(HomeScreen()).run()
 ```
 
 ## Accessing
@@ -30,10 +29,10 @@ App(HomeScreen()).run()
 `App` registers the `MaterialNavigator` as the root navigator.
 
 ```python
-from nuiitivet.material import Navigator
+import nuiitivet.material as nv
 
-Navigator.root()    # root navigator, accessible from anywhere
-Navigator.of(self)  # nearest ancestor Navigator — use only with nested navigators
+nv.Navigator.root()    # root navigator, accessible from anywhere
+nv.Navigator.of(self)  # nearest ancestor Navigator — use only with nested navigators
 ```
 
 ## Further Reading

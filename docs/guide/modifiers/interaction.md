@@ -7,13 +7,13 @@ Interaction modifiers are used to add interactivity to Widgets, such as clickabi
 You can make a Widget clickable using the `clickable` modifier. It takes an `on_click` callback that is invoked when the Widget is clicked.
 
 ```python
-from nuiitivet.modifiers import background, clickable, corner_radius
+import nuiitivet.material as nv
 
 # Clickable box
-box = Container(child=Text("Click Me!")).modifier(
-    background("#4CAF50")
-    | corner_radius(8)
-    | clickable(on_click=lambda: print("Clicked!"))
+box = nv.Container(child=nv.Text("Click Me!")).modifier(
+    nv.background("#4CAF50")
+    | nv.corner_radius(8)
+    | nv.clickable(on_click=lambda: print("Clicked!"))
 )
 ```
 
@@ -24,15 +24,12 @@ box = Container(child=Text("Click Me!")).modifier(
 You can make a Widget hoverable using the `hoverable` modifier. It takes an `on_hover_change` callback that is invoked when the mouse pointer enters or leaves the Widget.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, hoverable, corner_radius
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 class HoverDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_hovered = Observable(False)
+        self.is_hovered = nv.Observable(False)
 
     def _set_hovered(self, hovered: bool) -> None:
         self.is_hovered.value = hovered
@@ -43,12 +40,12 @@ class HoverDemo(nv.ComposableWidget):
         return nv.Container(
             width=200,
             height=50,
-            child=md.Text("Hover Me!"),
+            child=nv.Text("Hover Me!"),
             alignment="center",
         ).modifier(
-            background(bg_color)
-            | corner_radius(8)
-            | hoverable(on_hover_change=self._set_hovered)
+            nv.background(bg_color)
+            | nv.corner_radius(8)
+            | nv.hoverable(on_hover_change=self._set_hovered)
         )
 ```
 
@@ -59,15 +56,12 @@ class HoverDemo(nv.ComposableWidget):
 You can make a Widget focusable using the `focusable` modifier. It takes an `on_focus_change` callback that is invoked when the Widget gains or loses focus.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.modifiers import background, focusable, border, corner_radius
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 class FocusDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_focused = Observable(False)
+        self.is_focused = nv.Observable(False)
 
     def _set_focused(self, focused: bool) -> None:
         self.is_focused.value = focused
@@ -78,13 +72,13 @@ class FocusDemo(nv.ComposableWidget):
         return nv.Container(
             width=200,
             height=50,
-            child=md.Text("Focus with Tab"),
+            child=nv.Text("Focus with Tab"),
             alignment="center",
         ).modifier(
-            background("#E0E0E0")
-            | corner_radius(8)
-            | border(color=border_color, width=2)
-            | focusable(on_focus_change=self._set_focused)
+            nv.background("#E0E0E0")
+            | nv.corner_radius(8)
+            | nv.border(color=border_color, width=2)
+            | nv.focusable(on_focus_change=self._set_focused)
         )
 ```
 
@@ -148,25 +142,22 @@ carrying its position, the buttons held and the modifier keys — use
 Each callback receives a `PointerEvent` and may be sync or async:
 
 ```python
-import nuiitivet as nv
-from nuiitivet.input import BUTTON_LEFT
-from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.modifiers import corner_radius, pointer_input
+import nuiitivet.material as nv
 
-def on_press(e: PointerEvent) -> None:
+def on_press(e: nv.PointerEvent) -> None:
     begin_stroke(e.local_x, e.local_y)
 
-def on_move(e: PointerEvent) -> None:
-    if e.buttons & BUTTON_LEFT:      # a button is held — this is a drag, not a hover
+def on_move(e: nv.PointerEvent) -> None:
+    if e.buttons & nv.BUTTON_LEFT:      # a button is held — this is a drag, not a hover
         extend_stroke(e.local_x, e.local_y)
 
 surface = nv.Container(width=320, height=240).modifier(
-    corner_radius(8)
-    | pointer_input(
+    nv.corner_radius(8)
+    | nv.pointer_input(
         on_press=on_press,
         on_move=on_move,
         on_release=lambda e: end_stroke(),
-        buttons=(BUTTON_LEFT,),   # only the left button triggers press/release
+        buttons=(nv.BUTTON_LEFT,),   # only the left button triggers press/release
         capture=True,             # keep delivering move/release off the widget
     )
 )
@@ -210,12 +201,12 @@ held modifier-key mask changes while the pointer is inside or captured,
 delivering a `PointerEvent` synthesized at the current position:
 
 ```python
-from nuiitivet.input import MOD_ALT
+import nuiitivet.material as nv
 
-def on_modifier_keys_change(e: PointerEvent) -> None:
-    set_cursor(EYEDROPPER if e.modifier_keys & MOD_ALT else BRUSH)
+def on_modifier_keys_change(e: nv.PointerEvent) -> None:
+    set_cursor(EYEDROPPER if e.modifier_keys & nv.MOD_ALT else BRUSH)
 
-surface.modifier(pointer_input(on_modifier_keys_change=on_modifier_keys_change))
+surface.modifier(nv.pointer_input(on_modifier_keys_change=on_modifier_keys_change))
 ```
 
 It fires during a capture too (i.e. mid-drag, even when the pointer is outside
@@ -235,9 +226,9 @@ is a different thing: a key gesture bound to a **command** (`Ctrl+S` → save).
 `key_shortcut` binds one:
 
 ```python
-from nuiitivet.modifiers import key_shortcut
+import nuiitivet.material as nv
 
-editor.modifier(key_shortcut("Accel+S", on_trigger=self.save))
+editor.modifier(nv.key_shortcut("Accel+S", on_trigger=self.save))
 ```
 
 `Accel` is the primary modifier key — **Cmd on macOS, Ctrl everywhere else** — so
@@ -263,7 +254,7 @@ A bare-letter gesture is the standard paint/vector idiom — `B` for brush, `V` 
 select — and it is safe to bind:
 
 ```python
-canvas.modifier(key_shortcut("b", on_trigger=self.select_brush))
+canvas.modifier(nv.key_shortcut("b", on_trigger=self.select_brush))
 ```
 
 While a text field holds focus, the keys it would **type** are withheld from the
@@ -315,8 +306,8 @@ mounted for the life of the app — a route push covers it but does not unmount 
 — so binding there survives navigation:
 
 ```python
-App(content=home.modifier(
-    key_shortcut("Accel+Q", on_trigger=quit, scope=ShortcutScope.MOUNT)
+nv.App(content=home.modifier(
+    nv.key_shortcut("Accel+Q", on_trigger=quit, scope=nv.ShortcutScope.MOUNT)
 ))
 ```
 
@@ -335,7 +326,7 @@ split-view editor, a two-list picker:
 class TextEditorPane(nv.ComposableWidget):
     def build(self):
         return editor_subtree.modifier(
-            key_shortcut("Accel+S", on_trigger=self.save, scope=ShortcutScope.FOCUS)
+            nv.key_shortcut("Accel+S", on_trigger=self.save, scope=nv.ShortcutScope.FOCUS)
         )
 ```
 

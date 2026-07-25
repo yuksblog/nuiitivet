@@ -20,16 +20,16 @@ App
 Use `Overlay.root()` to retrieve the globally registered overlay instance. This works from anywhere in the application.
 
 ```python
-from nuiitivet.overlay import Overlay
+import nuiitivet.material as nv
 
-overlay = Overlay.root()
+overlay = nv.Overlay.root()
 ```
 
 `Overlay.of(self)` walks up the widget tree and returns the nearest ancestor `Overlay`. Use this only when you have intentionally nested an `Overlay` inside the widget tree.
 
 ```python
 # Only needed when an Overlay is nested in the widget tree
-overlay = Overlay.of(self)
+overlay = nv.Overlay.of(self)
 ```
 
 ## Primitives

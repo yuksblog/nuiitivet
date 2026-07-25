@@ -8,21 +8,20 @@ This page explains the default behavior and how to "hide" or "make scrollable" a
 If the child (200x200) is larger than the parent size (150x150), it is drawn beyond the parent's frame by default.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Parent frame (150x150)
-md.Card(
+nv.Card(
     width=150,
     height=150,
     padding=10,
     # Child is larger (200x200) -> Displayed as overflowing
-    child=md.Card(
+    child=nv.Card(
         width=200,
         height=200,
-        child=md.Text("Overflow Content"),
+        child=nv.Text("Overflow Content"),
     ),,
-    style=md.CardStyle.outlined(),
+    style=nv.CardStyle.outlined(),
 )
 ```
 
@@ -35,21 +34,19 @@ This "do not cut automatically" behavior allows decorations like shadows and bad
 If you want to cut off (hide) the part sticking out of the frame, apply `.modifier(clip())` to the parent.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+import nuiitivet.material as nv
 
-md.Card(
+nv.Card(
     width=150,
     height=150,
     padding=10,
-    child=md.Card(
+    child=nv.Card(
         width=200,
         height=200,
-        child=md.Text("Clipped Content"),
+        child=nv.Text("Clipped Content"),
     ),,
-    style=md.CardStyle.outlined(),
-).modifier(mod.clip())  # Parts sticking out of the frame are not drawn
+    style=nv.CardStyle.outlined(),
+).modifier(nv.clip())  # Parts sticking out of the frame are not drawn
 ```
 
 ![Clipped overflow example](../../assets/layout_overflow_clipped.png)
@@ -60,15 +57,14 @@ To view the overflowing part by scrolling, wrap `Column` or `Row` with an
 axis-specific scrollable: `VerticalScrollable` or `HorizontalScrollable`.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # Even with many items, you can scroll within the specified height (300px)
 nv.Container(
     height=300,
     child=nv.VerticalScrollable(
         child=nv.Column(
-            children=[md.Text(f"Item {i}") for i in range(50)],
+            children=[nv.Text(f"Item {i}") for i in range(50)],
             gap=8,
             padding=16,
         ),

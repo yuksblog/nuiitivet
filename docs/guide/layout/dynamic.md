@@ -11,8 +11,7 @@ When the data is fixed at build time, a plain Python list comprehension is all
 you need. Each item is turned into a widget inline:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 tags = ["Python", "UI", "Framework", "Layout"]
 
@@ -20,7 +19,7 @@ nv.Flow(
     main_gap=8,
     cross_gap=8,
     children=[
-        md.Card(md.Text(tag), style=md.CardStyle.outlined()) for tag in tags
+        nv.Card(nv.Text(tag), style=nv.CardStyle.outlined()) for tag in tags
     ],
 )
 ```
@@ -35,7 +34,7 @@ automatically, use `builder()` instead.
 class method that materializes children from a data collection:
 
 ```python
-Row.builder(items, fn, ...)
+nv.Row.builder(items, fn, ...)
 ```
 
 - `items`: the source data collection — a plain list, or an **observable** for
@@ -44,14 +43,13 @@ Row.builder(items, fn, ...)
   once per item.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 tags = ["Python", "UI", "Framework", "Layout"]
 
 nv.Flow.builder(
     tags,
-    lambda tag, index: md.Card(md.Text(tag), style=md.CardStyle.outlined()),
+    lambda tag, index: nv.Card(nv.Text(tag), style=nv.CardStyle.outlined()),
     main_gap=8,
     cross_gap=8,
 )
@@ -73,8 +71,7 @@ the collection changes — and only the affected regions are invalidated, not th
 whole layout:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 class TagList:
     def __init__(self):
@@ -83,7 +80,7 @@ class TagList:
     def build(self):
         return nv.Flow.builder(
             self.tags,
-            lambda tag, index: md.Card(md.Text(tag), style=md.CardStyle.outlined()),
+            lambda tag, index: nv.Card(nv.Text(tag), style=nv.CardStyle.outlined()),
             main_gap=8,
             cross_gap=8,
         )
@@ -102,9 +99,7 @@ If you prefer a SwiftUI-style declaration, `ForEach` provides the same dynamic
 generation as an embedded element inside a normal `children` list:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.layout.for_each import ForEach
+import nuiitivet.material as nv
 
 tags = ["Python", "UI", "Framework", "Layout"]
 
@@ -112,9 +107,9 @@ nv.Flow(
     main_gap=8,
     cross_gap=8,
     children=[
-        ForEach(
+        nv.ForEach(
             tags,
-            lambda tag, index: md.Card(md.Text(tag), style=md.CardStyle.outlined()),
+            lambda tag, index: nv.Card(nv.Text(tag), style=nv.CardStyle.outlined()),
         ),
     ],
 )

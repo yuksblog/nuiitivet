@@ -11,46 +11,41 @@ The `modeless` modifier opens a floating overlay anchored to the widget. The ove
 Use `is_open` to control when the overlay is shown. Pass an `Observable[bool]` and toggle it in response to user actions.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import Card, CardStyle, Text
-from nuiitivet.material.divider import HorizontalDivider
-from nuiitivet.modifiers import background, clickable, corner_radius, modeless
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-is_open: Observable[bool] = Observable(False)
+is_open: nv.Observable[bool] = nv.Observable(False)
 
 def toggle() -> None:
     is_open.value = not is_open.value
 
-info_panel = Card(
+info_panel = nv.Card(
     child=nv.Column(
         children=[
-            Text("Keyboard Shortcuts"),
-            HorizontalDivider(padding=(4, 0)),
-            Text("Ctrl+N  New file"),
-            Text("Ctrl+O  Open file"),
-            Text("Ctrl+S  Save"),
-            Text("Ctrl+Z  Undo"),
+            nv.Text("Keyboard Shortcuts"),
+            nv.HorizontalDivider(padding=(4, 0)),
+            nv.Text("Ctrl+N  New file"),
+            nv.Text("Ctrl+O  Open file"),
+            nv.Text("Ctrl+S  Save"),
+            nv.Text("Ctrl+Z  Undo"),
         ],
         gap=6,
         cross_alignment="start",
     ),
     padding=16,
     width=200,
-    style=CardStyle.elevated(),
+    style=nv.CardStyle.elevated(),
 )
 
 anchor = (
     nv.Container(
         width=160,
         height=40,
-        child=md.Text("Show shortcuts"),
+        child=nv.Text("Show shortcuts"),
         alignment="center",
     )
-    .modifier(background("#2196F3") | corner_radius(8) | clickable(on_click=toggle))
+    .modifier(nv.background("#2196F3") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        modeless(
+        nv.modeless(
             info_panel,
             is_open=is_open,
             alignment="bottom-left",
@@ -68,13 +63,9 @@ anchor = (
 The `light_dismiss` modifier works the same as `modeless`, but the overlay closes automatically when the user clicks outside of it. This is the recommended choice for dropdown menus and context menus.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import Menu, MenuItem, MenuDivider
-from nuiitivet.modifiers import background, clickable, corner_radius, light_dismiss
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-is_open: Observable[bool] = Observable(False)
+is_open: nv.Observable[bool] = nv.Observable(False)
 
 def toggle() -> None:
     is_open.value = not is_open.value
@@ -82,13 +73,13 @@ def toggle() -> None:
 def close() -> None:
     is_open.value = False
 
-menu = Menu(
+menu = nv.Menu(
     items=[
-        MenuItem("New", on_click=lambda: print("New")),
-        MenuItem("Open...", on_click=lambda: print("Open")),
-        MenuDivider(),
-        MenuItem("Save", leading_icon="save", on_click=lambda: print("Save")),
-        MenuItem("Close", on_click=close),
+        nv.MenuItem("New", on_click=lambda: print("New")),
+        nv.MenuItem("Open...", on_click=lambda: print("Open")),
+        nv.MenuDivider(),
+        nv.MenuItem("Save", leading_icon="save", on_click=lambda: print("Save")),
+        nv.MenuItem("Close", on_click=close),
     ],
     on_dismiss=close,
 )
@@ -97,12 +88,12 @@ anchor = (
     nv.Container(
         width=160,
         height=40,
-        child=md.Text("Open (light-dismiss)"),
+        child=nv.Text("Open (light-dismiss)"),
         alignment="center",
     )
-    .modifier(background("#4CAF50") | corner_radius(8) | clickable(on_click=toggle))
+    .modifier(nv.background("#4CAF50") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        light_dismiss(
+        nv.light_dismiss(
             menu,
             is_open=is_open,
             alignment="bottom-left",
@@ -122,18 +113,15 @@ The `tooltip` modifier attaches tooltip behavior to any widget. The tooltip open
 Unlike `modeless` and `light_dismiss`, `tooltip` has no external open state. Its lifecycle is managed entirely by pointer and focus events.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-from nuiitivet.material import Tooltip
-from nuiitivet.modifiers import tooltip
+import nuiitivet.material as nv
 
 target = nv.Container(
     width=160,
     height=40,
-    child=md.Text("Hover me"),
+    child=nv.Text("Hover me"),
     alignment="center",
 ).modifier(
-    tooltip(Tooltip("This is a tooltip"), delay=0.0)
+    nv.tooltip(nv.Tooltip("This is a tooltip"), delay=0.0)
 )
 ```
 
@@ -156,8 +144,8 @@ Common placement strings: `"top-left"`, `"top-center"`, `"top-right"`, `"bottom-
 ```python
 # Place tooltip above the widget, centered
 .modifier(
-    tooltip(
-        Tooltip("Above center"),
+    nv.tooltip(
+        nv.Tooltip("Above center"),
         alignment="top-center",
         anchor="bottom-center",
         offset=(0.0, -4.0),

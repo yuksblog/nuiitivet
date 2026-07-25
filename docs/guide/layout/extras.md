@@ -11,31 +11,29 @@ Use this when you want to place text over a background image or display a notifi
 - The last written element goes to the front (top).
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+import nuiitivet.material as nv
 
 nv.Stack(
     width=240,
     height=200,
     alignment="center",  # Default alignment position
     children=[
-        md.Card(
-            md.Text(""),
+        nv.Card(
+            nv.Text(""),
             width="100%",
             height="100%",
-        ).modifier(mod.background("#BBDEFB")),
-        md.Card(
-            md.Text(""),
+        ).modifier(nv.background("#BBDEFB")),
+        nv.Card(
+            nv.Text(""),
             width="80%",
             height="80%",
-        ).modifier(mod.background("#90CAF9")),
-        md.Card(
-            md.Text("Overlay Text"),
+        ).modifier(nv.background("#90CAF9")),
+        nv.Card(
+            nv.Text("Overlay Text"),
             width="60%",
             height="60%",
             alignment="center",
-        ).modifier(mod.background("#64B5F6")),
+        ).modifier(nv.background("#64B5F6")),
     ],
 )
 ```
@@ -48,9 +46,7 @@ A component that displays **only one** child at a time from multiple children.
 Used for tab switching or content switching in side menus.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
-import nuiitivet.modifiers as mod
+import nuiitivet.material as nv
 
 
 def set_index(i: int) -> None:
@@ -62,9 +58,9 @@ menu = nv.Column(
     padding=8,
     gap=8,
     children=[
-        md.Button("Tab 1", on_click=lambda: set_index(0), style=md.ButtonStyle.filled()),
-        md.Button("Tab 2", on_click=lambda: set_index(1), style=md.ButtonStyle.filled()),
-        md.Button("Tab 3", on_click=lambda: set_index(2), style=md.ButtonStyle.filled()),
+        nv.Button("Tab 1", on_click=lambda: set_index(0), style=nv.ButtonStyle.filled()),
+        nv.Button("Tab 2", on_click=lambda: set_index(1), style=nv.ButtonStyle.filled()),
+        nv.Button("Tab 3", on_click=lambda: set_index(2), style=nv.ButtonStyle.filled()),
     ],
 )
 
@@ -77,20 +73,20 @@ body = nv.Deck(
             alignment="center",
             width="100%",
             height="100%",
-            child=md.Text("Tab 1 Content"),
-        ).modifier(mod.background("#BBDEFB")),
+            child=nv.Text("Tab 1 Content"),
+        ).modifier(nv.background("#BBDEFB")),
         nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=md.Text("Tab 2 Content"),
-        ).modifier(mod.background("#C8E6C9")),
+            child=nv.Text("Tab 2 Content"),
+        ).modifier(nv.background("#C8E6C9")),
         nv.Container(
             alignment="center",
             width="100%",
             height="100%",
-            child=md.Text("Tab 3 Content"),
-        ).modifier(mod.background("#FFE0B2")),
+            child=nv.Text("Tab 3 Content"),
+        ).modifier(nv.background("#FFE0B2")),
     ],
 )
 
@@ -109,8 +105,7 @@ Arranges elements from left to right and automatically wraps to the next line wh
 Suitable for tag lists or card lists.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 tags = ["Python", "UI", "Framework", "Layout", "Grid", "Flex"]
 
@@ -119,7 +114,7 @@ nv.Flow(
     cross_gap=8,
     padding=8,
     children=[
-        md.Card(md.Text(tag), style=md.CardStyle.outlined()) for tag in tags
+        nv.Card(nv.Text(tag), style=nv.CardStyle.outlined()) for tag in tags
     ],
 )
 ```
@@ -134,8 +129,7 @@ Arranges elements into a grid with **uniform column widths**.
 Use this for tile layouts where each cell should align and size consistently.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 tiles = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
@@ -146,7 +140,7 @@ nv.UniformFlow(
     padding=8,
     aspect_ratio=1.0,
     children=[
-        md.Card(md.Text(t), alignment="center", padding=12)
+        nv.Card(nv.Text(t), alignment="center", padding=12)
         for t in tiles
     ],
 )
@@ -168,11 +162,10 @@ Used to add padding to child elements, fix sizes, or specify alignment.
 (Similar to `div` in HTML)
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 nv.Container(
-    md.Button("Centered Content", style=md.ButtonStyle.filled()),
+    nv.Button("Centered Content", style=nv.ButtonStyle.filled()),
     width=250,
     height=200,
     alignment="center",
@@ -188,18 +181,17 @@ An invisible widget useful when you want to create flexible spacing.
 Useful for pushing elements to both ends within `Row` or `Column`.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 nv.Row(
     padding=16,
     gap=16,
     width=500,
     children=[
-        md.Button("Left 1", style=md.ButtonStyle.outlined()),
-        md.Button("Left 2", style=md.ButtonStyle.outlined()),
+        nv.Button("Left 1", style=nv.ButtonStyle.outlined()),
+        nv.Button("Left 2", style=nv.ButtonStyle.outlined()),
         nv.Spacer(width="100%"),
-        md.Button("Right", style=md.ButtonStyle.filled()),
+        nv.Button("Right", style=nv.ButtonStyle.filled()),
     ],
 )
 ```
@@ -215,18 +207,17 @@ Use this for expandable panels, side sheets, and accordion-style sections.
 - When `opened` is `True`, it expands back to the child's natural size.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 nv.Collapsible(
-    md.Card(
+    nv.Card(
         nv.Column(
             padding=16,
             gap=8,
             children=[
-                md.Text("Format: PDF / EPUB / HTML"),
-                md.Text("Size: 4.2 MB"),
-                md.Text("License: MIT"),
+                nv.Text("Format: PDF / EPUB / HTML"),
+                nv.Text("Size: 4.2 MB"),
+                nv.Text("License: MIT"),
             ],
         ),
     ),

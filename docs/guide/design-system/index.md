@@ -17,7 +17,7 @@ Every UI Design System consists of five components:
 ## Material Design 3 Expressive
 
 ```python
-import nuiitivet.material
+import nuiitivet.material as nv
 ```
 
 - [Material App](material_app.md)

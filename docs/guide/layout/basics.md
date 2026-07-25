@@ -9,14 +9,13 @@ Before learning complex mechanisms, let's confirm that most screens can be creat
 Forms, lists, settings screens, etc., are centered around Column.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 content = nv.Column(
     children=[
-        md.TextField(label="Email"),
-        md.TextField(label="Password"),
-        md.Button("Login", style=md.ButtonStyle.filled()),
+        nv.TextField(label="Email"),
+        nv.TextField(label="Password"),
+        nv.Button("Login", style=nv.ButtonStyle.filled()),
     ],
     gap=16,
     padding=16,
@@ -33,13 +32,12 @@ content = nv.Column(
 Toolbars, button rows, left-right splits, etc. often use Row.
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 actions = nv.Row(
     children=[
-        md.Button("Back", style=md.ButtonStyle.outlined()),
-        md.Button("Next", style=md.ButtonStyle.filled()),
+        nv.Button("Back", style=nv.ButtonStyle.outlined()),
+        nv.Button("Next", style=nv.ButtonStyle.filled()),
     ],
     gap=12,
     padding=16,
@@ -54,8 +52,7 @@ You can express complex layouts by combining Row and Column.
 For example, a "Registration Form" layout can be created as follows:
 
 ```python
-import nuiitivet as nv
-import nuiitivet.material as md
+import nuiitivet.material as nv
 
 # User Registration Form
 form = nv.Column(
@@ -63,20 +60,20 @@ form = nv.Column(
         # Row 1: Name (Horizontal)
         nv.Row(
             children=[
-                md.TextField(label="First Name"),
-                md.TextField(label="Last Name"),
+                nv.TextField(label="First Name"),
+                nv.TextField(label="Last Name"),
             ],
             gap=8,
         ),
 
         # Row 2: Address
-        md.TextField(label="Address", width=nv.Sizing.flex(1)),
+        nv.TextField(label="Address", width=nv.Sizing.flex(1)),
 
         # Row 3: Buttons (Horizontal)
         nv.Row(
             children=[
-                md.Button("Cancel", style=md.ButtonStyle.text()),
-                md.Button("Register", style=md.ButtonStyle.filled()),
+                nv.Button("Cancel", style=nv.ButtonStyle.text()),
+                nv.Button("Register", style=nv.ButtonStyle.filled()),
             ],
             gap=12,
         ),

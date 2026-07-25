@@ -7,10 +7,10 @@ your own extensions to the same list to inject additional design-system data
 without interfering with Material.
 
 !!! note "Import convention"
-    `ThemeExtension` is exported from `nuiitivet.theme`:
+    `ThemeExtension` is available from the aggregate `nuiitivet.material` namespace:
 
     ```python
-    from nuiitivet.theme import ThemeExtension
+    import nuiitivet.material as nv
     ```
 
 ---
@@ -26,9 +26,9 @@ without interfering with Material.
 ### Retrieving an extension
 
 ```python
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 
-mat = Theme.of(self).extension(MaterialThemeData)  # returns MaterialThemeData | None
+mat = nv.Theme.of(self).extension(MaterialThemeData)  # returns MaterialThemeData | None
 ```
 
 Always guard the result against `None` — `extension()` returns `None` when
@@ -63,12 +63,11 @@ all that is required is a `copy_with` method.
 ### Step 2: Build a theme that includes both extensions
 
 ```python
-from nuiitivet.material import ThemeFactory
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 
-def make_theme() -> Theme:
-    base = ThemeFactory.light("#1A6B3C")
-    return Theme(
+def make_theme() -> nv.Theme:
+    base = nv.ThemeFactory.light("#1A6B3C")
+    return nv.Theme(
         mode=base.mode,
         extensions=[*base.extensions, AppBrandTheme()],
         name="app-brand-light",
@@ -81,17 +80,16 @@ same `extensions` list. Each has a unique type, so there is no conflict.
 ### Step 3: Read the extension inside a widget
 
 ```python
-from nuiitivet.theme.theme import Theme
-from nuiitivet.widgeting.widget import ComposableWidget, Widget
+import nuiitivet.material as nv
 
-class BrandCard(ComposableWidget):
+class BrandCard(nv.ComposableWidget):
     def __init__(self, heading: str, content: str) -> None:
         super().__init__()
         self.heading = heading
         self.content = content
 
-    def build(self) -> Widget:
-        brand = Theme.of(self).extension(AppBrandTheme)
+    def build(self) -> nv.Widget:
+        brand = nv.Theme.of(self).extension(AppBrandTheme)
         bg     = brand.brand_surface if brand else "#E8F5E9"
         accent = brand.brand_accent  if brand else "#FF6F00"
         ...
@@ -117,7 +115,7 @@ Remove the default values so each theme factory is forced to supply explicit
 colors for its mode:
 
 ```python
-from nuiitivet.theme import ThemeExtension
+import nuiitivet.material as nv
 
 @dataclass(frozen=True)
 class AppBrandTheme:
@@ -125,19 +123,18 @@ class AppBrandTheme:
     brand_on_surface: str  # text color on brand_surface
     brand_accent: str
 
-    def copy_with(self, **kwargs) -> ThemeExtension:
+    def copy_with(self, **kwargs) -> nv.ThemeExtension:
         return replace(self, **kwargs)
 ```
 
 ### Step 2: Create separate light and dark factories
 
 ```python
-from nuiitivet.material import ThemeFactory
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 
-def make_light_theme() -> Theme:
-    base = ThemeFactory.light("#1A6B3C")
-    return Theme(
+def make_light_theme() -> nv.Theme:
+    base = nv.ThemeFactory.light("#1A6B3C")
+    return nv.Theme(
         mode=base.mode,
         extensions=[*base.extensions, AppBrandTheme(
             brand_surface="#E8F5E9",
@@ -147,9 +144,9 @@ def make_light_theme() -> Theme:
         name="app-brand-light",
     )
 
-def make_dark_theme() -> Theme:
-    base = ThemeFactory.dark("#1A6B3C")
-    return Theme(
+def make_dark_theme() -> nv.Theme:
+    base = nv.ThemeFactory.dark("#1A6B3C")
+    return nv.Theme(
         mode=base.mode,
         extensions=[*base.extensions, AppBrandTheme(
             brand_surface="#1B3A2A",
@@ -168,19 +165,18 @@ pattern used by built-in Material widgets:
 
 ```python
 from typing import Optional
-from nuiitivet.theme.manager import ThemeManager
+import nuiitivet.material as nv
 
-class BrandCard(ComposableWidget):
+class BrandCard(nv.ComposableWidget):
     def __init__(self, heading: str, content: str) -> None:
         super().__init__()
         self.heading = heading
         self.content = content
-        self._theme_manager: Optional[ThemeManager] = None
+        self._theme_manager: Optional[nv.ThemeManager] = None
 
     def on_mount(self) -> None:
         super().on_mount()
-        from nuiitivet.runtime.app import AppScope
-        scope = self.find_ancestor(AppScope)
+        scope = self.find_ancestor(nv.AppScope)
         if scope is not None:
             self._theme_manager = scope.theme_manager
             self._theme_manager.subscribe(self._on_theme_change)
@@ -191,11 +187,11 @@ class BrandCard(ComposableWidget):
             self._theme_manager = None
         super().on_unmount()
 
-    def _on_theme_change(self, _theme: Theme) -> None:
+    def _on_theme_change(self, _theme: nv.Theme) -> None:
         self.rebuild()
 
-    def build(self) -> Widget:
-        brand  = Theme.of(self).extension(AppBrandTheme)
+    def build(self) -> nv.Widget:
+        brand  = nv.Theme.of(self).extension(AppBrandTheme)
         bg     = brand.brand_surface     if brand else "#1B3A2A"
         fg     = brand.brand_on_surface  if brand else "#C8E6C9"
         accent = brand.brand_accent      if brand else "#FFB300"
@@ -220,12 +216,11 @@ Multiple extensions of different types can live in the same `Theme`.
 The only constraint is that each type appears **at most once**:
 
 ```python
-from nuiitivet.material import ThemeFactory
-from nuiitivet.theme.theme import Theme
+import nuiitivet.material as nv
 
-base = ThemeFactory.light("#6750A4")
+base = nv.ThemeFactory.light("#6750A4")
 
-theme = Theme(
+theme = nv.Theme(
     mode=base.mode,
     extensions=[
         *base.extensions,   # includes MaterialThemeData

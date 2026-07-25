@@ -3,11 +3,11 @@
 ## Creating an Observable
 
 ```python
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-name = Observable("Alice")
-age = Observable(20)
-items = Observable([])
+name = nv.Observable("Alice")
+age = nv.Observable(20)
+items = nv.Observable([])
 ```
 
 ## Getting and Setting Values
@@ -31,20 +31,20 @@ In most UI cases, cleanup is handled automatically by the framework lifecycle.
 By default, value equality uses `==`.
 
 ```python
-count = Observable(0)
+count = nv.Observable(0)
 ```
 
 You can customize comparison behavior when needed.
 
 ```python
-always_notify = Observable(0, compare=lambda a, b: False)
+always_notify = nv.Observable(0, compare=lambda a, b: False)
 
 def compare_users(a, b):
     if a is None or b is None:
         return a is b
     return a.uid == b.uid
 
-user = Observable(None, compare=compare_users)
+user = nv.Observable(None, compare=compare_users)
 ```
 
 ---

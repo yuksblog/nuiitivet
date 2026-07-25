@@ -18,10 +18,10 @@ widgets even when the value was set from a background thread.
 
 ```python
 import threading
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 class ViewModel:
-    data = Observable([])
+    data = nv.Observable([])
 
     def __init__(self):
         self.data.dispatch_to_ui()

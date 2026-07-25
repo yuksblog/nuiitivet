@@ -10,7 +10,7 @@ They let you model values that notify subscribers when updated.
 The most intuitive way to define Observables is inside `__init__`, like normal instance fields.
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
 class Counter:
     def __init__(self):
@@ -25,8 +25,7 @@ counter.count.value = 1  # -> "Count: 1"
 ### Integration with UI
 
 ```python
-import nuiitivet as nv
-from nuiitivet import material
+import nuiitivet.material as nv
 
 class CounterApp:
     def __init__(self):
@@ -35,11 +34,11 @@ class CounterApp:
     def build(self):
         return nv.Column(
             children=[
-                material.Text(text=self.count.map(lambda c: f"Count: {c}")),
-                material.Button(
+                nv.Text(text=self.count.map(lambda c: f"Count: {c}")),
+                nv.Button(
                     text="Increment",
                     on_click=lambda: self.increment()
-                , style=material.ButtonStyle.filled())
+                , style=nv.ButtonStyle.filled())
             ]
         )
 
@@ -65,10 +64,10 @@ An Observable is a value you can observe. When it changes, all subscribers are n
 You can also define an Observable as a class attribute (descriptor pattern).
 
 ```python
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
 class Model:
-    value = Observable(0)
+    value = nv.Observable(0)
 
 x = Model()
 y = Model()

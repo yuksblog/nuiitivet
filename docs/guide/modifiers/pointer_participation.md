@@ -23,7 +23,7 @@ works: the empty area passes clicks to the canvas, while the toolbar inside it
 still catches.
 
 ```python
-import nuiitivet as nv
+import nuiitivet.material as nv
 
 nv.Stack([
     canvas,                       # clickable across its whole area

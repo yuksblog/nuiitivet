@@ -10,12 +10,12 @@ application.
 `font_family` is specified:
 
 ```python
-import nuiitivet
+import nuiitivet.material as nv
 
 # macOS
-nuiitivet.set_default_font_family("Hiragino Sans")
+nv.set_default_font_family("Hiragino Sans")
 # Windows
-# nuiitivet.set_default_font_family("Yu Gothic")
+# nv.set_default_font_family("Yu Gothic")
 ```
 
 Pass `None` to reset to locale-based automatic detection.
@@ -26,26 +26,24 @@ When distributing an application with bundled `.ttf` / `.otf` files, use
 `register_font()` to make them available by name.
 
 ```python
-import nuiitivet
+import nuiitivet.material as nv
 
 # Call once at startup, before any UI is created.
-nuiitivet.register_font("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")
+nv.register_font("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")
 ```
 
 After registration the family name can be used anywhere a `font_family` is
 accepted:
 
 ```python
-from nuiitivet.material import Text, Icon
-from nuiitivet.material.styles import TextStyle
+import nuiitivet.material as nv
 
 # Text widget
-Text("Hello", style=TextStyle(font_family="NotoSansJP"))
+nv.Text("Hello", style=nv.TextStyle(font_family="NotoSansJP"))
 
 # Icon widget with a custom icon font
-from nuiitivet.material.styles import IconStyle
-nuiitivet.register_font("assets/fonts/MyIcons.ttf", family_name="MyIcons")
-Icon("star", style=IconStyle(custom_font_family="MyIcons"))
+nv.register_font("assets/fonts/MyIcons.ttf", family_name="MyIcons")
+nv.Icon("star", style=nv.IconStyle(custom_font_family="MyIcons"))
 ```
 
 ### Notes
@@ -61,8 +59,8 @@ Icon("star", style=IconStyle(custom_font_family="MyIcons"))
 
 ```python
 from pathlib import Path
-import nuiitivet
+import nuiitivet.material as nv
 
 _ASSETS = Path(__file__).parent / "assets" / "fonts"
-nuiitivet.register_font(str(_ASSETS / "NotoSansJP.ttf"), family_name="NotoSansJP")
+nv.register_font(str(_ASSETS / "NotoSansJP.ttf"), family_name="NotoSansJP")
 ```

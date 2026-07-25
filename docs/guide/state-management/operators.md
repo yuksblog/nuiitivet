@@ -5,9 +5,9 @@
 Use `.map(fn)` to transform the value of a single Observable into another derived value.
 
 ```python
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-age = Observable(20)
+age = nv.Observable(20)
 is_adult = age.map(lambda x: x >= 18)
 
 is_adult.subscribe(lambda v: print(f"Adult: {v}"))
@@ -20,8 +20,8 @@ age.value = 20  # Adult: True
 Use this pattern when you need to compute a derived value from exactly two Observables.
 
 ```python
-price = Observable(100)
-quantity = Observable(2)
+price = nv.Observable(100)
+quantity = nv.Observable(2)
 total = price.combine(quantity).compute(lambda p, q: p * q)
 ```
 
@@ -30,13 +30,13 @@ total = price.combine(quantity).compute(lambda p, q: p * q)
 Use this form to combine three or more Observables in a single derived computation.
 
 ```python
-from nuiitivet.observable import Observable, combine
+import nuiitivet.material as nv
 
-price = Observable(100)
-quantity = Observable(2)
-discount = Observable(0.1)
+price = nv.Observable(100)
+quantity = nv.Observable(2)
+discount = nv.Observable(0.1)
 
-total = combine(price, quantity, discount).compute(
+total = nv.combine(price, quantity, discount).compute(
     lambda p, q, d: p * q * (1 - d)
 )
 ```
@@ -48,11 +48,11 @@ total = combine(price, quantity, discount).compute(
 ```python
 class Cart:
     def __init__(self):
-        self.show_detail = Observable(True)
-        self.price = Observable(100)
-        self.quantity = Observable(2)
+        self.show_detail = nv.Observable(True)
+        self.price = nv.Observable(100)
+        self.quantity = nv.Observable(2)
 
-        self.display = Observable.compute(lambda: (
+        self.display = nv.Observable.compute(lambda: (
             f"¥{self.price.value * self.quantity.value:,}"
             if self.show_detail.value
             else "---"
@@ -69,12 +69,12 @@ is_adult = age.map(lambda x: x >= 18)
 subtotal = price.combine(quantity).compute(lambda p, q: p * q)
 
 # 3+ observables
-total = combine(price, quantity, discount).compute(
+total = nv.combine(price, quantity, discount).compute(
     lambda p, q, d: p * q * (1 - d)
 )
 
 # complex branching
-display = Observable.compute(lambda: (
+display = nv.Observable.compute(lambda: (
     self.tax_included.value if self.show_tax.value
     else self.tax_excluded.value
 ))
@@ -94,8 +94,8 @@ the transform.
 
 ```python
 # ❌ bad: the transform mutates a separate observable as a side effect
-label = Observable("")
-Text(label)
+label = nv.Observable("")
+nv.Text(label)
 
 def update_label(c):
     label.value = f"Count: {c}"  # side effect, not a returned value
@@ -104,7 +104,7 @@ count.map(update_label)  # the mapped result is unused
 
 # ✅ good: the transform returns a value; bind the widget to it
 count_label = count.map(lambda c: f"Count: {c}")
-Text(count_label)
+nv.Text(count_label)
 ```
 
 ## Performance Note

@@ -15,16 +15,14 @@ When `chrome=` is omitted, `OSChrome()` is used automatically. The OS draws the 
 Use the `title=` parameter to set the text shown in the OS title bar. It accepts a plain string, an `Observable[str | None]` for reactive updates, or `None` for no title.
 
 ```python
-from nuiitivet.runtime.app import App
-from nuiitivet.material import Text
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
-app = App(
-    content=Container(
+app = nv.App(
+    content=nv.Container(
         alignment="center",
         width="100%",
         height="100%",
-        child=Text("Hello, World!"),
+        child=nv.Text("Hello, World!"),
     ),
     title="My Application",
     width=400,
@@ -56,30 +54,24 @@ See [`OSChrome`](../../api/nuiitivet.md#nuiitivet.OSChrome) for the full API ref
 The `title=` parameter still controls the OS taskbar / Alt-Tab label even with `CustomChrome`. It accepts a plain string or an `Observable[str | None]` for reactive updates. The visual title text inside the window is entirely up to your `header` widget.
 
 ```python
-import nuiitivet as nv
-from nuiitivet.runtime.app import App
-from nuiitivet.material import Text
-from nuiitivet.material.styles.text_style import TextStyle
-from nuiitivet.layout.container import Container
-from nuiitivet.layout.row import Row
-from nuiitivet.modifiers import background
+import nuiitivet.material as nv
 
-header = Row(
+header = nv.Row(
     children=[
-        Text("My App", style=TextStyle(color="#ffffff", font_size=14)),
+        nv.Text("My App", style=nv.TextStyle(color="#ffffff", font_size=14)),
     ],
     cross_alignment="center",
     width="100%",
     height=40,
     padding=(12, 0),
-).modifier(background("#1a237e"))
+).modifier(nv.background("#1a237e"))
 
-app = App(
-    content=Container(
+app = nv.App(
+    content=nv.Container(
         alignment="center",
         width="100%",
         height="100%",
-        child=Text("Custom Chrome"),
+        child=nv.Text("Custom Chrome"),
     ),
     title="My App",
     chrome=nv.CustomChrome(
@@ -101,16 +93,14 @@ See [`CustomChrome`](../../api/nuiitivet.md#nuiitivet.CustomChrome) for the full
 Pass `chrome=None` for a completely bare borderless window with no OS decoration and no app-drawn header.
 
 ```python
-from nuiitivet.runtime.app import App
-from nuiitivet.material import Text
-from nuiitivet.layout.container import Container
+import nuiitivet.material as nv
 
-app = App(
-    content=Container(
+app = nv.App(
+    content=nv.Container(
         alignment="center",
         width="100%",
         height="100%",
-        child=Text("Borderless Window"),
+        child=nv.Text("Borderless Window"),
     ),
     title="Borderless",
     chrome=None,

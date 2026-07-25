@@ -7,13 +7,13 @@ Use `batch()` to group related updates and avoid redundant recalculations.
 This is especially useful when multiple source observables affect the same derived value.
 
 ```python
-from nuiitivet.observable import Observable, batch
+import nuiitivet.material as nv
 
-price = Observable(100)
-quantity = Observable(2)
+price = nv.Observable(100)
+quantity = nv.Observable(2)
 total = price.combine(quantity).compute(lambda p, q: p * q)
 
-with batch():
+with nv.batch():
     price.value = 200
     quantity.value = 3
 ```
@@ -25,9 +25,9 @@ Inside UI event handlers, batching is commonly applied automatically.
 Use `debounce()` when you want to run logic only after input has settled for a period of time.
 
 ```python
-from nuiitivet.observable import Observable
+import nuiitivet.material as nv
 
-query = Observable("")
+query = nv.Observable("")
 debounced_query = query.debounce(0.5)
 debounced_query.subscribe(lambda q: print(f"search: {q}"))
 ```
@@ -39,7 +39,7 @@ Typical use cases are search boxes, validation, and autosave.
 Use `throttle()` when you need periodic sampling for high-frequency updates.
 
 ```python
-mouse_x = Observable(0)
+mouse_x = nv.Observable(0)
 throttled_x = mouse_x.throttle(0.1)
 throttled_x.subscribe(lambda x: print(f"x={x}"))
 ```
