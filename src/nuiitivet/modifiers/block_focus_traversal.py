@@ -146,7 +146,7 @@ def block_focus_traversal(
 
     Note:
         This modifier only affects keyboard traversal. Layout, painting and
-        hit-testing are unaffected; combine with :func:`ignore_pointer` and
+        hit-testing are unaffected; combine with :func:`passthrough_pointer` and
         :func:`opacity` (or simply use :func:`visible`) to hide a subtree from
         every input path.
     """

@@ -134,7 +134,7 @@ class BlockFocusTraversalDemo(nv.ComposableWidget):
 
 While `blocked` is `True`, Tab goes from *before the panel* straight to *after the panel*, and focusing a panel field is impossible — focus already inside is released as soon as the subtree becomes blocked.
 
-It only affects keyboard traversal — layout, painting and hit-testing are untouched, so the panel above is still fully visible and clickable while blocked. Use `ignore_pointer()` alongside it to block pointer input as well, or simply use [`visible()`](others.md#visible), which composes both.
+It only affects keyboard traversal — layout, painting and hit-testing are untouched, so the panel above is still fully visible and clickable while blocked. Use `passthrough_pointer()` alongside it to block pointer input as well, or simply use [`visible()`](others.md#visible), which composes both. To control which of several overlapping widgets catches a click, see [Pointer Participation](pointer_participation.md).
 
 ## Raw pointer input
 

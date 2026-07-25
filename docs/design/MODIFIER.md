@@ -72,17 +72,17 @@ For details on the node-based interaction system, see [INTERACTION_ARCHITECTURE.
 ### Visibility
 
 * **`visible(condition, transition=None)`**: Toggles a widget's *visibility* via paint and input.
-* **`ignore_pointer(condition=True)`**: Blocks hit-testing for the wrapped subtree.
+* **`passthrough_pointer(condition=True)`**: Blocks hit-testing for the wrapped subtree.
 
 #### `visible()` is a Thin Composition
 
 `visible()` is a lightweight convenience that composes two existing primitives:
 
 * `opacity()` — drives the visual fade between hidden (`0.0`) and shown (`1.0`).
-* `ignore_pointer()` — blocks hit-testing while the widget is logically hidden.
+* `passthrough_pointer()` — blocks hit-testing while the widget is logically hidden.
 
 When `transition` is omitted, `visible(condition)` expands to literally
-`opacity(condition_as_float) | ignore_pointer(not condition)`. With a
+`opacity(condition_as_float) | passthrough_pointer(not condition)`. With a
 `transition` provided, an internal animation driver retargets an
 `Animatable` on each condition change to drive `opacity` (and any
 pattern-driven `scale` / `translate`) on enter / exit.
@@ -119,9 +119,9 @@ The pattern's resolved `TransitionVisuals` (`opacity`, `scale_x` / `scale_y`,
 are applied during paint; **input is blocked from the moment `condition`
 flips to `False`**, even while the exit animation is still playing.
 
-#### `visible(False)` vs `opacity(0.0)` vs `ignore_pointer()`
+#### `visible(False)` vs `opacity(0.0)` vs `passthrough_pointer()`
 
-| Behavior | `opacity(0.0)` | `ignore_pointer()` | `visible(False)` |
+| Behavior | `opacity(0.0)` | `passthrough_pointer()` | `visible(False)` |
 |----------|----------------|--------------------|------------------|
 | Visually hidden | Yes | No | Yes |
 | Receives input | Yes | No | No |

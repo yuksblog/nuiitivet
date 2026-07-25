@@ -1,4 +1,4 @@
-"""Tests for visible() modifier (opacity + block_focus_traversal + ignore_pointer)."""
+"""Tests for visible() modifier (opacity + block_focus_traversal + passthrough_pointer)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from nuiitivet.animation import LinearMotion
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern
 from nuiitivet.modifiers.block_focus_traversal import BlockFocusTraversalBox
-from nuiitivet.modifiers.ignore_pointer import IgnorePointerBox
+from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
 from nuiitivet.modifiers.transform import TransformBox
 from nuiitivet.modifiers.visible import _AnimatedVisibleBox, visible
 from nuiitivet.observable import runtime as observable_runtime
@@ -52,7 +52,7 @@ def _make_child() -> Box:
 
 
 def _blocker(wrapped: Widget) -> BlockFocusTraversalBox:
-    """Return the BlockFocusTraversalBox nested inside the outer IgnorePointerBox."""
+    """Return the BlockFocusTraversalBox nested inside the outer PassthroughPointerBox."""
     box = wrapped.children[0]
     assert isinstance(box, BlockFocusTraversalBox)
     return box
@@ -70,12 +70,12 @@ def _inner(wrapped: Widget) -> Widget:
 # ---------------------------------------------------------------------------
 
 
-def test_visible_static_true_composes_opacity_and_ignore_pointer() -> None:
+def test_visible_static_true_composes_opacity_and_passthrough_pointer() -> None:
     child = _make_child()
     wrapped = child.modifier(visible(True))
 
-    # Outer wrapper is IgnorePointerBox; inside is a TransformBox (opacity).
-    assert isinstance(wrapped, IgnorePointerBox)
+    # Outer wrapper is PassthroughPointerBox; inside is a TransformBox (opacity).
+    assert isinstance(wrapped, PassthroughPointerBox)
     assert wrapped._active is False
     inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
@@ -86,7 +86,7 @@ def test_visible_static_false_keeps_layout_and_blocks_input() -> None:
     child = _make_child()
     wrapped = child.modifier(visible(False))
 
-    assert isinstance(wrapped, IgnorePointerBox)
+    assert isinstance(wrapped, PassthroughPointerBox)
     assert wrapped._active is True
     inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
@@ -104,7 +104,7 @@ def test_visible_observable_toggles_input_blocking_and_opacity() -> None:
     cond = _ObservableValue(True)
     child = _make_child()
     wrapped = child.modifier(visible(cond))
-    assert isinstance(wrapped, IgnorePointerBox)
+    assert isinstance(wrapped, PassthroughPointerBox)
     inner = _inner(wrapped)
     assert isinstance(inner, TransformBox)
 
@@ -177,8 +177,8 @@ def test_visible_with_transition_initial_visible_animates_exit() -> None:
         )
         wrapped = child.modifier(visible(cond, transition=transition))
 
-        # Outer wrapper is IgnorePointerBox; inside is _AnimatedVisibleBox.
-        assert isinstance(wrapped, IgnorePointerBox)
+        # Outer wrapper is PassthroughPointerBox; inside is _AnimatedVisibleBox.
+        assert isinstance(wrapped, PassthroughPointerBox)
         paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
@@ -188,7 +188,7 @@ def test_visible_with_transition_initial_visible_animates_exit() -> None:
         assert paint_box._progress == 1.0
         assert wrapped._active is False
 
-        # Trigger hide. Hit-test is blocked immediately (ignore_pointer toggles).
+        # Trigger hide. Hit-test is blocked immediately (passthrough_pointer toggles).
         cond.value = False
         assert wrapped._active is True
         wrapped.layout(100, 50)
@@ -219,7 +219,7 @@ def test_visible_with_transition_enter_animates_progress_up() -> None:
             pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
         )
         wrapped = child.modifier(visible(cond, transition=transition))
-        assert isinstance(wrapped, IgnorePointerBox)
+        assert isinstance(wrapped, PassthroughPointerBox)
         paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
@@ -258,7 +258,7 @@ def test_visible_transition_out_used_on_exit() -> None:
             pattern=FadePattern(start_alpha=0.0, end_alpha=1.0),
         )
         wrapped = child.modifier(visible(cond, transition=transition, transition_out=transition_out))
-        assert isinstance(wrapped, IgnorePointerBox)
+        assert isinstance(wrapped, PassthroughPointerBox)
         paint_box = _inner(wrapped)
         assert isinstance(paint_box, _AnimatedVisibleBox)
 
@@ -309,8 +309,8 @@ def test_visible_chains_with_other_modifiers() -> None:
 
     cond = _ObservableValue(True)
     child = _make_child()
-    # Apply opacity first, then visible. visible() expands to opacity|ignore_pointer
-    # so the outer-most wrapper is IgnorePointerBox.
+    # Apply opacity first, then visible. visible() expands to opacity|passthrough_pointer
+    # so the outer-most wrapper is PassthroughPointerBox.
     wrapped = child.modifier(opacity(0.5) | visible(cond))
-    assert isinstance(wrapped, IgnorePointerBox)
+    assert isinstance(wrapped, PassthroughPointerBox)
     assert wrapped._active is False
