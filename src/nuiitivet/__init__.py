@@ -38,6 +38,9 @@ from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import Widget, ComposableWidget
 from nuiitivet.widgets.box import Box
 
+# Geometry (container-scoped measured size)
+from nuiitivet.geometry import Geometry, Size
+
 # Navigation
 from nuiitivet.navigation import Navigator, Route, Transitions
 
@@ -149,6 +152,9 @@ __all__: list[str] = [
     "Widget",
     "ComposableWidget",
     "Box",
+    # Geometry
+    "Geometry",
+    "Size",
     # Navigation
     "Navigator",
     "Route",

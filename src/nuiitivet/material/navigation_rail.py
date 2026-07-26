@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
 import logging
 
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.common.logging_once import warning_once
 from nuiitivet.rendering.sizing import SizingLike, Sizing, parse_sizing
 from nuiitivet.observable.value import _ObservableValue
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase, ReadOnlyObservableProtocol
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
 from nuiitivet.material.text import Text, LabelLike
 from nuiitivet.material.icon import Icon, IconLike
@@ -27,6 +27,24 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEF
 from nuiitivet.modifiers.transform import rotate
 
 logger = logging.getLogger(__name__)
+
+
+def _reject_readonly_observable(value: Any, param: str) -> None:
+    """Guard a two-way input against a read-only observable.
+
+    ``index`` and ``expanded`` are two-way: the rail writes back to them on user
+    interaction (item selection, the menu toggle). A read-only/computed
+    observable (e.g. from ``.map(...)``) cannot be written back, so it is
+    rejected up front rather than silently mishandled. Mirror the derived value
+    into a plain ``Observable`` and pass that instead.
+    """
+
+    if isinstance(value, ObservableBase) and not isinstance(value, MutableObservableBase):
+        raise TypeError(
+            f"NavigationRail.{param} is two-way (the rail writes back to it on user "
+            f"interaction), so it needs a mutable Observable; a read-only/computed "
+            f"observable cannot be used. Mirror it into an Observable and update that."
+        )
 
 
 def _resolve_expanded_width(
@@ -737,9 +755,9 @@ class NavigationRail(Widget):
         self,
         children: Sequence[RailItem],
         *,
-        index: Union[int, _ObservableValue[int]] = 0,
+        index: Union[int, MutableObservableBase[int]] = 0,
         on_select: Optional[Callable[[int], None]] = None,
-        expanded: Union[bool, _ObservableValue[bool]] = False,
+        expanded: Union[bool, MutableObservableBase[bool]] = False,
         show_menu_button: bool = True,
         width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
         height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
@@ -750,9 +768,15 @@ class NavigationRail(Widget):
 
         Args:
             children: The rail items to display.
-            index: The currently selected index (int or Observable).
+            index: The currently selected index. ``int`` or a **mutable**
+                ``Observable[int]`` — the rail writes the selection back, so a
+                read-only/computed observable is rejected.
             on_select: Callback when an item is selected.
-            expanded: Whether the rail is expanded (bool or Observable).
+            expanded: Whether the rail is expanded. ``bool`` or a **mutable**
+                ``Observable[bool]`` — the menu button writes it back, so a
+                read-only/computed observable is rejected. To drive expansion
+                from derived state (e.g. window size), mirror it into an
+                ``Observable`` and update that.
             show_menu_button: Whether to show the menu toggle button.
             width: Expanded rail width. A *fixed* value (e.g. ``280`` or
                 ``Sizing.fixed(280)``) sets the expanded width, clamped into the
@@ -765,7 +789,10 @@ class NavigationRail(Widget):
             padding: Padding specification.
             style: Custom NavigationRailStyle.
         """
-        self._is_expanded = expanded.value if isinstance(expanded, _ObservableValue) else bool(expanded)
+        _reject_readonly_observable(index, "index")
+        _reject_readonly_observable(expanded, "expanded")
+
+        self._is_expanded = expanded.value if isinstance(expanded, MutableObservableBase) else bool(expanded)
         self._style = style
         self._menu_icon_name: Optional[_ObservableValue[str]] = None
         eff_style = style or NavigationRailStyle()
@@ -807,9 +834,9 @@ class NavigationRail(Widget):
         self.show_menu_button = show_menu_button
 
         # Handle index.
-        self._index_observable: Optional[_ObservableValue[int]] = None
+        self._index_observable: Optional[MutableObservableBase[int]] = None
         self._index_subscription = None
-        if isinstance(index, _ObservableValue):
+        if isinstance(index, MutableObservableBase):
             self._index_observable = index
             self._current_index = self._validate_index(index.value)
             self._index_subscription = index.subscribe(self._on_index_changed)
@@ -817,9 +844,9 @@ class NavigationRail(Widget):
             self._current_index = self._validate_index(int(index))
 
         # Handle expanded state.
-        self._expanded_observable: Optional[_ObservableValue[bool]] = None
+        self._expanded_observable: Optional[MutableObservableBase[bool]] = None
         self._expanded_subscription = None
-        if isinstance(expanded, _ObservableValue):
+        if isinstance(expanded, MutableObservableBase):
             self._expanded_observable = expanded
             # _is_expanded already set above
             self._expanded_subscription = expanded.subscribe(self._on_expanded_changed)
