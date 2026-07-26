@@ -91,6 +91,20 @@ def test_deck_with_observable_index():
     assert deck.current_index == 2
 
 
+def test_deck_with_derived_observable_index():
+    """Deck should accept a derived (computed) observable, e.g. ``.map(...)``."""
+    source = _ObservableValue(100)
+    # A computed/mapped observable is not an _ObservableValue but is a
+    # read-observable (ObservableBase); Deck must still track it.
+    index = source.map(lambda w: 1 if w >= 600 else 0)
+    deck = Deck(children=[Text("narrow"), Text("wide")], index=index)
+
+    assert deck.current_index == 0
+
+    source.value = 720  # crosses the threshold -> derived index becomes 1
+    assert deck.current_index == 1
+
+
 def test_deck_observable_subscription():
     """Deck should subscribe to Observable index changes."""
     index_obs = _ObservableValue(1)

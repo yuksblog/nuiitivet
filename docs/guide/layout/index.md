@@ -40,6 +40,7 @@ Refer to the following guides based on what you want to create.
 | Make scrollable | [layout_overflow.md](overflow.md) | `VerticalScrollable` / `HorizontalScrollable` |
 | Create tab switching | [layout_extras.md](extras.md) | `Deck` |
 | Dynamically generate a list from data | [layout_dynamic.md](dynamic.md) | `builder()` / `ForEach` |
+| Adapt layout to a container's size | [layout_adaptive.md](adaptive.md) | `Geometry` |
 
 ## More Details
 

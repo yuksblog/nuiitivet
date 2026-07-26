@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
-from ..observable.value import _ObservableValue
+from ..observable.protocols import ObservableBase
 from .measure import preferred_size as measure_preferred_size
 from .layout_utils import expand_layout_children
 
@@ -30,7 +30,7 @@ class Deck(Widget):
     def __init__(
         self,
         children: Optional[Sequence[Widget]] = None,
-        index: Union[int, _ObservableValue[int]] = 0,
+        index: Union[int, ObservableBase[int]] = 0,
         *,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -40,8 +40,9 @@ class Deck(Widget):
 
         Args:
             children: A list of child widgets. All are mounted, but only one is visible.
-            index: The index of the child to display. Can be an integer or an Observable[int].
-                Defaults to 0.
+            index: The index of the child to display. Can be an integer or any
+                read-observable of int — a plain ``Observable[int]`` or a derived
+                one (e.g. ``some_observable.map(...)``). Defaults to 0.
             width: The preferred width of the container. Defaults to None.
             height: The preferred height of the container. Defaults to None.
             padding: Padding to apply around the visible child. Defaults to 0.
@@ -54,9 +55,9 @@ class Deck(Widget):
                 self.add_child(child)
 
         # Handle index (Observable or plain int)
-        self._index_observable: Optional[_ObservableValue[int]] = None
+        self._index_observable: Optional[ObservableBase[int]] = None
         self._index_subscription = None
-        if isinstance(index, _ObservableValue):
+        if isinstance(index, ObservableBase):
             self._index_observable = index
             self._current_index = index.value
             # Subscribe to changes

@@ -3,6 +3,8 @@
 from enum import IntEnum
 from typing import Optional
 
+import pytest
+
 from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -78,6 +80,23 @@ def test_navigation_rail_with_observable_expanded():
     # Toggle expanded via observable
     expanded_obs.value = True
     assert rail.is_expanded
+
+
+def test_navigation_rail_rejects_readonly_observable():
+    """index/expanded are two-way, so a read-only (computed) observable is rejected."""
+    items = [
+        RailItem(icon="home", label="Home"),
+        RailItem(icon="search", label="Search"),
+    ]
+    # ``.map(...)`` yields a read-only ComputedObservable — the rail cannot write
+    # its selection / expanded state back into it, so construction must fail.
+    readonly_expanded = _ObservableValue(0).map(lambda w: w >= 600)
+    with pytest.raises(TypeError):
+        NavigationRail(children=items, expanded=readonly_expanded)
+
+    readonly_index = _ObservableValue(0).map(lambda w: 1 if w else 0)
+    with pytest.raises(TypeError):
+        NavigationRail(children=items, index=readonly_index)
 
 
 def test_navigation_rail_on_select_callback():

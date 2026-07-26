@@ -142,6 +142,7 @@ nav:
           - Grid: guide/layout/grid.md
           - Overflow: guide/layout/overflow.md
           - Dynamic: guide/layout/dynamic.md
+          - Adaptive: guide/layout/adaptive.md
           - Extras: guide/layout/extras.md
       - Overlay:
           - guide/overlay/index.md

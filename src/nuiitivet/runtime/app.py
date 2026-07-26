@@ -223,8 +223,15 @@ class App:
                 height="100%",
             )
 
+        # Install the root Geometry provider so ``Geometry.of(context)`` resolves
+        # even without an explicit wrapper: with no nearer Geometry, a top-level
+        # read tracks the window size. The root Geometry needs no special resize
+        # plumbing -- it measures the window through the normal layout pass, which
+        # the resize path already triggers via ``invalidate`` -> relayout.
+        from nuiitivet.geometry import Geometry
+
         # Wrap the root widget with AppScope to provide access to the App instance
-        return AppScope(app=self, child=root)
+        return AppScope(app=self, child=Geometry(root))
 
     def _init_common(
         self,
