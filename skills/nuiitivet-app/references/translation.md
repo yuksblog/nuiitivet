@@ -104,6 +104,11 @@ a widget, not widgets in their own right.** This kills Flutter's nesting hell.
 | `alignment="baseline"` / `"fill"` (CSS) | not supported — position with `start`/`center`/`end`, size with `width`/`height` |
 | `.map((e) => Widget(e)).toList()` for dynamic lists | `nv.Column.builder(items, lambda item, i: ...)` |
 | `ListView.builder(itemBuilder: ...)` | `nv.Column.builder(...)` / `Row.builder` / `Flow.builder` |
+| `LayoutBuilder(builder: (ctx, constraints) => ...)` (Flutter) | `nv.Geometry.of(self).size` in `on_mount`, bound with `.map(...)` |
+| `MediaQuery.of(context).size` (Flutter) | `nv.Geometry.of(self).size` — the root provider tracks the window |
+| `GeometryReader { geo in ... }` (SwiftUI) | wrap the region: `nv.Geometry(Panel(), width="100%", height="100%")` |
+| `BoxWithConstraints { maxWidth ... }` (Compose) | same — a filling `nv.Geometry` scopes the size to that region |
+| overriding `set_layout_rect` to publish a size | never needed: `Geometry` already publishes an `Observable[Size]` |
 
 ```python
 # Correct
@@ -112,7 +117,8 @@ nv.Column([a, b, c], gap=20, padding=20)             # gap, not spacer widgets
 nv.Column.builder(self.items, lambda item, i: nv.Text(item))   # reactive list from an Observable
 ```
 
-See [layout.md](layout.md) for sizing policies, `builder()` vs `ForEach`, grids.
+See [layout.md](layout.md) for sizing policies, `builder()` vs `ForEach`, grids,
+and adaptive layout with `Geometry`.
 
 ## Decoration & behavior (modifiers)
 

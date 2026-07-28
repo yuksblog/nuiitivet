@@ -71,6 +71,41 @@ Use `nv.Sizing` for flexible/auto sizing rather than hardcoding when a widget
 should fill or hug its content: `nv.Sizing.auto()`, `nv.Sizing.fixed(n)`,
 `nv.Sizing.flex()`, e.g. `width=nv.Sizing.flex()`.
 
+## Adaptive layout with `Geometry`
+
+To reflow on how much space a region actually has, read `nv.Geometry` — it
+measures its own box and publishes it to its subtree as an `Observable[Size]`
+(`.width` / `.height`). There **is** a reactive size API; do not override
+`set_layout_rect` or any other layout hook to bridge size into an Observable.
+
+```python
+class Panel(nv.ComposableWidget):
+    def on_mount(self) -> None:
+        size = nv.Geometry.of(self).size                       # Observable[Size]
+        self._index = size.map(lambda s: 1 if s.width >= s.height else 0)
+        super().on_mount()
+
+    def build(self) -> nv.Widget:
+        return nv.Deck(children=[portrait, landscape], index=self._index)
+```
+
+- **Resolve in `on_mount`, not `__init__`.** `Geometry.of(self)` walks the
+  ancestor chain, which does not exist yet in `__init__`. Deriving there also
+  builds the mapped Observable once; `build()` only references it.
+- **Bind it; don't read `.value` in `build()`.** Same rule as any Observable —
+  a `.value` read at build time is a one-time snapshot that never updates.
+- **For a side effect rather than a binding, use `self.observe(size, cb)`.** It
+  applies the current value immediately, subscribes, and disposes on unmount.
+  Do not hand-roll `subscribe()` plus an `on_unmount` override. This is also how
+  to feed a **two-way** input such as `NavigationRail.expanded`, which its own
+  menu button writes and so needs a plain mutable `Observable`, not a `.map`.
+- **Nearest provider wins.** The app installs a root `Geometry` at the window, so
+  a top-level read tracks the window. To scope to a region instead, wrap it in a
+  **filling** `Geometry`: `nv.Geometry(Panel(), width="100%", height="100%")`.
+
+The size is published on the frame after layout — one frame of latency, never
+re-entrant mid-layout.
+
 ## Dynamic lists
 
 Three ways, in order of preference:

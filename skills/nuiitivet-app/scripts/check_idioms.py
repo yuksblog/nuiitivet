@@ -50,6 +50,16 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
                 r"[\"'](?:stretch|flex-start|flex-end|baseline|fill)[\"']"), "CSS flexbox",
      "alignment is positioning-only. For stretch/fill set the child's size "
      "(width=\"100%\" / nv.Sizing.flex()); use start/center/end, not flex-start/flex-end."),
+    (re.compile(r"\bLayoutBuilder\s*\(|\bMediaQuery\b"), "Flutter",
+     "Measured size is reactive: `nv.Geometry.of(self).size` (an Observable[Size]) "
+     "derived in on_mount and bound with .map(); scope it by wrapping a region in "
+     "nv.Geometry(child, width=\"100%\")."),
+    (re.compile(r"\bGeometryReader\b|\bBoxWithConstraints\b"), "SwiftUI/Compose",
+     "Wrap the region in nv.Geometry(child, width=\"100%\", height=\"100%\") and read "
+     "nv.Geometry.of(self).size in on_mount."),
+    (re.compile(r"\bdef\s+set_layout_rect\b"), "layout-hook workaround",
+     "Do not override layout to publish a size: nv.Geometry already exposes it as "
+     "an Observable[Size] via nv.Geometry.of(self).size."),
     (re.compile(r"\bMaterialPageRoute\b"), "Flutter",
      "nv.Navigator.root().push(Screen()) or Intent-based routing; no MaterialPageRoute."),
     (re.compile(r"\bshowDialog\s*\("), "Flutter",
