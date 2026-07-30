@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
     """Render a frame directly into the active OpenGL framebuffer via Skia GPU."""
 
+    _reset_gr_context(gr_context)
+
     try:
         fbo = int(GL.glGetIntegerv(GL.GL_FRAMEBUFFER_BINDING))
     except Exception:
@@ -225,6 +227,25 @@ def _try_reblit_cached_frame(app: Any, canvas: Any, phys_w: int, phys_h: int, sk
     except Exception:
         exception_once(logger, "gpu_frame_reblit_exc", "Failed to re-blit cached GPU frame")
         return False
+
+
+def _reset_gr_context(gr_context: Any) -> None:
+    """Tell Skia its cached GL state is stale before drawing the frame.
+
+    ``GrDirectContext`` caches GL state, but ``on_draw`` and pyglet's ``on_resize``
+    rewrite the viewport behind its back -- hence the garbled frame after a
+    drag-resize (#467). A full reset (not just ``resetGLTextureBindings()``, which
+    leaves the cached viewport wrong) costs one state resend per frame.
+    """
+
+    reset = getattr(gr_context, "resetContext", None)
+    if not callable(reset):
+        debug_once(logger, "gpu_frame_no_reset_context", "gr_context has no resetContext (skipping GL state reset)")
+        return
+    try:
+        reset()
+    except Exception:
+        exception_once(logger, "gpu_frame_reset_context_exc", "gr_context.resetContext raised")
 
 
 def _flush_gpu(app: Any, gr_context: Any) -> None:
