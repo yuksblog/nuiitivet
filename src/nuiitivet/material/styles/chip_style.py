@@ -109,6 +109,29 @@ class ChipStyle:
         )
 
     @classmethod
+    def preset(cls, variant: str) -> "ChipStyle":
+        """Return the framework preset for ``variant``, ignoring any theme.
+
+        This is what a chip renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Args:
+            variant: One of ``assist``, ``filter``, ``input``, ``suggestion``.
+                Unknown values fall back to ``assist``.
+
+        Returns:
+            The variant preset style.
+        """
+        variant_name = (variant or "assist").lower()
+        if variant_name == "filter":
+            return cls.filter()
+        if variant_name == "input":
+            return cls.input()
+        if variant_name == "suggestion":
+            return cls.suggestion()
+        return cls.assist()
+
+    @classmethod
     def from_theme(cls, theme: "Theme", variant: str) -> "ChipStyle":
         """Resolve chip style from theme for the given variant.
 
@@ -134,15 +157,7 @@ class ChipStyle:
             if variant_name == "suggestion":
                 return theme_data.suggestion_chip_style
 
-        if variant_name == "assist":
-            return cls.assist()
-        if variant_name == "filter":
-            return cls.filter()
-        if variant_name == "input":
-            return cls.input()
-        if variant_name == "suggestion":
-            return cls.suggestion()
-        return cls.assist()
+        return cls.preset(variant_name)
 
 
 __all__ = ["ChipStyle"]

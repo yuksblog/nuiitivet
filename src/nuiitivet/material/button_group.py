@@ -139,7 +139,11 @@ class GroupButton(InteractiveWidget):
             raise ValueError("GroupButton requires at least one of label or icon")
 
         self._has_user_style = style is not None
-        self._style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.filled()
+        # Held in a local for everything below ``super().__init__()``: reads that
+        # run before the widget is attached must not go through an accessor that
+        # could reach for the theme, which is not resolvable yet (issue #473).
+        effective_style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.filled()
+        self._style: "ButtonGroupStyle" = effective_style
         self._label = label
         self._icon = icon
 
@@ -168,7 +172,7 @@ class GroupButton(InteractiveWidget):
         # neighbors, keeping the group width conserved (mirrors M3 Compose's
         # ButtonGroup, which avoids per-child layout jitter).  The width is NOT
         # animated per item here.
-        self._base_width: float = float(self._style.min_item_width)
+        self._base_width: float = float(effective_style.min_item_width)
 
         # Store child widget refs for colour updates
         self._text_widget: "Optional[Widget]" = None
@@ -183,8 +187,8 @@ class GroupButton(InteractiveWidget):
         # Initialize corner animation (no motion yet; motion is enabled in
         # set_position() so the initial position snap is immediate)
         initial_corners = self._compute_raw_idle_corners(
-            self._style.outer_corner_radius,
-            self._style.outer_corner_radius,  # "only" position: all outer
+            effective_style.outer_corner_radius,
+            effective_style.outer_corner_radius,  # "only" position: all outer
         )
         self._corner_anim: "Animatable[Tuple[float, float, float, float]]" = Animatable.vector(
             initial_value=initial_corners,
@@ -203,7 +207,7 @@ class GroupButton(InteractiveWidget):
             on_release=self._handle_press_up,
             disabled=disabled,
             width=width,
-            height=self._style.container_height,
+            height=effective_style.container_height,
             # No box padding: the leading/trailing space is reserved via
             # ``preferred_size`` and rendered by *centering* the content (see
             # ``_side_space``).  This keeps the icon/label centred so the
@@ -214,12 +218,12 @@ class GroupButton(InteractiveWidget):
             border_color=bc,
             border_width=bw,
             corner_radius=initial_corners,
-            state_layer_color=self._style.overlay_color or ColorRole.ON_SURFACE,
+            state_layer_color=effective_style.overlay_color or ColorRole.ON_SURFACE,
         )
 
         # Override state-layer opacities from style
-        self._PRESS_OPACITY = self._style.overlay_alpha
-        self._HOVER_OPACITY = self._style.overlay_alpha * 2 / 3
+        self._PRESS_OPACITY = effective_style.overlay_alpha
+        self._HOVER_OPACITY = effective_style.overlay_alpha * 2 / 3
 
     # ------------------------------------------------------------------
     # Preferred size

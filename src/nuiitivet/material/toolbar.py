@@ -62,7 +62,9 @@ class DockedToolbar(Box):
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
         """
         self._user_style = style
-        effective_style = self.style
+        # Read the preset directly rather than through ``self.style``: the theme
+        # is unreachable until the widget is attached (issue #473).
+        effective_style = style if style is not None else ToolbarStyle.standard()
         row_children: list[Widget] = list(buttons)
 
         content = Row(
@@ -120,9 +122,10 @@ class _FloatingToolbarBase(Box):
         """
         self._user_style = style
         self.orientation = orientation
-        effective_style = self.style
+        # Read the preset directly rather than through ``self.style``: the theme
+        # is unreachable until the widget is attached (issue #473).
+        effective_style = style if style is not None else ToolbarStyle.standard()
         layout_children: list[Widget] = list(buttons)
-        content_padding = _resolve_content_padding(effective_style, layout_children)
 
         if orientation == "horizontal":
             layout_content: Widget = Row(
@@ -130,7 +133,7 @@ class _FloatingToolbarBase(Box):
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
-                padding=content_padding,
+                padding=effective_style.content_padding,
             )
             inner_height: SizingLike = effective_style.container_height
         else:
@@ -139,9 +142,11 @@ class _FloatingToolbarBase(Box):
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
-                padding=content_padding,
+                padding=effective_style.content_padding,
             )
             inner_height = None
+
+        self._layout_content = layout_content
 
         # Floating toolbar shape is always fully rounded per spec intent.
         inner_corner_radius = 9999
@@ -163,6 +168,20 @@ class _FloatingToolbarBase(Box):
             border_width=0.0,
             corner_radius=0,
             alignment="center",
+        )
+
+    def on_mount(self) -> None:
+        """Resolve the edge inset now that the buttons can be measured.
+
+        The inset is derived from the buttons' preferred sizes, and measuring a
+        widget reaches for the theme. Doing that in ``__init__`` would measure
+        buttons that are not attached to anything yet, so the lookup would run
+        before the ancestor chain exists (issue #473).
+        """
+        super().on_mount()
+        self._layout_content.padding = _resolve_content_padding(
+            self.style,
+            self._layout_content.children_snapshot(),
         )
 
     @property

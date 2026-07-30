@@ -10,7 +10,7 @@ variant presets: ``CardStyle.filled()``, ``CardStyle.outlined()``,
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
 from ..widgeting.widget import ComposableWidget, Widget
 from .theme.elevation import md3_elevation_to_shadow
@@ -18,6 +18,10 @@ from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..widgets.box import Box
 from nuiitivet.material.styles.card_style import CardStyle
+
+if TYPE_CHECKING:
+    from ..theme.manager import ThemeManager
+    from ..theme.theme import Theme
 
 ChildSpec = Union[Widget, Callable[[], Widget], None]
 AlignmentLike = Union[str, Tuple[str, str]]
@@ -40,12 +44,14 @@ class Card(ComposableWidget, Box):
 
     @property
     def style(self) -> CardStyle:
-        if self._user_style is not None:
-            return self._user_style
+        """Return the style currently in effect.
 
-        from nuiitivet.theme.theme import Theme
-
-        return CardStyle.from_theme(Theme.of(self))
+        This is the explicit ``style`` when one was given, otherwise the theme's
+        filled card style — pushed in by :meth:`on_mount` and kept current by the
+        theme subscription. It is *not* pulled from ``Theme.of``, which cannot
+        answer before the card is attached.
+        """
+        return self._effective_style
 
     def __init__(
         self,
@@ -72,11 +78,14 @@ class Card(ComposableWidget, Box):
         self._child_spec: ChildSpec = child
         self._user_style: Optional[CardStyle] = style
 
-        # Resolve style
-        final_style = self.style
-
-        # Resolve shadow
-        _shadow = md3_elevation_to_shadow(final_style.elevation)
+        # The theme is unreachable here: the widget has no parent link until it
+        # is attached, so ``Theme.of`` would return the light default and freeze
+        # it forever. Start from the framework preset -- the same value
+        # ``CardStyle.from_theme`` falls back to when no Material theme is
+        # installed -- and re-apply the theme's style once mounted.
+        initial_style = style if style is not None else CardStyle.filled()
+        self._effective_style: CardStyle = initial_style
+        _shadow = md3_elevation_to_shadow(initial_style.elevation)
 
         # Pass raw colors to Box; it will resolve them lazily via BackgroundRenderer
         super().__init__(
@@ -84,10 +93,10 @@ class Card(ComposableWidget, Box):
             width=width,
             height=height,
             padding=padding,
-            background_color=final_style.background,
-            border_width=final_style.border_width,
-            border_color=final_style.border_color,
-            corner_radius=final_style.border_radius,
+            background_color=initial_style.background,
+            border_width=initial_style.border_width,
+            border_color=initial_style.border_color,
+            corner_radius=initial_style.border_radius,
             shadow_blur=_shadow.sigma,
             shadow_color=_shadow.color,
             shadow_offset=_shadow.offset,
@@ -95,10 +104,49 @@ class Card(ComposableWidget, Box):
         )
 
         self._content_scope_id: Optional[str] = None
-        self._theme_subscription: Optional[Callable[[object], None]] = None
+        self._card_theme_manager: Optional["ThemeManager"] = None
 
         if isinstance(child, Widget):
             super().add_child(child)
+
+    # --- Theme integration ----------------------------------------------------
+    def on_mount(self) -> None:
+        """Apply the theme's card style and follow later theme changes."""
+        super().on_mount()
+        if self._user_style is not None:
+            return
+
+        from ..runtime.app import AppScope
+
+        scope = self.find_ancestor(AppScope)
+        if scope is None:
+            return
+
+        self._card_theme_manager = scope.theme_manager
+        self._card_theme_manager.subscribe(self._on_card_theme_change)
+        self._on_card_theme_change(self._card_theme_manager.current)
+
+    def on_unmount(self) -> None:
+        """Drop the theme subscription taken in :meth:`on_mount`."""
+        if self._card_theme_manager is not None:
+            self._card_theme_manager.unsubscribe(self._on_card_theme_change)
+            self._card_theme_manager = None
+        super().on_unmount()
+
+    def _on_card_theme_change(self, theme: "Theme") -> None:
+        self._apply_card_style(CardStyle.from_theme(theme))
+
+    def _apply_card_style(self, style: CardStyle) -> None:
+        """Push ``style`` onto the underlying :class:`Box` visual properties."""
+        self._effective_style = style
+        shadow = md3_elevation_to_shadow(style.elevation)
+        self.bgcolor = style.background
+        self.border_width = style.border_width
+        self.border_color = style.border_color
+        self.corner_radius = style.border_radius
+        self.shadow_blur = shadow.sigma
+        self.shadow_color = shadow.color
+        self.shadow_offset = shadow.offset
 
     # --- Build / scope integration (Same as MaterialContainer) ----------------
     def build(self) -> Widget:

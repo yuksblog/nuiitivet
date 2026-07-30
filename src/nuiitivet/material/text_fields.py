@@ -38,6 +38,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
+    from nuiitivet.theme.theme import Theme
 
 
 _logger = logging.getLogger(__name__)
@@ -459,10 +460,10 @@ class TextField(InteractiveWidget):
         # that Theme.of(self) can reach the App's ThemeManager (unavailable at __init__).
         # This prevents a transparent-to-correct-color flash on first render.
         style = self.style
-        from nuiitivet.theme.theme import Theme
+        theme = self._resolvable_theme()
 
         def _snap_resolve(c):
-            return resolve_color_to_rgba(c, theme=Theme.of(self))
+            return resolve_color_to_rgba(c, theme=theme)
 
         if hasattr(self, "_anim_label_color"):
             correct = _snap_resolve(style.label_color)
@@ -472,6 +473,12 @@ class TextField(InteractiveWidget):
             correct = _snap_resolve(style.indicator_color)
             self._anim_indicator_color._value.value = correct
             self._anim_indicator_color._target = correct
+
+        # The editable was built from the preset for the same reason, so hand it
+        # the theme's colours now that they can be resolved.
+        self._editable.text_color = style.text_color
+        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._editable.selection_color = style.selection_color
 
         # Ensure visual state matches the current theme/focus on mount.
         self._update_label_state()
@@ -508,15 +515,36 @@ class TextField(InteractiveWidget):
             except Exception:
                 exception_once(_logger, "text_field_bind_disabled_exc", "TextField failed to bind disabled")
 
+    def _resolvable_theme(self) -> "Theme | None":
+        """Return the theme, or ``None`` while the widget cannot reach one.
+
+        A widget only learns its ancestors when it is attached, so ``Theme.of``
+        has no answer before then — it falls back to the light default and says
+        so. ``None`` expresses the same fallback to ``resolve_color_to_rgba``
+        and to :meth:`TextFieldStyle.from_theme` without the warning, which here
+        would only be reporting a state the widget is expected to pass through
+        (issue #473).
+        """
+        from nuiitivet.widgeting.context_lookup import is_premature_lookup
+
+        if is_premature_lookup(self):
+            return None
+
+        from nuiitivet.theme.theme import Theme
+
+        return Theme.of(self)
+
     @property
     def style(self) -> TextFieldStyle:
         if self._user_style is not None:
             return self._user_style
 
-        from nuiitivet.theme.theme import Theme
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        return TextFieldStyle.from_theme(Theme.of(self))
+        theme = self._resolvable_theme()
+        if theme is None:
+            return TextFieldStyle.filled()
+        return TextFieldStyle.from_theme(theme)
 
     @property
     def value(self) -> str:
@@ -721,10 +749,10 @@ class TextField(InteractiveWidget):
         style = self.style
         is_error = bool(self.is_error)
 
-        def _resolve(c):
-            from nuiitivet.theme.theme import Theme
+        theme = self._resolvable_theme()
 
-            return resolve_color_to_rgba(c, theme=Theme.of(self))
+        def _resolve(c):
+            return resolve_color_to_rgba(c, theme=theme)
 
         # 1. Label Color
         if is_error:
@@ -805,11 +833,9 @@ class TextField(InteractiveWidget):
         self._editable.paint(canvas, cx, cy, w, h)
 
     def _draw_container(self, canvas, cx, cy, cw, ch, *, text_x_abs: int | None = None):
-        from nuiitivet.theme.theme import Theme
-
         style = self.style
 
-        container_color = resolve_color_to_rgba(style.container_color, theme=Theme.of(self))
+        container_color = resolve_color_to_rgba(style.container_color, theme=self._resolvable_theme())
         paint_container = make_paint(color=container_color)
         rect = make_rect(cx, cy, cw, ch)
 
@@ -971,9 +997,7 @@ class TextField(InteractiveWidget):
             supporting_y = cy + ch + 4 - supporting_metrics.fAscent
 
             supporting_color_spec = style.error_supporting_text_color if self.is_error else style.supporting_text_color
-            from nuiitivet.theme.theme import Theme
-
-            supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=Theme.of(self))
+            supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=self._resolvable_theme())
             paint_supporting = make_paint(color=supporting_color)
 
             blob = make_text_blob(self.supporting_text, supporting_font)
