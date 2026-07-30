@@ -181,9 +181,18 @@ def test_overlay_of_root_flag():
 def test_overlay_of_not_found():
     """Test that Overlay.of() raises an error when no overlay is found."""
     widget = DummyWidget()
+    # Attached, so the lookup fails for the reason under test (no Overlay above)
+    # rather than for the pre-mount reason, which has its own message.
+    Container().add_child(widget)
 
     with pytest.raises(RuntimeError, match="No Overlay found in the widget tree"):
         Overlay.of(widget)
+
+
+def test_overlay_of_before_mount_reports_premature():
+    """A pre-mount call names the timing, not a missing provider."""
+    with pytest.raises(RuntimeError, match="before it was mounted"):
+        Overlay.of(DummyWidget())
 
 
 def test_overlay_has_entries_with_invisible_entry():

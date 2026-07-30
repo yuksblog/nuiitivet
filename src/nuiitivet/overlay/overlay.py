@@ -7,6 +7,7 @@ import inspect
 import logging
 from typing import Any, Callable, Dict, Optional, TypeVar
 
+from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.container import Container
@@ -897,8 +898,9 @@ class Overlay(ComposableWidget):
         if root:
             return cls.root()
 
-        overlay = context.find_ancestor(cls)
+        overlay = find_provider(context, cls)
         if overlay is None:
+            raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError(
                 f"No {cls.__name__} found in the widget tree above {context.__class__.__name__}. "
                 f"Did you forget to wrap your widget in an {cls.__name__}?"

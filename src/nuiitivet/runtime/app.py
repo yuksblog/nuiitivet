@@ -9,6 +9,7 @@ import warnings
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
 
+from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
@@ -133,10 +134,12 @@ class App:
             The AppProxy instance.
 
         Raises:
-            RuntimeError: If the widget is not attached to an App.
+            RuntimeError: If called before ``context`` is mounted (typically from
+                ``__init__``), or if the widget is not attached to an App.
         """
-        scope = context.find_ancestor(AppScope)
+        scope = find_provider(context, AppScope)
         if scope is None:
+            raise_if_premature_lookup("App.of", context)
             raise RuntimeError("AppScope not found. Is the widget attached to an App?")
         return scope.app_proxy
 

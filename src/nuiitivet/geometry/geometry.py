@@ -8,6 +8,7 @@ from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_children import ChildContainerMixin
 
@@ -89,10 +90,12 @@ class Geometry(Widget):
             context: A widget in the subtree from which to search upward.
 
         Raises:
-            RuntimeError: If no ``Geometry`` ancestor exists.
+            RuntimeError: If called before ``context`` is mounted (typically from
+                ``__init__``), or if no ``Geometry`` ancestor exists.
         """
-        geometry = context.find_ancestor(cls)
+        geometry = find_provider(context, cls)
         if geometry is None:
+            raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError("Geometry not found in ancestors")
         return geometry
 

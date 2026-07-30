@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from nuiitivet.layout.container import Container
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.widgeting.widget import Widget
 
@@ -45,9 +46,17 @@ def test_navigator_root_not_set_raises() -> None:
 
 
 def test_navigator_of_not_found_raises() -> None:
+    # Attached, so the failure really is a missing provider; a bare unattached
+    # Widget would (correctly) report the pre-mount case instead.
     w = Widget()
+    Container().add_child(w)
     with pytest.raises(RuntimeError, match="Navigator not found in ancestors"):
         Navigator.of(w)
+
+
+def test_navigator_of_before_mount_reports_premature() -> None:
+    with pytest.raises(RuntimeError, match="before it was mounted"):
+        Navigator.of(Widget())
 
 
 def test_navigator_push_intent_resolves_widget() -> None:
