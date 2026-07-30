@@ -7,9 +7,12 @@ for design-system specific theme data (extensions).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from typing import Any, List, Type, TypeVar
 
 from .types import ThemeExtension
+
+_logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=ThemeExtension)
 
@@ -45,16 +48,39 @@ class Theme:
     def of(context: Any) -> "Theme":
         """Return the current :class:`Theme` from the nearest :class:`AppScope`.
 
-        Falls back to a bare ``Theme(mode="light")`` when called outside of a
-        mounted widget tree (e.g. during construction or in tests).
-        """
-        from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
+        Unlike the other ``of()`` APIs this one **never raises**: it falls back to
+        a bare ``Theme(mode="light")`` when no ``AppScope`` is reachable. Paint
+        code calls it on every frame — including for widgets that are deliberately
+        detached (tests, offscreen measurement) — so a raising lookup would turn a
+        cosmetic problem into a crash.
 
-        scope = None
-        try:
-            scope = context.find_ancestor(AppScope)
-        except AttributeError:
-            pass  # Widget not yet initialized (_parent not set)
+        The fallback has a sharp edge worth knowing: calling this from ``__init__``
+        silently themes the widget with the light default *forever*, because the
+        parent link needed to reach the app's theme does not exist yet. Read the
+        theme in ``on_mount()`` or at paint time instead. That premature case logs
+        a warning once per process; a genuinely detached context stays quiet.
+
+        Args:
+            context: A widget in the subtree from which to search upward.
+
+        Returns:
+            The app's current theme, or ``Theme(mode="light")`` when none is
+            reachable.
+        """
+        from nuiitivet.common.logging_once import warning_once
+        from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
+        from nuiitivet.widgeting.context_lookup import find_provider, is_premature_lookup
+
+        scope = find_provider(context, AppScope)
         if scope is None:
+            if is_premature_lookup(context):
+                warning_once(
+                    _logger,
+                    f"theme_of_before_mount:{type(context).__name__}",
+                    "Theme.of() was called on %s before it was mounted (typically from "
+                    "__init__); returning the default light theme, which will not follow "
+                    "the app's theme. Read the theme in on_mount() instead.",
+                    type(context).__name__,
+                )
             return Theme(mode="light", extensions=[])
         return scope.theme_manager.current

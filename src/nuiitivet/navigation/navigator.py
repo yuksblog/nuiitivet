@@ -8,6 +8,7 @@ import logging
 from typing import Any, Callable, ClassVar, Literal, Mapping, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
@@ -201,8 +202,18 @@ class Navigator(ComposableWidget):
 
     @classmethod
     def of(cls: type[NavigatorT], context: Widget) -> NavigatorT:
-        navigator = context.find_ancestor(cls)
+        """Return the nearest ancestor :class:`Navigator`.
+
+        Args:
+            context: A widget in the subtree from which to search upward.
+
+        Raises:
+            RuntimeError: If called before ``context`` is mounted (typically from
+                ``__init__``), or if no ``Navigator`` ancestor exists.
+        """
+        navigator = find_provider(context, cls)
         if navigator is None:
+            raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError("Navigator not found in ancestors")
         return navigator
 

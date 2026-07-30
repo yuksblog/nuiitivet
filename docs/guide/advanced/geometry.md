@@ -18,7 +18,9 @@ Two rules come with it, and they are the reason this is the advanced tool:
   `Deck` index for a structural switch.
 - **Resolve it in `on_mount`, not `__init__`.** `Geometry.of` walks the ancestor
   chain, and a widget has no ancestors until it is mounted. `build()` then just
-  references what `on_mount` derived.
+  references what `on_mount` derived. Get this wrong and the error says so — a
+  premature `of()` reports that the widget was not mounted yet, rather than
+  blaming a missing `Geometry` provider.
 
 ## One box, many readers
 
