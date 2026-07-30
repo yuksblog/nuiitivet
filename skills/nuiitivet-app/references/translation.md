@@ -104,11 +104,11 @@ a widget, not widgets in their own right.** This kills Flutter's nesting hell.
 | `alignment="baseline"` / `"fill"` (CSS) | not supported — position with `start`/`center`/`end`, size with `width`/`height` |
 | `.map((e) => Widget(e)).toList()` for dynamic lists | `nv.Column.builder(items, lambda item, i: ...)` |
 | `ListView.builder(itemBuilder: ...)` | `nv.Column.builder(...)` / `Row.builder` / `Flow.builder` |
-| `LayoutBuilder(builder: (ctx, constraints) => ...)` (Flutter) | `nv.Geometry.of(self).size` in `on_mount`, bound with `.map(...)` |
+| `LayoutBuilder(builder: (ctx, constraints) => ...)` (Flutter) | `X.modifier(nv.on_size_changed(self._on_size))` on the widget being measured |
 | `MediaQuery.of(context).size` (Flutter) | `nv.Geometry.of(self).size` — the root provider tracks the window |
-| `GeometryReader { geo in ... }` (SwiftUI) | wrap the region: `nv.Geometry(Panel(), width="100%", height="100%")` |
-| `BoxWithConstraints { maxWidth ... }` (Compose) | same — a filling `nv.Geometry` scopes the size to that region |
-| overriding `set_layout_rect` to publish a size | never needed: `Geometry` already publishes an `Observable[Size]` |
+| `GeometryReader { geo in ... }` (SwiftUI) | `nv.on_size_changed` on the region; `nv.Geometry(Panel(), width="100%")` only if a *subtree* must read it |
+| `BoxWithConstraints { maxWidth ... }` (Compose) | same — measure the filling widget with `nv.on_size_changed` |
+| overriding `set_layout_rect` to publish a size | never needed: `nv.on_size_changed` reports it, `Geometry` publishes it to a subtree |
 
 ```python
 # Correct
@@ -118,7 +118,7 @@ nv.Column.builder(self.items, lambda item, i: nv.Text(item))   # reactive list f
 ```
 
 See [layout.md](layout.md) for sizing policies, `builder()` vs `ForEach`, grids,
-and adaptive layout with `Geometry`.
+and adaptive layout with `on_size_changed`.
 
 ## Decoration & behavior (modifiers)
 

@@ -19,8 +19,7 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
 2. **UI components subclass `nv.ComposableWidget` and define `build(self)`.**
    There is no `StatelessWidget` / `StatefulWidget`, no `createState`, no
    `initState`, no `build(self, context)` signature. Create `Observable`s in
-   plain `__init__` — the one exception is a value derived from an ancestor
-   (`nv.Geometry.of(self)`), which must wait for `on_mount`.
+   plain `__init__`.
 
 3. **State is `Observable`, and the UI binds to it — never push.** Assign
    `obs.value = x` and bound widgets update automatically. There is **no**
@@ -99,7 +98,7 @@ All widgets hang off `nv`. This is the working set; every symbol is importable a
 | Override one child's cross-axis position | `CrossAligned` | `nv.CrossAligned(child, "center")` |
 | Rule / separator | `HorizontalDivider` / `VerticalDivider` | `nv.HorizontalDivider()` |
 | Dynamic list from data | `Column.builder` (also `Row`/`Stack`/`Flow`/`UniformFlow`) | `nv.Column.builder(items_obs, lambda item, i: nv.Text(item))` |
-| React to the available/measured size (responsive rail, adaptive placement) | `Geometry` | `nv.Geometry.of(self).size` — an `Observable[Size]`; wrap a region in `nv.Geometry(child, width="100%")` to scope it |
+| React to this widget's own measured size (adaptive placement, responsive reflow) | `on_size_changed` (modifier) | `X.modifier(nv.on_size_changed(self._on_size))` — reports `nv.Size` when it changes |
 
 Background, border, shadow, and clipping are **modifiers** (see the Modifier
 catalog below), not a job for `Container` — its box is layout-only.
@@ -204,11 +203,6 @@ which widget catches a click when layers overlap (default is `auto`; each takes 
 - **Drawing is on-demand** — frames repaint when state changes, not on a fixed
   loop. Bind to an `Observable`; never drive animation with a per-frame `while`
   loop or busy polling.
-- **Measured size is an `Observable`, so bind it — never override layout to get
-  it.** `nv.Geometry.of(self).size` publishes the nearest provider's measured
-  size; do not reach for a `set_layout_rect` override or any other layout hook to
-  bridge size into your own `Observable`. See **Adaptive layout with `Geometry`**
-  in [references/layout.md](references/layout.md).
 
 ## Workflow
 
@@ -245,8 +239,7 @@ day-to-day nuiitivet code is here, offline.
   [references/state.md](references/state.md) — Observable, `combine`/`compute`,
   `map`/`debounce`, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
-  [references/layout.md](references/layout.md) — also adaptive/responsive layout
-  with `Geometry`.
+  [references/layout.md](references/layout.md).
 - **Navigation, dialogs, snackbars, overlays** →
   [references/navigation.md](references/navigation.md) — Navigator, Intent-based
   routing, Overlay.

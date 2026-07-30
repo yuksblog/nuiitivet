@@ -2,6 +2,29 @@
 
 Other modifiers provide additional functionalities to Widgets, such as handling back navigation.
 
+## On Size Changed
+
+`on_size_changed` reports the widget's own measured size — an `nv.Size` with `.width` / `.height` — after every layout that changed it. It is how a component adapts to the space its parent gave it, which `build()` cannot see.
+
+```python
+class Panel(nv.ComposableWidget):
+    def __init__(self) -> None:
+        super().__init__(width=nv.Sizing.flex(1), height=nv.Sizing.flex(1))
+        self._wide = nv.Observable(False)
+
+    def _on_size(self, size: nv.Size) -> None:
+        self._wide.value = size.width >= 600
+
+    def build(self) -> nv.Widget:
+        return nv.Column([...]).modifier(nv.on_size_changed(self._on_size))
+```
+
+Like the lifecycle modifiers it registers on the widget itself and adds no node to the tree. It fires once with the first measurement, then only when the size actually changed — a widget that is merely moved, or re-laid-out at the same size, is silent.
+
+The callback is dispatched **between frames**, never inside the layout pass, so it may safely write Observables, push routes, or replace children; the effect lands on the next frame. Two consequences: do not resize the measured widget from its own callback, or the report can feed back; and the first call arrives after the first paint, so give the Observable the value the initial size implies to avoid a one-frame transition on startup.
+
+See [Adaptive Layout](../layout/adaptive.md) for the full pattern, and [Geometry](../advanced/geometry.md) for the case where a *subtree* needs an ancestor's size.
+
 ## Will Pop
 
 You can handle back navigation (e.g., pressing the Esc key) using the `will_pop` modifier. It takes an `on_will_pop` callback that returns a boolean indicating whether pop should be allowed.

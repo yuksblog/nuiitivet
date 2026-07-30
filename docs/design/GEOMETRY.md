@@ -55,20 +55,52 @@ nuiitivet's frame pipeline is strictly **build → layout → paint**, and build
 
 A container's measured size is known only during the layout phase. When
 `Geometry` publishes a changed size during layout, it writes to an `Observable`.
-That write marks the widgets bound to it dirty and schedules the **next** frame;
-the bound widgets re-bind in the next frame's build/flush phase — never
+The **recomposition** that write triggers is queued, not run: dependent scopes
+are rebuilt when the next frame flushes them, so no subtree is rebuilt
 mid-layout.
 
 ```text
 frame N   : layout → Geometry measures → size changed → Observable.set()
-            → bound widgets marked dirty → next frame requested
-frame N+1 : flush bindings (apply new size to bound widgets) → layout → paint
+            → dependent scopes queued dirty → next frame requested
+frame N+1 : flush bindings/scopes (rebuild dependents) → layout → paint
 ```
 
-This is the key result: **because binding flush and layout are serialized across
-frames, an Observable write during layout is naturally deferred.** The one-frame
-latency is imperceptible. This sidesteps the layout-time re-entrancy hazard that a
-synchronous, build-during-layout `LayoutBuilder` would expose to callers.
+This is the key result: **because scope recomposition and layout are serialized
+across frames, a rebuild driven from layout is naturally deferred.** That is what
+sidesteps the layout-time re-entrancy hazard a synchronous,
+build-during-layout `LayoutBuilder` would expose to callers.
+
+### 3.1 What is *not* deferred — a known deviation
+
+Only recomposition defers. The write itself propagates **synchronously**: a
+`bind_to` setter runs immediately, and a lazy reader such as `Text`'s label
+resolution picks up the new value the moment it is asked. So within one layout
+pass, a widget measured *before* the publishing `Geometry` measures against the
+old value while a widget measured after it sees the new one.
+
+That is a state change with side effects during layout, which
+[RENDERING_PIPELINE.md](RENDERING_PIPELINE.md) §2 forbids for `layout()`
+("except for storing layout results"). It is observable, not theoretical. A
+`Text` bound to the size and laid out *ahead* of the `Geometry` in the same
+`Column`:
+
+```text
+pass 1 -> label rect (0, 0, 103, 16)      # measured for "width is 0 pixels"
+          label text 'width is 400 pixels'  (preferred width 119)
+pass 2 -> label rect (0, 0, 119, 16)
+```
+
+Frame N paints a 119px string in a box measured at 103px. It self-heals — the
+write also marks the tree dirty and requests a frame, so frame N+1 measures
+correctly — but frame N is torn.
+
+This is a deviation the initial cut (#431) shipped with, not a property to build
+on. Nothing in this document should be read as endorsing a layout-phase
+`Observable` write; §11's push path deliberately avoids needing one.
+
+Tracked in **#466**, which also covers `ScrollViewport` — it publishes scroll
+metrics from `layout()` the same way, so the resolution is a protocol-level
+decision rather than a fix local to `Geometry`.
 
 ## 4. API
 
@@ -217,10 +249,10 @@ path without an API break. `Geometry` remains the special (C) provider that
 - `App.window_size` context-free `Observable` for code outside the widget tree
   (e.g. view-models that cannot call `.of(context)`). Not needed for the initial
   cut; revisit on demand.
-- A side-effect callback modifier (`on_resized`) for reacting to a resize without
-  a subtree rebuild — considered and **deferred**; the declarative
+- ~~A side-effect callback modifier (`on_resized`) for reacting to a resize
+  without a subtree rebuild — considered and **deferred**; the declarative
   `Geometry.of(context)` covers the primary use case. Reconsider if a concrete
-  need appears.
+  need appears.~~ **Shipped as `on_size_changed` (#460)** — see §11.
 - General-purpose environment mechanism for families (A)/(B) — see §8.
 
 ## 10. Design decisions summary
@@ -241,3 +273,74 @@ path without an API break. `Geometry` remains the special (C) provider that
   resize plumbing — it measures the window through the normal layout pass.
 - **One-frame-deferred reactivity is acceptable.** Imperceptible, and it is what
   makes the layout-time write re-entrancy-free.
+
+## 11. `on_size_changed` (#460): the push counterpart
+
+The deferral in §9 was argued on *performance* grounds ("react without a subtree
+rebuild"), and the declarative read did cover the use cases on the table. The
+need that reopened it is ergonomic: when the size is consumed *imperatively* — a
+ViewModel input, or a plain `Observable` the widget owns — `Geometry.of()`'s pull
+semantics buy nothing while still charging the `on_mount` timing rule, the
+subscription disposal, and the provider-scope concept.
+
+`on_size_changed(callback)` reports a widget's own measured `Size` back to that
+widget. Division of labour:
+
+| | Use for |
+| --- | --- |
+| `on_size_changed` | **Push / self.** Measurer and consumer are the same widget. |
+| `Geometry` | **Pull / scope.** Descendants at arbitrary depth read an ancestor's size without the widgets in between knowing. |
+
+`Geometry` therefore stays the mechanism for #457 (MD3 window size class), which
+is inherently a provider problem — many widgets read one scoped value — and
+cannot be expressed by push. The docs invert the emphasis: `on_size_changed` is
+the default answer in `docs/guide/layout/adaptive.md`, and `Geometry` moved to
+`docs/guide/advanced/geometry.md`.
+
+**It is not a provider**, so §10's "widget, not modifier, for the provider"
+decision still holds: it creates no scope and is not resolvable via `.of()`. Like
+`on_mount` / `on_unmount` it does not wrap the target — the callback is
+registered on the widget itself and no node is added to the tree.
+
+**Dispatch is between frames, not during layout**, and unlike `Geometry` the push
+path needs no exemption from the layout protocol to get there. A size callback is
+arbitrary user code that may mutate the tree, so `set_layout_rect` does two
+things only: it stores `_layout_rect` — a layout result, which
+[RENDERING_PIPELINE.md](RENDERING_PIPELINE.md) §2 explicitly allows — and appends
+the measurement to a framework-internal queue
+(`widgeting/widget_size_change.py`). Nothing in the tree is mutated and no
+`Observable` is written during layout, so §3.1's tearing has no analogue here.
+`App._render_frame` drains the queue at the start of the next frame, before the
+build flush, and the effect lands one frame after the measurement.
+
+The one side effect the layout pass does keep is a frame request: queuing calls
+`invalidate()`, because a draw-on-demand app would otherwise never reach the
+flush and the callback would never run. That schedules a frame without altering
+any measurement, and `mark_needs_layout()` already does the same from inside
+layout.
+
+An in-frame dispatch (after layout, before paint) was implemented and rejected.
+It removed the latency and made a one-shot `render_to_png` correct, but it
+created a frame phase the framework does not otherwise have — recomposition and
+mounting on an already-laid-out tree — to serve a tooling concern. Snapshots
+instead settle explicitly at the entry point
+(`App._settle_pending_size_changes`, capped by `_MAX_SNAPSHOT_SETTLE_PASSES`),
+which simulates the frames an interactive app would have drawn. A `Geometry`
+sample can look correct in a one-shot render without that help, but only because
+of §3.1 — that is the deviation showing through, not a reason to copy it.
+
+Contract details: the queue is keyed by widget and holds the *latest*
+measurement, so several layout passes in one frame report once; the report
+carries size only, so a widget that merely moves is silent; an equal size is
+de-duped (§6.1's guard, per widget rather than per Observable); and the callback
+fires once with the first measurement, so it alone can seed the state it drives.
+
+Because that first call lands *after* the first paint, an `Observable` seeded
+with a value the initial size does not imply produces one transition on startup
+(the de-dupe absorbs it when the seed matches). This is documented rather than
+special-cased: an eager first dispatch would mean two dispatch rules for one
+feature, and the mitigation is a sensible initial value in app code.
+
+Oscillation is bounded by the frame: a callback that resizes what it measures
+advances one step per frame rather than spinning, which is the §6 guarantee
+restated for the push path.
