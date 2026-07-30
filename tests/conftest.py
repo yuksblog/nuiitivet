@@ -48,6 +48,35 @@ warnings.filterwarnings(
 
 
 @pytest.fixture(autouse=True)
+def cancel_pending_clock_callbacks():
+    """Leave no scheduled clock callback behind at the end of a test.
+
+    With no backend running, ``runtime.clock`` is the fallback
+    ``_ThreadClock``, which fires callbacks on background threads. A widget
+    that schedules a delayed callback — an Overlay auto-dismiss timeout, a
+    tooltip delay — and is never torn down leaves that timer armed for the
+    rest of the session. It then fires in the middle of some *later*,
+    unrelated test, mutating process-global widget state and logging an
+    ``assert_ui_thread`` failure into that test's ``caplog``. See #468.
+
+    Clocks installed by a test (the ``_FakeClock`` pattern) have no timers to
+    cancel and simply do not provide ``cancel_all``.
+    """
+    from nuiitivet.observable import runtime
+
+    def _cancel() -> None:
+        cancel_all = getattr(runtime.clock, "cancel_all", None)
+        if cancel_all is not None:
+            cancel_all()
+
+    _cancel()
+    try:
+        yield
+    finally:
+        _cancel()
+
+
+@pytest.fixture(autouse=True)
 def reset_app_roots():
     """Restore the process-global root Overlay/Navigator around every test.
 
