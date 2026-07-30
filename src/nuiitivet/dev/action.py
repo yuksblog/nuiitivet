@@ -108,24 +108,43 @@ def settle(app: Any) -> None:
     """
     from nuiitivet.widgeting.widget_binding import flush_binding_invalidations
     from nuiitivet.widgeting.widget_builder import flush_scope_recompositions
+    from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
-    try:
-        flush_binding_invalidations()
-    except Exception:
-        logger.debug("settle: flush_binding_invalidations failed", exc_info=True)
-    try:
-        flush_scope_recompositions()
-    except Exception:
-        logger.debug("settle: flush_scope_recompositions failed", exc_info=True)
+    def _flush_reactive() -> None:
+        try:
+            flush_binding_invalidations()
+        except Exception:
+            logger.debug("settle: flush_binding_invalidations failed", exc_info=True)
+        try:
+            flush_scope_recompositions()
+        except Exception:
+            logger.debug("settle: flush_scope_recompositions failed", exc_info=True)
+
+    def _layout(root: Any) -> None:
+        try:
+            root.layout(int(app.width), int(app.height))
+            root.clear_needs_layout()
+        except Exception:
+            logger.debug("settle: layout pass failed", exc_info=True)
+
+    _flush_reactive()
 
     root = getattr(app, "root", None)
     if root is None:
         return
+    _layout(root)
+
+    # A size callback fires only after layout has measured its widget, so the
+    # state it drives is one pass behind. Run that pass here too, otherwise the
+    # following describe_tree observes the pre-callback tree.
     try:
-        root.layout(int(app.width), int(app.height))
-        root.clear_needs_layout()
+        flush_size_change_callbacks()
     except Exception:
-        logger.debug("settle: layout pass failed", exc_info=True)
+        logger.debug("settle: flush_size_change_callbacks failed", exc_info=True)
+    _flush_reactive()
+    root = getattr(app, "root", None)
+    if root is not None:
+        _layout(root)
 
     # Request a real repaint so the on-screen frame reflects the action too.
     try:

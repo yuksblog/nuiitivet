@@ -6,7 +6,8 @@
 
 from __future__ import annotations
 
+from nuiitivet.rendering.size import Size
+
 from .geometry import Geometry
-from .size import Size
 
 __all__ = ["Geometry", "Size"]
