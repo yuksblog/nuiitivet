@@ -71,40 +71,75 @@ Use `nv.Sizing` for flexible/auto sizing rather than hardcoding when a widget
 should fill or hug its content: `nv.Sizing.auto()`, `nv.Sizing.fixed(n)`,
 `nv.Sizing.flex()`, e.g. `width=nv.Sizing.flex()`.
 
-## Adaptive layout with `Geometry`
+## Adaptive layout with `on_size_changed`
 
-To reflow on how much space a region actually has, read `nv.Geometry` — it
-measures its own box and publishes it to its subtree as an `Observable[Size]`
-(`.width` / `.height`). There **is** a reactive size API; do not override
-`set_layout_rect` or any other layout hook to bridge size into an Observable.
+To reflow on how much space a widget actually has, attach
+`nv.on_size_changed(cb)` — it reports that widget's own measured `nv.Size`
+(`.width` / `.height`) after every layout that changed it. There **is** a size
+API; do not override `set_layout_rect` or any other layout hook to bridge size
+into an Observable.
 
 ```python
 class Panel(nv.ComposableWidget):
-    def on_mount(self) -> None:
-        size = nv.Geometry.of(self).size                       # Observable[Size]
-        self._index = size.map(lambda s: 1 if s.width >= s.height else 0)
-        super().on_mount()
+    def __init__(self) -> None:
+        # Filling sizing: measure the space offered, not the content's size.
+        super().__init__(width=nv.Sizing.flex(), height=nv.Sizing.flex())
+        self._index = nv.Observable(0)                          # plain __init__
+
+    def _on_size(self, size: nv.Size) -> None:
+        self._index.value = 1 if size.width >= size.height else 0
 
     def build(self) -> nv.Widget:
-        return nv.Deck(children=[portrait, landscape], index=self._index)
+        return nv.Deck(
+            children=[portrait, landscape], index=self._index
+        ).modifier(nv.on_size_changed(self._on_size))
+```
+
+- **No lifecycle override, no `Geometry`, no subscription.** The callback is
+  attached to the widget itself (like `on_mount`, it adds no node to the tree),
+  so the Observables it drives are created in a plain `__init__`.
+- **It fires once with the first measurement**, so the callback alone seeds the
+  state it drives. After that it fires only on an actual size change; a widget
+  that merely moves is silent.
+- **Give the Observable the value the initial size implies.** The first report
+  arrives one frame after the first paint, so a mismatched seed shows one frame
+  of the other layout (and animates); a matching seed de-dupes and is silent.
+- **Measure something the parent sizes** (`flex` / `"100%"`), otherwise the
+  widget measures its own content.
+- **Don't resize the measured widget from its own callback** — that can
+  oscillate. Change what is *inside* the measured box.
+- This is also how to feed a **two-way** input such as
+  `NavigationRail.expanded`, which its own menu button writes and so needs a
+  plain mutable `Observable`.
+
+The callback is dispatched between frames, never inside layout, so it may safely
+mutate the tree; the effect lands on the next frame.
+
+### When to use `Geometry` instead
+
+`on_size_changed` tells a widget about its *own* size. Use `nv.Geometry` when the
+widget that needs the size is a different one: **something nested at arbitrary
+depth reacting to an ancestor's box**, without the widgets in between passing it
+through.
+
+```python
+class Badge(nv.ComposableWidget):
+    def on_mount(self) -> None:
+        size = nv.Geometry.of(self).size                        # Observable[Size]
+        self._label = size.map(lambda s: f"{s.width}px")
+        super().on_mount()
+
+nv.Geometry(Pane(), width="100%", height="100%")   # filling: defines the scope
 ```
 
 - **Resolve in `on_mount`, not `__init__`.** `Geometry.of(self)` walks the
-  ancestor chain, which does not exist yet in `__init__`. Deriving there also
-  builds the mapped Observable once; `build()` only references it.
-- **Bind it; don't read `.value` in `build()`.** Same rule as any Observable —
-  a `.value` read at build time is a one-time snapshot that never updates.
-- **For a side effect rather than a binding, use `self.observe(size, cb)`.** It
-  applies the current value immediately, subscribes, and disposes on unmount.
-  Do not hand-roll `subscribe()` plus an `on_unmount` override. This is also how
-  to feed a **two-way** input such as `NavigationRail.expanded`, which its own
-  menu button writes and so needs a plain mutable `Observable`, not a `.map`.
+  ancestor chain, which does not exist yet in `__init__`.
+- **Bind it; don't read `.value` in `build()`.** A `.value` read at build time is
+  a one-time snapshot that never updates.
 - **Nearest provider wins.** The app installs a root `Geometry` at the window, so
-  a top-level read tracks the window. To scope to a region instead, wrap it in a
-  **filling** `Geometry`: `nv.Geometry(Panel(), width="100%", height="100%")`.
-
-The size is published on the frame after layout — one frame of latency, never
-re-entrant mid-layout.
+  a top-level read tracks the window.
+- Measured during layout; a consumer that has to rebuild does so on the next
+  frame.
 
 ## Dynamic lists
 

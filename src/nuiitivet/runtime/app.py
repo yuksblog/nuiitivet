@@ -14,6 +14,7 @@ from .pointer import PointerCaptureManager
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
 from ..widgeting.widget_binding import flush_binding_invalidations
 from ..widgeting.widget_builder import flush_scope_recompositions
+from ..widgeting.widget_size_change import flush_size_change_callbacks
 
 from ..rendering.skia import make_raster_surface, require_skia, rgba_to_skia_color, save_png
 from ..theme.manager import ThemeManager
@@ -648,7 +649,13 @@ class App:
             exception_once(logger, "app_del_unsubscribe_title_exc", "_unsubscribe_title_updates raised in __del__")
 
     def render_to_png(self, path: str):
-        img = self._render_snapshot(scale=1.0)
+        """Render the current UI to a PNG file.
+
+        Settles first: an interactive app reaches its final layout over the next
+        frame or two (see :meth:`_settle_pending_size_changes`), which a single
+        render would otherwise never draw.
+        """
+        img = self._render_snapshot(scale=1.0, settle=True)
         save_png(img, path)
 
     def _background_uses_theme(self) -> bool:
@@ -768,7 +775,34 @@ class App:
             exception_once(logger, "app_title_unsubscribe_exc", "title disposable.dispose raised")
         self._title_disposable = None
 
-    def _mount_paint_unmount(self, canvas, x: int, y: int, w: int, h: int) -> None:
+    # Cap on how many frames' worth of settling a one-shot render simulates. A
+    # callback that resizes what it measures would otherwise never converge.
+    _MAX_SNAPSHOT_SETTLE_PASSES = 3
+
+    def _settle_pending_size_changes(self, w: int, h: int) -> None:
+        """Drive queued size callbacks to completion for a one-shot render.
+
+        Size callbacks are dispatched *between* frames, so an effect one produces
+        lands on the frame after the layout that measured it. An interactive app
+        simply draws that frame; a single ``render_to_png`` never does and would
+        capture the pre-callback state. This runs those frames' worth of work in
+        place, while the root is mounted so no queued report is dropped.
+
+        Snapshot-only: the live frame loop must not run user callbacks between
+        layout and paint. See :meth:`_render_frame`.
+        """
+        root = self.root
+        if root is None:
+            return
+        for _ in range(self._MAX_SNAPSHOT_SETTLE_PASSES):
+            if not flush_size_change_callbacks():
+                return
+            flush_binding_invalidations()
+            flush_scope_recompositions()
+            root.layout(w, h)
+            root.clear_needs_layout()
+
+    def _mount_paint_unmount(self, canvas, x: int, y: int, w: int, h: int, *, settle: bool = False) -> None:
         """Temporarily mount the root widget, paint it, then unmount.
 
         All exceptions are converted to warnings to avoid crashing render
@@ -798,6 +832,8 @@ class App:
                     self.root.clear_needs_layout()
                 except Exception as e:
                     warnings.warn(f"root.clear_needs_layout() failed: {e}", RuntimeWarning, stacklevel=2)
+            if settle:
+                self._settle_pending_size_changes(w, h)
         except Exception as e:
             warnings.warn(f"root.layout() failed: {e}", RuntimeWarning, stacklevel=2)
 
@@ -848,13 +884,13 @@ class App:
         Uses `self._scale` when available to generate a high-DPI image.
         """
         scale = max(1.0, float(getattr(self, "_scale", 1.0)))
-        img = self._render_snapshot(scale=scale)
+        img = self._render_snapshot(scale=scale, settle=True)
         data = img.encodeToData()
         if data is None:
             raise RuntimeError("encodeToData() returned None (failed to encode image)")
         return bytes(data)
 
-    def _render_snapshot(self, scale: float = 1.0, *, for_display: bool = False):
+    def _render_snapshot(self, scale: float = 1.0, *, for_display: bool = False, settle: bool = False):
         """Create a Skia image snapshot for the current root at given scale.
 
         Returns an image object. Raises RuntimeError if Skia is missing or
@@ -866,6 +902,10 @@ class App:
                 on-screen window (the CPU/raster frame path), so the human-only
                 dev action overlay is painted over it. Screenshot callers leave
                 this ``False`` so the overlay never leaks into ``screenshot``.
+            settle: When ``True`` this is a one-shot capture, so run the reactive
+                work that the next frames would have done (see
+                :meth:`_settle_pending_size_changes`). Live frame paths leave it
+                ``False``; there, the next frame does that work as usual.
         """
         try:
             flush_binding_invalidations()
@@ -902,7 +942,7 @@ class App:
                 exception_once(logger, "app_snapshot_evaluate_build_exc", "root.evaluate_build raised")
 
         try:
-            self._mount_paint_unmount(canvas, 0, 0, self.width, self.height)
+            self._mount_paint_unmount(canvas, 0, 0, self.width, self.height, settle=settle)
         except Exception:
             exception_once(logger, "app_snapshot_mount_paint_unmount_exc", "_mount_paint_unmount raised")
 
@@ -1548,6 +1588,14 @@ class App:
         window = self._window
         if window is None or getattr(window, "has_exit", False):
             return
+        # Size callbacks queued by the previous frame's layout run first, so the
+        # Observables they write are picked up by the build flush below and land
+        # in this frame. Between frames is the only safe point for them: they are
+        # arbitrary user code, and layout must never be re-entered from within.
+        try:
+            flush_size_change_callbacks()
+        except Exception:
+            exception_once(logger, "app_flush_size_change_callbacks_exc", "flush_size_change_callbacks failed")
         try:
             flush_binding_invalidations()
         except Exception:

@@ -17,6 +17,7 @@ from .pointer_input import pointer_input
 from .popup import modeless, light_dismiss
 from .tooltip import tooltip
 from .shadow import shadow
+from .size_changed import on_size_changed
 from .stick import stick
 from .transform import opacity, rotate, scale, translate
 from .visible import visible
@@ -37,6 +38,7 @@ __all__ = [
     "key_shortcut",
     "keyed",
     "on_mount",
+    "on_size_changed",
     "on_unmount",
     "passthrough_pointer",
     "pointer_input",

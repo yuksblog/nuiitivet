@@ -43,3 +43,4 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 - [Async & Threading](advanced/threading.md)
 - [Interaction](advanced/interaction_region.md)
+- [Geometry: scoped measured size](advanced/geometry.md)

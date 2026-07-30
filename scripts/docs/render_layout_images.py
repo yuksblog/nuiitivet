@@ -58,9 +58,10 @@ SAMPLES = [
     ("samples/layout/extras/spacer_flex_demo.py", "layout_extras_spacer.png"),
     ("samples/layout/extras/container_demo.py", "layout_extras_container.png"),
     ("samples/layout/extras/collapsible.py", "layout_extras_collapsible.png"),
-    # Adaptive (Geometry)
-    ("samples/layout/adaptive/window_scoped.py", "layout_adaptive_window.png"),
-    ("samples/layout/adaptive/container_scoped.py", "layout_adaptive_container.png"),
+    # Adaptive (on_size_changed)
+    ("samples/layout/adaptive/adaptive_toolbar.py", "layout_adaptive_toolbar.png"),
+    # Advanced
+    ("samples/advanced/geometry/scoped_size.py", "advanced_geometry_scoped_size.png"),
     # Dialogs
     ("samples/overlay/dialogs/basic_usage.py", "dialogs_basic_usage.png"),
     ("samples/overlay/dialogs/custom_dialog.py", "dialogs_custom_dialog.png"),

@@ -12,7 +12,6 @@ from .container import Container
 from .gap import normalize_gap
 from .layout_utils import expand_layout_children
 
-
 logger = logging.getLogger(__name__)
 
 GridIndex = Union[int, Sequence[int]]
@@ -141,8 +140,11 @@ class Grid(Widget):
 
         Args:
             children: List of GridItems to display.
-            rows: List of row sizes (e.g. [100, "1fr", "auto"]).
-            columns: List of column sizes.
+            rows: One track size per row: an ``int`` for fixed pixels, ``"auto"``
+                to fit the row's content, or a percentage such as ``"100%"`` to
+                share the leftover space.
+                Example: ``[60, "100%", "auto"]``.
+            columns: One track size per column; same forms as ``rows``.
             width: Grid container width.
             height: Grid container height.
             padding: Padding around the grid content.

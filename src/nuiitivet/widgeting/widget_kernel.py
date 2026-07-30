@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple, TypeAlias, Union
+from typing import Any, List, Optional, Tuple, TypeAlias, Union
 
 from ..common.logging_once import exception_once
 from ..rendering.padding import PaddingLike, parse_padding
+from ..rendering.size import Size
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
+from .widget_size_change import SizeCallback, invoke_size_callback, queue_size_change
 from nuiitivet.observable.protocols import ObservableBase
 
 
@@ -23,6 +25,10 @@ class WidgetKernel:
     _parent: Optional["WidgetKernel"]
     _last_rect: Optional[Rect]
     _layout_rect: Optional[Rect]
+    # ``None`` until a size callback is attached: every widget carries these, so
+    # the common case must not allocate a list.
+    _size_callbacks: Optional[List[SizeCallback]]
+    _reported_size: Optional[Size]
 
     def __init__(
         self,
@@ -36,6 +42,8 @@ class WidgetKernel:
         self._parent = None
         self._last_rect = None
         self._layout_rect = None
+        self._size_callbacks = None
+        self._reported_size = None
 
         # Initialize with None/default first, as properties will handle observables later
         # But properties rely on binding mixin capabilities already being initialized?
@@ -113,6 +121,10 @@ class WidgetKernel:
 
     def set_layout_rect(self, x: int, y: int, width: int, height: int) -> None:
         self._layout_rect = (int(x), int(y), int(width), int(height))
+        if self._size_callbacks:
+            # Queue only; the callbacks run after layout. Position is not part of
+            # the report, so a widget that merely moves does not fire.
+            queue_size_change(self, Size(int(width), int(height)))
 
     def clear_layout_rect(self) -> None:
         self._layout_rect = None
@@ -126,6 +138,43 @@ class WidgetKernel:
 
     def clear_last_rect(self) -> None:
         self._last_rect = None
+
+    # --- Size reporting ----------------------------------------------------
+    def add_size_callback(self, callback: SizeCallback) -> None:
+        """Register *callback* to receive this widget's own measured size.
+
+        The callback is dispatched between frames (never inline from
+        :meth:`set_layout_rect`), and only when the size actually changed. It
+        fires once with the first measurement: registering on a widget that has
+        already been laid out invokes it immediately, since registration happens
+        at build time and is therefore outside the layout pass.
+
+        Args:
+            callback: A callable taking a :class:`Size`, sync or async.
+        """
+        if self._size_callbacks is None:
+            self._size_callbacks = []
+        self._size_callbacks.append(callback)
+        rect = self._layout_rect
+        if rect is None:
+            return
+        size = Size(rect[2], rect[3])
+        if self._reported_size is None:
+            self._reported_size = size
+        invoke_size_callback(callback, size, owner_name=type(self).__name__)
+
+    def _dispatch_size_change(self, size: Size) -> bool:
+        """Deliver a queued measurement to the callbacks; report whether it ran."""
+        callbacks = self._size_callbacks
+        if not callbacks:
+            return False
+        if size == self._reported_size:
+            return False
+        self._reported_size = size
+        owner_name = type(self).__name__
+        for callback in list(callbacks):
+            invoke_size_callback(callback, size, owner_name=owner_name)
+        return True
 
     # --- Sizing helpers -------------------------------------------------
     @property

@@ -6,11 +6,10 @@ from typing import Optional, Tuple, Type, TypeVar
 
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.observable import Observable
+from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_children import ChildContainerMixin
-
-from .size import Size
 
 GeometryT = TypeVar("GeometryT", bound="Geometry")
 
@@ -42,9 +41,10 @@ class Geometry(Widget):
     ``Geometry`` provider at the window, so with no nearer ``Geometry`` a
     top-level read falls back to it and tracks the window size.
 
-    The measured size is written during the layout phase, but nuiitivet flushes
-    build (scope recomposition) *before* layout within a frame, so the write is
-    naturally deferred to the next frame's build — never re-entrant mid-layout.
+    The measured size is written during the layout phase. Scope recomposition is
+    flushed *before* layout within a frame, so a subtree that rebuilds on the size
+    does so on the next frame, never re-entrantly mid-layout. The write itself,
+    however, propagates synchronously — see ``docs/design/GEOMETRY.md`` §3.1.
     """
 
     def __init__(
