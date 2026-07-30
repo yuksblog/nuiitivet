@@ -879,7 +879,10 @@ class ToggleButtonBase(MaterialButtonBase):
         else:
             self._selected_internal = bool(selected)
 
-        effective_style = self.style
+        # Resolved through the subclass hook rather than ``self.style``: reads
+        # that run before the widget is attached must not go through an accessor
+        # that could reach for the theme, which is not resolvable yet (#473).
+        effective_style = self._resolve_style_for_selected(self.selected)
         text_color = effective_style.foreground if effective_style else ColorRole.ON_SURFACE
         height_px = _coerce_fixed_height_px(height)
 
@@ -1198,12 +1201,15 @@ class Fab(_FabBase):
                 ``FabStyle.secondary`` / ``FabStyle.tertiary`` for alternative
                 tonal colour sets.
         """
-        self._user_style: FabStyle = style if style is not None else FabStyle.primary()
+        # Held in a local for everything below ``super().__init__()``: reads that
+        # run before the widget is attached must not go through ``self.style``,
+        # which cannot reach the theme yet (issue #473).
+        effective_style: FabStyle = style if style is not None else FabStyle.primary()
+        self._user_style = effective_style
         self._user_padding = padding
-        size = self._user_style.container_height
+        size = effective_style.container_height
         self._user_height = size
 
-        effective_style = self.style
         text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
 
         child_widget = build_button_child(

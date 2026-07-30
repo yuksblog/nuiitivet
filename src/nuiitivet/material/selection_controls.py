@@ -101,7 +101,9 @@ class Checkbox(Toggleable, InteractiveWidget):
         # axis -> style only). Sourced from the resolved style's
         # ``default_touch_target``; the ``width_sizing``/``height_sizing``
         # escape hatch on the base kernel still overrides it.
-        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
+        # Read from the argument, not ``self.style``: the theme is unreachable
+        # until the widget is attached (issue #473).
+        touch_target = int(style.default_touch_target) if style is not None else 48
 
         # Resolve padding
         final_padding = padding
@@ -688,7 +690,9 @@ class RadioButton(Toggleable, InteractiveWidget):
         self._style = style
 
         # Touch-target size is style-driven (MD3 fixes the axis -> style only).
-        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
+        # Read from the argument, not ``self.style``: the theme is unreachable
+        # until the widget is attached (issue #473).
+        touch_target = int(style.default_touch_target) if style is not None else 48
 
         final_padding = padding if padding is not None else (style.padding if style is not None else 0)
         self._user_padding = padding
@@ -940,7 +944,9 @@ class Switch(Toggleable, InteractiveWidget):
         self._on_change_bool = on_change
 
         # Touch-target size is style-driven (MD3 fixes the axis -> style only).
-        touch_target = int(self._style.default_touch_target) if self._style is not None else 48
+        # Read from the argument, not ``self.style``: the theme is unreachable
+        # until the widget is attached (issue #473).
+        touch_target = int(style.default_touch_target) if style is not None else 48
 
         final_padding = padding if padding is not None else (style.padding if style is not None else 0)
 

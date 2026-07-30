@@ -524,14 +524,18 @@ class Menu(InteractiveWidget):
         """
         self.items = list(items)
         self.on_dismiss = on_dismiss
-        self.style = style or MenuStyle.standard()
+        # Held in a local for everything below ``super().__init__()``: reads that
+        # run before the widget is attached must not go through an accessor that
+        # could reach for the theme, which is not resolvable yet (issue #473).
+        effective_style = style or MenuStyle.standard()
+        self.style = effective_style
         self._autofocus = bool(autofocus)
         self._autofocus_pending = False
         self._parent_item = parent_item
         self._focus_index = -1
         self._focusable_items: list[MenuItem] = []
 
-        _shadow = md3_elevation_to_shadow(self.style.elevation)
+        _shadow = md3_elevation_to_shadow(effective_style.elevation)
 
         children = self._materialize_children()
         self._column = Column(children=children, width=Sizing.flex(), gap=0, cross_alignment="start")
@@ -539,10 +543,15 @@ class Menu(InteractiveWidget):
         super().__init__(
             child=self._column,
             on_click=None,
-            state_layer_color=self.style.state_layer_color,
-            padding=(0, self.style.container_vertical_padding, 0, self.style.container_vertical_padding),
-            background_color=self.style.background,
-            corner_radius=self.style.corner_radius,
+            state_layer_color=effective_style.state_layer_color,
+            padding=(
+                0,
+                effective_style.container_vertical_padding,
+                0,
+                effective_style.container_vertical_padding,
+            ),
+            background_color=effective_style.background,
+            corner_radius=effective_style.corner_radius,
             shadow_blur=_shadow.sigma,
             shadow_color=_shadow.color,
             shadow_offset=_shadow.offset,
