@@ -1,13 +1,30 @@
 """Layout tests for NavigationRail widget."""
 
+import logging
 from contextlib import contextmanager
 from typing import Callable, Generator
+
+import pytest
 
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.rendering.sizing import Sizing
+
+
+_RAIL_LOGGER = "nuiitivet.material.navigation_rail"
+
+
+def _rail_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    """Captured records emitted by the rail logger only.
+
+    ``caplog.at_level(..., logger=...)`` only sets a level: every record that
+    propagates to the root handler still lands in ``caplog.records``. Filtering
+    by logger name keeps warning assertions — especially the "nothing was
+    warned" one — insensitive to unrelated log output.
+    """
+    return [r for r in caplog.records if r.name == _RAIL_LOGGER]
 
 
 # ---------------------------------------------------------------------------
@@ -249,44 +266,41 @@ def test_expanded_widths_scale_with_fixed_width():
 
 def test_expanded_width_clamped_to_max_with_warning(caplog):
     """A fixed width above the max is clamped to the max and warns once."""
-    import logging
-
     from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
 
     _clear_log_once_keys_for_tests()
     items = [RailItem(icon="home", label="Home")]
-    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+    with caplog.at_level(logging.WARNING, logger=_RAIL_LOGGER):
+        caplog.clear()
         rail = NavigationRail(children=items, expanded=True, width=Sizing.fixed(500))
     assert rail._expanded_width == 360.0
-    assert any("clamped" in r.message for r in caplog.records)
+    assert any("clamped" in r.message for r in _rail_records(caplog))
 
 
 def test_expanded_width_defaults_to_min_without_warning(caplog):
     """No width (None) silently uses the minimum expanded width."""
-    import logging
-
     from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
 
     _clear_log_once_keys_for_tests()
     items = [RailItem(icon="home", label="Home")]
-    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+    with caplog.at_level(logging.WARNING, logger=_RAIL_LOGGER):
+        caplog.clear()
         rail = NavigationRail(children=items, expanded=True)
     assert rail._expanded_width == 220.0
-    assert caplog.records == []
+    assert _rail_records(caplog) == []
 
 
 def test_non_fixed_width_uses_min_and_warns(caplog):
     """A non-fixed width cannot be an expanded width: use min and warn."""
-    import logging
-
     from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
 
     _clear_log_once_keys_for_tests()
     items = [RailItem(icon="home", label="Home")]
-    with caplog.at_level(logging.WARNING, logger="nuiitivet.material.navigation_rail"):
+    with caplog.at_level(logging.WARNING, logger=_RAIL_LOGGER):
+        caplog.clear()
         rail = NavigationRail(children=items, expanded=True, width=Sizing.flex(1))
     assert rail._expanded_width == 220.0
-    assert any("not a fixed size" in r.message for r in caplog.records)
+    assert any("not a fixed size" in r.message for r in _rail_records(caplog))
 
 
 def test_expanded_widths_honor_explicit_overrides():
