@@ -107,6 +107,28 @@ class _ThreadClock:
 
         # Interval thread will exit on next loop check.
 
+    def cancel_all(self) -> None:
+        """Cancel every pending timer and stop every interval loop.
+
+        Callbacks scheduled on this fallback clock run on background threads,
+        so anything still pending fires later at an arbitrary moment — long
+        after whoever scheduled it is gone. Callbacks that touch the widget
+        tree then trip :func:`assert_ui_thread` off the UI thread, and the
+        resulting error surfaces in unrelated code. This drops the whole
+        schedule in one call, for teardown paths that must leave no timer
+        behind. Interval loops exit on their next scheduling check.
+        """
+        with self._lock:
+            timers = list(self._timers.values())
+            self._timers.clear()
+            self._intervals.clear()
+
+        for timer in timers:
+            try:
+                timer.cancel()
+            except Exception:
+                exception_once(_logger, "thread_clock_cancel_timer_exc", "Timer cancel failed")
+
 
 clock: Clock = _ThreadClock()
 
