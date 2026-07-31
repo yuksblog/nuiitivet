@@ -166,4 +166,4 @@ nv.Navigator.root().push(CartScreen())
 ```
 
 See [navigation.md](navigation.md) for Intent-based routing, nested navigation,
-and the ViewModel-friendly `IOverlay` / `INavigator` patterns.
+and the ViewModel-friendly navigator/overlay injection patterns.
