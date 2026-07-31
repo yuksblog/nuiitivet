@@ -317,10 +317,18 @@ nothing.
 #### When a resolved value has to rest on a field
 
 Some values cannot be re-derived inside a property getter: `Card` pushes its
-style onto `Box` properties, and a chip's style also determines its content
-subtree. These keep the derived visuals on fields, but **re-apply them whenever
-a fresh read differs from what was applied last**. The field is a cache of the
-pull, never a value with its own lifetime.
+style onto `Box` properties, a chip's style also determines its content subtree,
+and a button's colours become concrete RGBA endpoints for running animations.
+These keep the derived visuals on fields, but **re-apply them whenever a fresh
+read says the theme has moved**. The field is a cache of the pull, never a value
+with its own lifetime.
+
+Compare the *derived* value where you can (the chips compare `ChipStyle`).
+Compare `ThemeManager.generation` — via `theme_generation(self)` — where you
+cannot, as the buttons do because re-targeting a colour animation on every
+measure would disturb one in flight. Never compare the `Theme` object: it is
+frozen, but its `extensions` list and a `MaterialThemeData`'s `roles` dict are
+not, so a theme mutated in place and re-installed arrives on the same object.
 
 Adopting at mount *without* that re-check is exactly as broken as reading in
 `__init__`, only harder to notice: the value stops following the theme.

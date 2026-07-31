@@ -177,18 +177,37 @@ repaints on a theme change it would have repainted for anyway.
 | `ThemeManager` held a `Set[Callable]` of consumers | One `on_change` hook owned by `AppScope`; no consumer references at all |
 | `Theme.of` warned when called before mount | It raises before `super().__init__()`; a detached read resolves normally |
 
-### The write-through cache the leaves use
+### When a resolved value has to rest on a field
 
-`Card`'s style lands on `Box` properties, and a chip's style also determines its
-content subtree — neither can be re-derived inside a property getter on every
-frame. Both therefore keep the derived visuals on fields, but re-apply them
-whenever the freshly-resolved style differs from what was applied last. The
-fields are a cache of the pull, not a value with an independent lifetime, so
-rule 1 holds: nothing can go stale on its own.
+Some values cannot be re-derived inside a property getter on every frame:
+`Card`'s style lands on `Box` properties, a chip's style also picks its content
+subtree, and a button's colours become concrete RGBA endpoints for running
+animations. These keep the derived visuals on fields — but the field is a
+**cache of the pull**, re-applied whenever a fresh read says it has moved, so
+rule 1 still holds: nothing goes stale on its own.
 
-The consequence worth knowing is that a chip's pushed visuals materialise when
-it is first *measured*, not when it is mounted. In an app that is invisible,
-because layout always precedes paint.
+What "has moved" means differs, and it differs for a reason:
+
+| Widget | Re-applies when |
+| --- | --- |
+| `Card` | always — `build()` re-resolves, and rebuilding is already the theme-change path |
+| The chips | the resolved `ChipStyle` differs from the applied one |
+| The buttons | `ThemeManager.generation` has advanced |
+
+A button cannot compare the derived value the way a chip does, because
+re-targeting a colour animation on every measure would disturb one in flight.
+And it must not compare the `Theme` *object*: `Theme` is frozen, but its
+`extensions` list and a `MaterialThemeData`'s `roles` dict are not, so a theme
+mutated in place and re-installed is a real change arriving on the same object.
+The generation counter moves regardless, which is what it exists for.
+
+Two consequences worth knowing:
+
+- A chip's pushed visuals materialise when it is first *measured*, not when it
+  is mounted. In an app that is invisible: `mark_needs_layout` propagates to the
+  root, and the frame runs layout before paint.
+- A button's held RGBA is the one value in the framework that a stale read
+  cannot self-correct. That is why its freshness check is the strict one.
 
 ## Reads outside build, layout and paint
 
@@ -259,3 +278,4 @@ future work, not a rewrite.
 | Attributing a read to the building host | `evaluate_build` in `nuiitivet/widgeting/widget_builder.py` |
 | Turning a theme change into invalidation | `AppScope._on_theme_changed` in `nuiitivet/runtime/app.py` |
 | The single owner hook and the generation counter | `nuiitivet/theme/manager.py` |
+| Reading that counter from a widget | `theme_generation` in `nuiitivet/theme/dependency.py` |
