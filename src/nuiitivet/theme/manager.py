@@ -1,17 +1,22 @@
 """Theme manager.
 
 Responsibilities:
-- Keep track of the active ``Theme`` instance and notify subscribers when
-    it changes.
+- Keep track of the active ``Theme`` instance and tell its owner when it
+    changes.
 
-Public API provided here focuses on applying themes and on
-subscription management. Theme construction and color algorithms belong in
-``material_theme.py``.
+Theme construction and color algorithms belong in ``material_theme.py``.
+
+There is deliberately **no subscriber registry** here. Widgets do not subscribe
+to the theme; they read it, and the read registers a dependency that the
+framework invalidates (``nuiitivet/theme/dependency.py``). The single
+:attr:`on_change` hook belongs to the provider that owns this manager -- the
+``AppScope`` -- and is what drives that invalidation. See
+``docs/design/THEME_CONSUMPTION.md``.
 """
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Set
+from typing import Callable, Optional
 import logging
 import threading
 
@@ -21,15 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 class ThemeManager:
-    """Holds the current Theme and notifies subscribers on changes."""
+    """Holds the current Theme and notifies its owner on changes."""
 
     def __init__(
         self,
         initial: Optional[Theme] = None,
     ) -> None:
-        self._subscribers: Set[Callable[[Theme], None]] = set()
         self._lock = threading.RLock()
         self._current = initial
+        self._generation = 0
+        #: Set by the owning provider. Not a subscriber list: exactly one owner.
+        self.on_change: Optional[Callable[[Theme], None]] = None
 
     @property
     def current(self) -> Theme:
@@ -38,23 +45,31 @@ class ThemeManager:
                 self._current = Theme(mode="light", extensions=[])
             return self._current
 
+    @property
+    def generation(self) -> int:
+        """Count of theme changes so far.
+
+        Bumped before :attr:`on_change` runs, so anything deriving a value from
+        the theme can tell whether what it holds is still current.
+        """
+        return self._generation
+
     def set_theme(self, theme: Theme) -> None:
+        """Replace the current theme and notify the owner.
+
+        Args:
+            theme: The theme to make current.
+        """
         with self._lock:
             self._current = theme
-            subscribers = list(self._subscribers)
-        for subscriber in subscribers:
-            try:
-                subscriber(theme)
-            except Exception:
-                logger.exception("subscriber in ThemeManager raised")
-
-    def subscribe(self, fn: Callable[[Theme], None]) -> None:
-        with self._lock:
-            self._subscribers.add(fn)
-
-    def unsubscribe(self, fn: Callable[[Theme], None]) -> None:
-        with self._lock:
-            self._subscribers.discard(fn)
+            self._generation += 1
+            handler = self.on_change
+        if handler is None:
+            return
+        try:
+            handler(theme)
+        except Exception:
+            logger.exception("ThemeManager.on_change handler raised")
 
 
 __all__ = ["ThemeManager"]

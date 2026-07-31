@@ -3,6 +3,10 @@ from nuiitivet.rendering.background_renderer import BackgroundRenderer
 
 class DummyOwner:
     def __init__(self):
+        # Stands in for a Widget: ``Theme.of`` needs the parent link to exist
+        # before it will resolve rather than report a half-constructed widget.
+        self._parent = None
+        self._mounted = False
         self.bgcolor = "#ffffff"
         self.corner_radii = None
         self.corner_radius = None

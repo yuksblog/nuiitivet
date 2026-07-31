@@ -18,15 +18,11 @@ def test_manager_set_theme_manual_toggle():
     assert mgr.current == light_theme
 
 
-def test_manager_subscription():
-    """Test that subscribers are notified when theme changes."""
+def test_manager_notifies_its_owner():
+    """The owning provider -- not the widgets -- is told about a theme change."""
     mgr = ThemeManager()
     notifications = []
-
-    def on_theme_change(new_theme):
-        notifications.append(new_theme)
-
-    mgr.subscribe(on_theme_change)
+    mgr.on_change = notifications.append
 
     new_theme = MaterialThemeFactory.light("#000000")
     mgr.set_theme(new_theme)
@@ -34,4 +30,13 @@ def test_manager_subscription():
     assert len(notifications) == 1
     assert notifications[0] == new_theme
 
-    mgr.unsubscribe(on_theme_change)
+
+def test_manager_bumps_its_generation_on_every_change():
+    """The counter lets anything derived from the theme tell it has moved."""
+    mgr = ThemeManager()
+    start = mgr.generation
+
+    mgr.set_theme(MaterialThemeFactory.light("#000000"))
+    mgr.set_theme(MaterialThemeFactory.light("#111111"))
+
+    assert mgr.generation == start + 2

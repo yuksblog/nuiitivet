@@ -91,27 +91,31 @@ def test_geometry_of_resolves_after_attach() -> None:
     assert Geometry.of(child) is geometry
 
 
-def test_theme_of_before_mount_warns_once_and_falls_back(caplog) -> None:
-    # The once-per-process key is derived from the widget type, so this test owns
-    # its own type: a plain Widget's key may already be spent by another test.
+def test_theme_of_on_an_unattached_widget_falls_back_quietly(caplog) -> None:
+    """Measuring a widget outside an App is legitimate, not a mistake.
+
+    A constructed-but-unattached widget is indistinguishable at runtime from a
+    widget being measured offscreen, so this resolves the light default rather
+    than raising or warning. Under a pull the fallback is self-correcting: the
+    next read, once the widget is attached, sees the real theme.
+    """
+
     class _ThemeProbe(Widget):
         pass
 
     with caplog.at_level(logging.WARNING, logger="nuiitivet.theme.theme"):
-        first = Theme.of(_ThemeProbe())
-        second = Theme.of(_ThemeProbe())
+        theme = Theme.of(_ThemeProbe())
 
-    assert first.mode == "light"
-    assert second.mode == "light"
-    warnings = [r for r in caplog.records if "before it was mounted" in r.getMessage()]
-    assert len(warnings) == 1
-    assert "on_mount" in warnings[0].getMessage()
+    assert theme.mode == "light"
+    assert caplog.records == []
 
 
-def test_theme_of_before_super_init_falls_back_without_raising() -> None:
-    probe = _EarlyLookup(Theme.of)
-
-    assert probe.result.mode == "light"
+def test_theme_of_before_super_init_raises() -> None:
+    """No ``_parent`` attribute at all can only mean one thing: still in
+    ``__init__``. There is no chain to resolve against and no identity to hang a
+    dependency on, so the call is undefined rather than merely early."""
+    with pytest.raises(RuntimeError, match=r"before super\(\)\.__init__\(\)"):
+        _EarlyLookup(Theme.of)
 
 
 def test_theme_of_attached_but_detached_tree_stays_quiet(caplog) -> None:

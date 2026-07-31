@@ -16,6 +16,7 @@ from typing import Any, Final, Optional, Type, TypeVar
 __all__ = [
     "find_provider",
     "is_premature_lookup",
+    "is_uninitialized_context",
     "premature_lookup_message",
     "raise_if_premature_lookup",
 ]
@@ -71,6 +72,24 @@ def is_premature_lookup(context: Any) -> bool:
     if parent is not None:
         return False
     return not bool(getattr(context, "_mounted", False))
+
+
+def is_uninitialized_context(context: Any) -> bool:
+    """Return whether ``context`` has no parent link *attribute* at all.
+
+    The strict subset of :func:`is_premature_lookup` that can only mean one
+    thing: the lookup ran before ``super().__init__()``, so the widget is still
+    mid-construction. Unlike the broader predicate this cannot be confused with
+    a fully built widget that simply has not been attached yet -- which is a
+    legitimate state for offscreen measurement and for tests.
+
+    Args:
+        context: The widget the lookup started from.
+
+    Returns:
+        ``True`` if ``context`` has not run ``Widget.__init__`` yet.
+    """
+    return getattr(context, "_parent", _MISSING) is _MISSING
 
 
 def premature_lookup_message(api: str, context: Any) -> str:

@@ -50,6 +50,7 @@ from nuiitivet.layout.container import Container
 if TYPE_CHECKING:
     from nuiitivet.navigation.navigator import Navigator
     from nuiitivet.overlay.overlay import Overlay
+    from nuiitivet.theme.theme import Theme
 
 
 logger = logging.getLogger(__name__)
@@ -87,13 +88,51 @@ class AppProxy:
 
 
 class AppScope(Widget):
-    """Inherited widget that provides access to the App instance."""
+    """Inherited widget that provides access to the App instance.
+
+    Also the theme provider: ``Theme.of`` resolves against the nearest one of
+    these, and a theme change is turned into invalidation here rather than
+    pushed to a list of subscribers.
+    """
 
     def __init__(self, app: "App", child: Widget) -> None:
         super().__init__()
         self.app_proxy = AppProxy(app)
         self.theme_manager = app._theme_manager
+        self._app_ref = weakref.ref(app)
+        self.theme_manager.on_change = self._on_theme_changed
         self.add_child(child)
+
+    def _on_theme_changed(self, _theme: "Theme") -> None:
+        """Refresh everything below that read the theme.
+
+        The provider keeps no consumer references, so it does not know who its
+        readers are; it walks its own subtree and invalidates the widgets that
+        marked themselves while reading. See ``nuiitivet/theme/dependency.py``.
+        """
+        from nuiitivet.theme.dependency import invalidate_theme_readers
+
+        invalidate_theme_readers(self)
+        app = self._app_ref()
+        if app is None:
+            return
+        # The window's clear colour is the App's own, not a widget's, so nothing
+        # marked it as a reader; refresh it here when it is token-based. Probed
+        # rather than called outright because tests scope a stub app.
+        uses_theme = getattr(app, "_background_uses_theme", None)
+        update = getattr(app, "_update_background_color", None)
+        if callable(uses_theme) and callable(update):
+            try:
+                if uses_theme():
+                    update()
+            except Exception:
+                exception_once(logger, "app_scope_theme_background_exc", "Background update raised on theme change")
+        invalidate = getattr(app, "invalidate", None)
+        if callable(invalidate):
+            try:
+                invalidate()
+            except Exception:
+                exception_once(logger, "app_scope_theme_invalidate_exc", "App.invalidate raised on theme change")
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -261,63 +300,6 @@ class App:
 
         self.root = root
 
-        pref_w = 0
-        pref_h = 0
-        width_sizing = parse_window_sizing(width)
-        height_sizing = parse_window_sizing(height)
-        needs_auto_size = width_sizing.kind == "auto" or height_sizing.kind == "auto"
-        if window_auto_size_target is not None and needs_auto_size:
-            target = window_auto_size_target
-            built_for_sizing: Widget | None = None
-            if isinstance(target, ComposableWidget):
-                try:
-                    built = target.evaluate_build()
-                    if built is not None and built is not target:
-                        target = built
-                        built_for_sizing = built
-                except Exception:
-                    target = window_auto_size_target
-            try:
-                pref_w, pref_h = target.preferred_size()
-            except Exception:
-                pref_w, pref_h = 0, 0
-
-            if built_for_sizing is not None:
-                try:
-                    built_for_sizing.unmount()
-                except Exception:
-                    pass
-
-        # Include custom chrome header preferred height for auto sizing.
-        if isinstance(chrome, CustomChrome) and needs_auto_size:
-            title_target: Widget = chrome.header
-            built_title_target: Widget | None = None
-            if isinstance(title_target, ComposableWidget):
-                try:
-                    built = title_target.evaluate_build()
-                    if built is not None and built is not title_target:
-                        title_target = built
-                        built_title_target = built
-                except Exception:
-                    title_target = chrome.header
-            try:
-                tw, th = title_target.preferred_size()
-            except Exception:
-                tw, th = 0, 0
-            pref_w = max(int(pref_w), int(tw))
-            pref_h = int(pref_h) + int(th)
-
-            if built_title_target is not None:
-                try:
-                    built_title_target.unmount()
-                except Exception:
-                    pass
-
-        self.width = self._resolve_window_sizing(width, preferred=int(pref_w), fallback=640)
-        self.height = self._resolve_window_sizing(height, preferred=int(pref_h), fallback=480)
-        self.window_position = window_position
-        self.resizable = resizable
-
         self.chrome: OSChrome | CustomChrome | None = chrome
         # Reset the drag-area reference (class default is None); a CustomChrome
         # rebuilds it in :meth:`_wrap_with_chrome_and_scope`.
@@ -326,7 +308,24 @@ class App:
         # Apply the chrome decoration and AppScope wrapping. This is factored out
         # so hot reload can re-wrap a freshly rebuilt content subtree with the
         # same (preserved) chrome shell. See :meth:`_rebuild_content_root`.
+        #
+        # This must precede the auto-size measurement at the end of this method:
+        # the AppScope installed here is what ``Theme.of`` resolves against, so a
+        # tree measured before it exists is measured against the default theme.
         self.root = self._wrap_with_chrome_and_scope(self.root)
+
+        width_sizing = parse_window_sizing(width)
+        height_sizing = parse_window_sizing(height)
+        needs_auto_size = width_sizing.kind == "auto" or height_sizing.kind == "auto"
+
+        # Provisional window size. An ``auto`` dimension is resolved at the end
+        # of this method, once the tree is mounted and can be measured against
+        # the real theme; until then ``on_mount`` code that reads app.width /
+        # app.height must still see a number rather than an AttributeError.
+        self.width = self._resolve_window_sizing(width, preferred=0, fallback=640)
+        self.height = self._resolve_window_sizing(height, preferred=0, fallback=480)
+        self.window_position = window_position
+        self.resizable = resizable
 
         self._title_value: str | None | ObservableBase[str | None] = title
         self._title_disposable: Optional[Disposable] = None
@@ -367,9 +366,7 @@ class App:
         self._primary_pointer_id = 1
         self._background_value: ColorSpec = background
         self._background_color: Any = None
-        self._theme_subscription: Optional[Callable[[Any], None]] = None
         self._update_background_color()
-        self._subscribe_theme_updates()
         self._subscribe_title_updates()
         self._last_layout_size: Optional[tuple[int, int]] = None
         self._saved_window_rect: Optional[tuple[int, int, int, int]] = None
@@ -391,6 +388,68 @@ class App:
         self._invalidate_interval_counts: dict[str, int] = {}
         self._invalidate_total_counts: dict[str, int] = {}
         self._invalidate_last_report = time.perf_counter()
+
+        # Mounting comes last, after every attribute a lifecycle hook might touch
+        # is initialized: ``mount()`` runs on_mount for the whole tree, and that
+        # user code can call straight back into the App (``invalidate()`` reads
+        # the debug-instrumentation fields set just above).
+        try:
+            self.root.mount(self)
+        except Exception:
+            exception_once(logger, "app_init_root_mount_exc", "root.mount(self) raised during App construction")
+
+        if needs_auto_size:
+            self._apply_auto_window_size(
+                width=width,
+                height=height,
+                target=window_auto_size_target,
+                chrome=chrome,
+            )
+
+    def _apply_auto_window_size(
+        self,
+        *,
+        width: WindowSizingLike,
+        height: WindowSizingLike,
+        target: Widget | None,
+        chrome: "OSChrome | CustomChrome | None",
+    ) -> None:
+        """Size the window from the content's preferred size.
+
+        Only called when at least one dimension is ``auto``. The tree must
+        already be mounted: a widget reaches its theme by walking up to the
+        :class:`AppScope`, and that walk only works once the widget is attached.
+        Measuring first and mounting afterwards sizes the window against the
+        default light theme, ignoring any custom typography or style the app
+        installed (#476).
+
+        Args:
+            width: The window width specification, as passed to the App.
+            height: The window height specification, as passed to the App.
+            target: The content widget to measure, or ``None`` to skip.
+            chrome: The window chrome; a :class:`CustomChrome` header adds its
+                own preferred height to the total.
+        """
+        pref_w = 0
+        pref_h = 0
+        if target is not None:
+            try:
+                pref_w, pref_h = target.preferred_size()
+            except Exception:
+                exception_once(logger, "app_auto_size_measure_exc", "Auto-size content measurement raised")
+                pref_w, pref_h = 0, 0
+
+        if isinstance(chrome, CustomChrome):
+            try:
+                tw, th = chrome.header.preferred_size()
+            except Exception:
+                exception_once(logger, "app_auto_size_chrome_measure_exc", "Auto-size chrome measurement raised")
+                tw, th = 0, 0
+            pref_w = max(int(pref_w), int(tw))
+            pref_h = int(pref_h) + int(th)
+
+        self.width = self._resolve_window_sizing(width, preferred=int(pref_w), fallback=640)
+        self.height = self._resolve_window_sizing(height, preferred=int(pref_h), fallback=480)
 
     def can_handle_back_event(self) -> bool:
         """Return True if a back action would be handled.
@@ -643,10 +702,6 @@ class App:
 
     def __del__(self):  # pragma: no cover - best-effort leak guard
         try:
-            self._unsubscribe_theme_updates()
-        except Exception:
-            exception_once(logger, "app_del_unsubscribe_theme_exc", "_unsubscribe_theme_updates raised in __del__")
-        try:
             self._unsubscribe_title_updates()
         except Exception:
             exception_once(logger, "app_del_unsubscribe_title_exc", "_unsubscribe_title_updates raised in __del__")
@@ -687,44 +742,6 @@ class App:
         if self._background_color is None:
             self._update_background_color()
         return self._background_color
-
-    def _subscribe_theme_updates(self) -> None:
-        if not self._background_uses_theme():
-            return
-        if self._theme_subscription is not None:
-            return
-        app_ref = weakref.ref(self)
-
-        def _on_theme(_theme):
-            app = app_ref()
-            if app is None:
-                try:
-                    self._theme_manager.unsubscribe(_on_theme)
-                except Exception:
-                    exception_once(logger, "app_theme_unsubscribe_dead_exc", "ThemeManager.unsubscribe raised")
-                return
-            app._update_background_color()
-            try:
-                app.invalidate()
-            except Exception:
-                exception_once(logger, "app_theme_invalidate_exc", "App.invalidate raised in theme callback")
-
-        try:
-            self._theme_manager.subscribe(_on_theme)
-            self._theme_subscription = _on_theme
-        except Exception:
-            exception_once(logger, "app_theme_subscribe_exc", "ThemeManager.subscribe raised")
-            self._theme_subscription = None
-
-    def _unsubscribe_theme_updates(self) -> None:
-        callback = getattr(self, "_theme_subscription", None)
-        if callback is None:
-            return
-        try:
-            self._theme_manager.unsubscribe(callback)
-        except Exception:
-            exception_once(logger, "app_theme_unsubscribe_exc", "ThemeManager.unsubscribe raised")
-        self._theme_subscription = None
 
     def _subscribe_title_updates(self) -> None:
         if not isinstance(self._title_value, ObservableBase):
@@ -1968,10 +1985,6 @@ class App:
 
     def _dispatch_close(self):
         """Unmount root and cleanup app-owned resources."""
-        try:
-            self._unsubscribe_theme_updates()
-        except Exception:
-            exception_once(logger, "app_close_unsubscribe_theme_exc", "_unsubscribe_theme_updates raised")
         try:
             if self.root is not None:
                 self.root.unmount()

@@ -1,50 +1,74 @@
-import types
+"""A Box follows the theme by reading it, not by subscribing to it.
+
+``BackgroundRenderer`` resolves ``Box``'s colours through ``Theme.of`` at paint
+time. That read registers the Box as a theme reader, and a theme change drops
+its paint cache. Nothing subscribes, so nothing has to unsubscribe.
+"""
+
+from __future__ import annotations
 
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.runtime.app import AppScope
+from nuiitivet.theme.manager import ThemeManager
+from nuiitivet.theme.theme import Theme
 from nuiitivet.widgets.box import Box
 
 
-def test_box_theme_change_invalidates_cache():
+class _StubApp:
+    """Minimum an ``AppScope`` needs: a theme manager and a weak-referenceable
+    identity."""
+
+    def __init__(self, manager: ThemeManager) -> None:
+        self._theme_manager = manager
+
+
+def _scope(box: Box, theme: Theme) -> ThemeManager:
+    manager = ThemeManager(theme)
+    app = _StubApp(manager)
+    scope = AppScope(app, box)  # type: ignore[arg-type]
+    scope.mount(app)
+    box._test_scope = scope  # type: ignore[attr-defined]
+    return manager
+
+
+def test_reading_a_theme_colour_marks_the_box_as_a_reader() -> None:
     box = Box(background_color=ColorRole.PRIMARY)
+    _scope(box, Theme(mode="light", extensions=[]))
+
+    assert getattr(box, "_reads_theme", False) is False
+    Theme.of(box)
+    assert getattr(box, "_reads_theme", False) is True
+
+
+def test_a_theme_change_drops_the_readers_paint_cache() -> None:
+    box = Box(background_color=ColorRole.PRIMARY)
+    manager = _scope(box, Theme(mode="light", extensions=[]))
+    Theme.of(box)
+
     calls: list[str] = []
-    original_cache = box.invalidate_paint_cache
+    box.invalidate_paint_cache = lambda: calls.append("cache")  # type: ignore[method-assign]
 
-    def fake_cache(self):
-        calls.append("cache")
-        original_cache()
+    manager.set_theme(Theme(mode="dark", extensions=[]))
 
-    def fake_invalidate(self):
-        calls.append("invalidate")
-
-    box.invalidate_paint_cache = types.MethodType(fake_cache, box)
-    box.invalidate = types.MethodType(fake_invalidate, box)
-    box._handle_theme_change(None)
-    assert calls == ["cache", "invalidate"]
+    assert calls == ["cache"]
 
 
-def test_box_literal_colors_do_not_subscribe():
-    box = Box(background_color="#FFFFFF", border_color="#000000")
-    box.on_mount()
-    try:
-        assert getattr(box, "_box_theme_subscription", None) is None
-    finally:
-        box.on_unmount()
-
-
-def test_box_subscription_updates_when_colors_change():
-    """Without AppScope, no subscription is created regardless of color type.
-    _uses_theme_colors() still tracks whether a subscription would be needed."""
+def test_a_box_that_never_read_the_theme_is_left_alone() -> None:
     box = Box(background_color="#FFFFFF")
-    box.on_mount()
-    try:
-        # No AppScope → no subscription
-        assert getattr(box, "_box_theme_subscription", None) is None
-        box.bgcolor = ColorRole.PRIMARY
-        # Still None without AppScope, but _uses_theme_colors() is True
-        assert getattr(box, "_box_theme_subscription", None) is None
-        assert box._uses_theme_colors() is True
-        box.bgcolor = "#FFFFFF"
-        assert getattr(box, "_box_theme_subscription", None) is None
-        assert box._uses_theme_colors() is False
-    finally:
-        box.on_unmount()
+    manager = _scope(box, Theme(mode="light", extensions=[]))
+
+    calls: list[str] = []
+    box.invalidate_paint_cache = lambda: calls.append("cache")  # type: ignore[method-assign]
+
+    manager.set_theme(Theme(mode="dark", extensions=[]))
+
+    assert calls == []
+
+
+def test_the_box_holds_no_reference_from_the_provider() -> None:
+    """The mark lives on the reader, so there is nothing to unsubscribe."""
+    box = Box(background_color=ColorRole.PRIMARY)
+    manager = _scope(box, Theme(mode="light", extensions=[]))
+    Theme.of(box)
+
+    assert not hasattr(manager, "_subscribers")

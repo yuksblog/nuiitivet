@@ -281,6 +281,84 @@ class Button(BaseButton, style=ButtonStyle.filled()):
         )
 ```
 
+### 4.1 When may a widget read the theme?
+
+> The rules here are a summary. `docs/design/THEME_CONSUMPTION.md` is the
+> normative document — read it before adding a theme-aware widget.
+
+The theme is an input to **layout and paint**, never to construction. It carries
+typography and shape as well as colour, so it is consumed twice: once while
+measuring, and again while painting.
+
+| Call site | Verdict |
+| --- | --- |
+| `build()` | Yes, and nowhere else, if the widget has one |
+| `preferred_size()` / `layout()` | Yes, for a leaf — the layout phase needs typography and shape |
+| `paint()` | Yes, for a leaf — the paint phase needs colour |
+| `on_mount()` | No. There is a context by then, but nothing kept there is ever corrected |
+| `__init__()` | Never. Before `super().__init__()` this raises |
+
+There is no choice to make here: a widget with a `build()` reads there, a leaf
+reads where the value is consumed. The widget's shape decides.
+
+#### Reading is how you subscribe
+
+`Theme.of` records its reader, and a theme change invalidates every reader the
+`AppScope` can reach — rebuilding composables, re-measuring and repainting
+leaves. **Widget authors never subscribe and never unsubscribe**; `ThemeManager`
+has no subscriber registry to join.
+
+Most widgets need no theme code at all. `Box` resolves background, border and
+shadow at paint time, so anything built on it follows the theme for free. If a
+widget uses a colour or typeface of its own, it reads `Theme.of(self)` at the
+point of use — `Text` does exactly this, resolving on every access and holding
+nothing.
+
+#### When a resolved value has to rest on a field
+
+Some values cannot be re-derived inside a property getter: `Card` pushes its
+style onto `Box` properties, a chip's style also determines its content subtree,
+and a button's colours become concrete RGBA endpoints for running animations.
+These keep the derived visuals on fields, but **re-apply them whenever a fresh
+read says the theme has moved**. The field is a cache of the pull, never a value
+with its own lifetime.
+
+Compare the *derived* value where you can (the chips compare `ChipStyle`).
+Compare `ThemeManager.generation` — via `theme_generation(self)` — where you
+cannot, as the buttons do because re-targeting a colour animation on every
+measure would disturb one in flight. Never compare the `Theme` object: it is
+frozen, but its `extensions` list and a `MaterialThemeData`'s `roles` dict are
+not, so a theme mutated in place and re-installed arrives on the same object.
+
+Adopting at mount *without* that re-check is exactly as broken as reading in
+`__init__`, only harder to notice: the value stops following the theme.
+
+#### The framework's side of the contract
+
+Widgets can only honour the rule if the chain they walk is intact:
+
+- A composable parents its build result **when it builds**, not when it mounts
+  (`BuilderHostMixin._adopt_built`), so a pre-mount measurement resolves
+  ancestors instead of dead-ending. A host that returns `self` from `build()` is
+  skipped, or it would become its own parent.
+- A `ChildrenStore` clears a child's `_parent` only while it still points at
+  that store's owner, so re-parenting a child before the old owner drops it does
+  not orphan it.
+- `App` installs the `AppScope` and **mounts the tree before it measures**
+  anything. Measuring first would resolve every lookup against the default light
+  theme and size the window for a theme the app never installed.
+
+See issues #464, #473 and #476.
+
+#### A theme change repaints and re-measures
+
+Light/dark switching — and switching between themes built from different seed
+colours — changes only the colour roles, so in practice nothing moves. But a
+theme may also carry different typography or shape, and the framework cannot
+tell the two cases apart from the outside, so an invalidated reader is
+re-measured as well as repainted. A theme change is a user action, not a
+per-frame event, so the extra pass costs nothing that matters.
+
 ### 5. Directory Structure
 
 ```text

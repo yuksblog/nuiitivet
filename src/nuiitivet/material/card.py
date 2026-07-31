@@ -10,7 +10,7 @@ variant presets: ``CardStyle.filled()``, ``CardStyle.outlined()``,
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 from ..widgeting.widget import ComposableWidget, Widget
 from .theme.elevation import md3_elevation_to_shadow
@@ -18,10 +18,7 @@ from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..widgets.box import Box
 from nuiitivet.material.styles.card_style import CardStyle
-
-if TYPE_CHECKING:
-    from ..theme.manager import ThemeManager
-    from ..theme.theme import Theme
+from ..theme.theme import Theme
 
 ChildSpec = Union[Widget, Callable[[], Widget], None]
 AlignmentLike = Union[str, Tuple[str, str]]
@@ -104,37 +101,22 @@ class Card(ComposableWidget, Box):
         )
 
         self._content_scope_id: Optional[str] = None
-        self._card_theme_manager: Optional["ThemeManager"] = None
 
         if isinstance(child, Widget):
             super().add_child(child)
 
     # --- Theme integration ----------------------------------------------------
-    def on_mount(self) -> None:
-        """Apply the theme's card style and follow later theme changes."""
-        super().on_mount()
+    def _resolve_card_style(self) -> None:
+        """Resolve the theme's card style and push it onto the Box properties.
+
+        Called from :meth:`build`, which is where a widget that composes reads
+        the theme. The read registers a dependency, so a theme change rebuilds
+        this card and lands here again -- there is nothing to subscribe to and
+        nothing to unsubscribe from. See ``docs/design/THEME_CONSUMPTION.md``.
+        """
         if self._user_style is not None:
             return
-
-        from ..runtime.app import AppScope
-
-        scope = self.find_ancestor(AppScope)
-        if scope is None:
-            return
-
-        self._card_theme_manager = scope.theme_manager
-        self._card_theme_manager.subscribe(self._on_card_theme_change)
-        self._on_card_theme_change(self._card_theme_manager.current)
-
-    def on_unmount(self) -> None:
-        """Drop the theme subscription taken in :meth:`on_mount`."""
-        if self._card_theme_manager is not None:
-            self._card_theme_manager.unsubscribe(self._on_card_theme_change)
-            self._card_theme_manager = None
-        super().on_unmount()
-
-    def _on_card_theme_change(self, theme: "Theme") -> None:
-        self._apply_card_style(CardStyle.from_theme(theme))
+        self._apply_card_style(CardStyle.from_theme(Theme.of(self)))
 
     def _apply_card_style(self, style: CardStyle) -> None:
         """Push ``style`` onto the underlying :class:`Box` visual properties."""
@@ -150,6 +132,7 @@ class Card(ComposableWidget, Box):
 
     # --- Build / scope integration (Same as MaterialContainer) ----------------
     def build(self) -> Widget:
+        self._resolve_card_style()
         fragment = self._build_scoped_child()
         self._sync_child(fragment)
         return self

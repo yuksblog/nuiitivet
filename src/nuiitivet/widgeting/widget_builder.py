@@ -397,8 +397,14 @@ class BuilderHostMixin:
         raise NotImplementedError("ComposableWidget.build() must be implemented and must return a Widget")
 
     def evaluate_build(self) -> "Widget":
+        from nuiitivet.theme.dependency import pop_theme_reader, push_theme_reader
+
         ctx = self.create_build_context()
         self._current_build_context = ctx  # type: ignore[attr-defined]
+        # An ambient value read while building belongs to this host, not to
+        # whichever widget was passed as the context: a change to it has to
+        # rebuild what the build produced. See nuiitivet/theme/dependency.py.
+        push_theme_reader(self)
         try:
             result = self.build()
         except NotImplementedError:
@@ -412,6 +418,7 @@ class BuilderHostMixin:
             )
             result = None
         finally:
+            pop_theme_reader()
             try:
                 self._prune_unused_scopes()
             finally:
@@ -428,6 +435,56 @@ class BuilderHostMixin:
             f"{self.__class__.__name__}.build() must return a Widget, got {type(result).__name__}.",
         )
 
+    def _adopt_built(self, built: "Widget") -> None:
+        """Make ``built`` point back at this host as its parent.
+
+        A build result is only reachable from the tree through this link, and
+        ``X.of(context)`` resolves by walking it upward. Parenting therefore
+        happens as soon as the subtree exists -- not at mount -- so that a
+        composable measured before it is mounted still resolves its ancestors
+        instead of looking like a detached widget (#476).
+
+        A host whose ``build()`` returns ``self`` -- ``Card`` decorates itself
+        and returns itself -- is skipped. Parenting it to itself would make
+        ``find_ancestor`` walk a one-node cycle forever, and it needs no link
+        anyway: it is already in the tree in its own right.
+
+        Args:
+            built: The widget returned by :meth:`build`.
+        """
+        if built is self:
+            return
+        try:
+            built._parent = self  # type: ignore[assignment]
+        except Exception:
+            exception_once(
+                _logger,
+                "widget_builder_adopt_built_set_parent_exc",
+                "Failed to set built._parent",
+            )
+
+    def _release_built(self, built: Optional["Widget"]) -> None:
+        """Drop the parent link taken by :meth:`_adopt_built`.
+
+        Only clears the link when it still points here: by the time a discarded
+        subtree is released it may already have been re-parented elsewhere, and
+        stealing that newer link would detach a live widget.
+
+        Args:
+            built: The widget being discarded, or ``None``.
+        """
+        if built is None or built is self:
+            return
+        try:
+            if getattr(built, "_parent", None) is self:
+                built._parent = None  # type: ignore[assignment]
+        except Exception:
+            exception_once(
+                _logger,
+                "widget_builder_release_built_clear_parent_exc",
+                "Failed to clear built._parent",
+            )
+
     def _mount_built(self, built: Optional["Widget"]) -> None:
         if built is None:
             self._built = None
@@ -435,14 +492,7 @@ class BuilderHostMixin:
         from .widget import Widget
 
         if isinstance(built, Widget):
-            try:
-                built._parent = self  # type: ignore[assignment]
-            except Exception:
-                exception_once(
-                    _logger,
-                    "widget_builder_mount_built_set_parent_exc",
-                    "Failed to set built._parent in _mount_built",
-                )
+            self._adopt_built(built)
             try:
                 built.mount(getattr(self, "_app", None))
             except Exception:
@@ -475,6 +525,7 @@ class BuilderHostMixin:
                 "widget_builder_unmount_built_exc",
                 "built.unmount raised in _unmount_built",
             )
+        self._release_built(built)
         self._built = None
         self._build_ctx = None
         self._scope_registry = {}
@@ -558,6 +609,7 @@ class BuilderHostMixin:
             return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
 
         if built is not None and built is not self:
+            self._adopt_built(built)
             return measure_preferred_size(built, max_width=max_width, max_height=max_height)
 
         return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
@@ -573,7 +625,17 @@ class BuilderHostMixin:
                 "_unmount_built raised in rebuild",
             )
         built = self.evaluate_build()
-        if app is None:
+        if built is self:
+            # A host that decorates itself and returns itself (Card) has no
+            # separate subtree to hold. Storing it as ``_built`` would make
+            # layout, paint and hit-testing recurse into this same widget
+            # forever -- the same reason :meth:`on_mount` skips it.
+            pass
+        elif app is None:
+            # Not mounted, so there is nothing to mount the subtree against --
+            # but it still needs its upward link, or measuring it would resolve
+            # ancestors from a detached widget. See :meth:`_adopt_built`.
+            self._adopt_built(built)
             self._built = built
         else:
             self._mount_built(built)

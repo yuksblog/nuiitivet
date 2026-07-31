@@ -9,6 +9,34 @@ from nuiitivet.common.call import safe_call  # centralized error-handling helper
 _logger = logging.getLogger(__name__)
 
 
+def _detach_parent(child, owner, *, context: str) -> None:
+    """Clear ``child._parent``, but only while it still points at ``owner``.
+
+    A child can be handed to a new parent before the old one gets around to
+    dropping it -- a ComposableWidget that re-parents its child into a scoped
+    fragment and then clears its own child list does exactly that. Clearing
+    unconditionally would steal the newer link and leave a live widget with no
+    way to reach its ancestors, so ``X.of(context)`` would fail on a widget that
+    is genuinely attached.
+
+    Args:
+        child: The child being evicted, removed, or cleared.
+        owner: The store's owner, i.e. the parent this store is allowed to drop.
+        context: Short label naming the call site, used in the error key.
+    """
+    try:
+        if getattr(child, "_parent", None) is owner:
+            child._parent = None
+    except Exception:
+        exception_once(
+            _logger,
+            f"children_store_{context}_clear_parent_exc:{type(owner).__name__}",
+            "Failed to clear _parent on child (context=%s owner=%s)",
+            context,
+            type(owner).__name__,
+        )
+
+
 class ChildrenStore:
     """Ownership container for Widget children.
 
@@ -104,15 +132,7 @@ class ChildrenStore:
                             "Exception while unmounting evicted child (owner=%s)",
                             type(owner).__name__,
                         )
-                    try:
-                        old._parent = None
-                    except Exception:
-                        exception_once(
-                            _logger,
-                            f"children_store_evict_clear_parent_exc:{type(owner).__name__}",
-                            "Failed to clear _parent on evicted child (owner=%s)",
-                            type(owner).__name__,
-                        )
+                    _detach_parent(old, owner, context="evict")
                 except Exception:
                     # fallback: convert to list replacement
                     try:
@@ -132,15 +152,7 @@ class ChildrenStore:
                                 "Exception while unmounting evicted child in fallback path (owner=%s)",
                                 type(owner).__name__,
                             )
-                        try:
-                            old._parent = None
-                        except Exception:
-                            exception_once(
-                                _logger,
-                                f"children_store_evict_clear_parent_fallback_exc:{type(owner).__name__}",
-                                "Failed to clear _parent on evicted child (fallback owner=%s)",
-                                type(owner).__name__,
-                            )
+                        _detach_parent(old, owner, context="evict_fallback")
                         self._items = deque(items)
                     except Exception:
                         # last-resort: clear
@@ -162,15 +174,7 @@ class ChildrenStore:
                             "Exception while unmounting replaced child (owner=%s)",
                             type(owner).__name__,
                         )
-                    try:
-                        old._parent = None
-                    except Exception:
-                        exception_once(
-                            _logger,
-                            f"children_store_replace_last_clear_parent_exc:{type(owner).__name__}",
-                            "Failed to clear _parent on replaced child (owner=%s)",
-                            type(owner).__name__,
-                        )
+                    _detach_parent(old, owner, context="replace_last")
                 except Exception:
                     try:
                         self._items.clear()
@@ -273,15 +277,7 @@ class ChildrenStore:
                     "Exception while unmounting removed child in fallback path (owner=%s)",
                     type(self.owner).__name__,
                 )
-        try:
-            target._parent = None
-        except Exception:
-            exception_once(
-                _logger,
-                f"children_store_remove_clear_parent_exc:{type(self.owner).__name__}",
-                "Failed to clear _parent on removed child (owner=%s)",
-                type(self.owner).__name__,
-            )
+        _detach_parent(target, self.owner, context="remove")
 
         self._mark_dirty()
 
@@ -308,15 +304,7 @@ class ChildrenStore:
                             "Exception while unmounting child in clear fallback (owner=%s)",
                             type(self.owner).__name__,
                         )
-                try:
-                    c._parent = None
-                except Exception:
-                    exception_once(
-                        _logger,
-                        f"children_store_clear_clear_parent_exc:{type(self.owner).__name__}",
-                        "Failed to clear _parent during clear (owner=%s)",
-                        type(self.owner).__name__,
-                    )
+                _detach_parent(c, self.owner, context="clear")
         except Exception:
             exception_once(
                 _logger,
