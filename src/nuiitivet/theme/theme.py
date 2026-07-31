@@ -48,39 +48,51 @@ class Theme:
     def of(context: Any) -> "Theme":
         """Return the current :class:`Theme` from the nearest :class:`AppScope`.
 
-        Unlike the other ``of()`` APIs this one **never raises**: it falls back to
-        a bare ``Theme(mode="light")`` when no ``AppScope`` is reachable. Paint
-        code calls it on every frame — including for widgets that are deliberately
-        detached (tests, offscreen measurement) — so a raising lookup would turn a
-        cosmetic problem into a crash.
+        **Reading registers a dependency.** The reader is recorded, and a theme
+        change invalidates it: a composable is rebuilt, a leaf is re-measured and
+        repainted. Nothing subscribes and nothing has to unsubscribe.
 
-        The fallback has a sharp edge worth knowing: calling this from ``__init__``
-        silently themes the widget with the light default *forever*, because the
-        parent link needed to reach the app's theme does not exist yet. Read the
-        theme in ``on_mount()`` or at paint time instead. That premature case logs
-        a warning once per process; a genuinely detached context stays quiet.
+        Read where the value is consumed. A widget with a ``build()`` reads
+        there; a leaf has no ``build()``, so it reads in ``paint()`` or
+        ``preferred_size()``. Never read in ``__init__`` or ``on_mount``: what is
+        resolved at mount and kept on a field is never corrected again.
+
+        A detached context — a widget deliberately measured outside an App, as
+        tests and offscreen sizing do — resolves no ``AppScope`` and quietly
+        falls back to the light default rather than raising. Paint code runs this
+        on every frame, so a raising lookup there would turn a cosmetic problem
+        into a crash. Under a pull that fallback is self-correcting: the next
+        read, once the widget is attached, resolves the real theme.
 
         Args:
             context: A widget in the subtree from which to search upward.
 
         Returns:
-            The app's current theme, or ``Theme(mode="light")`` when none is
-            reachable.
+            The app's current theme, or ``Theme(mode="light")`` when no
+            ``AppScope`` is reachable.
+
+        Raises:
+            RuntimeError: If ``context`` has not run ``Widget.__init__`` yet, so
+                it has no parent link to resolve against and no identity to
+                attribute a dependency to. Reading in ``__init__`` *after*
+                ``super().__init__()`` is indistinguishable at runtime from
+                measuring an unattached widget, so it is not rejected here;
+                what makes it a bug is keeping the result, which the "read,
+                never hold" rule forbids.
         """
-        from nuiitivet.common.logging_once import warning_once
         from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
-        from nuiitivet.widgeting.context_lookup import find_provider, is_premature_lookup
+        from nuiitivet.theme.dependency import register_theme_dependency
+        from nuiitivet.widgeting.context_lookup import find_provider, is_uninitialized_context
 
         scope = find_provider(context, AppScope)
         if scope is None:
-            if is_premature_lookup(context):
-                warning_once(
-                    _logger,
-                    f"theme_of_before_mount:{type(context).__name__}",
-                    "Theme.of() was called on %s before it was mounted (typically from "
-                    "__init__); returning the default light theme, which will not follow "
-                    "the app's theme. Read the theme in on_mount() instead.",
-                    type(context).__name__,
+            if is_uninitialized_context(context):
+                raise RuntimeError(
+                    f"Theme.of() was called on {type(context).__name__} before super().__init__() "
+                    f"had run, so it has no parent link yet and cannot resolve a theme. "
+                    f"Read the theme where its value is used: in build() if the widget has one, "
+                    f"otherwise in paint() or preferred_size()."
                 )
             return Theme(mode="light", extensions=[])
+        register_theme_dependency(context)
         return scope.theme_manager.current

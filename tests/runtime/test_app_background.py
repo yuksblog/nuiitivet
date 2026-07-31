@@ -79,8 +79,9 @@ def test_app_background_updates_on_theme_change(monkeypatch):
         assert colors["count"] >= 2
         assert app._dirty is True
     finally:
-        if app is not None:
-            app._unsubscribe_theme_updates()
+        # Nothing to unsubscribe: the AppScope owns the manager's single
+        # on_change hook and dies with the App.
+        pass
 
 
 def test_app_background_raises_when_unresolved():

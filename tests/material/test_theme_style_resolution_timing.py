@@ -178,6 +178,7 @@ def test_chip_content_is_rebuilt_for_the_themes_style() -> None:
     container -- must be rebuilt when the theme supplies a different one."""
     chip = AssistChip("a")
     _mount(chip, _theme_with(_assist_chip_style=_CUSTOM_CHIP_STYLE))
+    chip.preferred_size()
 
     content = chip.children_snapshot()[0]
     row = content.children_snapshot()[0]
@@ -194,6 +195,7 @@ def test_filter_chip_keeps_selected_visuals_over_the_themes_style() -> None:
     )
     chip = FilterChip("a", selected=True)
     _mount(chip, _theme_with(_filter_chip_style=selected_style))
+    chip.preferred_size()
 
     assert chip.selected is True
     assert chip.bgcolor == ColorRole.SECONDARY_CONTAINER

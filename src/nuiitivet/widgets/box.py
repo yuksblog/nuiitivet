@@ -1,10 +1,7 @@
 import inspect
 import math
 import logging
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
-
-if TYPE_CHECKING:
-    from nuiitivet.theme.manager import ThemeManager
+from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from ..rendering.skia.paint_cache import CachedPaintMixin
@@ -56,8 +53,6 @@ class Box(CachedPaintMixin, Widget):
         self._bgcolor: Optional[ColorSpec] = None
         self._border_color: Optional[ColorSpec] = None
         self._shadow_color: Optional[ColorSpec] = None
-        self._box_theme_subscription: Optional[Callable[[object], None]] = None
-        self._box_theme_manager: Optional["ThemeManager"] = None
         if child:
             self.add_child(child)
 
@@ -72,7 +67,6 @@ class Box(CachedPaintMixin, Widget):
         self.clip_content = False
 
         self._theme_state_ready = True
-        self._sync_theme_subscription()
 
         self._renderer = BackgroundRenderer(self)
         self._layout = LayoutEngine(self)
@@ -195,14 +189,8 @@ class Box(CachedPaintMixin, Widget):
             super().on_mount()
         except Exception:
             exception_once(_logger, "box_on_mount_super_exc", "Box on_mount super call failed")
-        # Remove the init-time subscription which may have been bound to the
-        # global ThemeManager (AppScope was unreachable before mount).
-        # Re-subscribe now so we land on AppScope's ThemeManager if available.
-        self._remove_box_theme_subscription()
-        self._sync_theme_subscription()
 
     def on_unmount(self) -> None:
-        self._remove_box_theme_subscription()
         try:
             super().on_unmount()
         except Exception:
@@ -420,83 +408,10 @@ class Box(CachedPaintMixin, Widget):
     def _handle_visual_state_change(self) -> None:
         if not getattr(self, "_theme_state_ready", False):
             return
-        self._sync_theme_subscription()
         try:
             self.invalidate_paint_cache()
         except Exception:
             exception_once(_logger, "box_invalidate_paint_cache_exc", "invalidate_paint_cache failed")
-
-    def _uses_theme_colors(self) -> bool:
-        return any(
-            self._value_uses_theme_color(value) for value in (self._bgcolor, self._border_color, self._shadow_color)
-        )
-
-    @staticmethod
-    def _value_uses_theme_color(value: Optional[ColorSpec]) -> bool:
-        if value is None:
-            return False
-        # Check if value is a primitive color type (str, int, tuple of int/float)
-        if isinstance(value, (str, int)):
-            return False
-        if isinstance(value, tuple):
-            # Check if it's a tuple of primitives (RGB, RGBA, Hex+Alpha)
-            if all(isinstance(v, (int, float, str)) for v in value):
-                return False
-            # If tuple contains non-primitives (like ColorRole), it's a theme color
-            return True
-        # If it's not a primitive type, assume it's a theme color (e.g. ColorRole enum)
-        return True
-
-    def _sync_theme_subscription(self) -> None:
-        if not getattr(self, "_theme_state_ready", False):
-            return
-        if not self._uses_theme_colors():
-            self._remove_box_theme_subscription()
-            return
-        self._ensure_box_theme_subscription()
-
-    def _ensure_box_theme_subscription(self) -> None:
-        if self._box_theme_subscription is not None:
-            return
-
-        from nuiitivet.runtime.app import AppScope  # lazy – avoids circular import
-
-        scope = self.find_ancestor(AppScope)
-        if scope is None:
-            return
-
-        tm = scope.theme_manager
-
-        def _callback(theme) -> None:
-            self._handle_theme_change(theme)
-
-        try:
-            tm.subscribe(_callback)
-            self._box_theme_subscription = _callback
-            self._box_theme_manager = tm
-        except Exception:
-            exception_once(_logger, "box_theme_subscribe_exc", "Theme subscribe failed")
-            self._box_theme_subscription = None
-            self._box_theme_manager = None
-
-    def _remove_box_theme_subscription(self) -> None:
-        callback = self._box_theme_subscription
-        if callback is None:
-            return
-        tm = self._box_theme_manager
-        if tm is not None:
-            try:
-                tm.unsubscribe(callback)  # type: ignore[union-attr]
-            except Exception:
-                exception_once(_logger, "box_theme_unsubscribe_exc", "Theme unsubscribe failed")
-        self._box_theme_subscription = None
-        self._box_theme_manager = None
-
-    def _handle_theme_change(self, _theme) -> None:
-        try:
-            self.invalidate_paint_cache()
-        except Exception:
-            exception_once(_logger, "box_theme_change_invalidate_paint_cache_exc", "invalidate_paint_cache failed")
 
 
 class ModifierBox(Box):

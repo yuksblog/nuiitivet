@@ -13,6 +13,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
@@ -20,8 +21,6 @@ from nuiitivet.widgeting.widget import Widget
 if TYPE_CHECKING:
     from nuiitivet.material.styles.chip_style import ChipStyle
     from nuiitivet.material.symbols import Symbol
-    from nuiitivet.theme.manager import ThemeManager
-    from nuiitivet.theme.theme import Theme
 
 
 def _chip_text(
@@ -101,8 +100,8 @@ class MaterialChipBase(InteractiveWidget):
 
         self._user_style = style
         # The theme is unreachable until the chip is attached, so resolving it
-        # here would silently pin the light default (issue #473). Build with the
-        # variant preset and re-resolve against the real theme in on_mount().
+        # here would pin the light default. Build with the variant preset; the
+        # real style is pulled in :attr:`style` once the chip can reach a theme.
         initial_style = style if style is not None else ChipStyle.preset(self._variant)
         self._effective_style: "ChipStyle" = initial_style
         # Chip height is MD3-fixed (container_height token) -> style only.
@@ -125,52 +124,49 @@ class MaterialChipBase(InteractiveWidget):
         self._HOVER_OPACITY = initial_style.hover_alpha
         self._PRESS_OPACITY = initial_style.pressed_alpha
         self._DRAG_OPACITY = initial_style.drag_alpha
-        self._chip_theme_manager: Optional["ThemeManager"] = None
         self._on_style_applied(initial_style)
+
+    # --- Theme integration ----------------------------------------------------
+    def _resolve_style(self) -> "ChipStyle":
+        """Resolve the style this chip should be showing.
+
+        A chip has no ``build()``, so it reads the theme where the style is
+        consumed. The read registers a dependency, so a theme change re-measures
+        and repaints this chip and lands back here with the new value.
+
+        Returns:
+            The explicit ``style`` when one was given, otherwise the variant's
+            style resolved from the current theme.
+        """
+        if self._user_style is not None:
+            return self._user_style
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return ChipStyle.from_theme(Theme.of(self), self._variant)
 
     @property
     def style(self) -> "ChipStyle":
-        """Return the style currently in effect.
+        """Return the style currently in effect, pulled from the theme.
 
-        This is the explicit ``style`` when one was given, otherwise the
-        variant's theme style — pushed in by :meth:`on_mount` and kept current
-        by the theme subscription. It is *not* pulled from ``Theme.of``, which
-        cannot answer before the chip is attached.
+        The container visuals a chip hands to :class:`Box` -- background, border,
+        corner radius, fixed height -- and its content subtree are derived from
+        the style rather than re-derived on every read, so they are re-applied
+        here whenever the resolved style has moved. That makes the pushed
+        properties a write-through cache of this pull, never a value that can go
+        stale on its own.
         """
-        return self._effective_style
-
-    # --- Theme integration ----------------------------------------------------
-    def on_mount(self) -> None:
-        """Adopt the theme's chip style and follow later theme changes."""
-        super().on_mount()
-        if self._user_style is not None:
-            return
-
-        from nuiitivet.runtime.app import AppScope
-
-        scope = self.find_ancestor(AppScope)
-        if scope is None:
-            return
-
-        self._chip_theme_manager = scope.theme_manager
-        self._chip_theme_manager.subscribe(self._on_chip_theme_change)
-        self._on_chip_theme_change(self._chip_theme_manager.current)
-
-    def on_unmount(self) -> None:
-        """Drop the theme subscription taken in :meth:`on_mount`."""
-        if self._chip_theme_manager is not None:
-            self._chip_theme_manager.unsubscribe(self._on_chip_theme_change)
-            self._chip_theme_manager = None
-        super().on_unmount()
-
-    def _on_chip_theme_change(self, theme: "Theme") -> None:
-        from nuiitivet.material.styles.chip_style import ChipStyle
-
-        self._apply_chip_style(ChipStyle.from_theme(theme, self._variant))
+        style = self._resolve_style()
+        if style != self._effective_style:
+            self._apply_chip_style(style)
+        return style
 
     def _refresh_chip_style(self) -> None:
-        """Re-apply the current effective style, rebuilding the content."""
-        self._apply_chip_style(self._effective_style)
+        """Re-apply the resolved style, rebuilding the content.
+
+        Used when something other than the theme changed the visuals -- chiefly
+        selection, which :meth:`_on_style_applied` layers over the base style.
+        """
+        self._apply_chip_style(self._resolve_style())
 
     def _apply_chip_style(self, style: "ChipStyle") -> None:
         """Push ``style`` onto the container visuals and rebuild the content."""

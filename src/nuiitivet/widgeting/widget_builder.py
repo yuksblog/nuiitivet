@@ -397,8 +397,14 @@ class BuilderHostMixin:
         raise NotImplementedError("ComposableWidget.build() must be implemented and must return a Widget")
 
     def evaluate_build(self) -> "Widget":
+        from nuiitivet.theme.dependency import pop_theme_reader, push_theme_reader
+
         ctx = self.create_build_context()
         self._current_build_context = ctx  # type: ignore[attr-defined]
+        # An ambient value read while building belongs to this host, not to
+        # whichever widget was passed as the context: a change to it has to
+        # rebuild what the build produced. See nuiitivet/theme/dependency.py.
+        push_theme_reader(self)
         try:
             result = self.build()
         except NotImplementedError:
@@ -412,6 +418,7 @@ class BuilderHostMixin:
             )
             result = None
         finally:
+            pop_theme_reader()
             try:
                 self._prune_unused_scopes()
             finally:
@@ -437,9 +444,16 @@ class BuilderHostMixin:
         composable measured before it is mounted still resolves its ancestors
         instead of looking like a detached widget (#476).
 
+        A host whose ``build()`` returns ``self`` -- ``Card`` decorates itself
+        and returns itself -- is skipped. Parenting it to itself would make
+        ``find_ancestor`` walk a one-node cycle forever, and it needs no link
+        anyway: it is already in the tree in its own right.
+
         Args:
             built: The widget returned by :meth:`build`.
         """
+        if built is self:
+            return
         try:
             built._parent = self  # type: ignore[assignment]
         except Exception:
@@ -459,7 +473,7 @@ class BuilderHostMixin:
         Args:
             built: The widget being discarded, or ``None``.
         """
-        if built is None:
+        if built is None or built is self:
             return
         try:
             if getattr(built, "_parent", None) is self:
@@ -611,7 +625,13 @@ class BuilderHostMixin:
                 "_unmount_built raised in rebuild",
             )
         built = self.evaluate_build()
-        if app is None:
+        if built is self:
+            # A host that decorates itself and returns itself (Card) has no
+            # separate subtree to hold. Storing it as ``_built`` would make
+            # layout, paint and hit-testing recurse into this same widget
+            # forever -- the same reason :meth:`on_mount` skips it.
+            pass
+        elif app is None:
             # Not mounted, so there is nothing to mount the subtree against --
             # but it still needs its upward link, or measuring it would resolve
             # ancestors from a detached widget. See :meth:`_adopt_built`.

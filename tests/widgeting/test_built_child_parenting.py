@@ -115,3 +115,36 @@ def test_measuring_an_unmounted_card_does_not_report_a_premature_lookup(
 
     premature = [r for r in caplog.records if r.name == _THEME_LOGGER and "before it was mounted" in r.getMessage()]
     assert premature == []
+
+
+class _SelfBuilder(ComposableWidget):
+    """Decorates itself and returns itself, the way ``Card`` does."""
+
+    def build(self) -> Widget:
+        return self
+
+
+def test_a_host_that_builds_itself_is_not_made_its_own_parent() -> None:
+    """``find_ancestor`` would otherwise walk a one-node cycle forever."""
+    host = _SelfBuilder()
+
+    host.rebuild()
+
+    assert host._parent is not host
+
+
+def test_a_host_that_builds_itself_does_not_hold_itself_as_built_child() -> None:
+    """``layout``/``paint``/``hit_test`` delegate to ``_built``, so storing
+    ``self`` there recurses until the stack runs out."""
+    host = _SelfBuilder()
+
+    host.rebuild()
+
+    assert host.built_child is not host
+
+
+def test_rebuilding_a_self_building_host_can_still_lay_out() -> None:
+    host = _SelfBuilder()
+    host.rebuild()
+
+    host.layout(100, 50)  # would raise RecursionError if _built were self

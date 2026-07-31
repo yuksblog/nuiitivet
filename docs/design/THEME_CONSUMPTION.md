@@ -1,14 +1,13 @@
 # Theme Consumption
 
-**Status: proposal. Not implemented.**
+**Status: implemented.** Closes #464, #473 and #476. Per-frame cost is out of
+scope here and tracked in #478.
 
-This document specifies how a widget should obtain the theme. It describes a
-target design, not current behaviour — `docs/design/STYLE_THEME.md` §4.1
-documents what the framework does today. Motivated by #464, #473 and #476.
+This document specifies how a widget obtains the theme.
 
 ## The problem
 
-Today the framework asks each widget author to choose between two ways of
+The framework used to ask each widget author to choose between two ways of
 consuming the theme:
 
 - **Pull** — read `Theme.of(self)` at the point of use (`Text`, `Box`'s colours).
@@ -40,9 +39,10 @@ of the choice — it is removing the choice.
    else. A leaf widget has no `build()`, so it reads in `paint()` or
    `preferred_size()`. This is not a preference to weigh; it follows from what
    kind of widget you wrote.
-4. **Never read in `on_mount()` or `__init__()`.** `__init__` is an error, not
-   a warning. `on_mount` is not an error — there is a context by then — but
-   nothing legitimate happens there that rule 3 does not place better.
+4. **Never read in `on_mount()` or `__init__()`.** Neither survives: what is
+   resolved once and kept on a field is never corrected. `on_mount` is not an
+   error — there is a context by then — but nothing legitimate happens there
+   that rule 3 does not place better.
 
 ### What "never hold it" means precisely
 
@@ -113,11 +113,12 @@ There is no third column of judgement calls. A widget that composes reads while
 composing; a widget that draws reads while drawing. Nobody weighs a trade-off,
 because the widget's shape has already made the decision.
 
-This is not a minority case to be tolerated. Of the twenty modules that read
-`Theme.of` today, thirteen have no `build()` at all — `Text`, `Icon`, `Divider`,
-`Slider`, `Scrollbar`, the progress and loading indicators, `EditableText`, the
-selection controls and the `Box`-derived interactive base. Leaf widgets *are*
-the majority of theme readers, and they are the build output of something else.
+This is not a minority case to be tolerated — it is the overwhelming majority.
+Of the twenty-one modules that read `Theme.of`, only `Card` has a `build()`.
+`Text`, `Icon`, `Divider`, `Slider`, `Scrollbar`, the progress and loading
+indicators, `EditableText`, the selection controls, the chips, the buttons and
+`TextField` are all leaves. Leaf widgets *are* the theme readers, and they are
+the build output of something else.
 
 ### Why the phase follows from the widget, not from a preference
 
@@ -138,43 +139,58 @@ The per-frame cost on the leaf side is therefore unavoidable. What that costs
 today, and what to do about it, is a property of the implementation rather than
 of this rule, and is tracked in #478.
 
-### Enforcement
+### Enforcement, and its limit
 
-Only `__init__` is rejected at runtime. A read from anywhere else — including
-imperative code that is in no phase at all — is well defined: it registers the
-context widget, and that widget repaints on a theme change it would have
-repainted for anyway.
+`Theme.of` raises when `context` has no `_parent` attribute at all, which can
+only mean the call ran before `super().__init__()`. There is no chain to resolve
+against and no identity to hang a dependency on, so the call is undefined rather
+than merely early. Flutter takes the same position: `of(context)` in `initState`
+is an error.
 
-The failure this design exists to prevent is not *where* the read happens but
-*what is done with the result*, and rule 1 covers that. Classifying call sites
-at runtime would mean new phase-tracking machinery whose only job is to catch a
-mistake another rule already forbids.
+**A read in `__init__` after `super().__init__()` is not rejected**, and this is
+a deliberate limit rather than an oversight. At that point the widget has
+`_parent is None` and is not mounted — a state indistinguishable from a fully
+constructed widget being measured offscreen, which tests and preview tooling do
+legitimately. Raising on it would mean forbidding `Switch().style`.
 
-### Why `__init__` is an error, not a warning
+Telling the two apart needs machinery that knows a constructor is on the stack:
+wrapping every widget's `__init__`, or inspecting frames on the paint path.
+Both cost more than the bug is worth, because under a pull the early read is
+*harmless on its own* — the fallback is self-correcting, and the next read once
+the widget is attached returns the real theme. What makes it a bug is keeping
+the result, and rule 1 already forbids that.
 
-Under this design a read *is* a dependency registration. In `__init__` there is
-no reader to attribute the dependency to and no parent chain to resolve against,
-so the call has no meaning — it is not merely early, it is undefined. Raising
-is consistent with every other `of()` API in the framework
-(`nuiitivet/widgeting/context_lookup.py`), and it removes the class of bug that
-required the #473 audit.
+So the rule is enforced where it is cheap and unambiguous, and carried by review
+where it is not. A read from anywhere else — including imperative code in no
+phase at all — is well defined: it registers the context widget, and that widget
+repaints on a theme change it would have repainted for anyway.
 
-Flutter takes the same position: `of(context)` in `initState` is an error, with
-`didChangeDependencies` as the sanctioned alternative. SwiftUI and Compose make
-it structurally impossible.
+## What this replaced
 
-## What this replaces
-
-| Today | Under this design |
+| Before | Now |
 | --- | --- |
-| `Box` subscribes to invalidate its paint cache | The framework invalidates the reader; `Box` just reads |
-| `Card` adopts in `on_mount` and subscribes | It has a `build()`; resolve there and let the rebuild carry the new style |
-| The chips adopt in `on_mount` and subscribe | They are leaves; resolve where the style is consumed |
-| Buttons subscribe to re-resolve their colour animation targets | They have a `build()`; resolve there |
-| `NavigationRail` hand-drives a badge's subscription because the badge is never mounted | No subscription exists to drive |
-| `Theme.of` warns when called before mount | `Theme.of` raises in `__init__`; a detached read resolves normally |
+| `Box` subscribed to invalidate its paint cache | The framework invalidates the reader; `Box` just reads |
+| `Card` adopted in `on_mount` and subscribed | It has a `build()`; it resolves there and the rebuild carries the new style |
+| The chips adopted in `on_mount` and subscribed | Leaves; they resolve in `style`, read from `preferred_size()` |
+| Buttons subscribed to re-resolve their colour animation targets | Leaves; they resolve in `_sync_theme_style`, called from `preferred_size()` |
+| `NavigationRail` hand-drove a badge's subscription because the badge is never mounted | The badge gets its parent link and its paint-time read registers it |
+| `ThemeManager` held a `Set[Callable]` of consumers | One `on_change` hook owned by `AppScope`; no consumer references at all |
+| `Theme.of` warned when called before mount | It raises before `super().__init__()`; a detached read resolves normally |
 
-## Decided: reads outside build, layout and paint
+### The write-through cache the leaves use
+
+`Card`'s style lands on `Box` properties, and a chip's style also determines its
+content subtree — neither can be re-derived inside a property getter on every
+frame. Both therefore keep the derived visuals on fields, but re-apply them
+whenever the freshly-resolved style differs from what was applied last. The
+fields are a cache of the pull, not a value with an independent lifetime, so
+rule 1 holds: nothing can go stale on its own.
+
+The consequence worth knowing is that a chip's pushed visuals materialise when
+it is first *measured*, not when it is mounted. In an app that is invisible,
+because layout always precedes paint.
+
+## Reads outside build, layout and paint
 
 A read made from an event handler, a timer, or other imperative code registers
 the context widget like any other read. It is neither an error nor a special
@@ -184,9 +200,9 @@ This was reached by looking for the use case rather than reasoning from analogy.
 Colour animations looked like the obvious candidate — an interaction handler
 capturing endpoints to interpolate between — but that is not how the buttons
 work. Hover and press animate a float opacity; the colour stays an unresolved
-`ColorSpec` on the widget and is resolved at paint. The buttons resolve colours
-only in their theme-change callback and at construction, both of which this
-proposal removes.
+`ColorSpec` on the widget and is resolved at paint. The buttons resolved colours
+only in their theme-change callback and at construction, and this design removed
+both.
 
 No widget in the framework reads the theme outside build, layout or paint.
 
@@ -215,8 +231,8 @@ bless a pattern this document exists to remove.
 The declarative four converge on the same answer: the author writes a pull, the
 framework wires the invalidation, and nobody subscribes. The retained-mode
 frameworks all provide a **framework-called hook** rather than a subscription —
-none of them ask the author to pair subscribe with unsubscribe. nuiitivet is the
-outlier in doing so, and #473 is the predictable result.
+none of them ask the author to pair subscribe with unsubscribe. nuiitivet used
+to be the outlier in doing so, and #473 was the predictable result.
 
 No framework surveyed extends late-binding tokens beyond colour. The answer for
 typography and shape is recomputation, not indirection — which is why extending
@@ -227,27 +243,19 @@ here.
 
 `Theme`, `Geometry`, `Navigator` and (eventually) locale share one shape: a
 value supplied by an ancestor, consumed by descendants, changing over time. The
-mechanism above is not theme-specific.
+mechanism is not theme-specific: `nuiitivet/theme/dependency.py` marks readers
+and walks a provider's subtree, and neither operation knows what a theme is.
 
-This proposal deliberately scopes itself to the theme, because that is where the
-failures have been observed. It should be written so the dependency-registration
-machinery can be lifted to a general ambient-context facility later, rather than
-baking theme-specific assumptions into it.
+The scope was deliberately kept to the theme, because that is where the failures
+were observed. Lifting the machinery to a general ambient-context facility is
+future work, not a rewrite.
 
-## Migration sketch
+## Where this lives
 
-1. Add dependency registration to `Theme.of`, reusing the existing
-   `RecomposeScope` / `_dependency_scope_index` machinery.
-2. Move `AppScope` to generation-bump + subtree invalidation; drop
-   `ThemeManager`'s subscriber set.
-3. Convert `Card`, `TextField` and the buttons — all of which have a `build()` —
-   from adopt-at-mount to resolving in `build()`. For the buttons that means the
-   colour animation targets.
-4. Convert the chips, which have no `build()`, to resolving where the style is
-   consumed.
-5. Remove `Box`'s invalidation-only subscription.
-6. Make `Theme.of` raise in `__init__`; delete the `theme_of_before_mount`
-   warning.
-7. Delete `NavigationRail`'s hand-driven badge subscription.
-
-Steps 3–7 are each independently shippable once step 1 and 2 land.
+| Piece | Module |
+| --- | --- |
+| Reader marking, subtree invalidation | `nuiitivet/theme/dependency.py` |
+| The read itself, and the `__init__` guard | `Theme.of` in `nuiitivet/theme/theme.py` |
+| Attributing a read to the building host | `evaluate_build` in `nuiitivet/widgeting/widget_builder.py` |
+| Turning a theme change into invalidation | `AppScope._on_theme_changed` in `nuiitivet/runtime/app.py` |
+| The single owner hook and the generation counter | `nuiitivet/theme/manager.py` |

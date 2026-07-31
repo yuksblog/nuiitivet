@@ -358,15 +358,13 @@ class _RailItemButton(InteractiveWidget):
             self._badge_widget = None
         self._badge_rect = None
 
-        # Give the badge access to the widget tree so Theme.of() can traverse
-        # up to AppScope and resolve theme-based colors (e.g. ColorRole.ERROR).
+        # The badge is drawn by this widget rather than added as a child, so it
+        # never gets mounted; give it the upward link itself, which is all
+        # Theme.of() needs to reach the AppScope and resolve ColorRole.ERROR.
+        # Nothing further is required: the badge's paint-time read registers it
+        # as a theme reader on its own.
         if self._badge_widget is not None:
             self._badge_widget._parent = self
-            try:
-                self._badge_widget._remove_box_theme_subscription()
-                self._badge_widget._sync_theme_subscription()
-            except Exception:
-                pass
 
     def _apply_colors(self, *, selected: bool, rail_style: Optional[NavigationRailStyle] = None) -> None:
         eff_style = self._eff_style or rail_style or NavigationRailStyle()

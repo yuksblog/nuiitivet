@@ -29,6 +29,7 @@ from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.padding import PaddingLike
@@ -38,7 +39,6 @@ from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
-    from nuiitivet.theme.manager import ThemeManager
 
 logger = logging.getLogger(__name__)
 
@@ -387,7 +387,9 @@ class MaterialButtonBase(InteractiveWidget):
         self._bg_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._border_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._foreground_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
-        self._theme_manager: Optional["ThemeManager"] = None
+        #: The theme the colour targets were last derived from, compared by
+        #: identity: ``Theme`` is frozen, so a new object means a real change.
+        self._applied_theme: Optional["Theme"] = None
 
         self._init_foreground_targets()
         self._update_color_targets(
@@ -396,23 +398,30 @@ class MaterialButtonBase(InteractiveWidget):
             foreground_color=foreground_color,
         )
 
-    def on_mount(self) -> None:
-        super().on_mount()
-        from nuiitivet.runtime.app import AppScope
-
-        scope = self.find_ancestor(AppScope)
-        if scope is not None:
-            self._theme_manager = scope.theme_manager
-            self._theme_manager.subscribe(self._on_theme_change)
-            self._on_theme_change(self._theme_manager.current)
-            self._snap_color_animations()
-
     def on_unmount(self) -> None:
-        if self._theme_manager is not None:
-            self._theme_manager.unsubscribe(self._on_theme_change)
-            self._theme_manager = None
         self._dispose_color_animations()
         super().on_unmount()
+
+    def _sync_theme_style(self) -> None:
+        """Re-derive the colour targets from the theme if it has moved.
+
+        A button has no ``build()``, so it reads the theme where the style is
+        consumed -- here, from :meth:`preferred_size`. The read registers a
+        dependency, so a theme change re-measures the button and lands back
+        here. The colour targets are therefore a write-through cache of this
+        pull rather than a value that can go stale on its own. See
+        ``docs/design/THEME_CONSUMPTION.md``.
+        """
+        theme = Theme.of(self)
+        if theme is self._applied_theme:
+            return
+        first = self._applied_theme is None
+        self._applied_theme = theme
+        self._on_theme_change(theme)
+        if first:
+            # Nothing to animate from on the first resolve: the preset the
+            # constructor used was never shown.
+            self._snap_color_animations()
 
     def _on_theme_change(self, theme) -> None:
         raise NotImplementedError
@@ -640,6 +649,7 @@ class MaterialButtonBase(InteractiveWidget):
         super().draw_focus_indicator(canvas, cx, cy, cw, ch)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        self._sync_theme_style()
         w, h = super().preferred_size(max_width=max_width, max_height=max_height)
 
         try:
