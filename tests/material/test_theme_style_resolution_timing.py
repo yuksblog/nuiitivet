@@ -305,3 +305,23 @@ def test_constructing_and_mounting_never_looks_up_the_theme_too_early(
 
     premature = [r.getMessage() for r in caplog.records if "before it was mounted" in r.getMessage()]
     assert premature == [], f"{name} reached Theme.of before it could resolve: {premature}"
+
+
+def test_button_follows_a_theme_mutated_in_place_and_reinstalled() -> None:
+    """A button resolves its colour endpoints to concrete RGBA, so it is the one
+    widget whose held value cannot self-correct on the next read. Its freshness
+    check must therefore survive a change that arrives on the *same* ``Theme``
+    object -- ``extensions`` and ``roles`` are mutable, so that is possible."""
+    roles = {role: "#FFFFFF" for role in ColorRole}
+    shared = Theme(mode="light", extensions=[MaterialThemeData(roles=roles)])
+
+    button = Button("a")
+    manager = _mount(button, shared)
+    button.preferred_size()
+    before = button.bgcolor
+
+    roles[ColorRole.PRIMARY] = "#101010"
+    manager.set_theme(shared)  # same object, mutated contents
+    button.preferred_size()
+
+    assert button.bgcolor != before

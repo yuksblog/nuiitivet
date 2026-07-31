@@ -13,6 +13,7 @@ import pytest
 
 from nuiitivet.layout.container import Container
 from nuiitivet.runtime.app import AppScope
+from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.theme import Theme
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -166,3 +167,30 @@ def test_reading_from_a_detached_widget_falls_back_instead_of_raising() -> None:
     Container().add_child(child)
 
     assert Theme.of(child).mode == "light"
+
+
+def test_a_theme_reinstalled_on_the_same_object_still_counts_as_a_change() -> None:
+    """``Theme`` is frozen but its ``extensions`` list and a
+    ``MaterialThemeData``'s ``roles`` dict are not. A theme mutated in place and
+    re-installed arrives on the same object, so anything caching against the
+    object's identity would skip a real change. The generation counter does not.
+    """
+    from nuiitivet.material.theme.color_role import ColorRole
+    from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+    roles = {role: "#FFFFFF" for role in ColorRole}
+    shared = Theme(mode="light", extensions=[MaterialThemeData(roles=roles)])
+
+    leaf = _Leaf()
+    manager = _scope(leaf, shared)
+    before = theme_generation(leaf)
+
+    roles[ColorRole.PRIMARY] = "#101010"
+    manager.set_theme(shared)  # same object, different contents
+
+    assert manager.current is shared
+    assert theme_generation(leaf) != before
+
+
+def test_theme_generation_is_minus_one_when_detached() -> None:
+    assert theme_generation(Widget()) == -1

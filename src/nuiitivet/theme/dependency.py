@@ -26,6 +26,7 @@ __all__ = [
     "pop_theme_reader",
     "push_theme_reader",
     "register_theme_dependency",
+    "theme_generation",
 ]
 
 _logger = logging.getLogger(__name__)
@@ -82,6 +83,41 @@ def register_theme_dependency(context: Any) -> None:
             "Failed to mark theme reader (reader=%s)",
             type(reader).__name__,
         )
+
+
+def theme_generation(context: Any) -> int:
+    """Return how many times the theme above ``context`` has changed.
+
+    For the widgets that cannot re-derive a value on every read and have to keep
+    it on a field -- a button resolves its colour animation endpoints to concrete
+    RGBA -- this is what says whether what they hold is still current.
+
+    Comparing the ``Theme`` object instead would be subtly wrong: ``Theme`` is
+    frozen but its ``extensions`` list and a ``MaterialThemeData``'s ``roles``
+    dict are not, so a theme mutated in place and re-installed is a real change
+    that arrives on the same object. The counter moves regardless.
+
+    Args:
+        context: A widget in the subtree to resolve the provider from.
+
+    Returns:
+        The provider's change count, or ``-1`` when no ``AppScope`` is reachable.
+    """
+    from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
+    from nuiitivet.widgeting.context_lookup import find_provider
+
+    scope = find_provider(context, AppScope)
+    if scope is None:
+        return -1
+    try:
+        return int(scope.theme_manager.generation)
+    except Exception:
+        exception_once(
+            _logger,
+            "theme_dependency_generation_exc",
+            "Failed to read ThemeManager.generation",
+        )
+        return -1
 
 
 def _iter_subtree(root: Any) -> Iterator[Any]:

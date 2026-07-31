@@ -29,6 +29,7 @@ from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
@@ -387,9 +388,9 @@ class MaterialButtonBase(InteractiveWidget):
         self._bg_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._border_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._foreground_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
-        #: The theme the colour targets were last derived from, compared by
-        #: identity: ``Theme`` is frozen, so a new object means a real change.
-        self._applied_theme: Optional["Theme"] = None
+        #: The provider's change count when the colour targets were last
+        #: derived. ``None`` until the first resolve. See :meth:`_sync_theme_style`.
+        self._applied_theme_generation: Optional[int] = None
 
         self._init_foreground_targets()
         self._update_color_targets(
@@ -411,12 +412,20 @@ class MaterialButtonBase(InteractiveWidget):
         here. The colour targets are therefore a write-through cache of this
         pull rather than a value that can go stale on its own. See
         ``docs/design/THEME_CONSUMPTION.md``.
+
+        Unlike a chip, a button cannot compare the *derived* value to decide
+        whether to re-apply: its endpoints are concrete RGBA fed into running
+        animations, and re-targeting them on every measure would disturb an
+        animation in flight. It compares the provider's change count instead,
+        which moves even when a theme is mutated in place and re-installed on
+        the same object.
         """
         theme = Theme.of(self)
-        if theme is self._applied_theme:
+        generation = theme_generation(self)
+        if generation == self._applied_theme_generation:
             return
-        first = self._applied_theme is None
-        self._applied_theme = theme
+        first = self._applied_theme_generation is None
+        self._applied_theme_generation = generation
         self._on_theme_change(theme)
         if first:
             # Nothing to animate from on the first resolve: the preset the
