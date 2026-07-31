@@ -85,7 +85,7 @@ class DetailsIntent:
     item_id: int
 
 class ItemViewModel:
-    def __init__(self, navigator):          # the root navigator (or an INavigator)
+    def __init__(self, navigator):          # the root navigator
         self.navigator = navigator
     def open(self, item_id: int):
         self.navigator.push(DetailsIntent(item_id=item_id))
@@ -105,5 +105,5 @@ def main():
     app.run()
 ```
 
-The same Intent approach applies to dialogs from a ViewModel via `IOverlay` and an
-overlay intent resolver.
+The same Intent approach applies to dialogs from a ViewModel via `nv.Overlay` and
+an intent resolver.
