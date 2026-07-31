@@ -281,6 +281,97 @@ class Button(BaseButton, style=ButtonStyle.filled()):
         )
 ```
 
+### 4.1 When may a widget read the theme?
+
+> This section describes **current behaviour**. The rules below still require the
+> author to choose between pulling and pushing, which is the root of #464, #473
+> and #476. `docs/design/THEME_CONSUMPTION.md` proposes removing that choice:
+> a read registers a dependency, the framework owns the invalidation, and nobody
+> subscribes. Read that document before adding a new theme-aware widget.
+
+The theme is an input to **layout and paint**, never to construction. It carries
+typography and shape as well as colour, so it is consumed twice: once while
+measuring, and again while painting.
+
+| Call site | Verdict |
+| --- | --- |
+| `preferred_size()` / `layout()` | Yes — the layout phase needs typography and shape |
+| `paint()` | Yes — the paint phase needs colour |
+| `build()` | Yes — the result feeds both phases |
+| `on_mount()` | Not to resolve a value. Only to subscribe, and only in the cases below |
+| `__init__()` | Never — there is no parent yet, so the value is frozen wrong |
+
+`Theme.of` resolves by walking `_parent` upward, so it can only answer once the
+widget is attached. A value read in `__init__` is the light default forever.
+
+#### Writing a widget: the default is to do nothing
+
+**Read the theme where you use it. Do not resolve it in `__init__`, and do not
+reach for a subscription.**
+
+1. Most widgets need no theme code at all. `Box` already resolves background,
+   border and shadow at paint time, so anything built on it follows the theme
+   for free.
+2. If the widget uses a colour or a typeface of its own, read `Theme.of(self)`
+   at the point of use — inside `paint()`, or while measuring. `Text` does
+   exactly this: its `style` property resolves on every access and holds nothing.
+3. Only subscribe when you have no choice (below).
+
+**The authoritative path is a pull at the point of use.** A widget must be able
+to answer "what is my style?" *at any time*, including before it is mounted:
+`App` measures the content tree to size an `auto` window, and although it mounts
+the tree first (see below), a widget measured outside an App must still resolve
+its own chain rather than look detached.
+
+#### What a subscription is actually for
+
+A `ThemeManager` subscription plays one of two roles, and only the second one
+carries a value:
+
+- **Invalidation.** `Box` subscribes purely to drop a cached paint —
+  `_handle_theme_change` calls `invalidate_paint_cache()` and nothing else. The
+  colour is still pulled on the next paint. This is the cheap, safe form.
+- **Projection.** `Card` and the chips resolve the style and write it onto
+  stored `Box` properties (`bgcolor`, `corner_radius`, …), because `Box` paints
+  from its own fields and cannot pull on their behalf. Buttons do the same to
+  feed concrete endpoints to their colour animations.
+
+Projection is the exception, not the pattern. A widget that projects must:
+
+1. fall back to a pull while it is unmounted, and
+2. keep the subscription paired with `on_unmount` — `ThemeManager` holds
+   subscribers strongly, so a missed unsubscribe pins the widget.
+
+**A push is a cache over the pull, never a replacement for it.** Adopting at
+mount *without* subscribing is exactly as broken as reading in `__init__`, only
+harder to notice: the value stops following the theme.
+
+#### The framework's side of the contract
+
+Widgets can only honour the rule if the chain they walk is intact:
+
+- A composable parents its build result **when it builds**, not when it mounts
+  (`BuilderHostMixin._adopt_built`), so a pre-mount measurement resolves
+  ancestors instead of dead-ending.
+- A `ChildrenStore` clears a child's `_parent` only while it still points at
+  that store's owner, so re-parenting a child before the old owner drops it does
+  not orphan it.
+- `App` installs the `AppScope` and **mounts the tree before it measures**
+  anything. Measuring first would resolve every lookup against the default light
+  theme and size the window for a theme the app never installed.
+
+Together these make `Theme.of`'s premature-lookup warning trustworthy: it fires
+only for a genuine `__init__` call, while a deliberately detached widget falls
+back to the light default silently. See issues #464, #473 and #476.
+
+#### A theme change repaints; it does not relayout
+
+Light/dark switching — and switching between themes built from different seed
+colours — changes only the colour roles. Every size-affecting field
+(`text_style`, the card and chip styles) is identical across the pair, so the
+theme subscription requests a repaint and deliberately does not invalidate
+layout.
+
 ### 5. Directory Structure
 
 ```text
