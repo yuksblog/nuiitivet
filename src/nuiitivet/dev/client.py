@@ -337,7 +337,11 @@ class BridgeClient:
         return bool(payload.get("verbose", False))
 
     def screenshot(self) -> bytes:
-        """Fetch a PNG screenshot of the running app's current frame."""
+        """Fetch a PNG of the running app's widget tree, re-rendered offscreen.
+
+        It can come back clean while the screen is visibly broken (GPU path,
+        swap chain).
+        """
         body, content_type = self._get("/screenshot")
         if "image/png" not in content_type:
             raise RuntimeError(f"expected image/png, got {content_type!r}: {body[:200]!r}")

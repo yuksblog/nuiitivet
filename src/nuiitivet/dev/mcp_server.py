@@ -269,7 +269,7 @@ def build_server() -> "FastMCP":
 
     @server.tool()
     def screenshot() -> Image:
-        """Return a PNG screenshot of the running app's current frame.
+        """Return a PNG of the widget tree, re-rendered offscreen.
 
         Use it for one job: investigating a *human-reported* visual or layout
         discrepancy that `describe_tree` + `describe_state` cannot explain. A
@@ -278,6 +278,10 @@ def build_server() -> "FastMCP":
         everything else the other tools are the answer -- `status` (with its
         `blank` flag) for whether the app started or is healthy, `describe_tree`
         for on-screen structure and action targets.
+
+        **It can come back clean while the screen is visibly broken** (GPU path,
+        swap chain), so never dismiss a human's visual report on that basis --
+        ask them for their own screenshot.
         """
         return Image(data=_client().screenshot(), format="png")
 

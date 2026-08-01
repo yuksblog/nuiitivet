@@ -102,6 +102,10 @@ is on screen*:
 - **A node's `rect` can read `0` or stale right after a measurement.** Never
   diagnose a layout bug from a single `rect` value; re-observe after things
   settle.
+- **`screenshot` re-renders the tree offscreen instead of capturing the
+  window.** It can come back clean while the screen is visibly broken (GPU path,
+  swap chain), so never dismiss a human's visual report on that basis — ask them
+  for their own screenshot.
 
 ## Act — drive the running app
 

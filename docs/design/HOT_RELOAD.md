@@ -376,7 +376,9 @@ edit again.
   tree into compact JSON — per node its type, human identity (`key` / `label` /
   `text` / `title`) and `rect` `[x, y, w, h]` in root coordinates. This is the
   semantic, low-token view a tool reasons over and resolves action targets from.
-  `screenshot` renders the current frame to PNG.
+  `screenshot` renders the mounted tree to PNG on an offscreen raster surface
+  (`_render_snapshot(for_display=False)`) rather than reading back the
+  framebuffer, so defects in the GPU path or the swap chain never appear in it.
 - **State perception** (`dev/perception.py`, [#410](https://github.com/yuksblog/nuiitivet/issues/410)).
   `describe_tree` reports the *output* — the widget tree — but not the reactive
   state that produced it, and "the value updated but the UI didn't" (or the

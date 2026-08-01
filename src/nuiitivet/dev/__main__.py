@@ -147,7 +147,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    shot = subparsers.add_parser("screenshot", help="Save a PNG screenshot of the running app.")
+    shot = subparsers.add_parser(
+        "screenshot", help="Save a PNG of the running app's widget tree (not the window)."
+    )
     shot.add_argument(
         "-o",
         "--output",
