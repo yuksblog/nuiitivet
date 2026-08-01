@@ -86,10 +86,65 @@ class ComposableWidget(
 
 ### 5. BindingHostMixin (Reactivity)
 
-- **Role**: Manages subscriptions for data binding (Observables).
+- **Role**: Owns `Disposable`s for the duration of the widget's mounted life.
 - **Responsibilities**:
-  - Registers subscriptions via `bind` or `bind_to`.
-  - Automatically unsubscribes (Disposes) during `on_unmount`.
+  - Registers disposables via `observe`, `bind`, or `bind_to`.
+  - Disposes everything registered during `on_unmount`.
+
+#### API surface
+
+| Method | Subscribes | Applies current value first |
+| --- | --- | --- |
+| `observe(observable, callback)` | Yes | Yes |
+| `bind(disposable)` | No — the caller already did | n/a |
+| `bind_to(observable, setter, *, dependency, scope_id)` | Yes | Yes |
+
+All three are widget-implementation APIs: they exist so a widget can accept an
+`Observable` constructor argument and apply it to its own internal state.
+`observe` carries the bulk of that work in-tree — `gap`, `padding`, sizing,
+transform properties, external value sync. Application code does not normally
+reach for them; it passes Observables into widgets, derives with
+`map` / `combine`, and uses `on_size_changed` for size-driven state.
+
+`observe` and `bind_to` seed identically; the only difference is the dependency
+invalidation described below.
+
+A source with no `.value` — a subscribe-only emitter — is subscribed without a
+seed rather than treated as an error.
+
+#### `bind_to` and dependency invalidation
+
+`bind_to` does one thing `observe` does not: on every *change* it calls
+`_invalidate_binding_dependency(dependency, scope_id)` after the setter. The
+`dependency` is a label naming *what* the new value invalidates.
+`Widget._handle_dependency_invalidation` matches it against the class-level
+`_layout_dependencies` / `_paint_dependencies` tuples and drops only the
+affected cache; `dependency=None` drops both.
+
+The initial seed deliberately skips this: it runs before the widget has laid
+out or painted, so there is no cache to drop and no frame worth requesting.
+
+Invalidations are queued per widget and flushed at the frame boundary by
+`App` (`flush_binding_invalidations`), so several observables firing together
+coalesce into one re-render. A widget with no `_app` — not yet mounted, or used
+standalone in a test — flushes immediately instead.
+
+Choosing a dependency label therefore requires knowing which caches the widget
+keeps. A widget with no such caches gains nothing from `bind_to` and should use
+`observe`, letting the callback decide what to invalidate.
+
+#### Disposal contract
+
+`BindingHostMixin.on_unmount` calls `_dispose_bindings()`, which disposes and
+clears every registered disposable, then delegates to `super().on_unmount()`.
+
+A subclass that overrides `on_unmount` **must** call `super().on_unmount()`.
+Omitting it skips `_dispose_bindings()` entirely, and because remounting
+(navigation, hot reload) re-runs `on_mount`, subscriptions accumulate: one
+source event then invokes N callbacks against N detached widgets.
+
+See [OBSERVABLE.md](OBSERVABLE.md) for `Observable` itself; this section covers
+only how a widget takes ownership of a subscription to one.
 
 ### 6. InputHubMixin (Input)
 

@@ -486,14 +486,12 @@ class TextField(InteractiveWidget):
         if self._label_source is not None:
             try:
                 self.bind_to(self._label_source, self._set_label, dependency="label")
-                self._set_label(self._label_source.value)
             except Exception:
                 exception_once(_logger, "text_field_bind_label_exc", "TextField failed to bind label")
 
         if self._supporting_text_source is not None:
             try:
                 self.bind_to(self._supporting_text_source, self._set_supporting_text, dependency="supporting_text")
-                self._set_supporting_text(self._supporting_text_source.value)
             except Exception:
                 exception_once(
                     _logger,
@@ -504,14 +502,12 @@ class TextField(InteractiveWidget):
         if self._is_error_source is not None:
             try:
                 self.bind_to(self._is_error_source, self._set_is_error, dependency="is_error")
-                self._set_is_error(self._is_error_source.value)
             except Exception:
                 exception_once(_logger, "text_field_bind_is_error_exc", "TextField failed to bind is_error")
 
         if self._disabled_source is not None:
             try:
                 self.bind_to(self._disabled_source, self._apply_disabled, dependency="disabled")
-                self._apply_disabled(bool(self._disabled_source.value))
             except Exception:
                 exception_once(_logger, "text_field_bind_disabled_exc", "TextField failed to bind disabled")
 

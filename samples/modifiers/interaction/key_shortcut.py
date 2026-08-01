@@ -53,15 +53,13 @@ class EditorPane(nv.ComposableWidget):
         self.title = title
         self.text = nv.Observable(text)
         self.saved_text = nv.Observable(text)
-        self.status = nv.Observable("saved")
-        self.text.subscribe(lambda _value: self._refresh_status())
-
-    def _refresh_status(self) -> None:
-        self.status.value = "saved" if self.text.value == self.saved_text.value else "modified"
+        # status is a function of the two texts, so derive it — nothing to keep in sync.
+        self.status = nv.combine(self.text, self.saved_text).compute(
+            lambda current, saved: "saved" if current == saved else "modified"
+        )
 
     def save(self) -> None:
         self.saved_text.value = self.text.value
-        self.status.value = "saved"
         print(f"[{self.title}] saved: {self.text.value!r}")
 
     def build(self):
