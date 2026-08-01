@@ -59,7 +59,7 @@ order rather than defaulting to a screenshot:
 - **Is it up and healthy?** → `status` (below) — no tree, no image.
 - **Is the right thing on screen?** → `describe_tree` — the structure, cheap in
   tokens.
-- **Do the pixels look right?** → `screenshot` — a last resort for genuine
+- **Does it paint correctly?** → `screenshot` — a last resort for genuine
   visual/layout checks; image tokens are expensive.
 
 ### Check it's up
@@ -96,11 +96,16 @@ order rather than defaulting to a screenshot:
   when the tree looks right but behaves wrong, or looks wrong but the code seems
   right — the classic "the value updated but the UI didn't" (or the reverse)
   reactive bug, where the tree alone cannot tell you which side is at fault.
-- **`screenshot`** — renders the current frame to PNG. A **last resort**, only
-  when you genuinely need to see pixels — a visual or layout check the structure
-  cannot express; image tokens are expensive. Do not reach for it to confirm the
-  app started or is healthy (`status` answers that, and its `blank` flag already
-  catches a white screen) or to read on-screen structure (`describe_tree`).
+- **`screenshot`** — renders the mounted widget tree to PNG. A **last resort**,
+  only when you genuinely need to see pixels — a visual or layout check the
+  structure cannot express; image tokens are expensive. Do not reach for it to
+  confirm the app started or is healthy (`status` answers that, and its `blank`
+  flag already catches a white screen) or to read on-screen structure
+  (`describe_tree`).
+
+  **It is not a capture of your window.** Your screen can be visibly garbled
+  while `screenshot` comes back clean, so "the screenshot looks fine" settles
+  nothing about a problem you reported — send the assistant your own screenshot.
 
 ### Act
 
