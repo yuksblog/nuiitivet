@@ -75,27 +75,6 @@ class ShoppingCart:
         )
 ```
 
-## Memory Management with `Disposable`
-
-Use `Disposable` for long-lived objects that own multiple subscriptions or derived observables.
-By registering disposables in one place, you can release resources deterministically and prevent leaks.
-This pattern is especially useful for screens or services with explicit lifecycle boundaries.
-
-```python
-import nuiitivet.material as nv
-from nuiitivet.observable import Disposable
-
-class ViewModel(Disposable):
-    def __init__(self):
-        super().__init__()
-        self.count = nv.Observable(0)
-        self.doubled = self.count.map(lambda x: x * 2)
-        self.add_disposable(self.doubled)
-
-    def dispose(self):
-        super().dispose()
-```
-
 ## Async Data Fetch Recipe
 
 Use this pattern when data is loaded on a worker thread but rendered in the UI.
