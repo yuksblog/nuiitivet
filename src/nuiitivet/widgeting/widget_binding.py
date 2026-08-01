@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import weakref
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
 from .widget_builder import flush_scope_recompositions
@@ -186,18 +186,6 @@ class BindingHostMixin:
                 type(self).__name__,
             )
 
-    def bind_many(self, disposables: Iterable) -> None:
-        for disposable in disposables:
-            try:
-                self.bind(disposable)
-            except Exception:
-                exception_once(
-                    _logger,
-                    f"widget_binding_bind_many_exc:{type(self).__name__}",
-                    "Failed to bind disposable for widget=%s",
-                    type(self).__name__,
-                )
-
     def bind_to(
         self,
         observable,
@@ -206,8 +194,27 @@ class BindingHostMixin:
         dependency: Optional[str] = None,
         scope_id: Optional[str] = None,
     ) -> None:
+        """Subscribe *observable* to *setter*, invalidating a named dependency.
+
+        Applies the current value first, like :meth:`observe`. That initial call
+        does not queue a dependency invalidation: nothing is cached yet at this
+        point, and the call sites that used to seed this by hand did not queue
+        one either.
+        """
         if not hasattr(observable, "subscribe"):
             return
+
+        if hasattr(observable, "value"):
+            try:
+                setter(observable.value)
+            except Exception:
+                exception_once(
+                    _logger,
+                    f"widget_binding_bind_to_initial_exc:{type(self).__name__}",
+                    "Exception in bind_to initial setter for widget=%s dependency=%s",
+                    type(self).__name__,
+                    dependency,
+                )
 
         def _on_value(value) -> None:
             try:
