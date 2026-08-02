@@ -10,6 +10,18 @@ repo_name: yuksblog/nuiitivet
 edit_uri: edit/main/docs/
 copyright: Copyright &copy; 2026 yuksblog
 
+# Design notes and MD3 spec references are reference material reached by link,
+# not sidebar entries. Everything else must be registered in `nav` — an
+# unregistered page is invisible to a reader browsing the sidebar, so CI runs
+# `mkdocs build --strict`, which turns the warning below into a failure.
+not_in_nav: |
+  design/
+  md3/
+
+validation:
+  nav:
+    omitted_files: warn
+
 theme:
   name: material
   language: en
