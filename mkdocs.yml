@@ -163,6 +163,7 @@ nav:
           - guide/modifiers/index.md
           - Decoration: guide/modifiers/decoration.md
           - Interaction: guide/modifiers/interaction.md
+          - Pointer Participation: guide/modifiers/pointer_participation.md
           - Transform: guide/modifiers/transform.md
           - Popup: guide/modifiers/popup.md
           - Lifecycle: guide/modifiers/lifecycle.md
@@ -193,6 +194,7 @@ nav:
       - Advanced:
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md
+          - Geometry: guide/advanced/geometry.md
       - Packaging:
           - guide/packaging.md
   - API Reference:
