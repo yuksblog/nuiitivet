@@ -24,7 +24,7 @@ MD3 token references: ``md.comp.date-picker.*``
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from nuiitivet.theme.types import ColorSpec
 from ..theme.color_role import ColorRole
@@ -100,7 +100,7 @@ class CalendarStyle:
     menu_button_icon_size: int = 18  # Dropdown arrow icon size; from md.comp.date-picker.docked.menu-button.icon.size
     menu_button_text: ColorSpec = ColorRole.ON_SURFACE_VARIANT
 
-    def copy_with(self: _S, **changes) -> _S:
+    def copy_with(self: _S, **changes: Any) -> _S:
         """Return a new style with the given fields overridden.
 
         Args:
@@ -145,7 +145,7 @@ class DockedDatePickerStyle:
     # --- Dropdown placement ---
     dropdown_gap: float = 4.0  # Vertical gap between the field and the calendar
 
-    def copy_with(self, **changes) -> "DockedDatePickerStyle":
+    def copy_with(self, **changes: Any) -> "DockedDatePickerStyle":
         """Return a new style with the given fields overridden.
 
         Args:
@@ -217,7 +217,7 @@ class ModalDateInputStyle:
     header_supporting_text_font_size: float = 14.0
     header_headline_font_size: float = 32.0
 
-    def copy_with(self, **changes) -> "ModalDateInputStyle":
+    def copy_with(self, **changes: Any) -> "ModalDateInputStyle":
         """Return a new style with the given fields overridden.
 
         Args:

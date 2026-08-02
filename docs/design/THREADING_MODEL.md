@@ -46,7 +46,7 @@ Testing concurrent UI logic requires deterministic behavior.
   * `assert_ui_thread` raises correctly on worker threads.
   * Rapid updates are correctly coalesced into a single notification.
 
-See [tests/test_threading_model.py](../../tests/test_threading_model.py) for the current test pattern.
+See [tests/runtime/test_threading_model.py](https://github.com/yuksblog/nuiitivet/blob/main/tests/runtime/test_threading_model.py) for the current test pattern.
 
 ## Design Rationale
 

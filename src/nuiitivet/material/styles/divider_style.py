@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Any
 
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
@@ -26,7 +27,7 @@ class DividerStyle:
     inset_left: int = 0
     inset_right: int = 0
 
-    def copy_with(self, **changes) -> "DividerStyle":
+    def copy_with(self, **changes: Any) -> "DividerStyle":
         """Return a copy of this style with the given fields overridden.
 
         Args:

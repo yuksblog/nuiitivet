@@ -139,7 +139,7 @@ class TextField(InteractiveWidget):
         value: ObservableProtocol[str],
         *,
         on_change: Optional[Callable[[str], None]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> TTextField:
         """Create a two-way bound TextField.
 
