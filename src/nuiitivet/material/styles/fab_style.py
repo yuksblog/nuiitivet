@@ -17,10 +17,14 @@ selects container / icon / corner-radius tokens from
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .button_size import FAB_SIZE_TOKENS, FabSize
 from .button_style import ButtonStyle
 from ..theme.color_role import ColorRole
+
+if TYPE_CHECKING:
+    from ...theme import Theme
 
 
 @dataclass(frozen=True)
@@ -119,6 +123,37 @@ class FabStyle(ButtonStyle):
             overlay_color=ColorRole.ON_TERTIARY,
             **cls._base(size),
         )
+
+    # -- Theme resolution ----------------------------------------------------
+
+    @classmethod
+    def preset(cls) -> "FabStyle":
+        """Return the framework preset, ignoring any theme.
+
+        This is what a FAB renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Returns:
+            The tonal-primary FAB style at size ``"s"``.
+        """
+        return cls.primary()
+
+    @classmethod
+    def from_theme(cls, theme: "Theme") -> "FabStyle":
+        """Resolve the FAB style from ``theme``.
+
+        Args:
+            theme: Theme instance.
+
+        Returns:
+            Resolved FAB style.
+        """
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme_data = theme.extension(MaterialThemeData)
+        if theme_data is not None:
+            return theme_data.fab_style
+        return cls.preset()
 
 
 __all__ = ["FabStyle"]

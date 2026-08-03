@@ -14,12 +14,15 @@ variant.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from .button_size import BUTTON_SIZE_TOKENS, ButtonSize
 from .button_style import ButtonStyle, PaddingLike, _size_min_height, _size_min_width, _size_padding
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
+
+if TYPE_CHECKING:
+    from nuiitivet.theme.theme import Theme
 
 
 @dataclass(frozen=True)
@@ -214,6 +217,38 @@ class ToggleButtonStyle:
             selected_overlay_color=ColorRole.ON_SECONDARY,
             selected_overlay_alpha=0.08,
         )
+
+    # -- Theme resolution ----------------------------------------------------
+
+    @classmethod
+    def preset(cls) -> "ToggleButtonStyle":
+        """Return the framework preset, ignoring any theme.
+
+        This is what a toggle button renders with before it is mounted, and
+        what :meth:`from_theme` falls back to when no Material theme is
+        installed.
+
+        Returns:
+            The filled toggle-button style at size ``"s"``.
+        """
+        return cls.filled("s")
+
+    @classmethod
+    def from_theme(cls, theme: "Theme") -> "ToggleButtonStyle":
+        """Resolve the toggle-button style from ``theme``.
+
+        Args:
+            theme: Theme instance.
+
+        Returns:
+            Resolved toggle-button style.
+        """
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme_data = theme.extension(MaterialThemeData)
+        if theme_data is not None:
+            return theme_data.toggle_button_style
+        return cls.preset()
 
 
 __all__ = ["ToggleButtonStyle"]

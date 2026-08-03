@@ -222,7 +222,7 @@ def _build_item_row_class() -> type:
                 disabled=item.disabled,
                 **params,
             )
-            self._sync_state_tokens()
+            self._sync_state_tokens(style)
 
         def _expressive_press_scale(self) -> Tuple[float, float]:
             # Wide pills should not squash; rely on the state layer for feedback.

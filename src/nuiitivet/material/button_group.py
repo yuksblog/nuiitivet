@@ -32,6 +32,7 @@ from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, STANDARD_BUTTON_G
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import MutableObservableBase, ObservableBase
 from nuiitivet.rendering.sizing import Sizing, SizingLike
+from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, BoolCallback
 from nuiitivet.widgets.box import Box
@@ -108,7 +109,9 @@ class GroupButton(InteractiveWidget):
         disabled: Whether the item ignores pointer events.
         width: Optional width sizing.  ``ConnectedButtonGroup`` overrides this to
             ``Sizing.flex(1)`` to achieve equal-width segments.
-        style: Optional style override.  If omitted the ``filled`` preset is used.
+        style: Optional style override.  If omitted, the containing group's
+            style is used; a group button standing on its own follows the
+            theme's standard-group style.
     """
 
     def __init__(
@@ -139,10 +142,15 @@ class GroupButton(InteractiveWidget):
             raise ValueError("GroupButton requires at least one of label or icon")
 
         self._has_user_style = style is not None
+        #: Set by the containing group, which resolves one style for the whole
+        #: row and pushes it down; an item that has one must not pull its own.
+        self._group_styled = False
         # Held in a local for everything below ``super().__init__()``: reads that
         # run before the widget is attached must not go through an accessor that
-        # could reach for the theme, which is not resolvable yet (issue #473).
-        effective_style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.filled()
+        # could reach for the theme, which is not resolvable yet. The preset is
+        # what ``StandardButtonGroupStyle.from_theme`` falls back to, so an
+        # unthemed app sees no change.
+        effective_style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.preset()
         self._style: "ButtonGroupStyle" = effective_style
         self._label = label
         self._icon = icon
@@ -244,6 +252,7 @@ class GroupButton(InteractiveWidget):
         Returns:
             ``(width, height)`` in pixels.
         """
+        self._sync_theme_style()
         # Content is centred with zero box padding, so ``super`` returns the
         # bare content width; add the reserved leading + trailing space here so
         # the idle width still equals content + 2 × side-space.
@@ -252,6 +261,40 @@ class GroupButton(InteractiveWidget):
         if not self._adjacent_animation:  # Connected groups only
             w = max(w, self._style.min_item_width)
         return (int(w), self._style.container_height)
+
+    def _sync_theme_style(self) -> None:
+        """Adopt the theme's standard-group style when nothing else supplies one.
+
+        A group button has no ``build()``, so it reads the theme where the style
+        is consumed -- :meth:`preferred_size`. The read registers a dependency,
+        so a theme change re-measures the item and lands back here. An item that
+        was given an explicit style, or that sits in a group (which resolves one
+        style for the whole row so every segment matches), has nothing to pull.
+        See ``docs/design/THEME_CONSUMPTION.md``.
+        """
+        if self._has_user_style or self._group_styled:
+            return
+        from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
+
+        style = StandardButtonGroupStyle.from_theme(Theme.of(self))
+        if style == self._style:
+            return
+        self._style = style
+        self._rebuild_content()
+        self._apply_style_visuals()
+
+    def _apply_style_visuals(self) -> None:
+        """Push the current style's colours and state-layer tokens onto the box."""
+        bg, _fg, bc, bw = self._effective_colors()
+        self.bgcolor = bg
+        self.border_color = bc
+        self.border_width = bw
+        self.state_layer_color = self._style.overlay_color or ColorRole.ON_SURFACE
+        self._PRESS_OPACITY = self._style.overlay_alpha
+        self._HOVER_OPACITY = self._style.overlay_alpha * 2 / 3
+        self.height_sizing = Sizing.fixed(self._style.container_height)
+        self.mark_needs_layout()
+        self.invalidate()
 
     def _side_space(self) -> int:
         """Return the per-side leading/trailing space reserved around the content.
@@ -734,6 +777,11 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
     focus, because a group's items are actions or independent toggles.
     """
 
+    #: Whether the caller gave an explicit style. Set by the concrete subclass
+    #: before it calls ``super().__init__()``; a group without one follows the
+    #: theme.
+    _has_user_style: bool
+
     def __init__(
         self,
         items: Sequence[GroupButton],
@@ -757,7 +805,8 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
                 (Connected groups).
             group_width: Width sizing passed to the inner ``Row`` and outer
                 ``Box``.  ``None`` for content-fit; ``"100%"`` for full-width.
-            style: Resolved ``ButtonGroupStyle`` for this group.
+            style: The style to build with -- the caller's, or the preset that
+                stands in until the first measure can reach the theme.
         """
         _validate_items(items)
 
@@ -770,7 +819,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         # Standard groups use the interaction-aware row (active grows / neighbors
         # compress in one coordinated pass); Connected groups use a plain Row.
         row_cls = _ButtonGroupRow if adjacent_animation else Row
-        row = row_cls(
+        self._row = row_cls(
             list(items),
             gap=style.item_gap,
             cross_alignment="center",
@@ -778,7 +827,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
             height=style.container_height,
         )
 
-        super().__init__(child=row, width=group_width)
+        super().__init__(child=self._row, width=group_width)
 
         # The group is the Tab stop; its items are not (see on_mount). Tab lands
         # here, the scope hands the focus to the first item, and the arrow keys
@@ -795,6 +844,40 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         # from the group container_height, so only width is affected).
         self._apply_item_sizing()
 
+    def _resolve_group_style(self) -> "ButtonGroupStyle":
+        """Return the style carried by the theme for this kind of group.
+
+        Subclasses must override this method.
+        """
+        raise NotImplementedError
+
+    def _sync_theme_style(self) -> None:
+        """Adopt the theme's group style when the caller gave none.
+
+        A group has no ``build()``, so it reads the theme where the style is
+        consumed -- :meth:`preferred_size`. The read registers a dependency, so
+        a theme change re-measures the group and lands back here; the style
+        pushed onto the row and its items is therefore a write-through cache of
+        this pull. See ``docs/design/THEME_CONSUMPTION.md``.
+        """
+        if self._has_user_style:
+            return
+        style = self._resolve_group_style()
+        if style == self._style:
+            return
+        self._style = style
+        self._row.gap = style.item_gap
+        self._row.height_sizing = Sizing.fixed(style.container_height)
+        self._apply_item_sizing()
+        for item in self._items:
+            item._apply_style_visuals()
+        self.mark_needs_layout()
+        self.invalidate()
+
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        self._sync_theme_style()
+        return super().preferred_size(max_width=max_width, max_height=max_height)
+
     def _apply_item_sizing(self) -> None:
         """Propagate the group's sized style + content metrics to every item.
 
@@ -805,6 +888,9 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         """
         size_tokens = self._item_size_tokens()
         for item in self._items:
+            # The group owns the style for the whole row, so the item must not
+            # go on to pull one of its own from the theme.
+            item._group_styled = True
             # Items without a user-provided style inherit the full group style;
             # items with a custom style only receive size tokens so they keep
             # their custom colours.
@@ -878,14 +964,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
                 pos = "middle"
 
             # Refresh visual properties that were baked in during __init__.
-            bg, fg, bc, bw = item._effective_colors()
-            item.bgcolor = bg
-            item.border_color = bc
-            item.border_width = bw
-            item.state_layer_color = item._style.overlay_color or ColorRole.ON_SURFACE
-            item._PRESS_OPACITY = item._style.overlay_alpha
-            item._HOVER_OPACITY = item._style.overlay_alpha * 2 / 3
-            item.mark_needs_layout()
+            item._apply_style_visuals()
             item._persistent_selected_pressed_shape = self._persistent_selected_pressed_shape
             item._connected_inner_press_only = self._connected_inner_press_only
 
@@ -943,14 +1022,16 @@ class StandardButtonGroup(_ButtonGroupBase):
 
         Args:
             items: Between 2 and 5 ``GroupButton`` instances.
-            style: Visual style override.  Defaults to
+            style: Visual style override.  Defaults to the theme's standard
+                button group style, which itself falls back to
                 ``StandardButtonGroupStyle.filled()`` (size ``"s"``).
         """
         from nuiitivet.material.styles.button_group_style import (
             StandardButtonGroupStyle as _Std,
         )
 
-        eff_style = style if style is not None else _Std.filled()
+        self._has_user_style = style is not None
+        eff_style = style if style is not None else _Std.preset()
         super().__init__(
             items,
             adjacent_animation=True,
@@ -959,6 +1040,11 @@ class StandardButtonGroup(_ButtonGroupBase):
             group_width=None,  # Fits content
             style=eff_style,
         )
+
+    def _resolve_group_style(self) -> "StandardButtonGroupStyle":
+        from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
+
+        return StandardButtonGroupStyle.from_theme(Theme.of(self))
 
     def _item_size_tokens(self) -> dict[str, int | float]:
         """Include ``inner_padding`` (a real field on Standard style)."""
@@ -1002,14 +1088,16 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         Args:
             items: Between 2 and 5 ``GroupButton`` instances.
             select_mode: ``"single"`` or ``"multi"`` selection enforcement.
-            style: Visual style override.  Defaults to
+            style: Visual style override.  Defaults to the theme's connected
+                button group style, which itself falls back to
                 ``ConnectedButtonGroupStyle.filled()`` (size ``"s"``).
         """
         from nuiitivet.material.styles.button_group_style import (
             ConnectedButtonGroupStyle as _Con,
         )
 
-        eff_style = style if style is not None else _Con.filled()
+        self._has_user_style = style is not None
+        eff_style = style if style is not None else _Con.preset()
         self._select_mode = select_mode
 
         super().__init__(
@@ -1020,6 +1108,11 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             group_width="100%",
             style=eff_style,
         )
+
+    def _resolve_group_style(self) -> "ConnectedButtonGroupStyle":
+        from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
+
+        return ConnectedButtonGroupStyle.from_theme(Theme.of(self))
 
     def _item_size_tokens(self) -> dict[str, int | float]:
         """Include ``inner_corner_radius`` (a real field on Connected style)."""

@@ -302,24 +302,35 @@ class StandardButtonGroupStyle:
         )
 
     @classmethod
-    def from_theme(
-        cls,
-        theme: "Theme | None",
-        variant: str,
-        size: ButtonSize = "s",
-    ) -> "StandardButtonGroupStyle":
-        """Create a style from a theme and variant name.
+    def preset(cls) -> "StandardButtonGroupStyle":
+        """Return the framework preset, ignoring any theme.
+
+        This is what a standard button group renders with before it is
+        mounted, and what :meth:`from_theme` falls back to when no Material
+        theme is installed.
+
+        Returns:
+            The filled standard-group style at size ``"s"``.
+        """
+        return cls.filled("s")
+
+    @classmethod
+    def from_theme(cls, theme: "Theme | None") -> "StandardButtonGroupStyle":
+        """Resolve the standard button group style from ``theme``.
 
         Args:
-            theme: The active theme (currently unused; colours are role-based).
-            variant: One of ``"filled"``, ``"tonal"``, or ``"outlined"``.
-            size: M3 size token preset.
+            theme: The active theme, or ``None`` when there is none.
+
+        Returns:
+            Resolved standard-group style.
         """
-        if variant == "tonal":
-            return cls.tonal(size)
-        if variant == "outlined":
-            return cls.outlined(size)
-        return cls.filled(size)
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        if theme is not None:
+            theme_data = theme.extension(MaterialThemeData)
+            if theme_data is not None:
+                return theme_data.standard_button_group_style
+        return cls.preset()
 
 
 # ===================================================================
@@ -464,24 +475,35 @@ class ConnectedButtonGroupStyle:
         )
 
     @classmethod
-    def from_theme(
-        cls,
-        theme: "Theme | None",
-        variant: str,
-        size: ButtonSize = "s",
-    ) -> "ConnectedButtonGroupStyle":
-        """Create a style from a theme and variant name.
+    def preset(cls) -> "ConnectedButtonGroupStyle":
+        """Return the framework preset, ignoring any theme.
+
+        This is what a connected button group renders with before it is
+        mounted, and what :meth:`from_theme` falls back to when no Material
+        theme is installed.
+
+        Returns:
+            The filled connected-group style at size ``"s"``.
+        """
+        return cls.filled("s")
+
+    @classmethod
+    def from_theme(cls, theme: "Theme | None") -> "ConnectedButtonGroupStyle":
+        """Resolve the connected button group style from ``theme``.
 
         Args:
-            theme: The active theme (currently unused; colours are role-based).
-            variant: One of ``"filled"``, ``"tonal"``, or ``"outlined"``.
-            size: M3 size token preset.
+            theme: The active theme, or ``None`` when there is none.
+
+        Returns:
+            Resolved connected-group style.
         """
-        if variant == "tonal":
-            return cls.tonal(size)
-        if variant == "outlined":
-            return cls.outlined(size)
-        return cls.filled(size)
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        if theme is not None:
+            theme_data = theme.extension(MaterialThemeData)
+            if theme_data is not None:
+                return theme_data.connected_button_group_style
+        return cls.preset()
 
 
 # ===================================================================

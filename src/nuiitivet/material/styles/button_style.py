@@ -14,7 +14,7 @@ container / icon / spacing values from
 """
 
 from dataclasses import dataclass, replace
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TypeVar, TYPE_CHECKING
 
 from .button_size import (
     BUTTON_SIZE_TOKENS,
@@ -27,6 +27,9 @@ from nuiitivet.theme.types import ColorSpec
 
 if TYPE_CHECKING:
     from ...theme import Theme
+
+#: Lets :meth:`ButtonStyle.copy_with` keep the subclass it was called on.
+_ButtonStyleT = TypeVar("_ButtonStyleT", bound="ButtonStyle")
 
 
 def _size_padding(size: ButtonSize) -> PaddingLike:
@@ -82,8 +85,12 @@ class ButtonStyle:
     overlay_color: Optional[ColorSpec] = None
     overlay_alpha: float = 0.0
 
-    def copy_with(self, **changes) -> "ButtonStyle":
-        """Create a new style instance with specified fields changed."""
+    def copy_with(self: _ButtonStyleT, **changes) -> _ButtonStyleT:
+        """Create a new style instance with specified fields changed.
+
+        Returns the caller's own type, so a :class:`FabStyle` copy is still a
+        :class:`FabStyle`.
+        """
         return replace(self, **changes)
 
     def resolve_colors(self, theme: "Theme | None" = None) -> dict:
@@ -448,6 +455,38 @@ class IconToggleButtonStyle:
                 **base,
             ),
         )
+
+    # -- Theme resolution ----------------------------------------------------
+
+    @classmethod
+    def preset(cls) -> "IconToggleButtonStyle":
+        """Return the framework preset, ignoring any theme.
+
+        This is what an icon toggle button renders with before it is mounted,
+        and what :meth:`from_theme` falls back to when no Material theme is
+        installed.
+
+        Returns:
+            The standard icon-toggle style at size ``"s"``.
+        """
+        return cls.standard()
+
+    @classmethod
+    def from_theme(cls, theme: "Theme") -> "IconToggleButtonStyle":
+        """Resolve the icon-toggle style from ``theme``.
+
+        Args:
+            theme: Theme instance.
+
+        Returns:
+            Resolved icon-toggle style.
+        """
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme_data = theme.extension(MaterialThemeData)
+        if theme_data is not None:
+            return theme_data.icon_toggle_button_style
+        return cls.preset()
 
 
 __all__ = ["ButtonStyle", "IconButtonStyle", "IconToggleButtonStyle"]
