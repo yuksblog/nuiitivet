@@ -157,14 +157,12 @@ def make_dark_theme() -> nv.Theme:
     )
 ```
 
-### Step 3: Subscribe to theme changes and rebuild
+### Step 3: Change nothing in the widget
 
-`BrandCard` must call `rebuild()` when the theme changes so that `build()`
-is re-run with the new extension values. The subscription follows the same
-pattern used by built-in Material widgets:
+`BrandCard` already reacts to theme changes. It reads the extension inside
+`build()`, and that read is what makes it reactive:
 
 ```python
-from typing import Optional
 import nuiitivet.material as nv
 
 class BrandCard(nv.ComposableWidget):
@@ -172,23 +170,6 @@ class BrandCard(nv.ComposableWidget):
         super().__init__()
         self.heading = heading
         self.content = content
-        self._theme_manager: Optional[nv.ThemeManager] = None
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        scope = self.find_ancestor(nv.AppScope)
-        if scope is not None:
-            self._theme_manager = scope.theme_manager
-            self._theme_manager.subscribe(self._on_theme_change)
-
-    def on_unmount(self) -> None:
-        if self._theme_manager is not None:
-            self._theme_manager.unsubscribe(self._on_theme_change)
-            self._theme_manager = None
-        super().on_unmount()
-
-    def _on_theme_change(self, _theme: nv.Theme) -> None:
-        self.rebuild()
 
     def build(self) -> nv.Widget:
         brand  = nv.Theme.of(self).extension(AppBrandTheme)
@@ -198,9 +179,15 @@ class BrandCard(nv.ComposableWidget):
         ...
 ```
 
-`Theme.of(self)` is called inside `build()`, which runs every time
-`rebuild()` is called.  The widget itself stays unaware of *which* theme
-variant is active — it simply reads whatever `AppBrandTheme` is registered.
+Structurally this is the Use case 1 widget: a constructor and a `build()`, with
+no lifecycle hooks. It reads the `brand_on_surface` field added in Step 1, and
+its fallbacks are the dark ones because dark is this app's initial theme — that
+is the whole difference. Supporting light/dark cost the widget nothing.
+
+`Theme.of(self)` does two things: it resolves the theme, and it records that
+the enclosing build scope depends on it. When the theme changes, the framework
+rebuilds every scope that read it, so `build()` re-runs with the new extension
+values on its own.
 
 ### Full sample
 

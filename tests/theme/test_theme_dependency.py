@@ -7,6 +7,7 @@ has to deregister. See ``docs/design/THEME_CONSUMPTION.md``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from typing import List
 
 import pytest
@@ -113,6 +114,40 @@ def test_a_theme_change_rebuilds_a_composable_reader() -> None:
     manager.set_theme(Theme(mode="dark", extensions=[]))
 
     assert host.modes[-1] == "dark"
+
+
+def test_a_theme_change_rebuilds_a_reader_of_a_custom_extension() -> None:
+    """The shape ``samples/design-system/theme_extensions`` documents.
+
+    A custom ``ThemeExtension`` reaches the widget through the same read, so it
+    needs no subscription either -- which the sample and guide fixed in #482
+    had wrong.
+    """
+
+    @dataclass(frozen=True)
+    class _Brand:
+        surface: str
+
+        def copy_with(self, **kwargs: str) -> "_Brand":
+            return replace(self, **kwargs)
+
+    class _BrandCard(ComposableWidget):
+        def __init__(self) -> None:
+            super().__init__()
+            self.surfaces: List[str] = []
+
+        def build(self) -> Widget:
+            brand = Theme.of(self).extension(_Brand)
+            self.surfaces.append(brand.surface if brand else "unset")
+            return Container()
+
+    card = _BrandCard()
+    manager = _scope(card, Theme(mode="light", extensions=[_Brand("#E8F5E9")]))
+    assert card.surfaces[-1] == "#E8F5E9"
+
+    manager.set_theme(Theme(mode="dark", extensions=[_Brand("#1B3A2A")]))
+
+    assert card.surfaces[-1] == "#1B3A2A"
 
 
 def test_a_widget_that_never_read_is_left_alone() -> None:

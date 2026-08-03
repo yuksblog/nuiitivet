@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from typing import Optional
-
 import nuiitivet.material as nv
 
 # ---------------------------------------------------------------------------
@@ -89,23 +87,6 @@ class BrandCard(nv.ComposableWidget):
         super().__init__()
         self.heading = heading
         self.content = content
-        self._theme_manager: Optional[nv.ThemeManager] = None
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        scope = self.find_ancestor(nv.AppScope)
-        if scope is not None:
-            self._theme_manager = scope.theme_manager
-            self._theme_manager.subscribe(self._on_theme_change)
-
-    def on_unmount(self) -> None:
-        if self._theme_manager is not None:
-            self._theme_manager.unsubscribe(self._on_theme_change)
-            self._theme_manager = None
-        super().on_unmount()
-
-    def _on_theme_change(self, _theme: nv.Theme) -> None:
-        self.rebuild()
 
     def build(self) -> nv.Widget:
         brand = nv.Theme.of(self).extension(AppBrandTheme)
