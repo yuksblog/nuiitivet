@@ -74,21 +74,44 @@ class MenuStyle:
         )
 
     @classmethod
+    def preset(cls, variant: str = "standard") -> "MenuStyle":
+        """Return the framework preset for ``variant``, ignoring any theme.
+
+        This is what a menu renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Args:
+            variant: One of ``"standard"`` or ``"vibrant"``. Unknown values
+                fall back to ``"standard"``.
+
+        Returns:
+            The variant preset style.
+        """
+        if str(variant or "standard").lower() == "vibrant":
+            return cls.vibrant()
+        return cls.standard()
+
+    @classmethod
     def from_theme(cls, theme: "Theme", variant: str = "standard") -> "MenuStyle":
         """Resolve MenuStyle from theme.
 
         Args:
-            theme: Theme instance (currently unused; reserved for future extension).
-            variant: One of ``"standard"`` or ``"vibrant"``.
+            theme: Theme instance.
+            variant: One of ``"standard"`` or ``"vibrant"``. Only ``standard``
+                is carried by :class:`MaterialThemeData`; ``vibrant`` is an
+                explicit opt-in and always returns its preset.
 
         Returns:
             Resolved ``MenuStyle``.
         """
-        _ = theme
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
         variant_name = str(variant or "standard").lower()
-        if variant_name == "vibrant":
-            return cls.vibrant()
-        return cls.standard()
+        if variant_name == "standard":
+            theme_data = theme.extension(MaterialThemeData)
+            if theme_data is not None:
+                return theme_data.menu_style
+        return cls.preset(variant_name)
 
 
 __all__ = ["MenuStyle"]

@@ -57,8 +57,10 @@ def test_floating_toolbar_vertical_orientation_uses_column() -> None:
     buttons = [IconButton("add"), IconButton("close")]
     toolbar = VerticalFloatingToolbar(buttons)
     # The edge inset is measured from the buttons, which is only possible once
-    # they are attached -- so it lands at mount time, not construction time.
+    # they are attached -- so it lands on the first measure, not at construction
+    # time. Measuring is also where the toolbar reads its style from the theme.
     toolbar.mount(None)
+    toolbar.preferred_size()
     inner = toolbar.children[0]
 
     assert isinstance(inner, Box)
@@ -75,6 +77,8 @@ def test_floating_toolbar_padding_rule_is_shared_across_orientations() -> None:
     vertical = VerticalFloatingToolbar(buttons_v)
     horizontal.mount(None)
     vertical.mount(None)
+    horizontal.preferred_size()
+    vertical.preferred_size()
 
     horizontal_content = horizontal.children[0].children[0]
     vertical_content = vertical.children[0].children[0]

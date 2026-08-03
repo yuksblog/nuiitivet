@@ -898,10 +898,11 @@ class ToggleButtonBase(MaterialButtonBase):
         else:
             self._selected_internal = bool(selected)
 
-        # Resolved through the subclass hook rather than ``self.style``: reads
-        # that run before the widget is attached must not go through an accessor
-        # that could reach for the theme, which is not resolvable yet (#473).
-        effective_style = self._resolve_style_for_selected(self.selected)
+        # Resolved through the preset hook rather than ``self.style``: reads that
+        # run before the widget is attached must not go through an accessor that
+        # reaches for the theme, which is not resolvable yet. The first measure
+        # re-resolves through the theme.
+        effective_style = self._preset_style_for_selected(self.selected)
         text_color = effective_style.foreground if effective_style else ColorRole.ON_SURFACE
         height_px = _coerce_fixed_height_px(height)
 
@@ -939,7 +940,18 @@ class ToggleButtonBase(MaterialButtonBase):
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
         """Return the :class:`ButtonStyle` to apply for the given state.
 
-        Subclasses must override this method.
+        Pulls from the theme when the caller gave no explicit style, so it is
+        only callable once the widget can reach an ``AppScope``.  Subclasses
+        must override this method.
+        """
+        raise NotImplementedError
+
+    def _preset_style_for_selected(self, selected: bool) -> ButtonStyle:
+        """Return the pre-mount :class:`ButtonStyle` for the given state.
+
+        The same value :meth:`_resolve_style_for_selected` produces when no
+        theme is installed, but reachable from ``__init__``.  Subclasses must
+        override this method.
         """
         raise NotImplementedError
 
@@ -1017,9 +1029,11 @@ class ToggleButton(ToggleButtonBase):
             disabled: Whether the button is disabled.
             width: Width specification.
             padding: Padding override; ``None`` uses ``style.padding``.
-            style: Toggle style preset. Defaults to ``ToggleButtonStyle.filled("s")``.
+            style: Toggle style preset. Defaults to the theme's toggle button
+                style, which itself falls back to ``ToggleButtonStyle.filled("s")``.
         """
-        self._toggle_style = style if style is not None else ToggleButtonStyle.filled("s")
+        #: The style the caller passed, or ``None`` to follow the theme.
+        self._user_toggle_style: Optional[ToggleButtonStyle] = style
 
         super().__init__(
             label=label,
@@ -1031,8 +1045,18 @@ class ToggleButton(ToggleButtonBase):
             padding=padding,
         )
 
+    def _toggle_style(self) -> ToggleButtonStyle:
+        """Return the toggle style in effect, pulled from the theme."""
+        if self._user_toggle_style is not None:
+            return self._user_toggle_style
+        return ToggleButtonStyle.from_theme(Theme.of(self))
+
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
-        return self._toggle_style.for_selected(selected)
+        return self._toggle_style().for_selected(selected)
+
+    def _preset_style_for_selected(self, selected: bool) -> ButtonStyle:
+        style = self._user_toggle_style if self._user_toggle_style is not None else ToggleButtonStyle.preset()
+        return style.for_selected(selected)
 
 
 class IconToggleButton(ToggleButtonBase):
@@ -1055,13 +1079,18 @@ class IconToggleButton(ToggleButtonBase):
             on_change: Callback invoked with the new selected state.
             disabled: Whether the button is disabled.
             style: Toggle style pair for selected and unselected states.
-                Defaults to :meth:`IconToggleButtonStyle.standard` (size
+                Defaults to the theme's icon toggle button style, which itself
+                falls back to :meth:`IconToggleButtonStyle.standard` (size
                 ``"s"``).  Use size-aware factories such as
                 ``IconToggleButtonStyle.filled("m")`` to control sizing.
         """
-        self._icon_toggle_style = style if style is not None else IconToggleButtonStyle.standard()
+        #: The style the caller passed, or ``None`` to follow the theme.
+        self._user_toggle_style: Optional[IconToggleButtonStyle] = style
+        preset = style if style is not None else IconToggleButtonStyle.preset()
         # Both selected/unselected share container_height per factory contract.
-        self._icon_size = self._icon_toggle_style.unselected.container_height
+        # The container is sized once, from the style available at construction:
+        # a theme arriving later restyles the button but does not resize it.
+        self._icon_size = preset.unselected.container_height
 
         super().__init__(
             label=None,
@@ -1074,8 +1103,19 @@ class IconToggleButton(ToggleButtonBase):
             padding=0,
         )
 
+    def _icon_toggle_style(self) -> IconToggleButtonStyle:
+        """Return the icon-toggle style in effect, pulled from the theme."""
+        if self._user_toggle_style is not None:
+            return self._user_toggle_style
+        return IconToggleButtonStyle.from_theme(Theme.of(self))
+
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
-        return self._icon_toggle_style.selected if selected else self._icon_toggle_style.unselected
+        style = self._icon_toggle_style()
+        return style.selected if selected else style.unselected
+
+    def _preset_style_for_selected(self, selected: bool) -> ButtonStyle:
+        style = self._user_toggle_style if self._user_toggle_style is not None else IconToggleButtonStyle.preset()
+        return style.selected if selected else style.unselected
 
 
 class _FabBase(MaterialButtonBase):
@@ -1085,9 +1125,35 @@ class _FabBase(MaterialButtonBase):
     press-scale animation so the public widgets do not duplicate it.
     """
 
-    _user_style: FabStyle
+    #: The style the caller passed, or ``None`` to follow the theme.
+    _user_style: Optional[FabStyle]
     _user_padding: Optional[Union[int, Tuple[int, int, int, int]]]
     _user_height: Union[int, float]
+
+    @property
+    def style(self) -> FabStyle:
+        """Return the FAB style in effect, pulled from the theme.
+
+        A FAB has no ``build()``, so it reads the theme where the style is
+        consumed -- :meth:`preferred_size` via ``_sync_theme_style``, and
+        :meth:`paint` via :meth:`_sync_state_tokens`. The read registers a
+        dependency, so a theme change re-measures and repaints the FAB and
+        lands back here with the new value. See
+        ``docs/design/THEME_CONSUMPTION.md``.
+        """
+        base = self._user_style
+        if base is None:
+            base = FabStyle.from_theme(Theme.of(self))
+        return self._adapt_style(base)
+
+    def _adapt_style(self, style: FabStyle) -> FabStyle:
+        """Project a resolved base style onto this FAB's container tokens.
+
+        The identity by default; :class:`ExtendedFab` overrides it to overlay
+        the extended-FAB size tokens. Must stay a pure function of ``style`` --
+        it also runs from ``__init__``, before the widget has any state.
+        """
+        return style
 
     def _setup_press_scale(self) -> None:
         """Create and wire the expressive press-scale animations.
@@ -1109,8 +1175,8 @@ class _FabBase(MaterialButtonBase):
         self._apply_style_params(params, theme=theme)
         self._sync_state_tokens()
 
-    def _container_elevation(self) -> int:
-        style = self.style
+    def _container_elevation(self, style: Optional[ButtonStyle] = None) -> int:
+        style = self.style if style is None else style
         if self.state.dragging or self.state.pressed:
             return int(getattr(style, "pressed_elevation", style.elevation) or 0)
         if self.state.hovered:
@@ -1119,8 +1185,15 @@ class _FabBase(MaterialButtonBase):
             return int(getattr(style, "focused_elevation", style.elevation) or 0)
         return int(getattr(style, "elevation", 0) or 0)
 
-    def _sync_state_tokens(self) -> None:
-        style = self.style
+    def _sync_state_tokens(self, style: Optional[ButtonStyle] = None) -> None:
+        """Push the style's state-layer opacities and shadow onto the widget.
+
+        Args:
+            style: The style to read. ``__init__`` passes the preset explicitly
+                because :attr:`style` would reach for a theme the widget cannot
+                resolve yet; every other caller lets it pull from the theme.
+        """
+        style = self.style if style is None else style
 
         focus_opacity = float(getattr(style, "focus_opacity", 0.1) or 0.0)
         hover_opacity = float(getattr(style, "hover_opacity", self._HOVER_OPACITY) or 0.0)
@@ -1130,7 +1203,7 @@ class _FabBase(MaterialButtonBase):
         self._HOVER_OPACITY = hover_opacity
         self._PRESS_OPACITY = pressed_opacity
 
-        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(self._container_elevation())
+        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(self._container_elevation(style))
         if self.shadow_color != shadow_color:
             self.shadow_color = shadow_color
         if abs(float(self.shadow_blur) - float(shadow_blur)) > 1e-6:
@@ -1214,17 +1287,19 @@ class Fab(_FabBase):
             disabled: Whether the button is disabled.
             padding: Padding specification.  When ``None``, ``style.padding``
                 is used.
-            style: FAB style preset.  Defaults to :meth:`FabStyle.primary`
-                (size ``"s"``, 56dp).  Use ``FabStyle.primary("m")`` /
-                ``FabStyle.primary("l")`` for the 80dp / 96dp variants, or
-                ``FabStyle.secondary`` / ``FabStyle.tertiary`` for alternative
-                tonal colour sets.
+            style: FAB style preset.  Defaults to the theme's FAB style, which
+                itself falls back to :meth:`FabStyle.primary` (size ``"s"``,
+                56dp).  Use ``FabStyle.primary("m")`` / ``FabStyle.primary("l")``
+                for the 80dp / 96dp variants, or ``FabStyle.secondary`` /
+                ``FabStyle.tertiary`` for alternative tonal colour sets.
         """
         # Held in a local for everything below ``super().__init__()``: reads that
         # run before the widget is attached must not go through ``self.style``,
-        # which cannot reach the theme yet (issue #473).
-        effective_style: FabStyle = style if style is not None else FabStyle.primary()
-        self._user_style = effective_style
+        # which cannot reach the theme yet. The preset is what
+        # ``FabStyle.from_theme`` falls back to, so an unthemed app sees no
+        # change; a themed one adopts its style on the first measure.
+        effective_style: FabStyle = style if style is not None else FabStyle.preset()
+        self._user_style = style
         self._user_padding = padding
         size = effective_style.container_height
         self._user_height = size
@@ -1248,7 +1323,7 @@ class Fab(_FabBase):
             disabled=disabled,
             **params,
         )
-        self._sync_state_tokens()
+        self._sync_state_tokens(effective_style)
         self._setup_press_scale()
 
 
@@ -1283,6 +1358,25 @@ class ExtendedFab(_FabBase):
             self._expanded_internal = bool(new_value)
         self._update_morph_target()
 
+    def _adapt_style(self, style: FabStyle) -> FabStyle:
+        """Overlay the extended-FAB size tokens on a circular FAB style.
+
+        A :class:`FabStyle` carries the *circular* container tokens, so both an
+        explicit style and one resolved from the theme have to be projected onto
+        the pill's own metrics before it can be used.
+        """
+        ext = EXTENDED_FAB_SIZE_TOKENS[_fab_size_from_height(style.container_height)]
+        return style.copy_with(
+            label_font_size=ext["label_font_size"],
+            icon_size=ext["icon_size"],
+            corner_radius=ext["corner_radius"],
+            container_height=ext["container_height"],
+            spacing=ext["icon_label_space"],
+            padding=(ext["leading_space"], 0, ext["trailing_space"], 0),
+            min_width=ext["container_height"],
+            min_height=ext["container_height"],
+        )
+
     def __init__(
         self,
         label: str | ReadOnlyObservableProtocol[str],
@@ -1305,24 +1399,17 @@ class ExtendedFab(_FabBase):
                 the circular FAB footprint.
             disabled: Whether the button is disabled.
             style: FAB style preset selecting the colour mapping and size.
-                Defaults to :meth:`FabStyle.primary` (size ``"s"``, 56dp).
+                Defaults to the theme's FAB style, which itself falls back to
+                :meth:`FabStyle.primary` (size ``"s"``, 56dp).
         """
-        base_style = style if style is not None else FabStyle.primary()
-        size = _fab_size_from_height(base_style.container_height)
-        ext = EXTENDED_FAB_SIZE_TOKENS[size]
-        self._container_height = ext["container_height"]
+        # See ``Fab.__init__``: the preset stands in until the first measure can
+        # reach the theme.
+        base_style = style if style is not None else FabStyle.preset()
+        effective_style = self._adapt_style(base_style)
+        self._container_height = effective_style.container_height
+        ext = EXTENDED_FAB_SIZE_TOKENS[_fab_size_from_height(base_style.container_height)]
 
-        effective_style: FabStyle = base_style.copy_with(  # type: ignore[assignment]
-            label_font_size=ext["label_font_size"],
-            icon_size=ext["icon_size"],
-            corner_radius=ext["corner_radius"],
-            container_height=ext["container_height"],
-            spacing=ext["icon_label_space"],
-            padding=(ext["leading_space"], 0, ext["trailing_space"], 0),
-            min_width=ext["container_height"],
-            min_height=ext["container_height"],
-        )
-        self._user_style = effective_style
+        self._user_style = style
         self._user_padding = None
         self._user_height = self._container_height
         self._has_icon = icon is not None
@@ -1357,7 +1444,7 @@ class ExtendedFab(_FabBase):
         )
         # Clip the label as the container shrinks toward the circular footprint.
         self.clip_content = True
-        self._sync_state_tokens()
+        self._sync_state_tokens(effective_style)
         self._setup_press_scale()
 
         from nuiitivet.widgets.text import TextBase

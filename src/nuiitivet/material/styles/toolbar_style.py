@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Literal, Optional
+from typing import Literal, Optional, TYPE_CHECKING
 
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
+
+if TYPE_CHECKING:
+    from nuiitivet.theme.theme import Theme
 
 ToolbarColorScheme = Literal["standard", "vibrant"]
 
@@ -74,6 +77,46 @@ class ToolbarStyle:
             border_width=0.0,
             elevation=0.0,
         )
+
+    @classmethod
+    def preset(cls, variant: ToolbarColorScheme = "standard") -> "ToolbarStyle":
+        """Return the framework preset for ``variant``, ignoring any theme.
+
+        This is what a toolbar renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Args:
+            variant: One of ``standard`` or ``vibrant``. Unknown values fall
+                back to ``standard``.
+
+        Returns:
+            The variant preset style.
+        """
+        if str(variant or "standard").lower() == "vibrant":
+            return cls.vibrant()
+        return cls.standard()
+
+    @classmethod
+    def from_theme(cls, theme: "Theme", variant: ToolbarColorScheme = "standard") -> "ToolbarStyle":
+        """Resolve the toolbar style from ``theme``.
+
+        Args:
+            theme: Theme instance.
+            variant: One of ``standard`` or ``vibrant``. Only ``standard`` is
+                carried by :class:`MaterialThemeData`; ``vibrant`` is an
+                explicit opt-in and always returns its preset.
+
+        Returns:
+            Resolved toolbar style.
+        """
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        variant_name = str(variant or "standard").lower()
+        if variant_name == "standard":
+            theme_data = theme.extension(MaterialThemeData)
+            if theme_data is not None:
+                return theme_data.toolbar_style
+        return cls.preset(variant)
 
 
 __all__ = ["ToolbarColorScheme", "ToolbarStyle"]

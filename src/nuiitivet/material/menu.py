@@ -23,6 +23,7 @@ from nuiitivet.observable import runtime
 from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode, FocusScope, FocusSource, FocusTraversalPolicy
 from nuiitivet.widgeting.widget import Widget
@@ -392,8 +393,8 @@ class SubMenuItem(MenuItem):
     def _bind_menu_style(self, style: MenuStyle) -> None:
         super()._bind_menu_style(style)
         if self._submenu is not None:
-            self._submenu.style = style
-            self._submenu._rematerialize()
+            self._submenu._adopt_style(style)
+            self._submenu._apply_menu_style(style)
 
     def on_mount(self) -> None:
         super().on_mount()
@@ -526,9 +527,13 @@ class Menu(InteractiveWidget):
         self.on_dismiss = on_dismiss
         # Held in a local for everything below ``super().__init__()``: reads that
         # run before the widget is attached must not go through an accessor that
-        # could reach for the theme, which is not resolvable yet (issue #473).
-        effective_style = style or MenuStyle.standard()
-        self.style = effective_style
+        # could reach for the theme, which is not resolvable yet. The preset is
+        # what ``MenuStyle.from_theme`` falls back to, so an unthemed app sees
+        # no change; a themed one adopts its style on the first measure.
+        effective_style = style or MenuStyle.preset()
+        #: The style the caller passed, or ``None`` to follow the theme.
+        self._user_style: MenuStyle | None = style
+        self._applied_style: MenuStyle = effective_style
         self._autofocus = bool(autofocus)
         self._autofocus_pending = False
         self._parent_item = parent_item
@@ -537,7 +542,7 @@ class Menu(InteractiveWidget):
 
         _shadow = md3_elevation_to_shadow(effective_style.elevation)
 
-        children = self._materialize_children()
+        children = self._materialize_children(effective_style)
         self._column = Column(children=children, width=Sizing.flex(), gap=0, cross_alignment="start")
 
         super().__init__(
@@ -601,6 +606,52 @@ class Menu(InteractiveWidget):
     def should_show_focus_ring(self) -> bool:
         """Never ring the surface: it holds the focus, but the items show where it is."""
         return False
+
+    # --- Theme integration ----------------------------------------------------
+
+    @property
+    def style(self) -> MenuStyle:
+        """Return the menu style currently in effect, pulled from the theme.
+
+        A menu has no ``build()``, so it reads the theme where the style is
+        consumed -- :meth:`preferred_size`. The read registers a dependency, so
+        a theme change re-measures the menu and lands back here with the new
+        value. The container visuals and the items' styles are derived from it
+        rather than re-derived on every read, so they are re-applied whenever
+        the resolved style has moved. See ``docs/design/THEME_CONSUMPTION.md``.
+        """
+        if self._user_style is not None:
+            resolved = self._user_style
+        else:
+            resolved = MenuStyle.from_theme(Theme.of(self))
+        if resolved != self._applied_style:
+            self._apply_menu_style(resolved)
+        return resolved
+
+    def _adopt_style(self, style: MenuStyle) -> None:
+        """Take ``style`` as this menu's explicit style.
+
+        A submenu is styled by the menu it hangs off rather than by the theme
+        directly: the parent has already resolved one, and the two surfaces
+        must match.
+        """
+        self._user_style = style
+
+    def _apply_menu_style(self, style: MenuStyle) -> None:
+        """Push ``style`` onto the surface and rebuild the items with it."""
+        # Recorded first: rebuilding the items reads ``self.style`` again, and
+        # that read must not re-enter this method.
+        self._applied_style = style
+
+        shadow = md3_elevation_to_shadow(style.elevation)
+        self.state_layer_color = style.state_layer_color
+        self.padding = (0, style.container_vertical_padding, 0, style.container_vertical_padding)
+        self.bgcolor = style.background
+        self.corner_radius = style.corner_radius
+        self.shadow_blur = shadow.sigma
+        self.shadow_color = shadow.color
+        self.shadow_offset = shadow.offset
+        self._rematerialize()
 
     def _focus_surface(self) -> None:
         """Move the focus into the menu without making any item current."""
@@ -696,7 +747,7 @@ class Menu(InteractiveWidget):
     def _rematerialize(self) -> None:
         self.clear_children()
         self._column = Column(
-            children=self._materialize_children(),
+            children=self._materialize_children(self._applied_style),
             width=Sizing.flex(),
             gap=0,
             cross_alignment="start",
@@ -704,31 +755,37 @@ class Menu(InteractiveWidget):
         self.add_child(self._column)
         self.invalidate()
 
-    def _materialize_children(self) -> list[Widget]:
+    def _materialize_children(self, style: MenuStyle) -> list[Widget]:
+        """Build the entry widgets for ``style``.
+
+        Takes the style rather than reading :attr:`style`: ``__init__`` calls
+        this before ``super().__init__()``, where the theme cannot be resolved
+        at all.
+        """
         out: list[Widget] = []
         self._focusable_items = []
 
-        divider_style = DividerStyle(color=self.style.divider_color)
+        divider_style = DividerStyle(color=style.divider_color)
 
         for entry in self.items:
             if isinstance(entry, MenuDivider):
                 out.append(
                     Container(
                         width=Sizing.flex(),
-                        padding=(0, self.style.divider_vertical_padding, 0, self.style.divider_vertical_padding),
+                        padding=(0, style.divider_vertical_padding, 0, style.divider_vertical_padding),
                         child=HorizontalDivider(style=divider_style),
                     )
                 )
                 continue
 
-            entry._bind_menu_style(self.style)
+            entry._bind_menu_style(style)
             entry._owner_menu = self
             if isinstance(entry, SubMenuItem):
                 entry._bind_parent_dismiss(self.on_dismiss)
             out.append(
                 Container(
                     width=Sizing.flex(),
-                    padding=(self.style.item_horizontal_inset, 0, self.style.item_horizontal_inset, 0),
+                    padding=(style.item_horizontal_inset, 0, style.item_horizontal_inset, 0),
                     child=entry,
                 )
             )

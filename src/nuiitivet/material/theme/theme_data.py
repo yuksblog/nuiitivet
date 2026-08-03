@@ -9,7 +9,11 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ThemeExtension
 
 if TYPE_CHECKING:
-    from nuiitivet.material.styles.button_style import ButtonStyle
+    from nuiitivet.material.styles.button_group_style import (
+        ConnectedButtonGroupStyle,
+        StandardButtonGroupStyle,
+    )
+    from nuiitivet.material.styles.button_style import ButtonStyle, IconToggleButtonStyle
     from nuiitivet.material.styles.fab_style import FabStyle
     from nuiitivet.material.styles.card_style import CardStyle
     from nuiitivet.material.styles.checkbox_style import CheckboxStyle
@@ -17,6 +21,7 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.dialog_style import DialogStyle
     from nuiitivet.material.styles.icon_style import IconStyle
     from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
+    from nuiitivet.material.styles.menu_style import MenuStyle
     from nuiitivet.material.styles.progress_indicator_style import (
         CircularProgressIndicatorStyle,
         LinearProgressIndicatorStyle,
@@ -26,6 +31,8 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.styles.text_style import TextStyle
     from nuiitivet.material.styles.text_field_style import TextFieldStyle
+    from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
+    from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 
 ColorValue = str
 
@@ -44,6 +51,14 @@ class MaterialThemeData(ThemeExtension):
     _elevated_button_style: "ButtonStyle | None" = None
     _tonal_button_style: "ButtonStyle | None" = None
     _fab_style: "FabStyle | None" = None
+
+    # Toggle button variants
+    _toggle_button_style: "ToggleButtonStyle | None" = None
+    _icon_toggle_button_style: "IconToggleButtonStyle | None" = None
+
+    # Button group variants
+    _standard_button_group_style: "StandardButtonGroupStyle | None" = None
+    _connected_button_group_style: "ConnectedButtonGroupStyle | None" = None
 
     # Card variants
     _filled_card_style: "CardStyle | None" = None
@@ -66,6 +81,8 @@ class MaterialThemeData(ThemeExtension):
     _basic_dialog_style: "DialogStyle | None" = None
     _icon_style: "IconStyle | None" = None
     _text_style: "TextStyle | None" = None
+    _menu_style: "MenuStyle | None" = None
+    _toolbar_style: "ToolbarStyle | None" = None
 
     # Loading indicator variants
     _loading_indicator_style: "LoadingIndicatorStyle | None" = None
@@ -128,6 +145,60 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.fab_style import FabStyle
 
         return FabStyle.primary()
+
+    @property
+    def toggle_button_style(self) -> "ToggleButtonStyle":
+        """Get toggle button style for this theme."""
+        if self._toggle_button_style is not None:
+            return self._toggle_button_style
+        from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
+
+        return ToggleButtonStyle.filled("s")
+
+    @property
+    def icon_toggle_button_style(self) -> "IconToggleButtonStyle":
+        """Get icon toggle button style for this theme."""
+        if self._icon_toggle_button_style is not None:
+            return self._icon_toggle_button_style
+        from nuiitivet.material.styles.button_style import IconToggleButtonStyle
+
+        return IconToggleButtonStyle.standard()
+
+    @property
+    def standard_button_group_style(self) -> "StandardButtonGroupStyle":
+        """Get standard button group style for this theme."""
+        if self._standard_button_group_style is not None:
+            return self._standard_button_group_style
+        from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
+
+        return StandardButtonGroupStyle.filled()
+
+    @property
+    def connected_button_group_style(self) -> "ConnectedButtonGroupStyle":
+        """Get connected button group style for this theme."""
+        if self._connected_button_group_style is not None:
+            return self._connected_button_group_style
+        from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
+
+        return ConnectedButtonGroupStyle.filled()
+
+    @property
+    def menu_style(self) -> "MenuStyle":
+        """Get menu style for this theme."""
+        if self._menu_style is not None:
+            return self._menu_style
+        from nuiitivet.material.styles.menu_style import MenuStyle
+
+        return MenuStyle.standard()
+
+    @property
+    def toolbar_style(self) -> "ToolbarStyle":
+        """Get toolbar style for this theme."""
+        if self._toolbar_style is not None:
+            return self._toolbar_style
+        from nuiitivet.material.styles.toolbar_style import ToolbarStyle
+
+        return ToolbarStyle.standard()
 
     @property
     def filled_card_style(self) -> "CardStyle":
