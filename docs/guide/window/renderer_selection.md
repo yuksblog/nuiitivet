@@ -23,7 +23,7 @@ app.run(renderer="cpu")   # always render in software
 | `"cpu"` | Always render in software (raster); the GPU is never touched. Use this on GPU-less machines, with software OpenGL (e.g. llvmpipe), or in remote sessions. |
 
 The `renderer` value is typed as
-[`RendererMode`](../../../src/nuiitivet/runtime/renderer.py) —
+[`RendererMode`](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/runtime/renderer.py) —
 `Literal["auto", "gpu", "cpu"]`.
 
 ## When to use `"cpu"`

@@ -12,7 +12,7 @@ Four variant factory methods are available: ``filled``, ``elevated``,
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.theme.color_role import ColorRole
@@ -170,7 +170,7 @@ class SplitButtonStyle:
     label_font_size: int = 14
     icon_size: int = 20
 
-    def copy_with(self, **changes) -> "SplitButtonStyle":
+    def copy_with(self, **changes: Any) -> "SplitButtonStyle":
         """Return a new style with the specified fields replaced.
 
         Args:

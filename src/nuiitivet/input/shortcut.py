@@ -190,7 +190,7 @@ class ShortcutScope(Enum):
     The members widen: each is a superset of the one before it. See
     ``docs/design/KEYBOARD_SHORTCUTS.md`` for the full rationale.
 
-    Args:
+    Attributes:
         FOCUS: Live only while the subtree contains the focused node. Needed only
             when the same command has several targets on screen **at once** (a
             dual-pane file manager, a split-view editor), so nothing but focus

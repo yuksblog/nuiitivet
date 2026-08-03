@@ -1,0 +1,46 @@
+name: Docs
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# src/** counts as a docs change: the API reference is generated from
+# docstrings, so a docstring edit can break the strict build.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'src/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'src/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      # --strict promotes every mkdocs warning to an error. The one that matters
+      # here is a guide page missing from `nav:` — see the `validation:` block in
+      # mkdocs.yml.
+      - name: Build docs
+        run: uv run --locked --group docs mkdocs build --strict

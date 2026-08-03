@@ -7,7 +7,7 @@ Status: **Accepted — implemented** (tracks issue #431; related to #430)
 Some adaptive layouts must react to the size of a **specific container**, not the
 whole window — reflow inside one panel regardless of window size, local
 breakpoints, etc. Today a widget's measured size is set via
-`WidgetKernel.set_layout_rect` (see [widget_kernel.py](../../src/nuiitivet/widgeting/widget_kernel.py))
+`WidgetKernel.set_layout_rect` (see [widget_kernel.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/widgeting/widget_kernel.py))
 but never delivered reactively, and there is no supported way to rebuild a
 subtree based on the space available to it.
 
@@ -49,7 +49,7 @@ here. This is why size gets a bespoke widget while theme/locale/density do not.
 nuiitivet's frame pipeline is strictly **build → layout → paint**, and build
 (scope recomposition) is flushed *before* layout within a frame:
 
-- [app.py](../../src/nuiitivet/runtime/app.py) `_render_frame`: `flush_binding_invalidations()` / `flush_scope_recompositions()` run first,
+- [app.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/runtime/app.py) `_render_frame`: `flush_binding_invalidations()` / `flush_scope_recompositions()` run first,
 - then `on_draw` performs `root.layout(w, h)`,
 - then paint.
 
@@ -174,8 +174,8 @@ outer one — ultimately the root `Geometry` installed by the window (§7).
   layout has **no `BoxConstraints`-style min/max model**: a parent assigns a
   concrete allocated rect, and the only bound in the pipeline is the one-way
   `max_width` / `max_height` hint passed through `preferred_size(...)` during the
-  measure phase (see [container.py](../../src/nuiitivet/layout/container.py),
-  [column.py](../../src/nuiitivet/layout/column.py)). Exposing "constraints"
+  measure phase (see [container.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/layout/container.py),
+  [column.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/layout/column.py)). Exposing "constraints"
   therefore introduces a concept the framework does not otherwise have — it is a
   layout-model extension, not a small add — so it is deliberately out of scope
   here. In practice the resolved `size` already answers "how much space do I
@@ -204,10 +204,10 @@ in-tree read API**:
 - **In-tree read (window and container, unified):** `Geometry.of(context).size`.
   The app installs the **root `Geometry` provider** by wrapping the content root
   in `App._wrap_with_chrome_and_scope` (see
-  [runtime/app.py](../../src/nuiitivet/runtime/app.py)). It needs no bespoke
+  [runtime/app.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/runtime/app.py)). It needs no bespoke
   resize plumbing: the root `Geometry` measures the window through the normal
   layout pass, which the resize path (`_update_app_size_from_window` in
-  [backends/pyglet/runner.py](../../src/nuiitivet/backends/pyglet/runner.py))
+  [backends/pyglet/runner.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/backends/pyglet/runner.py))
   already triggers via `invalidate` → relayout. Nearest provider wins, so a
   nested `Geometry` transparently overrides the window for its subtree; with no
   nested provider, reads fall back to the window. **Implemented in #431.**
