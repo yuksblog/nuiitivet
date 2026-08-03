@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from nuiitivet.animation.animatable import Animatable
 from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
 
 from .snapshot import iter_child_widgets
@@ -287,13 +288,18 @@ def _read_observable(obs: ObservableBase[Any]) -> Any:
     return {"value": coerced, "kind": "computed"}
 
 
-def _node_state(node: Any) -> dict[str, Any]:
+def _node_state(node: Any, *, include_animations: bool) -> dict[str, Any]:
     """Return the ``Observable`` state a single widget holds, keyed by name.
 
     Scans the widget's ``__dict__`` for observable-valued attributes -- both the
     descriptor storage of declared ``Observable`` fields and observables passed
     in and stored directly (the ``bool | ObservableProtocol`` binding pattern).
     Stateless widgets return ``{}``.
+
+    ``Animatable`` attributes are skipped unless ``include_animations`` is set:
+    an interactive widget carries several animation channels that change every
+    frame and carry visual, not semantic, state, and they otherwise dominate the
+    dump (#418).
     """
     namespace = getattr(node, "__dict__", None)
     if not namespace:
@@ -301,6 +307,8 @@ def _node_state(node: Any) -> dict[str, Any]:
     state: dict[str, Any] = {}
     for attr, value in namespace.items():
         if not isinstance(value, ObservableBase):
+            continue
+        if isinstance(value, Animatable) and not include_animations:
             continue
         entry = _read_observable(value)
         if entry is _UNREADABLE:
@@ -312,24 +320,32 @@ def _node_state(node: Any) -> dict[str, Any]:
     return state
 
 
-def _describe_state_node(node: Any, *, seen: set[int]) -> Optional[dict[str, Any]]:
+def _describe_state_node(
+    node: Any, *, seen: set[int], include_animations: bool
+) -> Optional[dict[str, Any]]:
     """Build the state description for ``node``, or ``None`` if it carries none.
 
     Mirrors :func:`describe_tree`'s shape (``type`` + identity + ``children``) so
     the two views join structurally, but prunes every node that neither holds
     observable state nor has a descendant that does -- keeping the dump focused
     on the reactive state while retaining the ancestor path to each stateful node.
+
+    Pruning runs on the *filtered* state, so a node whose only state was
+    animation channels prunes away like any other stateless node rather than
+    surviving as a hollow entry with its ancestor path.
     """
     seen.add(id(node))
     children: list[dict[str, Any]] = []
     for child in iter_child_widgets(node):
         if child is None or id(child) in seen:
             continue
-        described = _describe_state_node(child, seen=seen)
+        described = _describe_state_node(
+            child, seen=seen, include_animations=include_animations
+        )
         if described is not None:
             children.append(described)
 
-    state = _node_state(node)
+    state = _node_state(node, include_animations=include_animations)
     if not state and not children:
         return None
 
@@ -345,7 +361,7 @@ def _describe_state_node(node: Any, *, seen: set[int]) -> Optional[dict[str, Any
     return info
 
 
-def describe_state(root: Any) -> dict[str, Any]:
+def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, Any]:
     """Return the reactive ``Observable`` state of ``root``'s mounted tree.
 
     The complement to :func:`describe_tree`: where that reports the *output*
@@ -360,16 +376,26 @@ def describe_state(root: Any) -> dict[str, Any]:
     length- and depth-capped and opaque objects render as ``type: repr``, so no
     single value can bloat or break the dump.
 
+    ``Animatable`` state is **omitted by default** (#418): an interactive widget
+    carries several animation channels (``state_layer_anim``, ``bg_color_anim``,
+    …) whose per-frame visual values buried the semantic state and dominated the
+    payload. Pass ``include_animations=True`` when the animation itself is what
+    is under investigation ("the button never returns to its rest state").
+
     Must be called on the UI thread (it reads live observable state).
 
     Args:
         root: The mounted root widget (``App.root``).
+        include_animations: Report ``Animatable`` state too, instead of
+            filtering it out.
 
     Returns:
         The pruned state tree, or ``{}`` if ``root`` is ``None`` or holds no
-        reachable observable state.
+        reachable (reported) observable state.
     """
     if root is None:
         return {}
-    described = _describe_state_node(root, seen=set())
+    described = _describe_state_node(
+        root, seen=set(), include_animations=include_animations
+    )
     return described if described is not None else {}

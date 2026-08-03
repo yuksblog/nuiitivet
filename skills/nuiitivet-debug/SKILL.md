@@ -83,7 +83,7 @@ top to bottom.
 | --- | --- |
 | Is the app up and running? | `status` — liveness, title, last-reload outcome, error count, a `blank` flag for a white screen |
 | Is the widget tree built as intended? | `describe_tree` — the structure, and how you resolve action targets |
-| Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree |
+| Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
 | My `click` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers, so you re-sync instead of acting on a stale screen |

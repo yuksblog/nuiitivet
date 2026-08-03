@@ -260,7 +260,7 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return payload.get("tree", {})
 
-    def describe_state(self) -> dict[str, Any]:
+    def describe_state(self, include_animations: bool = False) -> dict[str, Any]:
         """Fetch the reactive ``Observable`` state of the running app (#410).
 
         Complements :meth:`describe_tree`: it returns the live observable values
@@ -268,8 +268,15 @@ class BridgeClient:
         optional "state", optional "children"}``) pruned to state-bearing nodes,
         so the two views join structurally. A ``state`` entry is a name -> value
         map; a derived value is ``{"value", "kind": "computed"}``.
+
+        Animation (``Animatable``) state is omitted by default, since a widget's
+        per-frame animation channels otherwise dominate the payload (#418); pass
+        ``include_animations=True`` when the animation itself is the subject.
         """
-        body, _ = self._get("/describe_state")
+        endpoint = "/describe_state"
+        if include_animations:
+            endpoint += "?include_animations=1"
+        body, _ = self._get(endpoint)
         payload = json.loads(body.decode("utf-8"))
         return payload.get("state", {})
 
