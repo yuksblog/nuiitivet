@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import pytest
 
+from nuiitivet.animation.animatable import Animatable
 from nuiitivet.dev.perception import (
     describe_state,
     describe_tree,
@@ -299,6 +300,53 @@ def test_describe_state_ignores_non_observable_duck_type() -> None:
     root._obs_real = Observable(1)  # type: ignore[attr-defined]
     state = describe_state(root)
     assert state["state"] == {"real": 1}
+
+
+def test_describe_state_omits_animations_by_default() -> None:
+    root = _Node()
+    root._obs_checked = Observable(True)  # type: ignore[attr-defined]
+    root._state_layer_anim = Animatable(0.25)  # type: ignore[attr-defined]
+
+    state = describe_state(root)
+    assert state["state"] == {"checked": True}
+
+
+def test_describe_state_includes_animations_on_request() -> None:
+    root = _Node()
+    root._obs_checked = Observable(True)  # type: ignore[attr-defined]
+    root._state_layer_anim = Animatable(0.25)  # type: ignore[attr-defined]
+
+    state = describe_state(root, include_animations=True)
+    # An ``Animatable`` is not mutable-observable, so it reports as computed.
+    assert state["state"] == {
+        "checked": True,
+        "state_layer_anim": {"value": 0.25, "kind": "computed"},
+    }
+
+
+def test_describe_state_prunes_nodes_left_with_only_animations() -> None:
+    # The filter must run *before* pruning: a widget whose only state was
+    # animation channels has to prune away like any other stateless node,
+    # instead of surviving as a hollow entry plus its ancestor path.
+    animated = _Node(key="button")
+    animated._bg_color_anim = Animatable(1.0)  # type: ignore[attr-defined]
+    root = _Node(children=[_Node(children=[animated])])
+
+    assert describe_state(root) == {}
+    # ...and the same tree is reported in full when animations are asked for.
+    included = describe_state(root, include_animations=True)
+    assert included["children"][0]["children"][0]["key"] == "button"
+
+
+def test_describe_state_keeps_values_derived_from_animations() -> None:
+    # A ``.map()`` over an ``Animatable`` is a plain computed observable and is
+    # deliberately still reported -- the filter is on type, not on provenance.
+    anim = Animatable(0.0)
+    root = _Node()
+    root._obs_visible = anim.map(lambda v: v > 0.5)  # type: ignore[attr-defined]
+
+    state = describe_state(root)
+    assert state["state"]["visible"] == {"value": False, "kind": "computed"}
 
 
 def test_describe_state_is_cycle_safe() -> None:

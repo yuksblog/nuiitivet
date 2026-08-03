@@ -175,6 +175,30 @@ def test_bridge_describe_state(tmp_path: Path, dev_run: None) -> None:
         bridge.shutdown()
 
 
+def test_bridge_describe_state_include_animations(tmp_path: Path, dev_run: None) -> None:
+    from nuiitivet.animation.animatable import Animatable
+    from nuiitivet.observable.value import Observable
+
+    app: Any = _FakeApp()
+    app.root._obs_count = Observable(7)
+    app.root._fade_anim = Animatable(0.5)
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            # The default filters the animation channel out...
+            assert client.describe_state()["state"] == {"count": 7}
+            # ...and the query argument carries the opt-in through the endpoint.
+            state = client.describe_state(include_animations=True)
+            assert state["state"] == {
+                "count": 7,
+                "fade_anim": {"value": 0.5, "kind": "computed"},
+            }
+    finally:
+        bridge.shutdown()
+
+
 def test_bridge_status_aggregates_signals(tmp_path: Path, dev_run: None) -> None:
     journal = ReloadJournal()
     journal.record_success(["pkg.a"])

@@ -158,6 +158,22 @@ def _parse_limit(query: str) -> Optional[int]:
         return None
 
 
+def _parse_flag(query: str, name: str) -> bool:
+    """Extract a boolean ``name`` flag from a URL query string.
+
+    Accepts the usual truthy spellings (``1`` / ``true`` / ``yes`` / ``on``,
+    case-insensitively) and a bare ``?name`` with no value. Anything else --
+    including an absent parameter -- reads as ``False``, so a malformed flag
+    degrades to the default rather than failing the request.
+    """
+    from urllib.parse import parse_qs
+
+    values = parse_qs(query, keep_blank_values=True).get(name)
+    if not values:
+        return False
+    return values[0].strip().lower() in ("", "1", "true", "yes", "on")
+
+
 # Runtime-log levels that count as a real failure for ``status``'s error_count,
 # so ordinary WARNING noise does not read as "the app died".
 _STATUS_ERROR_LEVELS = frozenset({"ERROR", "CRITICAL"})
@@ -421,7 +437,15 @@ def _make_handler(
                     tree = marshaller.call_on_ui_thread(lambda app: describe_tree(app.root))
                     self._send_json(200, {"tree": tree})
                 elif path == "/describe_state":
-                    state = marshaller.call_on_ui_thread(lambda app: describe_state(app.root))
+                    # ``include_animations`` opts the per-frame ``Animatable``
+                    # channels back in; they are filtered out by default because
+                    # they dominated the payload (#418).
+                    include_animations = _parse_flag(query, "include_animations")
+                    state = marshaller.call_on_ui_thread(
+                        lambda app: describe_state(
+                            app.root, include_animations=include_animations
+                        )
+                    )
                     self._send_json(200, {"state": state})
                 elif path == "/screenshot":
                     png = marshaller.call_on_ui_thread(lambda app: app._render_to_png_bytes())

@@ -393,6 +393,13 @@ edit again.
   current value directly; a derived one (`compute` / `map` / `combine`) is
   `{"value", "kind": "computed"}`. Values are length- and depth-capped and opaque
   objects render as `type: repr`, so no single value can bloat or break the dump.
+  `Animatable` attributes are excluded by default
+  ([#418](https://github.com/yuksblog/nuiitivet/issues/418)): framework animation
+  state lives exclusively in that class, so the filter is one `isinstance` check
+  and needs no name matching, and it runs *before* pruning so a widget left with
+  only animation channels prunes away instead of surviving as a hollow node.
+  `include_animations=True` (`?include_animations=1` on the endpoint) opts back
+  in, for when an animation is itself the bug.
   Read-only: poking values (`set_state`) is deliberately out of scope. Because
   semantic widget state (`Checkbox.checked`, text-field value, toggles) is already
   `Observable`-backed, this surfaces it automatically.

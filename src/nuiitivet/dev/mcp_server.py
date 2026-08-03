@@ -169,7 +169,7 @@ def build_server() -> "FastMCP":
         return _client().describe_tree()
 
     @server.tool()
-    def describe_state() -> dict[str, Any]:
+    def describe_state(include_animations: bool = False) -> dict[str, Any]:
         """Return the running app's reactive `Observable` state as structural JSON.
 
         The complement to `describe_tree`: where that gives the UI *output*
@@ -186,8 +186,15 @@ def build_server() -> "FastMCP":
         ``{"checked": true}``); a derived/computed value is instead
         ``{"value", "kind": "computed"}``. Values are length- and depth-capped and
         opaque objects render as ``type: repr``.
+
+        Animation state is **omitted by default**: an interactive widget's
+        `Animatable` channels (`state_layer_anim`, `bg_color_anim`, …) change
+        every frame and carry visual, not semantic, state -- they used to bury
+        the state you are looking for. Set `include_animations=True` only when
+        the animation itself is the bug ("the button never returns to its rest
+        state").
         """
-        return _client().describe_state()
+        return _client().describe_state(include_animations=include_animations)
 
     @server.tool()
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:

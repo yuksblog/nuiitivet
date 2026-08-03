@@ -100,8 +100,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("describe-tree", help="Print the running app's widget tree as JSON.")
 
-    subparsers.add_parser(
+    describe_state = subparsers.add_parser(
         "describe-state", help="Print the running app's reactive observable state as JSON."
+    )
+    describe_state.add_argument(
+        "--include-animations",
+        action="store_true",
+        help="Also report Animatable state, which is filtered out by default.",
     )
 
     reload_log = subparsers.add_parser(
@@ -329,10 +334,10 @@ def _describe_tree(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _describe_state(_args: argparse.Namespace) -> int:
+def _describe_state(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
-        state = client.describe_state()
+        state = client.describe_state(include_animations=args.include_animations)
     except (BridgeNotFoundError, OSError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1

@@ -96,6 +96,11 @@ order rather than defaulting to a screenshot:
   when the tree looks right but behaves wrong, or looks wrong but the code seems
   right — the classic "the value updated but the UI didn't" (or the reverse)
   reactive bug, where the tree alone cannot tell you which side is at fault.
+  Animation (`Animatable`) state is **omitted by default**: an interactive
+  widget's per-frame channels (`state_layer_anim`, `bg_color_anim`, …) carry
+  visual, not semantic, state and otherwise dominate the dump. Pass
+  `include_animations=True` when the animation itself is what you are
+  investigating.
 - **`screenshot`** — renders the mounted widget tree to PNG. A **last resort**,
   only when you genuinely need to see pixels — a visual or layout check the
   structure cannot express; image tokens are expensive. Do not reach for it to
@@ -232,6 +237,7 @@ free (standard-library `urllib` only), no `[mcp]` extra required:
 python -m nuiitivet.dev status
 python -m nuiitivet.dev describe-tree
 python -m nuiitivet.dev describe-state
+python -m nuiitivet.dev describe-state --include-animations
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log
