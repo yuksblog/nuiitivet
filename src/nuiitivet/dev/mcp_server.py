@@ -17,9 +17,10 @@ running ``python -m nuiitivet.dev <app.py>`` process over localhost. It inherits
 that bridge's dev-session gate, so it is never a path into a production app.
 
 The ``mcp`` SDK is an optional dependency; install it with
-``pip install 'nuiitivet[mcp]'``. Importing this module without it raises a
-:class:`MissingMCPDependencyError` with that hint rather than a bare
-``ImportError``.
+``pip install 'nuiitivet[mcp]'``. Both SDK majors are supported (1.x and 2.x,
+which renamed the server class). Importing this module without a usable SDK
+raises a :class:`MissingMCPDependencyError` -- saying which of the two cases it
+is -- rather than a bare ``ImportError``.
 
 Run it over stdio (the transport every MCP host supports) with::
 
@@ -30,31 +31,55 @@ See #376 and ``docs/design/HOT_RELOAD.md``.
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any, Optional
 
 from .client import BridgeClient, BridgeNotFoundError
 
 # The 'mcp' SDK is an optional dependency (the ``[mcp]`` extra). Import it at
-# module scope so type annotations on the tool functions resolve -- FastMCP
+# module scope so type annotations on the tool functions resolve -- the server
 # evaluates them against these module globals -- but tolerate its absence so
 # merely importing this module (e.g. to probe availability) never hard-fails.
+#
+# SDK 2.0 renamed the server package: ``mcp.server.fastmcp.FastMCP`` became
+# ``mcp.server.mcpserver.MCPServer``. No release ships both, so support the two
+# majors by trying the newer path first and falling back. Everything we use of
+# the class -- the constructor, ``@tool()``, ``Image``, ``run(transport=...)``,
+# and the resulting tool schemas -- is identical across them, so the rest of
+# this module is written once against the ``FastMCP`` alias.
 try:
-    from mcp.server.fastmcp import FastMCP, Image
+    from mcp.server.mcpserver import MCPServer as FastMCP  # mcp >= 2.0
+    from mcp.server.mcpserver import Image
 
     _MCP_IMPORT_ERROR: Optional[ImportError] = None
-except ImportError as _exc:  # pragma: no cover - depends on install extras
-    FastMCP = None  # type: ignore[assignment,misc]
-    Image = None  # type: ignore[assignment,misc]
-    _MCP_IMPORT_ERROR = _exc
+except ImportError:  # pragma: no cover - depends on the installed SDK major
+    try:
+        from mcp.server.fastmcp import FastMCP, Image  # type: ignore[no-redef]  # mcp < 2.0
+
+        _MCP_IMPORT_ERROR = None
+    except ImportError as _exc:  # pragma: no cover - depends on install extras
+        FastMCP = None  # type: ignore[assignment,misc]
+        Image = None  # type: ignore[assignment,misc]
+        _MCP_IMPORT_ERROR = _exc
 
 
 class MissingMCPDependencyError(RuntimeError):
-    """The optional ``mcp`` SDK is not installed."""
+    """The optional ``mcp`` SDK is missing, or is a version we cannot drive."""
 
 
 _INSTALL_HINT = (
     "The MCP server needs the 'mcp' package, which is an optional dependency. "
     "Install it with: pip install 'nuiitivet[mcp]'"
+)
+
+# Telling someone to install a package they already have is the worst possible
+# message, so an import failure with 'mcp' present is reported as what it is: a
+# version we do not know how to drive (a third rename, or a broken install).
+_INCOMPATIBLE_HINT = (
+    "The MCP server found an 'mcp' package (version {version}) it cannot use: "
+    "neither 'mcp.server.mcpserver' (SDK 2.x) nor 'mcp.server.fastmcp' "
+    "(SDK 1.x) could be imported from it. Try: "
+    "pip install --upgrade 'nuiitivet[mcp]'"
 )
 
 # Guidance surfaced to the calling model. Two ways to "check the app": `status`
@@ -103,10 +128,32 @@ _SERVER_INSTRUCTIONS = (
 )
 
 
+def _mcp_is_installed() -> bool:
+    """Report whether an ``mcp`` package exists on the path, importable or not."""
+    return importlib.util.find_spec("mcp") is not None
+
+
+def _installed_mcp_version() -> str:
+    """Return the installed ``mcp`` distribution version, or ``"unknown"``."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("mcp")
+    except PackageNotFoundError:  # pragma: no cover - a path-only/source install
+        return "unknown"
+
+
+def _import_failure_hint() -> str:
+    """Explain the recorded import failure: SDK absent, or SDK unusable."""
+    if not _mcp_is_installed():
+        return _INSTALL_HINT
+    return _INCOMPATIBLE_HINT.format(version=_installed_mcp_version())
+
+
 def _require_mcp() -> None:
     """Confirm the optional ``mcp`` SDK is importable, or raise a helpful error."""
     if _MCP_IMPORT_ERROR is not None:
-        raise MissingMCPDependencyError(_INSTALL_HINT) from _MCP_IMPORT_ERROR
+        raise MissingMCPDependencyError(_import_failure_hint()) from _MCP_IMPORT_ERROR
 
 
 def _client() -> BridgeClient:
