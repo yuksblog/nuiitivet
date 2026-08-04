@@ -3,12 +3,17 @@
 The server holds no app logic: every tool forwards to a discovered
 :class:`~nuiitivet.dev.client.BridgeClient`. These tests patch
 ``BridgeClient.discover`` to return a fake client and drive the tools through
-FastMCP's ``call_tool`` boundary, so tool schemas, result conversion (including
-the ``screenshot`` image), and error propagation are all exercised.
+the server's ``call_tool`` boundary, so tool schemas, result conversion
+(including the ``screenshot`` image), and error propagation are all exercised.
+
+They run against either ``mcp`` SDK major (#489). The SDK's own result shapes
+differ between them -- ``call_tool``'s return type and a mime-type field rename
+-- so the helpers below normalize those; the tools themselves behave
+identically and are asserted the same way for both.
 
 They ``pytest.importorskip('mcp')`` because the SDK is an optional dependency;
-the one missing-dependency test instead simulates absence by patching the
-module's recorded import error.
+the two import-failure tests instead simulate an absent or unusable SDK by
+patching the module's recorded import error.
 """
 
 from __future__ import annotations
@@ -81,17 +86,32 @@ def _fake_client() -> Any:
 def _call(server: Any, name: str, arguments: dict[str, Any]) -> Any:
     """Invoke a tool and return its structured result (dict tools).
 
-    FastMCP returns ``(content, structured)`` for tools that return a mapping;
-    this unwraps the structured half for straightforward assertions.
+    For a tool that returns a mapping, SDK 1.x hands back a
+    ``(content, structured)`` tuple and SDK 2.x a ``CallToolResult``; this
+    unwraps the structured half of either for straightforward assertions.
     """
     result = asyncio.run(server.call_tool(name, arguments))
-    _content, structured = result
-    return structured
+    if isinstance(result, tuple):  # mcp < 2.0
+        _content, structured = result
+        return structured
+    return result.structured_content
 
 
 def _call_content(server: Any, name: str, arguments: dict[str, Any]) -> Any:
-    """Invoke a tool and return its content blocks (for non-dict results)."""
-    return asyncio.run(server.call_tool(name, arguments))
+    """Invoke a tool and return its content blocks (for non-dict results).
+
+    SDK 1.x returns the block list itself; SDK 2.x wraps it in a
+    ``CallToolResult``.
+    """
+    result = asyncio.run(server.call_tool(name, arguments))
+    if isinstance(result, list):  # mcp < 2.0
+        return result
+    return result.content
+
+
+def _mime_type(block: Any) -> str:
+    """Return a content block's mime type across the SDK's field rename."""
+    return getattr(block, "mime_type", None) or block.mimeType  # 2.x / 1.x
 
 
 def test_build_server_registers_the_tools() -> None:
@@ -142,7 +162,16 @@ def test_describe_state_forwards_to_client() -> None:
         result = _call(server, "describe_state", {})
     assert result["state"]["count"] == 3
     assert result["state"]["doubled"] == {"value": 6, "kind": "computed"}
-    client.describe_state.assert_called_once_with()
+    # Animation channels are opt-in, so the default call must forward False.
+    client.describe_state.assert_called_once_with(include_animations=False)
+
+
+def test_describe_state_forwards_the_animation_opt_in() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        _call(server, "describe_state", {"include_animations": True})
+    client.describe_state.assert_called_once_with(include_animations=True)
 
 
 def test_reload_log_forwards_to_client() -> None:
@@ -190,7 +219,7 @@ def test_screenshot_returns_png_image_content() -> None:
     assert len(content) == 1
     block = content[0]
     assert block.type == "image"
-    assert block.mimeType == "image/png"
+    assert _mime_type(block) == "image/png"
     client.screenshot.assert_called_once_with()
 
 
@@ -235,7 +264,10 @@ def test_wait_for_forwards_condition() -> None:
 
 
 def test_tool_surfaces_bridge_not_found() -> None:
-    from mcp.server.fastmcp.exceptions import ToolError
+    try:
+        from mcp.server.mcpserver.exceptions import ToolError  # mcp >= 2.0
+    except ImportError:
+        from mcp.server.fastmcp.exceptions import ToolError  # type: ignore[no-redef]
 
     with mock.patch.object(
         BridgeClient, "discover", side_effect=BridgeNotFoundError("No running app")
@@ -246,12 +278,40 @@ def test_tool_surfaces_bridge_not_found() -> None:
 
 
 def test_missing_mcp_dependency_is_a_helpful_error() -> None:
+    # The SDK is genuinely absent, so the fix really is to install it.
     with mock.patch.object(mcp_server, "_MCP_IMPORT_ERROR", ImportError("no mcp")):
-        with pytest.raises(mcp_server.MissingMCPDependencyError, match=r"nuiitivet\[mcp\]"):
-            mcp_server.build_server()
+        with mock.patch.object(mcp_server, "_mcp_is_installed", return_value=False):
+            with pytest.raises(
+                mcp_server.MissingMCPDependencyError, match=r"optional dependency"
+            ) as excinfo:
+                mcp_server.build_server()
+    assert "nuiitivet[mcp]" in str(excinfo.value)
+
+
+def test_incompatible_mcp_version_is_reported_as_such() -> None:
+    """An unusable-but-present SDK must not be reported as a missing one.
+
+    This is the mcp 2.0 failure mode (#489): the server package was renamed, so
+    the import fails while the package is installed. Telling that user to
+    install what they already have is a dead end, so the message says which
+    version it found and that neither module path worked.
+    """
+    with mock.patch.object(mcp_server, "_MCP_IMPORT_ERROR", ImportError("renamed")):
+        with mock.patch.object(mcp_server, "_mcp_is_installed", return_value=True):
+            with mock.patch.object(
+                mcp_server, "_installed_mcp_version", return_value="9.9.9"
+            ):
+                with pytest.raises(mcp_server.MissingMCPDependencyError) as excinfo:
+                    mcp_server.build_server()
+    message = str(excinfo.value)
+    assert "9.9.9" in message
+    assert "mcp.server.mcpserver" in message
+    assert "mcp.server.fastmcp" in message
+    assert "optional dependency" not in message
 
 
 def test_run_returns_1_when_mcp_missing(capsys: pytest.CaptureFixture[str]) -> None:
     with mock.patch.object(mcp_server, "_MCP_IMPORT_ERROR", ImportError("no mcp")):
-        assert mcp_server.run() == 1
+        with mock.patch.object(mcp_server, "_mcp_is_installed", return_value=False):
+            assert mcp_server.run() == 1
     assert "nuiitivet[mcp]" in capsys.readouterr().err
