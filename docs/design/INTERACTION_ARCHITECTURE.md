@@ -68,6 +68,25 @@ This split is what makes a group (menu, multi-handle slider) expressible: withou
 - **State**: `FocusNode` maintains a `focused` boolean state. This state syncs with `InteractionState.focused` on the host widget to drive visual updates (e.g., focus rings).
 - **Scopes first**: On Tab, the `FocusScope` enclosing the focused node is consulted **before** the global sequence (see below).
 
+### What Tab Can Reach
+
+Being mounted is not the same as being on screen. A `Collapsible` closes, a `Deck` switches page, a route is pushed over another, a modal opens — in each case the content stays in the tree, keeping its state, while the user can no longer see or click it. Tab must stop at the same boundary the eye does, or the focus ring vanishes and keystrokes go to an invisible widget.
+
+Two hooks express that, at two different granularities:
+
+| Hook | Granularity | Used by |
+| :--- | :--- | :--- |
+| `FocusTraversalBlocker.blocks_focus_traversal` | Hides the widget's **whole subtree** | disabled `Clickable`, closed `Collapsible`, `visible(False)` |
+| `Widget.focus_traversal_children()` | Narrows to **some of the children** | `Deck` (the selected page), `Navigator` (the top route) |
+
+The blocker cannot express "keep one of N children reachable", which is why the second hook exists. `focus_traversal_children()` defaults to `children_snapshot()`, so a container opts in only by narrowing it — and it resolves the narrowing on every call, because a `Deck`'s index addresses the post-expansion child list and a `ForEach` can change its item count at any time.
+
+A blocking overlay entry is handled one level up, in `App._focus_traversal_root`: while a modal is open the whole sequence starts at that entry's content, so Tab is trapped inside the dialog instead of walking out into the background. `App._sync_overlay_focus_trap` completes the picture by moving focus into the entry on open and giving it back to the invoker on close — no traversal rule can do that half, since by then the dialog is already detached.
+
+Everything follows from one walk. `App._iter_focus_traversal` yields exactly the reachable widgets; `_collect_focus_nodes` filters it to traversable `FocusNode`s, and `_release_focus_if_blocked` searches it for the focused widget and drops focus that is no longer there. `is_foreground` (see `KEYBOARD_SHORTCUTS.md`) asks the same hooks from the other direction, so a `FOREGROUND` shortcut buried in hidden content and a Tab stop buried in hidden content agree about being out of reach.
+
+Off-screen children of a `Scrollable` are deliberately **not** excluded — they are reachable, which matches browser behaviour.
+
 ### Click-to-Focus and the Focus Source
 
 `PointerInputNode` automatically requests focus for its host if a `FocusNode` is present when a press event occurs. Focus carries a `FocusSource` (`KEYBOARD` / `POINTER`), and MD3 suppresses the focus ring when focus is pointer-driven (`InteractiveWidget.should_show_focus_ring`).

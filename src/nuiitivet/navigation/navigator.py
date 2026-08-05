@@ -603,6 +603,22 @@ class Navigator(ComposableWidget):
         self._finish_pop_once()
         asyncio.create_task(self._drain_pending_pops())
 
+    def focus_traversal_children(self) -> list[Widget]:
+        """Return only the top route, so Tab never reaches a covered one.
+
+        Every route stays mounted — that is how a screen keeps its state while
+        another one sits on top of it — and only the top one is painted. The Tab
+        sequence has to stop at the same boundary.
+        """
+        routes = self._stack.routes
+        if not routes:
+            return []
+        try:
+            return [self._route_widget(routes[-1])]
+        except Exception:
+            exception_once(_logger, "navigator_focus_traversal_children_exc", "Top route widget build failed")
+            return []
+
     def layout(self, width: int, height: int) -> None:
         self.clear_needs_layout()
         self.set_layout_rect(0, 0, width, height)

@@ -12,7 +12,9 @@ from __future__ import annotations
 import nuiitivet as nv
 from nuiitivet.input.codes import MOD_ACCEL, MOD_SHIFT, accel_mask
 from nuiitivet.input.shortcut import Shortcut, ShortcutScope
+from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.deck import Deck
 from nuiitivet.modifiers.key_shortcut import key_shortcut
 from nuiitivet.navigation import Route
 from nuiitivet.observable import Observable
@@ -20,6 +22,7 @@ from nuiitivet.overlay import Overlay
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
+from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, InteractionRegion, PointerInputNode, ShortcutNode
 
 
@@ -201,6 +204,54 @@ def test_a_shortcut_inside_the_modal_still_fires() -> None:
 
     assert _press_accel_s(app) is True
     assert fired == ["dialog"]
+
+
+def test_foreground_does_not_fire_on_a_hidden_deck_page() -> None:
+    # A Deck keeps every page mounted; only the selected one is on screen, so only
+    # its shortcuts are live. Same boundary Tab stops at (issue #491).
+    fired: list[str] = []
+    page0 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page0")))
+    page1 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page1")))
+    index = Observable(0)
+    app = App(Column([Deck(children=[page0, page1], index=index)]))
+    app.root.mount(app)
+
+    assert _press_accel_s(app) is True
+    assert fired == ["page0"]
+
+    index.value = 1
+    assert _press_accel_s(app) is True
+    assert fired == ["page0", "page1"]
+
+
+def test_foreground_does_not_fire_inside_a_closed_collapsible() -> None:
+    fired: list[str] = []
+    opened = Observable(True)
+    panel = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("panel")))
+    app = App(Column([Collapsible(panel, opened=opened)]))
+    app.root.mount(app)
+
+    assert _press_accel_s(app) is True
+    assert fired == ["panel"]
+
+    opened.value = False
+    assert _press_accel_s(app) is False
+    assert fired == ["panel"]
+
+
+def test_foreground_does_not_fire_inside_a_disabled_clickable() -> None:
+    fired: list[str] = []
+    disabled = Observable(False)
+    label = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("button")))
+    app = App(Column([Clickable(label, disabled=disabled)]))
+    app.root.mount(app)
+
+    assert _press_accel_s(app) is True
+    assert fired == ["button"]
+
+    disabled.value = True
+    assert _press_accel_s(app) is False
+    assert fired == ["button"]
 
 
 def test_ambiguous_foreground_match_fires_nothing() -> None:

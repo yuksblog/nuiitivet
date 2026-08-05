@@ -43,12 +43,21 @@ require focus.
 `FOREGROUND` excludes a subtree that is:
 
 - hidden by `visible(False)` — the widget stays mounted but is not displayed;
-- on a **covered navigation route** — `Navigator` keeps covered routes in the
-  tree and only paints the top one, so without this check the *previous screen's*
-  shortcuts would keep firing on the current screen;
+- **closed or disabled** — a closed `Collapsible`, a disabled `Clickable`: the
+  same `FocusTraversalBlocker` test that keeps the subtree out of the Tab
+  sequence;
+- **kept off screen by its container** — a `Deck` showing another page, a
+  **covered navigation route**: these keep every child mounted (that is how a
+  page or screen preserves its state) and show one at a time, so without this
+  check the *previous screen's* shortcuts would keep firing on the current one.
+  The container declares what it is showing via `focus_traversal_children()`;
 - **occluded by a blocking overlay** — a modal dialog or a light-dismiss popup
   swallows interaction, so background commands must not fire behind it. A
   `modeless` (passthrough) entry does not occlude.
+
+This is deliberately the same set of questions Tab asks (see
+`INTERACTION_ARCHITECTURE.md` § What Tab Can Reach), so a shortcut and a Tab stop
+buried in the same hidden content agree about being out of reach.
 
 ### `FOCUS` is the exception, not the rule
 
