@@ -55,6 +55,22 @@ class ChildContainerMixin:
             exception_once(logger, "children_store_snapshot_exc", "ChildrenStore.snapshot failed")
             return []
 
+    def focus_traversal_children(self) -> List:
+        """Return the children keyboard traversal is allowed to descend into.
+
+        Every child, by default. Override it in a container that keeps content
+        mounted while it is off screen — a ``Deck`` showing one page, a
+        ``Navigator`` whose top route covers the rest — and return only what the
+        user can currently act on. ``paint`` and ``hit_test`` already narrow the
+        same way; this asks the same question on the keyboard's behalf, so Tab
+        stops where the eye does.
+
+        This is the "one of N children" counterpart to
+        :class:`~nuiitivet.widgets.interaction.FocusTraversalBlocker`, which
+        hides a whole subtree at once.
+        """
+        return self.children_snapshot()
+
     def clear_children(self) -> None:
         try:
             self._children_store.clear()

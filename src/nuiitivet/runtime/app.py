@@ -7,7 +7,7 @@ import time
 import traceback
 import warnings
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
 
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
@@ -347,6 +347,11 @@ class App:
         self._last_hover_target = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
+        # Open blocking overlay entries, innermost last, each paired with the node
+        # that held focus when it opened. A modal takes focus with it and hands it
+        # back on close; the invoker cannot be looked up from the tree afterwards,
+        # because by then the dialog is detached. See :meth:`_sync_overlay_focus_trap`.
+        self._overlay_focus_trap: list[Tuple[Widget, Optional[FocusNode]]] = []
         # How the user is driving the app right now. A widget that takes focus on
         # its own (a menu focusing its first item when it opens) inherits it, so a
         # mouse-opened menu does not come up wearing a keyboard focus ring.
@@ -1044,71 +1049,165 @@ class App:
         else:
             self._focused_target = None
 
+    def _occluding_overlay_content(self) -> Optional[Widget]:
+        """Return the content of the topmost input-blocking overlay entry, if any."""
+        try:
+            from nuiitivet.overlay import Overlay
+
+            return Overlay.root().occluding_content_widget()
+        except RuntimeError:
+            # No App-installed overlay (e.g. a bare widget tree in a test).
+            return None
+        except Exception:
+            exception_once(logger, "app_occluding_overlay_content_exc", "occluding_content_widget raised")
+            return None
+
+    def _focus_traversal_root(self) -> Optional[Widget]:
+        """Return the widget the Tab sequence starts from.
+
+        The app root, normally. While a modal (or any other input-blocking
+        overlay entry) is open, the sequence is trapped inside that entry:
+        everything behind it is already unreachable to the pointer, and the
+        keyboard has to agree — Tab must not walk out of a dialog into controls
+        the user cannot see or click.
+        """
+        occluding = self._occluding_overlay_content()
+        return occluding if occluding is not None else self.root
+
+    def _focus_traversal_descendants(self, widget: Widget) -> list[Widget]:
+        """Return the widgets one traversal step below ``widget``."""
+        try:
+            children = list(widget.focus_traversal_children())
+        except Exception:
+            exception_once(logger, "app_focus_traversal_children_exc", "focus_traversal_children raised")
+            children = []
+
+        # Also traverse built child (for widgets that use build() but don't add to children_store)
+        try:
+            built = getattr(widget, "built_child", None)
+            if built is not None and built is not widget:
+                children.append(built)
+        except Exception:
+            exception_once(logger, "app_collect_focus_nodes_built_child_exc", "Traversing built_child raised")
+        return children
+
+    def _iter_focus_traversal(self, widget: Widget) -> Iterator[Widget]:
+        """Yield ``widget`` and everything Tab can reach below it, in tree order.
+
+        A :class:`FocusTraversalBlocker` that is currently blocking hides its
+        whole subtree (a disabled ``Clickable``, a closed
+        :class:`~nuiitivet.layout.collapsible.Collapsible`, a hidden
+        ``visible()``), so the walk does not descend into it at all. A container
+        that keeps content mounted off screen narrows the walk more finely,
+        through :meth:`~nuiitivet.widgeting.widget.Widget.focus_traversal_children`.
+        """
+        try:
+            if isinstance(widget, FocusTraversalBlocker) and widget.blocks_focus_traversal:
+                return
+        except Exception:
+            exception_once(logger, "app_focus_traversal_blocker_exc", "blocks_focus_traversal raised")
+
+        yield widget
+        for child in self._focus_traversal_descendants(widget):
+            yield from self._iter_focus_traversal(child)
+
     def _collect_focus_nodes(self) -> list[FocusNode]:
         """Return the Tab stops — the traversable FocusNodes — in tree order.
 
         Nodes marked non-traversable are skipped: they can still hold focus and
         receive keys, but an enclosing :class:`FocusScope` decides when they do,
         not the global Tab sequence.
-
-        A :class:`FocusTraversalBlocker` that is currently blocking hides its
-        subtree (a disabled ``Clickable``, a closed
-        :class:`~nuiitivet.layout.collapsible.Collapsible`, a hidden
-        ``visible()``), so the walk does not descend into it at all.
         """
-        res = []
-
-        def walk(w):
-            try:
-                # skip subtrees hidden from keyboard traversal
-                if isinstance(w, FocusTraversalBlocker) and w.blocks_focus_traversal:
-                    return
-
-                # Check for FocusNode
-                if isinstance(w, InteractionHostMixin):
-                    node = w.get_node(FocusNode)
-                    if node and isinstance(node, FocusNode) and node.traversable:
-                        res.append(node)
-            except Exception:
-                exception_once(logger, "app_collect_focus_nodes_walk_exc", "Collecting FocusNodes raised")
-            try:
-                for c in w.children_snapshot():
-                    walk(c)
-            except Exception:
-                exception_once(logger, "app_collect_focus_nodes_children_exc", "Traversing children_snapshot raised")
-
-            # Also traverse built child (for widgets that use build() but don't add to children_store)
-            try:
-                built = getattr(w, "built_child", None)
-                if built is not None and built is not w:
-                    walk(built)
-            except Exception:
-                exception_once(logger, "app_collect_focus_nodes_built_child_exc", "Traversing built_child raised")
-
+        res: list[FocusNode] = []
+        root = self._focus_traversal_root()
+        if root is None:
+            return res
         try:
-            if self.root is not None:
-                walk(self.root)
+            for widget in self._iter_focus_traversal(root):
+                try:
+                    if isinstance(widget, InteractionHostMixin):
+                        node = widget.get_node(FocusNode)
+                        if isinstance(node, FocusNode) and node.traversable:
+                            res.append(node)
+                except Exception:
+                    exception_once(logger, "app_collect_focus_nodes_walk_exc", "Collecting FocusNodes raised")
         except Exception:
             exception_once(logger, "app_collect_focus_nodes_root_exc", "Collecting FocusNodes from root raised")
         return res
 
-    def _release_focus_if_blocked(self) -> None:
-        """Clear focus when the focused widget sits inside a hidden subtree.
+    def _is_focus_reachable(self, node: Optional[FocusNode]) -> bool:
+        """Return True if ``node``'s widget is still displayed.
 
-        Hiding happens outside the focus system — a ``Collapsible`` closes, a
-        ``visible()`` flips to ``False`` — so focus has to be dropped here
-        rather than being left stranded on a widget nobody can see.
+        Reachability is the same walk the Tab sequence uses, so "displayed" means
+        exactly one thing across the focus system. It is asked of the widget
+        rather than of the node because a node may deliberately sit outside the
+        Tab sequence (``traversable=False``) while remaining perfectly visible.
         """
+        if node is None:
+            return False
+        owner = node.owner
+        if owner is None:
+            return False
+        root = self._focus_traversal_root()
+        if root is None:
+            return False
+        try:
+            return any(widget is owner for widget in self._iter_focus_traversal(root))
+        except Exception:
+            exception_once(logger, "app_focus_reachable_exc", "Focus reachability walk raised")
+            return True
+
+    def _release_focus_if_blocked(self) -> None:
+        """Keep focus on something the user can actually see.
+
+        Content stops being displayed outside the focus system — a
+        ``Collapsible`` closes, a ``visible()`` flips to ``False``, a ``Deck``
+        switches page, a route is pushed over another, a modal opens — so focus
+        left behind has to be dealt with here. Run once per frame, this both
+        maintains the modal focus trap and drops focus that is no longer
+        reachable.
+        """
+        self._sync_overlay_focus_trap()
+
         node = self._focused_node
         if node is None:
             return
+        if not self._is_focus_reachable(node):
+            self.request_focus(None)
 
-        widget: Optional[Widget] = node.owner
-        while widget is not None:
-            if isinstance(widget, FocusTraversalBlocker) and widget.blocks_focus_traversal:
-                self.request_focus(None)
+    def _sync_overlay_focus_trap(self) -> None:
+        """Move focus into a blocking overlay entry, and give it back on close.
+
+        A modal takes focus with it: the user tabs inside the dialog, and when it
+        goes away focus returns to whatever invoked it. Neither half can be
+        expressed as a traversal rule — on close the dialog is already detached,
+        so there is no tree left to reason about — which is why the invoker is
+        remembered here, one frame at a time.
+        """
+        occluding = self._occluding_overlay_content()
+        trap = self._overlay_focus_trap
+
+        if occluding is not None:
+            if any(widget is occluding for widget, _ in trap):
+                # Already trapped here; unwind only the entries closed above it.
+                while trap and trap[-1][0] is not occluding:
+                    self._restore_focus_to(trap.pop()[1])
                 return
-            widget = getattr(widget, "_parent", None)
+            trap.append((occluding, self._focused_node))
+            self._focus_first_stop()
+            return
+
+        while trap:
+            self._restore_focus_to(trap.pop()[1])
+
+    def _focus_first_stop(self) -> None:
+        """Focus the first Tab stop of the current traversal root, or clear focus."""
+        nodes = self._collect_focus_nodes()
+        self.request_focus(nodes[0] if nodes else None, self._last_input_source)
+
+    def _restore_focus_to(self, node: Optional[FocusNode]) -> None:
+        """Give focus back to ``node``, or clear it when that widget is gone."""
+        self.request_focus(node if self._is_focus_reachable(node) else None, self._last_input_source)
 
     def _focus_scope_for(self, node: Optional[FocusNode]) -> Optional[FocusScope]:
         """Return the innermost FocusScope enclosing ``node``, if any.

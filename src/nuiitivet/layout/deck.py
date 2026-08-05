@@ -1,6 +1,6 @@
 """Deck layout: display only one child at a time."""
 
-from typing import Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
@@ -23,8 +23,6 @@ class Deck(Widget):
             HOME = 0
             SEARCH = 1
         Deck(children=[...], index=Section.HOME)
-
-    For animated tabs with gesture support, see DeckController.
     """
 
     def __init__(
@@ -101,6 +99,18 @@ class Deck(Widget):
         self._validate_index()
         if old_index != self._current_index:
             self.mark_needs_layout()
+
+    def focus_traversal_children(self) -> List[Widget]:
+        """Return only the selected page, so Tab skips the pages behind it.
+
+        The index addresses the **post-expansion** list — the same list
+        ``paint`` and ``hit_test`` work on — so it is resolved on every call and
+        stays correct when a ``ForEach`` child changes its item count.
+        """
+        children = expand_layout_children(self.children_snapshot())
+        if not children or not (0 <= self._current_index < len(children)):
+            return []
+        return [children[self._current_index]]
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         children = expand_layout_children(self.children_snapshot())
