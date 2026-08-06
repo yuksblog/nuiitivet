@@ -1667,8 +1667,9 @@ class App:
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
         _dispatch_mouse_release_fn(self, x, y, button=button, modifier_keys=modifier_keys)
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float):
-        _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y)
+    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Optional[Widget]:
+        """Deliver a wheel event; return the widget that consumed it, if any."""
+        return _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y)
 
     def _handle_pointer_cancel(
         self,

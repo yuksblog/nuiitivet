@@ -7,7 +7,7 @@ multiple axes, not just a single axis.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Iterable, Mapping, Tuple
+from typing import Any, Dict, Iterable, Mapping, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import Observable
@@ -194,6 +194,27 @@ class ScrollController:
 
     def get_offset(self, axis: ScrollDirection | None = None) -> float:
         return self._resolve_axis(axis).offset.value
+
+    def metrics(self, axis: ScrollDirection | None = None) -> Dict[str, Any]:
+        """Report one axis's scroll position as plain, JSON-safe values.
+
+        For observers outside the scroll machinery -- the dev bridge's
+        ``scroll`` action -- which need to tell "the region moved" from "it was
+        already at the end", a distinction a bare success reply cannot carry.
+
+        Returns:
+            ``{"axis", "offset", "max_extent", "at_start", "at_end"}``.
+        """
+        state = self._resolve_axis(axis)
+        offset = float(state.offset.value)
+        max_extent = float(getattr(state.max_extent, "value", 0.0))
+        return {
+            "axis": state.axis.value,
+            "offset": offset,
+            "max_extent": max_extent,
+            "at_start": offset <= 0.0,
+            "at_end": offset >= max_extent,
+        }
 
     def scroll_to(self, offset: float, *, axis: ScrollDirection | None = None) -> None:
         """Scroll to the given offset.

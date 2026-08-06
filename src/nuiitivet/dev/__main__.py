@@ -13,6 +13,8 @@ Subcommands::
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
     python -m nuiitivet.dev click --label increment # click a widget by identifier
+    python -m nuiitivet.dev scroll --key feed --dy 5 # wheel a region (notches, ~20px)
+    python -m nuiitivet.dev scroll-into-view --key row-42 # reveal a widget
     python -m nuiitivet.dev type "hello"            # type into the focused widget
     python -m nuiitivet.dev key enter --mod accel   # press a key (with modifiers)
     python -m nuiitivet.dev wait-for --label Done    # wait for a tree condition
@@ -21,8 +23,8 @@ Subcommands::
 ``run`` imports the user's app module under its real name (never ``__main__``,
 so importing it does not run ``main()``), installs a dev session, calls the
 entry once, then drives the event loop with file watching and the dev bridge
-enabled. ``describe-tree`` / ``screenshot`` (perception) and ``click`` / ``type``
-/ ``key`` (action) are bridge clients: they talk to an already-running ``run``
+enabled. ``describe-tree`` / ``screenshot`` (perception) and ``click`` /
+``scroll`` / ``type`` / ``key`` (action) are bridge clients: they talk to an already-running ``run``
 process over localhost. ``mcp`` serves those same primitives as MCP tools over
 stdio for MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
 """
@@ -55,6 +57,8 @@ _SUBCOMMANDS = frozenset(
         "reload-log",
         "interaction-log",
         "click",
+        "scroll",
+        "scroll-into-view",
         "type",
         "key",
         "wait-for",
@@ -172,6 +176,47 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         metavar=("X", "Y"),
         help="Raw root coordinates (fallback; breaks on layout changes).",
+    )
+
+    scroll = subparsers.add_parser(
+        "scroll", help="Scroll a region in the running app by wheel notches."
+    )
+    scroll_target = scroll.add_mutually_exclusive_group(required=True)
+    scroll_target.add_argument("--key", help="Target the scroll region whose key matches.")
+    scroll_target.add_argument(
+        "--label", help="Target the scroll region whose label/text/title matches."
+    )
+    scroll_target.add_argument(
+        "--xy",
+        nargs=2,
+        type=float,
+        metavar=("X", "Y"),
+        help="Root coordinates over the region (use when it carries no key).",
+    )
+    scroll.add_argument(
+        "--dy",
+        type=float,
+        default=0.0,
+        help="Vertical wheel notches (~20px each); positive scrolls down.",
+    )
+    scroll.add_argument(
+        "--dx",
+        type=float,
+        default=0.0,
+        help="Horizontal wheel notches (~20px each); positive scrolls right.",
+    )
+
+    into_view = subparsers.add_parser(
+        "scroll-into-view", help="Scroll a widget's region(s) until the widget is on screen."
+    )
+    into_view_target = into_view.add_mutually_exclusive_group(required=True)
+    into_view_target.add_argument("--key", help="Reveal the widget whose key matches.")
+    into_view_target.add_argument("--label", help="Reveal the widget whose label/text/title matches.")
+    into_view.add_argument(
+        "--align",
+        choices=("nearest", "start", "center", "end"),
+        default="nearest",
+        help="Where to land the widget in the region (default: nearest).",
     )
 
     typ = subparsers.add_parser("type", help="Type text into the running app's focused widget.")
@@ -293,8 +338,8 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(status / describe-tree / describe-state / screenshot / click / type / "
-            "key / wait-for / interaction-log / runtime-log).",
+            "(status / describe-tree / describe-state / screenshot / click / scroll / "
+            "scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
         try:
@@ -410,7 +455,7 @@ def _screenshot(args: argparse.Namespace) -> int:
 def _run_action(action: str, call) -> int:  # type: ignore[no-untyped-def]
     """Discover the bridge, invoke ``call(client)``, and print the JSON result.
 
-    Shared by ``click`` / ``type`` / ``key``: each is a one-shot bridge client
+    Shared by ``click`` / ``scroll`` / ``type`` / ``key``: each is a one-shot bridge client
     call whose only differences are the arguments and the result payload.
     """
     import json
@@ -430,6 +475,23 @@ def _click(args: argparse.Namespace) -> int:
         x, y = args.xy
         return _run_action("click", lambda c: c.click(x=x, y=y))
     return _run_action("click", lambda c: c.click(key=args.key, label=args.label))
+
+
+def _scroll(args: argparse.Namespace) -> int:
+    if args.xy is not None:
+        x, y = args.xy
+        return _run_action("scroll", lambda c: c.scroll(x=x, y=y, dx=args.dx, dy=args.dy))
+    return _run_action(
+        "scroll",
+        lambda c: c.scroll(key=args.key, label=args.label, dx=args.dx, dy=args.dy),
+    )
+
+
+def _scroll_into_view(args: argparse.Namespace) -> int:
+    return _run_action(
+        "scroll-into-view",
+        lambda c: c.scroll_into_view(key=args.key, label=args.label, align=args.align),
+    )
 
 
 def _type(args: argparse.Namespace) -> int:
@@ -483,6 +545,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _screenshot(args)
     if args.command == "click":
         return _click(args)
+    if args.command == "scroll":
+        return _scroll(args)
+    if args.command == "scroll-into-view":
+        return _scroll_into_view(args)
     if args.command == "type":
         return _type(args)
     if args.command == "key":

@@ -47,6 +47,23 @@ def _fake_client() -> Any:
     }
     client.screenshot.return_value = b"\x89PNG\r\n\x1a\n-fake-image-bytes"
     client.click.return_value = {"clicked": {"key": "submit"}, "x": 5, "y": 5}
+    client.scroll.return_value = {
+        "scrolled": {"key": "feed"},
+        "x": 5,
+        "y": 5,
+        "dx": 0.0,
+        "dy": 5.0,
+        "handled": True,
+        "offset": 100.0,
+        "max_extent": 300.0,
+        "at_end": False,
+    }
+    client.scroll_into_view.return_value = {
+        "scrolled_into_view": {"key": "row-42"},
+        "already_visible": False,
+        "offset": 640.0,
+        "max_extent": 900.0,
+    }
     client.type_text.return_value = {"typed": "hi", "handled": True}
     client.key.return_value = {"key": "enter", "modifiers": 2, "handled": True}
     client.reload_log.return_value = [
@@ -127,6 +144,8 @@ def test_build_server_registers_the_tools() -> None:
         "set_runtime_log_verbose",
         "screenshot",
         "click",
+        "scroll",
+        "scroll_into_view",
         "type",
         "key",
         "wait_for",
@@ -230,6 +249,25 @@ def test_click_forwards_target_identifiers() -> None:
         result = _call(server, "click", {"key": "submit"})
     assert result["clicked"]["key"] == "submit"
     client.click.assert_called_once_with(key="submit", label=None, x=None, y=None)
+
+
+def test_scroll_forwards_target_and_deltas() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "scroll", {"key": "feed", "dy": 5.0})
+    assert result["handled"] is True
+    assert result["offset"] == 100.0
+    client.scroll.assert_called_once_with(key="feed", label=None, x=None, y=None, dx=0.0, dy=5.0)
+
+
+def test_scroll_into_view_forwards_target_and_alignment() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "scroll_into_view", {"key": "row-42", "align": "center"})
+    assert result["already_visible"] is False
+    client.scroll_into_view.assert_called_once_with(key="row-42", label=None, align="center")
 
 
 def test_type_forwards_text() -> None:

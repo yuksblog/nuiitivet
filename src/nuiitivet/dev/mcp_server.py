@@ -113,8 +113,11 @@ _SERVER_INSTRUCTIONS = (
     "updated but the UI did not, or the reverse -- call `describe_state`: it "
     "returns the live `Observable` values behind the tree, in the same shape as "
     "`describe_tree` so you can join them node-for-node. Act with `click`, "
-    "`type`, and `key`, then re-`describe_tree` to "
-    "verify the effect. In a pair session the human may edit and save while you "
+    "`scroll`, `type`, and `key`, then re-`describe_tree` to "
+    "verify the effect. An action on a target that is scrolled out of its "
+    "region or covered by an overlay fails rather than quietly landing "
+    "elsewhere; when it does, call `scroll_into_view` on that target and retry. "
+    "In a pair session the human may edit and save while you "
     "work; call `reload_log` to see whether the code hot-reloaded under you (and "
     "whether it even compiled) before trusting a stale `describe_tree`. The human "
     "may also drive the app itself between your turns; call `interaction_log` to "
@@ -354,6 +357,69 @@ def build_server() -> "FastMCP":
         identifiers with `describe_tree`.
         """
         return _client().click(key=key, label=label, x=x, y=y)
+
+    @server.tool()
+    def scroll(
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
+        dx: float = 0.0,
+        dy: float = 0.0,
+    ) -> dict[str, Any]:
+        """Send a mouse wheel event to a scrollable region in the running app.
+
+        ``key`` / ``label`` name **the scroll region itself** (the list, the
+        feed), exactly as they name a widget everywhere else. Naming something
+        *inside* the region is an error, and deliberately so: the wheel would
+        move that widget out of view, so the anchor that aimed your first call
+        no longer exists for the second. The error tells you which region
+        encloses it and the coordinates that reach it.
+
+        Regions often carry no ``key`` in `describe_tree`. Two ways through:
+        attach one with `keyed()`, or pass the ``x`` / ``y`` centre of the
+        region's rect -- that rect does not move as the content scrolls, so the
+        same coordinates stay valid for the whole loop.
+
+        ``dx`` / ``dy`` are **wheel notches, not pixels**: a region moves 20 px
+        per notch by default, so ``dy=5`` scrolls about 100 px. Positive is
+        toward the content's end (``dy`` down, ``dx`` right). Scrolling is
+        linear with no inertia -- send one ``dy=10`` rather than ten ``dy=1``.
+
+        Returns ``handled`` plus the region's resulting ``offset``,
+        ``max_extent``, ``at_start`` and ``at_end``. Read them: ``handled:
+        false`` means nothing consumed the wheel (wrong target -- there is no
+        scrollable region there), while ``handled: true`` with an unchanged
+        ``offset`` and ``at_end: true`` means the region is already at the end.
+        Both look identical on screen, and ``at_end`` is your stop condition.
+
+        To bring a specific widget on screen, prefer `scroll_into_view` -- it
+        computes the offset in one shot instead of stepping by notches.
+        """
+        return _client().scroll(key=key, label=label, x=x, y=y, dx=dx, dy=dy)
+
+    @server.tool()
+    def scroll_into_view(
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        align: str = "nearest",
+    ) -> dict[str, Any]:
+        """Scroll a widget's region(s) until that widget is on screen.
+
+        The fix for a `click` (or `scroll`) that failed with "not visible": the
+        target exists in the tree but is scrolled out of its region, so the
+        coordinates it resolves to reach nothing. This moves the minimum amount
+        needed and guarantees the widget is reachable, in one call rather than a
+        `scroll` poll loop. Nested regions are handled outermost-inward.
+
+        ``align`` places the target: ``"nearest"`` (default, move as little as
+        possible), ``"start"``, ``"center"`` or ``"end"``.
+
+        Returns ``already_visible`` (``true`` when nothing had to move) and the
+        region's resulting ``offset`` / ``max_extent``. A target in no
+        scrollable region at all is an error, not a silent success.
+        """
+        return _client().scroll_into_view(key=key, label=label, align=align)
 
     @server.tool()
     def type(text: str) -> dict[str, Any]:  # noqa: A001 (MCP tool name is intentional)

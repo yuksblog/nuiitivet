@@ -35,6 +35,22 @@ class _FakeNode:
         pass
 
 
+class _FakeRegion(_FakeNode):
+    """Stand-in scroll region: ``scroll_metrics`` is what marks a node scrollable."""
+
+    def scroll_metrics(self) -> dict[str, Any]:
+        return {"axis": "vertical", "offset": 240.0, "max_extent": 900.0,
+                "at_start": False, "at_end": False}
+
+
+def _app_with_region() -> tuple[Any, _FakeRegion]:
+    """A fake app whose root contains a scrollable region keyed ``feed``."""
+    app = _FakeApp()
+    region = _FakeRegion(key="feed")
+    app.root.children.append(region)
+    return (app, region)
+
+
 class _FakeApp:
     """Stand-in App: exposes ``.root`` and a cheap ``_render_to_png_bytes``."""
 
@@ -47,6 +63,7 @@ class _FakeApp:
         self.title = "Counter"
         self.blank = False
         self.presses: list[tuple] = []
+        self.scrolls: list[tuple] = []
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
 
@@ -61,6 +78,10 @@ class _FakeApp:
 
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Any = None) -> None:
         pass
+
+    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Any:
+        self.scrolls.append((x, y, scroll_x, scroll_y))
+        return _FakeRegion(key="feed")
 
     def _dispatch_text(self, text: str) -> bool:
         self.texts.append(text)
@@ -441,6 +462,66 @@ def test_bridge_click_by_key(tmp_path: Path, dev_run: None) -> None:
             assert result["x"] == 5 and result["y"] == 5
             assert result["clicked"]["key"] == "submit"
             assert app.presses == [(5, 5, None)]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_by_key(tmp_path: Path, dev_run: None) -> None:
+    app, _region = _app_with_region()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            result = client.scroll(key="feed", dy=5.0)
+            assert app.scrolls == [(5, 5, 0.0, 5.0)]
+            assert result["handled"] is True
+            # The metrics the handling widget reported ride back out.
+            assert result["offset"] == 240.0
+            assert result["at_end"] is False
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_without_a_delta_is_400(tmp_path: Path, dev_run: None) -> None:
+    app, _region = _app_with_region()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="non-zero"):
+                client.scroll(key="feed")
+            assert app.scrolls == []
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_on_a_non_region_is_400(tmp_path: Path, dev_run: None) -> None:
+    """A widget that cannot scroll is refused before any event is synthesized."""
+    app, _region = _app_with_region()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="not a scrollable region"):
+                client.scroll(key="submit", dy=5.0)
+            assert app.scrolls == []
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_into_view_without_a_region_is_400(tmp_path: Path, dev_run: None) -> None:
+    """The endpoint is reachable, and reports "nothing to scroll" rather than success."""
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="not inside a scrollable region"):
+                client.scroll_into_view(key="submit")
     finally:
         bridge.shutdown()
 

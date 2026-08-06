@@ -1,6 +1,6 @@
 """Tests for the human-only dev action overlay (#398).
 
-The overlay visualizes AI-driven ``click`` / ``type`` / ``key`` actions for a
+The overlay visualizes AI-driven ``click`` / ``scroll`` / ``type`` / ``key`` actions for a
 human watching hot reload, without ever entering the assistant's perception. The
 critical properties verified here: recording is gated on a live dev session +
 window (no-op under headless / tests), markers live outside the widget tree so
@@ -139,6 +139,63 @@ def test_type_without_focus_records_caption_only() -> None:
     reg = _reg(app)
     assert reg.markers == []
     assert reg.captions[0].text == "type"
+
+
+def test_record_scroll_carries_its_direction() -> None:
+    app = _App()
+    ao.record_scroll(app, 60, 40, dx=0.0, dy=5.0, target="feed")
+
+    reg = _reg(app)
+    marker = reg.markers[0]
+    assert marker.kind == "scroll" and (marker.dx, marker.dy) == (0.0, 5.0)
+    assert reg.captions[0].text == "scroll down feed"
+
+
+def test_scroll_captions_use_ascii_direction_words() -> None:
+    """Never arrow glyphs: the caption face is resolved at paint time and may lack them."""
+    app = _App()
+    ao.record_scroll(app, 1, 1, dy=-1.0)
+    ao.record_scroll(app, 1, 1, dx=1.0)
+    ao.record_scroll(app, 1, 1, dx=-1.0, dy=1.0)
+
+    texts = [c.text for c in _reg(app).captions]
+    assert texts == ["scroll up", "scroll right", "scroll down left"]
+    assert all(text.isascii() for text in texts)
+
+
+def test_scroll_marker_outlives_the_click_ripple() -> None:
+    """A scroll moves the whole view, so its marker must survive the detour.
+
+    The human reads the new content first and looks for the cause second; a
+    marker on the ripple's timeline is gone by then.
+    """
+    app = _App()
+    ao.record_click(app, 1, 1, target="a")
+    ao.record_scroll(app, 1, 1, dy=1.0)
+
+    click_marker, scroll_marker = _reg(app).markers
+    just_past_a_ripple = click_marker.born + ao._MARKER_LIFETIME + 0.1
+    assert click_marker.expired(just_past_a_ripple)
+    assert not scroll_marker.expired(just_past_a_ripple)
+
+
+def test_scroll_marker_holds_opacity_before_fading() -> None:
+    """Presence is the event; the fade is its tail, not the whole of it."""
+    hold = ao._SCROLL_MARKER_HOLD
+    assert ao._hold_then_fade(0.0, hold=hold) == 1.0
+    assert ao._hold_then_fade(hold, hold=hold) == 1.0
+    assert ao._hold_then_fade(1.0, hold=hold) == 0.0
+    # Half-way along the tail is half opacity -- a linear fall, not a cubic dive.
+    assert ao._hold_then_fade(hold + (1.0 - hold) / 2, hold=hold) == pytest.approx(0.5)
+
+
+def test_scroll_into_view_reuses_the_scroll_marker() -> None:
+    app = _App()
+    ao.record_scroll(app, 5, 5, dy=-1.0, target="row-42", verb="scroll into view")
+
+    reg = _reg(app)
+    assert reg.markers[0].kind == "scroll"
+    assert reg.captions[0].text == "scroll into view up row-42"
 
 
 def test_key_caption_renders_combo() -> None:

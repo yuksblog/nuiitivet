@@ -2,7 +2,7 @@
 
 Hot reload lets *you* edit a running app; the **dev bridge** lets an **AI
 assistant** see and drive that same app — read the widget tree, screenshot it,
-click and type, wait for async work to settle, and catch up on what you did
+click, scroll and type, wait for async work to settle, and catch up on what you did
 between its turns. It is the perception–action half of the
 [AI pair-programming](index.md) loop.
 
@@ -51,7 +51,7 @@ and you can start the app whenever you like.
 
 ## What the assistant can do
 
-The bridge exposes eleven tools, split across the loop.
+The bridge exposes thirteen tools, split across the loop.
 
 There are three ways to "check the app", cheapest first — reach for them in this
 order rather than defaulting to a screenshot:
@@ -114,13 +114,39 @@ order rather than defaulting to a screenshot:
 
 ### Act
 
-- **`click`** / **`type`** / **`key`** — synthesize the same input the real
-  backend delivers. Targeting is by **stable identifier** (`key` / `label`),
-  resolved to the widget's centre, so it survives layout changes; raw
-  coordinates are a fallback. Attach a `key` to a widget with the
-  [`keyed()` modifier](../modifiers/others.md#keyed). Each verb settles the app (flushes reactive work
-  and relayout) before returning, so the next `describe_tree` observes the
-  updated state.
+These verbs synthesize the same input the real backend delivers. Targeting is by
+**stable identifier** (`key` / `label`) — attach one with the
+[`keyed()` modifier](../modifiers/others.md#keyed) — resolved to the widget's
+centre **as painted**, so it survives layout changes *and* scrolling; raw `x` /
+`y` coordinates are a fallback. Each verb settles the app (flushes reactive work
+and relayout) before returning, so the next `describe_tree` observes the result.
+
+- **`click`** — a press and release at the resolved target.
+- **`scroll`** — a wheel event over a scroll **region**. Name the region itself,
+  never a row inside it: a row anchor works exactly once, because the wheel it
+  aims carries that row off screen. Regions often carry no `key` — attach one, or
+  pass the `x` / `y` centre of the region's rect, which does not move as its
+  content scrolls. `dx` / `dy` are **wheel notches, not pixels**: 20 px each by
+  default, positive toward the content's end (down / right). Read the returned
+  `at_end` — it is the only stop condition a scroll loop has.
+- **`scroll_into_view`** — the answer to a "not visible" failure, and usually
+  what you want in place of `scroll`: it computes the offset that brings a target
+  inside its region and applies it in one shot, nested regions included. `align`
+  chooses where it lands (`nearest`, `start`, `center`, `end`);
+  `already_visible` reports whether anything had to move.
+- **`type`** — injects text into the focused widget. Focus one first (e.g.
+  `click` a text field); with nothing focused there is nowhere to route it and
+  `handled` comes back `false`.
+- **`key`** — a key press and release with optional modifiers (`shift`, `ctrl`,
+  `alt`, `meta`, or `accel` for the platform Ctrl/Cmd), so shortcuts and focus
+  traversal behave like real key events.
+
+> **A pointer verb verifies its target is reachable before it dispatches.**
+> A widget that is in the tree but scrolled out of its region, or covered by a
+> modal, fails with a "not visible" error rather than quietly delivering the
+> event to whatever happens to be at those coordinates — a wrong action that
+> reports success is worse than one that refuses. `scroll_into_view` is the way
+> through.
 
 ### Wait
 
@@ -205,6 +231,10 @@ human-only marker for each verb:
 
 - **`click`** — a pulse at the resolved target, plus the target's
   `key` / `label`. A raw-coordinate click shows a bare point.
+- **`scroll`** / **`scroll_into_view`** — a chevron that drifts along the scroll
+  direction as it fades, captioned with the direction in words (`scroll down
+  feed`). A jump the whole screen takes is the one that most needs explaining.
+  Both draw the same marker: what a human needs to see is that the view moved.
 - **`type`** — a caret marker near the focused widget. The **typed content is
   never drawn** (consistent with `interaction_log`, and so it never leaks into a
   screenshot).
@@ -244,6 +274,10 @@ python -m nuiitivet.dev runtime-log
 python -m nuiitivet.dev runtime-log --verbose on
 python -m nuiitivet.dev screenshot -o out.png
 python -m nuiitivet.dev click --label increment
+python -m nuiitivet.dev scroll --key feed --dy 5      # --key names the region
+python -m nuiitivet.dev scroll --xy 238 367 --dy 5    # ...or its rect centre
+python -m nuiitivet.dev scroll-into-view --key row-42
+python -m nuiitivet.dev scroll-into-view --label Done --align center
 python -m nuiitivet.dev type "hello"
 python -m nuiitivet.dev key enter --mod accel
 python -m nuiitivet.dev wait-for --label Done

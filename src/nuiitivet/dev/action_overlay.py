@@ -1,7 +1,7 @@
 """Human-facing visualization of AI-driven dev-bridge actions (#398).
 
 When an assistant drives a running app through the dev bridge (``click`` /
-``type`` / ``key``), hot reload makes the screen update on its own -- but a human
+``scroll`` / ``type`` / ``key``), hot reload makes the screen update on its own -- but a human
 watching cannot tell *what the assistant just did*. This module draws a
 short-lived, human-only marker for each synthesized action so the human can
 follow the AI's side of the pair-programming loop in real time.
@@ -53,6 +53,15 @@ _FALSY = {"0", "false", "no", "off"}
 
 # How long a spatial marker (click ripple / type pill) stays on screen.
 _MARKER_LIFETIME = 0.9
+# A scroll marker lives longer. A click marks a point the human's eye is already
+# near; a scroll moves the *whole view*, so they read the new content first and
+# look for the cause second -- the marker has to survive that detour. It also
+# carries less visual weight than the ripple (a thin chevron drifting away, not
+# an expanding ring anchored on a dot), which costs it further legibility.
+_SCROLL_MARKER_LIFETIME = 1.2
+# Fraction of a scroll marker's life it stays at full opacity before fading, so
+# the fade is a tail rather than the whole event (see :func:`_hold_then_fade`).
+_SCROLL_MARKER_HOLD = 0.35
 # Captions linger longer than spatial markers so the *sequence* stays readable
 # even after the pulses have faded.
 _CAPTION_LIFETIME = 2.6
@@ -69,17 +78,26 @@ _ACCENT = (124, 77, 255)  # indigo/violet
 class _Marker:
     """One transient spatial pulse anchored at a point in root coordinates."""
 
-    kind: str  # "click" | "type"
+    kind: str  # "click" | "type" | "scroll"
     x: float
     y: float
     text: Optional[str]
     born: float
+    #: Scroll direction the marker drifts along (unit-ish; unused by other kinds).
+    dx: float = 0.0
+    dy: float = 0.0
+    #: How long this marker stays on screen; per-kind, not one global constant.
+    lifetime: float = _MARKER_LIFETIME
 
     def age(self, now: float) -> float:
         return now - self.born
 
+    def progress(self, now: float) -> float:
+        """Position in this marker's life, 0 at birth and 1 at expiry."""
+        return max(0.0, min(1.0, self.age(now) / self.lifetime))
+
     def expired(self, now: float) -> bool:
-        return self.age(now) >= _MARKER_LIFETIME
+        return self.age(now) >= self.lifetime
 
 
 @dataclass
@@ -226,6 +244,51 @@ def record_click(app: Any, x: float, y: float, *, target: Optional[str] = None) 
     _record(app, _Marker(kind="click", x=float(x), y=float(y), text=target, born=time.monotonic()), label)
 
 
+def _direction_words(dx: float, dy: float) -> str:
+    """Render a scroll delta as ASCII direction words (never arrow glyphs).
+
+    The caption font is a plain UI face resolved at paint time and may lack
+    arrow glyphs, which would render as tofu; words always survive.
+    """
+    parts: list[str] = []
+    if dy:
+        parts.append("down" if dy > 0 else "up")
+    if dx:
+        parts.append("right" if dx > 0 else "left")
+    return " ".join(parts)
+
+
+def record_scroll(
+    app: Any,
+    x: float,
+    y: float,
+    *,
+    dx: float = 0.0,
+    dy: float = 0.0,
+    target: Optional[str] = None,
+    verb: str = "scroll",
+) -> None:
+    """Mark a synthesized scroll at ``(x, y)`` (root coords), drifting along its direction.
+
+    Shared by ``scroll`` and ``scroll_into_view`` (``verb`` names which); ``dx`` /
+    ``dy`` carry only the *direction*, so a one-notch nudge and a long jump draw
+    the same chevron.
+    """
+    words = _direction_words(dx, dy)
+    label = " ".join(part for part in (verb, words, target) if part)
+    marker = _Marker(
+        kind="scroll",
+        x=float(x),
+        y=float(y),
+        text=target,
+        born=time.monotonic(),
+        dx=float(dx),
+        dy=float(dy),
+        lifetime=_SCROLL_MARKER_LIFETIME,
+    )
+    _record(app, marker, label)
+
+
 def record_type(app: Any, *, x: Optional[float] = None, y: Optional[float] = None) -> None:
     """Mark a synthesized ``type`` near the focused widget.
 
@@ -292,6 +355,21 @@ def _ease_out(t: float) -> float:
     return 1.0 - (1.0 - t) ** 3
 
 
+def _hold_then_fade(t: float, *, hold: float) -> float:
+    """Alpha that stays solid for the first ``hold`` of a life, then falls off linearly.
+
+    The ripple's cubic fade (``(1 - t)**3``) is down to a fifth of its opacity a
+    third of the way in, which the expanding ring survives -- growth is its own
+    attention cue -- but a thin drifting chevron does not. Holding first makes
+    the marker's *presence* the event and the fade merely its tail. Shared with
+    the caption stack, which reaches for the same shape (see
+    :func:`_paint_captions`).
+    """
+    if t <= hold:
+        return 1.0
+    return max(0.0, 1.0 - (t - hold) / max(1e-6, 1.0 - hold))
+
+
 def _accent_color(skia: Any, alpha: float) -> Any:
     a = max(0, min(255, int(round(alpha * 255))))
     r, g, b = _ACCENT
@@ -299,7 +377,7 @@ def _accent_color(skia: Any, alpha: float) -> Any:
 
 
 def _paint_marker(skia: Any, canvas: Any, marker: _Marker, now: float) -> None:
-    progress = _ease_out(marker.age(now) / _MARKER_LIFETIME)
+    progress = _ease_out(marker.progress(now))
     fade = 1.0 - progress
 
     if marker.kind == "click":
@@ -320,6 +398,50 @@ def _paint_marker(skia: Any, canvas: Any, marker: _Marker, now: float) -> None:
         pill.setColor(_accent_color(skia, fade * 0.85))
         rect = skia.Rect.MakeXYWH(marker.x - 3.0, marker.y - 9.0, 6.0, 18.0)
         canvas.drawRoundRect(rect, 3.0, 3.0, pill)
+    elif marker.kind == "scroll":
+        # Its own alpha curve: the ripple's cubic fade leaves a thin chevron
+        # invisible long before the marker actually expires.
+        _paint_scroll_chevron(
+            skia,
+            canvas,
+            marker,
+            progress,
+            _hold_then_fade(marker.progress(now), hold=_SCROLL_MARKER_HOLD),
+        )
+
+
+def _paint_scroll_chevron(skia: Any, canvas: Any, marker: _Marker, progress: float, fade: float) -> None:
+    """Draw a chevron pointing along the scroll direction, drifting as it fades.
+
+    The drift is what distinguishes it at a glance from the click ripple: the
+    screen moved, and the marker moves with it. It is driven by the eased
+    ``progress``, so the chevron travels early and then holds where it landed --
+    readable while it is still on screen, rather than sliding the whole time.
+    """
+    length = (marker.dx**2 + marker.dy**2) ** 0.5
+    if length <= 0:
+        return
+    ux, uy = marker.dx / length, marker.dy / length
+    # Perpendicular, for the chevron's two arms.
+    px, py = -uy, ux
+
+    drift = progress * 26.0
+    tip_x = marker.x + ux * (drift + 14.0)
+    tip_y = marker.y + uy * (drift + 14.0)
+    arm = 13.0
+
+    stroke = skia.Paint(AntiAlias=True)
+    stroke.setStyle(skia.Paint.kStroke_Style)
+    stroke.setStrokeWidth(3.0)
+    stroke.setColor(_accent_color(skia, fade))
+    for sign in (1.0, -1.0):
+        canvas.drawLine(
+            tip_x - ux * arm + px * arm * sign,
+            tip_y - uy * arm + py * arm * sign,
+            tip_x,
+            tip_y,
+            stroke,
+        )
 
 
 def _paint_captions(
