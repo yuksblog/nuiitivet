@@ -10,6 +10,7 @@ Verifies that:
 from unittest.mock import MagicMock
 import unittest
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
 from nuiitivet.material.card import Card
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.layout.row import Row
@@ -131,3 +132,43 @@ def test_container_with_clip_modifier():
 
     canvas.clipRect.assert_called()
     assert t.last_rect == (0, 0, 120, 60)
+
+
+def test_clip_preserves_flex_sizing_on_container():
+    """Wrapping a non-Box widget keeps its flex sizing on the wrapper."""
+    inner = Container(width=Sizing.flex(), height=Sizing.flex())
+    wrapper = inner.modifier(clip())
+
+    # Container is not a Box, so it must have been wrapped.
+    assert wrapper is not inner
+    assert wrapper.children[0] is inner
+    assert wrapper.clip_content is True
+
+    assert wrapper.width_sizing == Sizing.flex()
+    assert wrapper.height_sizing == Sizing.flex()
+
+
+def test_clip_preserves_fixed_sizing_on_column():
+    """The wrapper inherits fixed sizing instead of collapsing to auto."""
+    inner = Column(width=Sizing.fixed(100), height=Sizing.fixed(50))
+    wrapper = inner.modifier(clip())
+
+    assert wrapper is not inner
+    assert wrapper.width_sizing == inner.width_sizing
+    assert wrapper.height_sizing == inner.height_sizing
+
+
+def test_clip_on_box_does_not_wrap():
+    """Box-based widgets are clipped in place, so sizing is untouched."""
+    card = Card(
+        child=Text("Content"),
+        width=Sizing.flex(),
+        height=Sizing.fixed(50),
+        style=CardStyle.filled().copy_with(border_radius=0),
+    )
+    result = card.modifier(clip())
+
+    assert result is card
+    assert result.clip_content is True
+    assert result.width_sizing == Sizing.flex()
+    assert result.height_sizing == Sizing.fixed(50)
