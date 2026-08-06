@@ -377,6 +377,48 @@ class BridgeClient:
             payload["button"] = button
         return self._post("/click", payload)
 
+    def scroll(
+        self,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
+        dx: float = 0.0,
+        dy: float = 0.0,
+    ) -> dict[str, Any]:
+        """Scroll a region by wheel notches, named by ``key`` / ``label`` or ``x`` / ``y``.
+
+        The identifier must name the **scroll region itself** -- naming a row
+        inside it is refused, because the wheel would carry that row out of
+        reach and break the next call. Use ``x`` / ``y`` for a region that
+        carries no identity.
+
+        ``dx`` / ``dy`` are wheel notches, 20 px each by default; positive is
+        toward the content's end (down / right). The result reports ``handled``
+        and the region's resulting ``offset`` / ``max_extent`` / ``at_end``, so
+        "it moved" is distinguishable from "it was already at the end".
+        """
+        payload: dict[str, Any] = {"dx": dx, "dy": dy}
+        for name, value in (("key", key), ("label", label), ("x", x), ("y", y)):
+            if value is not None:
+                payload[name] = value
+        return self._post("/scroll", payload)
+
+    def scroll_into_view(
+        self,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        align: str = "nearest",
+    ) -> dict[str, Any]:
+        """Scroll a widget's region(s) until the widget is on screen and clickable."""
+        payload: dict[str, Any] = {"align": align}
+        for name, value in (("key", key), ("label", label)):
+            if value is not None:
+                payload[name] = value
+        return self._post("/scroll_into_view", payload)
+
     def type_text(self, text: str) -> dict[str, Any]:
         """Type ``text`` into the running app's focused widget."""
         return self._post("/type", {"text": text})

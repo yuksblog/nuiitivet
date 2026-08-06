@@ -522,6 +522,15 @@ class _ScrollableBase(Widget):
         """Scroll to the start."""
         self._controller.scroll_to_start(axis=self.direction)
 
+    def scroll_metrics(self) -> dict:
+        """Report this region's scroll position (see ``ScrollController.metrics``).
+
+        Exposed on the widget that *handles* a wheel event so an observer given
+        only that widget -- the dev bridge's ``scroll`` action, which gets it
+        back from the pointer dispatch -- can report where the region ended up.
+        """
+        return self._controller.metrics(self.direction)
+
     @property
     def scroll_offset(self) -> float:
         """Current scroll offset."""

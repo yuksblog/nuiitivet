@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -14,7 +14,7 @@ This skill is the other half: *run* that code under hot reload, then *see* → *
 Once set up, the working loop is:
 
 **edit (hot reload) → see (`status`, then `describe_tree` / `describe_state`) → act
-(`click` / `type` / `key`, then `wait_for`) → verify → edit.**
+(`click` / `scroll` / `type` / `key`, then `wait_for`) → verify → edit.**
 
 The sections below map to it: a one-time **Setup**, then **Edit / See / Act /
 Verify**. The nuiitivet-app skill keeps *edit* producing correct widgets; this
@@ -84,7 +84,7 @@ top to bottom.
 | Is the app up and running? | `status` — liveness, title, last-reload outcome, error count, a `blank` flag for a white screen |
 | Is the widget tree built as intended? | `describe_tree` — the structure, and how you resolve action targets |
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
-| My `click` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
+| My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers, so you re-sync instead of acting on a stale screen |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
@@ -102,6 +102,11 @@ is on screen*:
 - **A node's `rect` can read `0` or stale right after a measurement.** Never
   diagnose a layout bug from a single `rect` value; re-observe after things
   settle.
+- **`rect` is content space, not screen space.** Inside a scrolled region it does
+  *not* subtract the scroll offset, so a listed node may be nowhere on screen and
+  a `rect` is never evidence a widget is visible. Target it by `key` / `label`
+  and let the bridge resolve the real position; coordinate-targeting from a
+  `rect` inside a scroll region is wrong by exactly the offset.
 - **`screenshot` re-renders the tree offscreen instead of capturing the
   window.** It can come back clean while the screen is visibly broken (GPU path,
   swap chain), so never dismiss a human's visual report on that basis — ask them
@@ -109,8 +114,8 @@ is on screen*:
 
 ## Act — drive the running app
 
-`click`, `type`, `key` drive the app. Resolve targets from `describe_tree`, or by
-a stable `key`.
+`click`, `scroll`, `scroll_into_view`, `type`, `key` drive the app. Resolve
+targets from `describe_tree`, or by a stable `key`.
 
 **Make a widget targetable — `keyed()`.** Attach a stable `key` with the `keyed()`
 modifier so the bridge can drive the widget by `key`, and so its state survives a
@@ -129,6 +134,24 @@ first depth-first match, then dispatches at that node's center — so a duplicat
 successful while the screen does nothing. Prefer a `key` when a label repeats; if
 there is none, coordinate-target the center of the node's `describe_tree` `rect`.
 Then confirm the effect in **Verify** — never the return alone.
+
+### Off-screen targets — `scroll_into_view`, then `scroll`
+
+An action on a widget scrolled out of its region — or covered by a modal —
+**fails** with a "not visible" error instead of dispatching where it would hit
+something else. Not a bad target: the widget exists, it just isn't reachable yet.
+
+- **`scroll_into_view(key=…)` is the fix** — one call, exact offset, and the
+  retried `click` lands. Reach for it whenever you know which widget you want.
+- **`scroll` is for exploring** a list you haven't read yet. **Target the region,
+  not a row in it**: a row anchor is refused, because the wheel would carry it
+  off screen and leave your next call with no target. Regions often have no
+  `key` — attach one with `keyed()`, or use the `x` / `y` centre of the region's
+  rect, which stays put as the content scrolls. `dx` / `dy` are **wheel notches,
+  ~20 px each**, positive = down / right.
+- **Read the result.** `at_end: true` with an unchanged `offset` is your stop
+  condition — without it a scroll-until-found loop never ends. `handled: false`
+  means your coordinates hit no scrollable region.
 
 ### `wait_for` — settle before you observe
 
@@ -159,5 +182,6 @@ Don't trust a green return or a single number; confirm against the live app.
   any ERROR with a *higher* seq appeared. (`runtime_log` and `reload_log` seqs are
   separate counters — don't compare across them.)
 - **The effect happened, not just the return.** A `{"clicked": …}` return is not
-  proof the handler fired. Re-observe `describe_tree` / `describe_state` (after
+  proof the handler fired (a `{"scrolled": …}` with `handled: false` is not even
+  proof anything moved). Re-observe `describe_tree` / `describe_state` (after
   `wait_for` settles any async work) and confirm the state actually changed.

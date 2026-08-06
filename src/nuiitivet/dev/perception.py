@@ -8,6 +8,11 @@ an assistant reasons over -- "a ``Button`` labeled 'increment' at (x, y, w, h)"
 
 It reuses :func:`nuiitivet.dev.snapshot.iter_child_widgets` so the description
 descends exactly the nodes the reload snapshot considers part of the tree.
+
+Alongside the dump it owns the *geometry* half of targeting -- resolving a node
+to the point on screen the app's own pointer dispatch would deliver to
+(:func:`global_visual_rect`) and deciding whether that point can reach it at all
+(:func:`find_obstruction`) -- which is what keeps the action verbs honest.
 """
 
 from __future__ import annotations
@@ -136,6 +141,136 @@ def find_target(root: Any, *, key: Optional[str] = None, label: Optional[str] = 
         if label is not None and label in _identity_values(node):
             return node
     return None
+
+
+def ancestors(node: Any) -> list[Any]:
+    """Return ``node``'s ancestors, nearest first (empty when it has no parent)."""
+    chain: list[Any] = []
+    seen: set[int] = set()
+    current = getattr(node, "parent", None)
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        chain.append(current)
+        current = getattr(current, "parent", None)
+    return chain
+
+
+def _visual_offset(node: Any) -> tuple[float, float]:
+    """Return the displacement ``node`` applies to its painted children.
+
+    A container that paints its children somewhere other than their layout
+    position -- a scroll viewport today, transforms and popups later -- opts in
+    by exposing ``visual_offset() -> (dx, dy)``. Probed by name so this module
+    stays independent of :mod:`nuiitivet.layout`; anything else contributes
+    ``(0, 0)``.
+    """
+    probe = getattr(node, "visual_offset", None)
+    if not callable(probe):
+        return (0.0, 0.0)
+    try:
+        dx, dy = probe()
+        return (float(dx), float(dy))
+    except Exception:
+        return (0.0, 0.0)
+
+
+def _visual_clip_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """Return ``node``'s content clip in root coordinates, or ``None`` if it clips nothing.
+
+    The opt-in companion to ``visual_offset``: ``visual_clip_rect()`` reports the
+    clip in the widget's *own* coordinates, which this translates to root space.
+    """
+    probe = getattr(node, "visual_clip_rect", None)
+    if not callable(probe):
+        return None
+    try:
+        cx, cy, cw, ch = probe()
+    except Exception:
+        return None
+    origin = global_visual_rect(node)
+    if origin is None:
+        return None
+    return (origin[0] + float(cx), origin[1] + float(cy), float(cw), float(ch))
+
+
+def global_visual_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """Return ``node``'s rect in root coordinates *as painted*, or ``None``.
+
+    ``global_layout_rect`` accumulates ancestor layout offsets only -- it is
+    content space, and inside a scrolled region it is off by the scroll offset
+    (the two coincide only at offset zero). This adds each ancestor's
+    :func:`_visual_offset`, giving the coordinates the app's own pointer
+    dispatch works in, which is what an action must aim at.
+
+    Paint state (``last_rect``) is deliberately not used: an action settles the
+    tree by laying it out without painting, so ``last_rect`` is stale exactly
+    when it would be needed.
+    """
+    rect = getattr(node, "global_layout_rect", None)
+    if rect is None:
+        return None
+    x, y, w, h = rect
+    dx = dy = 0.0
+    for ancestor in ancestors(node):
+        adx, ady = _visual_offset(ancestor)
+        dx += adx
+        dy += ady
+    return (float(x) + dx, float(y) + dy, float(w), float(h))
+
+
+def _contains(rect: tuple[float, float, float, float], x: float, y: float) -> bool:
+    rx, ry, rw, rh = rect
+    return rx <= x < rx + rw and ry <= y < ry + rh
+
+
+def _on_path(node: Any, other: Any) -> bool:
+    """Whether ``other`` is ``node`` itself, or one of the two is the other's ancestor.
+
+    ``hit_test`` returns the deepest *hit-participating* widget, which for a
+    non-interactive target (a ``Text`` inside a ``Button``) is an ancestor of it,
+    and for a container target a descendant. Both mean the point genuinely
+    reaches the target's chain; an unrelated subtree means something else is on
+    top of it.
+    """
+    if other is node:
+        return True
+    return any(a is other for a in ancestors(node)) or any(a is node for a in ancestors(other))
+
+
+def find_obstruction(root: Any, node: Any, x: float, y: float) -> Optional[str]:
+    """Return why root-space ``(x, y)`` cannot reach ``node``, or ``None`` if it can.
+
+    Two independent checks, because they catch different failures:
+
+    * **Clipping** -- an ancestor that clips its content (a scroll viewport)
+      whose clip rect excludes the point. This is the scrolled-out-of-view case:
+      the widget is laid out, but painted nowhere.
+    * **Occlusion** -- ``hit_test`` at the point lands in an unrelated subtree,
+      i.e. something (a modal, an overlay) is on top. A point that hits nothing
+      is *not* reported: a non-interactive target legitimately hit-tests to
+      ``None``, and a click there is a harmless no-op.
+
+    Best-effort by construction: a root without ``hit_test`` (a test fake) skips
+    the occlusion check rather than failing it.
+    """
+    for ancestor in ancestors(node):
+        clip = _visual_clip_rect(ancestor)
+        if clip is not None and not _contains(clip, x, y):
+            return (
+                f"clipped out of {type(ancestor).__name__}'s visible area "
+                f"{tuple(round(v) for v in clip)}"
+            )
+
+    hit_test = getattr(root, "hit_test", None)
+    if not callable(hit_test):
+        return None
+    try:
+        hit = hit_test(int(round(x)), int(round(y)))
+    except Exception:
+        return None
+    if hit is None or _on_path(node, hit):
+        return None
+    return f"covered by {type(hit).__name__} at that point"
 
 
 def _node_matches(

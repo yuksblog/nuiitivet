@@ -16,6 +16,33 @@ from nuiitivet.rendering.skia import clip_rect, make_rect
 
 _logger = logging.getLogger(__name__)
 
+#: Accepted ``align`` values for :meth:`ScrollViewport.scroll_rect_into_view`.
+_ALIGNMENTS = ("nearest", "start", "center", "end")
+
+
+def _aligned_offset(
+    position: float, extent: float, viewport_extent: float, current: float, align: str
+) -> float:
+    """Return the scroll offset that places ``extent`` at ``position`` per ``align``.
+
+    ``position`` is measured from the content origin along the scroll axis, so
+    the visible window is ``[current, current + viewport_extent]``. The result is
+    unclamped; ``ScrollController.scroll_to`` clamps it to ``0..max_extent``.
+    """
+    if align == "start":
+        return position
+    if align == "end":
+        return position + extent - viewport_extent
+    if align == "center":
+        return position + (extent - viewport_extent) / 2.0
+    # "nearest": move only when the rect falls outside the visible window, and
+    # then only far enough to bring the offending edge in.
+    if position < current:
+        return position
+    if position + extent > current + viewport_extent:
+        return position + extent - viewport_extent
+    return current
+
 
 class ScrollViewport(Widget):
     """Applies scroll offset and clipping to a single child widget."""
@@ -245,6 +272,88 @@ class ScrollViewport(Widget):
         if self.direction is ScrollDirection.HORIZONTAL:
             return super().hit_test(x + offset, y)
         return super().hit_test(x, y)
+
+    # --- Visual displacement (read by the dev bridge via ``getattr``) --------
+
+    def visual_offset(self) -> Tuple[float, float]:
+        """Return the displacement this widget applies to its painted content.
+
+        ``paint`` places the content at ``-offset`` along the scroll axis, so a
+        descendant's on-screen position is its *layout* position plus this.
+        ``WidgetKernel.global_layout_rect`` accumulates layout offsets only, and
+        is therefore content space; anything that must reason about where a
+        widget really is on screen (the dev bridge resolving a click target)
+        adds each ancestor's ``visual_offset``. Probed by name, so any container
+        that paints its children off their layout position can opt in.
+        """
+        offset = float(self._controller.get_offset(self.direction))
+        if self.direction is ScrollDirection.HORIZONTAL:
+            return (-offset, 0.0)
+        return (0.0, -offset)
+
+    def visual_clip_rect(self) -> Tuple[float, float, float, float]:
+        """Return the rect content is clipped to, in this widget's local coords.
+
+        The counterpart to :meth:`visual_offset`: displacement says where the
+        content moved, this says what survives ``paint``'s clip (and what
+        :meth:`hit_test` rejects). Content outside it is on screen nowhere, so a
+        point resolved into it cannot reach its widget.
+        """
+        pad_l, pad_t, pad_r, pad_b = self._pad
+        size = getattr(self, "_vp_size", None)
+        if size is not None:
+            vp_w, vp_h = size
+        else:
+            rect = self.layout_rect
+            if rect is None:
+                return (float(pad_l), float(pad_t), 0.0, 0.0)
+            _rx, _ry, w, h = rect
+            vp_w = max(0, int(w) - pad_l - pad_r)
+            vp_h = max(0, int(h) - pad_t - pad_b)
+        return (float(pad_l), float(pad_t), float(vp_w), float(vp_h))
+
+    def scroll_metrics(self) -> dict:
+        """Report this viewport's scroll position (see ``ScrollController.metrics``)."""
+        return self._controller.metrics(self.direction)
+
+    def scroll_rect_into_view(
+        self,
+        rect: Tuple[float, float, float, float],
+        *,
+        align: str = "nearest",
+    ) -> float:
+        """Scroll the minimum amount that brings ``rect`` inside the viewport.
+
+        Args:
+            rect: The rect to reveal, in this viewport's *local* (content)
+                coordinates -- i.e. a descendant's ``global_layout_rect`` minus
+                this widget's own, which is the space :meth:`hit_test` works in.
+            align: Where to land the rect: ``"nearest"`` (move as little as
+                possible, the default), ``"start"``, ``"center"`` or ``"end"``.
+
+        Returns:
+            The signed offset change in pixels; ``0.0`` when nothing moved
+            (already visible, or already clamped against an edge).
+
+        Raises:
+            ValueError: If ``align`` is not one of the four accepted values.
+        """
+        if align not in _ALIGNMENTS:
+            raise ValueError(f"unknown align {align!r}; expected one of: {', '.join(_ALIGNMENTS)}")
+
+        x, y, w, h = (float(value) for value in rect)
+        pad_l, pad_t, vp_w, vp_h = self.visual_clip_rect()
+        if self.direction is ScrollDirection.HORIZONTAL:
+            position, extent, viewport_extent = x - pad_l, w, vp_w
+        else:
+            position, extent, viewport_extent = y - pad_t, h, vp_h
+
+        before = float(self._controller.get_offset(self.direction))
+        self._controller.scroll_to(
+            _aligned_offset(position, extent, viewport_extent, before, align),
+            axis=self.direction,
+        )
+        return float(self._controller.get_offset(self.direction)) - before
 
     def _update_scroll_metrics(self, content_w: int, content_h: int, vp_w: int, vp_h: int) -> None:
         if self.direction is ScrollDirection.VERTICAL:

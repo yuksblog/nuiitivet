@@ -13,7 +13,7 @@ git-ignored — so framework users can adopt them.
 | Skill | Purpose |
 | --- | --- |
 | [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
-| [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `wait_for`) for the see → act → verify loop. |
+| [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `scroll_into_view`, `wait_for`) for the see → act → verify loop. |
 
 `nuiitivet-app` *writes* the code; `nuiitivet-debug` *runs and debugs* what was
 written. They are independent — install either or both.

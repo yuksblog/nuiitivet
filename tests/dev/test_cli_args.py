@@ -123,6 +123,46 @@ def test_click_requires_a_target() -> None:
         _parse_args(["click"])
 
 
+def test_scroll_by_key_with_deltas() -> None:
+    args = _parse_args(["scroll", "--key", "feed", "--dy", "5"])
+    assert args.command == "scroll"
+    assert args.key == "feed"
+    assert (args.dx, args.dy) == (0.0, 5.0)
+
+
+def test_scroll_by_xy() -> None:
+    args = _parse_args(["scroll", "--xy", "10", "20", "--dx", "-2"])
+    assert args.command == "scroll"
+    assert args.xy == [10.0, 20.0]
+    assert args.dx == -2.0
+
+
+def test_scroll_requires_a_target() -> None:
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _parse_args(["scroll", "--dy", "5"])
+
+
+def test_scroll_into_view_subcommand() -> None:
+    args = _parse_args(["scroll-into-view", "--key", "row-42"])
+    assert args.command == "scroll-into-view"
+    assert args.key == "row-42"
+    assert args.align == "nearest"
+
+
+def test_scroll_into_view_accepts_an_alignment() -> None:
+    args = _parse_args(["scroll-into-view", "--label", "Done", "--align", "center"])
+    assert args.align == "center"
+
+
+def test_scroll_into_view_rejects_an_unknown_alignment() -> None:
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _parse_args(["scroll-into-view", "--key", "a", "--align", "sideways"])
+
+
 def test_type_subcommand() -> None:
     args = _parse_args(["type", "hello world"])
     assert args.command == "type"

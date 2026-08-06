@@ -62,9 +62,10 @@ cp -r path/to/nuiitivet/skills/nuiitivet-debug ~/.copilot/skills/nuiitivet-debug
   turns. `screenshot` is the genuine last resort — even for a reported visual
   problem, confirm the tree and state first; the cause is usually there, not the
   pixels.
-- **Acting and settling** — `click` / `type` / `key`, then `wait_for` to observe
-  the settled state instead of racing async work, with a distinct pattern for
-  waiting on a *human* versus on async work.
+- **Acting and settling** — `click` / `scroll` / `type` / `key`, then `wait_for`
+  to observe the settled state instead of racing async work, with a distinct
+  pattern for waiting on a *human* versus on async work. Which target a `scroll`
+  takes, and when `scroll_into_view` replaces it.
 - **`keyed()` targeting** — attach a stable `key` so the bridge can drive a widget
   by name and its state survives a reorder across reloads.
 

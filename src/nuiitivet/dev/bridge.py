@@ -38,7 +38,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from .action import TargetNotFoundError, check_condition, click, press_key, type_text
+from .action import (
+    TargetNotFoundError,
+    check_condition,
+    click,
+    press_key,
+    scroll,
+    scroll_into_view,
+    type_text,
+)
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
@@ -380,6 +388,27 @@ def _make_handler(
                             x=body.get("x"),
                             y=body.get("y"),
                             button=body.get("button"),
+                        )
+                    )
+                elif path == "/scroll":
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: scroll(
+                            app,
+                            key=body.get("key"),
+                            label=body.get("label"),
+                            x=body.get("x"),
+                            y=body.get("y"),
+                            dx=body.get("dx", 0.0),
+                            dy=body.get("dy", 0.0),
+                        )
+                    )
+                elif path == "/scroll_into_view":
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: scroll_into_view(
+                            app,
+                            key=body.get("key"),
+                            label=body.get("label"),
+                            align=body.get("align", "nearest"),
                         )
                     )
                 elif path == "/type":
