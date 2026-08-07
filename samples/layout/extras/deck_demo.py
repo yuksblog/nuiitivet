@@ -4,9 +4,6 @@ import nuiitivet.material as nv
 class DeckDemo(nv.ComposableWidget):
     current_index: nv.Observable[int] = nv.Observable(0)
 
-    def set_index(self, i: int) -> None:
-        self.current_index.value = i
-
     def build(self) -> nv.Widget:
 
         menu = nv.Column(
@@ -15,17 +12,19 @@ class DeckDemo(nv.ComposableWidget):
             children=[
                 nv.Button(
                     "Tab1",
-                    on_click=lambda: self.set_index(0),
+                    # ``set`` writes the Observable from inside a lambda, where
+                    # ``current_index.value = 0`` would not be allowed.
+                    on_click=lambda: self.current_index.set(0),
                     style=nv.ButtonStyle.filled(),
                 ),
                 nv.Button(
                     "Tab2",
-                    on_click=lambda: self.set_index(1),
+                    on_click=lambda: self.current_index.set(1),
                     style=nv.ButtonStyle.filled(),
                 ),
                 nv.Button(
                     "Tab3",
-                    on_click=lambda: self.set_index(2),
+                    on_click=lambda: self.current_index.set(2),
                     style=nv.ButtonStyle.filled(),
                 ),
             ],

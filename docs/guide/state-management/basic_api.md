@@ -17,6 +17,20 @@ current = age.value
 age.value = 21
 ```
 
+### Writing from a lambda
+
+`age.value = 21` is a statement, and a Python lambda can only hold an
+expression — so it cannot be used in a callback prop or a `subscribe` lambda.
+`set()` is the same write in expression form:
+
+```python
+nv.Button("Increment", on_click=lambda: age.set(age.value + 1))
+```
+
+Use `.value =` wherever a statement fits; reach for `set()` only where one does
+not. Both go through the identical write path, so equality de-duping, `compare`,
+batching and thread dispatch behave the same either way.
+
 ## Subscribing and Unsubscribing
 
 ```python

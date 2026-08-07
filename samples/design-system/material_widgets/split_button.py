@@ -37,7 +37,7 @@ def _make_interactive_split_button() -> nv.SplitButton:
         _label,
         icon="directions_car",
         on_click=lambda: print(f"Action: {_label.value}"),
-        on_menu_toggle=lambda open: setattr(_menu_open, "value", open),
+        on_menu_toggle=lambda open: _menu_open.set(open),
         menu_open=_menu_open,
         style=nv.SplitButtonStyle.filled("s"),
     )

@@ -62,6 +62,21 @@ class MutableObservableBase(ObservableBase[T]):
     def value(self, v: T) -> None:  # pragma: no cover - overridden
         raise NotImplementedError
 
+    def set(self, value: T) -> None:
+        """Write *value*, for places where a statement is not allowed.
+
+        A Python lambda cannot assign, so writes in expression position - a
+        callback prop, a ``subscribe`` lambda - would otherwise need
+        ``setattr(obs, "value", v)``::
+
+            on_click=lambda: expanded.set(not expanded.value)
+
+        Prefer the plain ``obs.value = v`` wherever a statement fits; this is
+        the same write, not a second write path, so equality de-duping,
+        ``compare``, ``dispatch_to_ui`` and batching all behave identically.
+        """
+        self.value = value
+
 
 @runtime_checkable
 class ReadOnlyObservableProtocol(Protocol, Generic[T]):
@@ -79,8 +94,11 @@ class ObservableProtocol(ReadOnlyObservableProtocol[T], Protocol, Generic[T]):
 
     Note:
         ``isinstance`` against a runtime-checkable protocol only inspects
-        attribute presence, so a read-only observable also matches.  Static
-        typing is what separates the two.
+        attribute *presence*, and a property's setter is invisible to it - so
+        this check separates mutable from read-only only because ``set`` exists
+        on one and not the other. A duck-typed observable that has a writable
+        ``value`` but no ``set`` therefore does not match; subclass
+        :class:`MutableObservableBase` to get both.
     """
 
     @property
@@ -88,3 +106,5 @@ class ObservableProtocol(ReadOnlyObservableProtocol[T], Protocol, Generic[T]):
 
     @value.setter
     def value(self, v: T) -> None: ...
+
+    def set(self, value: T) -> None: ...

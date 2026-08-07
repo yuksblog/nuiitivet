@@ -38,13 +38,13 @@ class BasicApiApp(nv.ComposableWidget):
         self.noise = nv.Observable(0, compare=lambda a, b: False)
         self._noise_write_count = nv.Observable(0)
         self._noise_notify_count = nv.Observable(0)
-        self.noise.subscribe(lambda _: setattr(self._noise_notify_count, "value", self._noise_notify_count.value + 1))
+        self.noise.subscribe(lambda _: self._noise_notify_count.set(self._noise_notify_count.value + 1))
 
         # Custom comparison 2: user identity determined by uid only
         self.user: nv.Observable[UserRecord] = nv.Observable(UserRecord(1, "Alice"), compare=compare_users)
         self._rename_write_count = nv.Observable(0)
         self._user_notify_count = nv.Observable(0)
-        self.user.subscribe(lambda _: setattr(self._user_notify_count, "value", self._user_notify_count.value + 1))
+        self.user.subscribe(lambda _: self._user_notify_count.set(self._user_notify_count.value + 1))
 
         # --- Derived display labels ---
         self.age_label = self.age.map(lambda a: f"Age: {a}")
