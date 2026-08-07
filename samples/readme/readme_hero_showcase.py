@@ -713,7 +713,7 @@ class PulseApp(nv.ComposableWidget):
             index=self.section,
             expanded=self.rail_expanded,
             show_menu_button=True,
-            on_select=lambda idx: setattr(self.section, "value", int(idx)),
+            on_select=lambda idx: self.section.set(int(idx)),
             height=nv.Sizing.flex(1),
         )
 

@@ -45,27 +45,26 @@ nv.Stack(
 A component that displays **only one** child at a time from multiple children.
 Used for tab switching or content switching in side menus.
 
+The index is an `Observable[int]`, and the buttons write it. A lambda cannot
+assign, so the write uses [`set()`](../state-management/basic_api.md#writing-from-a-lambda):
+
 ```python
 import nuiitivet.material as nv
 
-
-def set_index(i: int) -> None:
-    # state is assumed to be defined elsewhere or part of a class
-    state.current_index.value = i
-
+current_index = nv.Observable(0)
 
 menu = nv.Column(
     padding=8,
     gap=8,
     children=[
-        nv.Button("Tab 1", on_click=lambda: set_index(0), style=nv.ButtonStyle.filled()),
-        nv.Button("Tab 2", on_click=lambda: set_index(1), style=nv.ButtonStyle.filled()),
-        nv.Button("Tab 3", on_click=lambda: set_index(2), style=nv.ButtonStyle.filled()),
+        nv.Button("Tab 1", on_click=lambda: current_index.set(0), style=nv.ButtonStyle.filled()),
+        nv.Button("Tab 2", on_click=lambda: current_index.set(1), style=nv.ButtonStyle.filled()),
+        nv.Button("Tab 3", on_click=lambda: current_index.set(2), style=nv.ButtonStyle.filled()),
     ],
 )
 
 body = nv.Deck(
-    index=state.current_index,
+    index=current_index,
     width="100%",
     height="100%",
     children=[

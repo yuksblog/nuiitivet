@@ -18,7 +18,7 @@ def _toggling_fab(label: str, icon: str, style: nv.FabStyle) -> nv.ExtendedFab:
         icon=icon,
         style=style,
         expanded=expanded,
-        on_click=lambda: setattr(expanded, "value", not expanded.value),
+        on_click=lambda: expanded.set(not expanded.value),
     )
 
 

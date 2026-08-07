@@ -18,6 +18,16 @@ current = count.value        # get
 count.value = current + 1    # set  -> bound UI updates automatically
 ```
 
+A lambda cannot assign, so writes in expression position — callback props,
+`subscribe` lambdas — use `set()` instead. Never `setattr(obs, "value", v)`:
+
+```python
+nv.Button("Increment", on_click=lambda: count.set(count.value + 1))
+```
+
+Same write path as `.value =` (same de-duping, `compare`, batching, dispatch);
+prefer `.value =` wherever a statement fits.
+
 Custom equality when needed (keyword-only `compare`):
 
 ```python

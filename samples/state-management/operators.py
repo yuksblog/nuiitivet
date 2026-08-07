@@ -61,12 +61,12 @@ class OperatorsApp(nv.ComposableWidget):
                         children=[
                             nv.Button(
                                 "Price +10",
-                                on_click=lambda: setattr(m.price, "value", m.price.value + 10),
+                                on_click=lambda: m.price.set(m.price.value + 10),
                                 style=nv.ButtonStyle.filled(),
                             ),
                             nv.Button(
                                 "Qty +1",
-                                on_click=lambda: setattr(m.quantity, "value", m.quantity.value + 1),
+                                on_click=lambda: m.quantity.set(m.quantity.value + 1),
                                 style=nv.ButtonStyle.filled(),
                             ),
                         ],
@@ -76,17 +76,17 @@ class OperatorsApp(nv.ComposableWidget):
                         children=[
                             nv.Button(
                                 "Discount 0%",
-                                on_click=lambda: setattr(m.discount, "value", 0.0),
+                                on_click=lambda: m.discount.set(0.0),
                                 style=nv.ButtonStyle.outlined(),
                             ),
                             nv.Button(
                                 "Discount 10%",
-                                on_click=lambda: setattr(m.discount, "value", 0.1),
+                                on_click=lambda: m.discount.set(0.1),
                                 style=nv.ButtonStyle.outlined(),
                             ),
                             nv.Button(
                                 "Discount 20%",
-                                on_click=lambda: setattr(m.discount, "value", 0.2),
+                                on_click=lambda: m.discount.set(0.2),
                                 style=nv.ButtonStyle.outlined(),
                             ),
                         ],

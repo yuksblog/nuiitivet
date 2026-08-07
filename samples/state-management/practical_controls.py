@@ -23,7 +23,7 @@ class BatchModel:
         self.notify_count = nv.Observable(0)
 
         self.total = self.price.combine(self.quantity).compute(lambda p, q: p * q)
-        self.total.subscribe(lambda _: setattr(self.notify_count, "value", self.notify_count.value + 1))
+        self.total.subscribe(lambda _: self.notify_count.set(self.notify_count.value + 1))
 
     def update_batched(self) -> None:
         """Update both observables atomically → one notification."""
@@ -45,7 +45,7 @@ class DebounceModel:
         self.execute_count = nv.Observable(0)
 
         debounced = self.raw_count.debounce(0.5)
-        debounced.subscribe(lambda _: setattr(self.execute_count, "value", self.execute_count.value + 1))
+        debounced.subscribe(lambda _: self.execute_count.set(self.execute_count.value + 1))
 
     def click(self) -> None:
         self.raw_count.value += 1
@@ -59,7 +59,7 @@ class ThrottleModel:
         self.execute_count = nv.Observable(0)
 
         throttled = self.raw_count.throttle(0.5)
-        throttled.subscribe(lambda _: setattr(self.execute_count, "value", self.execute_count.value + 1))
+        throttled.subscribe(lambda _: self.execute_count.set(self.execute_count.value + 1))
 
     def click(self) -> None:
         self.raw_count.value += 1

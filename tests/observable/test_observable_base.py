@@ -42,6 +42,9 @@ def test_bases_still_satisfy_protocols_structurally():
     assert isinstance(obs, ObservableProtocol)
     assert isinstance(obs, ReadOnlyObservableProtocol)
     assert isinstance(computed, ReadOnlyObservableProtocol)
+    # A property's setter is invisible to a runtime-checkable Protocol, so this
+    # separation rests on ``set`` (#500) existing only on the mutable side.
+    assert not isinstance(computed, ObservableProtocol)
 
 
 def test_plain_values_are_not_observables():
