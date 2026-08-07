@@ -881,10 +881,20 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     def on_mouse_scroll(x, y, scroll_x, scroll_y):
         x_log, y_conv = _to_logical(x, y)
         scroll_x_n, scroll_y_n = _normalize_scroll_delta(scroll_x, scroll_y)
+        handler = None
         try:
-            app._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
+            handler = app._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_scroll_dispatch_exc", "Mouse scroll dispatch raised")
+        # Dev-only: record the human's scroll for the interaction journal (#498).
+        # The recorder takes the *consuming region* the dispatch returned, so a
+        # wheel event no region took is dropped -- nothing moved to report.
+        recorder = getattr(app, "_interaction_recorder", None)
+        if recorder is not None:
+            try:
+                recorder.on_mouse_scroll(handler, scroll_x_n, scroll_y_n)
+            except Exception:
+                exception_once(logger, "pyglet_on_mouse_scroll_record_exc", "Interaction record raised")
 
     @window.event
     def on_key_press(symbol, modifiers):

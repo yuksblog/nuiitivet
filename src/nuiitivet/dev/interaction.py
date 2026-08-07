@@ -10,12 +10,13 @@ navigates to a screen while the assistant is mid-task, so the assistant's cached
 the current state.
 
 The design is a deliberate **mirror of the assistant's own action vocabulary**
-(``click`` / ``key`` / ``type``): whatever the human does that the assistant
-would need to reproduce, the assistant reproduces *through those same verbs*, so
-recording exactly those inbound is necessary and sufficient to reconstruct a
-replayable path. Higher-level *semantic* events (navigate / dialog open-close /
-submit) are deliberately **not** recorded -- they are states derivable from a
-click sequence plus ``describe_tree``, not primitive inputs (#390).
+(``click`` / ``key`` / ``type`` / ``scroll``): whatever the human does that the
+assistant would need to reproduce, the assistant reproduces *through those same
+verbs*, so recording exactly those inbound is necessary and sufficient to
+reconstruct a replayable path. Higher-level *semantic* events (navigate / dialog
+open-close / submit) are deliberately **not** recorded -- they are states
+derivable from a click sequence plus ``describe_tree``, not primitive inputs
+(#390).
 
 Two boundaries are load-bearing:
 
@@ -28,22 +29,36 @@ Two boundaries are load-bearing:
   would leak the text a character at a time); a burst of ``on_text`` collapses to
   a single content-free ``text`` marker. Field values never enter the journal.
 
+Scrolling (#498) obeys those rules too, plus two of its own, since a single wheel
+gesture arrives as dozens of events:
+
+* **Only what a region consumed.** An unconsumed wheel event moved nothing, so it
+  is dropped -- which also inherits the region's own trackpad-jitter deadband.
+* **A gesture is one event.** Consecutive scrolls of the same region in the same
+  direction replace the journal's tail instead of appending. A different region,
+  a reversal, or any intervening click / key / text starts a new event, which
+  bounds the count *structurally* rather than by a timeout.
+
 Recording happens on the UI thread (the input handlers that feed the real
 backend); reads happen on HTTP worker threads, so the buffer is guarded by a
-lock -- the same shape as the reload journal. See #390 and
+lock -- the same shape as the reload journal. See #390, #498 and
 ``docs/design/HOT_RELOAD.md`` (§12).
 """
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
+import weakref
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import count
-from typing import Any, Deque, Optional
+from typing import Any, Callable, Deque, Optional
 
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+
+logger = logging.getLogger(__name__)
 
 # Default number of interaction events retained. A reproduction path is usually
 # short (a handful of clicks); a small buffer holds the recent tail an assistant
@@ -125,6 +140,17 @@ _SEMANTIC_KEYS = frozenset(
         "pagedown",
     }
 )
+
+# Direction names per axis, ordered (negative, positive) -- positive being toward
+# the content's end, the sign convention ``scroll(dx=, dy=)`` takes.
+_AXIS_DIRECTIONS: dict[str, tuple[str, str]] = {
+    "vertical": ("up", "down"),
+    "horizontal": ("left", "right"),
+}
+
+# Below this a wheel delta counts as "not on this axis". Same threshold
+# ``Scrollable._handle_scroll`` falls back from ``scroll_x`` to ``scroll_y`` at.
+_AXIS_EPSILON = 1e-6
 
 
 def _coerce_display(value: Any) -> Optional[str]:
@@ -234,23 +260,85 @@ def resolve_target(node: Any) -> dict[str, Any]:
     return {"type": type(node).__name__}
 
 
+def _consumed_axis(reported_axis: Any, dx: float, dy: float) -> tuple[str, float]:
+    """Pick the axis a scroll region consumed on, and the delta it consumed.
+
+    Mirrors ``Scrollable._handle_scroll``: a vertical region reads the wheel's
+    ``dy``; a horizontal one reads ``dx`` but falls back to ``dy``, so a strip
+    still scrolls under an ordinary vertical wheel. A handler reporting no axis is
+    named from whichever delta the wheel carried.
+    """
+    if reported_axis == "horizontal":
+        return ("horizontal", float(dx) if abs(dx) >= _AXIS_EPSILON else float(dy))
+    if reported_axis == "vertical":
+        return ("vertical", float(dy))
+    if abs(dy) < _AXIS_EPSILON <= abs(dx):
+        return ("horizontal", float(dx))
+    return ("vertical", float(dy))
+
+
+def _weak_ref(obj: Any) -> Optional[Callable[[], Any]]:
+    """Return a weak reference to ``obj``, or ``None`` if it does not support one.
+
+    ``None`` degrades safely: the next scroll compares against nothing, so it
+    starts a fresh event instead of risking a merge with the wrong region.
+    """
+    try:
+        return weakref.ref(obj)
+    except TypeError:
+        return None
+
+
+def read_scroll_metrics(widget: Any) -> dict[str, Any]:
+    """Read the scroll position ``widget`` reports, or ``{}`` if it reports none.
+
+    The same ``scroll_metrics()`` probe the ``scroll`` action reads (both land on
+    :meth:`~nuiitivet.scrolling.controller.ScrollController.metrics`), so a
+    journal entry and an action result describe a region identically.
+    """
+    probe = getattr(widget, "scroll_metrics", None)
+    if not callable(probe):
+        return {}
+    try:
+        metrics = probe()
+    except Exception:
+        logger.debug("interaction: reading scroll metrics failed", exc_info=True)
+        return {}
+    return dict(metrics) if isinstance(metrics, dict) else {}
+
+
 @dataclass(frozen=True)
 class InteractionEvent:
     """One recorded, coarse UI action taken by the human.
 
     Attributes:
         seq: Monotonic id, unique and increasing across the app's lifetime. A
-            client compares it against the last ``seq`` it saw to tell whether
-            new interactions happened since its previous turn.
-        timestamp: Unix time (seconds) when the event was recorded.
-        kind: ``"click"``, ``"key"``, or ``"text"``.
-        target: For a ``click``, the resolved widget identity
+            client compares it against the last ``seq`` it saw to tell whether new
+            interactions happened since its previous turn. A coalesced ``scroll``
+            is re-issued a fresh one, so an ongoing gesture reads as new activity.
+        timestamp: Unix time (seconds) when the event was recorded -- for a
+            coalesced ``scroll``, when it was last updated.
+        kind: ``"click"``, ``"key"``, ``"text"``, or ``"scroll"``.
+        target: For a ``click`` or a ``scroll``, the resolved widget identity
             (``{"type", optional "key"/"label"}``); ``None`` otherwise. Never a
             coordinate.
         key: For a ``key``, the key name (e.g. ``"enter"``, ``"s"``); ``None``
             otherwise.
         modifiers: For a ``key``, the held modifier names (e.g. ``("ctrl",)``);
             empty otherwise.
+        started_at: For a ``scroll``, when the gesture began; it survives the
+            coalescing that moves :attr:`timestamp` forward.
+        direction: For a ``scroll``, ``"up"`` / ``"down"`` / ``"left"`` /
+            ``"right"``, from the sign of the delta the consuming region used.
+        dx: For a ``scroll`` on a horizontal region, the accumulated delta in
+            **wheel notches**, in the sign convention the ``scroll`` action takes,
+            so it replays verbatim.
+        dy: Likewise for a ``scroll`` on a vertical region.
+        axis: For a ``scroll``, the consuming region's axis -- which need not match
+            the wheel's, since a horizontal region also consumes a vertical wheel.
+        offset, max_extent, at_start, at_end: For a ``scroll``, where the region
+            ended up. ``at_end`` is how a reader tells "scrolled to the bottom"
+            from "still going".
     """
 
     seq: int
@@ -259,25 +347,48 @@ class InteractionEvent:
     target: Optional[dict[str, Any]] = None
     key: Optional[str] = None
     modifiers: tuple[str, ...] = ()
+    started_at: Optional[float] = None
+    direction: Optional[str] = None
+    dx: float = 0.0
+    dy: float = 0.0
+    axis: Optional[str] = None
+    offset: Optional[float] = None
+    max_extent: Optional[float] = None
+    at_start: Optional[bool] = None
+    at_end: Optional[bool] = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-friendly dict, omitting fields that do not apply.
 
         A ``click`` carries ``target``; a ``key`` carries ``key`` and (when
-        non-empty) ``modifiers``; a ``text`` marker carries neither. The absent
-        fields are omitted so each event reads as exactly its kind.
+        non-empty) ``modifiers``; a ``text`` marker carries neither; a ``scroll``
+        carries its target, its gesture (``direction`` plus the non-zero delta)
+        and the region's resulting position. The absent fields are omitted so
+        each event reads as exactly its kind.
         """
         payload: dict[str, Any] = {
             "seq": self.seq,
             "timestamp": self.timestamp,
             "kind": self.kind,
         }
+        if self.started_at is not None:
+            payload["started_at"] = self.started_at
         if self.target is not None:
             payload["target"] = self.target
         if self.key is not None:
             payload["key"] = self.key
         if self.modifiers:
             payload["modifiers"] = list(self.modifiers)
+        if self.direction is not None:
+            payload["direction"] = self.direction
+        if self.dx:
+            payload["dx"] = self.dx
+        if self.dy:
+            payload["dy"] = self.dy
+        for name in ("axis", "offset", "max_extent", "at_start", "at_end"):
+            value = getattr(self, name)
+            if value is not None:
+                payload[name] = value
         return payload
 
 
@@ -316,6 +427,80 @@ class InteractionJournal:
     def record_text(self) -> InteractionEvent:
         """Record a content-free marker that the human typed, and return the event."""
         return self._record("text")
+
+    def record_scroll(
+        self,
+        target: dict[str, Any],
+        *,
+        direction: str,
+        dx: float = 0.0,
+        dy: float = 0.0,
+        metrics: Optional[dict[str, Any]] = None,
+        coalesce: bool = True,
+    ) -> InteractionEvent:
+        """Record a consumed scroll into the ongoing gesture, and return the event.
+
+        If the newest event is already a ``scroll`` of the same ``target`` in the
+        same ``direction``, this **replaces** it rather than appending: the deltas
+        accumulate, ``metrics`` refresh, ``seq`` and ``timestamp`` move forward,
+        and ``started_at`` is kept. Any other tail starts a new event. Splitting
+        on direction is what keeps the accumulated delta honest: within one event
+        it is monotonic, so down-then-up cannot collapse into a net-zero entry
+        that reads as "did not scroll".
+
+        Args:
+            target: The consuming region's identity (see :func:`resolve_target`).
+            direction: ``"up"`` / ``"down"`` / ``"left"`` / ``"right"``.
+            dx: Horizontal delta in wheel notches (zero for a vertical region).
+            dy: Vertical delta in wheel notches (zero for a horizontal region).
+            metrics: The region's position (see :func:`read_scroll_metrics`);
+                unknown keys are ignored.
+            coalesce: Whether this scroll may continue the tail gesture. Pass
+                ``False`` when the caller knows a *different* region produced it:
+                two anonymous siblings resolve to the same ``target``, so the
+                tail check alone would merge them into one entry with summed
+                deltas. The caller knows the region's object identity; the
+                journal only ever sees the resolved -- and deliberately coarse --
+                identity, so it cannot tell them apart on its own.
+        """
+        fields = {
+            name: value
+            for name, value in (metrics or {}).items()
+            if name in ("axis", "offset", "max_extent", "at_start", "at_end")
+        }
+        with self._lock:
+            now = time.time()
+            tail = self._events[-1] if self._events else None
+            if (
+                coalesce
+                and tail is not None
+                and tail.kind == "scroll"
+                and tail.direction == direction
+                and tail.target == target
+            ):
+                event = replace(
+                    tail,
+                    seq=next(self._seq),
+                    timestamp=now,
+                    dx=tail.dx + dx,
+                    dy=tail.dy + dy,
+                    **fields,
+                )
+                self._events[-1] = event
+                return event
+            event = InteractionEvent(
+                seq=next(self._seq),
+                timestamp=now,
+                kind="scroll",
+                target=target,
+                started_at=now,
+                direction=direction,
+                dx=dx,
+                dy=dy,
+                **fields,
+            )
+            self._events.append(event)
+            return event
 
     def _record(
         self,
@@ -363,7 +548,7 @@ class InteractionRecorder:
     (those enter below, at ``app._dispatch_*``). So the journal captures the human
     only, with no need to tag synthetic events.
 
-    All three ``on_*`` hooks run on the UI thread and are the sole writers, so the
+    All ``on_*`` hooks run on the UI thread and are the sole writers, so the
     text-coalescing state (:attr:`_last_kind`) needs no lock; the journal's own
     lock guards the shared buffer.
     """
@@ -373,6 +558,11 @@ class InteractionRecorder:
         # Kind of the most recent recorded event, used to coalesce a burst of
         # per-character ``on_text`` callbacks into a single ``text`` marker.
         self._last_kind: Optional[str] = None
+        # The region the last recorded scroll went to, so a gesture coalesces on
+        # the *object*, not on its resolved identity -- two keyless siblings look
+        # identical to the journal. Weak, so tracking it never keeps a detached
+        # subtree alive; a dead referent simply reads as a different region.
+        self._last_scroll: Optional[Callable[[], Any]] = None
 
     def on_mouse_press(self, app: Any, x: float, y: float) -> None:
         """Record a primary press, resolved to the widget identity under ``(x, y)``.
@@ -391,6 +581,45 @@ class InteractionRecorder:
             return
         self._journal.record_click(resolve_target(node))
         self._last_kind = "click"
+
+    def on_mouse_scroll(self, handler: Any, dx: float, dy: float) -> None:
+        """Record a wheel event that ``handler`` consumed, as part of a gesture.
+
+        ``handler`` is what the pointer dispatch returned -- the region that
+        actually scrolled, possibly an ancestor of the widget under the cursor.
+        ``None`` means nothing consumed the event, so nothing moved and nothing is
+        recorded, which also inherits the region's own sub-notch deadband. The
+        deltas are notches, already normalized into the framework's sign
+        convention by the backend.
+
+        The **consuming region names the gesture**, not the raw input: its
+        ``axis`` decides which delta was used (see :func:`_consumed_axis`) and
+        that delta's sign names the direction. Reading the wheel instead would
+        mislabel a horizontal region driven by a vertical wheel.
+
+        Coalescing keys off the region's **object identity**, decided here and
+        passed down: two keyless siblings of the same type resolve to the same
+        target, and merging them would sum the deltas of two separate regions
+        into one entry that describes neither.
+        """
+        if handler is None:
+            return
+        metrics = read_scroll_metrics(handler)
+        axis, delta = _consumed_axis(metrics.get("axis"), dx, dy)
+        if delta == 0.0:
+            return
+        negative, positive = _AXIS_DIRECTIONS[axis]
+        previous = self._last_scroll() if self._last_scroll is not None else None
+        self._journal.record_scroll(
+            resolve_target(handler),
+            direction=positive if delta > 0.0 else negative,
+            dx=delta if axis == "horizontal" else 0.0,
+            dy=delta if axis == "vertical" else 0.0,
+            metrics=metrics,
+            coalesce=previous is handler,
+        )
+        self._last_scroll = _weak_ref(handler)
+        self._last_kind = "scroll"
 
     def on_key_press(self, name: str, modifier_keys: int) -> None:
         """Record a semantic key press, dropping bare typing to protect content."""
@@ -420,5 +649,6 @@ __all__ = [
     "InteractionEvent",
     "InteractionJournal",
     "InteractionRecorder",
+    "read_scroll_metrics",
     "resolve_target",
 ]

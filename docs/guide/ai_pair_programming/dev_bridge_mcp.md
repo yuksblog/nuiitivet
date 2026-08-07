@@ -191,10 +191,19 @@ between them. Two pull-able logs close that gap.
   whether anything reloaded since its last turn.
 - **`interaction_log`** — the coarse UI actions *you* took while the assistant
   was mid-task: a `click` resolved to a widget identity, a shortcut/navigation
-  `key`, and a content-free `text` marker. It mirrors the action vocabulary, so
-  the assistant can replay how you reached the current screen. **Typed content
-  never enters it** — a bare printable keystroke is dropped and a burst of typing
-  collapses to one marker, so field text never leaks.
+  `key`, a content-free `text` marker, and a `scroll`. It mirrors the action
+  vocabulary, so the assistant can replay how you reached the current screen.
+  **Typed content never enters it** — a bare printable keystroke is dropped and a
+  burst of typing collapses to one marker, so field text never leaks.
+
+  A `scroll` entry names the region, the `direction`, the distance in **wheel
+  notches** (`dx` / `dy`, the units the `scroll` action takes), and where the region
+  ended up (`offset`, `at_end`, …) — usually the useful part: `at_end: true` is how
+  the assistant tells "scrolled to the bottom of the feed" from "still scrolling".
+  **One entry is one gesture, not one wheel event:** a continuous scroll of one
+  region merges into a single entry, and reversing direction, moving to another
+  region, or clicking in between starts a fresh one. Scrolling that no region
+  consumed — over a non-scrollable area, or trackpad jitter — is not recorded.
 
 ### See why an action did nothing
 
