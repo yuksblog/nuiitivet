@@ -297,12 +297,14 @@ class BridgeClient:
     def interaction_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
         """Fetch the human's recent coarse UI actions from the running app (#390).
 
-        Each event is ``{"seq", "timestamp", "kind", optional "target"/"key"/
-        "modifiers"}``, oldest-first: a ``click`` carries the resolved widget
-        ``target`` (never a coordinate), a ``key`` carries the key and modifiers,
-        a ``text`` marker records only that the human typed (never the content).
-        ``limit`` caps the result to the newest ``limit`` events; ``None`` returns
-        all retained events.
+        Each event is ``{"seq", "timestamp", "kind", ...}``, oldest-first: a
+        ``click`` carries the resolved widget ``target`` (never a coordinate), a
+        ``key`` carries the key and modifiers, a ``text`` marker records only that
+        the human typed (never the content), and a ``scroll`` carries the region's
+        ``target``, its ``direction`` / ``dx`` / ``dy`` in wheel notches and the
+        resulting ``offset`` / ``at_end`` -- one entry per gesture, not per wheel
+        event. ``limit`` caps the result to the newest ``limit`` events; ``None``
+        returns all retained events.
         """
         endpoint = (
             "/interaction_log" if limit is None else f"/interaction_log?limit={int(limit)}"

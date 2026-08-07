@@ -348,7 +348,7 @@ successful reload.
   in-flight awaited coroutine, so resetting them is the intended, safe default.
 - **Module-level state is not restored** (§7.4).
 - **The interaction journal (§12) records only the action-verb primitives.** It
-  deliberately mirrors `click` / `key` / `text` and leaves higher-level *semantic*
+  deliberately mirrors `click` / `key` / `text` / `scroll` and leaves higher-level *semantic*
   events (navigate / dialog open-close / submit) unrecorded, since they are
   derivable from a click sequence plus `describe_tree`. Promoting selected
   semantic events to first-class entries, and deciding whether to unify the reload
@@ -442,23 +442,23 @@ edit again.
   (optional `?limit=N`) with the same monotonic-`seq` turn model as the reload
   journal. Two design choices are load-bearing:
   - **A mirror of the action vocabulary, not a semantic taxonomy.** It records
-    exactly the inbound of `click` / `key` / `type`: a `click` resolved to a
-    widget identity (`{type, key?, label?}` — reusing the same identity walk as
-    perception, *never* a coordinate), a `key` (only shortcuts and navigation
-    keys), and a content-free `text` marker. Whatever the human does that the
-    assistant must reproduce, it reproduces *through those same verbs*, so this set
-    is necessary and sufficient to replay a path. Higher-level semantic events
-    (navigate / dialog open-close / submit) are deliberately *not* recorded — they
-    are states derivable from a click sequence plus `describe_tree`, not primitive
-    inputs.
+    exactly the inbound of `click` / `key` / `type` / `scroll`: a `click` resolved
+    to a widget identity (`{type, key?, label?}` — reusing the same identity walk
+    as perception, *never* a coordinate), a `key` (only shortcuts and navigation
+    keys), a content-free `text` marker, and a `scroll` (§12.2). Whatever the human
+    does that the assistant must reproduce, it reproduces *through those same
+    verbs*, so this set is necessary and sufficient to replay a path — and it grows
+    only when the vocabulary does. Higher-level semantic events (navigate / dialog
+    open-close / submit) are deliberately *not* recorded — they are states
+    derivable from a click sequence plus `describe_tree`, not primitive inputs.
   - **Recorded at the real-input layer, so the human only.** The recorder is
     driven from the backend's real input handlers (`on_mouse_press` /
-    `on_key_press` / `on_text`), which the assistant's synthesized actions bypass
-    (those enter below at `app._dispatch_*`). So the journal captures the human
-    with no synthetic/real tagging. **Typed content never enters it:** a bare
-    printable key with no command modifier is dropped (recording it would leak
-    field text a keystroke at a time), and a burst of `on_text` collapses to one
-    content-free marker.
+    `on_key_press` / `on_text` / `on_mouse_scroll`), which the assistant's
+    synthesized actions bypass (those enter below at `app._dispatch_*`). So the
+    journal captures the human with no synthetic/real tagging. **Typed content
+    never enters it:** a bare printable key with no command modifier is dropped
+    (recording it would leak field text a keystroke at a time), and a burst of
+    `on_text` collapses to one content-free marker.
 - **Runtime journal** (`dev/runtime_journal.py`, `dev/runtime_capture.py`, [#409](https://github.com/yuksblog/nuiitivet/issues/409)).
   The reload and interaction journals surface what *changed* and what the human
   *did*; this surfaces what the app *emitted*. When an assistant-driven `click` /
@@ -528,6 +528,61 @@ MCP host config (the app itself is launched separately with
 
 The server starts even when no app is running; each tool call then reports a
 "no running app" error until one is up, so a host may launch the server first.
+
+### 12.2 Scroll in the interaction journal
+
+Scroll is the verb whose *volume* is the design problem: a wheel emits events by
+the dozen per gesture, and one entry each would bury every click and key press.
+Three defenses, none of them a timer:
+
+- **Only what a region consumed.** `_dispatch_mouse_scroll` returns the handling
+  widget; `None` means nothing moved, so nothing is recorded. That also inherits
+  `Scrollable._handle_scroll`'s existing refusals — `ScrollPhysics.NEVER`, the
+  wrong axis, `abs(delta) < 0.01` — as a trackpad-jitter deadband.
+- **A gesture coalesces by replacing the tail.** A `scroll` on the same region in
+  the same direction replaces the newest event instead of appending (accumulated
+  delta, refreshed metrics); any other tail starts a new one. That bounds the
+  count *structurally*: never more scroll events than transitions between other
+  events. **No idle timeout** — "same gesture" is region plus direction, not time,
+  and a timeout would restore the unbounded count for continuous reading, the case
+  the coalescing exists to handle. Splitting on direction also keeps the delta
+  monotonic within an event, so down-then-up cannot collapse into a net-zero entry
+  reading as "did not scroll".
+
+  "Same region" is the handler's **object identity**, not its resolved `target`:
+  two keyless siblings of one type resolve alike, and merging them would sum two
+  regions' deltas into an entry whose `offset` describes only the second. The
+  recorder decides it (the journal never sees the widget) and holds the previous
+  handler *weakly*, so tracking it pins nothing and a collected region reads as a
+  different one — degrading toward an extra entry, never a wrong merge.
+- **No event counter.** Accumulated notches already answer "how far".
+
+```json
+{
+  "seq": 42, "timestamp": 1754476800.0, "started_at": 1754476797.5,
+  "kind": "scroll",
+  "target": {"type": "VerticalScrollable", "key": "feed"},
+  "direction": "down", "dy": 37.0,
+  "axis": "vertical", "offset": 740.0, "max_extent": 1240.0,
+  "at_start": false, "at_end": false
+}
+```
+
+- **Deltas are wheel notches in `scroll`'s sign convention.** The backend's
+  `_normalize_scroll_delta` applies it before the handler runs, so a logged `dy`
+  replays verbatim as `scroll --dy`.
+- **Position over delta.** The delta says how hard the human pushed; `offset` /
+  `at_end` say where they ended up. Both come from the `scroll_metrics()` the
+  `scroll` action reports from, so a log entry and an action result read alike.
+- **The consuming region names the gesture, not the raw input.** `axis` comes from
+  its metrics and the direction from the sign of the delta *that axis* took — a
+  horizontal region driven by a vertical wheel is normal (`_handle_scroll` falls
+  back from `scroll_x` to `scroll_y`), and reading the wheel would mislabel it.
+- **A coalesced update re-issues `seq`,** so an ongoing scroll reads as new
+  activity; `started_at` keeps the gesture's beginning.
+
+Privacy is unchanged: `resolve_target` yields a `key` / `label`, never a
+coordinate, and a scroll carries no content.
 
 ## 13. Implementation map
 

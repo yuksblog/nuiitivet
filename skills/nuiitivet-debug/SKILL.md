@@ -86,7 +86,7 @@ top to bottom.
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
-| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers, so you re-sync instead of acting on a stale screen |
+| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, so you re-sync instead of acting on a stale screen |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
 
 ### Blind spots

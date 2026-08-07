@@ -278,15 +278,26 @@ def build_server() -> "FastMCP":
         before acting -- e.g. so you do not dismiss a dialog they just opened.
 
         Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
-        ``"click"``, ``"key"``, or ``"text"``. ``seq`` is monotonic -- compare it
-        to the last one you saw to tell whether new actions happened. A ``click``
-        carries ``target`` (the resolved widget ``{"type", optional "key"/
-        "label"}``, never a coordinate); a ``key`` carries ``key`` and optional
-        ``modifiers`` (only shortcuts and navigation keys are recorded); a
-        ``text`` marker means the human typed into a field -- the content is
-        deliberately never recorded. Semantic transitions (navigation, dialogs)
-        are not recorded; infer them from the click sequence plus `describe_tree`.
-        ``limit`` caps the result to the newest N events.
+        ``"click"``, ``"key"``, ``"text"``, or ``"scroll"``. ``seq`` is monotonic
+        -- compare it to the last one you saw to tell whether new actions
+        happened. A ``click`` carries ``target`` (the resolved widget
+        ``{"type", optional "key"/"label"}``, never a coordinate); a ``key``
+        carries ``key`` and optional ``modifiers`` (only shortcuts and navigation
+        keys are recorded); a ``text`` marker means the human typed into a field
+        -- the content is deliberately never recorded. Semantic transitions
+        (navigation, dialogs) are not recorded; infer them from the click sequence
+        plus `describe_tree`. ``limit`` caps the result to the newest N events.
+
+        A ``scroll`` carries the region's ``target``, the ``direction``, the
+        distance in wheel notches (``dx`` / ``dy``, the units and signs `scroll`
+        takes), and where the region ended up: ``axis``, ``offset``,
+        ``max_extent``, ``at_start``, ``at_end``. Prefer the position over the
+        delta -- ``at_end: true`` tells "scrolled to the bottom" from "still
+        going". One entry is one **gesture**: consecutive scrolls of one region in
+        one direction merge (delta accumulates, ``seq`` is re-issued,
+        ``started_at`` keeps the start), while a reversal, another region, or any
+        click / key / text starts a new entry. Unconsumed scrolling is not
+        recorded.
         """
         return {"events": _client().interaction_log(limit=limit)}
 
