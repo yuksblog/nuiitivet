@@ -25,15 +25,15 @@ def test_stick_default_places_badge_on_top_right() -> None:
     assert badge.layout_rect == (21, -3, 6, 6)
 
 
-def test_stick_with_alignment_anchor_offset() -> None:
+def test_stick_with_anchors_and_offset() -> None:
     target = _FixedWidget(40, 20)
     badge = _FixedWidget(10, 8)
 
     wrapped = target.modifier(
         stick(
             badge,
-            alignment="center",
-            anchor="center",
+            target_anchor="center",
+            content_anchor="center",
             offset=(3.0, -2.0),
         )
     )

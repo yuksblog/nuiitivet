@@ -18,15 +18,15 @@ class StickBox(Widget):
         child: Widget,
         sticker: Widget,
         *,
-        alignment: AlignmentLike = "top-right",
-        anchor: AlignmentLike = "center",
+        target_anchor: AlignmentLike = "top-right",
+        content_anchor: AlignmentLike = "center",
         offset: tuple[float, float] = (0.0, 0.0),
         width: SizingLike = None,
         height: SizingLike = None,
     ) -> None:
         super().__init__(width=width, height=height, max_children=2, overflow_policy="replace_last")
-        self._target_alignment = normalize_alignment(alignment, default=("end", "start"))
-        self._sticker_anchor = normalize_alignment(anchor, default=("center", "center"))
+        self._target_anchor = normalize_alignment(target_anchor, default=("end", "start"))
+        self._content_anchor = normalize_alignment(content_anchor, default=("center", "center"))
         self._offset = (float(offset[0]), float(offset[1]))
         self._main_child = child
         self._sticker_child = sticker
@@ -46,8 +46,8 @@ class StickBox(Widget):
         sticker_w, sticker_h = measure_preferred_size(self._sticker_child)
         self._sticker_child.layout(sticker_w, sticker_h)
 
-        tx, ty = alignment_to_point(self._target_alignment, width, height)
-        ax, ay = alignment_to_point(self._sticker_anchor, sticker_w, sticker_h)
+        tx, ty = alignment_to_point(self._target_anchor, width, height)
+        ax, ay = alignment_to_point(self._content_anchor, sticker_w, sticker_h)
         dx, dy = self._offset
 
         px = int(round(tx - ax + dx))
@@ -86,16 +86,16 @@ class StickModifier(ModifierElement):
     """Attach a sticker widget onto the modified widget."""
 
     badge: Widget
-    alignment: AlignmentLike = "top-right"
-    anchor: AlignmentLike = "center"
+    target_anchor: AlignmentLike = "top-right"
+    content_anchor: AlignmentLike = "center"
     offset: tuple[float, float] = (0.0, 0.0)
 
     def apply(self, widget: Widget) -> Widget:
         return StickBox(
             widget,
             self.badge,
-            alignment=self.alignment,
-            anchor=self.anchor,
+            target_anchor=self.target_anchor,
+            content_anchor=self.content_anchor,
             offset=self.offset,
             width=widget.width_sizing,
             height=widget.height_sizing,
@@ -105,16 +105,21 @@ class StickModifier(ModifierElement):
 def stick(
     badge: Widget,
     *,
-    alignment: AlignmentLike = "top-right",
-    anchor: AlignmentLike = "center",
+    target_anchor: AlignmentLike = "top-right",
+    content_anchor: AlignmentLike = "center",
     offset: tuple[float, float] = (0.0, 0.0),
 ) -> StickModifier:
     """Return a modifier that overlays a badge widget on top of a target widget.
 
     Args:
         badge: Overlay badge widget.
-        alignment: Anchor point on the target widget.
-        anchor: Anchor point on the badge widget.
+        target_anchor: Reference point on the target widget.
+        content_anchor: Reference point on the badge widget.
         offset: Additional (dx, dy) offset in local coordinates.
     """
-    return StickModifier(badge=badge, alignment=alignment, anchor=anchor, offset=offset)
+    return StickModifier(
+        badge=badge,
+        target_anchor=target_anchor,
+        content_anchor=content_anchor,
+        offset=offset,
+    )

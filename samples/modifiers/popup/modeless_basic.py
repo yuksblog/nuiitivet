@@ -37,8 +37,8 @@ anchor = (
         nv.modeless(
             info_panel,
             is_open=is_open,
-            alignment="bottom-left",
-            anchor="top-left",
+            target_anchor="bottom-left",
+            content_anchor="top-left",
             offset=(0.0, 4.0),
         )
     )

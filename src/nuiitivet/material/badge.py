@@ -56,8 +56,8 @@ class SmallBadge(Box):
         target_badge = badge if badge is not None else self
         return stick(
             target_badge,
-            alignment="top-right",
-            anchor="bottom-left",
+            target_anchor="top-right",
+            content_anchor="bottom-left",
             offset=(-6.0, 6.0),
         )
 
@@ -122,7 +122,7 @@ class LargeBadge(Box):
         target_badge = badge if badge is not None else self
         return stick(
             target_badge,
-            alignment="top-right",
-            anchor="bottom-left",
+            target_anchor="top-right",
+            content_anchor="bottom-left",
             offset=(-12.0, 14.0),
         )

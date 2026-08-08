@@ -34,8 +34,8 @@ class TooltipBox(PopupBox):
         *,
         delay: float = 0.5,
         dismiss_delay: float = 1.5,
-        alignment: AlignmentLike = "top-center",
-        anchor: AlignmentLike = "bottom-center",
+        target_anchor: AlignmentLike = "top-center",
+        content_anchor: AlignmentLike = "bottom-center",
         offset: Tuple[float, float] = (0.0, -4.0),
         transition_spec: Optional["TransitionSpec"] = None,
         width: SizingLike = None,
@@ -48,8 +48,8 @@ class TooltipBox(PopupBox):
             content: Tooltip content widget.
             delay: Delay in seconds before opening.
             dismiss_delay: Delay in seconds before closing.
-            alignment: Reference point on the anchor widget.
-            anchor: Reference point on tooltip content.
+            target_anchor: Reference point on the anchor widget.
+            content_anchor: Reference point on the tooltip content.
             offset: Additional ``(dx, dy)`` offset in pixels.
             transition_spec: Optional overlay transition.
             width: Width sizing for this wrapper.
@@ -59,8 +59,8 @@ class TooltipBox(PopupBox):
             child,
             content,
             is_open=None,
-            alignment=alignment,
-            anchor=anchor,
+            target_anchor=target_anchor,
+            content_anchor=content_anchor,
             offset=offset,
             transition_spec=transition_spec,
             light_dismiss=False,
@@ -250,29 +250,29 @@ class TooltipModifier(ModifierElement):
     content: Widget
     delay: float = 0.5
     dismiss_delay: float = 1.5
-    alignment: AlignmentLike = "top-center"
-    anchor: AlignmentLike = "bottom-center"
+    target_anchor: AlignmentLike = "top-center"
+    content_anchor: AlignmentLike = "bottom-center"
     offset: Tuple[float, float] = (0.0, -4.0)
     transition_spec: Optional["TransitionSpec"] = None
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap widget in TooltipBox and wire transient interaction behavior."""
-        anchor: Widget
+        anchor_widget: Widget
         if isinstance(widget, InteractionHostMixin):
-            anchor = widget
+            anchor_widget = widget
         else:
-            anchor = ensure_interaction_region(widget)
+            anchor_widget = ensure_interaction_region(widget)
         return TooltipBox(
-            anchor,
+            anchor_widget,
             self.content,
             delay=self.delay,
             dismiss_delay=self.dismiss_delay,
-            alignment=self.alignment,
-            anchor=self.anchor,
+            target_anchor=self.target_anchor,
+            content_anchor=self.content_anchor,
             offset=self.offset,
             transition_spec=self.transition_spec,
-            width=anchor.width_sizing,
-            height=anchor.height_sizing,
+            width=anchor_widget.width_sizing,
+            height=anchor_widget.height_sizing,
         )
 
 
@@ -281,8 +281,8 @@ def tooltip(
     *,
     delay: float = 0.5,
     dismiss_delay: float = 1.5,
-    alignment: AlignmentLike = "top-center",
-    anchor: AlignmentLike = "bottom-center",
+    target_anchor: AlignmentLike = "top-center",
+    content_anchor: AlignmentLike = "bottom-center",
     offset: tuple[float, float] = (0.0, -4.0),
     transition_spec: Optional["TransitionSpec"] = None,
 ) -> TooltipModifier:
@@ -297,8 +297,8 @@ def tooltip(
         content: Tooltip content widget.
         delay: Delay in seconds before opening.
         dismiss_delay: Delay in seconds before closing.
-        alignment: Reference point on the anchor widget.
-        anchor: Reference point on tooltip content.
+        target_anchor: Reference point on the anchor widget.
+        content_anchor: Reference point on the tooltip content.
         offset: Additional ``(dx, dy)`` offset in pixels.
         transition_spec: Optional overlay transition.
 
@@ -309,8 +309,8 @@ def tooltip(
         content=content,
         delay=delay,
         dismiss_delay=dismiss_delay,
-        alignment=alignment,
-        anchor=anchor,
+        target_anchor=target_anchor,
+        content_anchor=content_anchor,
         offset=offset,
         transition_spec=transition_spec,
     )

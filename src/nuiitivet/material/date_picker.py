@@ -1801,8 +1801,8 @@ class DockedDatePicker(ComposableWidget):
             light_dismiss(
                 self._calendar,
                 is_open=self._is_open,
-                alignment="bottom-left",
-                anchor="top-left",
+                target_anchor="bottom-left",
+                content_anchor="top-left",
                 offset=(0.0, self.style.dropdown_gap),
             )
         )

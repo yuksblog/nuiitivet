@@ -68,8 +68,8 @@ class TestAnchoredOverlayPosition:
         anchor_rect = (20, 40, 100, 50)
         pos = AnchoredOverlayPosition.anchored(
             lambda: anchor_rect,
-            alignment="top-right",
-            anchor="top-left",
+            target_anchor="top-right",
+            content_anchor="top-left",
         )
         content = _FixedWidget(80, 30)
         placed = pos.make_position_content(content)
@@ -261,15 +261,15 @@ class TestPopupModifier:
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
 
-    def test_apply_passes_alignment(self) -> None:
+    def test_apply_passes_anchors(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = modeless(content, alignment="top-right", anchor="bottom-right")
+        modifier = modeless(content, target_anchor="top-right", content_anchor="bottom-right")
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
         box: PopupBox = result
-        assert box._alignment == "top-right"
-        assert box._anchor == "bottom-right"
+        assert box._target_anchor == "top-right"
+        assert box._content_anchor == "bottom-right"
 
     def test_apply_passes_offset(self) -> None:
         child = _FixedWidget(80, 40)
@@ -316,11 +316,11 @@ class TestPopupFactory:
         assert isinstance(result, PopupModifier)
         assert result.light_dismiss is True
 
-    def test_default_alignment_and_anchor(self) -> None:
+    def test_default_anchors(self) -> None:
         content = _FixedWidget(50, 30)
         modifier = modeless(content)
-        assert modifier.alignment == "bottom-left"
-        assert modifier.anchor == "top-left"
+        assert modifier.target_anchor == "bottom-left"
+        assert modifier.content_anchor == "top-left"
 
     def test_default_offset(self) -> None:
         content = _FixedWidget(50, 30)
@@ -331,12 +331,12 @@ class TestPopupFactory:
         content = _FixedWidget(50, 30)
         modifier = modeless(
             content,
-            alignment="top-right",
-            anchor="bottom-left",
+            target_anchor="top-right",
+            content_anchor="bottom-left",
             offset=(2.0, 4.0),
         )
-        assert modifier.alignment == "top-right"
-        assert modifier.anchor == "bottom-left"
+        assert modifier.target_anchor == "top-right"
+        assert modifier.content_anchor == "bottom-left"
         assert modifier.offset == (2.0, 4.0)
 
 

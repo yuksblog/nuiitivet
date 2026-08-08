@@ -44,15 +44,15 @@ class _AnchoredPositionedContent(Widget):
         child: Widget,
         *,
         rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
-        alignment: Tuple[str, str],
-        anchor_point: Tuple[str, str],
+        target_anchor: Tuple[str, str],
+        content_anchor: Tuple[str, str],
         offset: Tuple[float, float],
     ) -> None:
         super().__init__(width="100%", height="100%")
         self._child = child
         self._rect_provider = rect_provider
-        self._alignment = alignment
-        self._anchor_point = anchor_point
+        self._target_anchor = target_anchor
+        self._content_anchor = content_anchor
         self._offset = offset
         self.add_child(child)
 
@@ -74,8 +74,8 @@ class _AnchoredPositionedContent(Widget):
             return
 
         ax, ay, aw, ah = rect
-        tx, ty = _alignment_to_point(self._alignment, aw, ah)
-        cx, cy = _alignment_to_point(self._anchor_point, cw, ch)
+        tx, ty = _alignment_to_point(self._target_anchor, aw, ah)
+        cx, cy = _alignment_to_point(self._content_anchor, cw, ch)
         dx, dy = self._offset
         px = int(round(ax + tx - cx + dx))
         py = int(round(ay + ty - cy + dy))
@@ -103,8 +103,8 @@ class AnchoredOverlayPosition:
     """Positions overlay content anchored to a specific widget's screen rect.
 
     Unlike :class:`OverlayPosition`, which aligns content relative to the
-    overlay root, this class lines up a reference point on the *content
-    widget* with a reference point on the *anchor widget*.
+    overlay root, this class lines up ``content_anchor`` on the content widget
+    with ``target_anchor`` on the anchor widget.
 
     The anchor rect is resolved lazily via ``rect_provider`` so it always
     reflects the most recent layout/paint cycle.
@@ -113,8 +113,8 @@ class AnchoredOverlayPosition:
 
         position = AnchoredOverlayPosition.anchored(
             rect_provider=my_box._rect_provider,
-            alignment="bottom-left",
-            anchor="top-left",
+            target_anchor="bottom-left",
+            content_anchor="top-left",
             offset=(0.0, 4.0),
         )
         overlay.show_modal(content, position=position, dismiss_on_outside_tap=True)
@@ -123,40 +123,40 @@ class AnchoredOverlayPosition:
     def __init__(
         self,
         rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
-        alignment: AlignmentLike,
-        anchor: AlignmentLike,
+        target_anchor: AlignmentLike,
+        content_anchor: AlignmentLike,
         offset: Tuple[float, float],
     ) -> None:
         """
         Args:
             rect_provider: Callable returning the anchor widget's absolute screen
                 rect ``(x, y, width, height)``, or ``None`` if not yet known.
-            alignment: Reference point on the **anchor widget**.
-            anchor: Reference point on the **content widget** to align to.
+            target_anchor: Reference point on the anchor widget.
+            content_anchor: Reference point on the content widget.
             offset: Additional ``(dx, dy)`` offset in screen pixels.
         """
         self._rect_provider = rect_provider
-        self._alignment = normalize_alignment(alignment, default=("start", "end"))
-        self._anchor_point = normalize_alignment(anchor, default=("start", "start"))
+        self._target_anchor = normalize_alignment(target_anchor, default=("start", "end"))
+        self._content_anchor = normalize_alignment(content_anchor, default=("start", "start"))
         self._offset = (float(offset[0]), float(offset[1]))
 
     @classmethod
     def anchored(
         cls,
         rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
-        alignment: AlignmentLike = "bottom-left",
-        anchor: AlignmentLike = "top-left",
+        target_anchor: AlignmentLike = "bottom-left",
+        content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
     ) -> "AnchoredOverlayPosition":
         """Create an anchored overlay position.
 
         Args:
             rect_provider: Callable returning the anchor widget's absolute rect.
-            alignment: Reference point on the anchor widget (default ``"bottom-left"``).
-            anchor: Reference point on the content widget (default ``"top-left"``).
+            target_anchor: Reference point on the anchor widget (default ``"bottom-left"``).
+            content_anchor: Reference point on the content widget (default ``"top-left"``).
             offset: Additional ``(dx, dy)`` pixel offset.
         """
-        return cls(rect_provider, alignment, anchor, offset)
+        return cls(rect_provider, target_anchor, content_anchor, offset)
 
     def make_position_content(self, content: Widget) -> Widget:
         """Wrap *content* in a full-screen container that positions it at the anchor.
@@ -174,7 +174,7 @@ class AnchoredOverlayPosition:
         return _AnchoredPositionedContent(
             content,
             rect_provider=self._rect_provider,
-            alignment=self._alignment,
-            anchor_point=self._anchor_point,
+            target_anchor=self._target_anchor,
+            content_anchor=self._content_anchor,
             offset=self._offset,
         )

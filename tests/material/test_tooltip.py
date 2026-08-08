@@ -134,8 +134,8 @@ def test_tooltip_factory_returns_modifier() -> None:
     content = _FixedWidget(20, 20)
     result = tooltip(content)
     assert isinstance(result, TooltipModifier)
-    assert result.alignment == "top-center"
-    assert result.anchor == "bottom-center"
+    assert result.target_anchor == "top-center"
+    assert result.content_anchor == "bottom-center"
     assert result.offset == (0.0, -4.0)
 
 

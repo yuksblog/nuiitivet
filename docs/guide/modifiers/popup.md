@@ -2,7 +2,7 @@
 
 Popup modifiers attach transient overlay content to a widget. They are useful for menus, dropdowns, and tooltips that appear anchored to a specific widget.
 
-All three modifiers — `modeless`, `light_dismiss`, and `tooltip` — share the same alignment model: an `alignment` point on the anchor widget is aligned to an `anchor` point on the overlay content, with an optional pixel `offset`.
+All three modifiers — `modeless`, `light_dismiss`, and `tooltip` — share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`.
 
 ## modeless
 
@@ -48,8 +48,8 @@ anchor = (
         nv.modeless(
             info_panel,
             is_open=is_open,
-            alignment="bottom-left",
-            anchor="top-left",
+            target_anchor="bottom-left",
+            content_anchor="top-left",
             offset=(0.0, 4.0),
         )
     )
@@ -96,8 +96,8 @@ anchor = (
         nv.light_dismiss(
             menu,
             is_open=is_open,
-            alignment="bottom-left",
-            anchor="top-left",
+            target_anchor="bottom-left",
+            content_anchor="top-left",
             offset=(0.0, 4.0),
         )
     )
@@ -131,13 +131,13 @@ The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.mat
 
 ### Placement
 
-All three modifiers accept `alignment`, `anchor`, and `offset` parameters to control placement relative to the anchor widget.
+All three modifiers accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget.
 
-| Parameter   | Description                                               | Default                |
-|-------------|-----------------------------------------------------------|------------------------|
-| `alignment` | Reference point on the **anchor widget**                  | See each modifier      |
-| `anchor`    | Reference point on the **overlay content** to align with  | See each modifier      |
-| `offset`    | Additional `(dx, dy)` pixel offset                        | `(0.0, 0.0)`           |
+| Parameter        | Description                                     | Default            |
+|------------------|-------------------------------------------------|--------------------|
+| `target_anchor`  | Reference point on the **anchor widget**        | See each modifier  |
+| `content_anchor` | Reference point on the **overlay content**      | See each modifier  |
+| `offset`         | Additional `(dx, dy)` pixel offset              | `(0.0, 0.0)`       |
 
 Common placement strings: `"top-left"`, `"top-center"`, `"top-right"`, `"bottom-left"`, `"bottom-center"`, `"bottom-right"`, `"center"`.
 
@@ -146,8 +146,8 @@ Common placement strings: `"top-left"`, `"top-center"`, `"top-right"`, `"bottom-
 .modifier(
     nv.tooltip(
         nv.Tooltip("Above center"),
-        alignment="top-center",
-        anchor="bottom-center",
+        target_anchor="top-center",
+        content_anchor="bottom-center",
         offset=(0.0, -4.0),
     )
 )
