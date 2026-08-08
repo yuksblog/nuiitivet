@@ -134,7 +134,6 @@ class MaterialOverlay(Overlay):
                 LoadingIntent: lambda _: OverlayRoute(
                     builder=lambda: LoadingIndicator(),
                     transition_spec=None,
-                    barrier_dismissible=False,
                 ),
             }
             if intents:
@@ -155,29 +154,22 @@ class MaterialOverlay(Overlay):
             dialog: A :class:`Widget` to display as the dialog, or an intent
                 resolved by the overlay's intent resolver (e.g.
                 :class:`BasicDialogIntent`). To present a fully custom
-                :class:`Route`, call :meth:`show_modal` directly.
+                :class:`Route`, call :meth:`show` directly.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the
                 dialog. Defaults to ``True``.
 
         Returns:
             An :class:`OverlayHandle` for manual dismissal.
         """
-        route = self._normalize_dialog_to_route(
-            dialog,
-            dismiss_on_outside_tap=dismiss_on_outside_tap,
-        )
+        route = self._normalize_dialog_to_route(dialog)
 
-        return self.show_modal(
+        return self.show(
             route,
+            backdrop=True,
             dismiss_on_outside_tap=dismiss_on_outside_tap,
         )
 
-    def _normalize_dialog_to_route(
-        self,
-        dialog: Widget | Any,
-        *,
-        dismiss_on_outside_tap: bool,
-    ) -> Route:
+    def _normalize_dialog_to_route(self, dialog: Widget | Any) -> Route:
         """Normalize dialog input to a Route.
 
         This is the single boundary adapter for `dialog(...)` input polymorphism.
@@ -198,7 +190,6 @@ class MaterialOverlay(Overlay):
         return OverlayRoute(
             builder=lambda: widget,
             transition_spec=MaterialTransitions.dialog(),
-            barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
     def snackbar(
@@ -217,8 +208,9 @@ class MaterialOverlay(Overlay):
             An :class:`OverlayHandle` for the shown snackbar.
         """
         widget: Widget = message if isinstance(message, Snackbar) else Snackbar(str(message))
-        return self.show_modeless(
+        return self.show(
             widget,
+            passthrough=True,
             timeout=float(duration),
             position=OverlayPosition.aligned("bottom-center", offset=(0.0, -24.0)),
             transition_spec=MaterialTransitions.snackbar(),
@@ -245,8 +237,9 @@ class MaterialOverlay(Overlay):
             resolved = indicator
         else:
             resolved = self._intent_resolver.resolve(indicator)
-        return self.show_modeless(
+        return self.show(
             resolved,
+            passthrough=True,
             timeout=None,
             position=OverlayPosition.aligned("center"),
         )
@@ -314,11 +307,11 @@ class MaterialOverlay(Overlay):
         route = OverlayRoute(
             builder=lambda: presented,
             transition_spec=MaterialTransitions.side_sheet(side=side),
-            barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
-        return self.show_modal(
+        return self.show(
             route,
+            backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned(alignment),
         )
@@ -346,11 +339,11 @@ class MaterialOverlay(Overlay):
         route = OverlayRoute(
             builder=lambda: sheet,
             transition_spec=MaterialTransitions.bottom_sheet(),
-            barrier_dismissible=bool(dismiss_on_outside_tap),
         )
 
-        return self.show_modal(
+        return self.show(
             route,
+            backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned("bottom-center"),
         )

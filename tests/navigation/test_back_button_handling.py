@@ -26,7 +26,7 @@ async def test_escape_closes_overlay_before_navigator_pop() -> None:
     overlay = Overlay.root()
     navigator = Navigator.root()
     navigator.push(Container())
-    overlay.show_modal(Container(width=100, height=100))
+    overlay.show(Container(width=100, height=100), backdrop=True)
 
     assert overlay.has_entries() is True
     assert navigator.can_pop() is True

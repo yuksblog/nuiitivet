@@ -1,23 +1,20 @@
 # Overlay Primitives
 
-The base `Overlay` exposes three primitives for displaying content above the widget tree. Each primitive determines how user input is handled while the overlay is visible. See [Overview](index.md) for context.
+The base `Overlay` exposes one primitive, `show()`, for displaying content above the widget tree. Instead of a scenario name, you pick the behaviour with three independent flags. See [Overview](index.md) for context.
 
-## `show_modal`
-
-Displays content with a blocking modal barrier. Background interaction is disabled — all pointer events are captured by the overlay layer.
-
-Use `show_modal` for actions that require user attention before the application can continue: confirmation dialogs, error alerts, bottom sheets.
+## `show`
 
 ```python
 import nuiitivet.material as nv
 
 overlay = nv.Overlay.root()
 
-handle = overlay.show_modal(
+handle = overlay.show(
     nv.Container(
         width=300, height=200,
         child=nv.Text("Modal content"),
     ),
+    backdrop=True,
 )
 
 result = await handle   # OverlayResult[Any]
@@ -26,69 +23,49 @@ result = await handle   # OverlayResult[Any]
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
 | `content` | `Widget \| Route` | required | Widget or route to display |
-| `dismiss_on_outside_tap` | `bool` | `False` | Dismiss when tapping the barrier |
-| `barrier_color` | `tuple[int, int, int, int]` | `(0, 0, 0, 128)` | RGBA barrier color |
+| `passthrough` | `bool` | `False` | Whether input reaches the content behind the overlay |
+| `dismiss_on_outside_tap` | `bool` | `False` | Dismiss when a tap lands outside the content |
+| `backdrop` | `bool` | `False` | Whether the design system paints a backdrop behind the content |
 | `timeout` | `float \| None` | `None` | Auto-dismiss after seconds |
 | `position` | `OverlayPosition \| None` | `None` (center) | Positioning strategy |
 | `transition_spec` | `TransitionSpec \| None` | `None` | Entry/exit transition |
 
-## `show_modeless`
+Two of these are about **input** and one is about **appearance**:
 
-Displays content above the widget tree without blocking background interaction. Pointer events pass through to the layers below.
+- `passthrough` decides whether the app behind the overlay stays usable — for pointer *and* keyboard.
+- `dismiss_on_outside_tap` decides whether a tap outside the content closes the overlay. Any button dismisses, not just the primary one.
+- `backdrop` only decides whether a dimming layer is painted. It never blocks input on its own; that is `passthrough`'s job. `backdrop=True, passthrough=True` (dimmed but clickable through) is legal.
 
-Use `show_modeless` for informational overlays that do not require user action: toasts, progress indicators, snackbar messages.
+### Common combinations
 
 ```python
-import nuiitivet.material as nv
-from nuiitivet.overlay import OverlayPosition
+# Dialog: blocks the app, dims it, closes on an outside tap
+overlay.show(dialog, backdrop=True, dismiss_on_outside_tap=True)
 
-overlay = nv.Overlay.root()
-
-handle = overlay.show_modeless(
+# Toast: floats above the UI without blocking it, auto-dismisses
+overlay.show(
     nv.Text("Operation complete"),
+    passthrough=True,
     timeout=3.0,
     position=OverlayPosition.aligned("bottom-center", offset=(0, -24)),
 )
-```
 
-| Parameter | Type | Default | Description |
-| --------- | ---- | ------- | ----------- |
-| `content` | `Widget \| Route` | required | Widget or route to display |
-| `timeout` | `float \| None` | `None` | Auto-dismiss after seconds |
-| `position` | `OverlayPosition \| None` | `None` (center) | Positioning strategy |
-| `transition_spec` | `TransitionSpec \| None` | `None` | Entry/exit transition |
-
-## `show_light_dismiss`
-
-Displays content with an invisible full-screen hit layer. Tapping outside the content closes the overlay and consumes the outside tap. Background interaction is blocked while the overlay is visible.
-
-Use `show_light_dismiss` for menus and dropdowns that should close when the user clicks away.
-
-```python
-import nuiitivet.material as nv
-from nuiitivet.overlay import OverlayPosition
-
-overlay = nv.Overlay.root()
-
-handle = overlay.show_light_dismiss(
+# Menu: blocks the app without dimming it, closes on an outside tap
+overlay.show(
     MenuWidget(),
+    dismiss_on_outside_tap=True,
     position=OverlayPosition.aligned("top-left"),
 )
 ```
 
-| Parameter | Type | Default | Description |
-| --------- | ---- | ------- | ----------- |
-| `content` | `Widget \| Route` | required | Widget or route to display |
-| `timeout` | `float \| None` | `None` | Auto-dismiss after seconds |
-| `position` | `OverlayPosition \| None` | `None` (center) | Positioning strategy |
-| `transition_spec` | `TransitionSpec \| None` | `None` | Entry/exit transition |
+`passthrough=True` together with an explicit `dismiss_on_outside_tap=True` raises `ValueError`: pointer dispatch resolves a single hit target, so a layer can pass a tap through or observe it, never both.
 
 ## OverlayHandle and OverlayResult
 
-All three primitives return an `OverlayHandle`. You can close the overlay programmatically or await the result.
+`show()` returns an `OverlayHandle`. You can close the overlay programmatically or await the result.
 
 ```python
-handle = overlay.show_modal(widget)
+handle = overlay.show(widget, backdrop=True)
 
 # Close programmatically
 handle.close("confirmed")
@@ -104,7 +81,7 @@ print(result.reason)    # OverlayDismissReason.CLOSED
 | Reason | Trigger |
 | ------ | ------- |
 | `CLOSED` | `handle.close(value)` called explicitly |
-| `OUTSIDE_TAP` | User tapped outside (`dismiss_on_outside_tap=True` or `show_light_dismiss`) |
+| `OUTSIDE_TAP` | User tapped outside (`dismiss_on_outside_tap=True`) |
 | `TIMEOUT` | `timeout` elapsed |
 | `DISPOSED` | Entry removed without explicit close |
 
@@ -130,7 +107,7 @@ position = OverlayPosition.aligned("bottom-center", offset=(0, -24))
 
 ### Relative to a widget
 
-`anchored()` lines up `content_anchor` on the content with `target_anchor` on the anchor widget. The rect is resolved on every layout pass, so the content follows the anchor as it moves. This is what the [`modeless` / `light_dismiss` modifiers](../modifiers/popup.md) build for you.
+`anchored()` lines up `content_anchor` on the content with `target_anchor` on the anchor widget. The rect is resolved on every layout pass, so the content follows the anchor as it moves. This is what the [`popup` modifier](../modifiers/popup.md) builds for you.
 
 ### Relative to a point
 
@@ -138,8 +115,9 @@ A point has no extent, so there is no `target_anchor` to choose — `content_anc
 
 ```python
 def on_press(event: nv.PointerEvent) -> None:
-    nv.Overlay.root().show_modeless(
+    nv.Overlay.root().show(
         indicator,
+        passthrough=True,
         position=nv.OverlayPosition.at_pointer(
             event,
             content_anchor="bottom-center",

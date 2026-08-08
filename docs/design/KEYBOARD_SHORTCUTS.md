@@ -51,9 +51,9 @@ require focus.
   page or screen preserves its state) and show one at a time, so without this
   check the *previous screen's* shortcuts would keep firing on the current one.
   The container declares what it is showing via `focus_traversal_children()`;
-- **occluded by a blocking overlay** — a modal dialog or a light-dismiss popup
-  swallows interaction, so background commands must not fire behind it. A
-  `modeless` (passthrough) entry does not occlude.
+- **occluded by a blocking overlay** — a dialog or a menu popup swallows
+  interaction, so background commands must not fire behind it. A
+  `passthrough=True` entry (toast, tooltip) does not occlude.
 
 This is deliberately the same set of questions Tab asks (see
 `INTERACTION_ARCHITECTURE.md` § What Tab Can Reach), so a shortcut and a Tab stop

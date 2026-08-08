@@ -9,7 +9,7 @@ Every UI Design System consists of five components:
 | Component | Role |
 | ----------- | ------ |
 | **App** | Application entry point and lifecycle manager |
-| **Overlay** | Layer management: modal, modeless and light_dismiss |
+| **Overlay** | Layer management: blocking, pass-through, backdrop |
 | **Navigator** | Navigation and routing management |
 | **Theme** | Visual configuration |
 | **Widgets** | Design-specific implementations of UI elements (buttons, textfields, checkboxes, etc.) |

@@ -1,6 +1,6 @@
 """Tests for the ``context_menu()`` modifier (issue #424).
 
-A context menu differs from ``modeless()`` / ``light_dismiss()`` in that it owns
+A context menu differs from ``popup()`` in that it owns
 both the open state and the transient click coordinate. These tests pin that
 contract: it opens only on the secondary button, at the pointer's *screen*
 position, and it follows a second click to a new point.
@@ -75,10 +75,11 @@ def test_apply_wraps_the_widget_in_an_interaction_host() -> None:
     assert isinstance(box._child.get_node(PointerListenerNode), PointerListenerNode)
 
 
-def test_menu_closes_on_outside_tap() -> None:
-    """A context menu is always light-dismiss; clicking away closes it."""
+def test_menu_blocks_input_and_closes_on_outside_tap() -> None:
+    """A context menu blocks what is behind it; clicking away closes it."""
     box = _wrap(_FixedWidget(120, 90))
-    assert box._light_dismiss is True
+    assert box._passthrough is False
+    assert box._dismiss_on_outside_tap is True
 
 
 # ---------------------------------------------------------------------------

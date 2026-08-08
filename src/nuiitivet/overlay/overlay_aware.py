@@ -13,8 +13,7 @@ class OverlayAware(Generic[T]):
     """Mixin that lets a widget receive its own :class:`OverlayHandle`.
 
     When a widget inheriting ``OverlayAware`` is displayed through any
-    :class:`Overlay` show API (``show_modal``, ``show_modeless``,
-    ``show_light_dismiss``, ``dialog``, ``side_sheet``, ``bottom_sheet``,
+    :class:`Overlay` show API (``show``, ``dialog``, ``side_sheet``, ``bottom_sheet``,
     ``snackbar``, ``loading``), the framework injects the created handle
     into the widget instance before mounting. The widget (or its ViewModel)
     can then close itself via ``self.overlay_handle.close(value)`` without

@@ -14,29 +14,29 @@ class _AwareDialog(ComposableWidget, OverlayAware[str]):
         return Container(width=10, height=10)
 
 
-def test_overlay_aware_injected_on_show_modal() -> None:
+def test_overlay_aware_injected_on_blocking_show() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    handle = overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+    handle = overlay.show(dialog, backdrop=True)
 
     assert dialog.overlay_handle is handle
 
 
-def test_overlay_aware_injected_on_show_modeless() -> None:
+def test_overlay_aware_injected_on_passthrough_show() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    handle = overlay.show_modeless(dialog)
+    handle = overlay.show(dialog, passthrough=True)
 
     assert dialog.overlay_handle is handle
 
 
-def test_overlay_aware_injected_on_show_light_dismiss() -> None:
+def test_overlay_aware_injected_on_outside_tap_dismissible_show() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    handle = overlay.show_light_dismiss(dialog)
+    handle = overlay.show(dialog, dismiss_on_outside_tap=True)
 
     assert dialog.overlay_handle is handle
 
@@ -46,7 +46,7 @@ def test_overlay_aware_injected_when_passed_via_route() -> None:
     dialog = _AwareDialog()
     route = OverlayRoute(builder=lambda: dialog)
 
-    handle = overlay.show_modal(route, dismiss_on_outside_tap=False)
+    handle = overlay.show(route, backdrop=True)
 
     assert dialog.overlay_handle is handle
 
@@ -55,7 +55,7 @@ def test_overlay_aware_close_via_handle() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+    overlay.show(dialog, backdrop=True)
     dialog.overlay_handle.close("done")
 
     assert dialog.overlay_handle.done() is True
@@ -75,20 +75,20 @@ def test_overlay_aware_concurrent_display_raises() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+    overlay.show(dialog, backdrop=True)
 
     with pytest.raises(RuntimeError, match="already attached"):
-        overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+        overlay.show(dialog, backdrop=True)
 
 
 def test_overlay_aware_redisplay_after_close_allowed() -> None:
     overlay = Overlay()
     dialog = _AwareDialog()
 
-    first = overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+    first = overlay.show(dialog, backdrop=True)
     first.close(None)
 
-    second = overlay.show_modal(dialog, dismiss_on_outside_tap=False)
+    second = overlay.show(dialog, backdrop=True)
 
     assert dialog.overlay_handle is second
 
@@ -98,6 +98,6 @@ def test_non_overlay_aware_widget_unaffected() -> None:
     widget = Container(width=10, height=10)
 
     # Should not raise and should return a usable handle.
-    handle = overlay.show_modal(widget, dismiss_on_outside_tap=False)
+    handle = overlay.show(widget, backdrop=True)
 
     assert isinstance(handle, OverlayHandle)

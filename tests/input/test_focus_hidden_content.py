@@ -186,7 +186,7 @@ async def test_tab_stays_inside_a_blocking_overlay_entry() -> None:
     root = Column([background])
     app = _mounted_app(root)
 
-    Overlay.root().show_modal(Column([dialog_a, dialog_b]))
+    Overlay.root().show(Column([dialog_a, dialog_b]), backdrop=True)
     await _settle()
 
     assert _owners(app) == [dialog_a, dialog_b]
@@ -205,7 +205,7 @@ async def test_opening_a_modal_moves_focus_into_it() -> None:
     app = _mounted_app(root)
     app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    Overlay.root().show_modal(Column([dialog]))
+    Overlay.root().show(Column([dialog]), backdrop=True)
     await _settle()
     app._release_focus_if_blocked()
 
@@ -220,7 +220,7 @@ async def test_closing_a_modal_restores_focus_to_the_invoker() -> None:
     app = _mounted_app(root)
     app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = Overlay.root().show_modal(Column([dialog]))
+    handle = Overlay.root().show(Column([dialog]), backdrop=True)
     await _settle()
     app._release_focus_if_blocked()
 
@@ -240,7 +240,7 @@ async def test_closing_a_modal_clears_focus_when_the_invoker_is_gone() -> None:
     app = _mounted_app(root)
     app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = Overlay.root().show_modal(Column([dialog]))
+    handle = Overlay.root().show(Column([dialog]), backdrop=True)
     await _settle()
     app._release_focus_if_blocked()
 
@@ -254,13 +254,13 @@ async def test_closing_a_modal_clears_focus_when_the_invoker_is_gone() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_modeless_entry_does_not_trap_focus() -> None:
+async def test_a_passthrough_entry_does_not_trap_focus() -> None:
     background, toast = Clickable(), Clickable()
     root = Column([background])
     app = _mounted_app(root)
     app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    Overlay.root().show_modeless(Column([toast]))
+    Overlay.root().show(Column([toast]), passthrough=True)
     await _settle()
     app._release_focus_if_blocked()
 
@@ -275,12 +275,12 @@ async def test_nested_modals_hand_focus_back_one_layer_at_a_time() -> None:
     app = _mounted_app(root)
     app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    outer_handle = Overlay.root().show_modal(Column([outer]))
+    outer_handle = Overlay.root().show(Column([outer]), backdrop=True)
     await _settle()
     app._release_focus_if_blocked()
     assert outer.state.focused
 
-    inner_handle = Overlay.root().show_modal(Column([inner]))
+    inner_handle = Overlay.root().show(Column([inner]), backdrop=True)
     await _settle()
     app._release_focus_if_blocked()
     assert inner.state.focused

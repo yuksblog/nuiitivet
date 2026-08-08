@@ -188,7 +188,7 @@ def test_foreground_does_not_fire_behind_a_blocking_overlay() -> None:
 
     assert _press_accel_s(app) is True
 
-    Overlay.root().show_modal(_box())
+    Overlay.root().show(_box(), backdrop=True)
     assert _press_accel_s(app) is False
     assert saved == ["home"]
 
@@ -200,7 +200,7 @@ def test_a_shortcut_inside_the_modal_still_fires() -> None:
     app.root.mount(app)
 
     dialog = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("dialog")))
-    Overlay.root().show_modal(dialog)
+    Overlay.root().show(dialog, backdrop=True)
 
     assert _press_accel_s(app) is True
     assert fired == ["dialog"]

@@ -65,7 +65,9 @@ class ContextMenuBox(PopupBox):
             content_anchor=content_anchor,
             offset=offset,
             transition_spec=transition_spec,
-            light_dismiss=True,
+            # A menu blocks the UI behind it and closes on an outside tap.
+            passthrough=False,
+            dismiss_on_outside_tap=True,
             width=width,
             height=height,
         )
@@ -168,8 +170,8 @@ def context_menu(
 ) -> ContextMenuModifier:
     """Open *content* at the pointer when the widget is secondary-clicked.
 
-    Unlike :func:`modeless` / :func:`light_dismiss`, which anchor to the widget's
-    rect and are driven by an external ``is_open``, a context menu is driven by
+    Unlike :func:`popup`, which anchors to the widget's
+    rect and is driven by an external ``is_open``, a context menu is driven by
     the click itself: the modifier owns both the open state and the transient
     click coordinate, so neither appears in caller code. The menu closes on an
     outside tap.
@@ -180,7 +182,7 @@ def context_menu(
         content_anchor: Reference point on the menu that lands on the click point
             (default ``"top-left"``, so the menu hangs down-right of the cursor).
         offset: Additional ``(dx, dy)`` offset in screen pixels.
-        transition_spec: Passed to :meth:`Overlay.show_light_dismiss` for
+        transition_spec: Passed to :meth:`Overlay.show` for
             enter/exit animation.
 
     Returns:

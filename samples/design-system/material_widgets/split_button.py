@@ -64,11 +64,11 @@ def _build_interactive_content() -> nv.Container:
     split_btn = _make_interactive_split_button()
     menu = _make_menu()
 
-    # Attach the menu as a light-dismiss popup anchored to the split button's
-    # trailing edge.  The menu aligns its top-left corner to the bottom-right
-    # of the split button with a 4dp gap.
+    # Attach the menu as a popup anchored to the split button's trailing edge.
+    # The menu aligns its top-left corner to the bottom-right of the split
+    # button with a 4dp gap.
     anchored = split_btn.modifier(
-        nv.light_dismiss(
+        nv.popup(
             menu,
             is_open=_menu_open,
             target_anchor="bottom-right",

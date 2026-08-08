@@ -14,7 +14,7 @@ Constructor                  Places content relative to
 ===========================  ===========================================
 
 Every kind exposes the same :meth:`~OverlayPosition.make_position_content` hook,
-so :meth:`Overlay.show_modal` and friends take one position argument and never
+so :meth:`Overlay.show` takes one position argument and never
 branch on which kind they were handed.
 """
 
@@ -152,8 +152,7 @@ class OverlayPosition:
     def make_position_content(self, content: Widget) -> Widget:
         """Wrap *content* in a full-screen widget that places it.
 
-        Called by :meth:`Overlay.show_modal` / :meth:`Overlay.show_modeless` /
-        :meth:`Overlay.show_light_dismiss` for every position kind.
+        Called by :meth:`Overlay.show` for every position kind.
 
         Args:
             content: The overlay content widget to position.

@@ -5,15 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from nuiitivet.layout.container import Container
-from nuiitivet.layout.stack import Stack
 from nuiitivet.modifiers import opacity, scale, translate
 from nuiitivet.modifiers.background import background
-from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.navigation.transition_state import TransitionLifecycle
 from nuiitivet.observable import combine
-from nuiitivet.overlay.layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
+from nuiitivet.overlay.layer_composer import (
+    OverlayLayerComposer,
+    OverlayLayerCompositionContext,
+    OverlayLayerPaint,
+)
 from nuiitivet.widgeting.widget import Widget
 
+from .theme.color_role import ColorRole
 from .transition_visual_spec import resolve_material_transition_visual_spec
 
 
@@ -72,12 +75,21 @@ class MaterialOverlayVisualMapper:
 
 
 class MaterialOverlayLayerComposer(OverlayLayerComposer):
-    """Material implementation of overlay layer composition."""
+    """Material implementation of overlay layer composition.
+
+    Painting only. Stacking, pointer blocking and outside-tap dismissal are
+    applied by :meth:`Overlay.show` around what this returns, so nothing here
+    stacks layers, does hit-testing, or branches on ``passthrough``.
+    """
+
+    # MD3 defines the scrim as a colour token; the opacity at which it is laid
+    # over the content is this component's own business.
+    _SCRIM_OPACITY = 0.5
 
     def __init__(self, mapper: MaterialOverlayVisualMapper | None = None) -> None:
         self._mapper = mapper or MaterialOverlayVisualMapper()
 
-    def compose(self, context: OverlayLayerCompositionContext) -> Widget:
+    def compose(self, context: OverlayLayerCompositionContext) -> OverlayLayerPaint:
         lifecycle_obs = context.transition_state.lifecycle_obs
         visual_obs = combine(lifecycle_obs).compute(lambda lifecycle: self._mapper.map_lifecycle(context, lifecycle))
 
@@ -93,17 +105,13 @@ class MaterialOverlayLayerComposer(OverlayLayerComposer):
         animated_content = context.content.modifier(
             opacity(content_opacity_obs) | scale(content_scale_obs) | translate(content_translation_obs)
         )
-        positioned_content = context.position_content(animated_content)
+        backdrop: Widget | None = None
+        if context.backdrop:
+            backdrop = Container(width="100%", height="100%").modifier(
+                background((ColorRole.SCRIM, self._SCRIM_OPACITY)) | opacity(barrier_opacity_obs)
+            )
 
-        if context.passthrough:
-            return positioned_content
-
-        barrier = Container(width="100%", height="100%").modifier(
-            background(context.barrier_color)
-            | opacity(barrier_opacity_obs)
-            | clickable(on_click=context.on_barrier_click if context.barrier_dismissible else None)
-        )
-        return Stack(children=[barrier, positioned_content], alignment="top-left", width="100%", height="100%")
+        return OverlayLayerPaint(content=context.position_content(animated_content), backdrop=backdrop)
 
 
 __all__ = ["OverlayVisualState", "MaterialOverlayVisualMapper", "MaterialOverlayLayerComposer"]

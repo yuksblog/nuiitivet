@@ -59,11 +59,13 @@ class TooltipBox(PopupBox):
             child,
             content,
             is_open=None,
+            # A tooltip never blocks the UI behind it and is dismissed by the
+            # pointer leaving the anchor, not by an outside tap.
+            passthrough=True,
             target_anchor=target_anchor,
             content_anchor=content_anchor,
             offset=offset,
             transition_spec=transition_spec,
-            light_dismiss=False,
             width=width,
             height=height,
         )

@@ -30,7 +30,7 @@ from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.scrolling import ScrollableStyle, ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
-from nuiitivet.modifiers.popup import light_dismiss
+from nuiitivet.modifiers.popup import popup
 from nuiitivet.modifiers.transform import rotate
 from nuiitivet.modifiers.visible import visible
 from nuiitivet.material.icon import Icon
@@ -1798,7 +1798,7 @@ class DockedDatePicker(ComposableWidget):
     def build(self) -> Widget:
         """Build the text field with its anchored calendar dropdown."""
         return self._text_field.modifier(
-            light_dismiss(
+            popup(
                 self._calendar,
                 is_open=self._is_open,
                 target_anchor="bottom-left",

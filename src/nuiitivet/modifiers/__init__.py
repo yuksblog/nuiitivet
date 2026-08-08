@@ -15,7 +15,7 @@ from .keyed import keyed
 from .lifecycle import on_mount, on_unmount
 from .passthrough_pointer import passthrough_pointer
 from .pointer_input import pointer_input
-from .popup import modeless, light_dismiss
+from .popup import popup
 from .tooltip import tooltip
 from .shadow import shadow
 from .size_changed import on_size_changed
@@ -45,8 +45,7 @@ __all__ = [
     "passthrough_pointer",
     "pointer_input",
     "opacity",
-    "modeless",
-    "light_dismiss",
+    "popup",
     "tooltip",
     "rotate",
     "scale",

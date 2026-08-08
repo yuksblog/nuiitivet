@@ -11,7 +11,7 @@
 ```text
 App
 └── Overlay                  ← always on top
-    ├── (overlay entries)    ← managed by show_modal / show_modeless / show_light_dismiss
+    ├── (overlay entries)    ← managed by Overlay.show()
     └── child                ← your main widget tree
 ```
 
@@ -32,17 +32,25 @@ overlay = nv.Overlay.root()
 overlay = nv.Overlay.of(self)
 ```
 
-## Primitives
+## The primitive
 
-`Overlay` exposes three primitives for displaying content above the widget tree:
+`Overlay` exposes one primitive, `show()`, parameterised by three independent flags:
 
-| Primitive | Interaction | Outside tap |
-| --------- | ----------- | ----------- |
-| `show_modal` | Blocks background input | Configurable |
-| `show_modeless` | Passes through to background | None |
-| `show_light_dismiss` | Invisible hit layer | Closes overlay |
+| Flag | Concern | Effect |
+| ---- | ------- | ------ |
+| `passthrough` | Input | Whether the app behind the overlay stays usable |
+| `dismiss_on_outside_tap` | Input | Whether a tap outside the content closes the overlay |
+| `backdrop` | Appearance | Whether a backdrop is painted behind the content |
 
-See [Primitives](primitives.md) for full documentation and usage examples of each primitive.
+Common shapes fall out of the combinations:
+
+| Shape | Call |
+| ----- | ---- |
+| Dialog | `show(x, backdrop=True, dismiss_on_outside_tap=True)` |
+| Toast | `show(x, passthrough=True, timeout=3.0)` |
+| Menu | `show(x, dismiss_on_outside_tap=True)` |
+
+See [Primitives](primitives.md) for full documentation and usage examples.
 
 ## Material Design
 

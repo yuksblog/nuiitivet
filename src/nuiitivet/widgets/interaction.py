@@ -129,6 +129,7 @@ class PointerInputNode(InteractionNode):
         self._release_callbacks: list[PointerEventCallback] = []
         self._hover_enabled = False
         self._click_enabled = False
+        self._any_button = False
         self._active_pointer_id: Optional[int] = None
         self._active_button: Optional[int] = None
 
@@ -149,8 +150,20 @@ class PointerInputNode(InteractionNode):
         on_click: Optional[VoidCallback] = None,
         on_press: Optional[PointerEventCallback] = None,
         on_release: Optional[PointerEventCallback] = None,
+        any_button: bool = False,
     ) -> None:
+        """Enable click handling on this node.
+
+        Args:
+            on_click: Invoked on a completed click inside the bounds.
+            on_press: Invoked on press.
+            on_release: Invoked on release.
+            any_button: When ``True``, secondary and middle buttons activate the
+                click too. Meant for dismissal surfaces (an overlay's outside-tap
+                layer), not for ordinary controls, which stay primary-only.
+        """
         self._click_enabled = True
+        self._any_button = bool(any_button)
         # Treat enable_click as a setter.
         # Repeated calls (common in recomposition/modifiers) must not accumulate
         # callbacks, otherwise one click triggers N handlers and can freeze UI.
@@ -240,8 +253,9 @@ class PointerInputNode(InteractionNode):
 
     def _handle_press(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
         # Only a primary (left / synthetic) button activates a click. Secondary
-        # buttons (right / middle) must not press, focus, or capture.
-        if not is_primary_button(event.button):
+        # buttons (right / middle) must not press, focus, or capture — unless the
+        # node opted into any_button (dismissal surfaces; see issue #506).
+        if not self._any_button and not is_primary_button(event.button):
             return False
 
         inside = True if bounds is None else self._point_inside(bounds, event.x, event.y)
@@ -1324,8 +1338,14 @@ class InteractionHostMixin:
         on_click: Optional[VoidCallback] = None,
         on_press: Optional[PointerEventCallback] = None,
         on_release: Optional[PointerEventCallback] = None,
+        any_button: bool = False,
     ) -> None:
-        self._pointer_node.enable_click(on_click=on_click, on_press=on_press, on_release=on_release)
+        self._pointer_node.enable_click(
+            on_click=on_click,
+            on_press=on_press,
+            on_release=on_release,
+            any_button=any_button,
+        )
 
     def add_hover_listener(self, callback: BoolCallback) -> None:
         """Add a hover listener without replacing existing ones."""

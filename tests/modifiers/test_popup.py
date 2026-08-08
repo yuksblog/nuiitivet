@@ -1,11 +1,13 @@
-"""Tests for modeless()/light_dismiss() modifiers."""
+"""Tests for the popup() modifier."""
 
 from __future__ import annotations
 
 from typing import Optional, Tuple
 
+import pytest
+
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
-from nuiitivet.modifiers.popup import PopupBox, PopupModifier, modeless, light_dismiss
+from nuiitivet.modifiers.popup import PopupBox, PopupModifier, popup
 from nuiitivet.overlay.overlay_position import (
     OverlayPosition,
     _AnchoredPositionedContent,
@@ -353,14 +355,14 @@ class TestPopupModifier:
     def test_apply_returns_popup_box(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = modeless(content)
+        modifier = popup(content)
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
 
     def test_apply_passes_anchors(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = modeless(content, target_anchor="top-right", content_anchor="bottom-right")
+        modifier = popup(content, target_anchor="top-right", content_anchor="bottom-right")
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
         box: PopupBox = result
@@ -370,7 +372,7 @@ class TestPopupModifier:
     def test_apply_passes_offset(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = modeless(content, offset=(3.0, -5.0))
+        modifier = popup(content, offset=(3.0, -5.0))
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
         assert result._offset == (3.0, -5.0)
@@ -381,51 +383,69 @@ class TestPopupModifier:
         is_open: "Observable[bool]" = Observable(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = modeless(content, is_open=is_open)
+        modifier = popup(content, is_open=is_open)
         result = modifier.apply(child)
         assert isinstance(result, PopupBox)
         assert result._is_open is is_open
 
-    def test_apply_light_dismiss_sets_behavior_flag(self) -> None:
+    def test_apply_forwards_input_axes(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
-        modifier = light_dismiss(content)
-        result = modifier.apply(child)
+        result = popup(content, passthrough=True).apply(child)
         assert isinstance(result, PopupBox)
-        assert result._light_dismiss is True
+        assert result._passthrough is True
+        assert result._dismiss_on_outside_tap is False
 
 
 # ---------------------------------------------------------------------------
-# modeless()/light_dismiss() factory functions
+# popup() factory function
 # ---------------------------------------------------------------------------
 
 
 class TestPopupFactory:
     def test_returns_popup_modifier(self) -> None:
         content = _FixedWidget(50, 30)
-        result = modeless(content)
+        result = popup(content)
         assert isinstance(result, PopupModifier)
 
-    def test_light_dismiss_returns_popup_modifier(self) -> None:
-        content = _FixedWidget(50, 30)
-        result = light_dismiss(content)
-        assert isinstance(result, PopupModifier)
-        assert result.light_dismiss is True
+    def test_default_blocks_and_dismisses(self) -> None:
+        """``popup(x)`` is the menu shape: block input, close on outside tap."""
+        box = popup(_FixedWidget(50, 30)).apply(_FixedWidget(80, 40))
+        assert isinstance(box, PopupBox)
+        assert box._passthrough is False
+        assert box._dismiss_on_outside_tap is True
+
+    def test_passthrough_resolves_dismissal_to_false(self) -> None:
+        """``popup(x, passthrough=True)`` is the toast/tooltip shape."""
+        box = popup(_FixedWidget(50, 30), passthrough=True).apply(_FixedWidget(80, 40))
+        assert isinstance(box, PopupBox)
+        assert box._passthrough is True
+        assert box._dismiss_on_outside_tap is False
+
+    def test_explicit_dismissal_overrides_the_resolved_default(self) -> None:
+        box = popup(_FixedWidget(50, 30), dismiss_on_outside_tap=False).apply(_FixedWidget(80, 40))
+        assert isinstance(box, PopupBox)
+        assert box._passthrough is False
+        assert box._dismiss_on_outside_tap is False
+
+    def test_passthrough_with_explicit_dismissal_raises(self) -> None:
+        with pytest.raises(ValueError, match="#508"):
+            popup(_FixedWidget(50, 30), passthrough=True, dismiss_on_outside_tap=True)
 
     def test_default_anchors(self) -> None:
         content = _FixedWidget(50, 30)
-        modifier = modeless(content)
+        modifier = popup(content)
         assert modifier.target_anchor == "bottom-left"
         assert modifier.content_anchor == "top-left"
 
     def test_default_offset(self) -> None:
         content = _FixedWidget(50, 30)
-        modifier = modeless(content)
+        modifier = popup(content)
         assert modifier.offset == (0.0, 0.0)
 
     def test_custom_parameters_forwarded(self) -> None:
         content = _FixedWidget(50, 30)
-        modifier = modeless(
+        modifier = popup(
             content,
             target_anchor="top-right",
             content_anchor="bottom-left",
@@ -441,10 +461,13 @@ class TestPopupFactory:
 # ---------------------------------------------------------------------------
 
 
-def test_modeless_and_light_dismiss_exported_from_modifiers() -> None:
+def test_popup_exported_from_modifiers() -> None:
     import nuiitivet.modifiers as m
+    import nuiitivet
 
-    assert hasattr(m, "modeless"), "modeless must be exported from nuiitivet.modifiers"
-    assert hasattr(m, "light_dismiss"), "light_dismiss must be exported from nuiitivet.modifiers"
-    assert "modeless" in m.__all__
-    assert "light_dismiss" in m.__all__
+    assert hasattr(m, "popup"), "popup must be exported from nuiitivet.modifiers"
+    assert "popup" in m.__all__
+    assert hasattr(nuiitivet, "popup"), "popup must be exported from nuiitivet"
+    assert "popup" in nuiitivet.__all__
+    assert not hasattr(m, "modeless")
+    assert not hasattr(m, "light_dismiss")

@@ -172,8 +172,8 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
 - `overlay_handle` is available from the moment the dialog is mounted. Accessing
   it before the widget has been shown raises `RuntimeError`.
 - `OverlayAware` works with **all** overlay show APIs, including
-  `dialog`, `show_modal`, `show_modeless`, `show_light_dismiss`, `side_sheet`,
-  `bottom_sheet`, and `loading`. It also works when the widget is wrapped in a
+  `show`, `dialog`, `side_sheet`, `bottom_sheet`, and `loading`, regardless of
+  which axes were passed. It also works when the widget is wrapped in a
   `Route` (e.g. `OverlayRoute(builder=lambda: CounterDialog())`).
 - Attempting to display the same `OverlayAware` widget instance while its
   previous handle is still active raises `RuntimeError`. Re-displaying after
