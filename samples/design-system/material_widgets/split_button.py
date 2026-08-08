@@ -71,8 +71,8 @@ def _build_interactive_content() -> nv.Container:
         nv.light_dismiss(
             menu,
             is_open=_menu_open,
-            alignment="bottom-right",
-            anchor="top-right",
+            target_anchor="bottom-right",
+            content_anchor="top-right",
             offset=(0.0, 4.0),
         )
     )

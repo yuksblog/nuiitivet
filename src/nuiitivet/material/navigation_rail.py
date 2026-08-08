@@ -515,11 +515,11 @@ class _RailItemButton(InteractiveWidget):
 
         ix, iy, iw, _ih = icon_lr
         if isinstance(self._badge_widget, LargeBadge):
-            # stick(alignment="top-right", anchor="bottom-left", offset=(-12, 14))
+            # stick(target_anchor="top-right", content_anchor="bottom-left", offset=(-12, 14))
             bx = int(round(ix + iw - 12.0))
             by = int(round(iy + 14.0 - bh))
         else:
-            # SmallBadge: stick(alignment="top-right", anchor="bottom-left", offset=(-6, 6))
+            # SmallBadge: stick(target_anchor="top-right", content_anchor="bottom-left", offset=(-6, 6))
             bx = int(round(ix + iw - 6.0))
             by = int(round(iy + 6.0 - bh))
 

@@ -610,8 +610,8 @@ def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
     assert popup._is_open is picker._is_open
     assert popup._light_dismiss is True
     # Dropdown hangs below the field's bottom-left corner.
-    assert popup._alignment == "bottom-left"
-    assert popup._anchor == "top-left"
+    assert popup._target_anchor == "bottom-left"
+    assert popup._content_anchor == "top-left"
     assert popup._offset == (0.0, picker.style.dropdown_gap)
 
 

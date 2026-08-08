@@ -470,8 +470,8 @@ class SubMenuItem(MenuItem):
         submenu = self._ensure_submenu()
         position = AnchoredOverlayPosition.anchored(
             self._rect_provider,
-            alignment="top-right",
-            anchor="top-left",
+            target_anchor="top-right",
+            content_anchor="top-left",
             offset=(0.0, 0.0),
         )
         self._submenu_handle = overlay.show_modeless(submenu, position=position)

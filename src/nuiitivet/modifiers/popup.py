@@ -40,8 +40,8 @@ class PopupBox(Widget):
         content: Widget,
         *,
         is_open: Optional["Observable[bool]"] = None,
-        alignment: AlignmentLike = "bottom-left",
-        anchor: AlignmentLike = "top-left",
+        target_anchor: AlignmentLike = "bottom-left",
+        content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
         transition_spec: Optional["TransitionSpec"] = None,
         light_dismiss: bool = False,
@@ -54,8 +54,8 @@ class PopupBox(Widget):
             child: Anchor widget that determines popup attachment point.
             content: Widget rendered inside the popup overlay.
             is_open: Optional external observable controlling open/close state.
-            alignment: Reference point on the anchor widget.
-            anchor: Reference point on popup content aligned to ``alignment``.
+            target_anchor: Reference point on the anchor widget.
+            content_anchor: Reference point on the popup content.
             offset: Additional ``(dx, dy)`` offset in pixels.
             transition_spec: Optional transition passed to ``Overlay.show_modeless``.
             light_dismiss: Whether to close on outside tap using
@@ -65,8 +65,8 @@ class PopupBox(Widget):
         """
         super().__init__(width=width, height=height)
         self._content = content
-        self._alignment = alignment
-        self._anchor = anchor
+        self._target_anchor = target_anchor
+        self._content_anchor = content_anchor
         self._offset = offset
         self._transition_spec = transition_spec
         self._light_dismiss = bool(light_dismiss)
@@ -138,8 +138,8 @@ class PopupBox(Widget):
 
         position = AnchoredOverlayPosition.anchored(
             self._rect_provider,
-            alignment=self._alignment,
-            anchor=self._anchor,
+            target_anchor=self._target_anchor,
+            content_anchor=self._content_anchor,
             offset=self._offset,
         )
         try:
@@ -281,8 +281,8 @@ class PopupModifier(ModifierElement):
 
     content: Widget
     is_open: Optional["Observable[bool]"] = None
-    alignment: AlignmentLike = "bottom-left"
-    anchor: AlignmentLike = "top-left"
+    target_anchor: AlignmentLike = "bottom-left"
+    content_anchor: AlignmentLike = "top-left"
     offset: Tuple[float, float] = (0.0, 0.0)
     transition_spec: Optional["TransitionSpec"] = None
     light_dismiss: bool = False
@@ -300,8 +300,8 @@ class PopupModifier(ModifierElement):
             widget,
             self.content,
             is_open=self.is_open,
-            alignment=self.alignment,
-            anchor=self.anchor,
+            target_anchor=self.target_anchor,
+            content_anchor=self.content_anchor,
             offset=self.offset,
             transition_spec=self.transition_spec,
             light_dismiss=self.light_dismiss,
@@ -314,8 +314,8 @@ def modeless(
     content: Widget,
     *,
     is_open: Optional["Observable[bool]"] = None,
-    alignment: AlignmentLike = "bottom-left",
-    anchor: AlignmentLike = "top-left",
+    target_anchor: AlignmentLike = "bottom-left",
+    content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
     transition_spec: Optional["TransitionSpec"] = None,
 ) -> PopupModifier:
@@ -329,9 +329,9 @@ def modeless(
         is_open: ``Observable[bool]`` to control open/close state.
             When ``None``, an internal observable is created and exposed via
             :attr:`PopupBox.is_open`. Callers are responsible for toggling it.
-        alignment: Reference point on the **anchor widget** (default
+        target_anchor: Reference point on the anchor widget (default
             ``"bottom-left"``).
-        anchor: Reference point on the **content widget** to align to (default
+        content_anchor: Reference point on the content widget (default
             ``"top-left"``).
         offset: Additional ``(dx, dy)`` offset in screen pixels.
         transition_spec: Passed directly to :meth:`Overlay.show_modeless` for
@@ -350,8 +350,8 @@ def modeless(
         icon_button.modifier(
             modeless(
                 Menu(...),
-                alignment="bottom-left",
-                anchor="top-left",
+                target_anchor="bottom-left",
+                content_anchor="top-left",
                 offset=(0.0, 4.0),
                 transition_spec=MaterialTransitions.menu(),
             )
@@ -360,8 +360,8 @@ def modeless(
     return PopupModifier(
         content=content,
         is_open=is_open,
-        alignment=alignment,
-        anchor=anchor,
+        target_anchor=target_anchor,
+        content_anchor=content_anchor,
         offset=offset,
         transition_spec=transition_spec,
     )
@@ -371,8 +371,8 @@ def light_dismiss(
     content: Widget,
     *,
     is_open: Optional["Observable[bool]"] = None,
-    alignment: AlignmentLike = "bottom-left",
-    anchor: AlignmentLike = "top-left",
+    target_anchor: AlignmentLike = "bottom-left",
+    content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
     transition_spec: Optional["TransitionSpec"] = None,
 ) -> PopupModifier:
@@ -380,8 +380,8 @@ def light_dismiss(
     return PopupModifier(
         content=content,
         is_open=is_open,
-        alignment=alignment,
-        anchor=anchor,
+        target_anchor=target_anchor,
+        content_anchor=content_anchor,
         offset=offset,
         transition_spec=transition_spec,
         light_dismiss=True,

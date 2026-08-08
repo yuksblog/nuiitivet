@@ -129,23 +129,23 @@ def _overlay_icon(name: str, color: str) -> nv.Widget:
 
 # cloud + upward arrow = "upload to cloud"
 upload = _base_icon("cloud").modifier(
-    nv.stick(_overlay_icon("arrow_upward", "#1A73E8"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("arrow_upward", "#1A73E8"), target_anchor="center", content_anchor="center")
 )
 
 # folder + star = "favorite folder"
 favorite_folder = _base_icon("folder").modifier(
-    nv.stick(_overlay_icon("star", "#F9AB00"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("star", "#F9AB00"), target_anchor="center", content_anchor="center")
 )
 
 # photo + pencil = "edit photo"
 edit_photo = _base_icon("photo").modifier(
-    nv.stick(_overlay_icon("edit", "#188038"), alignment="center", anchor="center")
+    nv.stick(_overlay_icon("edit", "#188038"), target_anchor="center", content_anchor="center")
 )
 ```
 
 ![Stick Modifier](../../assets/modifier_others_stick.png)
 
-The `alignment` parameter sets the reference point on the **target widget**, and `anchor` sets the reference point on the **overlaid widget** that aligns to it. An optional `offset` tuple provides additional pixel adjustment.
+The `target_anchor` parameter sets the reference point on the **target widget**, and `content_anchor` sets the reference point on the **overlaid widget** that lines up with it. An optional `offset` tuple provides additional pixel adjustment.
 
 ## Visible
 

@@ -18,24 +18,24 @@ def main(png: str = "") -> None:
             _base_icon("cloud").modifier(
                 nv.stick(
                     _overlay_icon("arrow_upward", "#1A73E8"),
-                    alignment="center",
-                    anchor="center",
+                    target_anchor="center",
+                    content_anchor="center",
                 )
             ),
             # folder + star = "favorite folder"
             _base_icon("folder").modifier(
                 nv.stick(
                     _overlay_icon("star", "#F9AB00"),
-                    alignment="center",
-                    anchor="center",
+                    target_anchor="center",
+                    content_anchor="center",
                 )
             ),
             # photo + pencil = "edit photo"
             _base_icon("photo").modifier(
                 nv.stick(
                     _overlay_icon("edit", "#188038"),
-                    alignment="center",
-                    anchor="center",
+                    target_anchor="center",
+                    content_anchor="center",
                 )
             ),
         ],

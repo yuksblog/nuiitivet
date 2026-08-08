@@ -515,8 +515,8 @@ class FabMenu(Widget):
             light_dismiss(
                 self._list,
                 is_open=self._is_open,
-                alignment="top-right",
-                anchor="bottom-right",
+                target_anchor="top-right",
+                content_anchor="bottom-right",
                 offset=(0.0, -_CLOSE_BUTTON_BETWEEN_SPACE),
             )
         )

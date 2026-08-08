@@ -28,15 +28,15 @@ def test_large_badge_validates_empty_text() -> None:
 
 def test_small_badge_stick_modifier_defaults() -> None:
     modifier = SmallBadge().stick_modifier()
-    assert modifier.alignment == "top-right"
-    assert modifier.anchor == "bottom-left"
+    assert modifier.target_anchor == "top-right"
+    assert modifier.content_anchor == "bottom-left"
     assert modifier.offset == (-6.0, 6.0)
 
 
 def test_large_badge_stick_modifier_defaults() -> None:
     modifier = LargeBadge("1").stick_modifier()
-    assert modifier.alignment == "top-right"
-    assert modifier.anchor == "bottom-left"
+    assert modifier.target_anchor == "top-right"
+    assert modifier.content_anchor == "bottom-left"
     assert modifier.offset == (-12.0, 14.0)
 
 
