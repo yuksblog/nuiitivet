@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
-from typing import Any, Callable, Literal, Mapping, TypeVar
+from typing import Any, Callable, Literal, Mapping, Protocol, TypeVar
 
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.buttons import Button
@@ -52,6 +52,17 @@ class _MappingIntentResolver(IntentResolver):
         return factory(intent)
 
 
+class _LoadingHost(Protocol):
+    """The single method :class:`WhileLoading` delegates to.
+
+    Typing the host structurally keeps :class:`WhileLoading` usable from a
+    ViewModel test double that implements ``MaterialOverlayProtocol`` without
+    inheriting :class:`MaterialOverlay`.
+    """
+
+    def loading(self, indicator: Widget | Any | None = None) -> OverlayHandle[Any]: ...
+
+
 class WhileLoading(AbstractContextManager[None], AbstractAsyncContextManager[None]):
     """Context manager that shows a loading indicator for the duration of a block.
 
@@ -65,7 +76,7 @@ class WhileLoading(AbstractContextManager[None], AbstractAsyncContextManager[Non
             await fetch_data()
     """
 
-    def __init__(self, overlay: "MaterialOverlay", indicator: Widget | Any | None) -> None:
+    def __init__(self, overlay: _LoadingHost, indicator: Widget | Any | None) -> None:
         self._overlay = overlay
         self._indicator = indicator
         self._handle: OverlayHandle[Any] | None = None

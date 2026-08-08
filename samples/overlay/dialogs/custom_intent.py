@@ -65,7 +65,7 @@ class CustomIntentViewModel:
     def __init__(self):
         self.message = nv.Observable("No result yet")
 
-    async def open_counter(self, overlay: nv.Overlay):
+    async def open_counter(self, overlay: nv.OverlayProtocol):
         # The ViewModel just emits an intent and waits for a result
         result = await overlay.dialog(CounterIntent(initial_value=5))
 

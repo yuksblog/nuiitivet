@@ -7,6 +7,7 @@ from .overlay_handle import OverlayHandle
 from .overlay import Overlay
 from .overlay_entry import OverlayEntry
 from .overlay_position import AnchoredOverlayPosition, OverlayPosition
+from .protocols import OverlayProtocol
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .result import OverlayDismissReason, OverlayResult
 from .toast import PlainToast
@@ -26,6 +27,7 @@ __all__ = [
     "OverlayAware",
     "OverlayEntry",
     "OverlayHandle",
+    "OverlayProtocol",
     "OverlayResult",
     "PlainToast",
     "OverlayPosition",

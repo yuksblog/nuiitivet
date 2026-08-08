@@ -79,6 +79,7 @@ if TYPE_CHECKING:
     from .navigator import MaterialNavigator as Navigator
     from .overlay import MaterialOverlay as Overlay
     from .overlay import WhileLoading
+    from .protocols import MaterialOverlayProtocol as OverlayProtocol
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
     from .toolbar import DockedToolbar, HorizontalFloatingToolbar, VerticalFloatingToolbar
     from .tooltip_widgets import Tooltip, RichTooltip
@@ -171,6 +172,7 @@ __all__ = [
     "RailItem",
     "Navigator",
     "Overlay",
+    "OverlayProtocol",
     "WhileLoading",
     "BasicDialog",
     "LoadingIndicator",
@@ -282,6 +284,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "RailItem": ("navigation_rail", "RailItem"),
     "Navigator": ("navigator", "MaterialNavigator"),
     "Overlay": ("overlay", "MaterialOverlay"),
+    "OverlayProtocol": ("protocols", "MaterialOverlayProtocol"),
     "WhileLoading": ("overlay", "WhileLoading"),
     "LoadingScope": ("overlay", "LoadingScope"),
     "BasicDialog": ("dialogs", "BasicDialog"),

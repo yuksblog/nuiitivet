@@ -85,10 +85,21 @@ class DetailsIntent:
     item_id: int
 
 class ItemViewModel:
-    def __init__(self, navigator):          # the root navigator
-        self.navigator = navigator
-    def open(self, item_id: int):
-        self.navigator.push(DetailsIntent(item_id=item_id))
+    # The navigator is passed per call, not stored: it cannot be resolved in
+    # __init__ (see "Resolving a navigator / overlay" below).
+    def open(self, navigator: nv.NavigatorProtocol, item_id: int):
+        navigator.push(DetailsIntent(item_id=item_id))
+
+class HomeScreen(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.vm = ItemViewModel()
+    def build(self):
+        return nv.Button(
+            "Open",
+            on_click=lambda: self.vm.open(nv.Navigator.root(), item_id=42),
+            style=nv.ButtonStyle.filled(),
+        )
 
 def main():
     # rule 6: pass a factory, not an already-built Navigator, so live development works
@@ -107,3 +118,32 @@ def main():
 
 The same Intent approach applies to dialogs from a ViewModel via `nv.Overlay` and
 an intent resolver.
+
+## Typing the injected navigator / overlay
+
+Annotate what a ViewModel receives with the protocols, not the concrete widgets:
+
+- `nv.NavigatorProtocol` — `push()`, `pop()`, `can_pop()`.
+- `nv.OverlayProtocol` — `dialog()`, `snackbar()`, `loading()`, `while_loading()`,
+  `side_sheet()`, `bottom_sheet()`, `close()`.
+
+`nv.Navigator` / `nv.Overlay` satisfy them structurally, so call sites are unchanged;
+the VM becomes type-checkable and unit-testable against a hand-written fake with no
+widget tree and no `App`. There is no `INavigator` / `IOverlay` — those names do not
+exist.
+
+`nuiitivet.OverlayProtocol` (core) is a *different, smaller* protocol carrying only
+`close()`, mirroring how `nv.Overlay` is `MaterialOverlay` while core `Overlay` has no
+`dialog` / `snackbar` / sheet helpers. From an app, use the `nv.` one.
+
+## Resolving a navigator / overlay
+
+**Never in `__init__`.** Both fail there, for different reasons:
+
+- `nv.Navigator.of(self)` / `nv.Overlay.of(self)` — the widget has no parent until it is
+  attached to the tree; raises `RuntimeError`.
+- `nv.Navigator.root()` / `nv.Overlay.root()` — `App` builds the content tree *before*
+  registering the roots, so at `__init__` time there is no root yet.
+
+Resolve one in the event handler, **every time**. This is also why a VM takes the
+navigator/overlay per call rather than in its constructor.

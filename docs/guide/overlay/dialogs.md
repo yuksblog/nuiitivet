@@ -244,7 +244,7 @@ class DecoupledViewModel:
     def __init__(self):
         self.status = nv.Observable("Ready")
 
-    async def process_action(self, overlay: nv.Overlay):
+    async def process_action(self, overlay: nv.OverlayProtocol):
         self.status.value = "Processing..."
         
         # We just create a data description of what we want
@@ -260,6 +260,15 @@ class DecoupledViewModel:
 ```
 
 ![Decoupled Intent](../../assets/dialogs_view_model_intent.png)
+
+## Typing the Overlay: `nv.OverlayProtocol`
+
+Annotate the overlay a ViewModel receives as `nv.OverlayProtocol`, not the concrete
+`nv.Overlay`, as in the example above. A test can then pass a fake with no widget tree and
+no `App`.
+
+Pass it **per call**, resolved in the event handler: `nv.Overlay.root()` and
+`nv.Overlay.of(self)` do not work from a widget's `__init__`.
 
 ## Custom Intents
 
@@ -301,7 +310,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 
    ```python
    class MyViewModel:
-       async def open_counter(self, overlay: nv.Overlay):
+       async def open_counter(self, overlay: nv.OverlayProtocol):
            # Pure logic, using our custom intent
            result = await overlay.dialog(CounterIntent(initial_value=5))
            

@@ -101,22 +101,65 @@ nv.Button(
 
 Intent-based navigation is highly recommended, especially when navigating from a ViewModel or controller. It allows your business logic to request a screen transition without needing to know how that screen is built or what widgets it uses. This separation of concerns makes your code more modular, testable, and easier to maintain.
 
-Here is an example of how a ViewModel can trigger navigation using `Navigator` and Intents. You can pass `Navigator.root()` to your ViewModel:
+Here is an example of how a ViewModel can trigger navigation using `Navigator` and Intents:
 
 ```python
 import nuiitivet.material as nv
 
 class ItemViewModel:
-    def __init__(self, item_id: int, navigator: nv.Navigator):
+    def __init__(self, item_id: int):
         self.item_id = item_id
-        # The ViewModel only needs Navigator for dispatching intents.
-        self.navigator = navigator
 
-    def on_item_selected(self):
-        self.navigator.push(DetailsIntent(item_id=self.item_id))
+    # The navigator is passed in, so the ViewModel never touches a widget.
+    def on_item_selected(self, navigator: nv.NavigatorProtocol):
+        navigator.push(DetailsIntent(item_id=self.item_id))
 
-# In your View or composition root:
-# view_model = ItemViewModel(item_id=42, navigator=Navigator.root())
+
+class HomeScreen(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.vm = ItemViewModel(item_id=42)
+
+    def build(self):
+        def go_to_details():
+            self.vm.on_item_selected(nv.Navigator.root())
+
+        return nv.Button("View Details", on_click=go_to_details, style=nv.ButtonStyle.filled())
 ```
 
-Because the ViewModel only depends on `Navigator` and `DetailsIntent`, you can test the navigation decision logic in isolation.
+!!! warning "Not in `__init__`"
+    Neither `nv.Navigator.of(self)` nor `nv.Navigator.root()` works there. Resolve one in
+    the event handler, every time.
+
+Because the ViewModel only depends on `NavigatorProtocol` and `DetailsIntent`, you can test the navigation decision logic in isolation.
+
+## Testing a ViewModel
+
+A fake needs only `push()`, `pop()`, and `can_pop()` — no widget tree, no `App`.
+
+```python
+class FakeNavigator:
+    def __init__(self):
+        self.pushed = []
+
+    def push(self, route_or_widget_or_intent):
+        self.pushed.append(route_or_widget_or_intent)
+
+    def pop(self):
+        if self.pushed:
+            self.pushed.pop()
+
+    def can_pop(self):
+        return bool(self.pushed)
+
+
+def test_selecting_an_item_navigates_to_details():
+    navigator = FakeNavigator()
+
+    ItemViewModel(item_id=42).on_item_selected(navigator)
+
+    assert navigator.pushed == [DetailsIntent(item_id=42)]
+```
+
+For the overlay side of the same boundary, see
+[Dialogs](../overlay/dialogs.md#typing-the-overlay-nvoverlayprotocol).

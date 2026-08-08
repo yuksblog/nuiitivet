@@ -50,9 +50,14 @@ Note: The `Overlay` core provides only `show_modal()` / `show_modeless()` / `sho
 ### 2.1 API Consistency with Navigator
 
 - `App` provides a root Overlay and a global access API.
-- `IOverlay` is provided to ensure ViewModels do not depend on implementation details.
   - `Overlay.root()`: Root Overlay. Use this in the common case.
   - `Overlay.of(context)`: Nearest ancestor Overlay. Use this only when an `Overlay` is intentionally nested inside the widget tree and the inner instance must be reached instead of the root.
+- Protocols are provided to ensure ViewModels do not depend on implementation details.
+  Core `OverlayProtocol` (`nuiitivet.overlay.protocols`) covers `close()` only, since the
+  presentation helpers live on `MaterialOverlay`; `MaterialOverlayProtocol`
+  (`nuiitivet.material.protocols`) extends it with `dialog` / `snackbar` / `loading` /
+  `while_loading` / `side_sheet` / `bottom_sheet`, and is exported as `nv.OverlayProtocol`
+  — the same aliasing as `nv.Overlay` for `MaterialOverlay`.
 
 ### 2.2 Overlay Core provides only `show_modal()` / `show_modeless()` / `show_light_dismiss()`
 

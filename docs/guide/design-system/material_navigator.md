@@ -31,9 +31,11 @@ nv.App(HomeScreen()).run()
 ```python
 import nuiitivet.material as nv
 
-nv.Navigator.root()    # root navigator, accessible from anywhere
+nv.Navigator.root()    # root navigator
 nv.Navigator.of(self)  # nearest ancestor Navigator — use only with nested navigators
 ```
+
+Neither can be resolved from a widget's `__init__`. Resolve one in the event handler, every time.
 
 ## Further Reading
 
