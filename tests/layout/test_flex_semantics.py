@@ -8,11 +8,11 @@ siblings split the extent in proportion to their weights.
 
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
-from nuiitivet.overlay.overlay import _PositionedOverlayContent
+from nuiitivet.overlay.overlay_position import OverlayPosition
 
 
 def _positioned(child: Container, width: int, height: int) -> None:
-    content = _PositionedOverlayContent(child, alignment="center", offset=(0.0, 0.0))
+    content = OverlayPosition.aligned("center").make_position_content(child)
     content.layout(width, height)
 
 

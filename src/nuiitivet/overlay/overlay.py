@@ -11,7 +11,6 @@ from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.container import Container
-from nuiitivet.layout.alignment import normalize_alignment
 from nuiitivet.modifiers.background import background
 from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.observable import Observable
@@ -24,7 +23,7 @@ from nuiitivet.common.logging_once import exception_once
 from .overlay_aware import OverlayAware
 from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
-from .overlay_position import AnchoredOverlayPosition, OverlayPosition
+from .overlay_position import OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 from .transition_state import OverlayTransitionState
@@ -565,7 +564,7 @@ class Overlay(ComposableWidget):
         dismiss_on_outside_tap: bool = False,
         barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
         timeout: float | None = None,
-        position: OverlayPosition | AnchoredOverlayPosition | None = None,
+        position: OverlayPosition | None = None,
         transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Show modal content as an overlay entry.
@@ -590,7 +589,7 @@ class Overlay(ComposableWidget):
         content: Widget | Route,
         *,
         timeout: float | None = None,
-        position: OverlayPosition | AnchoredOverlayPosition | None = None,
+        position: OverlayPosition | None = None,
         transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Show modeless content as an overlay entry.
@@ -615,7 +614,7 @@ class Overlay(ComposableWidget):
         content: Widget | Route,
         *,
         timeout: float | None = None,
-        position: OverlayPosition | AnchoredOverlayPosition | None = None,
+        position: OverlayPosition | None = None,
         transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Show content with light-dismiss behavior.
@@ -646,7 +645,7 @@ class Overlay(ComposableWidget):
         dismiss_on_outside_tap: bool,
         barrier_color: tuple[int, int, int, int],
         timeout: float | None,
-        position: OverlayPosition | AnchoredOverlayPosition | None,
+        position: OverlayPosition | None,
         transition_spec: TransitionSpec | None,
         use_route_barrier: bool,
     ) -> OverlayHandle[Any]:
@@ -671,16 +670,10 @@ class Overlay(ComposableWidget):
             if route_barrier_dismissible is not None and dismiss_on_outside_tap is False:
                 barrier_dismissible = bool(route_barrier_dismissible)
 
-        effective_position = position or OverlayPosition.alignment("center")
+        effective_position = position or OverlayPosition.aligned("center")
 
         def position_content(content: Widget) -> Widget:
-            if isinstance(effective_position, AnchoredOverlayPosition):
-                return effective_position.make_position_content(content)
-            return _PositionedOverlayContent(
-                content,
-                alignment=effective_position.alignment_key,
-                offset=effective_position.offset,
-            )
+            return effective_position.make_position_content(content)
 
         def on_dispose() -> None:
             self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
@@ -906,64 +899,3 @@ class Overlay(ComposableWidget):
                 f"Did you forget to wrap your widget in an {cls.__name__}?"
             )
         return overlay
-
-
-class _PositionedOverlayContent(Widget):
-    def __init__(self, child: Widget, *, alignment: str, offset: tuple[float, float]) -> None:
-        super().__init__(width="100%", height="100%")
-        self._child = child
-        self._alignment = str(alignment)
-        dx, dy = offset
-        self._offset = (float(dx), float(dy))
-        self.add_child(child)
-
-    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> tuple[int, int]:
-        # This widget expands; preferred size is irrelevant.
-        return (0, 0)
-
-    def layout(self, width: int, height: int) -> None:
-        super().layout(width, height)
-
-        child = self._child
-        cw, ch = child.preferred_size(max_width=width, max_height=height)
-        target_w = int(cw)
-        target_h = int(ch)
-
-        # Flex is a weight, not a fraction of the parent. The overlay content is
-        # the sole claimant on both axes, so a flex child fills the available
-        # extent (see docs/design/SIZE_POLICY.md).
-        if hasattr(child, "width_sizing") and child.width_sizing.kind == "flex":
-            target_w = width
-        if hasattr(child, "height_sizing") and child.height_sizing.kind == "flex":
-            target_h = height
-
-        ax, ay = normalize_alignment(self._alignment, default=("center", "center"))
-
-        def get_pos(align: str, parent_size: int, child_size: int) -> int:
-            if align == "center":
-                return (parent_size - child_size) // 2
-            if align == "end":
-                return parent_size - child_size
-            return 0
-
-        dx, dy = self._offset
-        x = int(get_pos(ax, width, target_w) + dx)
-        y = int(get_pos(ay, height, target_h) + dy)
-
-        child.layout(target_w, target_h)
-        child.set_layout_rect(x, y, target_w, target_h)
-
-    def paint(self, canvas, x: int, y: int, width: int, height: int):
-        child = self._child
-        rect = child.layout_rect
-        if rect is None:
-            return
-        cx, cy, cw, ch = rect
-        child.paint(canvas, int(x) + int(cx), int(y) + int(cy), int(cw), int(ch))
-
-        setter = getattr(child, "set_last_rect", None)
-        if callable(setter):
-            setter(int(x) + int(cx), int(y) + int(cy), int(cw), int(ch))
-
-    # No hit_test override needed: a transparent full-screen positioning wrapper
-    # defers to its child under the ``auto`` default and never catches on self.

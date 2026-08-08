@@ -20,7 +20,7 @@ from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
-from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
+from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.theme import Theme
@@ -468,7 +468,7 @@ class SubMenuItem(MenuItem):
             return
 
         submenu = self._ensure_submenu()
-        position = AnchoredOverlayPosition.anchored(
+        position = OverlayPosition.anchored(
             self._rect_provider,
             target_anchor="top-right",
             content_anchor="top-left",

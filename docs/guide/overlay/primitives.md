@@ -47,7 +47,7 @@ overlay = nv.Overlay.root()
 handle = overlay.show_modeless(
     nv.Text("Operation complete"),
     timeout=3.0,
-    position=OverlayPosition.alignment("bottom-center", offset=(0, -24)),
+    position=OverlayPosition.aligned("bottom-center", offset=(0, -24)),
 )
 ```
 
@@ -72,7 +72,7 @@ overlay = nv.Overlay.root()
 
 handle = overlay.show_light_dismiss(
     MenuWidget(),
-    position=OverlayPosition.alignment("top-left"),
+    position=OverlayPosition.aligned("top-left"),
 )
 ```
 
@@ -110,14 +110,53 @@ print(result.reason)    # OverlayDismissReason.CLOSED
 
 ## OverlayPosition
 
-`OverlayPosition.alignment(alignment, *, offset=(0, 0))` specifies where the content appears within the overlay root. Supported alignment values:
+`OverlayPosition` is the single type describing where overlay content goes. Build one with a named constructor — never by calling the class directly — and pass it as `position=` to any show API.
 
-`top-left`, `top-center`, `top-right`, `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`
+| Constructor | Places content relative to |
+| --- | --- |
+| `OverlayPosition.aligned(alignment, *, offset)` | the overlay root (the whole window) |
+| `OverlayPosition.anchored(rect_provider, target_anchor, content_anchor, offset)` | a widget's screen rect |
+| `OverlayPosition.at_point(x, y, *, content_anchor, offset)` | a screen point |
+| `OverlayPosition.at_pointer(event, *, content_anchor, offset)` | a `PointerEvent`'s screen point |
+
+### Relative to the overlay root
+
+`aligned()` takes one of the nine-point placements: `top-left`, `top-center`, `top-right`, `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`.
 
 ```python
 # Bottom center with 24 px upward offset
-position = OverlayPosition.alignment("bottom-center", offset=(0, -24))
+position = OverlayPosition.aligned("bottom-center", offset=(0, -24))
 ```
+
+### Relative to a widget
+
+`anchored()` lines up `content_anchor` on the content with `target_anchor` on the anchor widget. The rect is resolved on every layout pass, so the content follows the anchor as it moves. This is what the [`modeless` / `light_dismiss` modifiers](../modifiers/popup.md) build for you.
+
+### Relative to a point
+
+A point has no extent, so there is no `target_anchor` to choose — `content_anchor` alone decides which corner of the content lands on the point.
+
+```python
+def on_press(event: nv.PointerEvent) -> None:
+    nv.Overlay.root().show_modeless(
+        indicator,
+        position=nv.OverlayPosition.at_pointer(
+            event,
+            content_anchor="bottom-center",
+            offset=(0, -8),
+        ),
+    )
+
+image.modifier(nv.pointer_input(on_press=on_press))
+```
+
+Prefer `at_pointer(event)` over `at_point(event.x, event.y)`: a `PointerEvent` carries both screen (`x`/`y`) and widget-relative (`local_x`/`local_y`) coordinates, and only the screen pair is meaningful to an overlay. Passing the event lets the constructor pick the right one.
+
+For the common "right-click → menu at the cursor" case, reach for the [`context_menu` modifier](../modifiers/popup.md#context_menu) instead — it owns the click coordinate and the open state for you.
+
+### Staying on screen
+
+Anchored and point positions keep their content inside the viewport, so a menu opened near the right or bottom edge is pulled back into view rather than clipped. Pass `clamp=False` to opt out.
 
 ## OverlayAware
 

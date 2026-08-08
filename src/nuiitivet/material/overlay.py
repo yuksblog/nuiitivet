@@ -220,7 +220,7 @@ class MaterialOverlay(Overlay):
         return self.show_modeless(
             widget,
             timeout=float(duration),
-            position=OverlayPosition.alignment("bottom-center", offset=(0.0, -24.0)),
+            position=OverlayPosition.aligned("bottom-center", offset=(0.0, -24.0)),
             transition_spec=MaterialTransitions.snackbar(),
         )
 
@@ -248,7 +248,7 @@ class MaterialOverlay(Overlay):
         return self.show_modeless(
             resolved,
             timeout=None,
-            position=OverlayPosition.alignment("center"),
+            position=OverlayPosition.aligned("center"),
         )
 
     def while_loading(
@@ -320,7 +320,7 @@ class MaterialOverlay(Overlay):
         return self.show_modal(
             route,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
-            position=OverlayPosition.alignment(alignment),
+            position=OverlayPosition.aligned(alignment),
         )
 
     def bottom_sheet(
@@ -352,5 +352,5 @@ class MaterialOverlay(Overlay):
         return self.show_modal(
             route,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
-            position=OverlayPosition.alignment("bottom-center"),
+            position=OverlayPosition.aligned("bottom-center"),
         )

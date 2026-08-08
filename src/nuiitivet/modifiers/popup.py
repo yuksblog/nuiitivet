@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple
 from nuiitivet.layout.alignment import AlignmentLike
 from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
 from nuiitivet.observable import runtime
-from nuiitivet.overlay.overlay_position import AnchoredOverlayPosition
+from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
@@ -136,7 +136,7 @@ class PopupBox(Widget):
 
         from nuiitivet.overlay.overlay import Overlay
 
-        position = AnchoredOverlayPosition.anchored(
+        position = OverlayPosition.anchored(
             self._rect_provider,
             target_anchor=self._target_anchor,
             content_anchor=self._content_anchor,
@@ -235,7 +235,7 @@ class PopupBox(Widget):
             self._handle = None
 
     # ------------------------------------------------------------------
-    # Rect provider for AnchoredOverlayPosition
+    # Rect provider for OverlayPosition.anchored()
     # ------------------------------------------------------------------
 
     def _rect_provider(self) -> Optional[Tuple[int, int, int, int]]:
