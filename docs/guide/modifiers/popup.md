@@ -2,7 +2,7 @@
 
 Popup modifiers attach transient overlay content to a widget. They are useful for menus, dropdowns, and tooltips that appear anchored to a specific widget.
 
-All three modifiers — `modeless`, `light_dismiss`, and `tooltip` — share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`.
+`modeless`, `light_dismiss`, and `tooltip` share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`. `context_menu` anchors to the click point instead of the widget.
 
 ## modeless
 
@@ -129,9 +129,47 @@ target = nv.Container(
 
 The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.material`, but any widget is accepted.
 
+## context_menu
+
+The `context_menu` modifier opens a menu **at the pointer** when the widget is right-clicked (secondary button). It closes on an outside tap.
+
+Where `modeless` and `light_dismiss` anchor to the widget's rect and are driven by an external `is_open`, a context menu is driven by the click itself. The modifier owns both the open state and the transient click coordinate, so neither appears in your code — there is no `Observable` to wire up and no pointer handler to write.
+
+```python
+import nuiitivet.material as nv
+
+tile = nv.Container(
+    width=160,
+    height=110,
+    child=nv.Text("Photo"),
+    alignment="center",
+).modifier(
+    nv.background("#90CAF9")
+    | nv.corner_radius(12)
+    | nv.context_menu(
+        nv.Menu(
+            items=[
+                nv.MenuItem("Open", leading_icon="open_in_new"),
+                nv.MenuItem("Rename", leading_icon="edit"),
+                nv.MenuDivider(),
+                nv.MenuItem("Delete", leading_icon="delete"),
+            ],
+        )
+    )
+)
+```
+
+`content_anchor` decides which corner of the menu lands on the click point (default `"top-left"`, so the menu hangs down-right of the cursor). There is no `target_anchor`: a point has no extent.
+
+The menu is kept inside the viewport, so a right-click near the right or bottom edge pulls it back into view instead of clipping it.
+
+Because the open menu's light-dismiss layer covers the widget and only the primary button dismisses it, a second right-click elsewhere is swallowed rather than moving the menu — close it with a left click first.
+
+For an imperative variant — placing arbitrary content at a click point without a menu — use [`OverlayPosition.at_pointer()`](../overlay/primitives.md#relative-to-a-point) directly.
+
 ### Placement
 
-All three modifiers accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget.
+`modeless`, `light_dismiss`, and `tooltip` accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget. (`context_menu` anchors to a point, so it takes `content_anchor` and `offset` only.)
 
 | Parameter        | Description                                     | Default            |
 |------------------|-------------------------------------------------|--------------------|

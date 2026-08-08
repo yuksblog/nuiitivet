@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.modifiers.popup import PopupBox, PopupModifier, modeless, light_dismiss
 from nuiitivet.overlay.overlay_position import (
-    AnchoredOverlayPosition,
+    OverlayPosition,
     _AnchoredPositionedContent,
 )
 from nuiitivet.widgeting.widget import Widget
@@ -34,39 +35,39 @@ class _FixedWidget(Widget):
 
 
 # ---------------------------------------------------------------------------
-# AnchoredOverlayPosition
+# OverlayPosition.anchored()
 # ---------------------------------------------------------------------------
 
 
-class TestAnchoredOverlayPosition:
+class TestOverlayPositionAnchored:
     def test_anchored_factory_returns_instance(self) -> None:
-        pos = AnchoredOverlayPosition.anchored(lambda: (0, 0, 100, 50))
-        assert isinstance(pos, AnchoredOverlayPosition)
+        pos = OverlayPosition.anchored(lambda: (0, 0, 100, 50))
+        assert isinstance(pos, OverlayPosition)
 
     def test_make_position_content_returns_anchored_widget(self) -> None:
-        pos = AnchoredOverlayPosition.anchored(lambda: (10, 20, 100, 50))
+        pos = OverlayPosition.anchored(lambda: (10, 20, 100, 50))
         content = _FixedWidget(60, 40)
         wrapped = pos.make_position_content(content)
         assert isinstance(wrapped, _AnchoredPositionedContent)
 
-    def test_default_alignment_bottom_left_to_top_left(self) -> None:
-        """With alignment=bottom-left and anchor=top-left, content should
-        appear directly below the anchor widget."""
+    def test_default_anchors_place_content_below(self) -> None:
+        """With target_anchor=bottom-left and content_anchor=top-left, content
+        should appear directly below the anchor widget."""
         anchor_rect = (50, 100, 80, 30)  # x=50, y=100, w=80, h=30
-        pos = AnchoredOverlayPosition.anchored(lambda: anchor_rect)
+        pos = OverlayPosition.anchored(lambda: anchor_rect)
         content = _FixedWidget(60, 40)
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
 
-        # alignment "bottom-left" on anchor → point (0, 30) relative to anchor
-        # anchor "top-left" on content → point (0, 0)
+        # target_anchor "bottom-left" → point (0, 30) relative to the anchor
+        # content_anchor "top-left" → point (0, 0) on the content
         # expected: (50 + 0 - 0, 100 + 30 - 0) = (50, 130)
         assert content.layout_rect == (50, 130, 60, 40)
 
-    def test_alignment_top_right_to_top_left(self) -> None:
+    def test_target_anchor_top_right(self) -> None:
         """Content pinned to the right edge of the anchor."""
         anchor_rect = (20, 40, 100, 50)
-        pos = AnchoredOverlayPosition.anchored(
+        pos = OverlayPosition.anchored(
             lambda: anchor_rect,
             target_anchor="top-right",
             content_anchor="top-left",
@@ -75,13 +76,13 @@ class TestAnchoredOverlayPosition:
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
 
-        # alignment "top-right" on anchor → (100, 0) relative; anchor "top-left" → (0, 0)
+        # target_anchor "top-right" → (100, 0) relative; content_anchor "top-left" → (0, 0)
         # expected: (20+100-0, 40+0-0) = (120, 40)
         assert content.layout_rect == (120, 40, 80, 30)
 
     def test_offset_applied(self) -> None:
         anchor_rect = (50, 100, 80, 30)
-        pos = AnchoredOverlayPosition.anchored(
+        pos = OverlayPosition.anchored(
             lambda: anchor_rect,
             offset=(5.0, -3.0),
         )
@@ -94,11 +95,106 @@ class TestAnchoredOverlayPosition:
 
     def test_rect_none_falls_back_to_origin(self) -> None:
         """When the rect provider returns None, content is placed at (0, 0)."""
-        pos = AnchoredOverlayPosition.anchored(lambda: None)
+        pos = OverlayPosition.anchored(lambda: None)
         content = _FixedWidget(50, 30)
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
         assert content.layout_rect == (0, 0, 50, 30)
+
+
+# ---------------------------------------------------------------------------
+# OverlayPosition.at_point() / at_pointer()
+# ---------------------------------------------------------------------------
+
+
+class TestOverlayPositionAtPoint:
+    def test_content_top_left_lands_on_the_point(self) -> None:
+        pos = OverlayPosition.at_point(120, 200)
+        content = _FixedWidget(60, 40)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (120, 200, 60, 40)
+
+    def test_content_anchor_shifts_the_content_off_the_point(self) -> None:
+        """bottom-center puts the point at the middle of the content's bottom edge."""
+        pos = OverlayPosition.at_point(300, 300, content_anchor="bottom-center")
+        content = _FixedWidget(80, 20)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (260, 280, 80, 20)
+
+    def test_offset_applied_to_the_point(self) -> None:
+        pos = OverlayPosition.at_point(100, 100, offset=(-8.0, 12.0))
+        content = _FixedWidget(30, 30)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (92, 112, 30, 30)
+
+    def test_at_pointer_uses_screen_not_local_coordinates(self) -> None:
+        """The event carries both pairs; only the screen pair positions overlays."""
+        event = PointerEvent(
+            id=1,
+            type=PointerEventType.PRESS,
+            x=400.0,
+            y=250.0,
+            local_x=12.0,
+            local_y=9.0,
+        )
+        pos = OverlayPosition.at_pointer(event)
+        content = _FixedWidget(50, 50)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (400, 250, 50, 50)
+
+
+# ---------------------------------------------------------------------------
+# Viewport clamping
+# ---------------------------------------------------------------------------
+
+
+class TestViewportClamping:
+    def test_content_past_the_right_edge_is_pulled_back(self) -> None:
+        pos = OverlayPosition.at_point(780, 100)
+        content = _FixedWidget(100, 40)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        # Would have run to x=880; clamped so the right edge sits at 800.
+        assert content.layout_rect == (700, 100, 100, 40)
+
+    def test_content_past_the_bottom_edge_is_pulled_back(self) -> None:
+        pos = OverlayPosition.at_point(100, 590)
+        content = _FixedWidget(40, 80)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (100, 520, 40, 80)
+
+    def test_negative_position_is_pulled_to_the_origin(self) -> None:
+        pos = OverlayPosition.at_point(10, 10, content_anchor="bottom-right")
+        content = _FixedWidget(60, 60)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (0, 0, 60, 60)
+
+    def test_content_larger_than_the_viewport_pins_to_the_origin(self) -> None:
+        pos = OverlayPosition.at_point(400, 300)
+        content = _FixedWidget(1000, 900)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (0, 0, 1000, 900)
+
+    def test_clamp_false_leaves_the_content_off_screen(self) -> None:
+        pos = OverlayPosition.at_point(780, 100, clamp=False)
+        content = _FixedWidget(100, 40)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (780, 100, 100, 40)
+
+    def test_widget_anchored_content_is_clamped_too(self) -> None:
+        pos = OverlayPosition.anchored(lambda: (760, 560, 40, 40))
+        content = _FixedWidget(120, 90)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (680, 510, 120, 90)
 
 
 # ---------------------------------------------------------------------------
@@ -109,13 +205,13 @@ class TestAnchoredOverlayPosition:
 class TestAnchoredPositionedContent:
     def test_preferred_size_is_zero(self) -> None:
         content = _FixedWidget(100, 80)
-        pos = AnchoredOverlayPosition.anchored(lambda: (0, 0, 50, 50))
+        pos = OverlayPosition.anchored(lambda: (0, 0, 50, 50))
         placed = pos.make_position_content(content)
         assert placed.preferred_size() == (0, 0)
 
     def test_hit_test_returns_none_for_self(self) -> None:
         content = _FixedWidget(100, 80)
-        pos = AnchoredOverlayPosition.anchored(lambda: (0, 0, 50, 50))
+        pos = OverlayPosition.anchored(lambda: (0, 0, 50, 50))
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
         # No child is at (500, 500) in this layout; super().hit_test returns self

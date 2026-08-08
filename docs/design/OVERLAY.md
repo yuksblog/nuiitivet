@@ -129,11 +129,17 @@ def show_light_dismiss(
 - Outside-tap dismissal is achieved by closing when the barrier layer receives a pointer event.
 - If the content covers the entire viewport, outside-tap dismissal will not function.
 
-### 2.4 Positioning: `OverlayPosition` (v1)
+### 2.4 Positioning: `OverlayPosition`
 
-v1 provides only alignment and offset.
+`OverlayPosition` is the single type describing placement. Instances are built
+through named constructors; every kind exposes the same
+`make_position_content(content) -> Widget` hook, so the show APIs take one
+position argument and never branch on which kind they were given.
 
-- `OverlayPosition.alignment(alignment: str, *, offset: tuple[float, float] = (0, 0))`
+- `OverlayPosition.aligned(alignment: str = "center", *, offset=(0, 0))` — relative to the overlay root
+- `OverlayPosition.anchored(rect_provider, target_anchor, content_anchor, offset, *, clamp=True)` — relative to a widget's screen rect
+- `OverlayPosition.at_point(x, y, *, content_anchor, offset, clamp=True)` — relative to a screen point
+- `OverlayPosition.at_pointer(event, *, content_anchor, offset, clamp=True)` — relative to a `PointerEvent`'s screen point
 
 `alignment` follows the vocabulary for single-child alignment defined in [LAYOUT.md](LAYOUT.md).
 
@@ -141,7 +147,15 @@ v1 provides only alignment and offset.
 - `"center-left"`, `"center"`, `"center-right"`
 - `"bottom-left"`, `"bottom-center"`, `"bottom-right"`
 
-`offset` is applied after alignment.
+`offset` is applied after placement.
+
+A point has no extent, so `at_point` / `at_pointer` take no `target_anchor`:
+`content_anchor` alone decides which corner of the content lands on the point.
+Internally they are `anchored()` over a zero-size rect.
+
+Anchored and point positions clamp their content to the viewport by default, so
+content placed near an edge is pulled back into view rather than clipped. The
+aligned kind needs no clamping: it is inside by construction.
 
 - Unit: px.
 - Coordinate system is the overlay root's layout space.
@@ -214,7 +228,7 @@ Scenario-specific APIs are moved to subclasses.
     - `OverlayRoute`: used as-is (transition is specified inside the route).
   - Background input remains interactive (modeless).
   - Automatically dismisses after `timeout=duration`.
-  - Default position: `OverlayPosition.alignment("bottom-center", offset=(0, -24))`.
+  - Default position: `OverlayPosition.aligned("bottom-center", offset=(0, -24))`.
 - `MaterialOverlay.loading(indicator=None)` → `OverlayHandle[Any]`
   - Displays the loading indicator and returns a handle for manual dismissal.
   - `handle.close(None)` dismisses the overlay.

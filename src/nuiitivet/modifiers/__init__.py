@@ -5,6 +5,7 @@ from .block_pointer import block_pointer
 from .border import border
 from .clickable import clickable
 from .clip import clip
+from .context_menu import context_menu
 from .corner_radius import corner_radius
 from .defer_pointer import defer_pointer
 from .focus import focusable
@@ -31,6 +32,7 @@ __all__ = [
     "border",
     "clickable",
     "clip",
+    "context_menu",
     "corner_radius",
     "defer_pointer",
     "focusable",
