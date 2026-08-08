@@ -425,7 +425,7 @@ def test_docked_date_picker_dismissing_by_outside_tap_discards_the_draft():
     picker._is_open.value = True
     picker._calendar._on_day_tap(date(2026, 7, 4))
 
-    # light_dismiss drives is_open back to False on an outside tap.
+    # The popup drives is_open back to False on an outside tap.
     picker._is_open.value = False
 
     assert obs.value == date(2026, 6, 25)
@@ -608,7 +608,8 @@ def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
     assert isinstance(popup, PopupBox)
     assert popup._content is picker._calendar
     assert popup._is_open is picker._is_open
-    assert popup._light_dismiss is True
+    assert popup._passthrough is False
+    assert popup._dismiss_on_outside_tap is True
     # Dropdown hangs below the field's bottom-left corner.
     assert popup._target_anchor == "bottom-left"
     assert popup._content_anchor == "top-left"

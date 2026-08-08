@@ -56,9 +56,8 @@ def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
         route = OverlayRoute(
             builder=lambda: BasicDialog(title="Lifecycle"),
             transition_spec=_AnimatedTransitionSpec(),
-            barrier_dismissible=False,
         )
-        overlay.show_modal(route)
+        overlay.show(route, backdrop=True)
 
         entry = next(iter(overlay._entry_to_route.keys()))
         modal_route = overlay._entry_to_route[entry]
@@ -102,9 +101,8 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
             route = OverlayRoute(
                 builder=lambda: BasicDialog(title="Perf"),
                 transition_spec=_AnimatedTransitionSpec(),
-                barrier_dismissible=False,
             )
-            overlay.show_modal(route)
+            overlay.show(route, backdrop=True)
             fake_clock.advance(0.7)  # finish enter
             entry = next(iter(overlay._entry_to_route.keys()))
             overlay.remove_entry(entry)
@@ -140,7 +138,6 @@ def test_overlay_on_disposed_runs_once_after_exit_complete() -> None:
         route = OverlayRoute(
             builder=entry.build_widget,
             transition_spec=_AnimatedTransitionSpec(),
-            barrier_dismissible=False,
         )
         overlay._insert_entry_with_route(entry, route)
 

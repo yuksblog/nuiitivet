@@ -88,8 +88,8 @@ SAMPLES = [
     ("samples/modifiers/others/visible_static.py", "modifier_others_visible_static.png"),
     ("samples/modifiers/others/visible_animated.py", "modifier_others_visible_animated.png"),
     # Popup modifiers
-    ("samples/modifiers/popup/modeless_basic.py", "modifier_popup_modeless.png"),
-    ("samples/modifiers/popup/light_dismiss_menu.py", "modifier_popup_light_dismiss.png"),
+    ("samples/modifiers/popup/popup_passthrough.py", "modifier_popup_passthrough.png"),
+    ("samples/modifiers/popup/popup_menu.py", "modifier_popup_menu.png"),
     ("samples/modifiers/popup/tooltip_basic.py", "modifier_popup_tooltip.png"),
     # Navigation
     ("samples/navigation/basic.py", "navigation_basic.png"),

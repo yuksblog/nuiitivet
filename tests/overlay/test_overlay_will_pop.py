@@ -26,7 +26,7 @@ async def test_overlay_async_close_topmost_respects_will_pop_cancel() -> None:
     when will_pop returns False."""
     App(content=Container())
     overlay = Overlay.root()
-    overlay.show_modal(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)))
+    overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
     handled = await overlay.async_request_close_topmost()
     assert handled is True
@@ -37,7 +37,7 @@ async def test_overlay_async_close_topmost_respects_will_pop_cancel() -> None:
 async def test_overlay_async_close_topmost_proceeds_when_will_pop_allows() -> None:
     App(content=Container())
     overlay = Overlay.root()
-    overlay.show_modal(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: True)))
+    overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: True)), backdrop=True)
 
     handled = await overlay.async_request_close_topmost()
     assert handled is True
@@ -52,7 +52,7 @@ async def test_overlay_async_close_topmost_respects_async_will_pop_cancel() -> N
 
     App(content=Container())
     overlay = Overlay.root()
-    overlay.show_modal(Container(width=100, height=100).modifier(will_pop(on_will_pop=deny)))
+    overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=deny)), backdrop=True)
 
     handled = await overlay.async_request_close_topmost()
     assert handled is True
@@ -64,7 +64,7 @@ async def test_app_escape_overlay_will_pop_cancels_close() -> None:
     """ESC routed through App.handle_back_event respects will_pop on the top overlay entry."""
     app = App(content=Container())
     overlay = Overlay.root()
-    overlay.show_modal(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)))
+    overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
     handled = app._dispatch_key_press("escape")
     assert handled is True

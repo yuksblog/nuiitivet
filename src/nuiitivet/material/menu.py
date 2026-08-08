@@ -474,7 +474,7 @@ class SubMenuItem(MenuItem):
             content_anchor="top-left",
             offset=(0.0, 0.0),
         )
-        self._submenu_handle = overlay.show_modeless(submenu, position=position)
+        self._submenu_handle = overlay.show(submenu, passthrough=True, position=position)
 
     def _close_submenu(self, *, suppress_reopen: bool = False) -> None:
         if self._submenu_handle is not None:
@@ -596,7 +596,7 @@ class Menu(InteractiveWidget):
 
     def on_unmount(self) -> None:
         # A closed menu must not keep the focus: the instance is reused when it is
-        # shown again (light_dismiss holds on to it), and a stale focused item would
+        # shown again (the popup holds on to it), and a stale focused item would
         # both hold the app's focus and suppress the focus-on-open.
         if self._holds_focus():
             self._clear_focus()

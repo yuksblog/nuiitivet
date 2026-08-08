@@ -99,8 +99,6 @@ if __name__ == "__main__":
                         Button("Cancel", on_click=lambda: overlay.close(False), style=ButtonStyle.text())
                     ]
                 ),
-                barrier_dismissible=True,
-                barrier_color=Colors.black54
             )
         }
     )

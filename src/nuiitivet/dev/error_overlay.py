@@ -61,7 +61,7 @@ def show_reload_error(app: Any, message: str) -> None:
         overlay = Overlay.root()
         clear_reload_error(app)
         banner = _build_banner(message)
-        overlay.show_modeless(banner)
+        overlay.show(banner, passthrough=True)
         _active_banner[id(app)] = (overlay, banner)
     except Exception:
         # A visible banner is a nicety; stderr already carried the report.

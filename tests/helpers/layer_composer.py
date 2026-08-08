@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from nuiitivet.navigation.layer_composer import NavigationLayerCompositionContext
-from nuiitivet.overlay.layer_composer import OverlayLayerCompositionContext
+from nuiitivet.overlay.layer_composer import OverlayLayerCompositionContext, OverlayLayerPaint
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -25,11 +25,15 @@ class RecordingNavigationComposer:
 @dataclass(slots=True)
 class RecordingOverlayComposer:
     result_widget: Widget
+    backdrop_widget: Widget | None = None
     contexts: list[OverlayLayerCompositionContext] = field(default_factory=list)
 
-    def compose(self, context: OverlayLayerCompositionContext) -> Widget:
+    def compose(self, context: OverlayLayerCompositionContext) -> OverlayLayerPaint:
         self.contexts.append(context)
-        return self.result_widget
+        return OverlayLayerPaint(
+            content=self.result_widget,
+            backdrop=self.backdrop_widget if context.backdrop else None,
+        )
 
 
 def assert_navigation_transition_context_basic(context: NavigationLayerCompositionContext) -> None:

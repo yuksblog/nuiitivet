@@ -26,12 +26,12 @@ anchor = (
     nv.Container(
         width=160,
         height=40,
-        child=nv.Text("Open (light-dismiss)"),
+        child=nv.Text("Open menu"),
         alignment="center",
     )
     .modifier(nv.background("#4CAF50") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        nv.light_dismiss(
+        nv.popup(
             menu,
             is_open=is_open,
             target_anchor="bottom-left",
@@ -46,7 +46,7 @@ def main(png: str = "") -> None:
     if png:
         # For screenshot: place menu directly in layout (overlay not captured by render_to_png)
         _anchor = nv.Container(
-            width=160, height=40, child=nv.Text("Open (light-dismiss)"), alignment="center"
+            width=160, height=40, child=nv.Text("Open menu"), alignment="center"
         ).modifier(nv.background("#4CAF50") | nv.corner_radius(8))
         _menu = nv.Menu(
             items=[
@@ -59,7 +59,7 @@ def main(png: str = "") -> None:
         )
         app = nv.App(
             content=nv.Column(children=[_anchor, _menu], gap=4, padding=16),
-            title="light_dismiss Modifier",
+            title="popup Modifier (menu)",
             width=400,
             height=400,
         )
@@ -68,7 +68,7 @@ def main(png: str = "") -> None:
         return
     app = nv.App(
         content=nv.Column(children=[anchor], gap=8, padding=16),
-        title="light_dismiss Modifier",
+        title="popup Modifier (menu)",
         width=400,
         height=400,
     )

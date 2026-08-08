@@ -115,7 +115,7 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
     route_widget = _UnmountCountWidget()
     route: Route = Route(builder=lambda: route_widget)
 
-    handle = overlay.show_modal(route)
+    handle = overlay.show(route, backdrop=True)
 
     # Route widget is created eagerly by Overlay.dialog().
     assert route._widget is not None  # type: ignore[attr-defined]
@@ -150,6 +150,6 @@ def test_overlay_normalize_to_route_wraps_widget() -> None:
 def test_material_overlay_dialog_normalize_to_route_resolves_intent() -> None:
     overlay = MaterialOverlay(intents={_DialogIntent: lambda i: _FlagWidget(label=i.label)})
 
-    route = overlay._normalize_dialog_to_route(_DialogIntent(label="intent"), dismiss_on_outside_tap=True)
+    route = overlay._normalize_dialog_to_route(_DialogIntent(label="intent"))
 
     assert isinstance(route, Route)

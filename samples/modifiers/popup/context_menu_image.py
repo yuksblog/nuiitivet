@@ -1,6 +1,6 @@
 """Right-click a tile to open a menu at the pointer.
 
-Unlike ``modeless`` / ``light_dismiss``, no ``Observable`` is wired up here: the
+Unlike ``popup``, no ``Observable`` is wired up here: the
 ``context_menu`` modifier owns both the open state and the click coordinate.
 Right-click near the right or bottom edge to see the menu clamp back into view.
 """

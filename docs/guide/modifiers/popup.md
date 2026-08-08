@@ -2,13 +2,72 @@
 
 Popup modifiers attach transient overlay content to a widget. They are useful for menus, dropdowns, and tooltips that appear anchored to a specific widget.
 
-`modeless`, `light_dismiss`, and `tooltip` share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`. `context_menu` anchors to the click point instead of the widget.
+The family is `popup`, `tooltip`, and `context_menu`. `popup` and `tooltip` share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`. `context_menu` anchors to the click point instead of the widget.
 
-## modeless
+## popup
 
-The `modeless` modifier opens a floating overlay anchored to the widget. The overlay sits above the widget tree and is not clipped. It does not close when the user clicks outside.
+The `popup` modifier opens a floating overlay anchored to the widget. The overlay sits above the widget tree and is not clipped.
 
 Use `is_open` to control when the overlay is shown. Pass an `Observable[bool]` and toggle it in response to user actions.
+
+Behaviour is described by two input axes rather than by a scenario name:
+
+| Call | Result |
+| --- | --- |
+| `popup(x)` | blocks input behind it, closes on an outside tap — the menu shape |
+| `popup(x, passthrough=True)` | lets input through, does not close on an outside tap — the toast shape |
+
+`dismiss_on_outside_tap` defaults to `None`, which resolves to `not passthrough`, so each of the two combinations is spellable with a single flag. Setting `passthrough=True` together with an explicit `dismiss_on_outside_tap=True` raises `ValueError`: a layer that lets a tap through cannot also observe it.
+
+### Menu (default)
+
+```python
+import nuiitivet.material as nv
+
+is_open: nv.Observable[bool] = nv.Observable(False)
+
+def toggle() -> None:
+    is_open.value = not is_open.value
+
+def close() -> None:
+    is_open.value = False
+
+menu = nv.Menu(
+    items=[
+        nv.MenuItem("New", on_click=lambda: print("New")),
+        nv.MenuItem("Open...", on_click=lambda: print("Open")),
+        nv.MenuDivider(),
+        nv.MenuItem("Save", leading_icon="save", on_click=lambda: print("Save")),
+        nv.MenuItem("Close", on_click=close),
+    ],
+    on_dismiss=close,
+)
+
+anchor = (
+    nv.Container(
+        width=160,
+        height=40,
+        child=nv.Text("Open menu"),
+        alignment="center",
+    )
+    .modifier(nv.background("#4CAF50") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
+    .modifier(
+        nv.popup(
+            menu,
+            is_open=is_open,
+            target_anchor="bottom-left",
+            content_anchor="top-left",
+            offset=(0.0, 4.0),
+        )
+    )
+)
+```
+
+![popup Modifier (menu)](../../assets/modifier_popup_menu.png)
+
+### Pass-through panel
+
+With `passthrough=True` the overlay floats above the UI without blocking it, and an outside click goes to whatever is underneath instead of closing the popup.
 
 ```python
 import nuiitivet.material as nv
@@ -45,9 +104,10 @@ anchor = (
     )
     .modifier(nv.background("#2196F3") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        nv.modeless(
+        nv.popup(
             info_panel,
             is_open=is_open,
+            passthrough=True,
             target_anchor="bottom-left",
             content_anchor="top-left",
             offset=(0.0, 4.0),
@@ -56,61 +116,13 @@ anchor = (
 )
 ```
 
-![modeless Modifier](../../assets/modifier_popup_modeless.png)
-
-## light_dismiss
-
-The `light_dismiss` modifier works the same as `modeless`, but the overlay closes automatically when the user clicks outside of it. This is the recommended choice for dropdown menus and context menus.
-
-```python
-import nuiitivet.material as nv
-
-is_open: nv.Observable[bool] = nv.Observable(False)
-
-def toggle() -> None:
-    is_open.value = not is_open.value
-
-def close() -> None:
-    is_open.value = False
-
-menu = nv.Menu(
-    items=[
-        nv.MenuItem("New", on_click=lambda: print("New")),
-        nv.MenuItem("Open...", on_click=lambda: print("Open")),
-        nv.MenuDivider(),
-        nv.MenuItem("Save", leading_icon="save", on_click=lambda: print("Save")),
-        nv.MenuItem("Close", on_click=close),
-    ],
-    on_dismiss=close,
-)
-
-anchor = (
-    nv.Container(
-        width=160,
-        height=40,
-        child=nv.Text("Open (light-dismiss)"),
-        alignment="center",
-    )
-    .modifier(nv.background("#4CAF50") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
-    .modifier(
-        nv.light_dismiss(
-            menu,
-            is_open=is_open,
-            target_anchor="bottom-left",
-            content_anchor="top-left",
-            offset=(0.0, 4.0),
-        )
-    )
-)
-```
-
-![light_dismiss Modifier](../../assets/modifier_popup_light_dismiss.png)
+![popup Modifier (passthrough)](../../assets/modifier_popup_passthrough.png)
 
 ## tooltip
 
 The `tooltip` modifier attaches tooltip behavior to any widget. The tooltip opens automatically when the user hovers or focuses the widget (on desktop) or long-presses it (on touch), and closes automatically after `dismiss_delay` seconds.
 
-Unlike `modeless` and `light_dismiss`, `tooltip` has no external open state. Its lifecycle is managed entirely by pointer and focus events.
+Unlike `popup`, `tooltip` has no external open state. Its lifecycle is managed entirely by pointer and focus events. It is a pass-through popup, so it never blocks the UI underneath.
 
 ```python
 import nuiitivet.material as nv
@@ -133,7 +145,7 @@ The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.mat
 
 The `context_menu` modifier opens a menu **at the pointer** when the widget is right-clicked (secondary button). It closes on an outside tap.
 
-Where `modeless` and `light_dismiss` anchor to the widget's rect and are driven by an external `is_open`, a context menu is driven by the click itself. The modifier owns both the open state and the transient click coordinate, so neither appears in your code — there is no `Observable` to wire up and no pointer handler to write.
+Where `popup` anchors to the widget's rect and is driven by an external `is_open`, a context menu is driven by the click itself. The modifier owns both the open state and the transient click coordinate, so neither appears in your code — there is no `Observable` to wire up and no pointer handler to write.
 
 ```python
 import nuiitivet.material as nv
@@ -163,13 +175,13 @@ tile = nv.Container(
 
 The menu is kept inside the viewport, so a right-click near the right or bottom edge pulls it back into view instead of clipping it.
 
-Because the open menu's light-dismiss layer covers the widget and only the primary button dismisses it, a second right-click elsewhere is swallowed rather than moving the menu — close it with a left click first.
+A second right-click elsewhere dismisses the open menu rather than moving it, because outside-tap dismissal fires for any button.
 
 For an imperative variant — placing arbitrary content at a click point without a menu — use [`OverlayPosition.at_pointer()`](../overlay/primitives.md#relative-to-a-point) directly.
 
 ### Placement
 
-`modeless`, `light_dismiss`, and `tooltip` accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget. (`context_menu` anchors to a point, so it takes `content_anchor` and `offset` only.)
+`popup` and `tooltip` accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget. (`context_menu` anchors to a point, so it takes `content_anchor` and `offset` only.)
 
 | Parameter        | Description                                     | Default            |
 |------------------|-------------------------------------------------|--------------------|

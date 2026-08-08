@@ -8,11 +8,14 @@ import logging
 from typing import Any, Callable, Dict, Optional, TypeVar
 
 from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.background import background
+from nuiitivet.modifiers.block_pointer import block_pointer
 from nuiitivet.modifiers.clickable import clickable
+from nuiitivet.modifiers.passthrough_pointer import passthrough_pointer
 from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
 from nuiitivet.navigation import Route
@@ -25,7 +28,7 @@ from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
 from .overlay_position import OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
-from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
+from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext, OverlayLayerPaint
 from .transition_state import OverlayTransitionState
 
 logger = logging.getLogger(__name__)
@@ -191,18 +194,20 @@ class _OverlayEntryRoute(Route):
         entry: OverlayEntry,
         *,
         transition_spec: TransitionSpec | None = None,
-        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
-        barrier_dismissible: bool = True,
     ) -> None:
         super().__init__(builder=entry.build_widget, transition_spec=transition_spec or Transitions.empty())
-        self.barrier_color = barrier_color
-        self.barrier_dismissible = bool(barrier_dismissible)
         self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
         self._content_widget: Widget | None = None
-        # Whether input reaches the content behind this entry. Modeless entries
-        # (toasts, banners) pass through; modal and light-dismiss entries do not,
-        # and so occlude everything below them.
+        # Whether input reaches the content behind this entry. Pass-through
+        # entries (toasts, banners, tooltips) do not occlude; blocking entries
+        # do. Set by ``Overlay.show``.
+        #
+        # This is deliberately *not* a barrier setting: the pointer half of
+        # ``passthrough`` is applied in ``show`` (the blocking layer), while the
+        # keyboard half is read straight off this route by
+        # ``occluding_content_widget()``, which drives the modal focus trap and
+        # FOREGROUND shortcut scoping.
         self._passthrough: bool = True
 
     @property
@@ -267,19 +272,25 @@ class _OverlayEntryRoute(Route):
 
 
 class _DefaultOverlayLayerComposer:
-    """Fallback core composer with minimal, design-agnostic rendering."""
+    """Fallback core composer with minimal, design-agnostic rendering.
 
-    def compose(self, context: OverlayLayerCompositionContext) -> Widget:
-        positioned_content = context.position_content(context.content)
+    Painting only. Stacking, input blocking and outside-tap dismissal are
+    applied by :meth:`Overlay.show` around whatever this returns.
+    """
 
-        if context.passthrough:
-            return positioned_content
+    # Neutral fallback backdrop. Private on purpose: a design system supplies its
+    # own composer, so this colour never crosses the composition boundary.
+    _BACKDROP_COLOR = (0, 0, 0, 128)
 
-        barrier = Container(width="100%", height="100%").modifier(
-            background(context.barrier_color)
-            | clickable(on_click=context.on_barrier_click if context.barrier_dismissible else None)
+    def compose(self, context: OverlayLayerCompositionContext) -> OverlayLayerPaint:
+        return OverlayLayerPaint(
+            content=context.position_content(context.content),
+            backdrop=(
+                Container(width="100%", height="100%").modifier(background(self._BACKDROP_COLOR))
+                if context.backdrop
+                else None
+            ),
         )
-        return Stack(children=[barrier, positioned_content], alignment="top-left", width="100%", height="100%")
 
 
 class Overlay(ComposableWidget):
@@ -404,11 +415,14 @@ class Overlay(ComposableWidget):
     def occluding_content_widget(self) -> Widget | None:
         """Return the content of the topmost entry that blocks input, if any.
 
-        A modal or light-dismiss entry swallows interaction with everything below
-        it; a modeless entry (toast, banner) passes input through. Callers that
+        A ``passthrough=False`` entry swallows interaction with everything below
+        it; a pass-through entry (toast, banner, tooltip) does not. Callers that
         must know "can the user still act on the content behind the overlay"
         — keyboard-shortcut dispatch, for one — ask this. ``None`` means nothing
         is blocking and the content below is still reachable.
+
+        This is the keyboard half of ``passthrough``; the pointer half is the
+        blocking layer built in :meth:`show`.
         """
         routes = getattr(self._modal_navigator, "_routes", None)
         if not isinstance(routes, list):
@@ -539,118 +553,61 @@ class Overlay(ComposableWidget):
         widget = content
         return Route(builder=lambda: widget, transition_spec=Transitions.empty())
 
-    def _to_overlay_entry_route(
-        self,
-        *,
-        entry: OverlayEntry,
-        route: Route,
-        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
-        barrier_dismissible: bool = True,
-    ) -> _OverlayEntryRoute:
+    def _to_overlay_entry_route(self, *, entry: OverlayEntry, route: Route) -> _OverlayEntryRoute:
         """Wrap a content route into the modal runtime route adapter."""
-        resolved_barrier_color = getattr(route, "barrier_color", barrier_color)
-        resolved_barrier_dismissible = getattr(route, "barrier_dismissible", barrier_dismissible)
-        return _OverlayEntryRoute(
-            entry,
-            transition_spec=route.transition_spec,
-            barrier_color=resolved_barrier_color,
-            barrier_dismissible=bool(resolved_barrier_dismissible),
-        )
+        return _OverlayEntryRoute(entry, transition_spec=route.transition_spec)
 
-    def show_modal(
+    def show(
         self,
         content: Widget | Route,
         *,
+        passthrough: bool = False,
         dismiss_on_outside_tap: bool = False,
-        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
+        backdrop: bool = False,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
         transition_spec: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
-        """Show modal content as an overlay entry.
+        """Show content as an overlay entry.
+
+        The presentation is described by three orthogonal axes rather than by a
+        scenario name. Two of them are about input and are enforced here, in the
+        core; only ``backdrop`` is about appearance and crosses into the design
+        system's layer composer.
+
+        Args:
+            content: Widget or Route to present.
+            passthrough: Whether input reaches the content behind this entry.
+                ``False`` (the default) installs a full-screen blocking layer and
+                occludes everything below, for both pointer and keyboard.
+            dismiss_on_outside_tap: Whether tapping outside the content dismisses
+                the entry. Requires ``passthrough=False``.
+            backdrop: Whether the layer composer paints a backdrop behind the
+                content. Purely visual — input blocking is ``passthrough``'s job.
+            timeout: Seconds after which the entry auto-dismisses, or ``None``.
+            position: Where to place the content. Defaults to centered.
+            transition_spec: Enter/exit animation for the entry.
+
+        Returns:
+            An :class:`OverlayHandle` for the shown entry.
+
+        Raises:
+            ValueError: If ``timeout`` is negative, or if ``passthrough=True`` is
+                combined with ``dismiss_on_outside_tap=True`` — observing a tap
+                without consuming it needs multi-target dispatch (issue #508).
 
         Notes:
             - `await handle` returns an OverlayResult.
             - Awaiting requires a running async runtime.
         """
-        return self._show_internal(
-            content,
-            passthrough=False,
-            dismiss_on_outside_tap=dismiss_on_outside_tap,
-            barrier_color=barrier_color,
-            timeout=timeout,
-            position=position,
-            transition_spec=transition_spec,
-            use_route_barrier=True,
-        )
-
-    def show_modeless(
-        self,
-        content: Widget | Route,
-        *,
-        timeout: float | None = None,
-        position: OverlayPosition | None = None,
-        transition_spec: TransitionSpec | None = None,
-    ) -> OverlayHandle[Any]:
-        """Show modeless content as an overlay entry.
-
-        Notes:
-            - `await handle` returns an OverlayResult.
-            - Awaiting requires a running async runtime.
-        """
-        return self._show_internal(
-            content,
-            passthrough=True,
-            dismiss_on_outside_tap=False,
-            barrier_color=(0, 0, 0, 0),
-            timeout=timeout,
-            position=position,
-            transition_spec=transition_spec,
-            use_route_barrier=False,
-        )
-
-    def show_light_dismiss(
-        self,
-        content: Widget | Route,
-        *,
-        timeout: float | None = None,
-        position: OverlayPosition | None = None,
-        transition_spec: TransitionSpec | None = None,
-    ) -> OverlayHandle[Any]:
-        """Show content with light-dismiss behavior.
-
-        Light-dismiss uses an invisible full-screen hit layer that closes the
-        overlay when tapping outside the content. Outside taps are consumed.
-
-        Notes:
-            - `await handle` returns an OverlayResult.
-            - Awaiting requires a running async runtime.
-        """
-        return self._show_internal(
-            content,
-            passthrough=False,
-            dismiss_on_outside_tap=True,
-            barrier_color=(0, 0, 0, 0),
-            timeout=timeout,
-            position=position,
-            transition_spec=transition_spec,
-            use_route_barrier=False,
-        )
-
-    def _show_internal(
-        self,
-        content: Widget | Route,
-        *,
-        passthrough: bool,
-        dismiss_on_outside_tap: bool,
-        barrier_color: tuple[int, int, int, int],
-        timeout: float | None,
-        position: OverlayPosition | None,
-        transition_spec: TransitionSpec | None,
-        use_route_barrier: bool,
-    ) -> OverlayHandle[Any]:
         if timeout is not None and float(timeout) < 0:
             raise ValueError("timeout must be >= 0 or None")
+        if passthrough and dismiss_on_outside_tap:
+            raise ValueError(
+                "passthrough=True cannot be combined with dismiss_on_outside_tap=True: "
+                "a layer that lets a tap through cannot also observe it. "
+                "See issue #508 (pass-behind / multi-target dispatch)."
+            )
 
         entry: OverlayEntry
 
@@ -662,13 +619,6 @@ class Overlay(ComposableWidget):
                     content_route.transition_spec = transition_spec
 
         content_widget = content_route.build_widget()
-        resolved_barrier_color = barrier_color
-        barrier_dismissible = bool(dismiss_on_outside_tap)
-        if use_route_barrier:
-            resolved_barrier_color = getattr(content_route, "barrier_color", resolved_barrier_color)
-            route_barrier_dismissible = getattr(content_route, "barrier_dismissible", None)
-            if route_barrier_dismissible is not None and dismiss_on_outside_tap is False:
-                barrier_dismissible = bool(route_barrier_dismissible)
 
         effective_position = position or OverlayPosition.aligned("center")
 
@@ -688,20 +638,63 @@ class Overlay(ComposableWidget):
                 )
 
         def build_layer(route: _OverlayEntryRoute) -> Widget:
-            def on_barrier_click() -> None:
-                if barrier_dismissible:
-                    self._request_dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
-
             context = OverlayLayerCompositionContext(
                 content=content_widget,
                 transition_state=route.transition_state,
-                passthrough=passthrough,
-                barrier_color=resolved_barrier_color,
-                barrier_dismissible=barrier_dismissible,
-                on_barrier_click=on_barrier_click,
+                backdrop=backdrop,
                 position_content=position_content,
             )
-            return self._layer_composer.compose(context)
+            paint = self._layer_composer.compose(context)
+
+            layers: list[Widget] = []
+
+            if paint.backdrop is not None:
+                # A backdrop is decoration. Left alone it would catch pointer
+                # events, because a painted surface is a hit target in this
+                # framework ("painted = clickable", Box._hit_self_opaque) — and
+                # it would then swallow the very outside tap the blocking layer
+                # below exists to receive. Whether a layer participates in input
+                # is the core's call, so the core makes it click-through rather
+                # than leaving every composer to remember.
+                layers.append(paint.backdrop.modifier(passthrough_pointer()))
+
+            if not passthrough:
+
+                def on_outside_tap() -> None:
+                    self._request_dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
+
+                # Input blocking lives here, not in the composer: a composer
+                # paints. ``block_pointer()`` is (descend_children=True,
+                # self_opaque=True) — let the content's own hits through, catch
+                # everything else. Because the S axis decouples hit-catching from
+                # painted-ness, this layer is hittable while being fully
+                # invisible; no transparent background() trick is needed.
+                blocker_modifier: Modifier | ModifierElement = block_pointer()
+                if dismiss_on_outside_tap:
+                    # ORDER IS LOAD-BEARING: block_pointer() must come *before*
+                    # clickable() in the chain. Modifier.apply runs left to right,
+                    # so the leftmost element ends up innermost. clickable() does
+                    # not wrap — it returns ensure_interaction_region(widget) — so
+                    # it has to sit *outside* the HitParticipationBox: the box is
+                    # the hit target and pointer bubbling walks parents only, so
+                    # the region must be an ancestor of it. Reversed, the region
+                    # would be the box's child and would never see the event.
+                    #
+                    # any_button=True: an outside tap dismisses whichever button
+                    # produced it, not just the primary one (issue #506).
+                    blocker_modifier = blocker_modifier | clickable(on_click=on_outside_tap, any_button=True)
+                layers.append(Container(width="100%", height="100%").modifier(blocker_modifier))
+
+            # ORDER IS LOAD-BEARING: the content must be *last* in children.
+            # _hit_test_children walks reversed(children), so the content is
+            # tested first and the blocker only catches what the content
+            # declined. Reversed, the blocker would swallow every hit including
+            # those meant for the overlay content itself.
+            layers.append(paint.content)
+
+            if len(layers) == 1:
+                return layers[0]
+            return Stack(children=layers, alignment="top-left", width="100%", height="100%")
 
         route_holder: dict[str, _OverlayEntryRoute] = {}
         layer_holder: dict[str, Widget] = {}
@@ -717,12 +710,7 @@ class Overlay(ComposableWidget):
             return layer
 
         entry = OverlayEntry(builder=build_entry_widget, on_dispose=on_dispose)
-        modal_route = self._to_overlay_entry_route(
-            entry=entry,
-            route=content_route,
-            barrier_color=resolved_barrier_color,
-            barrier_dismissible=barrier_dismissible,
-        )
+        modal_route = self._to_overlay_entry_route(entry=entry, route=content_route)
         route_holder["route"] = modal_route
         modal_route._content_widget = content_widget
         modal_route._passthrough = passthrough

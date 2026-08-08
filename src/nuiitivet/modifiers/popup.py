@@ -1,4 +1,4 @@
-"""modeless()/light_dismiss() modifiers – anchored transient overlays."""
+"""popup() modifier – anchored transient overlays."""
 
 from __future__ import annotations
 
@@ -21,11 +21,30 @@ if TYPE_CHECKING:
     from nuiitivet.overlay.overlay_handle import OverlayHandle
 
 
+def _resolve_dismiss_on_outside_tap(passthrough: bool, dismiss_on_outside_tap: bool | None) -> bool:
+    """Resolve the dismissal axis against the passthrough axis.
+
+    ``None`` means "whatever pairs naturally with *passthrough*", which keeps
+    both legal combinations spellable with a single flag. The fourth cell —
+    passing the tap through *and* observing it — needs multi-target dispatch and
+    is rejected here rather than silently ignored.
+    """
+    if dismiss_on_outside_tap is None:
+        return not passthrough
+    resolved = bool(dismiss_on_outside_tap)
+    if passthrough and resolved:
+        raise ValueError(
+            "passthrough=True cannot be combined with dismiss_on_outside_tap=True: "
+            "a popup that lets a tap through cannot also observe it. "
+            "See issue #508 (pass-behind / multi-target dispatch)."
+        )
+    return resolved
+
+
 class PopupBox(Widget):
     """Wraps an anchor widget and shows a transient popup overlay anchored to it.
 
-    The overlay is rendered by :meth:`Overlay.show_modeless` or
-    :meth:`Overlay.show_light_dismiss` (above the widget tree) so it
+    The overlay is rendered by :meth:`Overlay.show` (above the widget tree) so it
     avoids clipping and sits at the top of the Z-order.
 
     Open/close behaviour is driven exclusively through *is_open*. When ``None``
@@ -40,11 +59,12 @@ class PopupBox(Widget):
         content: Widget,
         *,
         is_open: Optional["Observable[bool]"] = None,
+        passthrough: bool = False,
+        dismiss_on_outside_tap: bool | None = None,
         target_anchor: AlignmentLike = "bottom-left",
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
         transition_spec: Optional["TransitionSpec"] = None,
-        light_dismiss: bool = False,
         width: SizingLike = None,
         height: SizingLike = None,
     ) -> None:
@@ -54,12 +74,13 @@ class PopupBox(Widget):
             child: Anchor widget that determines popup attachment point.
             content: Widget rendered inside the popup overlay.
             is_open: Optional external observable controlling open/close state.
+            passthrough: Whether input reaches the content behind the popup.
+            dismiss_on_outside_tap: Whether an outside tap closes the popup.
+                ``None`` resolves to ``not passthrough``.
             target_anchor: Reference point on the anchor widget.
             content_anchor: Reference point on the popup content.
             offset: Additional ``(dx, dy)`` offset in pixels.
-            transition_spec: Optional transition passed to ``Overlay.show_modeless``.
-            light_dismiss: Whether to close on outside tap using
-                ``Overlay.show_light_dismiss``.
+            transition_spec: Optional transition passed to ``Overlay.show``.
             width: Width sizing for this wrapper.
             height: Height sizing for this wrapper.
         """
@@ -69,9 +90,10 @@ class PopupBox(Widget):
         self._content_anchor = content_anchor
         self._offset = offset
         self._transition_spec = transition_spec
-        self._light_dismiss = bool(light_dismiss)
+        self._passthrough = bool(passthrough)
+        self._dismiss_on_outside_tap = _resolve_dismiss_on_outside_tap(self._passthrough, dismiss_on_outside_tap)
 
-        # Handle returned by Overlay.show_*(); None when the overlay is closed.
+        # Handle returned by Overlay.show(); None when the overlay is closed.
         self._handle: Optional["OverlayHandle[Any]"] = None
         self._open_retry_callback: Optional[Callable[[float], None]] = None
         self._handle_monitor_callback: Optional[Callable[[float], None]] = None
@@ -147,18 +169,13 @@ class PopupBox(Widget):
         except RuntimeError:
             return False
 
-        if self._light_dismiss:
-            self._handle = overlay.show_light_dismiss(
-                self._content,
-                position=position,
-                transition_spec=self._transition_spec,
-            )
-        else:
-            self._handle = overlay.show_modeless(
-                self._content,
-                position=position,
-                transition_spec=self._transition_spec,
-            )
+        self._handle = overlay.show(
+            self._content,
+            passthrough=self._passthrough,
+            dismiss_on_outside_tap=self._dismiss_on_outside_tap,
+            position=position,
+            transition_spec=self._transition_spec,
+        )
         self._cancel_open_retry()
         self._ensure_handle_monitor()
         return True
@@ -281,11 +298,12 @@ class PopupModifier(ModifierElement):
 
     content: Widget
     is_open: Optional["Observable[bool]"] = None
+    passthrough: bool = False
+    dismiss_on_outside_tap: bool | None = None
     target_anchor: AlignmentLike = "bottom-left"
     content_anchor: AlignmentLike = "top-left"
     offset: Tuple[float, float] = (0.0, 0.0)
     transition_spec: Optional["TransitionSpec"] = None
-    light_dismiss: bool = False
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap *widget* in a :class:`PopupBox`.
@@ -300,55 +318,78 @@ class PopupModifier(ModifierElement):
             widget,
             self.content,
             is_open=self.is_open,
+            passthrough=self.passthrough,
+            dismiss_on_outside_tap=self.dismiss_on_outside_tap,
             target_anchor=self.target_anchor,
             content_anchor=self.content_anchor,
             offset=self.offset,
             transition_spec=self.transition_spec,
-            light_dismiss=self.light_dismiss,
             width=widget.width_sizing,
             height=widget.height_sizing,
         )
 
 
-def modeless(
+def popup(
     content: Widget,
     *,
     is_open: Optional["Observable[bool]"] = None,
+    passthrough: bool = False,
+    dismiss_on_outside_tap: bool | None = None,
     target_anchor: AlignmentLike = "bottom-left",
     content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
     transition_spec: Optional["TransitionSpec"] = None,
 ) -> PopupModifier:
-    """Return a modeless overlay modifier anchored to the modified widget.
+    """Return an anchored popup overlay modifier for the modified widget.
 
-    The overlay is rendered above the widget tree via :meth:`Overlay.show_modeless`, so
-    it avoids clipping and sits at the top of the Z-order.
+    The overlay is rendered above the widget tree via :meth:`Overlay.show`, so it
+    avoids clipping and sits at the top of the Z-order.
+
+    Behaviour is described by the same two input axes the core uses, not by a
+    scenario name:
+
+    ==================================================== =========================
+    Call                                                 Result
+    ==================================================== =========================
+    ``popup(x)``                                         block + dismiss (menu)
+    ``popup(x, passthrough=True)``                       pass through, no dismiss
+    ==================================================== =========================
 
     Args:
         content: Widget to display as the popup overlay.
         is_open: ``Observable[bool]`` to control open/close state.
             When ``None``, an internal observable is created and exposed via
             :attr:`PopupBox.is_open`. Callers are responsible for toggling it.
+        passthrough: Whether input reaches the content behind the popup.
+            ``False`` (the default) blocks it, as a menu does; ``True`` lets it
+            through, as a toast or tooltip does.
+        dismiss_on_outside_tap: Whether an outside tap closes the popup.
+            ``None`` (the default) resolves to ``not passthrough``, so each of
+            the two legal combinations is spellable with a single flag.
         target_anchor: Reference point on the anchor widget (default
             ``"bottom-left"``).
         content_anchor: Reference point on the content widget (default
             ``"top-left"``).
         offset: Additional ``(dx, dy)`` offset in screen pixels.
-        transition_spec: Passed directly to :meth:`Overlay.show_modeless` for
-            enter/exit animation.
+        transition_spec: Passed directly to :meth:`Overlay.show` for enter/exit
+            animation.
 
     Returns:
         A :class:`PopupModifier` suitable for :meth:`Widget.modifier`.
+
+    Raises:
+        ValueError: When the popup is opened with ``passthrough=True`` and an
+            explicit ``dismiss_on_outside_tap=True`` — see issue #508.
 
     Example::
 
         # External state control (recommended)
         is_open: Observable[bool] = Observable(False)
-        icon_button.modifier(modeless(Menu(...), is_open=is_open))
+        icon_button.modifier(popup(Menu(...), is_open=is_open))
 
         # Explicit positioning with animation
         icon_button.modifier(
-            modeless(
+            popup(
                 Menu(...),
                 target_anchor="bottom-left",
                 content_anchor="top-left",
@@ -357,32 +398,15 @@ def modeless(
             )
         )
     """
+    # Validate at declaration time rather than waiting for the first open.
+    _resolve_dismiss_on_outside_tap(bool(passthrough), dismiss_on_outside_tap)
     return PopupModifier(
         content=content,
         is_open=is_open,
+        passthrough=passthrough,
+        dismiss_on_outside_tap=dismiss_on_outside_tap,
         target_anchor=target_anchor,
         content_anchor=content_anchor,
         offset=offset,
         transition_spec=transition_spec,
-    )
-
-
-def light_dismiss(
-    content: Widget,
-    *,
-    is_open: Optional["Observable[bool]"] = None,
-    target_anchor: AlignmentLike = "bottom-left",
-    content_anchor: AlignmentLike = "top-left",
-    offset: Tuple[float, float] = (0.0, 0.0),
-    transition_spec: Optional["TransitionSpec"] = None,
-) -> PopupModifier:
-    """Return a light-dismiss overlay modifier anchored to the modified widget."""
-    return PopupModifier(
-        content=content,
-        is_open=is_open,
-        target_anchor=target_anchor,
-        content_anchor=content_anchor,
-        offset=offset,
-        transition_spec=transition_spec,
-        light_dismiss=True,
     )

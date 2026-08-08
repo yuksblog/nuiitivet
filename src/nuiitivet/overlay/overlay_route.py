@@ -16,13 +16,15 @@ class OverlayRoute(Route):
         self,
         builder: Callable[[], Widget],
         transition_spec: TransitionSpec | None = None,
-        *,
-        barrier_color: tuple[int, int, int, int] = (0, 0, 0, 128),
-        barrier_dismissible: bool = True,
     ) -> None:
+        """Initialize an overlay route.
+
+        The route describes *content* only. Barrier / backdrop and dismissal are
+        presentation concerns owned by the :meth:`Overlay.show` call that
+        presents this route, so the same route can be shown with or without a
+        backdrop.
+        """
         super().__init__(
             builder=builder,
             transition_spec=transition_spec or Transitions.empty(),
         )
-        self.barrier_color = barrier_color
-        self.barrier_dismissible = bool(barrier_dismissible)

@@ -34,9 +34,10 @@ anchor = (
     )
     .modifier(nv.background("#2196F3") | nv.corner_radius(8) | nv.clickable(on_click=toggle))
     .modifier(
-        nv.modeless(
+        nv.popup(
             info_panel,
             is_open=is_open,
+            passthrough=True,
             target_anchor="bottom-left",
             content_anchor="top-left",
             offset=(0.0, 4.0),
@@ -70,7 +71,7 @@ def main(png: str = "") -> None:
         )
         app = nv.App(
             content=nv.Column(children=[_anchor, _panel], gap=4, padding=16),
-            title="modeless Modifier",
+            title="popup Modifier (passthrough)",
             width=300,
             height=350,
         )
@@ -79,7 +80,7 @@ def main(png: str = "") -> None:
         return
     app = nv.App(
         content=nv.Column(children=[anchor], gap=8, padding=16),
-        title="modeless Modifier",
+        title="popup Modifier (passthrough)",
         width=300,
         height=250,
     )

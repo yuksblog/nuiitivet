@@ -11,7 +11,7 @@ The widget reuses existing infrastructure:
 - The morphing FAB is an internal :class:`~nuiitivet.material.buttons.Fab`
   whose icon is *bound* to ``is_open`` -- there is no separate toggle state.
 - The overlay (scrim, outside-tap dismissal, anchored positioning) comes from
-  the existing :func:`~nuiitivet.modifiers.popup.light_dismiss` modifier.
+  the existing :func:`~nuiitivet.modifiers.popup.popup` modifier.
 
 Geometry and colour values follow ``docs/md3/fab-menu.md``: the close button
 uses a solid/tonal FAB colour, list items use the matching ``*-container``
@@ -35,7 +35,7 @@ from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import LabelLike
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.modifiers.popup import light_dismiss
+from nuiitivet.modifiers.popup import popup
 from nuiitivet.modifiers.transform import opacity, translate
 from nuiitivet.observable import Observable, ObservableProtocol
 from nuiitivet.observable import runtime
@@ -435,7 +435,7 @@ class FabMenu(Widget):
     "s") fully-rounded circle, regardless of the configured size.  The overlay
     -- scrim, outside-tap dismissal, and anchored positioning -- is driven
     through the same observable via
-    :func:`~nuiitivet.modifiers.popup.light_dismiss`.
+    :func:`~nuiitivet.modifiers.popup.popup`.
 
     The closed-size footprint is reserved for layout stability; the shrinking
     close button aligns to its top-trailing corner, so larger closed FAB sizes
@@ -510,9 +510,9 @@ class FabMenu(Widget):
             on_select=self._on_item_selected,
         )
 
-        # Reuse the existing light-dismiss overlay for scrim + outside-tap close.
+        # Reuse the existing popup overlay for blocking + outside-tap close.
         self._inner = self._fab.modifier(
-            light_dismiss(
+            popup(
                 self._list,
                 is_open=self._is_open,
                 target_anchor="top-right",

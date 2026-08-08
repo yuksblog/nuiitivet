@@ -90,7 +90,7 @@ def _menu_in_overlay(menu: Menu) -> App:
     """Show ``menu`` the way it is really used: as a laid-out overlay entry."""
     app = App(content=Container(width=400, height=400))
     app.root.mount(app)
-    Overlay.root().show_modeless(menu)
+    Overlay.root().show(menu, passthrough=True)
     app.root.layout(400, 400)
     return app
 
@@ -174,7 +174,7 @@ def _popup_menu_opened_with(menu: Menu, source: FocusSource) -> App:
     app = App(content=Container(width=400, height=400))
     app.root.mount(app)
     app._last_input_source = source
-    Overlay.root().show_modeless(menu)
+    Overlay.root().show(menu, passthrough=True)
     app.root.layout(400, 400)
     return app
 
@@ -306,7 +306,7 @@ def test_clicking_an_item_syncs_the_roving_index() -> None:
 
 
 def test_closing_a_menu_releases_focus_and_reopening_starts_over() -> None:
-    """A reused menu instance (light_dismiss keeps one) re-focuses on each open."""
+    """A reused menu instance (the popup keeps one) re-focuses on each open."""
     menu = _menu()
     app = _menu_in_overlay(menu)
 
