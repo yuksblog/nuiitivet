@@ -95,21 +95,35 @@ class Navigator(Widget):
 
 ### 1.4 Interface for ViewModels (Protocol)
 
-To ensure ViewModels do not depend on the implementation details of `Navigator`, we provide `INavigator`.
+To ensure ViewModels do not depend on the implementation details of `Navigator`, we provide
+`NavigatorProtocol` (`nuiitivet.navigation.protocols`).
+
+`MaterialNavigator` adds no public navigation API on top of core `Navigator`, so a single
+core-level protocol serves both layers; `nv.NavigatorProtocol` is the same object as
+`nuiitivet.NavigatorProtocol`.
 
 ```python
 from __future__ import annotations
 
 from typing import Any, Protocol
 
+from nuiitivet.navigation.route import Route
+from nuiitivet.widgeting.widget import Widget
 
-class INavigator(Protocol):
-    def push(self, content: Any) -> None:
+
+class NavigatorProtocol(Protocol):
+    def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
         ...
 
-    def pop(self, result: Any | None = None) -> None:
+    def pop(self) -> None:
+        ...
+
+    def can_pop(self) -> bool:
         ...
 ```
+
+The protocol is deliberately narrow — it covers what a ViewModel calls, not the full
+`Navigator` surface. A wider protocol would re-couple the ViewModel to the widget.
 
 ## 2. Intent System Design (Navigation Perspective)
 

@@ -93,4 +93,5 @@ For non-trivial apps, separate state/logic into a ViewModel and keep `build()`
 purely declarative. The View holds Observables (or the VM does) and the VM
 exposes methods for event handlers to call. ViewModels should not import or
 create Widgets — for dialogs/navigation they issue **Intents** to an injected
-navigator/overlay (`nv.Navigator`, `nv.Overlay`). See [navigation.md](navigation.md).
+navigator/overlay, annotated with `nv.NavigatorProtocol` / `nv.OverlayProtocol` so the
+VM stays free of widget types. See [navigation.md](navigation.md).

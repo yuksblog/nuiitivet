@@ -58,12 +58,14 @@ The `Overlay` is defined as a layer independent of the root content and is passe
 
 The framework provides standard dialog Widgets (e.g., `BasicDialog`) and makes standard Dialog Intents available by default.
 
-A ViewModel does not create Widgets directly but issues Intents to an abstract interface like `IOverlay`.
+A ViewModel does not create Widgets directly but issues Intents to an abstract interface, `nv.OverlayProtocol`.
 The actual Widget creation is delegated to the View layer (via `dialogs` configuration), allowing for the reuse of dialogs with a standard look and feel.
 
 ```python
+import nuiitivet.material as nv
+
 class MyViewModel:
-    def __init__(self, overlay: IOverlay):
+    def __init__(self, overlay: nv.OverlayProtocol):
         self.overlay = overlay
 
     async def on_error(self, error_msg):
@@ -254,13 +256,13 @@ class OrderCompleteIntent: pass
 
 # 2. ViewModel (No knowledge of specific Widgets)
 class CartViewModel:
-    def __init__(self, navigator: INavigator):
+    def __init__(self, navigator: nv.NavigatorProtocol):
         self.navigator = navigator
 
     async def checkout(self):
         await self.service.submit_order()
         # Communicate intent: "Navigate to order completion"
-        self.navigator.push_replacement(OrderCompleteIntent())
+        self.navigator.push(OrderCompleteIntent())
 
 # 3. View (Bind Intent to Widget via Navigator configuration)
 Navigator(

@@ -42,10 +42,10 @@ from nuiitivet.widgets.box import Box
 from nuiitivet.geometry import Geometry, Size
 
 # Navigation
-from nuiitivet.navigation import Navigator, Route, Transitions
+from nuiitivet.navigation import Navigator, NavigatorProtocol, Route, Transitions
 
 # Overlay
-from nuiitivet.overlay import OverlayAware
+from nuiitivet.overlay import OverlayAware, OverlayProtocol
 
 # State Management
 from nuiitivet.observable import Observable, batch, combine, clock
@@ -158,10 +158,12 @@ __all__: list[str] = [
     "Size",
     # Navigation
     "Navigator",
+    "NavigatorProtocol",
     "Route",
     "Transitions",
     # Overlay
     "OverlayAware",
+    "OverlayProtocol",
     # State Management
     "Observable",
     "batch",

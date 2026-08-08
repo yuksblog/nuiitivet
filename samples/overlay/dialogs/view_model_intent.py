@@ -14,7 +14,7 @@ class DecoupledViewModel:
     def __init__(self):
         self.status = nv.Observable("Ready")
 
-    async def process_action(self, overlay: nv.Overlay):
+    async def process_action(self, overlay: nv.OverlayProtocol):
         self.status.value = "Processing..."
 
         # Express the intent to show an operation complete dialog

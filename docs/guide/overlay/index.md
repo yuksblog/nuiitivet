@@ -17,7 +17,7 @@ App
 
 ## Accessing Overlay
 
-Use `Overlay.root()` to retrieve the globally registered overlay instance. This works from anywhere in the application.
+Use `Overlay.root()` to retrieve the globally registered overlay instance.
 
 ```python
 import nuiitivet.material as nv
