@@ -3,6 +3,7 @@
 import pytest
 from nuiitivet.overlay import Overlay, OverlayEntry
 from nuiitivet.overlay.overlay import _OverlayEntryRoute
+from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.container import Container
 
@@ -125,25 +126,27 @@ def test_overlay_build_without_entries():
     assert isinstance(built, Widget)
 
 
-def test_overlay_root_not_set():
-    """Test that Overlay.root() raises an error when not set."""
-    # Reset the root overlay
-    Overlay._root_overlay = None
+def test_overlay_of_falls_back_to_the_app_overlay():
+    """The App's Overlay is a sibling of the Navigator, so no ancestor walk
+    reaches it -- the fallback is what makes ``Overlay.of(self)`` work from a
+    screen at all (#518)."""
+    content = Container()
+    app = App(content=content)
+    app.root.mount(app)
 
-    with pytest.raises(RuntimeError, match="No root overlay found"):
-        Overlay.root()
+    assert Overlay.of(content) is app.overlay
 
 
-def test_overlay_set_and_get_root():
-    """Test setting and getting the root overlay."""
-    overlay = Overlay()
+def test_overlay_of_prefers_a_nested_overlay_over_the_app_one():
+    """The fallback must not shadow an intentionally nested Overlay."""
+    nested = Overlay()
+    widget = DummyWidget()
+    nested.add_child(widget)
+    app = App(content=nested)
+    app.root.mount(app)
 
-    Overlay.set_root(overlay)
-
-    assert Overlay.root() is overlay
-
-    # Cleanup
-    Overlay._root_overlay = None
+    assert Overlay.of(widget) is nested
+    assert Overlay.of(widget, root=True) is app.overlay
 
 
 def test_overlay_of_finds_ancestor():
@@ -163,19 +166,14 @@ def test_overlay_of_finds_ancestor():
 
 
 def test_overlay_of_root_flag():
-    """Test that Overlay.of() with root=True returns the root overlay."""
-    root_overlay = Overlay()
-    Overlay.set_root(root_overlay)
+    """Test that Overlay.of() with root=True returns the App's overlay."""
+    content = Container()
+    app = App(content=content)
+    app.root.mount(app)
 
-    widget = DummyWidget()
+    found = Overlay.of(content, root=True)
 
-    # Get the root overlay
-    found = Overlay.of(widget, root=True)
-
-    assert found is root_overlay
-
-    # Cleanup
-    Overlay._root_overlay = None
+    assert found is app.overlay
 
 
 def test_overlay_of_not_found():
@@ -185,7 +183,7 @@ def test_overlay_of_not_found():
     # rather than for the pre-mount reason, which has its own message.
     Container().add_child(widget)
 
-    with pytest.raises(RuntimeError, match="No Overlay found in the widget tree"):
+    with pytest.raises(RuntimeError, match="not attached to an App"):
         Overlay.of(widget)
 
 

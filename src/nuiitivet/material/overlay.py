@@ -123,7 +123,10 @@ class MaterialOverlay(Overlay):
                         actions=[
                             Button(
                                 "OK",
-                                on_click=lambda: Overlay.root().close(None),
+                                # This resolver belongs to the overlay hosting the
+                                # dialog, so close it directly rather than looking
+                                # one up.
+                                on_click=lambda: self.close(None),
                                 width=80,
                                 style=ButtonStyle.text(),
                             )

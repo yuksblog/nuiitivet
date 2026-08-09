@@ -4,27 +4,35 @@ Principle: **structure is declarative, flow is imperative.** Screens and dialog
 *content* are declared as widgets; *when* to show them is driven imperatively
 from event handlers (often with `await`).
 
-`Navigator` and `Overlay` are reached through an **instance**, never as static
-calls:
+`Navigator` and `Overlay` are reached through an **instance**, resolved from a
+widget — there is no global accessor:
 
-- `nv.Navigator.root()` — the app's root navigator (available anywhere).
-- `nv.Navigator.of(self)` — the nearest enclosing (possibly nested) navigator.
-- `nv.Overlay.root()` — the root overlay host for dialogs/snackbars.
+- `nv.Navigator.of(self)` — the nearest enclosing navigator, falling back to the
+  app's when there is no nested one.
+- `nv.Overlay.of(self)` — the same rule for the overlay host of dialogs/snackbars.
+- `nv.Navigator.of(self, root=True)` / `nv.Overlay.of(self, root=True)` — skip any
+  nested one and target the app's.
+
+There is **no** `Navigator.root()` / `Overlay.root()`; they were removed in #518
+because a process-global root cannot say *which* app it belongs to. `self` must be
+mounted, so resolve in `on_mount()`, `build()`, or the event handler — never in
+`__init__`.
 
 ## Dialogs — declarative definition + imperative display
 
-`Overlay.root().dialog(...)` shows a modal and returns a handle you can `await`
+`Overlay.of(self).dialog(...)` shows a modal and returns a handle you can `await`
 for an `OverlayResult` (read `result.value`). Close it with
-`Overlay.root().close(value)` — **not** `Navigator.pop`.
+`overlay.close(value)` — **not** `Navigator.pop`.
 
 ```python
-handle = nv.Overlay.root().dialog(
+overlay = nv.Overlay.of(self)
+handle = overlay.dialog(
     nv.BasicDialog(
         title=nv.Text("Confirm"),
         content=nv.Text("Are you sure?"),
         actions=[
-            nv.Button("Yes", on_click=lambda: nv.Overlay.root().close(True),  style=nv.ButtonStyle.text()),
-            nv.Button("No",  on_click=lambda: nv.Overlay.root().close(False), style=nv.ButtonStyle.text()),
+            nv.Button("Yes", on_click=lambda: overlay.close(True),  style=nv.ButtonStyle.text()),
+            nv.Button("No",  on_click=lambda: overlay.close(False), style=nv.ButtonStyle.text()),
         ],
     )
 )
@@ -33,14 +41,17 @@ if result.value:
     do_something()
 ```
 
+Resolving the overlay once into a local also gives the action lambdas something to
+close without repeating the lookup.
+
 Do **not** reach for Flutter's `showDialog(context:, builder:)`. A dialog can also
-be presented from an **Intent** (`nv.Overlay.root().dialog(MyDialogIntent(...))`)
+be presented from an **Intent** (`nv.Overlay.of(self).dialog(MyDialogIntent(...))`)
 when driving it from a ViewModel — see the Intent section below.
 
 ## Snackbars — imperative fire & forget
 
 ```python
-nv.Overlay.root().snackbar("Saved successfully!")            # optional: duration=5.0
+nv.Overlay.of(self).snackbar("Saved successfully!")          # optional: duration=5.0
 ```
 
 ## Tooltips — fully declarative (a modifier)
@@ -58,15 +69,15 @@ Name an icon with a string (`icon="edit"`) or the typed constant
 | --- | --- |
 | Wizard / step switch inside one screen, no back history | switch children with a `Deck`: `nv.Deck(index=step_obs, children=[Step1(), Step2()])` |
 | Tabs / rail, independent screens, keep state | `NavigationRail` + a `Deck` keyed on the selected-index `Observable` |
-| List → detail with back history | imperative `nv.Navigator.root().push(DetailScreen())` |
+| List → detail with back history | imperative `nv.Navigator.of(self).push(DetailScreen())` |
 | From a ViewModel (decoupled, testable) | **Intent-based** routing |
 | Per-region history (nested) | `nv.Navigator.of(self).push(...)` inside a nested `Navigator` |
 
-Method names: `Navigator.root().push(screen_or_intent)` to go forward,
-`Navigator.root().pop()` to go back, `Navigator.of(self).push(...)` for the
-nearest nested navigator. There is **no** `MaterialPageRoute`, `push_replacement`,
-or `pop_until` — push a screen widget or an Intent; to replace the whole screen,
-`push` from the root navigator while inside a nested one.
+Method names: `Navigator.of(self).push(screen_or_intent)` to go forward,
+`Navigator.of(self).pop()` to go back. There is **no** `MaterialPageRoute`,
+`push_replacement`, or `pop_until` — push a screen widget or an Intent; to replace
+the whole screen from inside a nested navigator, use
+`Navigator.of(self, root=True).push(...)`.
 
 ## Intent-based navigation (recommended from ViewModels)
 
@@ -97,7 +108,7 @@ class HomeScreen(nv.ComposableWidget):
     def build(self):
         return nv.Button(
             "Open",
-            on_click=lambda: self.vm.open(nv.Navigator.root(), item_id=42),
+            on_click=lambda: self.vm.open(nv.Navigator.of(self), item_id=42),
             style=nv.ButtonStyle.filled(),
         )
 
@@ -138,12 +149,9 @@ exist.
 
 ## Resolving a navigator / overlay
 
-**Never in `__init__`.** Both fail there, for different reasons:
+**Never in `__init__`.** `nv.Navigator.of(self)` / `nv.Overlay.of(self)` walk up from
+`self`, and a widget has no parent until it is attached to the tree — the call raises
+`RuntimeError` with a message saying so.
 
-- `nv.Navigator.of(self)` / `nv.Overlay.of(self)` — the widget has no parent until it is
-  attached to the tree; raises `RuntimeError`.
-- `nv.Navigator.root()` / `nv.Overlay.root()` — `App` builds the content tree *before*
-  registering the roots, so at `__init__` time there is no root yet.
-
-Resolve one in the event handler, **every time**. This is also why a VM takes the
-navigator/overlay per call rather than in its constructor.
+Resolve one in `on_mount()`, `build()`, or the event handler, **every time**. This is
+also why a VM takes the navigator/overlay per call rather than in its constructor.

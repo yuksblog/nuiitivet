@@ -52,7 +52,7 @@ class OverlayAwareDialogDemo(nv.ComposableWidget):
     last_count: nv.Observable[str] = nv.Observable("No count yet")
 
     async def _show_custom_dialog(self):
-        overlay = nv.Overlay.root()
+        overlay = nv.Overlay.of(self)
 
         # Caller no longer needs to pass the overlay into the dialog.
         result = await overlay.dialog(CounterDialog())

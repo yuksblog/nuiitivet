@@ -76,22 +76,6 @@ def cancel_pending_clock_callbacks():
         _cancel()
 
 
-@pytest.fixture(autouse=True)
-def reset_app_roots():
-    """Restore the process-global root Overlay/Navigator around every test.
-
-    ``App`` publishes its Overlay and Navigator as class variables, so a test
-    that builds a real ``App`` would otherwise leave them set for every later
-    test — making tests that assert "no overlay in the tree" pass or fail
-    depending on collection order.
-    """
-    from nuiitivet.navigation import Navigator
-    from nuiitivet.overlay import Overlay
-
-    overlay_root = Overlay._root_overlay
-    navigator_root = Navigator._root
-    try:
-        yield
-    finally:
-        Overlay._root_overlay = overlay_root
-        Navigator._root = navigator_root
+# An App's Overlay and Navigator are per-instance, so building an App in a test
+# leaks nothing into the next one. The autouse fixture that used to save and
+# restore the process-global roots is gone with them (#518).

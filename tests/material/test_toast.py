@@ -2,11 +2,12 @@
 
 import pytest
 
+from nuiitivet.layout.container import Container
 from nuiitivet.observable import runtime
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.styles.snackbar_style import SnackbarStyle
 from nuiitivet.material.snackbar import Snackbar
-from nuiitivet.overlay import Overlay
+from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -183,15 +184,11 @@ def test_overlay_toast_creates_entry():
     assert contains_type(built, Snackbar)
 
 
-def test_overlay_root_toast():
-    """Test toast() on root overlay."""
-    overlay = MaterialOverlay(intents={})
-    Overlay.set_root(overlay)
+def test_overlay_app_toast():
+    """Test toast() resolved against the App's overlay."""
+    content = Container()
+    app = App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
 
-    # Show toast on root overlay
-    MaterialOverlay.root().snackbar("Root toast")
+    MaterialOverlay.of(content).snackbar("App toast")
 
-    assert len(overlay._entry_to_route) == 1
-
-    # Cleanup
-    Overlay._root_overlay = None
+    assert len(app.overlay._entry_to_route) == 1

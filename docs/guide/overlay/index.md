@@ -17,20 +17,34 @@ App
 
 ## Accessing Overlay
 
-Use `Overlay.root()` to retrieve the globally registered overlay instance.
+Use `Overlay.of(self)` from any mounted widget.
 
 ```python
 import nuiitivet.material as nv
 
-overlay = nv.Overlay.root()
-```
-
-`Overlay.of(self)` walks up the widget tree and returns the nearest ancestor `Overlay`. Use this only when you have intentionally nested an `Overlay` inside the widget tree.
-
-```python
-# Only needed when an Overlay is nested in the widget tree
 overlay = nv.Overlay.of(self)
 ```
+
+It returns the nearest ancestor `Overlay`, and falls back to the one your `App`
+owns when there is no nested `Overlay` above you — which is the usual case, since
+the App composes its overlay as a sibling layer of the `Navigator` rather than as
+a wrapper around your screens. So a screen gets the App's overlay, and a widget
+inside an intentionally nested `Overlay` gets that inner one.
+
+To reach the App's overlay from inside a nested one — to show something above
+everything — pass `root=True`:
+
+```python
+overlay = nv.Overlay.of(self, root=True)
+```
+
+Because the lookup walks the tree from `self`, it resolves against *your* App.
+Two `App` instances in one process each get their own.
+
+> [!NOTE]
+> `Overlay.of(self)` cannot be called from a widget's `__init__` — a widget has
+> no ancestors until it is mounted. Resolve it in `on_mount()`, in `build()`, or
+> in the event handler that needs it.
 
 ## The primitive
 

@@ -31,7 +31,7 @@ nv.App(HomeScreen()).run()
 ```python
 import nuiitivet.material as nv
 
-nv.Navigator.root()    # root navigator
+nv.Navigator.of(self)    # root navigator
 nv.Navigator.of(self)  # nearest ancestor Navigator — use only with nested navigators
 ```
 

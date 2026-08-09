@@ -18,7 +18,6 @@ from nuiitivet.layout.deck import Deck
 from nuiitivet.modifiers.key_shortcut import key_shortcut
 from nuiitivet.navigation import Route
 from nuiitivet.observable import Observable
-from nuiitivet.overlay import Overlay
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
@@ -175,7 +174,7 @@ def test_foreground_does_not_fire_on_a_covered_route() -> None:
     assert _press_accel_s(app) is True
     assert saved == ["home"]
 
-    nv.Navigator.root().push(Route(builder=_box))
+    app.navigator.push(Route(builder=_box))
     assert _press_accel_s(app) is False
     assert saved == ["home"]
 
@@ -188,7 +187,7 @@ def test_foreground_does_not_fire_behind_a_blocking_overlay() -> None:
 
     assert _press_accel_s(app) is True
 
-    Overlay.root().show(_box(), backdrop=True)
+    app.overlay.show(_box(), backdrop=True)
     assert _press_accel_s(app) is False
     assert saved == ["home"]
 
@@ -200,7 +199,7 @@ def test_a_shortcut_inside_the_modal_still_fires() -> None:
     app.root.mount(app)
 
     dialog = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("dialog")))
-    Overlay.root().show(dialog, backdrop=True)
+    app.overlay.show(dialog, backdrop=True)
 
     assert _press_accel_s(app) is True
     assert fired == ["dialog"]
@@ -350,7 +349,7 @@ def test_mount_scope_survives_navigation() -> None:
 
     assert app._dispatch_key_press("q", accel_mask()) is True
 
-    nv.Navigator.root().push(Route(builder=_box))
+    app.navigator.push(Route(builder=_box))
     assert app._dispatch_key_press("q", accel_mask()) is True
     assert quit_calls == ["quit", "quit"]
 

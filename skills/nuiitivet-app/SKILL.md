@@ -141,11 +141,11 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Left-hand app navigation | `NavigationRail` | `nv.NavigationRail([nv.RailItem("home", "Home"), ...], index=sel_obs)` |
 | Contextual menu | `Menu` / `MenuItem` / `SubMenuItem` | `nv.Menu([nv.MenuItem("Save", on_click=fn)])` |
 | Toolbar | `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` | `nv.HorizontalFloatingToolbar([...])` |
-| Sheets | `BottomSheet` / `SideSheet` / `StandardSideSheet` | `nv.Overlay.root().bottom_sheet(...)` |
-| Dialog | `BasicDialog` via `Overlay` | `await nv.Overlay.root().dialog(nv.BasicDialog(...))` |
-| Transient message | `Snackbar` via `Overlay` | `nv.Overlay.root().snackbar("Saved")` |
+| Sheets | `BottomSheet` / `SideSheet` / `StandardSideSheet` | `nv.Overlay.of(self).bottom_sheet(...)` |
+| Dialog | `BasicDialog` via `Overlay` | `await nv.Overlay.of(self).dialog(nv.BasicDialog(...))` |
+| Transient message | `Snackbar` via `Overlay` | `nv.Overlay.of(self).snackbar("Saved")` |
 | Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
-| Screen-to-screen navigation | `Navigator` | `nv.Navigator.root().push(DetailScreen())` |
+| Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
 
 When a widget's exact parameters aren't covered here, the topical references
 below carry the day-to-day set.

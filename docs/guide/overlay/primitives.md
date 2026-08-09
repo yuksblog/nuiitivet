@@ -7,7 +7,7 @@ The base `Overlay` exposes one primitive, `show()`, for displaying content above
 ```python
 import nuiitivet.material as nv
 
-overlay = nv.Overlay.root()
+overlay = nv.Overlay.of(self)
 
 handle = overlay.show(
     nv.Container(
@@ -115,7 +115,7 @@ A point has no extent, so there is no `target_anchor` to choose — `content_anc
 
 ```python
 def on_press(event: nv.PointerEvent) -> None:
-    nv.Overlay.root().show(
+    nv.Overlay.of(self).show(
         indicator,
         passthrough=True,
         position=nv.OverlayPosition.at_pointer(

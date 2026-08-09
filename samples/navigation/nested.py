@@ -39,7 +39,9 @@ class NestedHome(nv.ComposableWidget):
 class FullScreenDetails(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            nv.Navigator.root().pop()
+            # root=True targets the App's navigator explicitly, so this reads the
+            # same whether or not a nested one happens to be in the way.
+            nv.Navigator.of(self, root=True).pop()
 
         return nv.Box(
             background_color="#EEF7F0",
@@ -59,7 +61,7 @@ class FullScreenDetails(nv.ComposableWidget):
 class MainScreen(nv.ComposableWidget):
     def build(self):
         def open_full_screen() -> None:
-            nv.Navigator.root().push(FullScreenDetails())
+            nv.Navigator.of(self, root=True).push(FullScreenDetails())
 
         return nv.Row(
             width="wt",

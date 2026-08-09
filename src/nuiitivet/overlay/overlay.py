@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, TypeVar
 
-from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
@@ -33,8 +33,8 @@ from .transition_state import OverlayTransitionState
 
 logger = logging.getLogger(__name__)
 
-# Lets ``root()``/``of()`` keep the concrete subclass type, so that
-# ``MaterialOverlay.root()`` is a ``MaterialOverlay`` and not an ``Overlay``.
+# Lets ``of()`` keep the concrete subclass type, so that
+# ``MaterialOverlay.of(...)`` is a ``MaterialOverlay`` and not an ``Overlay``.
 OverlayT = TypeVar("OverlayT", bound="Overlay")
 
 
@@ -313,8 +313,6 @@ class Overlay(ComposableWidget):
         # Remove the dialog
         overlay.remove_entry(entry)
     """
-
-    _root_overlay: Optional["Overlay"] = None  # Class variable for root overlay
 
     def __init__(self, *, layer_composer: OverlayLayerComposer | None = None) -> None:
         super().__init__(width="wt", height="wt")
@@ -862,28 +860,40 @@ class Overlay(ComposableWidget):
             exception_once(logger, "overlay_close_fallback_pop_exc", "Overlay close fallback pop raised")
 
     @classmethod
-    def set_root(cls, overlay: "Overlay") -> None:
-        cls._root_overlay = overlay
-
-    @classmethod
-    def root(cls: type[OverlayT]) -> OverlayT:
-        overlay = cls._root_overlay
-        if overlay is None:
-            raise RuntimeError(f"No root overlay found. Did you forget to initialize the App with an {cls.__name__}?")
-        if not isinstance(overlay, cls):
-            raise RuntimeError(f"Root overlay is not a {cls.__name__} instance")
-        return overlay
-
-    @classmethod
     def of(cls: type[OverlayT], context: Widget, root: bool = False) -> OverlayT:
-        if root:
-            return cls.root()
+        """Return the ``Overlay`` that should host a layer shown from ``context``.
 
-        overlay = find_provider(context, cls)
-        if overlay is None:
+        The nearest ancestor ``Overlay`` wins, so an intentionally nested one
+        captures the layers shown from inside it. With no such ancestor the
+        answer is the App's own overlay — which is *not* reachable by an ancestor
+        walk, because the App composes it as a sibling layer of the ``Navigator``
+        rather than as a wrapper around the content.
+
+        Args:
+            context: A widget in the subtree from which to resolve.
+            root: Skip the ancestor search and return the App's overlay, to show
+                a layer above everything from inside a nested overlay.
+
+        Raises:
+            RuntimeError: If called before ``context`` is mounted (typically from
+                ``__init__``), or if no overlay can be resolved at all.
+        """
+        if not root:
+            overlay = find_provider(context, cls)
+            if overlay is not None:
+                return overlay
+
+        app = find_app(context)
+        app_overlay = app._overlay if app is not None else None
+        if app_overlay is None:
             raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError(
-                f"No {cls.__name__} found in the widget tree above {context.__class__.__name__}. "
-                f"Did you forget to wrap your widget in an {cls.__name__}?"
+                f"No {cls.__name__} found for {context.__class__.__name__}: it has no "
+                f"{cls.__name__} ancestor and is not attached to an App."
             )
-        return overlay
+        if not isinstance(app_overlay, cls):
+            raise RuntimeError(
+                f"The App's overlay is a {type(app_overlay).__name__}, not a {cls.__name__}. "
+                f"Pass overlay_factory={cls.__name__} to App(...), or wrap the subtree in one."
+            )
+        return app_overlay

@@ -1,4 +1,4 @@
-"""Shared diagnostics for ``X.of(context)`` ancestor lookups.
+"""Shared machinery for ``X.of(context)`` lookups.
 
 ``of()`` resolves by walking *upward* from ``context``, so it can only work once
 the widget has been attached to a tree. Calling it from ``__init__`` therefore
@@ -7,13 +7,24 @@ fails for a reason that has nothing to do with a missing provider, and the
 
 Every ``of()`` funnels its failure path through :func:`raise_if_premature_lookup`
 so that the premature case is reported as such, consistently and without drift.
+
+:func:`find_app` is the second half: some providers are owned by the ``App``
+rather than placed in the tree by the author, and the App's own ``Overlay`` is
+not even an ancestor of the content (it is a sibling layer of the ``Navigator``).
+Those ``of()`` implementations fall back to the App reached through
+:class:`~nuiitivet.runtime.app.AppScope`, which keeps the answer scoped to *this*
+App instead of a process-wide global.
 """
 
 from __future__ import annotations
 
-from typing import Any, Final, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Final, Optional, Type, TypeVar
+
+if TYPE_CHECKING:
+    from nuiitivet.runtime.app import App
 
 __all__ = [
+    "find_app",
     "find_provider",
     "is_premature_lookup",
     "is_uninitialized_context",
@@ -46,6 +57,27 @@ def find_provider(context: Any, widget_type: Type[T]) -> Optional[T]:
         return context.find_ancestor(widget_type)  # type: ignore[no-any-return]
     except AttributeError:
         return None
+
+
+def find_app(context: Any) -> Optional["App"]:
+    """Return the :class:`~nuiitivet.runtime.app.App` owning ``context``'s tree.
+
+    Resolved through the ``AppScope`` that wraps every App-built root, so two
+    Apps in one process each see their own. Returns ``None`` for a widget tree
+    that no App owns -- a bare tree in a test, or a widget not attached yet.
+
+    Args:
+        context: The widget to search upward from.
+
+    Returns:
+        The owning App, or ``None`` if there is none to be found.
+    """
+    from nuiitivet.runtime.app import AppScope
+
+    scope = find_provider(context, AppScope)
+    if scope is None:
+        return None
+    return scope.app
 
 
 def is_premature_lookup(context: Any) -> bool:

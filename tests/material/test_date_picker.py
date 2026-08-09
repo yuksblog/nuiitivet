@@ -25,7 +25,7 @@ from nuiitivet.material.styles.date_picker_style import (
 )
 from nuiitivet.modifiers.popup import PopupBox
 from nuiitivet.observable import Observable
-from nuiitivet.overlay.overlay import Overlay
+from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
 
 # ---------------------------------------------------------------------------
@@ -589,13 +589,29 @@ def test_docked_date_picker_mount_with_no_value_does_not_write_through():
 
 
 @pytest.fixture
-def overlay_root():
-    """Install a root Overlay for the duration of a test."""
-    previous = Overlay._root_overlay
-    overlay = Overlay()
-    Overlay.set_root(overlay)
-    yield overlay
-    Overlay._root_overlay = previous
+def picker_in_app():
+    """Build a ``DockedDatePicker`` inside a real App and return it laid out.
+
+    The popup resolves its overlay by walking to the App (#518), so the picker
+    has to be genuinely attached — building it standalone leaves it with nothing
+    to resolve against.
+
+    Returns a callable taking the value Observable and yielding
+    ``(picker, overlay)``, with the field's layout rect already stood in for.
+    """
+
+    def _make(obs: "Observable[date | None]"):
+        picker = DockedDatePicker(value=obs)
+        app = App(content=picker, width=800, height=600)
+        app.root.mount(app)
+        app.root.layout(800, 600)
+        popup = picker.built_child
+        assert isinstance(popup, PopupBox)
+        # Stand in for the rect a real layout pass would assign to the field.
+        popup.set_layout_rect(10, 20, 360, 56)
+        return picker, app.overlay
+
+    return _make
 
 
 def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
@@ -616,36 +632,28 @@ def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
     assert popup._offset == (0.0, picker.style.dropdown_gap)
 
 
-def test_docked_date_picker_opens_an_overlay_entry(overlay_root):
+def test_docked_date_picker_opens_an_overlay_entry(picker_in_app):
     """Tapping the icon button pushes the calendar into the overlay."""
     obs: Observable[date | None] = Observable(None)
-    picker = DockedDatePicker(value=obs)
-    popup = picker.build()
-    # Stand in for the rect a real layout pass would assign to the field.
-    popup.set_layout_rect(10, 20, 360, 56)
-    popup.on_mount()
+    picker, overlay = picker_in_app(obs)
 
-    assert overlay_root.has_entries() is False
+    assert overlay.has_entries() is False
 
     picker._toggle_dropdown()
 
-    assert overlay_root.has_entries() is True
-    assert popup._handle is not None
+    assert overlay.has_entries() is True
+    assert picker.built_child._handle is not None
 
 
-def test_docked_date_picker_confirming_dismisses_the_overlay(overlay_root):
+def test_docked_date_picker_confirming_dismisses_the_overlay(picker_in_app):
     """Picking a day keeps the overlay up; OK writes through and tears it down."""
     obs: Observable[date | None] = Observable(None)
-    picker = DockedDatePicker(value=obs)
-    popup = picker.build()
-    popup.set_layout_rect(10, 20, 360, 56)
-    popup.on_mount()
-    picker.on_mount()
+    picker, overlay = picker_in_app(obs)
     picker._toggle_dropdown()
-    assert overlay_root.has_entries() is True
+    assert overlay.has_entries() is True
 
     picker._calendar._on_day_tap(date(2026, 7, 4))
-    assert overlay_root.has_entries() is True
+    assert overlay.has_entries() is True
     assert obs.value is None
 
     picker._calendar._on_ok()
@@ -653,24 +661,20 @@ def test_docked_date_picker_confirming_dismisses_the_overlay(overlay_root):
     assert obs.value == date(2026, 7, 4)
     assert picker._text_obs.value == "07/04/2026"
     assert picker._is_open.value is False
-    assert overlay_root.has_entries() is False
+    assert overlay.has_entries() is False
 
 
-def test_docked_date_picker_cancelling_dismisses_the_overlay(overlay_root):
+def test_docked_date_picker_cancelling_dismisses_the_overlay(picker_in_app):
     """Cancel tears the overlay down without touching value."""
     obs: Observable[date | None] = Observable(date(2026, 6, 25))
-    picker = DockedDatePicker(value=obs)
-    popup = picker.build()
-    popup.set_layout_rect(10, 20, 360, 56)
-    popup.on_mount()
-    picker.on_mount()
+    picker, overlay = picker_in_app(obs)
     picker._toggle_dropdown()
     picker._calendar._on_day_tap(date(2026, 7, 4))
 
     picker._calendar._on_cancel()
 
     assert obs.value == date(2026, 6, 25)
-    assert overlay_root.has_entries() is False
+    assert overlay.has_entries() is False
 
 
 def test_docked_date_picker_custom_style():

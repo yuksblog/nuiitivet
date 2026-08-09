@@ -51,7 +51,7 @@ class LiveScreen(nv.ComposableWidget):
                         nv.Button("Rebuild", on_click=self.rebuild, style=nv.ButtonStyle.text()),
                         nv.Button(
                             "Back",
-                            on_click=lambda: nv.Navigator.root().pop(),
+                            on_click=lambda: nv.Navigator.of(self).pop(),
                             style=nv.ButtonStyle.text(),
                         ),
                     ],
@@ -72,7 +72,7 @@ class HomeScreen(nv.ComposableWidget):
                 nv.Text("Open the live view, then rebuild it, then come back."),
                 nv.Button(
                     "Open live view",
-                    on_click=lambda: nv.Navigator.root().push(LiveScreen()),
+                    on_click=lambda: nv.Navigator.of(self).push(LiveScreen()),
                     style=nv.ButtonStyle.filled(),
                 ),
                 nv.Text(LOG.text),

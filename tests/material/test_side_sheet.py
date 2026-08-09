@@ -131,13 +131,10 @@ def _find_box_with_corner_radius(widget, radius):
 
 def _side_sheet_overlay():
     from nuiitivet.material.overlay import MaterialOverlay
-    from nuiitivet.overlay import Overlay
     from nuiitivet.runtime.app import App
 
-    App(content=Box())
-    overlay = MaterialOverlay(intents={})
-    Overlay.set_root(overlay)
-    return overlay
+    app = App(content=Box(), overlay_factory=lambda: MaterialOverlay(intents={}))
+    return app.overlay
 
 
 def _presented_content(overlay):
@@ -148,32 +145,22 @@ def _presented_content(overlay):
 
 def test_side_sheet_right_corner_radius_applied():
     """side_sheet(side='right') rounds only the inner (left) corners."""
-    from nuiitivet.overlay import Overlay
-
     overlay = _side_sheet_overlay()
-    try:
-        sheet = SideSheet(Box(), headline="Settings", style=SideSheetStyle(corner_radius=16.0))
-        overlay.side_sheet(sheet, side="right")
-        rounded = _find_box_with_corner_radius(_presented_content(overlay), (16.0, 0.0, 0.0, 16.0))
-        assert rounded is not None
-        assert rounded.clip_content is True
-    finally:
-        Overlay._root_overlay = None
+    sheet = SideSheet(Box(), headline="Settings", style=SideSheetStyle(corner_radius=16.0))
+    overlay.side_sheet(sheet, side="right")
+    rounded = _find_box_with_corner_radius(_presented_content(overlay), (16.0, 0.0, 0.0, 16.0))
+    assert rounded is not None
+    assert rounded.clip_content is True
 
 
 def test_side_sheet_left_corner_radius_applied():
     """side_sheet(side='left') rounds only the inner (right) corners."""
-    from nuiitivet.overlay import Overlay
-
     overlay = _side_sheet_overlay()
-    try:
-        sheet = SideSheet(Box(), headline="Nav", style=SideSheetStyle(corner_radius=16.0))
-        overlay.side_sheet(sheet, side="left")
-        rounded = _find_box_with_corner_radius(_presented_content(overlay), (0.0, 16.0, 16.0, 0.0))
-        assert rounded is not None
-        assert rounded.clip_content is True
-    finally:
-        Overlay._root_overlay = None
+    sheet = SideSheet(Box(), headline="Nav", style=SideSheetStyle(corner_radius=16.0))
+    overlay.side_sheet(sheet, side="left")
+    rounded = _find_box_with_corner_radius(_presented_content(overlay), (0.0, 16.0, 16.0, 0.0))
+    assert rounded is not None
+    assert rounded.clip_content is True
 
 
 def test_side_sheet_build_width_height():

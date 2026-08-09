@@ -49,9 +49,10 @@ Note: The `Overlay` core provides only `show()`, while scenario-specific APIs (d
 
 ### 2.1 API Consistency with Navigator
 
-- `App` provides a root Overlay and a global access API.
-  - `Overlay.root()`: Root Overlay. Use this in the common case.
-  - `Overlay.of(context)`: Nearest ancestor Overlay. Use this only when an `Overlay` is intentionally nested inside the widget tree and the inner instance must be reached instead of the root.
+- `App` owns an Overlay, reached through the same context lookup as a nested one.
+  - `Overlay.of(context)`: the nearest ancestor Overlay, falling back to the App's. Use this in the common case.
+  - `Overlay.of(context, root=True)`: always the App's. Use this to show above everything from inside a nested Overlay.
+  - The App composes its Overlay as a *sibling* of the Navigator, not as an ancestor of the content, so an ancestor walk alone would never reach it. The fallback resolves it through the `AppScope` instead — per App, never a process-global (#518).
 - Protocols are provided to ensure ViewModels do not depend on implementation details.
   Core `OverlayProtocol` (`nuiitivet.overlay.protocols`) covers `close()` only, since the
   presentation helpers live on `MaterialOverlay`; `MaterialOverlayProtocol`
@@ -256,8 +257,7 @@ Scenario-specific APIs are moved to subclasses.
 
 - Inheritance: `MaterialOverlay(Overlay)`
 - Retrieval:
-  - `MaterialOverlay.root()`: Use this in the common case. Succeeds only if the root overlay is a `MaterialOverlay`.
-  - `MaterialOverlay.of(context)`: Walks up the widget tree and returns the nearest `MaterialOverlay`. Use this only when a `MaterialOverlay` is intentionally nested inside the widget tree.
+  - `MaterialOverlay.of(context)`: the nearest ancestor `MaterialOverlay`, falling back to the App's. The lookup is parameterised on the calling class, so the subclass type is preserved; it fails if the resolved overlay is not a `MaterialOverlay`.
 
 #### Intent Resolution
 

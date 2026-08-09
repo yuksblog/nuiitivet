@@ -43,7 +43,7 @@ class HomeScreen(nv.ComposableWidget):
             gap=12,
             children=[
                 nv.Text("Home Screen"),
-                nv.Button("View Details", on_click=lambda: nv.Navigator.root().push(DetailsIntent(item_id=42)), style=nv.ButtonStyle.filled()),
+                nv.Button("View Details", on_click=lambda: nv.Navigator.of(self).push(DetailsIntent(item_id=42)), style=nv.ButtonStyle.filled()),
             ],
         )
 
@@ -61,7 +61,7 @@ class DetailsScreen(nv.ComposableWidget):
                 gap=12,
                 children=[
                     nv.Text(f"Details for item {self.intent.item_id}"),
-                    nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
+                    nv.Button("Back", on_click=lambda: nv.Navigator.of(self).pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
@@ -89,7 +89,7 @@ import nuiitivet.material as nv
 
 def go_to_details():
     # Push an Intent instead of a Widget or Route
-    nv.Navigator.root().push(DetailsIntent(item_id=42))
+    nv.Navigator.of(self).push(DetailsIntent(item_id=42))
 
 nv.Button(
     "View Details",
@@ -122,13 +122,13 @@ class HomeScreen(nv.ComposableWidget):
 
     def build(self):
         def go_to_details():
-            self.vm.on_item_selected(nv.Navigator.root())
+            self.vm.on_item_selected(nv.Navigator.of(self))
 
         return nv.Button("View Details", on_click=go_to_details, style=nv.ButtonStyle.filled())
 ```
 
 !!! warning "Not in `__init__`"
-    Neither `nv.Navigator.of(self)` nor `nv.Navigator.root()` works there. Resolve one in
+    Neither `nv.Navigator.of(self)` nor `nv.Navigator.of(self)` works there. Resolve one in
     the event handler, every time.
 
 Because the ViewModel only depends on `NavigatorProtocol` and `DetailsIntent`, you can test the navigation decision logic in isolation.

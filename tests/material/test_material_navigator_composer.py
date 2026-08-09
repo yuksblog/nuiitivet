@@ -78,7 +78,6 @@ def test_push_transition_pixels_vary_with_progress() -> None:
 
     width, height = 200, 160
     nav = _material_intents_nav()
-    nv.Navigator.set_root(nav)
     nav.mount(_DummyApp())
     nav.layout(width, height)
     nav.push(_ScreenIntent(depth=1))

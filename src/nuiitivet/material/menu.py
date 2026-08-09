@@ -463,7 +463,7 @@ class SubMenuItem(MenuItem):
         from nuiitivet.overlay.overlay import Overlay
 
         try:
-            overlay = Overlay.root()
+            overlay = Overlay.of(self, root=True)
         except RuntimeError:
             return
 

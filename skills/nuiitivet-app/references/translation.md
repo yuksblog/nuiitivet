@@ -146,26 +146,28 @@ nv.Button("OK").modifier(
 
 ## Navigation & dialogs
 
-Reach `Navigator` / `Overlay` through an instance — `nv.Navigator.root()` (or
-`nv.Navigator.of(self)` for the nearest nested one), and `nv.Overlay.root()`.
-They are **not** static `nv.Navigator.push(...)` calls.
+Reach `Navigator` / `Overlay` through an instance resolved from a mounted widget:
+`nv.Navigator.of(self)` / `nv.Overlay.of(self)`. Each returns the nearest enclosing
+one, falling back to the app's; add `root=True` to force the app's. They are **not**
+static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor (#518).
 
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
-| `Navigator.of(context).push(MaterialPageRoute(builder: ...))` | `nv.Navigator.root().push(CartScreen())`, or Intent-based routing |
-| `Navigator.pop(context)` | `nv.Navigator.root().pop()` |
-| `showDialog(context:, builder:)` returning a Future | `await nv.Overlay.root().dialog(nv.BasicDialog(...))` |
-| close a dialog with a result | `nv.Overlay.root().close(value)` (not `Navigator.pop(value)`) |
-| `ScaffoldMessenger.of(context).showSnackBar(...)` | `nv.Overlay.root().snackbar("Saved")` |
+| `Navigator.of(context).push(MaterialPageRoute(builder: ...))` | `nv.Navigator.of(self).push(CartScreen())`, or Intent-based routing |
+| `Navigator.pop(context)` | `nv.Navigator.of(self).pop()` |
+| `showDialog(context:, builder:)` returning a Future | `await nv.Overlay.of(self).dialog(nv.BasicDialog(...))` |
+| close a dialog with a result | `overlay.close(value)` (not `Navigator.pop(value)`) |
+| `ScaffoldMessenger.of(context).showSnackBar(...)` | `nv.Overlay.of(self).snackbar("Saved")` |
 | routing tables of string paths only | Intent-based `nv.Navigator.intents(initial_route=..., routes={Intent: lambda i: Screen()})` |
 
 ```python
 # Correct
-handle = nv.Overlay.root().dialog(
+overlay = nv.Overlay.of(self)
+handle = overlay.dialog(
     nv.BasicDialog(title=nv.Text("Confirm"), content=nv.Text("Sure?"),
-                   actions=[nv.Button("Yes", on_click=lambda: nv.Overlay.root().close(True))]))
+                   actions=[nv.Button("Yes", on_click=lambda: overlay.close(True))]))
 result = await handle          # OverlayResult; read result.value
-nv.Navigator.root().push(CartScreen())
+nv.Navigator.of(self).push(CartScreen())
 ```
 
 See [navigation.md](navigation.md) for Intent-based routing, nested navigation,

@@ -56,9 +56,7 @@ def show_reload_error(app: Any, message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
     try:
-        from nuiitivet.overlay import Overlay
-
-        overlay = Overlay.root()
+        overlay = app.overlay
         clear_reload_error(app)
         banner = _build_banner(message)
         overlay.show(banner, passthrough=True)
@@ -71,19 +69,17 @@ def show_reload_error(app: Any, message: str) -> None:
 def clear_reload_error(app: Any) -> None:
     """Dismiss the error banner for ``app`` if one is showing.
 
-    Only closes it while the banner's original overlay is still the live root. A
-    successful reload rebuilds the tree (and overlay), which discards the banner
-    already — attempting to close it against the new overlay would be a no-op that
-    logs a spurious "no active overlay entry" warning.
+    Only closes it while the banner's original overlay is still the App's live
+    one. A successful reload rebuilds the tree (and overlay), which discards the
+    banner already — attempting to close it against the new overlay would be a
+    no-op that logs a spurious "no active overlay entry" warning.
     """
     entry: Optional[tuple[Any, Any]] = _active_banner.pop(id(app), None)
     if entry is None:
         return
     overlay, banner = entry
     try:
-        from nuiitivet.overlay import Overlay
-
-        if Overlay.root() is overlay:
+        if app.overlay is overlay:
             overlay.close(target=banner)
     except Exception:
         logger.debug("hot reload: failed to clear error banner", exc_info=True)

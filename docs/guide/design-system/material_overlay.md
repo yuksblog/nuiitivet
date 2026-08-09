@@ -18,20 +18,26 @@ The base `Overlay` exposes one primitive, `show()` — see [Primitives](../overl
 
 ## Accessing Overlay
 
-`App` registers an `Overlay` instance as the root overlay. In most cases, use `Overlay.root()` to retrieve it directly.
+`App` owns an `Overlay`. Reach it from any mounted widget with `Overlay.of(self)`.
 
 ```python
 import nuiitivet.material as nv
 
-overlay = nv.Overlay.root()
-```
-
-`Overlay.of(self)` walks up the widget tree and returns the nearest ancestor `Overlay`. Use this only when you have intentionally nested an `Overlay` inside the widget tree and need to reach that inner instance rather than the root.
-
-```python
-# Only needed when an Overlay is nested in the widget tree
 overlay = nv.Overlay.of(self)
 ```
+
+The nearest ancestor `Overlay` wins, falling back to the App's when there is no
+nested one above you. Pass `root=True` to skip a nested overlay and target the
+App's:
+
+```python
+overlay = nv.Overlay.of(self, root=True)
+```
+
+Under a `MaterialApp` the App's overlay is a `MaterialOverlay`, so
+`MaterialOverlay.of(self)` returns it with the subclass type intact and the
+shortcuts below available. See [Overlay](../overlay/index.md) for the full
+lookup rules.
 
 ## Shortcuts at a Glance
 
@@ -66,8 +72,8 @@ overlay.dialog(
         title="Delete item?",
         message="This action cannot be undone.",
         actions=[
-            nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(None), style=nv.ButtonStyle.text()),
-            nv.Button("Delete", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.text()),
+            nv.Button("Cancel", on_click=lambda: nv.Overlay.of(self).close(None), style=nv.ButtonStyle.text()),
+            nv.Button("Delete", on_click=lambda: nv.Overlay.of(self).close(True), style=nv.ButtonStyle.text()),
         ],
     )
 )
@@ -233,8 +239,8 @@ nv.App(
             title="Confirm",
             message=intent.message,
             actions=[
-                nv.Button("Cancel", on_click=lambda: nv.Overlay.root().close(False), style=nv.ButtonStyle.text()),
-                nv.Button("OK", on_click=lambda: nv.Overlay.root().close(True), style=nv.ButtonStyle.text()),
+                nv.Button("Cancel", on_click=lambda: nv.Overlay.of(self).close(False), style=nv.ButtonStyle.text()),
+                nv.Button("OK", on_click=lambda: nv.Overlay.of(self).close(True), style=nv.ButtonStyle.text()),
             ],
         ),
     },
