@@ -11,8 +11,8 @@ class BasicDialogDemo(nv.ComposableWidget):
     result_text: nv.Observable[str] = nv.Observable("Ready")
 
     async def _show_dialog(self):
-        # Overlay.root() finds the globally unique Overlay
-        overlay = nv.Overlay.root()
+        # No Overlay is nested above this screen, so this resolves to the App's.
+        overlay = nv.Overlay.of(self)
 
         # Create the dialog widget
         dialog = nv.BasicDialog(

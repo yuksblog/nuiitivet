@@ -24,7 +24,7 @@ class AnimatedScreen(nv.ComposableWidget):
                 gap=12,
                 children=[
                     nv.Text("Animated Screen"),
-                    nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
+                    nv.Button("Back", on_click=lambda: nv.Navigator.of(self).pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
@@ -40,7 +40,7 @@ def navigate_with_custom_animation():
         builder=lambda: AnimatedScreen(),
         transition_spec=custom_transition
     )
-    nv.Navigator.root().push(route)
+    nv.Navigator.of(self).push(route)
 ```
 
 ## Disabling Animations
@@ -61,7 +61,7 @@ class InstantScreen(nv.ComposableWidget):
                 gap=12,
                 children=[
                     nv.Text("Instant Screen"),
-                    nv.Button("Back", on_click=lambda: nv.Navigator.root().pop(), style=nv.ButtonStyle.filled()),
+                    nv.Button("Back", on_click=lambda: nv.Navigator.of(self).pop(), style=nv.ButtonStyle.filled()),
                 ],
             ),
         ).modifier(nv.background("#F5F7FF"))
@@ -71,7 +71,7 @@ def navigate_instantly():
         builder=lambda: InstantScreen(),
         transition_spec=nv.Transitions.empty()
     )
-    nv.Navigator.root().push(route)
+    nv.Navigator.of(self).push(route)
 ```
 
 Using `Route` and `TransitionSpec` allows you to create smooth, visually appealing transitions or optimize for speed by disabling them entirely.

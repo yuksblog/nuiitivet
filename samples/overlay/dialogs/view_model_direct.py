@@ -37,8 +37,8 @@ class DirectViewModelDemo(nv.ComposableWidget):
         self.vm = CoupledViewModel()
 
     async def _on_run_click(self):
-        overlay = nv.Overlay.root()
-        await self.vm.process_action(overlay)
+        # Resolve here, not in __init__: a widget has no ancestors until mounted.
+        await self.vm.process_action(nv.Overlay.of(self))
 
     def build(self) -> nv.Widget:
         return nv.Container(

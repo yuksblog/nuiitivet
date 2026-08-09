@@ -20,7 +20,7 @@ class DetailsScreen(nv.ComposableWidget):
 
     def build(self):
         def go_back() -> None:
-            nv.Navigator.root().pop()
+            nv.Navigator.of(self).pop()
 
         return nv.Box(
             background_color="#F5F7FF",
@@ -54,7 +54,7 @@ class HomeScreen(nv.ComposableWidget):
     def build(self):
         def go_to_details() -> None:
             # Resolve the navigator here, not in __init__.
-            self.view_model.on_item_selected(nv.Navigator.root())
+            self.view_model.on_item_selected(nv.Navigator.of(self))
 
         return nv.Column(
             padding=16,

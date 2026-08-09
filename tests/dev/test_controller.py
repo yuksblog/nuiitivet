@@ -29,11 +29,14 @@ class _FakeApp:
     def __init__(self) -> None:
         self.root = object()
         self.invalidated = False
+        # The App owns its navigation layers; these tests never build a tree.
+        self._navigator = None
+        self._overlay = None
 
     def _rebuild_content_root(self, factory: Any) -> Any:
         return object()
 
-    def _commit_content_root(self, new_root: Any) -> None:
+    def _commit_content_root(self, content: Any) -> None:
         pass
 
     def invalidate(self) -> None:
@@ -124,7 +127,8 @@ def test_successful_reload_replays_navigation_snapshot() -> None:
 
         controller._do_reload()
 
-    restore.assert_called_once_with(sentinel)
+    # Replayed against the App, which by then has adopted the new navigator.
+    restore.assert_called_once_with(controller._app, sentinel)
 
 
 def test_failed_reload_records_error_traceback() -> None:

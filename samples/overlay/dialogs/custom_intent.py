@@ -13,13 +13,17 @@ import nuiitivet.material as nv
 class CustomDialogContent(nv.ComposableWidget):
     """A completely custom widget to be used as a dialog."""
 
-    def __init__(self, overlay: nv.Overlay, initial: int = 0):
+    def __init__(self, initial: int = 0):
         super().__init__()
-        self.overlay = overlay
         self.counter = nv.Observable(initial)
 
     def _increment(self):
         self.counter.value += 1
+
+    def _close(self):
+        # An overlay route is mounted inside the overlay showing it, so the
+        # nearest ancestor Overlay is exactly the one to close.
+        nv.Overlay.of(self).close(self.counter.value)
 
     def build(self) -> nv.Widget:
         return nv.Card(
@@ -35,8 +39,7 @@ class CustomDialogContent(nv.ComposableWidget):
                         ),
                         nv.Button("Increment", on_click=self._increment, style=nv.ButtonStyle.filled()),
                         nv.Spacer(height=8),
-                        nv.Button("Close & Return Count", on_click=lambda: self.overlay.close(
-                            self.counter.value), style=nv.ButtonStyle.outlined()),
+                        nv.Button("Close & Return Count", on_click=self._close, style=nv.ButtonStyle.outlined()),
                     ],
                 ),
             ),
@@ -55,10 +58,7 @@ class CounterIntent:
 # 2. Define the Dialog Creator
 def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
     """Creates a widget for the CounterIntent."""
-    return CustomDialogContent(
-        nv.Overlay.root(),
-        initial=intent.initial_value,
-    )
+    return CustomDialogContent(initial=intent.initial_value)
 
 
 class CustomIntentViewModel:
@@ -79,8 +79,8 @@ class CustomIntentDemo(nv.ComposableWidget):
         self.vm = CustomIntentViewModel()
 
     async def _on_open_click(self):
-        overlay = nv.Overlay.root()
-        await self.vm.open_counter(overlay)
+        # Resolve here, not in __init__: a widget has no ancestors until mounted.
+        await self.vm.open_counter(nv.Overlay.of(self))
 
     def build(self) -> nv.Widget:
         return nv.Container(
@@ -100,9 +100,7 @@ class CustomIntentDemo(nv.ComposableWidget):
 
 def main(png_path: str = ""):
     if png_path:
-        from typing import cast
-
-        content = CustomDialogContent(overlay=cast(nv.Overlay, None), initial=5)
+        content = CustomDialogContent(initial=5)
         app = nv.App(content=nv.Container(alignment="center", child=content), width=400, height=300)
         app.render_to_png(png_path)
         return app

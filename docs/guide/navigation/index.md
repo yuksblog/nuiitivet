@@ -6,7 +6,7 @@ Nuiitivet provides a robust navigation system for managing screen transitions an
 
 The `Navigator` is a widget that manages a set of child widgets with a stack discipline. It allows you to transition between different screens (or "pages") in your application.
 
-When you create an `App`, a root `Navigator` is automatically set up for you. If you pass a plain `Widget` as content (e.g. `App(HomeScreen())`), it is wrapped in an implicit root `Navigator`. If you pass a `Navigator` explicitly (e.g. `App(Navigator.intents(...))`), that instance is used as the root. In all cases you can access the root navigator with `Navigator.root()`.
+When you create an `App`, a root `Navigator` is automatically set up for you. If you pass a plain `Widget` as content (e.g. `App(HomeScreen())`), it is wrapped in an implicit root `Navigator`. If you pass a `Navigator` explicitly (e.g. `App(Navigator.intents(...))`), that instance is used as the root. In all cases you reach it from a mounted widget with `Navigator.of(self)`, which returns the nearest enclosing `Navigator` and falls back to the App's when there is no nested one.
 
 ## Basic Navigation: Push and Pop
 
@@ -26,7 +26,7 @@ class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_to_details():
             # Push a new widget directly onto the navigation stack
-            nv.Navigator.root().push(DetailsScreen())
+            nv.Navigator.of(self).push(DetailsScreen())
 
         return nv.Column(
             padding=16,
@@ -48,7 +48,7 @@ class DetailsScreen(nv.ComposableWidget):
     def build(self):
         def go_back():
             # Pop the current screen off the navigation stack
-            nv.Navigator.root().pop()
+            nv.Navigator.of(self).pop()
 
         return nv.Container(
             width="wt",

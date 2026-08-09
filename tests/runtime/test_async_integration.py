@@ -23,7 +23,6 @@ class MockOverlay(Overlay):
 async def test_overlay_dialog_await():
     # Setup
     overlay = Overlay()
-    Overlay.set_root(overlay)
 
     # Create a dialog handle
     handle = overlay.show(Text("Dialog"), backdrop=True)
@@ -45,7 +44,6 @@ async def test_overlay_dialog_await():
 @pytest.mark.asyncio
 async def test_overlay_loading_returns_handle():
     overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i.message)})
-    Overlay.set_root(overlay)
 
     handle = overlay.loading()
     assert overlay.has_entries()
@@ -56,7 +54,6 @@ async def test_overlay_loading_returns_handle():
 @pytest.mark.asyncio
 async def test_overlay_while_loading_async_with():
     overlay = MaterialOverlay(intents={LoadingDialogIntent: lambda i: PlainLoadingDialog(i.message)})
-    Overlay.set_root(overlay)
 
     async with overlay.while_loading():
         assert overlay.has_entries()

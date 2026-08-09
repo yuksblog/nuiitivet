@@ -39,18 +39,13 @@ class _GoIntent:
     name: str
 
 
-def test_navigator_root_not_set_raises() -> None:
-    Navigator._root = None  # type: ignore[attr-defined]
-    with pytest.raises(RuntimeError, match="Navigator root is not set"):
-        Navigator.root()
-
-
 def test_navigator_of_not_found_raises() -> None:
     # Attached, so the failure really is a missing provider; a bare unattached
-    # Widget would (correctly) report the pre-mount case instead.
+    # Widget would (correctly) report the pre-mount case instead. With no App
+    # above it either, there is no fallback to reach for.
     w = Widget()
     Container().add_child(w)
-    with pytest.raises(RuntimeError, match="Navigator not found in ancestors"):
+    with pytest.raises(RuntimeError, match="not attached to an App"):
         Navigator.of(w)
 
 

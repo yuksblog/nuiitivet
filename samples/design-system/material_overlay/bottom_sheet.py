@@ -11,7 +11,7 @@ import nuiitivet.material as nv
 
 class BottomSheetDemo(nv.ComposableWidget):
     def show_bottom_sheet(self) -> None:
-        nv.Overlay.root().bottom_sheet(
+        nv.Overlay.of(self).bottom_sheet(
             nv.BottomSheet(
                 nv.Box(
                     nv.Column(

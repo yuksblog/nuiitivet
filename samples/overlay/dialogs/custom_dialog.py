@@ -49,7 +49,7 @@ class CustomDialogDemo(nv.ComposableWidget):
     last_count: nv.Observable[str] = nv.Observable("No count yet")
 
     async def _show_custom_dialog(self):
-        overlay = nv.Overlay.root()
+        overlay = nv.Overlay.of(self)
 
         # Pass the overlay instance to the content so it can close itself
         content = CustomDialogContent(overlay)

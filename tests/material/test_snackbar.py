@@ -2,11 +2,12 @@
 
 import pytest
 
+from nuiitivet.layout.container import Container
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.material.styles.snackbar_style import SnackbarStyle
 from nuiitivet.observable import runtime
-from nuiitivet.overlay import Overlay
+from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -155,12 +156,11 @@ def test_material_overlay_snackbar_creates_entry() -> None:
     assert contains_type(built, Snackbar)
 
 
-def test_material_overlay_root_snackbar() -> None:
-    overlay = MaterialOverlay(intents={})
-    Overlay.set_root(overlay)
+def test_material_overlay_app_snackbar() -> None:
+    """A screen reaches the App's overlay through the fallback, with its type kept."""
+    content = Container()
+    app = App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
 
-    MaterialOverlay.root().snackbar("Root snackbar")
+    MaterialOverlay.of(content).snackbar("App snackbar")
 
-    assert len(overlay._entry_to_route) == 1
-
-    Overlay._root_overlay = None
+    assert len(app.overlay._entry_to_route) == 1

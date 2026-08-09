@@ -37,23 +37,19 @@ Internally, the `Navigator` acts as a stack managing `Route` objects, while the 
 
 ### 1.2 Root Navigator Design
 
-Fullscreen transitions are a common pattern, making a root Navigator essentially mandatory. `App` provides a root Navigator by default along with a global access API.
+Fullscreen transitions are a common pattern, making an App-level Navigator essentially mandatory. `App` provides one by default, reached through the same context lookup as a nested one.
 
 ```python
-# Global access (concise, recommended)
-Navigator.root().push(...)
-
-# Context-based (for future extensibility, detailed control)
-Navigator.of(context).push(...)              # Nearest Navigator
-Navigator.of(context, root=True).push(...)   # Root Navigator
+Navigator.of(context).push(...)              # Nearest Navigator, else the App's
+Navigator.of(context, root=True).push(...)   # Always the App's
 ```
 
 ### 1.3 Context Lookup Pattern
 
 To support independent Navigators (transition histories) per tab, we implement `Navigator.of(context)`.
 
-- Implementation simply traverses up the parent chain.
-- The root Navigator can be retrieved in O(1) via `Navigator.root()`, ensuring common cases are concise and fast.
+- Implementation traverses up the parent chain.
+- With no `Navigator` ancestor it falls back to the navigator owned by the `App` that the context belongs to, found through the `AppScope` wrapping every App-built root. That keeps the common case a single short call **and** keeps the answer scoped to one App — there is no process-global root, so two Apps in one process never collide (#518).
 
 ```python
 class Widget:
@@ -68,29 +64,21 @@ class Widget:
 
 
 class Navigator(Widget):
-    _root_navigator: "Navigator | None" = None
-
-    @classmethod
-    def root(cls) -> "Navigator":
-        """Get the root navigator."""
-        if cls._root_navigator is None:
-            raise RuntimeError("No root navigator found.")
-        return cls._root_navigator
-
     @classmethod
     def of(cls, context: Widget, root: bool = False) -> "Navigator":
-        """Find the nearest Navigator in the widget tree."""
-        if root:
-            return cls.root()
+        """Find the Navigator that navigation from ``context`` should drive."""
+        if not root:
+            navigator = context.find_ancestor(Navigator)
+            if navigator is not None:
+                return navigator
 
-        navigator = context.find_ancestor(Navigator)
-        if navigator is None:
+        app = find_app(context)
+        if app is None or app._navigator is None:
             raise RuntimeError(
-                "No Navigator found in the widget tree above "
-                f"{context.__class__.__name__}. "
-                "Did you forget to wrap your widget in a Navigator?"
+                f"No Navigator found for {context.__class__.__name__}: it has no "
+                "Navigator ancestor and is not attached to an App."
             )
-        return navigator
+        return app._navigator
 ```
 
 ### 1.4 Interface for ViewModels (Protocol)
@@ -133,7 +121,7 @@ The Intent System is a mechanism for declaring screen transitions not just by pa
 
 ```python
 # Caller side (Intent)
-Navigator.root().push(ProductDetailIntent(product_id=123))
+Navigator.of(self).push(ProductDetailIntent(product_id=123))
 
 # Framework side (Resolution)
 # - Look up the factory from routes using type(intent) as the key
@@ -170,7 +158,7 @@ routes: dict[type, callable[[object], "Route"]] = {
     ),
 }
 
-Navigator.root().push(ProductDetailIntent(product_id=123))
+Navigator.of(self).push(ProductDetailIntent(product_id=123))
 ```
 
 ### 2.3 `push` Overload Design
@@ -183,13 +171,13 @@ Navigator.root().push(ProductDetailIntent(product_id=123))
 
 ```python
 # Pattern 1: Widget
-Navigator.root().push(SettingsScreen())
+Navigator.of(self).push(SettingsScreen())
 
 # Pattern 2: Route
-Navigator.root().push(Route(builder=lambda: SettingsScreen()))
+Navigator.of(self).push(Route(builder=lambda: SettingsScreen()))
 
 # Pattern 3: Intent
-Navigator.root().push(SettingsIntent())
+Navigator.of(self).push(SettingsIntent())
 ```
 
 ### 2.4 Handling Missing Intents
@@ -197,7 +185,7 @@ Navigator.root().push(SettingsIntent())
 If an unregistered Intent is used, a `RuntimeError` is thrown to catch configuration errors early.
 
 ```python
-Navigator.root().push(UnknownIntent())
+Navigator.of(self).push(UnknownIntent())
 # → RuntimeError: Intent 'UnknownIntent' not found in routes
 ```
 
@@ -225,7 +213,7 @@ For the most common case of starting from a single screen, simply pass the scree
 ```python
 # App wraps the Widget in an implicit root Navigator
 App(HomeScreen())
-# Navigator.root().push(...) works anywhere.
+# Navigator.of(self).push(...) works anywhere.
 ```
 
 Use `Navigator.routes([...])` when the navigator must start with a pre-populated stack (e.g. deep linking, state restoration):
@@ -252,8 +240,8 @@ class App:
                 self._overlay.close()
                 return True
 
-            if self._root_navigator and self._root_navigator.can_pop():
-                self._root_navigator.pop()
+            if self._navigator and self._navigator.can_pop():
+                self._navigator.pop()
                 return True
 
             return False
@@ -290,7 +278,7 @@ EditScreen().modifier(will_pop(on_will_pop=self._on_will_pop))
 async def _on_will_pop(self) -> bool:
     """Return True to continue pop, False to cancel."""
     if self.has_unsaved_changes.value:
-        confirmed = await Overlay.root().dialog(
+        confirmed = await Overlay.of(self).dialog(
             BasicDialog(
                 title=Text("Confirmation"),
                 content=Text("Go back without saving?"),

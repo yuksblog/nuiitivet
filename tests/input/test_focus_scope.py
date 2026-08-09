@@ -9,7 +9,6 @@ from nuiitivet.material import Checkbox, Menu, MenuItem, SubMenuItem
 from nuiitivet.material.button_group import ConnectedButtonGroup, GroupButton, StandardButtonGroup
 from nuiitivet.material.selection_controls import RadioButton, RadioGroup
 from nuiitivet.material.slider import HorizontalRangeSlider, HorizontalSlider
-from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
@@ -90,7 +89,7 @@ def _menu_in_overlay(menu: Menu) -> App:
     """Show ``menu`` the way it is really used: as a laid-out overlay entry."""
     app = App(content=Container(width=400, height=400))
     app.root.mount(app)
-    Overlay.root().show(menu, passthrough=True)
+    app.overlay.show(menu, passthrough=True)
     app.root.layout(400, 400)
     return app
 
@@ -174,7 +173,7 @@ def _popup_menu_opened_with(menu: Menu, source: FocusSource) -> App:
     app = App(content=Container(width=400, height=400))
     app.root.mount(app)
     app._last_input_source = source
-    Overlay.root().show(menu, passthrough=True)
+    app.overlay.show(menu, passthrough=True)
     app.root.layout(400, 400)
     return app
 

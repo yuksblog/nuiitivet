@@ -11,8 +11,8 @@ import nuiitivet.material as nv
 
 class LoadingDemo(nv.ComposableWidget):
     def show_loading(self) -> None:
-        nv.Overlay.root().loading()
-        # handle = Overlay.root().loading()
+        nv.Overlay.of(self).loading()
+        # handle = Overlay.of(self).loading()
         # In real usage, dismiss when done:
         # handle.close(None)
 

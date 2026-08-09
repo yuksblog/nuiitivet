@@ -5,10 +5,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 import inspect
 import logging
-from typing import Any, Callable, ClassVar, Literal, Mapping, TypeVar
+from typing import Any, Callable, Literal, Mapping, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
@@ -27,8 +27,8 @@ _TRANSITION_PHASE_ATTR: dict[TransitionPhase, str] = {
     TransitionPhase.EXIT: "exit_",
 }
 
-# Lets ``root()``/``of()`` keep the concrete subclass type, so that
-# ``MaterialNavigator.root()`` is a ``MaterialNavigator`` and not a ``Navigator``.
+# Lets ``of()`` keep the concrete subclass type, so that
+# ``MaterialNavigator.of(...)`` is a ``MaterialNavigator`` and not a ``Navigator``.
 NavigatorT = TypeVar("NavigatorT", bound="Navigator")
 
 
@@ -92,12 +92,9 @@ class Navigator(ComposableWidget):
 
     Features:
         - push/pop
-        - root()/set_root()
-        - of(context)
+        - of(context) / of(context, root=True)
         - optional fade-in on push
     """
-
-    _root: ClassVar[Navigator | None] = None
 
     def __init__(
         self,
@@ -188,34 +185,41 @@ class Navigator(ComposableWidget):
         return instance
 
     @classmethod
-    def set_root(cls, navigator: Navigator) -> None:
-        cls._root = navigator
+    def of(cls: type[NavigatorT], context: Widget, root: bool = False) -> NavigatorT:
+        """Return the ``Navigator`` that navigation from ``context`` should drive.
 
-    @classmethod
-    def root(cls: type[NavigatorT]) -> NavigatorT:
-        navigator = cls._root
-        if navigator is None:
-            raise RuntimeError("Navigator root is not set")
-        if not isinstance(navigator, cls):
-            raise RuntimeError(f"Navigator root is not a {cls.__name__} instance")
-        return navigator
-
-    @classmethod
-    def of(cls: type[NavigatorT], context: Widget) -> NavigatorT:
-        """Return the nearest ancestor :class:`Navigator`.
+        The nearest ancestor wins, so a nested navigator keeps its own history.
+        With no ancestor the answer is the App's own navigator, which makes this
+        the single entry point for both the nested and the top-level case.
 
         Args:
-            context: A widget in the subtree from which to search upward.
+            context: A widget in the subtree from which to resolve.
+            root: Skip the ancestor search and return the App's navigator, to
+                drive a whole-window transition from inside a nested navigator.
 
         Raises:
             RuntimeError: If called before ``context`` is mounted (typically from
-                ``__init__``), or if no ``Navigator`` ancestor exists.
+                ``__init__``), or if no navigator can be resolved at all.
         """
-        navigator = find_provider(context, cls)
-        if navigator is None:
+        if not root:
+            navigator = find_provider(context, cls)
+            if navigator is not None:
+                return navigator
+
+        app = find_app(context)
+        app_navigator = app._navigator if app is not None else None
+        if app_navigator is None:
             raise_if_premature_lookup(f"{cls.__name__}.of", context)
-            raise RuntimeError("Navigator not found in ancestors")
-        return navigator
+            raise RuntimeError(
+                f"No {cls.__name__} found for {context.__class__.__name__}: it has no "
+                f"{cls.__name__} ancestor and is not attached to an App."
+            )
+        if not isinstance(app_navigator, cls):
+            raise RuntimeError(
+                f"The App's navigator is a {type(app_navigator).__name__}, not a {cls.__name__}. "
+                f"Pass a {cls.__name__} as the App's content, or nest one in the subtree."
+            )
+        return app_navigator
 
     def can_pop(self) -> bool:
         return self._stack.can_pop(min_routes=1)

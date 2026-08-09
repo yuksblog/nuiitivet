@@ -165,7 +165,7 @@ class PopupBox(Widget):
             offset=self._offset,
         )
         try:
-            overlay = Overlay.root()
+            overlay = Overlay.of(self, root=True)
         except RuntimeError:
             return False
 

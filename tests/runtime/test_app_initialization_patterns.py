@@ -10,7 +10,6 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
 from nuiitivet.material.app import MaterialApp
 from nuiitivet.navigation import Navigator
-from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App, AppScope
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
@@ -29,50 +28,31 @@ class _ComposableFixedBox(ComposableWidget):
         return Container(width=200, height=50)
 
 
-def test_app_content_provides_root_overlay() -> None:
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    try:
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
-        Navigator._root = None  # type: ignore[attr-defined]
+def test_app_content_is_wrapped_in_a_navigator_and_overlay_stack() -> None:
+    app = App(content=_FlagWidget(label="content"))
 
-        app = App(content=_FlagWidget(label="content"))
-
-        assert isinstance(app.root, AppScope)
-        geometry = app.root.children_snapshot()[0]
-        assert isinstance(geometry, Geometry)
-        stack = geometry.children_snapshot()[0]
-        assert isinstance(stack, Stack)
-        assert stack.children_snapshot()[0] is Navigator.root()
-        root_overlay = Overlay.root()
-        assert stack.children_snapshot()[1] is root_overlay
-    finally:
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
+    assert isinstance(app.root, AppScope)
+    geometry = app.root.children_snapshot()[0]
+    assert isinstance(geometry, Geometry)
+    stack = geometry.children_snapshot()[0]
+    assert isinstance(stack, Stack)
+    assert stack.children_snapshot()[0] is app.navigator
+    assert stack.children_snapshot()[1] is app.overlay
 
 
 def test_app_installs_root_geometry_provider() -> None:
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    try:
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
-        Navigator._root = None  # type: ignore[attr-defined]
+    content = _FlagWidget(label="content")
+    app = App(content=content)
 
-        content = _FlagWidget(label="content")
-        app = App(content=content)
+    geometry = app.root.children_snapshot()[0]
+    assert isinstance(geometry, Geometry)
 
-        geometry = app.root.children_snapshot()[0]
-        assert isinstance(geometry, Geometry)
-
-        # The root Geometry measures the window through the normal layout pass:
-        # laying out the app root publishes the window size, and a content widget
-        # resolves Geometry.of(...) to this root provider.
-        app.root.layout(800, 600)
-        assert geometry.size.value == Size(800, 600)
-        assert Geometry.of(content) is geometry
-    finally:
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
+    # The root Geometry measures the window through the normal layout pass:
+    # laying out the app root publishes the window size, and a content widget
+    # resolves Geometry.of(...) to this root provider.
+    app.root.layout(800, 600)
+    assert geometry.size.value == Size(800, 600)
+    assert Geometry.of(content) is geometry
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,32 +60,73 @@ class _HomeIntent:
     label: str
 
 
-def test_app_with_intents_navigator_sets_root_navigator_and_overlay() -> None:
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
+def test_app_with_intents_navigator_becomes_the_app_navigator() -> None:
+    app = App(
+        Navigator.intents(
+            initial_route=_HomeIntent(label="home"),
+            routes={
+                _HomeIntent: lambda i: _FlagWidget(label=i.label),
+            },
+        ),
+    )
+
+    assert isinstance(app.root, AppScope)
+    geometry = app.root.children_snapshot()[0]
+    assert isinstance(geometry, Geometry)
+    stack = geometry.children_snapshot()[0]
+    assert isinstance(stack, Stack)
+    assert stack.children_snapshot()[0] is app.navigator
+    assert stack.children_snapshot()[1] is app.overlay
+
+
+def test_two_apps_resolve_their_own_navigator_and_overlay() -> None:
+    """The point of #518: no process-global root to collide over."""
+    first = App(content=_FlagWidget(label="first"))
+    second = App(content=_FlagWidget(label="second"))
+
+    assert first.navigator is not second.navigator
+    assert first.overlay is not second.overlay
+
+
+def test_a_rebuild_is_adopted_only_once_committed() -> None:
+    """Building must not touch the App; only the commit hands over (#518)."""
+    app = App(content=_FlagWidget(label="first"))
+    original_navigator = app.navigator
+    original_overlay = app.overlay
+
+    rebuilt = app._rebuild_content_root(lambda: _FlagWidget(label="second"))
+
+    # Built but not installed: the App still points at what is on screen.
+    assert rebuilt.navigator is not original_navigator
+    assert app.navigator is original_navigator
+    assert app.overlay is original_overlay
+
+    app._commit_content_root(rebuilt)
+
+    assert app.navigator is rebuilt.navigator
+    assert app.overlay is rebuilt.overlay
+
+
+def test_a_reload_that_fails_to_commit_leaves_the_live_tree_addressable() -> None:
+    """A build that never goes on screen must not become what the App reaches for.
+
+    Otherwise the reload error banner is shown on an unmounted overlay and back
+    handling drives a navigator the user cannot see.
+    """
+    app = App(content=_FlagWidget(label="first"))
+    original_navigator = app.navigator
+    original_overlay = app.overlay
+
+    def _explode() -> Widget:
+        raise RuntimeError("boom")
+
     try:
-        Navigator._root = None  # type: ignore[attr-defined]
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
+        app._commit_content_root(app._rebuild_content_root(_explode))
+    except RuntimeError:
+        pass
 
-        app = App(
-            Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
-                routes={
-                    _HomeIntent: lambda i: _FlagWidget(label=i.label),
-                },
-            ),
-        )
-
-        assert isinstance(app.root, AppScope)
-        geometry = app.root.children_snapshot()[0]
-        assert isinstance(geometry, Geometry)
-        stack = geometry.children_snapshot()[0]
-        assert isinstance(stack, Stack)
-        assert stack.children_snapshot()[0] is Navigator.root()
-        assert stack.children_snapshot()[1] is Overlay.root()
-    finally:
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+    assert app.navigator is original_navigator
+    assert app.overlay is original_overlay
 
 
 def test_app_auto_window_size_measures_unmounted_composable_children() -> None:
@@ -134,71 +155,35 @@ def test_app_resizable_explicit_false() -> None:
 
 
 def test_app_with_intents_navigator_resizable_default_true() -> None:
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    try:
-        Navigator._root = None  # type: ignore[attr-defined]
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
+    app = App(
+        Navigator.intents(
+            initial_route=_HomeIntent(label="home"),
+            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+        ),
+    )
 
-        app = App(
-            Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
-                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
-            ),
-        )
-
-        assert app.resizable is True
-    finally:
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+    assert app.resizable is True
 
 
 def test_app_with_intents_navigator_resizable_explicit_false() -> None:
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    try:
-        Navigator._root = None  # type: ignore[attr-defined]
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
+    app = App(
+        Navigator.intents(
+            initial_route=_HomeIntent(label="home"),
+            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+        ),
+        resizable=False,
+    )
 
-        app = App(
-            Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
-                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
-            ),
-            resizable=False,
-        )
-
-        assert app.resizable is False
-    finally:
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+    assert app.resizable is False
 
 
 def test_material_app_resizable_default_true() -> None:
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    try:
-        Navigator._root = None  # type: ignore[attr-defined]
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
+    app = MaterialApp(content=_FlagWidget())
 
-        app = MaterialApp(content=_FlagWidget())
-
-        assert app.resizable is True
-    finally:
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+    assert app.resizable is True
 
 
 def test_material_app_resizable_explicit_false() -> None:
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    try:
-        Navigator._root = None  # type: ignore[attr-defined]
-        Overlay._root_overlay = None  # type: ignore[attr-defined]
+    app = MaterialApp(content=_FlagWidget(), resizable=False)
 
-        app = MaterialApp(content=_FlagWidget(), resizable=False)
-
-        assert app.resizable is False
-    finally:
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
+    assert app.resizable is False

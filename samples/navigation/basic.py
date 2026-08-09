@@ -4,7 +4,7 @@ import nuiitivet.material as nv
 class DetailsScreen(nv.ComposableWidget):
     def build(self):
         def go_back() -> None:
-            nv.Navigator.root().pop()
+            nv.Navigator.of(self).pop()
 
         return nv.Box(
             background_color="#F5F7FF",
@@ -24,7 +24,7 @@ class DetailsScreen(nv.ComposableWidget):
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_to_details() -> None:
-            nv.Navigator.root().push(DetailsScreen())
+            nv.Navigator.of(self).push(DetailsScreen())
 
         return nv.Column(
             padding=16,

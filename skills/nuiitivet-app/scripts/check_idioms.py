@@ -39,7 +39,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "resume from the caller side instead."),
     (re.compile(r"\bRouteAware\b|\bdidPushNext\b|\bdidPopNext\b"), "Flutter",
      "No route-visibility callbacks: a covered route stays mounted and nothing fires. "
-     "Pause/resume from the code calling Navigator.root().push(...), or from the "
+     "Pause/resume from the code calling Navigator.of(self).push(...), or from the "
      "Observable behind a nv.Deck index."),
     (re.compile(r"\bLaunchedEffect\b|\bDisposableEffect\b|\brememberCoroutineScope\b"), "Jetpack Compose",
      "Run-once setup: override on_mount() (runs once per instance; a rebuild replaces the "
@@ -67,6 +67,11 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Percentage sizing does not exist: a size is fixed (a number), \"auto\", or a "
      "weight (\"wt\" / \"wt2\") that shares the leftover space. \"100%\" was never a "
      "fraction of the parent - write \"wt\"."),
+    (re.compile(r"\b(?:Navigator|Overlay)\.root\s*\(\s*\)|\b(?:Navigator|Overlay)\.set_root\b"), "removed API",
+     "Navigator.root() / Overlay.root() are gone (#518): a process-global root cannot "
+     "say which App it belongs to. Resolve from a mounted widget instead - "
+     "nv.Navigator.of(self) / nv.Overlay.of(self) return the nearest enclosing one and "
+     "fall back to the App's; add root=True to force the App's."),
     (re.compile(r"\bSizing\.flex\s*\("), "removed API",
      "Sizing.flex is gone. Write the string form: width=\"wt\" (or \"wt2\" for an "
      "uneven share); nv.Sizing.weight(n) exists but is not the idiom."),
@@ -81,14 +86,14 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Do not override layout to publish a size: nv.on_size_changed(cb) reports a "
      "widget's own measured size, and nv.Geometry publishes one to a subtree."),
     (re.compile(r"\bMaterialPageRoute\b"), "Flutter",
-     "nv.Navigator.root().push(Screen()) or Intent-based routing; no MaterialPageRoute."),
+     "nv.Navigator.of(self).push(Screen()) or Intent-based routing; no MaterialPageRoute."),
     (re.compile(r"\bshowDialog\s*\("), "Flutter",
-     "await nv.Overlay.root().dialog(nv.BasicDialog(...)); close with Overlay.root().close(v)."),
+     "await nv.Overlay.of(self).dialog(nv.BasicDialog(...)); close with overlay.close(v)."),
     (re.compile(r"\bScaffoldMessenger\b"), "Flutter",
-     "nv.Overlay.root().snackbar(\"...\")."),
+     "nv.Overlay.of(self).snackbar(\"...\")."),
     (re.compile(r"\bpushReplacement\b|\bpushNamed\b|\bpopUntil\b"), "Flutter",
      "No push_replacement / pop_until in Nuiitivet: push a widget or Intent with "
-     "Navigator.root().push(...); go back with Navigator.root().pop()."),
+     "Navigator.of(self).push(...); go back with Navigator.of(self).pop()."),
     (re.compile(r"\brunApp\s*\(|\bMaterialApp\s*\("), "Flutter",
      "nv.App(content=build_root).run() — pass a factory for hot reload."),
     (re.compile(r"\bBuildContext\b"), "Flutter",

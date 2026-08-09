@@ -6,7 +6,7 @@ nuiitivet offers a robust dialog system built on top of the Overlay architecture
 
 ## Basic Usage
 
-The most straightforward way to show a dialog is to create an `BasicDialog` widget and pass it to `Overlay.root().dialog()`.
+The most straightforward way to show a dialog is to create an `BasicDialog` widget and pass it to `Overlay.of(self).dialog()`.
 
 The `dialog()` method is **awaitable**, meaning you can wait for the user to close the dialog and receive a result.
 
@@ -18,8 +18,8 @@ class BasicDialogDemo(nv.ComposableWidget):
     result_text: nv.Observable[str] = nv.Observable("Ready")
 
     async def _show_dialog(self):
-        # Overlay.root() finds the globally unique Overlay
-        overlay = nv.Overlay.root()
+        # No Overlay is nested above this screen, so this resolves to the App's.
+        overlay = nv.Overlay.of(self)
 
         # Create the dialog widget
         dialog = nv.BasicDialog(
@@ -65,7 +65,7 @@ class BasicDialogDemo(nv.ComposableWidget):
 
 ### Key Points
 
-- `Overlay.root()`: Retrieves the root overlay instance.
+- `Overlay.of(self)`: Resolves the overlay to show in — the nearest nested one, otherwise the App's.
 - `overlay.dialog(widget)`: Displays the widget as a modal dialog with a scrim.
 - `overlay.close(value, target)`: Closes the dialog associated with `target`. The `value` is wrapped in an `OverlayResult` and returned to the caller of `await overlay.dialog()`.
 
@@ -218,7 +218,7 @@ class CoupledViewModel:
 
 class DirectViewModelDemo(nv.ComposableWidget):
     async def _on_run_click(self):
-        overlay = nv.Overlay.root()
+        overlay = nv.Overlay.of(self)
         await self.vm.process_action(overlay)
 ```
 
@@ -267,8 +267,8 @@ Annotate the overlay a ViewModel receives as `nv.OverlayProtocol`, not the concr
 `nv.Overlay`, as in the example above. A test can then pass a fake with no widget tree and
 no `App`.
 
-Pass it **per call**, resolved in the event handler: `nv.Overlay.root()` and
-`nv.Overlay.of(self)` do not work from a widget's `__init__`.
+Pass it **per call**, resolved in the event handler: `nv.Overlay.of(self)` does not
+work from a widget's `__init__`, because a widget has no ancestors until it is mounted.
 
 ## Custom Intents
 
@@ -290,11 +290,11 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 
    ```python
    def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
-       # This function knows about Widgets, but ViewModel doesn't
-       return CustomDialogContent(
-           nv.Overlay.root(),
-           initial=intent.initial_value
-       )
+       # This function knows about Widgets, but ViewModel doesn't. It has no
+       # context to resolve an overlay from -- and needs none: the widget it
+       # returns is mounted inside the overlay showing it, so the dialog itself
+       # calls nv.Overlay.of(self) when it wants to close.
+       return CustomDialogContent(initial=intent.initial_value)
 
    class IntentDemoApp(nv.ComposableWidget):
        def build(self) -> nv.Widget:

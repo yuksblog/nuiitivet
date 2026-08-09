@@ -19,8 +19,6 @@ from nuiitivet.backends.pyglet.runner import _normalize_key
 from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.focus import focusable
-from nuiitivet.navigation import Navigator
-from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import FocusNode, InteractionHostMixin
@@ -170,8 +168,8 @@ def test_release_bubbling_stops_on_truthy_return() -> None:
 @pytest.mark.asyncio
 async def test_escape_release_triggers_back_navigation() -> None:
     app = App(content=Container())
-    Overlay.root()
-    navigator = Navigator.root()
+    app.overlay
+    navigator = app.navigator
     navigator.push(Container())
 
     assert navigator.can_pop() is True

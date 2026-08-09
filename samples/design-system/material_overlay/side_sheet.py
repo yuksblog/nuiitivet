@@ -11,7 +11,7 @@ import nuiitivet.material as nv
 
 class SideSheetDemo(nv.ComposableWidget):
     def show_side_sheet(self) -> None:
-        nv.Overlay.root().side_sheet(
+        nv.Overlay.of(self).side_sheet(
             nv.SideSheet(
                 nv.Box(
                     nv.Column(

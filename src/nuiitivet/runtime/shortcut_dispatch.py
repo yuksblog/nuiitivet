@@ -53,7 +53,7 @@ def _is_occluded_by_overlay(widget: Widget) -> bool:
     from nuiitivet.overlay import Overlay
 
     try:
-        overlay = Overlay.root()
+        overlay = Overlay.of(widget, root=True)
     except RuntimeError:
         # No App-installed overlay (e.g. a bare widget tree in a test).
         return False

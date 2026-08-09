@@ -11,10 +11,10 @@ import nuiitivet.material as nv
 
 class SnackbarDemo(nv.ComposableWidget):
     def show_snackbar(self) -> None:
-        nv.Overlay.root().snackbar("Item deleted")
+        nv.Overlay.of(self).snackbar("Item deleted")
 
     def show_custom_snackbar(self) -> None:
-        nv.Overlay.root().snackbar(nv.Snackbar("Upload complete"))
+        nv.Overlay.of(self).snackbar(nv.Snackbar("Upload complete"))
 
     def build(self) -> nv.Widget:
         return nv.Container(

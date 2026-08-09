@@ -7,6 +7,7 @@ import time
 import traceback
 import warnings
 import weakref
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
 
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
@@ -103,6 +104,15 @@ class AppScope(Widget):
         self.theme_manager.on_change = self._on_theme_changed
         self.add_child(child)
 
+    @property
+    def app(self) -> Optional["App"]:
+        """The App this scope belongs to, or ``None`` once it has been collected.
+
+        The App-scoped half of ``X.of(context)`` resolves through here — see
+        :func:`nuiitivet.widgeting.context_lookup.find_app`.
+        """
+        return self._app_ref()
+
     def _on_theme_changed(self, _theme: "Theme") -> None:
         """Refresh everything below that read the theme.
 
@@ -141,11 +151,56 @@ class AppScope(Widget):
             child.set_layout_rect(0, 0, width, height)
 
 
+@dataclass(frozen=True)
+class _ContentRoot:
+    """A built-but-not-installed content root and the pieces it is made of.
+
+    Built by :meth:`App._build_root_navigation_stack` and installed by
+    :meth:`App._commit_content_root`. The navigator and overlay travel with the
+    widget so the App can adopt them *at commit time*: a hot reload that builds
+    successfully but fails to commit must leave the App pointing at the tree
+    that is still on screen, not at an orphan that was never mounted.
+    """
+
+    widget: Widget
+    navigator: "Navigator"
+    overlay: "Overlay"
+    initial_route_widget: Widget | None
+
+
 class App:
     """Application runner."""
 
     # Set when a CustomChrome is in use (see :meth:`_wrap_with_chrome_and_scope`).
     _window_drag_area: Optional[WindowDragArea] = None
+
+    # The App's own navigation layers, adopted in :meth:`_commit_content_root`.
+    # These are what ``Navigator.of`` / ``Overlay.of`` fall back to, so they are
+    # per-App state and never a process-wide global.
+    _navigator: Optional["Navigator"] = None
+    _overlay: Optional["Overlay"] = None
+
+    @property
+    def navigator(self) -> "Navigator":
+        """This App's root :class:`~nuiitivet.navigation.Navigator`.
+
+        Raises:
+            RuntimeError: If the App has no content root yet.
+        """
+        if self._navigator is None:
+            raise RuntimeError("App has no navigator yet; its content root is not built.")
+        return self._navigator
+
+    @property
+    def overlay(self) -> "Overlay":
+        """This App's root :class:`~nuiitivet.overlay.Overlay`.
+
+        Raises:
+            RuntimeError: If the App has no content root yet.
+        """
+        if self._overlay is None:
+            raise RuntimeError("App has no overlay yet; its content root is not built.")
+        return self._overlay
 
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
@@ -187,7 +242,13 @@ class App:
         *,
         navigator: "Navigator",
         overlay_factory: Callable[[], "Overlay"] | None,
-    ) -> tuple[Widget, Widget | None]:
+    ) -> _ContentRoot:
+        """Assemble the Navigator/Overlay layer stack for a content root.
+
+        Building is deliberately free of side effects on the App: the caller
+        adopts the result, so a build that is thrown away (a hot reload that
+        fails to commit) leaves no trace.
+        """
         from nuiitivet.layout.stack import Stack
         from nuiitivet.navigation import Navigator as _Navigator
         from nuiitivet.overlay import Overlay
@@ -197,11 +258,9 @@ class App:
         overlay = resolved_overlay_factory()
         if not isinstance(overlay, Overlay):
             raise TypeError("overlay_factory must return an Overlay instance")
-        Overlay.set_root(overlay)
 
         if not isinstance(navigator, _Navigator):
             raise TypeError("navigator must be a Navigator instance")
-        _Navigator.set_root(navigator)
 
         initial_route_widget: Widget | None = None
         try:
@@ -217,7 +276,12 @@ class App:
         overlay.height_sizing = Sizing.weight(100)
 
         root_widget = Stack(children=[navigator, overlay], width="wt", height="wt")
-        return root_widget, initial_route_widget
+        return _ContentRoot(
+            widget=root_widget,
+            navigator=navigator,
+            overlay=overlay,
+            initial_route_widget=initial_route_widget,
+        )
 
     def _wrap_with_chrome_and_scope(self, root: Widget) -> Widget:
         """Wrap a content root with the window chrome and the AppScope.
@@ -463,15 +527,7 @@ class App:
         consume the OS/back key or let default handlers run (e.g. ESC-to-exit).
         """
 
-        overlay = None
-        try:
-            from nuiitivet.overlay import Overlay
-
-            overlay = Overlay.root()
-        except Exception:
-            exception_once(logger, "app_overlay_root_exc", "Overlay.root() failed")
-            overlay = None
-
+        overlay = self._overlay
         if overlay is not None:
             try:
                 if overlay.has_entries():
@@ -479,15 +535,7 @@ class App:
             except Exception:
                 exception_once(logger, "app_overlay_has_entries_exc", "overlay.has_entries() failed")
 
-        navigator = None
-        try:
-            from nuiitivet.navigation import Navigator
-
-            navigator = Navigator.root()
-        except Exception:
-            exception_once(logger, "app_navigator_root_exc", "Navigator.root() failed")
-            navigator = None
-
+        navigator = self._navigator
         if navigator is not None:
             try:
                 return bool(navigator.can_pop())
@@ -505,15 +553,7 @@ class App:
         - Navigator: pop one route if possible
         """
 
-        overlay = None
-        try:
-            from nuiitivet.overlay import Overlay
-
-            overlay = Overlay.root()
-        except Exception:
-            exception_once(logger, "app_overlay_root_handle_back_exc", "Overlay.root() failed (handle_back_event)")
-            overlay = None
-
+        overlay = self._overlay
         if overlay is not None:
             try:
                 has_entries = bool(overlay.has_entries())
@@ -524,15 +564,7 @@ class App:
             except Exception:
                 exception_once(logger, "app_overlay_close_topmost_exc", "overlay.close_topmost() failed")
 
-        navigator = None
-        try:
-            from nuiitivet.navigation import Navigator
-
-            navigator = Navigator.root()
-        except Exception:
-            exception_once(logger, "app_navigator_root_handle_back_exc", "Navigator.root() failed (handle_back_event)")
-            navigator = None
-
+        navigator = self._navigator
         if navigator is not None:
             try:
                 request_back = getattr(navigator, "request_back", None)
@@ -587,8 +619,8 @@ class App:
                   ``Navigator.routes(...)`` / ``Navigator.intents(...)``), which
                   is used directly as the root Navigator.
                 - Any other ``Widget``, in which case a default root ``Navigator``
-                  is created implicitly so ``Navigator.root().push(...)`` works
-                  out of the box.
+                  is created implicitly so ``Navigator.of(context).push(...)``
+                  works out of the box.
             width: Window width specification.
             height: Window height specification.
             title: OS window title. Accepts a plain string or a
@@ -634,13 +666,17 @@ class App:
         else:
             navigator = self._build_default_navigator(content_root)
 
-        root_widget, initial_route_widget = self._build_root_navigation_stack(
+        built = self._build_root_navigation_stack(
             navigator=navigator,
             overlay_factory=overlay_factory,
         )
+        # Nothing to unmount on the initial path, so adopt straight away; the
+        # reload path defers this to :meth:`_commit_content_root`.
+        self._navigator = built.navigator
+        self._overlay = built.overlay
         resolved_chrome: OSChrome | CustomChrome | None = OSChrome() if chrome is _UNSET else chrome
         self._init_common(
-            root=root_widget,
+            root=built.widget,
             width=width,
             height=height,
             title=title,
@@ -648,7 +684,7 @@ class App:
             background=background,
             theme=theme,
             window_position=window_position,
-            window_auto_size_target=initial_route_widget,
+            window_auto_size_target=built.initial_route_widget,
             resizable=resizable,
         )
 
@@ -1051,13 +1087,12 @@ class App:
 
     def _occluding_overlay_content(self) -> Optional[Widget]:
         """Return the content of the topmost input-blocking overlay entry, if any."""
-        try:
-            from nuiitivet.overlay import Overlay
-
-            return Overlay.root().occluding_content_widget()
-        except RuntimeError:
+        overlay = self._overlay
+        if overlay is None:
             # No App-installed overlay (e.g. a bare widget tree in a test).
             return None
+        try:
+            return overlay.occluding_content_widget()
         except Exception:
             exception_once(logger, "app_occluding_overlay_content_exc", "occluding_content_widget raised")
             return None
@@ -1807,16 +1842,17 @@ class App:
 
         run_app(self, draw_fps=draw_fps, renderer=resolved_renderer)
 
-    def _rebuild_content_root(self, new_factory: "RootFactory | None" = None) -> Widget:
+    def _rebuild_content_root(self, new_factory: "RootFactory | None" = None) -> _ContentRoot:
         """Rebuild the content subtree from the root factory.
 
-        Re-invokes the root factory, rebuilds the Navigator/Overlay stack (which
-        resets the process-global ``Navigator``/``Overlay`` roots to the new
-        instances) and re-wraps it with the preserved chrome shell and AppScope.
-        The App shell — window, chrome, theme — is left untouched. The returned
-        root is **not** mounted or swapped in; call :meth:`_commit_content_root`
-        to do that. Splitting build from commit lets the hot-reload orchestrator
-        snapshot old state and restore it into the new tree before it is mounted.
+        Re-invokes the root factory, rebuilds the Navigator/Overlay stack and
+        re-wraps it with the preserved chrome shell and AppScope. The App shell —
+        window, chrome, theme — is left untouched, and so is the App's current
+        navigator/overlay: the result is **not** mounted, swapped in, or adopted
+        until :meth:`_commit_content_root` takes it. Splitting build from commit
+        lets the hot-reload orchestrator snapshot old state and restore it into
+        the new tree before it is mounted, and keeps a failed commit from leaving
+        the App pointing at a tree that never went on screen.
 
         Args:
             new_factory: Optional replacement factory re-fetched from a reloaded
@@ -1826,7 +1862,8 @@ class App:
                 reused.
 
         Returns:
-            The freshly built root widget (chrome + AppScope wrapped).
+            The freshly built content root, its ``widget`` chrome + AppScope
+            wrapped.
         """
         if new_factory is not None:
             self._root_factory = new_factory
@@ -1842,23 +1879,29 @@ class App:
         else:
             navigator = self._build_default_navigator(content_root)
 
-        root_widget, _ = self._build_root_navigation_stack(
+        content = self._build_root_navigation_stack(
             navigator=navigator,
             overlay_factory=self._overlay_factory,
         )
-        return self._wrap_with_chrome_and_scope(root_widget)
+        return replace(content, widget=self._wrap_with_chrome_and_scope(content.widget))
 
-    def _commit_content_root(self, new_root: Widget) -> None:
+    def _commit_content_root(self, content: _ContentRoot) -> None:
         """Swap in a rebuilt content root: unmount the old tree, mount the new.
 
         The counterpart to :meth:`_rebuild_content_root`. Unmounts the previous
-        root, installs ``new_root`` as ``self.root``, mounts it against this App,
-        and forces a repaint. Intended for the hot-reload path; the App shell and
-        window are preserved across the swap.
+        root, installs the new widget as ``self.root``, adopts its navigator and
+        overlay, mounts it against this App, and forces a repaint. Intended for
+        the hot-reload path; the App shell and window are preserved across the
+        swap.
+
+        Adoption happens here rather than at build time so that a reload which
+        builds cleanly but fails on the way in leaves ``self.navigator`` and
+        ``self.overlay`` pointing at the tree the user can still see.
 
         Args:
-            new_root: A root produced by :meth:`_rebuild_content_root`.
+            content: A content root produced by :meth:`_rebuild_content_root`.
         """
+        new_root = content.widget
         old_root = self.root
         if old_root is not None and old_root is not new_root:
             try:
@@ -1875,6 +1918,8 @@ class App:
         self._reset_interaction_state()
 
         self.root = new_root
+        self._navigator = content.navigator
+        self._overlay = content.overlay
         try:
             new_root.mount(self)
         except Exception:

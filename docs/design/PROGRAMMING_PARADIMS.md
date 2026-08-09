@@ -124,7 +124,7 @@ This pattern unifies the usage of `Navigator` and `Overlay`, ensuring consistent
 #### Snackbar: Basic Usage (Material)
 
 ```python
-MaterialOverlay.root().snackbar("Saved successfully!")
+MaterialOverlay.of(self).snackbar("Saved successfully!")
 ```
 
 #### Snackbar: ViewModel Implementation

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import on_size_changed
-from nuiitivet.navigation import Navigator
-from nuiitivet.overlay import Overlay
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
@@ -15,19 +13,13 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _isolated_roots():
-    """Reset the process-wide Navigator/Overlay roots an App installs."""
-    prev_overlay = Overlay._root_overlay  # type: ignore[attr-defined]
-    prev_nav = Navigator._root  # type: ignore[attr-defined]
-    Overlay._root_overlay = None  # type: ignore[attr-defined]
-    Navigator._root = None  # type: ignore[attr-defined]
+def _drained_size_callbacks():
+    """Keep queued size-change callbacks from leaking between tests."""
     flush_size_change_callbacks()
     try:
         yield
     finally:
         flush_size_change_callbacks()
-        Overlay._root_overlay = prev_overlay  # type: ignore[attr-defined]
-        Navigator._root = prev_nav  # type: ignore[attr-defined]
 
 
 class _Panel(ComposableWidget):

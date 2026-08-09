@@ -10,8 +10,8 @@ The reload sequence (§8 of HOT_RELOAD.md):
 1. snapshot ``Observable`` state and the declarative navigation stack from the
    live tree;
 2. reload user modules in dependency order and re-fetch the factory (§9.6/§9.1);
-3. rebuild the content root (resets Navigator/Overlay roots, unmounts the old
-   tree on commit);
+3. rebuild the content root (on commit: unmounts the old tree and hands the App
+   its new navigator/overlay);
 4. restore snapshot state and replay the navigation stack into the new tree;
 5. repaint.
 
@@ -103,9 +103,9 @@ class HotReloadController:
         # every recorded event -- success or failure -- can carry it.
         changed = self._detect_changed_modules()
         snapshot = snapshot_observables(app.root)
-        # Capture the declarative navigation stack before the rebuild resets the
-        # global Navigator root to a fresh instance at its initial route (#378).
-        nav_snapshot = snapshot_navigation()
+        # Capture the declarative navigation stack before the rebuild replaces
+        # the App's navigator with a fresh one at its initial route (#378).
+        nav_snapshot = snapshot_navigation(app)
 
         try:
             result = reload_user_modules(self._project_root, old_factory=self._factory)
@@ -114,7 +114,7 @@ class HotReloadController:
                 if result.new_factory is not None
                 else self._factory
             )
-            new_root = app._rebuild_content_root(new_factory)
+            new_content = app._rebuild_content_root(new_factory)
         except Exception:
             tb = traceback.format_exc()
             self._record_error(tb, changed)
@@ -122,9 +122,9 @@ class HotReloadController:
             return
 
         try:
-            app._commit_content_root(new_root)
+            app._commit_content_root(new_content)
             restored = restore_observables(app.root, snapshot)
-            restored_routes = restore_navigation(nav_snapshot)
+            restored_routes = restore_navigation(app, nav_snapshot)
         except Exception:
             # The new root is already committed; report but stay alive.
             tb = traceback.format_exc()

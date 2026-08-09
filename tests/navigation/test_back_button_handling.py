@@ -7,7 +7,6 @@ import pytest
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator
-from nuiitivet.overlay import Overlay
 from nuiitivet.runtime.app import App
 
 
@@ -23,8 +22,8 @@ def _force_finish_all_pop_transitions(navigator: Navigator) -> None:
 @pytest.mark.asyncio
 async def test_escape_closes_overlay_before_navigator_pop() -> None:
     app = App(content=Container())
-    overlay = Overlay.root()
-    navigator = Navigator.root()
+    overlay = app.overlay
+    navigator = app.navigator
     navigator.push(Container())
     overlay.show(Container(width=100, height=100), backdrop=True)
 
@@ -41,8 +40,8 @@ async def test_escape_closes_overlay_before_navigator_pop() -> None:
 @pytest.mark.asyncio
 async def test_escape_pops_navigator_when_no_overlay_entries() -> None:
     app = App(content=Container())
-    overlay = Overlay.root()
-    navigator = Navigator.root()
+    overlay = app.overlay
+    navigator = app.navigator
     navigator.push(Container())
 
     assert overlay.has_entries() is False
@@ -57,8 +56,8 @@ async def test_escape_pops_navigator_when_no_overlay_entries() -> None:
 @pytest.mark.asyncio
 async def test_back_event_is_unhandled_when_nothing_to_pop_or_close() -> None:
     app = App(content=Container())
-    overlay = Overlay.root()
-    navigator = Navigator.root()
+    overlay = app.overlay
+    navigator = app.navigator
 
     assert overlay.has_entries() is False
     assert navigator.can_pop() is False
@@ -71,8 +70,8 @@ async def test_back_event_is_unhandled_when_nothing_to_pop_or_close() -> None:
 async def test_escape_respects_will_pop_cancel() -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
     app = App(content=Container())
-    overlay = Overlay.root()
-    navigator = Navigator.root()
+    overlay = app.overlay
+    navigator = app.navigator
     navigator.push(Container().modifier(cancel_pop))
 
     assert overlay.has_entries() is False
@@ -87,7 +86,7 @@ async def test_escape_respects_will_pop_cancel() -> None:
 @pytest.mark.asyncio
 async def test_back_queue_pops_multiple_routes_even_during_transition() -> None:
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container())
     navigator.push(Container())
     navigator.push(Container())
@@ -106,7 +105,7 @@ async def test_back_queue_pops_multiple_routes_even_during_transition() -> None:
 async def test_back_queue_is_cleared_when_will_pop_cancels_midway() -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container())
     navigator.push(Container().modifier(cancel_pop))
 
@@ -141,7 +140,7 @@ async def test_async_on_will_pop_allow() -> None:
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
     assert navigator.can_pop() is True
@@ -159,7 +158,7 @@ async def test_async_on_will_pop_cancel() -> None:
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
     assert navigator.can_pop() is True
@@ -176,7 +175,7 @@ async def test_async_on_will_pop_exception_fails_open() -> None:
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
     assert navigator.can_pop() is True
@@ -194,7 +193,7 @@ async def test_async_on_will_pop_handling_flag_released_on_exception() -> None:
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
     navigator.push(Container())
 
@@ -222,7 +221,7 @@ async def test_sync_on_will_pop_still_works() -> None:
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
     assert navigator.can_pop() is True
@@ -242,7 +241,7 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop() -
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = App(content=Container())
-    navigator = Navigator.root()
+    navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
     # Start first back event but don't complete it yet
