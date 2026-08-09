@@ -56,13 +56,13 @@ that needs arguments closes over them: `App(content=lambda: Home(config))`.
 
 ### 2. Launch with the dev runner
 
-```
+```bash
 python -m nuiitivet.dev path/to/app.py
 ```
 
 or, for a package module:
 
-```
+```bash
 python -m nuiitivet.dev --module yourpkg.app
 ```
 
@@ -121,3 +121,7 @@ debug session is never torn down.
 ## See also
 
 - [AI pair-programming](index.md) — the edit → see → act loop hot reload drives.
+- [Dev Bridge MCP](dev_bridge_mcp.md) — the other half: how an assistant sees and
+  drives the app hot reload keeps running.
+- [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) — the skill that teaches
+  an assistant to launch under the dev runner and keep the factory contract.

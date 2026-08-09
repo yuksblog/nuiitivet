@@ -48,7 +48,7 @@ code — no per-session setup.
 
 ## What it front-loads
 
-`SKILL.md` opens with six core rules the assistant must not violate:
+`SKILL.md` opens with seven core rules the assistant must not violate:
 
 1. **One import root** — `import nuiitivet.material as nv`; reach every symbol
    through `nv`.
@@ -62,7 +62,10 @@ code — no per-session setup.
 5. **Decoration and behavior attach via `.modifier(...)` chained with `|`** — do
    not wrap a widget to decorate it.
 6. **The app root is a factory, not an instance** — pass `App(content=build_root)`,
-   never `App(content=build_root())`.
+   never `App(content=build_root())`; per-tree init goes in the factory or
+   `__init__`, not `main()`.
+7. **The one-line mental model** — logic → UI is declarative (`Observable`
+   binding); UI → logic is imperative (event handlers).
 
 It links to topical references (layout, state, navigation, anti-patterns) the
 assistant reads on demand. *Running* the app under hot reload and driving it while
@@ -87,5 +90,4 @@ resolve every finding by hand.
   edit → see → act loop.
 - [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) — the companion skill
   that runs, hot-reloads, and drives the app you write with this one.
-- [Hot Reload](hot_reload.md) — the factory contract the skill's authoring
-  guidance depends on.
+- [Hot Reload](hot_reload.md) — the factory contract behind core rule 6.

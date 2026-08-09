@@ -2,9 +2,14 @@
 
 `nuiitivet-debug` is an **AI skill** — a bundle of instructions you install into
 your assistant so it can *run, hot-reload, inspect, and drive* a running Nuiitivet
-app. It is the see → act → verify leg of the
-[AI pair-programming](index.md) loop, and the companion to
+app. It covers the see → act → verify leg of the
+[AI pair-programming](index.md) loop, and is the companion to
 [`nuiitivet-app`](nuiitivet_app_skill.md), which handles the *authoring* leg.
+
+The tools it teaches are documented on their own pages —
+[Hot Reload](hot_reload.md) and [Dev Bridge MCP](dev_bridge_mcp.md). This page is
+about the skill: what it is, how to install it, and which judgement calls it
+front-loads so the assistant does not have to rediscover them each session.
 
 ## Why it exists
 
@@ -44,29 +49,36 @@ cp -r path/to/nuiitivet/skills/nuiitivet-debug ~/.copilot/skills/nuiitivet-debug
 ```
 
 `nuiitivet-app` and `nuiitivet-debug` are independent — install either or both.
+Once installed, the assistant loads this one whenever there is a Nuiitivet app to
+run, verify, or debug — no per-session setup.
 
 ## What it front-loads
 
-- **Launching under hot reload** — `python -m nuiitivet.dev path/to/app.py`, and
-  the **factory contract** that keeps reload working (core rule 6: pass
-  `App(content=build_root)`, never `App(content=build_root())`; per-tree init in
-  the factory / `__init__`, not `main()`).
-- **The dev bridge / MCP server** — register once with
-  `python -m nuiitivet.dev mcp` (needs `pip install 'nuiitivet[mcp]'`), then check
-  and drive the live app.
-- **Checking — by question, not as a sequence** — `status` (is it up?),
-  `describe_tree` (is the tree as intended?), and `describe_state` (is the state
-  as intended?) answer almost everything about your own changes. `runtime_log`
-  explains an action that seemed to do nothing (a swallowed handler exception);
-  `reload_log` and `interaction_log` catch edits and clicks the human made between
-  turns. `screenshot` is the genuine last resort — even for a reported visual
-  problem, confirm the tree and state first; the cause is usually there, not the
-  pixels.
-- **Acting and settling** — `click` / `scroll` / `type` / `key`, then `wait_for`
-  to observe the settled state instead of racing async work, with a distinct
-  pattern for waiting on a *human* versus on async work. Which target a `scroll`
-  takes, and when `scroll_into_view` replaces it.
-- **`keyed()` targeting** — attach a stable `key` so the bridge can drive a widget
+`SKILL.md` is organised as the loop itself — a one-time **Setup**, then
+**Edit / See / Act / Verify**. Each section settles a judgement call the
+assistant would otherwise get wrong:
+
+- **Setup — the factory contract.** Launching with the dev runner and registering
+  the bridge, plus the rule that keeps reload working: pass
+  `App(content=build_root)`, never `App(content=build_root())`, and put per-tree
+  init in the factory or `__init__`, not `main()`. A stray call is the first thing
+  to suspect when reload seems inert. → [Hot Reload](hot_reload.md)
+- **See — choose the tool by question, not by habit.** `status` answers "is it
+  up?", `describe_tree` "is the tree as intended?", `describe_state` "is the state
+  as intended?" — between them, almost everything about your own change. Left to
+  itself an assistant reaches for `screenshot`, which costs image tokens and
+  usually shows less; the skill makes it the last resort even for a reported
+  *visual* bug, where the cause is normally in the tree or the state.
+- **See — the blind spots.** An action that appeared to do nothing is usually a
+  handler that raised and was swallowed, which only `runtime_log` reveals — not
+  another screenshot. Edits and clicks *you* made between turns live in
+  `reload_log` and `interaction_log`.
+- **Act — settle before observing.** `click` / `scroll` / `type` / `key`, then
+  `wait_for` instead of an immediate `describe_tree` that races async work, with
+  distinct patterns for waiting on async work versus on a *human*. Also which
+  target a `scroll` takes — the scroll region, never a row inside it — and when
+  `scroll_into_view` replaces it outright. → [Dev Bridge MCP](dev_bridge_mcp.md)
+- **`keyed()` targeting.** Attach a stable `key` so the bridge can drive a widget
   by name and its state survives a reorder across reloads.
 
 The result is the loop **edit (hot reload) → see → act → verify → edit**.
