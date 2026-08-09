@@ -85,7 +85,7 @@ def test_column_measures_child_with_constraint_for_wrapping():
             self._test_rect = (0, 0, width, height)
             super().layout(width, height)
 
-    child = WrappingWidget(width="100%", height="auto")
+    child = WrappingWidget(width="wt", height="auto")
     col = Column([child], width=100, height="auto", padding=0)
 
     # Simulate layout
@@ -117,7 +117,7 @@ def test_row_measures_child_with_constraint_for_wrapping():
             self._test_rect = (0, 0, width, height)
             super().layout(width, height)
 
-    child = HeightWrappingWidget(width="auto", height="100%")
+    child = HeightWrappingWidget(width="auto", height="wt")
     # Row with height constraint
     row = Row([child], width="auto", height=100, padding=0)
 

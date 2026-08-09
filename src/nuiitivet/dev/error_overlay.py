@@ -37,7 +37,7 @@ def _build_banner(message: str) -> Any:
     detail = "\n".join(lines[-6:]) if len(lines) > 1 else headline
 
     return nv.Container(
-        width="100%",
+        width="wt",
         padding=12,
         child=nv.Column(
             gap=4,

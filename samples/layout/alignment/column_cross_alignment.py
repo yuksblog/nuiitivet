@@ -11,7 +11,7 @@ def main(png: str = ""):
     def _demo_column(alignment: str) -> nv.Column:
         # The tiles are full-width, so cross-axis alignment is visible.
         return nv.Column(
-            width="100%",
+            width="wt",
             gap=6,
             main_alignment="start",
             cross_alignment=alignment,
@@ -32,7 +32,7 @@ def main(png: str = ""):
                 children=[nv.Text(alignment), _demo_column(alignment)],
                 gap=8,
                 cross_alignment="start",
-                width="100%",
+                width="wt",
             ),
             width=200,
             padding=12,

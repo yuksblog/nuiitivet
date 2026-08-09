@@ -59,7 +59,7 @@ nv.Column([a, b], cross_alignment="stretch")
 
 # Right: to fill, size the child; alignment only positions
 nv.Column([a, b], cross_alignment="start")
-a = nv.Text("x", width="100%")        # or width=nv.Sizing.flex()
+a = nv.Text("x", width="wt")        # size the child, not the alignment
 ```
 
 Use `nv.CrossAligned(child, "center")` to override cross-axis position for one
@@ -67,9 +67,22 @@ child; its values are also `start`/`center`/`end` only.
 
 ## Sizing
 
-Use `nv.Sizing` for flexible/auto sizing rather than hardcoding when a widget
-should fill or hug its content: `nv.Sizing.auto()`, `nv.Sizing.fixed(n)`,
-`nv.Sizing.flex()`, e.g. `width=nv.Sizing.flex()`.
+A size is one of three things, and the string form is the idiom:
+
+| Intent | Write | Not |
+| :--- | :--- | :--- |
+| Fixed pixels | `width=200` | `nv.Sizing.fixed(200)` |
+| Hug the content | `width="auto"` | `nv.Sizing.auto()` |
+| Fill / take a share | `width="wt"`, `width="wt2"` | `nv.Sizing.weight(2)` |
+
+`nv.Sizing.*` still exists for code that builds sizes programmatically, but
+prefer the number/string in hand-written app code. Annotate a helper that
+forwards a size with `nv.SizingLike` — that is the type `width` / `height`
+accept.
+
+A weight claims a share of the space **left over** after the `fixed` and `auto`
+siblings — it is never a fraction of the parent, and there is no percentage
+spelling. `"50%"` raises `ValueError`; a lone `"wt"` child fills its axis.
 
 ## Adaptive layout with `on_size_changed`
 
@@ -83,7 +96,7 @@ into an Observable.
 class Panel(nv.ComposableWidget):
     def __init__(self) -> None:
         # Filling sizing: measure the space offered, not the content's size.
-        super().__init__(width=nv.Sizing.flex(), height=nv.Sizing.flex())
+        super().__init__(width="wt", height="wt")
         self._index = nv.Observable(0)                          # plain __init__
 
     def _on_size(self, size: nv.Size) -> None:
@@ -104,7 +117,7 @@ class Panel(nv.ComposableWidget):
 - **Give the Observable the value the initial size implies.** The first report
   arrives one frame after the first paint, so a mismatched seed shows one frame
   of the other layout (and animates); a matching seed de-dupes and is silent.
-- **Measure something the parent sizes** (`flex` / `"100%"`), otherwise the
+- **Measure something the parent sizes** (a weight — `"wt"`), otherwise the
   widget measures its own content.
 - **Don't resize the measured widget from its own callback** — that can
   oscillate. Change what is *inside* the measured box.
@@ -129,7 +142,7 @@ class Badge(nv.ComposableWidget):
         self._label = size.map(lambda s: f"{s.width}px")
         super().on_mount()
 
-nv.Geometry(Pane(), width="100%", height="100%")   # filling: defines the scope
+nv.Geometry(Pane(), width="wt", height="wt")   # filling: defines the scope
 ```
 
 - **Resolve in `on_mount`, not `__init__`.** `Geometry.of(self)` walks the

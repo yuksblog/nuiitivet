@@ -67,7 +67,7 @@ form = nv.Column(
         ),
 
         # Row 2: Address
-        nv.TextField(label="Address", width=nv.Sizing.flex(1)),
+        nv.TextField(label="Address", width="wt"),
 
         # Row 3: Buttons (Horizontal)
         nv.Row(

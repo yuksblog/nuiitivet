@@ -34,7 +34,7 @@ from nuiitivet.layout.for_each import ForEach
 from nuiitivet.scrolling import ScrollbarBehavior
 
 # Primitives / Widgets
-from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.rendering.sizing import Sizing, SizingKind, SizingLike
 from nuiitivet.widgeting.widget import Widget, ComposableWidget
 from nuiitivet.widgets.box import Box
 
@@ -150,6 +150,8 @@ __all__: list[str] = [
     "ForEach",
     # Primitives / Widgets
     "Sizing",
+    "SizingKind",
+    "SizingLike",
     "Widget",
     "ComposableWidget",
     "Box",

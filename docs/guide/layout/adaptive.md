@@ -12,7 +12,7 @@ widget whose size you want to know, and the callback is called with that widget'
 `(width, height)` whenever it changes.
 
 ```python
-Column([...], width=nv.Sizing.flex(1)).modifier(
+Column([...], width="wt").modifier(
     on_size_changed(lambda size: print(size.width))
 )
 ```
@@ -44,7 +44,7 @@ import nuiitivet.material as nv
 
 class AdaptiveToolbarPanel(nv.ComposableWidget):
     def __init__(self) -> None:
-        super().__init__(width=nv.Sizing.flex(1), height=nv.Sizing.flex(1))
+        super().__init__(width="wt", height="wt")
         self._landscape = nv.Observable(True)      # this app's initial shape
         self._portrait = self._landscape.map(lambda landscape: not landscape)
 
@@ -52,7 +52,7 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
         self._landscape.value = size.width >= size.height
 
     def build(self) -> nv.Widget:
-        card = nv.Card(..., width=nv.Sizing.flex(1), height=nv.Sizing.flex(1))
+        card = nv.Card(..., width="wt", height="wt")
         right_toolbar = nv.Collapsible(
             nv.VerticalFloatingToolbar(_actions(), style=nv.ToolbarStyle.standard()),
             opened=self._landscape, axis="horizontal",
@@ -67,9 +67,9 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
                 nv.GridItem(right_toolbar, row=0, column=1, alignment="center"),
                 nv.GridItem(bottom_toolbar, row=1, column=0, alignment="center"),
             ],
-            rows=["100%", "auto"], columns=["100%", "auto"],
+            rows=["wt", "auto"], columns=["wt", "auto"],
             row_gap=16, column_gap=16,
-            width=nv.Sizing.flex(1), height=nv.Sizing.flex(1),
+            width="wt", height="wt",
         ).modifier(nv.on_size_changed(self._on_size))
 ```
 

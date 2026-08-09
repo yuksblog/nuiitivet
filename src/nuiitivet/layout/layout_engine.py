@@ -196,7 +196,7 @@ class LayoutEngine:
     def resolve_child_geometry(self, child, ix: int, iy: int, iw: int, ih: int) -> Tuple[int, int, int, int]:
         """Resolve child geometry (x, y, w, h) within the inner rect.
 
-        Handles child's preferred size and flex sizing.
+        Handles child's preferred size and weight sizing.
         Returns absolute coordinates (cx, cy, cw, ch).
         """
         pref_w, pref_h = measure_preferred_size(child, max_width=int(iw), max_height=int(ih))
@@ -205,7 +205,7 @@ class LayoutEngine:
         clamp_w = True
         if w_dim:
             kind = getattr(w_dim, "kind", None)
-            if kind == "flex":
+            if kind == "weight":
                 pref_w = 0
             elif kind == "fixed":
                 clamp_w = False
@@ -218,7 +218,7 @@ class LayoutEngine:
         clamp_h = True
         if h_dim:
             kind = getattr(h_dim, "kind", None)
-            if kind == "flex":
+            if kind == "weight":
                 pref_h = 0
             elif kind == "fixed":
                 clamp_h = False

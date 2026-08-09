@@ -56,7 +56,7 @@ Why structured and not a plain `int`:
 * A role carries more than a size (line height / weight / tracking); `Text`
   needs the whole bundle.
 * Being a struct means a token does **not** satisfy `Icon(size=...)` (a
-  `SizingLike` of `int | "auto" | "%"`). The collision that would let a text
+  `SizingLike` of `int | "auto" | "wt"`). The collision that would let a text
   role leak into icon sizing is blocked *at the type level*. MD3 defines no
   type-scale → icon-size mapping, and a role's font size (e.g. 16) is not an
   icon optical size (20/24/40/48).

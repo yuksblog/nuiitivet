@@ -171,23 +171,23 @@ class Row(Widget):
         usable = max(0, cw - spacing_total)
 
         base_sizes: List[int] = []
-        flex_weights: List[float] = []
+        weights: List[float] = []
         for idx, child in enumerate(children):
             pref_w = max(0, sizes[idx][0])
             dim = getattr(child, "width_sizing", None)
             if dim is None or dim.kind == "auto":
                 base: int = pref_w
-                flex: float = 0.0
+                weight: float = 0.0
             elif dim.kind == "fixed":
                 base = max(0, int(dim.value))
-                flex = 0.0
-            else:  # flex
+                weight = 0.0
+            else:  # weight
                 base = 0
-                flex = dim.value if dim.value > 0 else 1.0
+                weight = dim.value if dim.value > 0 else 1.0
             base_sizes.append(base)
-            flex_weights.append(max(0.0, float(flex)))
+            weights.append(max(0.0, float(weight)))
 
-        alloc = self._allocate_main_sizes(base_sizes, flex_weights, usable)
+        alloc = self._allocate_main_sizes(base_sizes, weights, usable)
         col_offsets = compute_aligned_offsets(alloc, cw, spacing, self.main_alignment)
 
         # Content start offset (relative to self)
@@ -232,7 +232,7 @@ class Row(Widget):
             child.paint(canvas, abs_x, abs_y, w, h)
 
     @staticmethod
-    def _allocate_main_sizes(base_sizes: List[int], flex_weights: List[float], usable: int) -> List[int]:
+    def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:
         """Allocate main axis sizes with new Phase 1 rules.
 
         Priority:
@@ -250,28 +250,28 @@ class Row(Widget):
             return [0] * n
 
         # Phase 1: Calculate minimum requirements (fixed/auto)
-        minimum_total = sum(base for base, flex in zip(base_sizes, flex_weights) if flex == 0)
+        minimum_total = sum(base for base, weight in zip(base_sizes, weights) if weight == 0)
 
         # Phase 2: Allocate to fixed/auto first (guaranteed)
         alloc = base_sizes[:]
         remaining = usable - minimum_total
 
-        # Phase 3: Distribute remaining space to flex elements
-        total_flex = sum(flex_weights)
-        if remaining > 0 and total_flex > 0:
+        # Phase 3: Distribute remaining space to weight elements
+        total_weight = sum(weights)
+        if remaining > 0 and total_weight > 0:
             extras = [0] * n
             used = 0
-            for idx, weight in enumerate(flex_weights):
+            for idx, weight in enumerate(weights):
                 if weight <= 0:
                     continue
-                share = int(weight / total_flex * remaining)
+                share = int(weight / total_weight * remaining)
                 extras[idx] = share
                 used += share
 
             # Distribute remainder
             remainder = remaining - used
             if remainder > 0:
-                for idx, weight in enumerate(flex_weights):
+                for idx, weight in enumerate(weights):
                     if weight > 0 and remainder > 0:
                         extras[idx] += 1
                         remainder -= 1
@@ -295,7 +295,7 @@ class Row(Widget):
             target = pref
         elif dim.kind == "fixed":
             target = max(0, int(dim.value))
-        else:  # flex
+        else:  # weight
             target = available if available > 0 else pref
         if available > 0:
             target = min(target, available)

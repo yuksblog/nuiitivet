@@ -5,10 +5,10 @@ from nuiitivet.widgeting.widget import Widget
 
 class DummyWidget(Widget):
 
-    def __init__(self, pref_w: int, pref_h: int, *, width=None, height=None, flex: int = 0):
+    def __init__(self, pref_w: int, pref_h: int, *, width=None, height=None, weight: int = 0):
         super().__init__(width=width, height=height)
         self._pref = (pref_w, pref_h)
-        self.flex = flex
+        self.weight = weight
 
     def preferred_size(self):
         return self._pref
@@ -30,9 +30,9 @@ def test_row_fixed_width_respected():
     assert auto_rect[2] >= 30
 
 
-def test_row_percent_stretch_distribution():
-    left = DummyWidget(10, 5, width="50%")
-    right = DummyWidget(15, 5, width="50%")
+def test_row_weight_stretch_distribution():
+    left = DummyWidget(10, 5, width="wt")
+    right = DummyWidget(15, 5, width="wt")
     row = Row([left, right], gap=0)
     row.paint(None, 0, 0, 200, 40)
     left_rect = left.last_rect
@@ -44,7 +44,7 @@ def test_row_percent_stretch_distribution():
 
 
 def test_column_height_stretch():
-    top = DummyWidget(10, 5, height="100%")
+    top = DummyWidget(10, 5, height="wt")
     col = Column([top])
     col.paint(None, 0, 0, 40, 150)
     top_rect = top.last_rect

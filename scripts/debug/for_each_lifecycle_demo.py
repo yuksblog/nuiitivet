@@ -136,7 +136,7 @@ class LifecycleDemo(nv.ComposableWidget):
                     nv.Text("Lifecycle log (newest at bottom):"),
                     nv.VerticalScrollable(
                         nv.Text(self.model.log),
-                        width=nv.Sizing.flex(),
+                        width=nv.Sizing.weight(),
                     ),
                 ],
                 gap=6,

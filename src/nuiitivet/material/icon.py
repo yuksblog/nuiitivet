@@ -73,9 +73,9 @@ def _pixel_size_from_sizing(size: SizingLike) -> int:
     if parsed.kind == "fixed":
         return max(1, int(parsed.value))
 
-    # For flex/auto sizing, icon cannot resolve without parent context.
+    # For weight/auto sizing, icon cannot resolve without parent context.
     # Fall back to default size.
-    if parsed.kind in ("flex", "auto"):
+    if parsed.kind in ("weight", "auto"):
         return DEFAULT_ICON_PX
 
     # If parsed is None or unknown kind, try numeric coercion as last resort.

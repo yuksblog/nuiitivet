@@ -47,8 +47,8 @@ def main(png_path: str = "") -> nv.App:
     if png_path:
         background = nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=16,
                 children=[
@@ -59,13 +59,13 @@ def main(png_path: str = "") -> nv.App:
         )
         scrim = nv.Box(
             background_color=(0, 0, 0, 80),
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
         )
         sheet_overlay = nv.Container(
             alignment="top-right",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             # Corner rounding is applied by MaterialOverlay.side_sheet() at
             # display time; this static preview mimics it for a right-side sheet.
             child=nv.SideSheet(

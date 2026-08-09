@@ -26,8 +26,8 @@ import nuiitivet.material as nv
 def _label(text: str, align: str, color) -> nv.Container:
     """A full-size, hit-transparent overlay that pins a small label at *align*."""
     return nv.Container(
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         alignment=align,
         padding=8,
         child=nv.Text(text, type_scale=nv.TypeScale.LABEL_SMALL, style=nv.TextStyle(color=color)),
@@ -57,8 +57,8 @@ class BlockPointerDemo(nv.ComposableWidget):
         )
 
         behind = nv.Container(
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             alignment="center",
             child=nv.Text("behind", style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)),
         ).modifier(
@@ -86,10 +86,10 @@ class BlockPointerDemo(nv.ComposableWidget):
         # `clickable`: block catches at the box level, so ON is a silent swallow,
         # observed via behind (blocked) vs child (still reachable).
         self_layer = nv.Stack(
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             children=[
-                nv.Container(width="100%", height="100%", alignment="bottom-center", padding=18, child=child_panel),
+                nv.Container(width="wt", height="wt", alignment="bottom-center", padding=18, child=child_panel),
                 _label("self", "top-left", nv.ColorRole.ON_SURFACE),
             ],
         ).modifier(nv.block_pointer(self.active))

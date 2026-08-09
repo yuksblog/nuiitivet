@@ -86,7 +86,7 @@ def test_container_child_stretch():
             self.set_last_rect(x, y, w, h)
 
     # Child wants to stretch
-    f = Fixed(width=Sizing.flex(1), height=Sizing.flex(1))
+    f = Fixed(width=Sizing.weight(1), height=Sizing.weight(1))
     c = Container(f, padding=0)
 
     # Paint at 100x100

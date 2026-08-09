@@ -103,10 +103,10 @@ def test_fixed_sizing_overrides_child_in_preferred_size():
 def test_filling_geometry_measures_available_space():
     from nuiitivet.layout.row import Row
 
-    # A filling ("100%") Geometry must measure the space the parent allocates,
+    # A filling ("wt") Geometry must measure the space the parent allocates,
     # not its child's intrinsic size: laid out beside a fixed 200px sibling in a
     # 500px row, it fills the remaining 300px and publishes that.
-    pane = Geometry(Container(width=10), width="100%")
+    pane = Geometry(Container(width=10), width="wt")
     row = Row([Container(width=200), pane], gap=0)
 
     row.layout(500, 100)

@@ -179,7 +179,7 @@ outer one — ultimately the root `Geometry` installed by the window (§7).
   therefore introduces a concept the framework does not otherwise have — it is a
   layout-model extension, not a small add — so it is deliberately out of scope
   here. In practice the resolved `size` already answers "how much space do I
-  have" for the common (flex/fill) case.
+  have" for the common (weight/fill) case.
 
 ## 6. Oscillation
 

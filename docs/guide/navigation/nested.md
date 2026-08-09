@@ -26,8 +26,8 @@ class NestedHome(nv.ComposableWidget):
 class NestedDetails(nv.ComposableWidget):
     def build(self):
         return nv.Container(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,
@@ -41,8 +41,8 @@ class NestedDetails(nv.ComposableWidget):
 class FullScreenDetails(nv.ComposableWidget):
     def build(self):
         return nv.Container(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=20,
                 gap=12,
@@ -56,15 +56,15 @@ class FullScreenDetails(nv.ComposableWidget):
 class MainScreen(nv.ComposableWidget):
     def build(self):
         return nv.Row(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             gap=12,
             padding=12,
             children=[
                 # Left side: Static menu
                 nv.Container(
                     width=200,
-                    height=nv.Sizing.flex(1),
+                    height="wt",
                     child=nv.Column(
                         padding=12,
                         gap=10,
@@ -76,8 +76,8 @@ class MainScreen(nv.ComposableWidget):
                 ),
                 # Right side: Nested Navigator
                 nv.Container(
-                    width=nv.Sizing.flex(1),
-                    height=nv.Sizing.flex(1),
+                    width="wt",
+                    height="wt",
                     child=nv.Navigator(
                         routes=[nv.Route(builder=lambda: NestedHome())]
                     ),

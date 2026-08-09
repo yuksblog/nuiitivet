@@ -15,7 +15,7 @@ from nuiitivet.widgets.box import Box
 
 def test_bottom_sheet_style_defaults():
     style = BottomSheetStyle()
-    assert style.width == "100%"
+    assert style.width == "wt"
     assert style.height is None
     assert style.corner_radius == 28.0
     assert style.background_color == ColorRole.SURFACE_CONTAINER_LOW
@@ -23,7 +23,7 @@ def test_bottom_sheet_style_defaults():
 
 def test_bottom_sheet_style_copy_with():
     style = BottomSheetStyle().copy_with(height=480, corner_radius=20.0)
-    assert style.width == "100%"
+    assert style.width == "wt"
     assert style.height == 480
     assert style.corner_radius == 20.0
 
@@ -120,7 +120,7 @@ def test_bottom_sheet_top_corner_radius():
 
 def test_bottom_sheet_build_width():
     """BottomSheet.build() outer Box has full width from style."""
-    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(width="100%"))
+    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(width="wt"))
     built = sheet.build()
     assert isinstance(built, Box)
 
@@ -133,8 +133,8 @@ def test_bottom_sheet_height_sizing_auto_by_default():
 
 def test_bottom_sheet_height_sizing_percentage():
     """A percentage height is declared on the node, where the overlay reads it."""
-    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(height="50%"))
-    assert sheet.height_sizing.kind == "flex"
+    sheet = BottomSheet(Box(), headline="Filters", style=BottomSheetStyle(height="wt50"))
+    assert sheet.height_sizing.kind == "weight"
     assert sheet.height_sizing.value == pytest.approx(50.0)
 
 

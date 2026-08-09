@@ -56,7 +56,7 @@ def test_divider_style_is_immutable() -> None:
 
 def test_divider_horizontal_default_sizing() -> None:
     d = HorizontalDivider()
-    assert d.width_sizing.kind == "flex"
+    assert d.width_sizing.kind == "weight"
     assert d.height_sizing.kind == "fixed"
     assert d.height_sizing.value == 1  # default thickness
 
@@ -65,7 +65,7 @@ def test_divider_vertical_default_sizing() -> None:
     d = VerticalDivider()
     assert d.width_sizing.kind == "fixed"
     assert d.width_sizing.value == 1  # default thickness
-    assert d.height_sizing.kind == "flex"
+    assert d.height_sizing.kind == "weight"
 
 
 def test_divider_horizontal_custom_thickness() -> None:
@@ -100,7 +100,7 @@ def test_divider_explicit_height_override() -> None:
 def test_divider_horizontal_preferred_size_with_max() -> None:
     d = HorizontalDivider()
     w, h = d.preferred_size(max_width=300, max_height=100)
-    assert w == 300  # flex → uses max_width
+    assert w == 300  # weight → uses max_width
     assert h == 1  # fixed thickness
 
 
@@ -108,13 +108,13 @@ def test_divider_vertical_preferred_size_with_max() -> None:
     d = VerticalDivider()
     w, h = d.preferred_size(max_width=100, max_height=200)
     assert w == 1  # fixed thickness
-    assert h == 200  # flex → uses max_height
+    assert h == 200  # weight → uses max_height
 
 
 def test_divider_preferred_size_no_max() -> None:
     d = HorizontalDivider()
     w, h = d.preferred_size()
-    assert w == 0  # flex with no constraint → 0
+    assert w == 0  # weight with no constraint → 0
     assert h == 1  # fixed
 
 

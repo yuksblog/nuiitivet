@@ -166,7 +166,7 @@ def test_registering_after_layout_fires_immediately() -> None:
 
 def test_reports_the_size_a_parent_imposes() -> None:
     seen: list[Size] = []
-    child = Container(width=Sizing.flex(1), height=Sizing.flex(1)).modifier(on_size_changed(seen.append))
+    child = Container(width=Sizing.weight(1), height=Sizing.weight(1)).modifier(on_size_changed(seen.append))
     root = Column([child], width=Sizing.fixed(400), height=Sizing.fixed(300))
 
     root.layout(400, 300)
@@ -178,7 +178,7 @@ def test_reports_the_size_a_parent_imposes() -> None:
 def test_a_callback_may_rebuild_the_tree() -> None:
     # The whole point of deferring past layout: user code is free to mutate.
     root = Column([], width=Sizing.fixed(400), height=Sizing.fixed(300))
-    child = Container(width=Sizing.flex(1), height=Sizing.flex(1))
+    child = Container(width=Sizing.weight(1), height=Sizing.weight(1))
 
     def _add_a_child(size: Size) -> None:
         root.add_child(Box(width=Sizing.fixed(int(size.width // 2)), height=Sizing.fixed(10)))

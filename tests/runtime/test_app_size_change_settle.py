@@ -34,14 +34,14 @@ class _Panel(ComposableWidget):
     """A filling panel that records the sizes it is told about."""
 
     def __init__(self) -> None:
-        super().__init__(width=Sizing.flex(1), height=Sizing.flex(1))
+        super().__init__(width=Sizing.weight(1), height=Sizing.weight(1))
         self.seen: list[Size] = []
 
     def _on_size(self, size: Size) -> None:
         self.seen.append(size)
 
     def build(self) -> Widget:
-        return Container(width=Sizing.flex(1), height=Sizing.flex(1)).modifier(on_size_changed(self._on_size))
+        return Container(width=Sizing.weight(1), height=Sizing.weight(1)).modifier(on_size_changed(self._on_size))
 
 
 def _mounted_app(panel: Widget, width: int = 800, height: int = 600) -> App:
@@ -103,14 +103,14 @@ def test_snapshot_settling_applies_the_callbacks_effect() -> None:
 
     class _Reflowing(ComposableWidget):
         def __init__(self) -> None:
-            super().__init__(width=Sizing.flex(1), height=Sizing.flex(1))
+            super().__init__(width=Sizing.weight(1), height=Sizing.weight(1))
             self.wide = False
 
         def _on_size(self, size: Size) -> None:
             self.wide = size.width >= 700
 
         def build(self) -> Widget:
-            return Container(width=Sizing.flex(1), height=Sizing.flex(1)).modifier(on_size_changed(self._on_size))
+            return Container(width=Sizing.weight(1), height=Sizing.weight(1)).modifier(on_size_changed(self._on_size))
 
     panel = _Reflowing()
     app = _mounted_app(panel)
@@ -127,8 +127,8 @@ def test_snapshot_settling_is_bounded_when_a_callback_keeps_resizing() -> None:
 
     class _Oscillating(ComposableWidget):
         def __init__(self) -> None:
-            super().__init__(width=Sizing.flex(1), height=Sizing.flex(1))
-            self._box = Container(width=Sizing.fixed(100), height=Sizing.flex(1))
+            super().__init__(width=Sizing.weight(1), height=Sizing.weight(1))
+            self._box = Container(width=Sizing.fixed(100), height=Sizing.weight(1))
 
         def _on_size(self, size: Size) -> None:
             calls.append(size)

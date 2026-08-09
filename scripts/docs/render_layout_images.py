@@ -36,7 +36,7 @@ SAMPLES = [
     ("samples/layout/basics/row_column_combination.py", "layout_basics_form.png"),
     ("samples/layout/sizing/fixed_size.py", "layout_sizing_fixed.png"),
     ("samples/layout/sizing/auto_size.py", "layout_sizing_auto.png"),
-    ("samples/layout/sizing/flex_width.py", "layout_sizing_fullwidth.png"),
+    ("samples/layout/sizing/weight_width.py", "layout_sizing_fullwidth.png"),
     ("samples/layout/spacing/padding_demo.py", "layout_spacing_padding.png"),
     ("samples/layout/spacing/gap_demo.py", "layout_spacing_gap.png"),
     ("samples/layout/spacing/spacer_demo.py", "layout_spacing_spacer.png"),
@@ -55,7 +55,7 @@ SAMPLES = [
     ("samples/layout/extras/flow_minimal_demo.py", "layout_extras_flow.png"),
     ("samples/layout/extras/uniform_flow_minimal_demo.py", "layout_extras_uniform_flow.png"),
     ("samples/layout/extras/deck_demo.py", "layout_extras_deck.png"),
-    ("samples/layout/extras/spacer_flex_demo.py", "layout_extras_spacer.png"),
+    ("samples/layout/extras/spacer_weight_demo.py", "layout_extras_spacer.png"),
     ("samples/layout/extras/container_demo.py", "layout_extras_container.png"),
     ("samples/layout/extras/collapsible.py", "layout_extras_collapsible.png"),
     # Adaptive (on_size_changed)

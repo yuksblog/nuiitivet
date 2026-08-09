@@ -16,7 +16,7 @@ from nuiitivet.widgets.box import Box
 def test_side_sheet_style_defaults():
     style = SideSheetStyle()
     assert style.width == 400
-    assert style.height == "100%"
+    assert style.height == "wt"
     assert style.corner_radius == 16.0
     assert style.background_color == ColorRole.SURFACE_CONTAINER_LOW
 
@@ -24,7 +24,7 @@ def test_side_sheet_style_defaults():
 def test_side_sheet_style_copy_with():
     style = SideSheetStyle().copy_with(width=320, corner_radius=8.0)
     assert style.width == 320
-    assert style.height == "100%"
+    assert style.height == "wt"
     assert style.corner_radius == 8.0
 
 
@@ -178,7 +178,7 @@ def test_side_sheet_left_corner_radius_applied():
 
 def test_side_sheet_build_width_height():
     """SideSheet.build() outer Box has width and height from style."""
-    sheet = SideSheet(Box(), headline="Settings", style=SideSheetStyle(width=360, height="100%"))
+    sheet = SideSheet(Box(), headline="Settings", style=SideSheetStyle(width=360, height="wt"))
     built = sheet.build()
     assert isinstance(built, Box)
     assert built.width_sizing.value == 360

@@ -3,7 +3,7 @@ import nuiitivet.material as nv
 
 def main(png: str = ""):
     widget = nv.Card(
-        width="100%",
+        width="wt",
         child=nv.Text("Full Width Box"),
         padding=16,
         alignment="center",

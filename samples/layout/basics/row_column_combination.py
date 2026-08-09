@@ -14,7 +14,7 @@ def main(png: str = ""):
                 gap=8,
             ),
             # 2行目: 住所
-            nv.TextField(label="Address", width=nv.Sizing.flex(1)),
+            nv.TextField(label="Address", width="wt"),
             # 3行目: ボタン（横並び）
             nv.Row(
                 children=[

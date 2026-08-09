@@ -79,8 +79,8 @@ class Screen(nv.ComposableWidget):
 
         return nv.Box(
             background_color="#F5F7FF",
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width=nv.Sizing.weight(1),
+            height=nv.Sizing.weight(1),
             child=nv.Column(
                 padding=24,
                 gap=12,

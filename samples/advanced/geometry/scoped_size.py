@@ -36,19 +36,19 @@ class _Section(nv.ComposableWidget):
     """An intermediate widget: it holds a badge but knows nothing about size."""
 
     def __init__(self, title: str) -> None:
-        super().__init__(width=nv.Sizing.flex(1))
+        super().__init__(width="wt")
         self._title = title
 
     def build(self) -> nv.Widget:
         return nv.Card(
             nv.Row(
-                [nv.Text(self._title), nv.Spacer(width="100%"), SizeClassBadge()],
+                [nv.Text(self._title), nv.Spacer(width="wt"), SizeClassBadge()],
                 gap=12,
                 padding=16,
-                width=nv.Sizing.flex(1),
+                width="wt",
                 cross_alignment="center",
             ),
-            width=nv.Sizing.flex(1),
+            width="wt",
         )
 
 
@@ -63,8 +63,8 @@ class ContentPane(nv.ComposableWidget):
                 _Section("Settings"),
             ],
             gap=16,
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
 
 
@@ -73,10 +73,10 @@ def build_root() -> nv.Widget:
     # One filling Geometry defines the scope; every ``Geometry.of`` below it
     # resolves here, because the nearest ancestor provider wins.
     return nv.Container(
-        nv.Geometry(ContentPane(), width="100%", height="100%"),
+        nv.Geometry(ContentPane(), width="wt", height="wt"),
         padding=24,
-        width=nv.Sizing.flex(1),
-        height=nv.Sizing.flex(1),
+        width="wt",
+        height="wt",
     )
 
 

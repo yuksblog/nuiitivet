@@ -53,7 +53,7 @@ nv.UniformFlow(
 | `alignment` | Placement position of the child element | `top-left`, `top-center`, `top-right`, `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right` |
 
 > **Note**: "Expanding to full width" is not the job of alignment.
-> In that case, specify `"100%"` or `Sizing.flex(...)` in the child's `width`.
+> In that case, specify `"wt"` in the child's `width`.
 
 ## Arranging Multiple Elements
 
@@ -81,7 +81,7 @@ main_alignments = [
 def _demo_row(alignment: str) -> nv.Row:
     # The row stretches to full width, so main-axis alignment is visible.
     return nv.Row(
-        width="100%",
+        width="wt",
         gap=8,
         main_alignment=alignment,
         cross_alignment="center",
@@ -110,7 +110,7 @@ nv.Column(
                 ],
                 gap=8,
                 cross_alignment="start",
-                width="100%",
+                width="wt",
             ),
             padding=12,
             style=nv.CardStyle.outlined(),
@@ -137,7 +137,7 @@ cross_alignments = [
 def _demo_row(alignment: str) -> nv.Row:
     # The row has a fixed height, so cross-axis alignment is visible.
     return nv.Row(
-        width="100%",
+        width="wt",
         height=120,
         gap=8,
         main_alignment="start",
@@ -161,7 +161,7 @@ def _panel(alignment: str) -> nv.Card:
             children=[nv.Text(alignment), _demo_row(alignment)],
             gap=8,
             cross_alignment="start",
-            width="100%",
+            width="wt",
         ),
         padding=12,
         style=nv.CardStyle.outlined(),
@@ -206,7 +206,7 @@ main_alignments = [
 def _demo_column(alignment: str) -> nv.Column:
     # The column has a fixed height, so main-axis alignment is visible.
     return nv.Column(
-        width="100%",
+        width="wt",
         height=250,
         gap=6,
         main_alignment=alignment,
@@ -230,7 +230,7 @@ def _panel(alignment: str) -> nv.Card:
             children=[nv.Text(alignment), _demo_column(alignment)],
             gap=8,
             cross_alignment="start",
-            width="100%",
+            width="wt",
         ),
         width=150,
         padding=12,
@@ -270,7 +270,7 @@ cross_alignments = [
 def _demo_column(alignment: str) -> nv.Column:
     # The tiles are full-width, so cross-axis alignment is visible.
     return nv.Column(
-        width="100%",
+        width="wt",
         gap=6,
         main_alignment="start",
         cross_alignment=alignment,
@@ -293,7 +293,7 @@ def _panel(alignment: str) -> nv.Card:
             children=[nv.Text(alignment), _demo_column(alignment)],
             gap=8,
             cross_alignment="start",
-            width="100%",
+            width="wt",
         ),
         width=200,
         padding=12,

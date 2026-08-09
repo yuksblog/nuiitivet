@@ -99,14 +99,14 @@ a widget, not widgets in their own right.** This kills Flutter's nesting hell.
 | `Container(alignment: center, child: X)` | `X(..., alignment="center")` |
 | `EdgeInsets.symmetric(...)` / `EdgeInsets.only(...)` | `padding=...` (number or per-side tuple) |
 | `Column(children: [SizedBox(height: 20), ...])` for gaps | `nv.Column([...], gap=20)` |
-| `cross_alignment="stretch"` / `align-items: stretch` (CSS) | alignment is positioning only: use `start`/`center`/`end`; to fill, size the child (`width="100%"` / `nv.Sizing.flex()`) |
+| `cross_alignment="stretch"` / `align-items: stretch` (CSS) | alignment is positioning only: use `start`/`center`/`end`; to fill, size the child (`width="wt"`) |
 | `main_alignment="flex-start"` / `"flex-end"` (CSS) | `"start"` / `"end"` |
 | `alignment="baseline"` / `"fill"` (CSS) | not supported — position with `start`/`center`/`end`, size with `width`/`height` |
 | `.map((e) => Widget(e)).toList()` for dynamic lists | `nv.Column.builder(items, lambda item, i: ...)` |
 | `ListView.builder(itemBuilder: ...)` | `nv.Column.builder(...)` / `Row.builder` / `Flow.builder` |
 | `LayoutBuilder(builder: (ctx, constraints) => ...)` (Flutter) | `X.modifier(nv.on_size_changed(self._on_size))` on the widget being measured |
 | `MediaQuery.of(context).size` (Flutter) | `nv.Geometry.of(self).size` — the root provider tracks the window |
-| `GeometryReader { geo in ... }` (SwiftUI) | `nv.on_size_changed` on the region; `nv.Geometry(Panel(), width="100%")` only if a *subtree* must read it |
+| `GeometryReader { geo in ... }` (SwiftUI) | `nv.on_size_changed` on the region; `nv.Geometry(Panel(), width="wt")` only if a *subtree* must read it |
 | `BoxWithConstraints { maxWidth ... }` (Compose) | same — measure the filling widget with `nv.on_size_changed` |
 | overriding `set_layout_rect` to publish a size | never needed: `nv.on_size_changed` reports it, `Geometry` publishes it to a subtree |
 

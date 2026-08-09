@@ -41,7 +41,7 @@ def test_docked_toolbar_has_no_outer_padding() -> None:
     assert toolbar.padding == (0, 0, 0, 0)
     assert len(toolbar.children) == 1
     assert isinstance(content, Row)
-    assert content.width_sizing.kind == "flex"
+    assert content.width_sizing.kind == "weight"
 
 
 def test_floating_toolbar_accepts_outer_padding() -> None:

@@ -120,7 +120,7 @@ class DockedToolbar(_ToolbarBase):
 
         self._content = Row(
             row_children,
-            width="100%",
+            width="wt",
             gap=effective_style.item_gap,
             main_alignment="space-between",
             cross_alignment="center",

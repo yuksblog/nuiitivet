@@ -109,14 +109,14 @@ class ScrollViewport(Widget):
 
         if w_dim.kind == "fixed":
             width = int(w_dim.value)
-        elif w_dim.kind == "flex":
+        elif w_dim.kind == "weight":
             width = self._pad[0] + self._pad[2]
         else:
             width = default_w
 
         if h_dim.kind == "fixed":
             height = int(h_dim.value)
-        elif h_dim.kind == "flex":
+        elif h_dim.kind == "weight":
             height = self._pad[1] + self._pad[3]
         else:
             height = default_h

@@ -118,8 +118,8 @@ class HomeScreen(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         return nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=16,
                 children=[

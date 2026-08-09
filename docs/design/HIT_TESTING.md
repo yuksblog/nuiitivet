@@ -107,7 +107,7 @@ full-size alignment `Container` over a canvas swallowed every click:
 nv.Stack([
     canvas,                        # now clickable across its whole area
     nv.Container(                  # transparent alignment box -> defers
-        toolbar, width="100%", height="100%", alignment="bottom-center",
+        toolbar, width="wt", height="wt", alignment="bottom-center",
     ),
 ])
 ```

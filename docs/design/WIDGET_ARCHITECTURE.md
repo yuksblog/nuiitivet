@@ -219,7 +219,7 @@ To achieve high performance in Python, the framework implements caching and scop
 - **Goal**: Avoid redundant layout calculations and parsing overhead.
 - **Dimension Cache**:
   - `Dimension` objects (parsed from `SizingLike`) are memoized in `dimension.py`.
-  - Reduces the overhead of parsing strings like `"50%"` or `"auto"` repeatedly.
+  - Reduces the overhead of parsing strings like `"wt2"` or `"auto"` repeatedly.
 - **Layout Cache**:
   - `LayoutEngine` caches preferred size, inner rect, and child placement results.
   - Caches are keyed by `_layout_cache_token` and dimension signatures.

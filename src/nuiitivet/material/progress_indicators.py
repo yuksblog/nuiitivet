@@ -458,7 +458,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         value: float | ObservableProtocol[float] = 0.0,
         *,
         disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = "1%",
+        width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
     ) -> None:
@@ -609,7 +609,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         self,
         *,
         disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = "1%",
+        width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
     ) -> None:

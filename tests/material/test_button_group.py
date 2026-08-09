@@ -471,10 +471,10 @@ def test_connected_width_interaction_disabled():
     _mount_group(group)
 
     start, middle, end = items
-    # Connected items keep flex sizing; the width animation must not engage.
+    # Connected items keep weight sizing; the width animation must not engage.
     send_pointer_event_for_test(middle, PointerEventType.PRESS)
-    assert start.width_sizing.kind == "flex"
-    assert end.width_sizing.kind == "flex"
+    assert start.width_sizing.kind == "weight"
+    assert end.width_sizing.kind == "weight"
 
 
 def test_standard_item_selected_independent():
@@ -677,7 +677,7 @@ def test_connected_selected_press_keeps_selected_inner_rounding() -> None:
 
 
 def test_connected_width_full():
-    """Connected group items should have flex(1) width after mount."""
+    """Connected group items should have weight(1) width after mount."""
     from nuiitivet.rendering.sizing import Sizing
 
     items = _make_items(3)
@@ -685,7 +685,7 @@ def test_connected_width_full():
     _mount_group(group)
 
     for item in items:
-        assert item.width_sizing == Sizing.flex(1)
+        assert item.width_sizing == Sizing.weight(1)
 
 
 def test_connected_single_select():

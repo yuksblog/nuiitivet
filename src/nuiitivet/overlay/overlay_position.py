@@ -167,7 +167,7 @@ class _AlignedPositionedContent(Widget):
     """Full-screen widget that aligns its child within the overlay root."""
 
     def __init__(self, child: Widget, *, alignment: str, offset: Tuple[float, float]) -> None:
-        super().__init__(width="100%", height="100%")
+        super().__init__(width="wt", height="wt")
         self._child = child
         self._alignment = str(alignment)
         dx, dy = offset
@@ -191,11 +191,11 @@ class _AlignedPositionedContent(Widget):
         target_h = int(ch)
 
         # Flex is a weight, not a fraction of the parent. The overlay content is
-        # the sole claimant on both axes, so a flex child fills the available
+        # the sole claimant on both axes, so a weight child fills the available
         # extent (see docs/design/SIZE_POLICY.md).
-        if hasattr(child, "width_sizing") and child.width_sizing.kind == "flex":
+        if hasattr(child, "width_sizing") and child.width_sizing.kind == "weight":
             target_w = width
-        if hasattr(child, "height_sizing") and child.height_sizing.kind == "flex":
+        if hasattr(child, "height_sizing") and child.height_sizing.kind == "weight":
             target_h = height
 
         ax, ay = normalize_alignment(self._alignment, default=("center", "center"))
@@ -260,7 +260,7 @@ class _AnchoredPositionedContent(Widget):
         offset: Tuple[float, float],
         clamp: bool,
     ) -> None:
-        super().__init__(width="100%", height="100%")
+        super().__init__(width="wt", height="wt")
         self._child = child
         self._rect_provider = rect_provider
         self._target_anchor = target_anchor

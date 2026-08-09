@@ -141,9 +141,9 @@ class Grid(Widget):
         Args:
             children: List of GridItems to display.
             rows: One track size per row: an ``int`` for fixed pixels, ``"auto"``
-                to fit the row's content, or a percentage such as ``"100%"`` to
+                to fit the row's content, or a percentage such as ``"wt"`` to
                 share the leftover space.
-                Example: ``[60, "100%", "auto"]``.
+                Example: ``[60, "wt", "auto"]``.
             columns: One track size per column; same forms as ``rows``.
             width: Grid container width.
             height: Grid container height.
@@ -444,7 +444,7 @@ class Grid(Widget):
             # Not enough room; leave sizes as-is (children may overflow)
             return sizes
 
-        weights = [dim.value if dim.kind == "flex" and dim.value > 0 else 0.0 for dim in dims]
+        weights = [dim.value if dim.kind == "weight" and dim.value > 0 else 0.0 for dim in dims]
         total_weight = sum(weights)
         if total_weight <= 0:
             return sizes

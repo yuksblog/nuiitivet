@@ -46,23 +46,23 @@ class _Section(nv.ComposableWidget):
     """An intermediate widget: it holds a badge but knows nothing about size."""
 
     def __init__(self, title: str) -> None:
-        super().__init__(width=nv.Sizing.flex(1))
+        super().__init__(width="wt")
         self._title = title
 
     def build(self) -> nv.Widget:
         return nv.Card(
-            nv.Row([nv.Text(self._title), nv.Spacer(width="100%"), SizeClassBadge()],
-                   gap=12, padding=16, width=nv.Sizing.flex(1), cross_alignment="center"),
-            width=nv.Sizing.flex(1),
+            nv.Row([nv.Text(self._title), nv.Spacer(width="wt"), SizeClassBadge()],
+                   gap=12, padding=16, width="wt", cross_alignment="center"),
+            width="wt",
         )
 
 
 # One filling Geometry defines the scope for every badge below it.
 nv.Geometry(
     nv.Column([_Section("Library"), _Section("Downloads"), _Section("Settings")],
-              gap=16, width=nv.Sizing.flex(1), height=nv.Sizing.flex(1)),
-    width="100%",
-    height="100%",
+              gap=16, width="wt", height="wt"),
+    width="wt",
+    height="wt",
 )
 ```
 
@@ -88,9 +88,9 @@ pane it lands in.
   `Geometry`, so a nested one overrides the window for its subtree. The app
   installs a root `Geometry` provider at the window, so with no nearer provider a
   read falls back to it and tracks the window size.
-- **A filling `Geometry` measures available space.** `width="100%"` /
-  `Sizing.flex(...)` makes it fill what the parent offers, so it measures the
-  space *available* to a pane rather than the child's intrinsic size.
+- **A filling `Geometry` measures available space.** `width="wt"` makes it fill
+  what the parent offers, so it measures the space *available* to a pane rather
+  than the child's intrinsic size.
 - **Rebuilds land on the next frame.** The size is measured during layout, so a
   consumer that has to rebuild — a `Deck` switching arrangements, say — does so
   on the following frame. Imperceptible, and it keeps the layout pass free of

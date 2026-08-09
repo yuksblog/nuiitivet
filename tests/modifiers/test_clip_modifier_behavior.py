@@ -134,9 +134,9 @@ def test_container_with_clip_modifier():
     assert t.last_rect == (0, 0, 120, 60)
 
 
-def test_clip_preserves_flex_sizing_on_container():
-    """Wrapping a non-Box widget keeps its flex sizing on the wrapper."""
-    inner = Container(width=Sizing.flex(), height=Sizing.flex())
+def test_clip_preserves_weight_sizing_on_container():
+    """Wrapping a non-Box widget keeps its weight sizing on the wrapper."""
+    inner = Container(width=Sizing.weight(), height=Sizing.weight())
     wrapper = inner.modifier(clip())
 
     # Container is not a Box, so it must have been wrapped.
@@ -144,8 +144,8 @@ def test_clip_preserves_flex_sizing_on_container():
     assert wrapper.children[0] is inner
     assert wrapper.clip_content is True
 
-    assert wrapper.width_sizing == Sizing.flex()
-    assert wrapper.height_sizing == Sizing.flex()
+    assert wrapper.width_sizing == Sizing.weight()
+    assert wrapper.height_sizing == Sizing.weight()
 
 
 def test_clip_preserves_fixed_sizing_on_column():
@@ -162,7 +162,7 @@ def test_clip_on_box_does_not_wrap():
     """Box-based widgets are clipped in place, so sizing is untouched."""
     card = Card(
         child=Text("Content"),
-        width=Sizing.flex(),
+        width=Sizing.weight(),
         height=Sizing.fixed(50),
         style=CardStyle.filled().copy_with(border_radius=0),
     )
@@ -170,5 +170,5 @@ def test_clip_on_box_does_not_wrap():
 
     assert result is card
     assert result.clip_content is True
-    assert result.width_sizing == Sizing.flex()
+    assert result.width_sizing == Sizing.weight()
     assert result.height_sizing == Sizing.fixed(50)

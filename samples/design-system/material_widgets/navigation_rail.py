@@ -28,11 +28,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=0),
-        width=nv.Sizing.flex(1),
-        height=nv.Sizing.flex(1),
+        width="wt",
+        height="wt",
     )
     app = nv.App(
-        content=nv.Row([rail, body], width=nv.Sizing.flex(1), height=nv.Sizing.flex(1)),
+        content=nv.Row([rail, body], width="wt", height="wt"),
         title="NavigationRail",
         width=560,
     )

@@ -8,8 +8,8 @@ class NestedDetails(nv.ComposableWidget):
 
         return nv.Box(
             background_color="#F5F7FF",
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,
@@ -43,8 +43,8 @@ class FullScreenDetails(nv.ComposableWidget):
 
         return nv.Box(
             background_color="#EEF7F0",
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=20,
                 gap=12,
@@ -62,14 +62,14 @@ class MainScreen(nv.ComposableWidget):
             nv.Navigator.root().push(FullScreenDetails())
 
         return nv.Row(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             gap=12,
             padding=12,
             children=[
                 nv.Container(
                     width=200,
-                    height=nv.Sizing.flex(1),
+                    height="wt",
                     child=nv.Column(
                         padding=16,
                         gap=12,
@@ -80,8 +80,8 @@ class MainScreen(nv.ComposableWidget):
                     ),
                 ),
                 nv.Container(
-                    width=nv.Sizing.flex(1),
-                    height=nv.Sizing.flex(1),
+                    width="wt",
+                    height="wt",
                     child=nv.Navigator(NestedHome()),
                 ),
             ],

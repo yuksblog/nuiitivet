@@ -49,10 +49,17 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\b(?:alignment|main_alignment|cross_alignment)\s*=\s*"
                 r"[\"'](?:stretch|flex-start|flex-end|baseline|fill)[\"']"), "CSS flexbox",
      "alignment is positioning-only. For stretch/fill set the child's size "
-     "(width=\"100%\" / nv.Sizing.flex()); use start/center/end, not flex-start/flex-end."),
+     "(width=\"wt\"); use start/center/end, not flex-start/flex-end."),
+    (re.compile(r"(?:width|height|length|size)\s*=\s*[\"'][0-9.]+%[\"']"), "CSS/removed spelling",
+     "Percentage sizing does not exist: a size is fixed (a number), \"auto\", or a "
+     "weight (\"wt\" / \"wt2\") that shares the leftover space. \"100%\" was never a "
+     "fraction of the parent - write \"wt\"."),
+    (re.compile(r"\bSizing\.flex\s*\("), "removed API",
+     "Sizing.flex is gone. Write the string form: width=\"wt\" (or \"wt2\" for an "
+     "uneven share); nv.Sizing.weight(n) exists but is not the idiom."),
     (re.compile(r"\bLayoutBuilder\s*\(|\bMediaQuery\b"), "Flutter",
      "Measure the widget itself: X.modifier(nv.on_size_changed(cb)) reports its "
-     "nv.Size after layout. Use nv.Geometry(child, width=\"100%\") + "
+     "nv.Size after layout. Use nv.Geometry(child, width=\"wt\") + "
      "nv.Geometry.of(self).size only when a *subtree* must read an ancestor's box."),
     (re.compile(r"\bGeometryReader\b|\bBoxWithConstraints\b"), "SwiftUI/Compose",
      "Attach nv.on_size_changed(cb) to the filling widget you want measured; wrap "

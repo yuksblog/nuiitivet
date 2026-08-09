@@ -36,8 +36,8 @@ class _Screen(nv.ComposableWidget):
         color = "#FF0000" if self.depth == 0 else "#0000FF"
         return nv.Box(
             background_color=color,
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width=nv.Sizing.weight(1),
+            height=nv.Sizing.weight(1),
             child=nv.Text(f"depth {self.depth}"),
         )
 

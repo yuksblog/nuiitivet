@@ -63,7 +63,7 @@ class _ModalNavigator(ComposableWidget):
     """
 
     def __init__(self, *, base_route: Route) -> None:
-        super().__init__(width="100%", height="100%")
+        super().__init__(width="wt", height="wt")
         self._base_route = base_route
         self._stack = RouteStackRuntime(initial_routes=[base_route], pinned_routes=[base_route])
         self._pending_dispose: dict[int, Callable[[], None]] = {}
@@ -175,7 +175,7 @@ class _ModalNavigator(ComposableWidget):
                 continue
         if not layers:
             return Container()
-        return Stack(children=layers, alignment="center", width="100%", height="100%")
+        return Stack(children=layers, alignment="center", width="wt", height="wt")
 
     # No hit_test override needed: the navigator and its transparent Stack/Container
     # wrapper both defer under the ``auto`` default, so input passes through
@@ -286,7 +286,7 @@ class _DefaultOverlayLayerComposer:
         return OverlayLayerPaint(
             content=context.position_content(context.content),
             backdrop=(
-                Container(width="100%", height="100%").modifier(background(self._BACKDROP_COLOR))
+                Container(width="wt", height="wt").modifier(background(self._BACKDROP_COLOR))
                 if context.backdrop
                 else None
             ),
@@ -317,7 +317,7 @@ class Overlay(ComposableWidget):
     _root_overlay: Optional["Overlay"] = None  # Class variable for root overlay
 
     def __init__(self, *, layer_composer: OverlayLayerComposer | None = None) -> None:
-        super().__init__(width="100%", height="100%")
+        super().__init__(width="wt", height="wt")
 
         # Overlay entries are implemented as routes on a private modal navigator.
         # A base route keeps the navigator mounted even when empty.
@@ -683,7 +683,7 @@ class Overlay(ComposableWidget):
                     # any_button=True: an outside tap dismisses whichever button
                     # produced it, not just the primary one (issue #506).
                     blocker_modifier = blocker_modifier | clickable(on_click=on_outside_tap, any_button=True)
-                layers.append(Container(width="100%", height="100%").modifier(blocker_modifier))
+                layers.append(Container(width="wt", height="wt").modifier(blocker_modifier))
 
             # ORDER IS LOAD-BEARING: the content must be *last* in children.
             # _hit_test_children walks reversed(children), so the content is
@@ -694,7 +694,7 @@ class Overlay(ComposableWidget):
 
             if len(layers) == 1:
                 return layers[0]
-            return Stack(children=layers, alignment="top-left", width="100%", height="100%")
+            return Stack(children=layers, alignment="top-left", width="wt", height="wt")
 
         route_holder: dict[str, _OverlayEntryRoute] = {}
         layer_holder: dict[str, Widget] = {}

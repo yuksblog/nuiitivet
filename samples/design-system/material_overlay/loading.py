@@ -33,8 +33,8 @@ def main(png_path: str = "") -> nv.App:
     if png_path:
         background = nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=16,
                 children=[
@@ -45,8 +45,8 @@ def main(png_path: str = "") -> nv.App:
         )
         indicator_overlay = nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.LoadingIndicator(size=48),
         )
         app = nv.App(

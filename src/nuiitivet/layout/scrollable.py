@@ -560,10 +560,10 @@ class _ScrollableBase(Widget):
         """Ensure the scroll axis stretches to parent constraints by default."""
         if self.direction is ScrollDirection.VERTICAL:
             if self.height_sizing.kind == "auto":
-                self.height_sizing = Sizing.flex()
+                self.height_sizing = Sizing.weight()
         elif self.direction is ScrollDirection.HORIZONTAL:
             if self.width_sizing.kind == "auto":
-                self.width_sizing = Sizing.flex()
+                self.width_sizing = Sizing.weight()
 
 
 class VerticalScrollable(_ScrollableBase):

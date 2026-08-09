@@ -42,7 +42,7 @@ def test_bad_tuple_results_in_zeroed_radii():
 
 
 def test_child_stretch_expands_to_container():
-    child = FixedWidget(width=Sizing.flex(1), height=Sizing.flex(1))
+    child = FixedWidget(width=Sizing.weight(1), height=Sizing.weight(1))
     container = Card(child, padding=0)
 
     # Paint container at 100x100
@@ -53,7 +53,7 @@ def test_child_stretch_expands_to_container():
 
 
 def test_child_stretch_respects_padding():
-    child = FixedWidget(width=Sizing.flex(1), height=Sizing.flex(1))
+    child = FixedWidget(width=Sizing.weight(1), height=Sizing.weight(1))
     container = Card(child, padding=10)
 
     # Paint container at 100x100. Padding is 10 all around.
@@ -65,8 +65,8 @@ def test_child_stretch_respects_padding():
 
 
 def test_set_child_replaces_scoped_fragment():
-    first = FixedWidget(width=Sizing.flex(1), height=Sizing.flex(1))
-    second = FixedWidget(width=Sizing.flex(1), height=Sizing.flex(1))
+    first = FixedWidget(width=Sizing.weight(1), height=Sizing.weight(1))
+    second = FixedWidget(width=Sizing.weight(1), height=Sizing.weight(1))
 
     container = Card(first, padding=0)
     container.evaluate_build()
@@ -81,7 +81,7 @@ def test_callable_child_spec_cached_until_invalidated():
     builds = []
 
     def builder():
-        widget = FixedWidget(width=Sizing.flex(1), height=Sizing.flex(1))
+        widget = FixedWidget(width=Sizing.weight(1), height=Sizing.weight(1))
         builds.append(widget)
         return widget
 

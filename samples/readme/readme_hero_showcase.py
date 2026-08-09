@@ -84,7 +84,7 @@ class PulseTitleBar(nv.ComposableWidget):
             main_alignment="space-between",
             cross_alignment="center",
             padding=(16, 0, 8, 0),
-            width=nv.Sizing.flex(1),
+            width="wt",
             height=44,
         ).modifier(nv.background(nv.ColorRole.PRIMARY_CONTAINER))
 
@@ -153,8 +153,8 @@ def _alpha_hex(hex_color: str, alpha: int = 0xCC) -> str:
 def _gradient_box(
     color: str,
     *,
-    width: nv.Sizing | int,
-    height: nv.Sizing | int,
+    width: nv.SizingLike,
+    height: nv.SizingLike,
     radius: int = 20,
     bubble_dim: int = 220,
 ) -> nv.Widget:
@@ -174,8 +174,8 @@ def _gradient_box(
     return nv.Container(
         child=nv.Stack(
             [bubble],
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             alignment=("end", "start"),
         ),
         width=width,
@@ -208,7 +208,7 @@ def _track_card(title: str, artist: str, accent: str) -> nv.Widget:
             padding=12,
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=24),
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
@@ -313,7 +313,7 @@ class HeroPanel(nv.ComposableWidget):
             [
                 nv.LinearProgressIndicator(
                     value=0.42,
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                     style=progress_style,
                 ),
                 nv.Row(
@@ -322,11 +322,11 @@ class HeroPanel(nv.ComposableWidget):
                         nv.Text("4:08", type_scale=BODY_SM),
                     ],
                     main_alignment="space-between",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
             ],
             gap=4,
-            width=nv.Sizing.flex(1),
+            width="wt",
             cross_alignment="start",
         )
 
@@ -351,12 +351,12 @@ class HeroPanel(nv.ComposableWidget):
                     [controls, actions],
                     main_alignment="space-between",
                     cross_alignment="center",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
             ],
             gap=4,
             cross_alignment="start",
-            width=nv.Sizing.flex(1),
+            width="wt",
         )
 
         return nv.Card(
@@ -365,13 +365,13 @@ class HeroPanel(nv.ComposableWidget):
                 gap=28,
                 cross_alignment="center",
                 padding=24,
-                width=nv.Sizing.flex(1),
+                width="wt",
             ),
             style=nv.CardStyle.filled().copy_with(
                 border_radius=32,
                 background=nv.ColorRole.PRIMARY_CONTAINER,
             ),
-            width=nv.Sizing.flex(1),
+            width="wt",
         )
 
 
@@ -411,19 +411,19 @@ def _home_section(hero: HeroPanel) -> nv.Widget:
                 ],
                 main_alignment="space-between",
                 cross_alignment="center",
-                width=nv.Sizing.flex(1),
+                width="wt",
             ),
             nv.Column(
                 [_track_card(t, a, c) for (t, a, c) in _TRACKS],
                 gap=10,
-                width=nv.Sizing.flex(1),
+                width="wt",
                 cross_alignment="start",
             ),
         ],
         gap=14,
         padding=24,
         cross_alignment="start",
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
@@ -455,14 +455,14 @@ def _grid_section(swatches: List[str]) -> nv.Widget:
         gap=8,
         padding=24,
         cross_alignment="start",
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
 def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
     cover = _gradient_box(
         accent,
-        width=nv.Sizing.flex(1),
+        width="wt",
         height=nv.Sizing.fixed(150),
         radius=20,
         bubble_dim=620,
@@ -485,10 +485,10 @@ def _top_mix_card(title: str, meta: str, accent: str) -> nv.Widget:
             gap=8,
             padding=14,
             cross_alignment="start",
-            width=nv.Sizing.flex(1),
+            width="wt",
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=28),
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
@@ -514,7 +514,7 @@ def _library_section() -> nv.Widget:
                 [_top_mix_card(t, m, c) for (t, m, c) in _TOP_MIXES],
                 gap=14,
                 cross_alignment="start",
-                width=nv.Sizing.flex(1),
+                width="wt",
             ),
             nv.Container(height=4),
             nv.Text("Artists", type_scale=TITLE_LG),
@@ -527,7 +527,7 @@ def _library_section() -> nv.Widget:
         gap=10,
         padding=24,
         cross_alignment="start",
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
@@ -564,7 +564,7 @@ def _settings_section() -> nv.Widget:
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
                 nv.HorizontalDivider(),
                 nv.Row(
@@ -574,7 +574,7 @@ def _settings_section() -> nv.Widget:
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
                 nv.HorizontalDivider(),
                 nv.Row(
@@ -584,16 +584,16 @@ def _settings_section() -> nv.Widget:
                     ],
                     main_alignment="space-between",
                     cross_alignment="center",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
             ],
             gap=10,
             padding=18,
             cross_alignment="start",
-            width=nv.Sizing.flex(1),
+            width="wt",
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=28),
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
     theme_card = nv.Card(
@@ -612,10 +612,10 @@ def _settings_section() -> nv.Widget:
             gap=12,
             padding=18,
             cross_alignment="start",
-            width=nv.Sizing.flex(1),
+            width="wt",
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=28),
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
     eq_columns: List[nv.Widget] = []
@@ -644,16 +644,16 @@ def _settings_section() -> nv.Widget:
                     gap=24,
                     cross_alignment="end",
                     main_alignment="center",
-                    width=nv.Sizing.flex(1),
+                    width="wt",
                 ),
             ],
             gap=10,
             padding=18,
             cross_alignment="start",
-            width=nv.Sizing.flex(1),
+            width="wt",
         ),
         style=nv.CardStyle.filled().copy_with(border_radius=28),
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
     return nv.Column(
@@ -662,14 +662,14 @@ def _settings_section() -> nv.Widget:
                 [playback_card, theme_card],
                 gap=14,
                 cross_alignment="start",
-                width=nv.Sizing.flex(1),
+                width="wt",
             ),
             equalizer_card,
         ],
         gap=14,
         padding=24,
         cross_alignment="start",
-        width=nv.Sizing.flex(1),
+        width="wt",
     )
 
 
@@ -714,7 +714,7 @@ class PulseApp(nv.ComposableWidget):
             expanded=self.rail_expanded,
             show_menu_button=True,
             on_select=lambda idx: self.section.set(int(idx)),
-            height=nv.Sizing.flex(1),
+            height="wt",
         )
 
         hero = HeroPanel()
@@ -739,14 +739,14 @@ class PulseApp(nv.ComposableWidget):
                 _settings_section(),
             ],
             index=self.section,
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
 
         # Floating action button anchored to the bottom-right via Stack alignment.
         # The FAB lives in a *small* container (FAB + padding) so it doesn't
         # overlay/eat clicks on the rest of the body. ``Stack`` aligns every
-        # child by the same anchor; the body fills via ``flex(100)`` so the
+        # child by the same anchor; the body fills via ``weight`` so the
         # alignment only visibly affects the small FAB child.
         fab = nv.Container(
             child=nv.Fab("play_arrow", style=nv.FabStyle.primary("m")),
@@ -756,15 +756,15 @@ class PulseApp(nv.ComposableWidget):
         body = nv.Stack(
             [
                 nv.Container(
-                    child=nv.Row([rail, content], width=nv.Sizing.flex(1), height=nv.Sizing.flex(1)),
-                    width=nv.Sizing.flex(100),
-                    height=nv.Sizing.flex(100),
+                    child=nv.Row([rail, content], width="wt", height="wt"),
+                    width="wt",
+                    height="wt",
                 ),
                 fab,
             ],
             alignment=("end", "end"),
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
 
         # Page title strip across the very top, sourced reactively from
@@ -782,14 +782,14 @@ class PulseApp(nv.ComposableWidget):
                 cross_alignment="start",
             ),
             padding=(24, 14, 24, 14),
-            width=nv.Sizing.flex(1),
+            width="wt",
             height=nv.Sizing.fixed(76),
         ).modifier(nv.background(nv.ColorRole.SURFACE_CONTAINER_LOW))
 
         return nv.Column(
             [header, body],
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             cross_alignment="start",
         )
 

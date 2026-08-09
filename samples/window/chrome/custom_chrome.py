@@ -11,7 +11,7 @@ def main(png_path: str = "") -> None:
             nv.Text("My App", style=nv.TextStyle(color="#ffffff"), type_scale=nv.TypeScaleToken.from_size(14)),
         ],
         cross_alignment="center",
-        width="100%",
+        width="wt",
         height=40,
         padding=(12, 0),
     ).modifier(nv.background("#1a237e"))
@@ -19,8 +19,8 @@ def main(png_path: str = "") -> None:
     app = nv.App(
         content=nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Text("Custom Chrome"),
         ),
         title="My App",

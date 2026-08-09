@@ -10,7 +10,7 @@ pane itself:
 A ``Grid`` holds all three widgets at once — card, right toolbar, bottom toolbar —
 and each toolbar is wrapped in a ``Collapsible`` that folds it away along its own
 axis. The toolbar tracks are ``"auto"``, so a collapsed toolbar takes the track
-with it and the card — on the filling ``"100%"`` track — reclaims the space.
+with it and the card — on the filling ``"wt"`` track — reclaims the space.
 
 Building it this way keeps **one** card instance: reflowing reshapes the card
 rather than replacing it, so anything the user has going on inside (scroll
@@ -40,7 +40,7 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
     def __init__(self) -> None:
         # Filling sizing is what makes the reported size the *available* space
         # rather than the content's intrinsic size.
-        super().__init__(width=nv.Sizing.flex(1), height=nv.Sizing.flex(1))
+        super().__init__(width="wt", height="wt")
         # True matches this app's initial 760x460 window, so the first report
         # writes the same value and nothing animates on the first frame.
         self._landscape = nv.Observable(True)
@@ -66,8 +66,8 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
                 padding=24,
                 cross_alignment="start",
             ),
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
         # Each toolbar folds along the axis it occupies, so the "auto" track it
         # sits in collapses with it.
@@ -87,12 +87,12 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
                 nv.GridItem(right_toolbar, row=0, column=1, alignment="center"),
                 nv.GridItem(bottom_toolbar, row=1, column=0, alignment="center"),
             ],
-            rows=["100%", "auto"],
-            columns=["100%", "auto"],
+            rows=["wt", "auto"],
+            columns=["wt", "auto"],
             row_gap=16,
             column_gap=16,
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         ).modifier(nv.on_size_changed(self._on_size))
 
 
@@ -101,8 +101,8 @@ def build_root() -> nv.Widget:
     return nv.Container(
         AdaptiveToolbarPanel(),
         padding=24,
-        width=nv.Sizing.flex(1),
-        height=nv.Sizing.flex(1),
+        width="wt",
+        height="wt",
     )
 
 

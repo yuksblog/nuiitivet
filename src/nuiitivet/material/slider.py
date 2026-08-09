@@ -29,7 +29,7 @@ class Orientation(Enum):
 
 
 def _resolve_length_sizing(length: SizingLike) -> Sizing:
-    return parse_sizing(length, default=Sizing.flex(1.0))
+    return parse_sizing(length, default=Sizing.weight(1.0))
 
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:
@@ -722,7 +722,7 @@ class _Slider(_SliderBase):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1%",
+        length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -831,7 +831,7 @@ class _CenteredSlider(_Slider):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1%",
+        length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -889,7 +889,7 @@ class _RangeSlider(_SliderBase):
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
-        length: SizingLike = "1%",
+        length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1057,7 +1057,7 @@ class HorizontalSlider(_Slider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = "1%",
+        width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1103,7 +1103,7 @@ class VerticalSlider(_Slider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        height: SizingLike = "1%",
+        height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1149,7 +1149,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = "1%",
+        width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1195,7 +1195,7 @@ class VerticalCenteredSlider(_CenteredSlider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        height: SizingLike = "1%",
+        height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1242,7 +1242,7 @@ class HorizontalRangeSlider(_RangeSlider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        width: SizingLike = "1%",
+        width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:
@@ -1291,7 +1291,7 @@ class VerticalRangeSlider(_RangeSlider):
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
         disabled: bool | ObservableProtocol[bool] = False,
-        height: SizingLike = "1%",
+        height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
     ) -> None:

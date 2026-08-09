@@ -20,18 +20,18 @@ nv.Stack(
     children=[
         nv.Card(
             nv.Text(""),
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
         ).modifier(nv.background("#BBDEFB")),
         nv.Card(
             nv.Text(""),
-            width="80%",
-            height="80%",
+            width="wt",
+            height="wt",
         ).modifier(nv.background("#90CAF9")),
         nv.Card(
             nv.Text("Overlay Text"),
-            width="60%",
-            height="60%",
+            width="wt",
+            height="wt",
             alignment="center",
         ).modifier(nv.background("#64B5F6")),
     ],
@@ -65,25 +65,25 @@ menu = nv.Column(
 
 body = nv.Deck(
     index=current_index,
-    width="100%",
-    height="100%",
+    width="wt",
+    height="wt",
     children=[
         nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Text("Tab 1 Content"),
         ).modifier(nv.background("#BBDEFB")),
         nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Text("Tab 2 Content"),
         ).modifier(nv.background("#C8E6C9")),
         nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Text("Tab 3 Content"),
         ).modifier(nv.background("#FFE0B2")),
     ],
@@ -91,7 +91,7 @@ body = nv.Deck(
 
 contents = nv.Row(
     gap=12,
-    width="100%",
+    width="wt",
     children=[menu, body],
 )
 ```
@@ -189,7 +189,7 @@ nv.Row(
     children=[
         nv.Button("Left 1", style=nv.ButtonStyle.outlined()),
         nv.Button("Left 2", style=nv.ButtonStyle.outlined()),
-        nv.Spacer(width="100%"),
+        nv.Spacer(width="wt"),
         nv.Button("Right", style=nv.ButtonStyle.filled()),
     ],
 )

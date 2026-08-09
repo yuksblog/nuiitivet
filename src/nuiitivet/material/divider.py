@@ -156,13 +156,13 @@ class HorizontalDivider(_DividerBase):
         """Initialize HorizontalDivider.
 
         Args:
-            width: Width sizing override. Defaults to ``Sizing.flex()``.
+            width: Width sizing override. Defaults to ``Sizing.weight()``.
             padding: Padding around the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
         """
         _pad_l, pad_t, _pad_r, pad_b = parse_padding(padding)
-        resolved_width: SizingLike = Sizing.flex() if width is None else width
+        resolved_width: SizingLike = Sizing.weight() if width is None else width
         super().__init__(
             orientation="horizontal",
             width=resolved_width,
@@ -189,13 +189,13 @@ class VerticalDivider(_DividerBase):
         """Initialize VerticalDivider.
 
         Args:
-            height: Height sizing override. Defaults to ``Sizing.flex()``.
+            height: Height sizing override. Defaults to ``Sizing.weight()``.
             padding: Padding around the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
         """
         pad_l, _pad_t, pad_r, _pad_b = parse_padding(padding)
-        resolved_height: SizingLike = Sizing.flex() if height is None else height
+        resolved_height: SizingLike = Sizing.weight() if height is None else height
         super().__init__(
             orientation="vertical",
             width=_cross_axis_thickness(style, pad_l, pad_r),
