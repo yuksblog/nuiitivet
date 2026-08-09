@@ -24,8 +24,8 @@ import nuiitivet.material as nv
 def _label(text: str, align: str, color) -> nv.Container:
     """A full-size, hit-transparent overlay that pins a small label at *align*."""
     return nv.Container(
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         alignment=align,
         padding=8,
         child=nv.Text(text, type_scale=nv.TypeScale.LABEL_SMALL, style=nv.TextStyle(color=color)),
@@ -55,8 +55,8 @@ class PassthroughPointerDemo(nv.ComposableWidget):
         )
 
         behind = nv.Container(
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             alignment="center",
             child=nv.Text("behind", style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)),
         ).modifier(
@@ -83,10 +83,10 @@ class PassthroughPointerDemo(nv.ComposableWidget):
         # passthrough it would never fire anyway (the subtree is off), so the
         # ON behaviour is observed via "behind" being reached.
         self_layer = nv.Stack(
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             children=[
-                nv.Container(width="100%", height="100%", alignment="bottom-center", padding=18, child=child_panel),
+                nv.Container(width="wt", height="wt", alignment="bottom-center", padding=18, child=child_panel),
                 _label("self", "top-left", nv.ColorRole.ON_SURFACE),
             ],
         ).modifier(nv.background("#2196F344") | nv.passthrough_pointer(self.active))

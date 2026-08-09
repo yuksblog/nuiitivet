@@ -24,8 +24,8 @@ class DetailsScreen(nv.ComposableWidget):
 
         return nv.Box(
             background_color="#F5F7FF",
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,

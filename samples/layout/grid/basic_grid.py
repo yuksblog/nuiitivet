@@ -6,8 +6,8 @@ def _cell(label: str) -> nv.Card:
         nv.Text(label),
         padding=12,
         alignment="center",
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
     )
 
 
@@ -15,9 +15,9 @@ def main(png: str = ""):
     # 2行 x 2列 のレイアウト
     widget = nv.Grid(
         # 列の定義: 左側は自動、右側は残り全部
-        columns=["auto", "100%"],
+        columns=["auto", "wt"],
         # 行の定義: 上は 60px、下は残り全部
-        rows=[60, "100%"],
+        rows=[60, "wt"],
         row_gap=12,
         column_gap=12,
         padding=12,

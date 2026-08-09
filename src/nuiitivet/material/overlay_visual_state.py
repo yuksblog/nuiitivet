@@ -107,7 +107,7 @@ class MaterialOverlayLayerComposer(OverlayLayerComposer):
         )
         backdrop: Widget | None = None
         if context.backdrop:
-            backdrop = Container(width="100%", height="100%").modifier(
+            backdrop = Container(width="wt", height="wt").modifier(
                 background((ColorRole.SCRIM, self._SCRIM_OPACITY)) | opacity(barrier_opacity_obs)
             )
 

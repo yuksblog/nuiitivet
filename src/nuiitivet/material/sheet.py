@@ -120,7 +120,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         """Build the sheet: outer Box with header Row and content Column."""
         resolved_style = self.style
 
-        # Header row: [Back slot] [Headline (flex)] [Close]
+        # Header row: [Back slot] [Headline (weight)] [Close]
         # The back-button slot is always reserved (same width as IconButton default)
         # so the headline stays at a consistent horizontal position regardless of
         # whether the back button is visible.
@@ -140,12 +140,12 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
                         style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
                         type_scale=TypeScaleToken.from_size(22),
                     ),
-                    width="100%",
+                    width="wt",
                     padding=(8, 0, 8, 0),
                 ),
                 IconButton("close", on_click=self._on_close_click if self._overlay_handle is not None else None),
             ],
-            width="100%",
+            width="wt",
             height=72,
             padding=(4, 0, 4, 0),
             cross_alignment="center",
@@ -157,7 +157,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         return Box(
             Column(
                 [header, self._content],
-                width="100%",
+                width="wt",
             ),
             width=resolved_style.width,
             height=resolved_style.height,
@@ -230,12 +230,12 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
                         style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
                         type_scale=TypeScaleToken.from_size(22),
                     ),
-                    width="100%",
+                    width="wt",
                     padding=(8, 0, 8, 0),
                 ),
                 IconButton("close", on_click=self._on_close_click if self._overlay_handle is not None else None),
             ],
-            width="100%",
+            width="wt",
             height=72,
             padding=(4, 0, 4, 0),
             cross_alignment="center",
@@ -248,7 +248,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         return Box(
             Column(
                 [header, self._content],
-                width="100%",
+                width="wt",
             ),
             width=resolved_style.width,
             height=resolved_style.height,
@@ -379,7 +379,7 @@ class StandardSideSheet(ComposableWidget):
                             style=TextStyle(color=ColorRole.ON_SURFACE_VARIANT),
                             type_scale=TypeScaleToken.from_size(22),
                         ),
-                        width=Sizing.flex(1),
+                        width=Sizing.weight(1),
                         padding=(8, 0, 8, 0),
                     )
                 )
@@ -388,7 +388,7 @@ class StandardSideSheet(ComposableWidget):
             body_parts.append(
                 Row(
                     header_children,
-                    width="100%",
+                    width="wt",
                     height=72,
                     padding=(4, 0, 4, 0),
                     cross_alignment="center",
@@ -396,17 +396,17 @@ class StandardSideSheet(ComposableWidget):
             )
         body_parts.append(self._content)
 
-        # The body fills the container so that content declaring a flex height
+        # The body fills the container so that content declaring a weight height
         # gets the space left over by the header.
-        content_col = Column(body_parts, width=Sizing.flex(1), height=Sizing.flex(1))
+        content_col = Column(body_parts, width=Sizing.weight(1), height=Sizing.weight(1))
 
         # Optionally add a vertical Divider on the edge facing the main content.
         if resolved_style.show_divider:
             divider = VerticalDivider()
             if self.side == "right":
-                inner: Widget = Row([divider, content_col], width="100%", height="100%")
+                inner: Widget = Row([divider, content_col], width="wt", height="wt")
             else:
-                inner = Row([content_col, divider], width="100%", height="100%")
+                inner = Row([content_col, divider], width="wt", height="wt")
         else:
             inner = content_col
 

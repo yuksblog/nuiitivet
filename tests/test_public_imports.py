@@ -39,6 +39,14 @@ def test_material_reexports_every_core_symbol() -> None:
 
 
 @pytest.mark.parametrize("module", [core, md], ids=["nuiitivet", "nuiitivet.material"])
+@pytest.mark.parametrize("name", ["Sizing", "SizingKind", "SizingLike"])
+def test_sizing_vocabulary_is_public(module: object, name: str) -> None:
+    """`width=` / `height=` accept a `SizingLike`, so users must be able to name it."""
+
+    assert hasattr(module, name), f"{module.__name__}.{name} is not exported"  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("module", [core, md], ids=["nuiitivet", "nuiitivet.material"])
 def test_all_has_no_duplicates(module: object) -> None:
     names = list(module.__all__)  # type: ignore[attr-defined]
     dupes = sorted({n for n in names if names.count(n) > 1})

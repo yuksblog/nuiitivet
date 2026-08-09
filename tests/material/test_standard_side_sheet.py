@@ -58,7 +58,7 @@ def _press(button: IconButton) -> None:
 def test_standard_side_sheet_style_defaults():
     style = StandardSideSheetStyle()
     assert style.width == 256
-    assert style.height == "100%"
+    assert style.height == "wt"
     assert style.corner_radius == 0.0
     assert style.background_color == ColorRole.SURFACE
 
@@ -66,7 +66,7 @@ def test_standard_side_sheet_style_defaults():
 def test_standard_side_sheet_style_copy_with():
     style = StandardSideSheetStyle().copy_with(width=320, corner_radius=8.0)
     assert style.width == 320
-    assert style.height == "100%"
+    assert style.height == "wt"
     assert style.corner_radius == 8.0
 
 
@@ -303,7 +303,7 @@ def _layout_in_row(sheet: StandardSideSheet, width: int = 800, height: int = 600
     """
     from nuiitivet.runtime.app import App
 
-    row = LayoutRow([Box(width="100%", height="100%"), sheet], width=width, height=height)
+    row = LayoutRow([Box(width="wt", height="wt"), sheet], width=width, height=height)
     app = App(content=row, width=width, height=height)
     app.root.mount(app)
     app.root.layout(width, height)
@@ -321,9 +321,9 @@ def _built_container(sheet: StandardSideSheet) -> Box:
 
 @pytest.mark.parametrize("show_divider", [True, False])
 def test_standard_side_sheet_fills_parent_height(show_divider: bool):
-    """The default height="100%" fills the parent regardless of the divider.
+    """The default height="wt" fills the parent regardless of the divider.
 
-    The divider is a flex widget whose preferred height matches the available
+    The divider is a weight widget whose preferred height matches the available
     height, which used to be the only reason the sheet appeared full-height.
     """
     sheet = StandardSideSheet(
@@ -361,8 +361,8 @@ def test_standard_side_sheet_content_is_top_aligned(show_divider: bool):
 
 
 def test_standard_side_sheet_content_can_fill_height():
-    """Content declaring a flex height gets the space left over by the header."""
-    content = Box(width=100, height="100%")
+    """Content declaring a weight height gets the space left over by the header."""
+    content = Box(width=100, height="wt")
     sheet = StandardSideSheet(content, headline="Filters")
     _layout_in_row(sheet)
     rect = content.layout_rect

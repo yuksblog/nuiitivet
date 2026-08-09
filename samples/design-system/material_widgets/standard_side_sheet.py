@@ -18,7 +18,7 @@ class StandardSideSheetDemo(nv.ComposableWidget):
             nv.Column(
                 padding=16,
                 gap=12,
-                width="100%",
+                width="wt",
                 children=[
                     nv.Text("Option A"),
                     nv.Text("Option B"),
@@ -40,14 +40,14 @@ class StandardSideSheetDemo(nv.ComposableWidget):
                 ],
             ),
             background_color=nv.ColorRole.SURFACE,
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
 
         return nv.Row(
             [body, sheet],
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
         )
 
 

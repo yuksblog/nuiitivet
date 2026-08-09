@@ -54,8 +54,8 @@ class DetailsScreen(nv.ComposableWidget):
 
     def build(self):
         return nv.Container(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,

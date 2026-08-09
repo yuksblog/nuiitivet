@@ -108,7 +108,7 @@ class GroupButton(InteractiveWidget):
             the group-level selection logic.
         disabled: Whether the item ignores pointer events.
         width: Optional width sizing.  ``ConnectedButtonGroup`` overrides this to
-            ``Sizing.flex(1)`` to achieve equal-width segments.
+            ``Sizing.weight(1)`` to achieve equal-width segments.
         style: Optional style override.  If omitted, the containing group's
             style is used; a group button standing on its own follows the
             theme's standard-group style.
@@ -543,7 +543,7 @@ class GroupButton(InteractiveWidget):
         colour and corner shape, not by a persistent width change.
 
         Only Standard groups (``adjacent_animation=True``) participate; for
-        Connected groups this is a no-op so their flex layout is preserved.
+        Connected groups this is a no-op so their weight layout is preserved.
         """
         if not self._adjacent_animation:
             return
@@ -804,7 +804,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
                 stable while pressed, animating only inner corners
                 (Connected groups).
             group_width: Width sizing passed to the inner ``Row`` and outer
-                ``Box``.  ``None`` for content-fit; ``"100%"`` for full-width.
+                ``Box``.  ``None`` for content-fit; ``"wt"`` for full-width.
             style: The style to build with -- the caller's, or the preset that
                 stands in until the first measure can reach the theme.
         """
@@ -1062,8 +1062,8 @@ class StandardButtonGroup(_ButtonGroupBase):
 class ConnectedButtonGroup(_ButtonGroupBase):
     """A ButtonGroup that functions as an option selector / view switcher.
 
-    Width expands to fill the containing widget (``width="100%"``).  Items
-    share space equally (``Sizing.flex(1)``).  Only corner shapes animate on
+    Width expands to fill the containing widget (``width="wt"``).  Items
+    share space equally (``Sizing.weight(1)``).  Only corner shapes animate on
     press — adjacent segment corners are unaffected.  Selection is always
     enforced by the group.
 
@@ -1105,7 +1105,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             adjacent_animation=False,
             persistent_selected_pressed_shape=False,
             connected_inner_press_only=True,
-            group_width="100%",
+            group_width="wt",
             style=eff_style,
         )
 
@@ -1121,12 +1121,12 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         return tokens
 
     def on_mount(self) -> None:
-        """Assign positions, set flex widths, and wire group selection logic."""
+        """Assign positions, set weight widths, and wire group selection logic."""
         super().on_mount()  # Calls _ButtonGroupBase.on_mount → set_position()
 
         # Equal-width distribution for connected layout
         for item in self._items:
-            item.width_sizing = Sizing.flex(1)
+            item.width_sizing = Sizing.weight(1)
             item.mark_needs_layout()
 
         # Intercept each item's on_change to apply group selection logic

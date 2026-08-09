@@ -32,25 +32,25 @@ class DeckDemo(nv.ComposableWidget):
 
         body = nv.Deck(
             index=self.current_index,
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             children=[
                 nv.Container(
                     alignment="center",
-                    width="100%",
-                    height="100%",
+                    width="wt",
+                    height="wt",
                     child=nv.Text("Tab 1 Content"),
                 ).modifier(nv.background("#BBDEFB")),
                 nv.Container(
                     alignment="center",
-                    width="100%",
-                    height="100%",
+                    width="wt",
+                    height="wt",
                     child=nv.Text("Tab 2 Content"),
                 ).modifier(nv.background("#C8E6C9")),
                 nv.Container(
                     alignment="center",
-                    width="100%",
-                    height="100%",
+                    width="wt",
+                    height="wt",
                     child=nv.Text("Tab 3 Content"),
                 ).modifier(nv.background("#FFE0B2")),
             ],
@@ -58,7 +58,7 @@ class DeckDemo(nv.ComposableWidget):
 
         demo = nv.Row(
             gap=12,
-            width="100%",
+            width="wt",
             children=[menu, body],
         )
 

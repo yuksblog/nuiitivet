@@ -51,7 +51,7 @@ def _fit_card(label: str, fit: str, source: bytes) -> nv.Container:
                 nv.Container(
                     width=180,
                     height=120,
-                    child=nv.Image(source, fit=fit, width="100%", height="100%"),  # type: ignore[arg-type]
+                    child=nv.Image(source, fit=fit, width="wt", height="wt"),  # type: ignore[arg-type]
                 ),
             ],
         ),

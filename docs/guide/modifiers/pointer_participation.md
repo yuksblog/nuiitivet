@@ -28,7 +28,7 @@ import nuiitivet.material as nv
 nv.Stack([
     canvas,                       # clickable across its whole area
     nv.Container(                 # transparent aligner -> passes clicks through
-        toolbar, width="100%", height="100%", alignment="bottom-center",
+        toolbar, width="wt", height="wt", alignment="bottom-center",
     ),
 ])
 ```

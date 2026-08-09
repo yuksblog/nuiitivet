@@ -12,7 +12,7 @@ class ClipModifier(ModifierElement):
             return widget
 
         # Wrap in a ModifierBox that clips. The wrapper must inherit the child's
-        # sizing, otherwise a flex/fixed request collapses into auto and the box
+        # sizing, otherwise a weight/fixed request collapses into auto and the box
         # grows to the content's natural size.
         box = ModifierBox(
             child=widget,

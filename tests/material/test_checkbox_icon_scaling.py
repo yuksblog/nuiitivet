@@ -14,7 +14,7 @@ class TestCheckboxIconScaling(unittest.TestCase):
         if skia_module.get_skia(raise_if_missing=False) is None:
             self.skipTest("skia-python is required for this test")
 
-        # Checkbox with flex width (simulated by passing large rect to paint)
+        # Checkbox with weight width (simulated by passing large rect to paint)
         c = Checkbox()
 
         # Mock canvas
@@ -38,8 +38,8 @@ class TestCheckboxIconScaling(unittest.TestCase):
         self.assertTrue(found_large, "Checkbox did not scale to fit allocated rect")
 
     def test_icon_scaling(self):
-        # Icon with flex width
-        icon = Icon("home", size="100%")
+        # Icon with weight width
+        icon = Icon("home", size="wt")
 
         canvas = MagicMock()
 

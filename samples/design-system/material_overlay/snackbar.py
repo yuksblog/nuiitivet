@@ -34,8 +34,8 @@ def main(png_path: str = "") -> nv.App:
     if png_path:
         background = nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=16,
                 children=[
@@ -47,8 +47,8 @@ def main(png_path: str = "") -> nv.App:
         )
         snackbar_overlay = nv.Container(
             alignment="bottom-center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             padding=(0, 0, 0, 24),
             child=nv.Snackbar("Item deleted"),
         )

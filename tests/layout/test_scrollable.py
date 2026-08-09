@@ -189,13 +189,13 @@ def test_scrollable_axis_is_fixed_by_class():
 def test_scrollable_defaults_to_axis_stretch_vertical():
     child = Column([Text("Item")])
     scrollable = VerticalScrollable(child=child)
-    assert scrollable.height_sizing.kind == "flex"
+    assert scrollable.height_sizing.kind == "weight"
 
 
 def test_scrollable_defaults_to_axis_stretch_horizontal():
     child = Row([Text("Item")])
     scrollable = HorizontalScrollable(child=child)
-    assert scrollable.width_sizing.kind == "flex"
+    assert scrollable.width_sizing.kind == "weight"
 
 
 def test_scrollable_respects_explicit_sizing_override():

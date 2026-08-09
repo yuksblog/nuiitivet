@@ -16,8 +16,8 @@ def _card(label: str) -> nv.Card:
 def main(png: str = ""):
     # Step 3: 行と列のサイズ定義を変更
     widget = nv.Grid(
-        rows=[60, "100%", "auto"],
-        columns=["auto", "100%"],
+        rows=[60, "wt", "auto"],
+        columns=["auto", "wt"],
         row_gap=12,
         column_gap=12,
         padding=12,

@@ -9,7 +9,7 @@ def main(png: str = ""):
         children=[
             nv.Button("Left 1", style=nv.ButtonStyle.outlined()),
             nv.Button("Left 2", style=nv.ButtonStyle.outlined()),
-            nv.Spacer(width="100%"),
+            nv.Spacer(width="wt"),
             nv.Button("Right", style=nv.ButtonStyle.filled()),
         ],
     )

@@ -12,8 +12,8 @@ class HomeScreen(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         return nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=16,
                 children=[
@@ -68,7 +68,7 @@ import nuiitivet.material as nv
 header = nv.Row(
     children=[nv.Text("My App")],
     cross_alignment="center",
-    width="100%",
+    width="wt",
     height=40,
     padding=(12, 0),
 ).modifier(nv.background("#1a237e"))

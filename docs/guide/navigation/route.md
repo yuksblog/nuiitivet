@@ -17,8 +17,8 @@ import nuiitivet.material as nv
 class AnimatedScreen(nv.ComposableWidget):
     def build(self):
         return nv.Container(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,
@@ -54,8 +54,8 @@ import nuiitivet.material as nv
 class InstantScreen(nv.ComposableWidget):
     def build(self):
         return nv.Container(
-            width=nv.Sizing.flex(1),
-            height=nv.Sizing.flex(1),
+            width="wt",
+            height="wt",
             child=nv.Column(
                 padding=16,
                 gap=12,

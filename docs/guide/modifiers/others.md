@@ -9,7 +9,7 @@ Other modifiers provide additional functionalities to Widgets, such as handling 
 ```python
 class Panel(nv.ComposableWidget):
     def __init__(self) -> None:
-        super().__init__(width=nv.Sizing.flex(1), height=nv.Sizing.flex(1))
+        super().__init__(width="wt", height="wt")
         self._wide = nv.Observable(False)
 
     def _on_size(self, size: nv.Size) -> None:

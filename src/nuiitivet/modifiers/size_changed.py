@@ -4,7 +4,7 @@ A widget's size is decided by its parent, so a component that must adapt to the
 space it was given has no way to read that space from `build()`. This modifier
 pushes the measurement back to the widget that carries it::
 
-    Row([rail, card], width=Sizing.flex(1)).modifier(
+    Row([rail, card], width=Sizing.weight(1)).modifier(
         on_size_changed(lambda s: vm.apply_width(s.width))
     )
 
@@ -83,7 +83,7 @@ def on_size_changed(callback: SizeCallback) -> OnSizeChangedModifier:
         Avoid making the callback change the measured widget's *own* size: that
         feeds back into the next measurement and can oscillate. The structurally
         safe pattern is to measure a widget whose size the parent imposes
-        (``Sizing.flex(...)`` / ``"100%"``) and let the callback change only what
+        (``Sizing.weight(...)`` / ``"wt"``) and let the callback change only what
         is *inside* it.
     """
     return OnSizeChangedModifier(callback=callback)

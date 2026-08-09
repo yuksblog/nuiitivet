@@ -9,8 +9,8 @@ This document defines how widgets determine their size (Layout) and how they dra
     * **Paint (Content Sizing):** Determined by how the widget fits its visual content into the Allocated Rect.
 
 2. **No Runtime Enforcement**
-    * The framework does not forbid specific sizing kinds (e.g., `flex` on Checkbox).
-    * All widgets accept `fixed`, `auto`, and `flex` on both axes.
+    * The framework does not forbid specific sizing kinds (e.g., `weight` on Checkbox).
+    * All widgets accept `fixed`, `auto`, and `weight` on both axes.
     * We rely on sensible default behaviors rather than restrictions.
 
 3. **API Curation, Per-Axis (see Section 0)**
@@ -49,7 +49,7 @@ A dimension is decided **per axis**, using one binary test:
 | `Button.height` / `ToggleButton.height` | Yes (size variant) | style only |
 | `IconButton` / `IconToggleButton` / `Fab` / `ExtendedFab` | Yes (square = container height / content-driven) | style only (no size param) |
 | `GroupButton.width` | No | `width` |
-| `StandardButtonGroup` / `ConnectedButtonGroup` | Fixed by variant (content-fit / `100%`) | no public size param (internal only) |
+| `StandardButtonGroup` / `ConnectedButtonGroup` | Fixed by variant (content-fit / `"wt"`) | no public size param (internal only) |
 | `SplitButton.width` | No | `width` |
 | `Checkbox` / `RadioButton` / `Switch` | Yes (48dp target + fixed graphic) | style only (`*Style.default_touch_target`) |
 | Chips (`AssistChip` / `FilterChip` / `InputChip` / `SuggestionChip`) width | No | `width` |
@@ -76,27 +76,27 @@ A dimension is decided **per axis**, using one binary test:
 The **Allocated Rect** is the space assigned to the widget by its parent during the layout pass.
 
 * **Control:** Controlled by `width` and `height` parameters (Sizing).
-* **Flex Behavior:** If `width="flex"` (or `height="flex"`) is specified, the widget's Allocated Rect **always expands** to fill the available space provided by the parent.
+* **Weight Behavior:** If `width="wt"` (or `height="wt"`) is specified, the widget's Allocated Rect **always expands** to fill the available space provided by the parent.
 * **Hit Testing:** The **entire Allocated Rect** is hit-testable.
   * This ensures that expanding a widget (e.g., for easier touch access) works as expected, even if the visual content remains small.
 
-## 1.1 Flex Semantics: A Weight, Not a Fraction of the Parent
+## 1.1 Weight Semantics: A Share of the Leftover Space
 
-`flex` is a **weight** in the spirit of WPF's star (`*`) sizing. A percentage string is just a shorthand for a weight — `parse_sizing("50%")` returns `Sizing.flex(50)`, which carries no memory of the `%` sign.
+`weight` is a share of the space **left over** on an axis, in the spirit of WPF's star (`*`) sizing. The string form is `"wt"` for weight 1 and `"wt<n>"` for anything else — `parse_sizing("wt2")` returns `Sizing.weight(2)`.
 
 The rule for an axis is:
 
 1. `fixed` and `auto` children are given the space they ask for.
-2. Whatever remains is split among the `flex` children **in proportion to their weights**.
+2. Whatever remains is split among the `weight` children **in proportion to their weights**.
 
-Two consequences are worth stating plainly, because `"50%"` invites the opposite reading:
+Two consequences follow:
 
-* **A lone flex child fills the axis, whatever its weight.** With no flex sibling to share with, it receives the entire remainder. `"50%"`, `"100%"` and `Sizing.flex(1)` are therefore *identical* for an only child. This holds in `Row`, `Column`, `Grid`, `Stack`, and for overlay-presented content (a `Stack` child overlaps its siblings rather than sharing an axis with them, so it is always the sole claimant; the same is true of overlay content).
-* **A percentage is not a fraction of the parent.** `Row([a, b])` with `a="50%"` and `b="150%"` gives `a` a quarter of the row and `b` three quarters — the weights are normalized against each other (200 total), not against 100.
+* **A lone weight child fills the axis, whatever its weight.** With no weight sibling to share with, it receives the entire remainder, so `"wt"` and `"wt2"` are *identical* for an only child. This holds in `Row`, `Column`, `Grid`, `Stack`, and for overlay-presented content (a `Stack` child overlaps its siblings rather than sharing an axis with them, so it is always the sole claimant; the same is true of overlay content).
+* **A weight is not a fraction of the parent.** `Row([a, b])` with `a="wt"` and `b="wt3"` gives `a` a quarter of the row and `b` three quarters — the weights are normalized against each other, not against any fixed total. Adding a `fixed` sibling changes what "the remainder" is, but not the ratio between `a` and `b`.
 
 To size a widget to a genuine fraction of its parent, use a number (`height=300`); there is no fraction-of-parent spec.
 
-> Percentages that sum to 100 across siblings (`Grid(rows=["33%", "33%", "33%"])`) read naturally *because* the weights happen to normalize to the same numbers. That coincidence is why the convention is convenient, not a second interpretation.
+> A percentage spelling (`"50%"`) existed until #510. It was never a fraction of the parent — it parsed to a weight and the `%` was discarded — and reading it as a percentage was the most common misunderstanding of this system. It now raises `ValueError`.
 
 ## 2. Content Policy (Paint)
 
@@ -129,7 +129,7 @@ We define default behaviors to match intuitive expectations.
 
 | Widget | Default `fit` | Behavior Description |
 | :--- | :--- | :--- |
-| **Checkbox** | **`contain`** | **Scales with the rect.** <br> If `width` is default (fixed), it looks standard. If `width="flex"` or large fixed size, the checkbox graphic expands. |
+| **Checkbox** | **`contain`** | **Scales with the rect.** <br> If `width` is default (fixed), it looks standard. If `width="wt"` or large fixed size, the checkbox graphic expands. |
 | **Radio** | **`contain`** | Same as Checkbox. |
 | **Icon** | **`contain`** | **Scales with the rect.** <br> Vector icons are resolution-independent and often resized. |
 | **Button Family** | (Container) | **Includes Button, IconButton, FAB.** <br> They act as containers. They fill the Allocated Rect and align their content (Text/Icon) inside. |
@@ -139,7 +139,7 @@ We define default behaviors to match intuitive expectations.
 
 While many frameworks default to `none` (fixed size) for Checkboxes to enforce design consistency (preventing accidental resizing), we chose `contain` as the default to prioritize **intuitiveness**.
 
-1. **Intuitive:** If a user explicitly sets `width="flex"` or `width=100`, they likely intend to resize the widget. We respect this intent over enforcing design constraints.
+1. **Intuitive:** If a user explicitly sets `width="wt"` or `width=100`, they likely intend to resize the widget. We respect this intent over enforcing design constraints.
 2. **Safe Default:** The default `width` for Checkbox is `fixed` (standard size), so it appears standard-sized unless explicitly changed. This provides a "guardrail" for quality while allowing freedom.
 3. **Consistency:** It aligns with `Icon` and `Image` behavior, simplifying the mental model.
 4. **Vector Rendering:** Unlike legacy bitmap-based controls, our vector-based rendering ensures the checkbox remains crisp at any size.

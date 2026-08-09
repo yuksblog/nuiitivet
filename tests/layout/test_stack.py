@@ -72,7 +72,7 @@ def test_stack_column_spacer_expansion():
 
     # Child B: Column with Spacer and Button (Container)
     button = Container(width=50, height=20)
-    col = Column(children=[Spacer(width=Sizing.flex(1), height=Sizing.flex(1)), button], width=100, height=200)
+    col = Column(children=[Spacer(width=Sizing.weight(1), height=Sizing.weight(1)), button], width=100, height=200)
 
     # Stack
     stack = Stack(children=[child_a, col])
@@ -101,34 +101,34 @@ def test_stack_column_spacer_expansion():
     assert button.layout_rect == (0, 180, 50, 20)
 
 
-def test_stack_flex_child_fills_regardless_of_weight():
-    # "50%" is a flex weight, not a fraction of the parent. Stacked children do
-    # not share an axis, so the sole flex claimant takes the whole extent -
-    # the same result Row/Column produce for a lone flex child.
-    child = Container(width="50%", height="50%")
+def test_stack_weight_child_fills_regardless_of_weight():
+    # "wt50" is a weight, not a fraction of the parent. Stacked children do
+    # not share an axis, so the sole weight claimant takes the whole extent -
+    # the same result Row/Column produce for a lone weight child.
+    child = Container(width="wt50", height="wt50")
     stack = Stack(children=[child], width=200, height=200)
     stack.layout(200, 200)
 
     assert child.layout_rect == (0, 0, 200, 200)
 
-    full = Container(width="100%", height="100%")
+    full = Container(width="wt", height="wt")
     stack_full = Stack(children=[full], width=200, height=200)
     stack_full.layout(200, 200)
 
     assert full.layout_rect == child.layout_rect
 
 
-def test_stack_spacer_with_percentage_container():
-    # Requirement: Container with width/height="100%" should fill Stack,
+def test_stack_spacer_with_filling_container():
+    # Requirement: Container with width/height="wt" should fill Stack,
     # allowing Spacer inside to work.
 
-    spacer = Spacer(width=Sizing.flex(1), height=Sizing.flex(1))
+    spacer = Spacer(width=Sizing.weight(1), height=Sizing.weight(1))
     icon = Container(width=10, height=10)
     # Column needs to fill Container for Spacer to work
-    col = Column(children=[spacer, icon], height="100%")
+    col = Column(children=[spacer, icon], height="wt")
 
     # Container filling the stack
-    container = Container(width="100%", height="100%", child=col)
+    container = Container(width="wt", height="wt", child=col)
 
     stack = Stack(children=[container], width=200, height=200)
     stack.layout(200, 200)

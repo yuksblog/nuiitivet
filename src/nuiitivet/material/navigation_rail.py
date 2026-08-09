@@ -55,7 +55,7 @@ def _resolve_expanded_width(
 
     Only a *fixed* width is interpreted as the expanded width (clamped into the
     MD3 range ``[min, max]``). ``None`` silently falls back to the minimum
-    expanded width. Any other value (flex/auto/percent/observable) cannot be
+    expanded width. Any other value (weight/auto/observable) cannot be
     interpreted as an expanded width, so the minimum is used and a warning is
     returned so the caller can surface it.
 
@@ -81,7 +81,7 @@ def _resolve_expanded_width(
                     f"allow wider rails.",
                 )
             return effective, None
-        # A non-fixed sizing (flex/auto/percent) cannot be an expanded width.
+        # A non-fixed sizing (weight/auto) cannot be an expanded width.
         return style.clamp_expanded_width(lo), (
             f"navigation_rail_width_non_fixed:{sizing.kind}",
             f"NavigationRail width is not a fixed size ({sizing.kind}); the "
@@ -295,7 +295,7 @@ class _RailItemButton(InteractiveWidget):
         super().__init__(
             child=None,
             on_click=on_click,
-            width=Sizing.flex(1),
+            width=Sizing.weight(1),
             height=Sizing.fixed(eff_style.item_height),
             padding=0,
             focusable=False,
@@ -620,7 +620,7 @@ class _NavigationRailLayout(Widget):
             animation: Expand animation controller.
             style: Effective navigation rail style.
         """
-        super().__init__(width=Sizing.flex(1), height=Sizing.flex(1), padding=0)
+        super().__init__(width=Sizing.weight(1), height=Sizing.weight(1), padding=0)
         self._menu_button = menu_button
         self._item_buttons = list(item_buttons)
         self._animation = animation
@@ -936,8 +936,8 @@ class NavigationRail(Widget):
         rail_bg = Box(
             child=rail_layout,
             background_color=bg_color,
-            width=Sizing.flex(1),
-            height=Sizing.flex(1),
+            width=Sizing.weight(1),
+            height=Sizing.weight(1),
             alignment="top-left",
         )
 

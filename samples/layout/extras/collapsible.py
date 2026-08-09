@@ -26,7 +26,7 @@ class CollapsibleDemo(nv.ComposableWidget):
         return nv.Column(
             padding=16,
             gap=12,
-            width="100%",
+            width="wt",
             children=[
                 nv.Button("Show Details", on_click=self.toggle),
                 details,

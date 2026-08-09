@@ -18,12 +18,12 @@ class DummyWidget(Widget):
         self.set_last_rect(x, y, w, h)
 
 
-def test_flex_spacer_distribution_horizontal():
+def test_weight_spacer_distribution_horizontal():
     items = ["a", "s", "b"]
 
     def builder(item, idx):
         if item == "s":
-            return Spacer(width=Sizing.flex(1), height=Sizing.flex(1))
+            return Spacer(width=Sizing.weight(1), height=Sizing.weight(1))
         return DummyWidget(20, 10)
 
     fe = ForEach(items, builder)
@@ -36,14 +36,14 @@ def test_flex_spacer_distribution_horizontal():
     assert spacer_rect[2] == 60
 
 
-def test_flex_spacer_multiple_factors():
+def test_weight_spacer_multiple_weights():
     items = ["a", "s1", "s2", "b"]
 
     def builder(item, idx):
         if item == "s1":
-            return Spacer(width=Sizing.flex(1), height=Sizing.flex(1))
+            return Spacer(width=Sizing.weight(1), height=Sizing.weight(1))
         if item == "s2":
-            return Spacer(width=Sizing.flex(3), height=Sizing.flex(3))
+            return Spacer(width=Sizing.weight(3), height=Sizing.weight(3))
         return DummyWidget(10, 10)
 
     fe = ForEach(items, builder)

@@ -298,7 +298,7 @@ def test_non_fixed_width_uses_min_and_warns(caplog):
     items = [RailItem(icon="home", label="Home")]
     with caplog.at_level(logging.WARNING, logger=_RAIL_LOGGER):
         caplog.clear()
-        rail = NavigationRail(children=items, expanded=True, width=Sizing.flex(1))
+        rail = NavigationRail(children=items, expanded=True, width=Sizing.weight(1))
     assert rail._expanded_width == 220.0
     assert any("not a fixed size" in r.message for r in _rail_records(caplog))
 
@@ -557,7 +557,7 @@ def test_auto_height_layout_is_non_zero_and_hittable():
         RailItem(icon="search", label="Search"),
     ]
     rail = NavigationRail(children=items, expanded=False)  # height defaults to auto
-    row = Row(children=[rail], width=Sizing.flex(1), height=Sizing.flex(1))
+    row = Row(children=[rail], width=Sizing.weight(1), height=Sizing.weight(1))
     row.layout(400, 300)
 
     assert rail.layout_rect is not None

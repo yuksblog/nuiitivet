@@ -1,21 +1,23 @@
 """Sizing parsing helpers for widget layout.
 
 A Sizing represents the strategy a widget uses to request space along an axis.
-Developers can pass ints, "auto", or percentage strings (e.g. "50%"), which are
-converted into one of the supported Sizing variants.
+Developers can pass ints, "auto", or weight strings (e.g. "wt", "wt2"), which
+are converted into one of the supported Sizing variants.
 
-A percentage is a *flex weight*, not a fraction of the parent: "50%" becomes
-Sizing.flex(50), and the space left over on an axis is split among its flex
-children in proportion to their weights. A lone flex child fills the axis
-whatever its weight. See docs/design/SIZE_POLICY.md 1.1.
+A weight is a share of the *leftover* space, in the spirit of WPF star sizing:
+"fixed" and "auto" children take what they ask for, and what remains on the
+axis is split among the "weight" children in proportion to their weights. A
+lone weight child therefore fills the axis whatever its weight.
+See docs/design/SIZE_POLICY.md 1.1.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, Literal, Tuple, Union
 
-SizingKind = Literal["fixed", "auto", "flex"]
+SizingKind = Literal["fixed", "auto", "weight"]
 SizingLike = Union["Sizing", int, float, str, None]
 
 
@@ -33,13 +35,14 @@ class Sizing:
         return cls("auto", 0.0)
 
     @classmethod
-    def flex(cls, weight: float = 1.0) -> "Sizing":
-        if weight <= 0:
+    def weight(cls, value: float = 1.0) -> "Sizing":
+        if value <= 0:
             return cls.auto()
-        return cls("flex", float(weight))
+        return cls("weight", float(value))
 
 
 _AUTO = Sizing.auto()
+_WEIGHT_ONE = Sizing.weight(1.0)
 _SIZING_CACHE: Dict[Tuple[Any, ...], Sizing] = {}
 _SIZING_CACHE_STATS = {"parse_hits": 0, "parse_misses": 0}
 _SIZING_CACHE_PROFILE_ENABLED = False
@@ -48,10 +51,11 @@ _SIZING_CACHE_PROFILE_ENABLED = False
 def parse_sizing(value: SizingLike, *, default: Sizing | None = None) -> Sizing:
     """Normalize a user-provided width/height spec into a Sizing.
 
-    Accepted inputs:
-    - int/float -> Fixed(value)
-    - "auto" (case-insensitive) -> Auto
-    - "{f}%" -> Flex(f)
+    Accepted inputs (strings are case-insensitive):
+    - int/float -> Sizing.fixed(value)
+    - "auto" -> Sizing.auto()
+    - "wt" -> Sizing.weight(1)
+    - "wt{f}" -> Sizing.weight(f), e.g. "wt2", "wt0.5"
     - Sizing -> returned as-is
     - None -> `default` if provided, else Auto
     """
@@ -141,14 +145,17 @@ def _parse_sizing_value(value: SizingLike, *, default: Sizing | None) -> Sizing:
         trimmed = value.strip().lower()
         if trimmed == "auto":
             return _AUTO
-        if trimmed.endswith("%"):
-            num = trimmed[:-1].strip()
+        if trimmed.startswith("wt"):
+            num = trimmed[2:].strip()
             if not num:
-                raise ValueError("percentage sizing missing numeric weight")
-            weight = float(num)
-            if weight <= 0:
-                raise ValueError("percentage weight must be positive")
-            return Sizing.flex(weight)
+                return _WEIGHT_ONE
+            try:
+                weight = float(num)
+            except ValueError:
+                raise ValueError(f"unsupported sizing string: {value!r}") from None
+            if not math.isfinite(weight) or weight <= 0:
+                raise ValueError("weight must be a positive finite number")
+            return Sizing.weight(weight)
         raise ValueError(f"unsupported sizing string: {value!r}")
 
     raise TypeError(f"unsupported sizing type: {type(value).__name__}")

@@ -49,7 +49,7 @@ def _make_child() -> Container:
         height=Sizing.fixed(20),
         background_color=(255, 0, 0, 255),
     )
-    return Container(inner, width="100%", height="100%", alignment="top-left")
+    return Container(inner, width="wt", height="wt", alignment="top-left")
 
 
 def _inner_of(child: Container) -> Box:
@@ -148,12 +148,12 @@ def test_reported_bug_repro_with_explicit_defer_pointer() -> None:
     Container hands empty-area clicks to the canvas behind it, while the toolbar
     strip still catches.
     """
-    canvas = Box(width="100%", height="100%", background_color=(10, 20, 30, 255))
+    canvas = Box(width="wt", height="wt", background_color=(10, 20, 30, 255))
     toolbar = Box(width=Sizing.fixed(200), height=Sizing.fixed(40), background_color=(200, 200, 200, 255))
     overlay = Container(
         toolbar,
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         alignment="bottom-center",
     ).modifier(defer_pointer())
     stack = Stack(children=[canvas, overlay])

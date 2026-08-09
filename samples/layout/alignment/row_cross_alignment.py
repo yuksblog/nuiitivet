@@ -11,7 +11,7 @@ def main(png: str = ""):
     def _demo_row(alignment: str) -> nv.Row:
         # The row has a fixed height, so cross-axis alignment is visible.
         return nv.Row(
-            width="100%",
+            width="wt",
             height=120,
             gap=8,
             main_alignment="start",
@@ -33,7 +33,7 @@ def main(png: str = ""):
                 children=[nv.Text(alignment), _demo_row(alignment)],
                 gap=8,
                 cross_alignment="start",
-                width="100%",
+                width="wt",
             ),
             width=560,
             padding=12,

@@ -10,18 +10,18 @@ def main(png: str = ""):
             # 1. 背景（奥）
             nv.Card(
                 nv.Text(""),
-                width="100%",
-                height="100%",
+                width="wt",
+                height="wt",
             ).modifier(nv.background("#BBDEFB")),
             nv.Card(
                 nv.Text(""),
-                width="80%",
-                height="80%",
+                width="wt",
+                height="wt",
             ).modifier(nv.background("#90CAF9")),
             nv.Card(
                 nv.Text("Overlay md.Text"),
-                width="60%",
-                height="60%",
+                width="wt",
+                height="wt",
                 alignment="center",
             ).modifier(nv.background("#64B5F6")),
         ],

@@ -60,7 +60,7 @@ class Geometry(Widget):
         Args:
             child: The single child laid out at this widget's own size.
             width: Sizing for this widget (``None`` shrink-wraps the child;
-                ``"100%"`` / ``Sizing.flex(...)`` fills the space the parent
+                ``"wt"`` / ``Sizing.weight(...)`` fills the space the parent
                 offers). Use a filling size to measure the space *available* to a
                 content pane, not just the child's intrinsic size.
             height: Sizing for this widget; see ``width``.
@@ -102,8 +102,8 @@ class Geometry(Widget):
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Report preferred size: own fixed sizing wins, else the child's.
 
-        A ``flex`` / ``"100%"`` sizing is not fixed, so the child's intrinsic
-        size is reported here and the parent's flex distribution then stretches
+        A ``weight`` / ``"wt"`` sizing is not fixed, so the child's intrinsic
+        size is reported here and the parent's weight distribution then stretches
         this widget to fill — which is what lets a filling ``Geometry`` measure
         the space available to a content pane.
         """

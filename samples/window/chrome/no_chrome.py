@@ -9,8 +9,8 @@ def main(png_path: str = "") -> None:
     app = nv.App(
         content=nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Text("Borderless Window"),
         ),
         title="Borderless",

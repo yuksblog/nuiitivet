@@ -1,7 +1,8 @@
 # Layout Sizing
 
 Element sizes are specified using `width` and `height` properties.
-Specification methods can be set flexibly, such as "fixed size", "auto size", or "stretch to fit parent size".
+A size is one of three things: a "fixed size", an "auto size" that follows the
+content, or a "weight" that claims a share of whatever space is left over.
 
 ## Basic Size Specification
 
@@ -44,17 +45,15 @@ nv.Card(
 
 ![Auto size example](../../assets/layout_sizing_auto.png)
 
-### 3. Flexible Size (Flex)
+### 3. Weight
 
-Fills the remaining space at the specified ratio.
-Specify a string like `"100%"`.
-
-Since it is a ratio, it is not a problem if the total exceeds 100%.
+Claims a share of the space left over once the `fixed` and `auto` siblings have
+taken theirs. Specify `"wt"` for a weight of 1, or `"wt<n>"` for anything else.
 
 ```python
-# Expands to full width (100%)
+# Takes the whole remainder — there is no sibling to share it with
 nv.Card(
-    width="100%", 
+    width="wt",
     child=nv.Text("Full Width Box"),
     padding=16,
     alignment="center",
@@ -62,6 +61,18 @@ nv.Card(
 ```
 
 ![Full width example](../../assets/layout_sizing_fullwidth.png)
+
+When several children carry a weight, the remainder is split between them in
+proportion to their weights:
+
+```python
+# The row's width, minus the 120px sidebar, is split 1 : 3
+nv.Row([
+    nv.Card(width=120, child=nv.Text("Sidebar")),
+    nv.Card(width="wt", child=nv.Text("Narrow")),
+    nv.Card(width="wt3", child=nv.Text("Wide")),
+])
+```
 
 ## Next Steps
 

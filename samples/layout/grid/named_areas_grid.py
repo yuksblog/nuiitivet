@@ -4,7 +4,7 @@ from __future__ import annotations
 import nuiitivet.material as nv
 
 
-def _card(label: str, width="100%", height="100%") -> nv.Card:
+def _card(label: str, width="wt", height="wt") -> nv.Card:
     return nv.Card(
         nv.Text(label),
         padding=12,
@@ -16,8 +16,8 @@ def _card(label: str, width="100%", height="100%") -> nv.Card:
 
 def main(png: str = ""):
     widget = nv.Grid.named_areas(
-        rows=[60, "100%", "auto"],
-        columns=["auto", "100%"],
+        rows=[60, "wt", "auto"],
+        columns=["auto", "wt"],
         areas=[
             ["header", "header"],
             ["sidebar", "content"],

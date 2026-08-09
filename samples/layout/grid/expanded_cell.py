@@ -10,8 +10,8 @@ def main(png: str = ""):
             nv.GridItem(
                 child=nv.Card(
                     # カードをセルのサイズいっぱいに広げる
-                    width="100%",
-                    height="100%",
+                    width="wt",
+                    height="wt",
                     alignment="center",
                     child=nv.Text("Expanded md.Card"),
                 ),

@@ -46,24 +46,24 @@ Widget sizes are abstracted by the `Sizing` type and specified via `width` and `
 
 * **`fixed(value)`**: Fixed pixel value.
 * **`auto`**: Size determined by content (Intrinsic size).
-* **`flex(weight=1.0)`**: Fills available space (remaining space) of the parent.
-  * Equivalent to Flexbox's `flex-grow`.
-  * If multiple `flex` elements exist, space is distributed according to the `weight` ratio.
-  * Specifying a string like `"50%"` is interpreted as `flex(50.0)`.
-    * Note: This is treated as "weight 50", not an absolute size of "50% of parent." If all siblings use `%`, they will be proportional, but if fixed-size elements are mixed in, the allocation is relative to the "remaining space."
+* **`weight(value=1.0)`**: Takes a share of the space left over by the `fixed` and `auto` siblings.
+  * This is WPF star (`*`) sizing, **not** Flexbox `flex-grow`: there is no `flex-basis`, and the weight applies to the remainder alone.
+  * If multiple `weight` elements exist, the remainder is distributed according to the `value` ratio; a lone one takes all of it.
+  * The string form is `"wt"` (weight 1) or `"wt<n>"` — `"wt2"` is `weight(2.0)`.
+    * Note: a weight is never a fraction of the parent. `"wt50"` beside a fixed child still takes the whole remainder, not half the axis. See [SIZE_POLICY.md §1.1](SIZE_POLICY.md).
 
 #### Grid: Room Allocation and Fill
 
 Note: The responsibility of `Grid` is "room allocation" (determining rows, columns, areas, and the allocated rect for each cell).
 How the allocated room is used (intrinsic or full fill) is decided by the child Widget's `width` / `height` (`Sizing`).
 
-Example: To fill a cell, explicitly specify `Sizing.flex(1)`.
+Example: To fill a cell, explicitly specify `Sizing.weight(1)`.
 
 ```python
 cell = Card(
     Text("Cell"),
-    width=Sizing.flex(1),
-    height=Sizing.flex(1),
+    width=Sizing.weight(1),
+    height=Sizing.weight(1),
 )
 ```
 
@@ -95,7 +95,7 @@ Widgets with a single child (`Container`, etc.) use the `alignment` property.
     * `center-left`, `center`, `center-right`
     * `bottom-left`, `bottom-center`, `bottom-right`
 
-Note: Alignment only determines the positioning. To fill the space, specify `width` / `height` (e.g., `Sizing.flex(...)`).
+Note: Alignment only determines the positioning. To fill the space, specify `width` / `height` (e.g., `Sizing.weight(...)`).
 
 Note: The term `alignment` can mean different things. CSS-related (`align-*` / `justify-*`) sometimes includes the concept of "stretch" (absorbing excess space), but this framework adopts a GUI-centric approach where alignment consistently means "positioning only."
 
@@ -141,7 +141,7 @@ The `width` / `height` of the `App` (OS window) is distinct from Widget `Sizing`
 
 * Window `width` / `height` is treated as `WindowSizing` (or `WindowSizingLike`).
   * Accepts fixed **px** values or `"auto"` (preferred size).
-* `"50%"`-style specification is **not supported** (as it conflicts with the meaning of Widget `Sizing.flex(...)`).
+* `"wt"`-style specification is **not supported**: a window has no parent to take a share of, so a weight has nothing to mean here.
 
 Window positions are specified using 9-point Alignment vocabulary.
 

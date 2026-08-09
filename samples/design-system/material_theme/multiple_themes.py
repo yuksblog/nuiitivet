@@ -19,8 +19,8 @@ class HomeScreen(nv.ComposableWidget):
 
         return nv.Container(
             alignment="center",
-            width="100%",
-            height="100%",
+            width="wt",
+            height="wt",
             child=nv.Column(
                 gap=12,
                 children=[

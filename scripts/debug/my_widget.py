@@ -201,7 +201,7 @@ class MyWidget(nv.ComposableWidget):
                                 gap=8,
                                 cross_alignment="center",
                             ),
-                            width=nv.Sizing.flex(),
+                            width=nv.Sizing.weight(),
                         ),
                     ],
                     gap=6,

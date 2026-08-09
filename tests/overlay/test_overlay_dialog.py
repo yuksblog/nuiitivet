@@ -54,10 +54,10 @@ def _overlay_root(overlay: Overlay) -> Stack:
 
 def _layered_root(overlay: Overlay, behind: Widget) -> Stack:
     """Lay out *overlay* stacked over *behind*, both filling 800x600."""
-    behind.width_sizing = Sizing.flex(100)
-    behind.height_sizing = Sizing.flex(100)
-    overlay.width_sizing = Sizing.flex(100)
-    overlay.height_sizing = Sizing.flex(100)
+    behind.width_sizing = Sizing.weight(100)
+    behind.height_sizing = Sizing.weight(100)
+    overlay.width_sizing = Sizing.weight(100)
+    overlay.height_sizing = Sizing.weight(100)
 
     root = Stack(children=[behind, overlay], alignment="center")
     root.mount(None)
@@ -179,7 +179,7 @@ def test_overlay_show_dismiss_on_outside_tap_false_swallows_the_tap() -> None:
     """Without dismissal the layer still blocks: the tap neither closes nor passes."""
     clicked: list[bool] = []
 
-    bg = Container(width="100%", height="100%").modifier(clickable(on_click=lambda: clicked.append(True)))
+    bg = Container(width="wt", height="wt").modifier(clickable(on_click=lambda: clicked.append(True)))
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"), backdrop=True)
 
@@ -220,7 +220,7 @@ def test_overlay_outside_tap_dismisses_on_secondary_and_middle_button() -> None:
 def test_overlay_passthrough_allows_background_press() -> None:
     clicked: list[bool] = []
 
-    bg = Container(width="100%", height="100%").modifier(clickable(on_click=lambda: clicked.append(True)))
+    bg = Container(width="wt", height="wt").modifier(clickable(on_click=lambda: clicked.append(True)))
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"), passthrough=True)
 
@@ -241,7 +241,7 @@ def test_overlay_blocking_entry_blocks_background_press_hover_and_wheel() -> Non
     pressed: list[bool] = []
     hovered: list[bool] = []
 
-    bg = Container(width="100%", height="100%").modifier(clickable(on_click=lambda: pressed.append(True)))
+    bg = Container(width="wt", height="wt").modifier(clickable(on_click=lambda: pressed.append(True)))
     assert isinstance(bg, InteractionRegion)
     bg.enable_hover(on_change=lambda value: hovered.append(value))
 

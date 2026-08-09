@@ -74,8 +74,8 @@ def test_uniform_flow_passes_column_constraint_to_children():
             self._test_rect = (0, 0, width, height)
             super().layout(width, height)
 
-    child1 = WidthWrappingWidget(width="100%", height="auto")
-    child2 = WidthWrappingWidget(width="100%", height="auto")
+    child1 = WidthWrappingWidget(width="wt", height="auto")
+    child2 = WidthWrappingWidget(width="wt", height="auto")
 
     # 2 columns in 200px width -> 100px per column
     flow = UniformFlow([child1, child2], columns=2, width=200, padding=0, main_gap=0)

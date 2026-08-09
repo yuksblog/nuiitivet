@@ -12,7 +12,7 @@ def main(png: str = ""):
     def _demo_column(alignment: str) -> nv.Column:
         # The column has a fixed height, so main-axis alignment is visible.
         return nv.Column(
-            width="100%",
+            width="wt",
             height=250,
             gap=6,
             main_alignment=alignment,
@@ -34,7 +34,7 @@ def main(png: str = ""):
                 children=[nv.Text(alignment), _demo_column(alignment)],
                 gap=8,
                 cross_alignment="start",
-                width="100%",
+                width="wt",
             ),
             width=150,
             padding=12,

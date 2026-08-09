@@ -14,7 +14,7 @@ from nuiitivet.widgets.box import Box
 
 
 def _canvas() -> Box:
-    return Box(width="100%", height="100%", background_color=(10, 20, 30, 255))
+    return Box(width="wt", height="wt", background_color=(10, 20, 30, 255))
 
 
 def _toolbar() -> Box:
@@ -30,7 +30,7 @@ def test_full_size_container_over_canvas_defers_to_canvas():
     """
     canvas = _canvas()
     toolbar = _toolbar()
-    align_box = Container(toolbar, width="100%", height="100%", alignment="bottom-center")
+    align_box = Container(toolbar, width="wt", height="wt", alignment="bottom-center")
     stack = Stack(children=[canvas, align_box])
 
     stack.layout(400, 300)

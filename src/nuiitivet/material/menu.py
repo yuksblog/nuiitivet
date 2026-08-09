@@ -135,7 +135,7 @@ class MenuItem(InteractiveWidget):
             on_release=self._handle_release,
             disabled=disabled,
             state_layer_color=self._menu_style.state_layer_color,
-            width=Sizing.flex(),
+            width=Sizing.weight(),
             height=resolved_height,
             background_color=None,
             padding=0,
@@ -164,7 +164,7 @@ class MenuItem(InteractiveWidget):
 
         self._label_widget = Text(self.label, type_scale=TypeScaleToken.from_size(14))
         children.append(self._label_widget)
-        children.append(Spacer(width=Sizing.flex()))
+        children.append(Spacer(width=Sizing.weight()))
 
         trailing = self.trailing
         if trailing is not None:
@@ -177,14 +177,14 @@ class MenuItem(InteractiveWidget):
 
         self._content_row = Row(
             children=children,
-            width=Sizing.flex(),
+            width=Sizing.weight(),
             gap=style.item_spacing,
             cross_alignment="center",
         )
         self._content_container = Container(
             child=self._content_row,
-            width=Sizing.flex(),
-            height=Sizing.flex(),
+            width=Sizing.weight(),
+            height=Sizing.weight(),
             padding=(style.item_horizontal_padding, 0, style.item_horizontal_padding, 0),
             alignment="center-left",
         )
@@ -543,7 +543,7 @@ class Menu(InteractiveWidget):
         _shadow = md3_elevation_to_shadow(effective_style.elevation)
 
         children = self._materialize_children(effective_style)
-        self._column = Column(children=children, width=Sizing.flex(), gap=0, cross_alignment="start")
+        self._column = Column(children=children, width=Sizing.weight(), gap=0, cross_alignment="start")
 
         super().__init__(
             child=self._column,
@@ -748,7 +748,7 @@ class Menu(InteractiveWidget):
         self.clear_children()
         self._column = Column(
             children=self._materialize_children(self._applied_style),
-            width=Sizing.flex(),
+            width=Sizing.weight(),
             gap=0,
             cross_alignment="start",
         )
@@ -771,7 +771,7 @@ class Menu(InteractiveWidget):
             if isinstance(entry, MenuDivider):
                 out.append(
                     Container(
-                        width=Sizing.flex(),
+                        width=Sizing.weight(),
                         padding=(0, style.divider_vertical_padding, 0, style.divider_vertical_padding),
                         child=HorizontalDivider(style=divider_style),
                     )
@@ -784,7 +784,7 @@ class Menu(InteractiveWidget):
                 entry._bind_parent_dismiss(self.on_dismiss)
             out.append(
                 Container(
-                    width=Sizing.flex(),
+                    width=Sizing.weight(),
                     padding=(style.item_horizontal_inset, 0, style.item_horizontal_inset, 0),
                     child=entry,
                 )

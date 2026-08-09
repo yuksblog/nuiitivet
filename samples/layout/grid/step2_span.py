@@ -16,8 +16,8 @@ def _card(label: str) -> nv.Card:
 def main(png: str = ""):
     # Header/Footer span 2 columns
     widget = nv.Grid(
-        rows=["33%", "33%", "33%"],
-        columns=["50%", "50%"],
+        rows=["wt", "wt", "wt"],
+        columns=["wt", "wt"],
         row_gap=12,
         column_gap=12,
         padding=12,

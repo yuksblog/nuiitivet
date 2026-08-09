@@ -5,10 +5,10 @@ import nuiitivet.material as nv
 
 
 def _card(label: str, expand: bool = True) -> nv.Card:
-    # expand=True -> width/height="100%" (Fills grid cell)
+    # expand=True -> width/height="wt" (fills the grid cell)
     # expand=False -> width/height=default (Fits content)
-    w = "100%" if expand else None
-    h = "100%" if expand else None
+    w = "wt" if expand else None
+    h = "wt" if expand else None
 
     return nv.Card(
         nv.Text(label),
@@ -21,8 +21,8 @@ def _card(label: str, expand: bool = True) -> nv.Card:
 
 def main(png: str = ""):
     widget = nv.Grid(
-        rows=["50%", "50%"],
-        columns=["50%", "50%"],
+        rows=["wt", "wt"],
+        columns=["wt", "wt"],
         row_gap=12,
         column_gap=12,
         padding=12,
@@ -34,7 +34,7 @@ def main(png: str = ""):
             # If the child is smaller than the cell, we need to know how it behaves.
             # By default, nv.Grid cells stretch?
             # In Nuiitivet, children layout is determined by their own constraints passed from parent.
-            # If we don't pass flex, it should shrink to fit?
+            # If we don't pass a weight, it should shrink to fit?
             # Let's explicitly set alignment on nv.GridItem if supported, or just let it float.
             nv.GridItem(_card("Shrink/Wrap\n(No Flex)", expand=False), row=0, column=1),
             # Bottom-Left: Expanded

@@ -12,15 +12,15 @@ In this guide, we will learn how to use Grid by building a common application la
 ## Step 1: Simple Placement (3 Rows x 2 Columns)
 
 First, create a grid that will be the skeleton of the layout. Here we define a 3-row x 2-column grid and place content in each cell.
-By specifying `"33%"` or `"50%"` in `rows` and `columns` arguments, we divide the entire screen equally.
+By giving every row and every column the same weight (`"wt"`), the space is divided equally.
 
 ```python
 # Define a 3-row x 2-column grid
 import nuiitivet.material as nv
 
 nv.Grid(
-    rows=["33%", "33%", "33%"],
-    columns=["50%", "50%"],
+    rows=["wt", "wt", "wt"],
+    columns=["wt", "wt"],
     children=[
         # [0, 0] Planned for Header
         nv.GridItem(_card("Header"), row=0, column=0),
@@ -46,7 +46,7 @@ nv.Grid(
 )
 
 # Helper for creating cards
-def _card(label: str, width="100%", height="100%") -> nv.Card:
+def _card(label: str, width="wt", height="wt") -> nv.Card:
     return nv.Card(
         nv.Text(label),
         padding=12,
@@ -68,8 +68,8 @@ By passing a list or tuple like `(start, end)` to `column` or `row` arguments, y
 
 ```python
 nv.Grid(
-    rows=["33%", "33%", "33%"],
-    columns=["50%", "50%"],
+    rows=["wt", "wt", "wt"],
+    columns=["wt", "wt"],
 
     children=[
         # Header: Span columns 0 to 1 horizontally
@@ -101,22 +101,22 @@ Decide the sizes of rows and columns. Sizes can be specified in the following th
 
 1. **Fixed**: Specify by number (e.g., `60`).
 2. **Auto**: `"auto"`. Fit to content size.
-3. **Flex**: Specify by percentage (e.g., `"50%"`). Distribute remaining space by specified ratio.
+3. **Weight**: `"wt"`, or `"wt<n>"` for an uneven share. Distributes the remaining space by the weight ratio.
 
 Here, we define each component as follows:
 
 - **Header**: Height 60px
 - **Sidebar**: Auto width (`"auto"`)
 - **Footer**: Auto height (`"auto"`)
-- **Main**: Use all remaining space (`"100%"`)
+- **Main**: Use all remaining space (`"wt"`)
 
 ```python
 nv.Grid(
     # Rows: [Header fixed 60px, Main rest, Footer auto]
-    rows=[60, "100%", "auto"],
+    rows=[60, "wt", "auto"],
     
     # Columns: [Sidebar auto, Main rest]
-    columns=["auto", "100%"],
+    columns=["auto", "wt"],
     
     children=[
         # Header: Span columns 0 to 1 horizontally
@@ -149,45 +149,45 @@ Decide the size of the content placed inside the cells.
 Here we set it as follows:
 
 - **Header**:
-  - width: `"100%"`
-  - height: `"100%"`
+  - width: `"wt"`
+  - height: `"wt"`
 - **Sidebar**:
   - width: `None` (Auto)
-  - height: `"100%"`
+  - height: `"wt"`
 - **Footer**:
-  - width: `"100%"`
+  - width: `"wt"`
   - height: `None` (Auto)
 - **Main**:
-  - width: `"100%"`
-  - height: `"100%"`
+  - width: `"wt"`
+  - height: `"wt"`
 
 ```python
 import nuiitivet.material as nv
 
 nv.Grid(
     # Rows: [Header fixed 60px, Main rest, Footer auto]
-    rows=[60, "100%", "auto"],
+    rows=[60, "wt", "auto"],
     
     # Columns: [Sidebar auto, Main rest]
-    columns=["auto", "100%"],
+    columns=["auto", "wt"],
 
     children=[
         # Header:
         #   Span columns 0 to 1 horizontally
-        #   Specify width/height as 100%
+        #   Specify width/height as "wt"
         nv.GridItem(_card("Header"), row=0, column=[0, 1]), 
 
         # Sidebar:
         #   Span rows 1 to 2 vertically
-        #   Specify width as None (Auto), height as 100%
+        #   Specify width as None (Auto), height as "wt"
         nv.GridItem(_card("Sidebar", width=None), row=[1, 2], column=0),
 
         # Main:
-        #   Specify width/height as 100%
+        #   Specify width/height as "wt"
         nv.GridItem(_card("Main content"), row=1, column=1), 
 
         # Footer:
-        #   Specify width as 100%, height as None (Auto)
+        #   Specify width as "wt", height as None (Auto)
         nv.GridItem(_card("Footer", height=None), row=2, column=1)
     ],
 
@@ -208,8 +208,8 @@ By using `Grid.named_areas()` and `GridItem.named_area()`, you can clarify your 
 
 ```python
 nv.Grid.named_areas(
-    rows=[60, "100%", "auto"],
-    columns=["auto", "100%"],
+    rows=[60, "wt", "auto"],
+    columns=["auto", "wt"],
     # Layout map definition
     areas=[
         ["header",  "header"],

@@ -20,8 +20,8 @@ import nuiitivet.material as nv
 app = nv.App(
     content=nv.Container(
         alignment="center",
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         child=nv.Text("Hello, World!"),
     ),
     title="My Application",
@@ -61,7 +61,7 @@ header = nv.Row(
         nv.Text("My App", style=nv.TextStyle(color="#ffffff", font_size=14)),
     ],
     cross_alignment="center",
-    width="100%",
+    width="wt",
     height=40,
     padding=(12, 0),
 ).modifier(nv.background("#1a237e"))
@@ -69,8 +69,8 @@ header = nv.Row(
 app = nv.App(
     content=nv.Container(
         alignment="center",
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         child=nv.Text("Custom Chrome"),
     ),
     title="My App",
@@ -98,8 +98,8 @@ import nuiitivet.material as nv
 app = nv.App(
     content=nv.Container(
         alignment="center",
-        width="100%",
-        height="100%",
+        width="wt",
+        height="wt",
         child=nv.Text("Borderless Window"),
     ),
     title="Borderless",

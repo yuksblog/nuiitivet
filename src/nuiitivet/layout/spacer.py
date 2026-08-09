@@ -13,7 +13,7 @@ from ..widgeting.widget import Widget
 class Spacer(Widget):
     """Invisible widget that reserves space.
 
-    This single Spacer supports both fixed-size and flexible behavior.
+    This single Spacer supports both fixed-size and space-filling behavior.
 
     Args:
         width: preferred width (int, "auto", "{f}%", or Sizing)
@@ -24,8 +24,8 @@ class Spacer(Widget):
         """Initialize a Spacer.
 
         Args:
-            width: Preferred width. Use Sizing.flex() or 0 for flexible space.
-            height: Preferred height. Use Sizing.flex() or 0 for flexible space.
+            width: Preferred width. Use Sizing.weight() or 0 for filling space.
+            height: Preferred height. Use Sizing.weight() or 0 for filling space.
         """
         super().__init__(width=width, height=height)
 
@@ -33,7 +33,7 @@ class Spacer(Widget):
         """Return preferred size based on Sizings.
 
         - fixed: return the fixed value
-        - auto/flex: return 0 (minimum size, parent will allocate)
+        - auto/weight: return 0 (minimum size, parent will allocate)
         """
         w_dim = self.width_sizing
         h_dim = self.height_sizing

@@ -17,8 +17,8 @@ def main(png: str = ""):
     # 3行 x 2列
     # Step 1: 単純に並べる (3Rows, 2Cols)
     widget = nv.Grid(
-        rows=["33%", "33%", "33%"],
-        columns=["50%", "50%"],
+        rows=["wt", "wt", "wt"],
+        columns=["wt", "wt"],
         row_gap=12,
         column_gap=12,
         padding=12,

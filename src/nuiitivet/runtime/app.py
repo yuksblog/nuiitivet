@@ -211,12 +211,12 @@ class App:
         except Exception:
             exception_once(logger, "navigator_route_widget_prime_exc", "Failed to prime initial route widget")
 
-        navigator.width_sizing = Sizing.flex(100)
-        navigator.height_sizing = Sizing.flex(100)
-        overlay.width_sizing = Sizing.flex(100)
-        overlay.height_sizing = Sizing.flex(100)
+        navigator.width_sizing = Sizing.weight(100)
+        navigator.height_sizing = Sizing.weight(100)
+        overlay.width_sizing = Sizing.weight(100)
+        overlay.height_sizing = Sizing.weight(100)
 
-        root_widget = Stack(children=[navigator, overlay], width="100%", height="100%")
+        root_widget = Stack(children=[navigator, overlay], width="wt", height="wt")
         return root_widget, initial_route_widget
 
     def _wrap_with_chrome_and_scope(self, root: Widget) -> Widget:
@@ -254,16 +254,16 @@ class App:
             self._window_drag_area = WindowDragArea(
                 child=self.chrome.header,
                 on_drag=on_drag,
-                width="100%",
+                width="wt",
             )
 
             root = Column(
                 children=[
                     self._window_drag_area,
-                    Container(child=root, width="100%", height="100%"),
+                    Container(child=root, width="wt", height="wt"),
                 ],
-                width="100%",
-                height="100%",
+                width="wt",
+                height="wt",
             )
 
         # Install the root Geometry provider so ``Geometry.of(context)`` resolves
