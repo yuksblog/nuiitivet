@@ -1830,7 +1830,9 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         **Experimental implementation.**  This class does not yet fully comply with the
         MD3 Expressive specification.  Known limitation: the icon button that toggles
         between :class:`ModalDatePicker` and :class:`ModalDateInput` is not implemented.
-        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
+        Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
+        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
+        tracking.
 
     Args:
         init_value: Pre-selected date shown when the picker opens.
@@ -2078,7 +2080,9 @@ class ModalDateRangePicker(
         between :class:`ModalDateRangePicker` and a range-input variant
         (``ModalDateRangeInput``) is not implemented, and ``ModalDateRangeInput``
         does not yet exist.
-        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
+        Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
+        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
+        tracking.
 
     Args:
         init_value: Pre-selected date range as ``(start, end)`` tuple.
@@ -2339,7 +2343,9 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         MD3 Expressive specification.  Known limitations: the icon button that toggles
         between :class:`ModalDateInput` and :class:`ModalDatePicker` is not implemented,
         and the range-input variant (``ModalDateRangeInput``) does not yet exist.
-        See `#230 <https://github.com/yuksblog/nuiitivet/issues/230>`_ for tracking.
+        Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
+        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
+        tracking.
 
     Args:
         init_value: Optional initial date used to pre-populate the text field.
