@@ -338,7 +338,7 @@ of §3.1 — that is the deviation showing through, not a reason to copy it.
 Contract details: the queue is keyed by widget and holds the *latest*
 measurement, so several layout passes in one frame report once; the report
 carries size only, so a widget that merely moves is silent; an equal size is
-de-duped (§6.1's guard, per widget rather than per Observable); and the callback
+de-duped (§6's de-dupe guard, per widget rather than per Observable); and the callback
 fires once with the first measurement, so it alone can seed the state it drives.
 
 Because that first call lands *after* the first paint, an `Observable` seeded
