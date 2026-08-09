@@ -7,23 +7,27 @@ def main(png: str = ""):
         height=200,
         alignment="center",  # デフォルトの配置位置
         children=[
-            # 1. 背景（奥）
+            # 1. 背景（奥）。Stack の子はそれぞれが軸の唯一の請求者なので、
+            #    重なりを見せるには "wt" ではなく固定サイズを使う。
             nv.Card(
                 nv.Text(""),
-                width="wt",
-                height="wt",
-            ).modifier(nv.background("#BBDEFB")),
+                width=200,
+                height=200,
+                style=nv.CardStyle(background="#BBDEFB"),
+            ),
             nv.Card(
                 nv.Text(""),
-                width="wt",
-                height="wt",
-            ).modifier(nv.background("#90CAF9")),
+                width=150,
+                height=150,
+                style=nv.CardStyle(background="#90CAF9"),
+            ),
             nv.Card(
-                nv.Text("Overlay md.Text"),
-                width="wt",
-                height="wt",
+                nv.Text("Overlay Text"),
+                width=100,
+                height=100,
                 alignment="center",
-            ).modifier(nv.background("#64B5F6")),
+                style=nv.CardStyle(background="#64B5F6"),
+            ),
         ],
     )
 

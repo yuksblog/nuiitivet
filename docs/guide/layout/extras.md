@@ -14,29 +14,43 @@ Use this when you want to place text over a background image or display a notifi
 import nuiitivet.material as nv
 
 nv.Stack(
-    width=240,
+    width=200,
     height=200,
     alignment="center",  # Default alignment position
     children=[
         nv.Card(
             nv.Text(""),
-            width="wt",
-            height="wt",
-        ).modifier(nv.background("#BBDEFB")),
+            width=200,
+            height=200,
+            style=nv.CardStyle(background="#BBDEFB"),
+        ),
         nv.Card(
             nv.Text(""),
-            width="wt",
-            height="wt",
-        ).modifier(nv.background("#90CAF9")),
+            width=150,
+            height=150,
+            style=nv.CardStyle(background="#90CAF9"),
+        ),
         nv.Card(
             nv.Text("Overlay Text"),
-            width="wt",
-            height="wt",
+            width=100,
+            height=100,
             alignment="center",
-        ).modifier(nv.background("#64B5F6")),
+            style=nv.CardStyle(background="#64B5F6"),
+        ),
     ],
 )
 ```
+
+### Sizing a Stack child
+
+Stack children overlap instead of sharing an axis, so **every** weight child is
+the sole claimant on its axis: `width="wt"` on a Stack child means *fill the
+Stack*, not *take a share of it*. There is no fraction-of-parent spec — see
+[Sizing](sizing.md).
+
+That makes `"wt"` the right choice for a full-size layer (a scrim, or a
+transparent aligner holding a floating button), and fixed sizes the right choice
+for boxes that must nest inside each other, as above.
 
 ![Stack example](../../assets/layout_extras_stack.png)
 

@@ -16,7 +16,7 @@ class Spacer(Widget):
     This single Spacer supports both fixed-size and space-filling behavior.
 
     Args:
-        width: preferred width (int, "auto", "{f}%", or Sizing)
+        width: preferred width (int, "auto", "wt", "wt{n}", or Sizing)
         height: preferred height (same accepted formats as width)
     """
 
