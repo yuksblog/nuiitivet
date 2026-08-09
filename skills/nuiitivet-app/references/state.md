@@ -87,6 +87,30 @@ UI code cleanup is usually handled by the framework lifecycle.
 - Anti-pattern: subscribing to copy a value into a widget. That is what binding
   is for; pass the Observable into the widget instead.
 
+## Initialization that must run exactly once
+
+`Observable`s go in `__init__`. Setup that needs the widget **in the tree** —
+`X.of(self)`, async loading — goes in an `on_mount()` override, which runs once
+per instance: a rebuild replaces the built subtree, not the host.
+
+```python
+class DashboardScreen(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.rows = nv.Observable([])
+
+    def on_mount(self):
+        super().on_mount()
+        self._load()                      # once; the tree is reachable here
+```
+
+Inside `build()` it is different: `X.modifier(nv.on_mount(cb))` registers on a
+widget that is rebuilt every time, so guard it with a flag owned by something that
+outlives the rebuild (the ViewModel). A flag on that widget dies with it.
+
+No `on_appear()` / `on_disappear()` exists — a covered route stays mounted and
+nothing fires. Pause/resume from the caller side, or a `nv.Deck` index Observable.
+
 ## ViewModel pattern
 
 For non-trivial apps, separate state/logic into a ViewModel and keep `build()`
