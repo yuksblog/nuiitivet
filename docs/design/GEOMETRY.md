@@ -211,9 +211,11 @@ in-tree read API**:
   already triggers via `invalidate` → relayout. Nearest provider wins, so a
   nested `Geometry` transparently overrides the window for its subtree; with no
   nested provider, reads fall back to the window. **Implemented in #431.**
-- **MD3 window size class:** a **thin wrapper widget** that reads
-  `Geometry.of(context)` and derives the Compact / Medium / Expanded class. Core
-  stays MD3-independent; non-MD3 apps use raw size directly. Remaining #430 work.
+- **MD3 window size class:** proposed as a thin wrapper over this read path in
+  #457 and **closed as not planned** — the read path above is the whole of the
+  delivered surface. Rationale and revisit triggers are in the closing comment on
+  #457; the short form is that `Geometry` is itself a container-scoped read, which
+  is the concept a window size class is the coarser predecessor of.
 - **No `App.of(context).size`.** Introducing a parallel App-level read API is
   rejected — it fragments the read path. The root `Geometry` provider is the
   single mechanism.
@@ -253,6 +255,8 @@ path without an API break. `Geometry` remains the special (C) provider that
   without a subtree rebuild — considered and **deferred**; the declarative
   `Geometry.of(context)` covers the primary use case. Reconsider if a concrete
   need appears.~~ **Shipped as `on_size_changed` (#460)** — see §11.
+- ~~MD3 window size class derived from this read path (#457).~~ **Closed as not
+  planned** — see §7.
 - General-purpose environment mechanism for families (A)/(B) — see §8.
 
 ## 10. Design decisions summary
@@ -263,8 +267,9 @@ path without an API break. `Geometry` remains the special (C) provider that
 - **Widget, not modifier, for the provider.** Scope boundaries are widgets in
   nuiitivet (Navigator, Overlay); `.of(context)` requires a real ancestor node.
   A modifier that creates a scope would break that convention.
-- **Raw geometry in core; MD3 size class as a thin wrapper.** Keeps MD3
-  breakpoints out of core and lets non-MD3 apps use raw size.
+- **Raw geometry only; no MD3 size class.** Core stays MD3-independent and every
+  app uses raw size. The size-class layer was proposed and closed as not planned
+  (§7) — `Geometry` is already the container-scoped read that supersedes it.
 - **Atomic `Observable[Size]`.** Prevents torn reads; per-axis reactions via
   `computed`.
 - **Window = root `Geometry` provider.** Installed at the window in #431, so one
@@ -291,11 +296,12 @@ widget. Division of labour:
 | `on_size_changed` | **Push / self.** Measurer and consumer are the same widget. |
 | `Geometry` | **Pull / scope.** Descendants at arbitrary depth read an ancestor's size without the widgets in between knowing. |
 
-`Geometry` therefore stays the mechanism for #457 (MD3 window size class), which
-is inherently a provider problem — many widgets read one scoped value — and
-cannot be expressed by push. The docs invert the emphasis: `on_size_changed` is
-the default answer in `docs/guide/layout/adaptive.md`, and `Geometry` moved to
-`docs/guide/advanced/geometry.md`.
+`Geometry` therefore stays the mechanism for the provider-shaped problem — many
+widgets at arbitrary depth reading one scoped value, which push cannot express.
+The docs invert the emphasis: `on_size_changed` is the default answer in
+`docs/guide/layout/adaptive.md`, and `Geometry` moved to
+`docs/guide/advanced/geometry.md`. That split matches where the demand actually
+turned out to be, and is part of why the size-class layer was not needed (§7).
 
 **It is not a provider**, so §10's "widget, not modifier, for the provider"
 decision still holds: it creates no scope and is not resolvable via `.of()`. Like
@@ -332,7 +338,7 @@ of §3.1 — that is the deviation showing through, not a reason to copy it.
 Contract details: the queue is keyed by widget and holds the *latest*
 measurement, so several layout passes in one frame report once; the report
 carries size only, so a widget that merely moves is silent; an equal size is
-de-duped (§6.1's guard, per widget rather than per Observable); and the callback
+de-duped (§6's de-dupe guard, per widget rather than per Observable); and the callback
 fires once with the first measurement, so it alone can seed the state it drives.
 
 Because that first call lands *after* the first paint, an `Observable` seeded
