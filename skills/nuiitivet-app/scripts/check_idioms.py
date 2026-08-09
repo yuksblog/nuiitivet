@@ -31,7 +31,20 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bStateless?Widget\b|\bStatefulWidget\b"), "Flutter",
      "Subclass nv.ComposableWidget and define build(self)."),
     (re.compile(r"\bcreateState\b|\binitState\b"), "Flutter",
-     "No state lifecycle overrides; create Observables in __init__."),
+     "No state lifecycle overrides; create Observables in __init__, and put setup "
+     "that needs the tree (X.of(self), async loading) in an on_mount() override."),
+    (re.compile(r"\bonAppear\b|\bonDisappear\b|\bon_appear\b|\bon_disappear\b"), "SwiftUI",
+     "No on_appear/on_disappear exists. SwiftUI's onAppear is tree insertion, which is "
+     "on_mount()/on_unmount(). Nothing fires when a route merely gets covered: pause and "
+     "resume from the caller side instead."),
+    (re.compile(r"\bRouteAware\b|\bdidPushNext\b|\bdidPopNext\b"), "Flutter",
+     "No route-visibility callbacks: a covered route stays mounted and nothing fires. "
+     "Pause/resume from the code calling Navigator.root().push(...), or from the "
+     "Observable behind a nv.Deck index."),
+    (re.compile(r"\bLaunchedEffect\b|\bDisposableEffect\b|\brememberCoroutineScope\b"), "Jetpack Compose",
+     "Run-once setup: override on_mount() (runs once per instance; a rebuild replaces the "
+     "built subtree, not the host). From inside build(), use nv.on_mount(cb) plus a flag "
+     "owned outside the rebuilt subtree."),
     (re.compile(r"\bdef\s+build\s*\(\s*self\s*,\s*context\b"), "Flutter",
      "build takes no context: `def build(self):`."),
     (re.compile(r"\bsetState\b"), "Flutter/React",

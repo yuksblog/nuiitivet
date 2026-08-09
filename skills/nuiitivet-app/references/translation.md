@@ -38,7 +38,10 @@ def main() -> None:
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
 | `class X(StatelessWidget)` / `StatefulWidget` (Flutter) | `class X(nv.ComposableWidget)` |
-| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__`; create `Observable`s there |
+| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__` to create `Observable`s; override `on_mount()` for setup that needs the tree (an `X.of(self)` lookup, async loading) |
+| `onAppear` / `onDisappear` (SwiftUI) | `on_mount()` / `on_unmount()` — SwiftUI's `onAppear` fires on *tree insertion*, which is exactly `on_mount`, despite the name |
+| `RouteAware` / `didPushNext` / `didPopNext` (Flutter) | No equivalent exists: a covered route stays mounted and nothing fires. Pause/resume from the side causing it — the code calling `push()`, or the `Observable` behind a `nv.Deck` index |
+| `LaunchedEffect(Unit)` / `DisposableEffect` (Compose) | An `on_mount()` override runs once per instance; from inside `build()` use `nv.on_mount(cb)` plus a flag owned outside the rebuilt subtree |
 | `def build(self, context):` (Flutter signature) | `def build(self):` |
 | `@Composable def X()` (Compose) | a `ComposableWidget` subclass with `build(self)` |
 | React function component returning JSX | `build(self)` returning a widget tree |
