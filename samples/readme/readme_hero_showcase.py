@@ -230,11 +230,11 @@ class HeroPanel(nv.ComposableWidget):
 
     def on_mount(self) -> None:  # pragma: no cover - visual only
         super().on_mount()
-        nv.clock.schedule_interval(self._tick_fn, 1 / 60.0)
+        nv.get_clock().schedule_interval(self._tick_fn, 1 / 60.0)
 
     def on_unmount(self) -> None:  # pragma: no cover - visual only
         try:
-            nv.clock.unschedule(self._tick_fn)
+            nv.get_clock().unschedule(self._tick_fn)
         finally:
             super().on_unmount()
 
@@ -691,11 +691,11 @@ class PulseApp(nv.ComposableWidget):
     def on_mount(self) -> None:  # pragma: no cover - visual only
         super().on_mount()
         if self._autoplay:
-            nv.clock.schedule_interval(self._cycle_fn, self._SECTION_INTERVAL_SEC)
+            nv.get_clock().schedule_interval(self._cycle_fn, self._SECTION_INTERVAL_SEC)
 
     def on_unmount(self) -> None:  # pragma: no cover - visual only
         try:
-            nv.clock.unschedule(self._cycle_fn)
+            nv.get_clock().unschedule(self._cycle_fn)
         finally:
             super().on_unmount()
 

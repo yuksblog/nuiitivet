@@ -84,6 +84,17 @@ class _ObservableValue(MutableObservableBase[T]):
                     runtime.clock.schedule_once(self._process_pending_update, 0)
             return
 
+        self._apply(v)
+
+    def _apply(self, v: T) -> None:
+        """Store ``v`` and notify, skipping the dispatch decision entirely.
+
+        The setter routes here once it has decided not to dispatch, and the
+        deferred flush routes here because the decision was already made when
+        the write was queued. Re-entering the setter instead would re-evaluate
+        ``should_dispatch`` on whatever thread the clock used, and a clock that
+        fires off the main thread would queue the value again, forever.
+        """
         if self._is_equal(v):
             return
 
@@ -103,7 +114,7 @@ class _ObservableValue(MutableObservableBase[T]):
             self._pending_value = _UNSET
             self._is_scheduled = False
 
-        self.value = v
+        self._apply(v)
 
     def _notify_subs(self) -> None:
         for cb in list(self._subs):

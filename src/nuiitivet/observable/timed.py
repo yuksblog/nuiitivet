@@ -26,6 +26,9 @@ class DebouncedObservable(ObservableBase[T]):
         self._scheduled = False
         self._subscribers: List[Callable[[T], None]] = []
         self._dispatch_to_ui = False
+        # Hold one callable so the clock sees the same object every time, as
+        # the other schedule/unschedule call sites do.
+        self._emit_callback: Callable[[float], None] = self._emit
 
         self._source_subscription = source.subscribe(self._on_source_changed)
 
@@ -33,9 +36,9 @@ class DebouncedObservable(ObservableBase[T]):
         self._pending_value = value
 
         if self._scheduled:
-            runtime.clock.unschedule(self._emit)
+            runtime.clock.unschedule(self._emit_callback)
 
-        runtime.clock.schedule_once(self._emit, self._seconds)
+        runtime.clock.schedule_once(self._emit_callback, self._seconds)
         self._scheduled = True
 
     def _emit(self, dt: float) -> None:

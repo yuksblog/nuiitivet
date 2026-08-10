@@ -11,7 +11,7 @@ from .protocols import (
     ObservableProtocol,
     ReadOnlyObservableProtocol,
 )
-from .runtime import clock, set_clock
+from .runtime import Clock, ClockCallback, get_clock, set_clock
 from .timed import DebouncedObservable, ThrottledObservable
 from .value import Observable, _ObservableValue
 
@@ -19,6 +19,8 @@ __all__ = [
     "BatchContext",
     "batch",
     "detach_batch",
+    "Clock",
+    "ClockCallback",
     "CombineBuilder",
     "combine",
     "CompareFunc",
@@ -32,6 +34,6 @@ __all__ = [
     "ReadOnlyObservableProtocol",
     "ThrottledObservable",
     "_ObservableValue",
-    "clock",
+    "get_clock",
     "set_clock",
 ]
