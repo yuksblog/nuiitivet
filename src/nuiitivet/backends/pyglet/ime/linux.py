@@ -216,18 +216,22 @@ if sys.platform == "linux":
             if not im:
                 return
 
-            # Destroy existing IC if any
-            if getattr(window, "_x_ic", None):
-                xlib.XDestroyIC(window._x_ic)
-                window._x_ic = None
+            # Preserve pyglet's existing IC. It is only retired once our own
+            # callback-style IC is confirmed created. Destroying it up front and
+            # leaving ``_x_ic = None`` on failure makes pyglet's focus handlers
+            # call XSetICFocus / XUnsetICFocus with a NULL pointer, which
+            # dereferences NULL inside libX11 and segfaults when the window
+            # loses focus (e.g. when it is moved). This happens whenever the IM
+            # cannot honour XIMPreeditCallbacks -- notably the built-in
+            # ``@im=none`` IM used when no IME server is running, as in a bare
+            # VNC session.
+            original_ic = getattr(window, "_x_ic", None)
 
             # Create callbacks
             cb_start = CALLBACK_TYPE_START(_preedit_start)
             cb_done = CALLBACK_TYPE_DONE(_preedit_done)
             cb_draw = CALLBACK_TYPE_DRAW(_preedit_draw)
             cb_caret = CALLBACK_TYPE_CARET(_preedit_caret)
-
-            _callbacks.extend([cb_start, cb_done, cb_draw, cb_caret])
 
             # Create XIMCallback structs
             s_start = XIMCallback(None, ctypes.cast(cb_start, ctypes.c_void_p))
@@ -267,12 +271,27 @@ if sys.platform == "linux":
             )
 
             if ic:
+                # Our callback IC is live; retire pyglet's original one and keep
+                # the callback trampolines alive for the IM to invoke.
+                _callbacks.extend([cb_start, cb_done, cb_draw, cb_caret])
+                if original_ic:
+                    try:
+                        xlib.XDestroyIC(original_ic)
+                    except Exception:
+                        exception_once(
+                            _logger,
+                            "ime_linux_destroy_original_ic_exc",
+                            "XDestroyIC(original) raised",
+                        )
                 window._x_ic = ic
                 _ic_map[ic] = window
             else:
-                # Fallback to default if failed
-                # Pyglet's default usually works for basic input but no inline IME
-                pass
+                # The IM does not support XIMPreeditCallbacks (e.g. the built-in
+                # "@im=none" IM in a session with no IME server). Keep pyglet's
+                # original IC so focus changes stay safe; we simply forgo inline
+                # preedit callbacks. Leaving _x_ic = None here would segfault on
+                # the next focus change.
+                window._x_ic = original_ic
 
     else:
 
