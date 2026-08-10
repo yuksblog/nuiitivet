@@ -48,7 +48,15 @@ from nuiitivet.navigation import Navigator, NavigatorProtocol, Route, Transition
 from nuiitivet.overlay import OverlayAware, OverlayProtocol
 
 # State Management
-from nuiitivet.observable import Observable, batch, combine, clock
+from nuiitivet.observable import (
+    Clock,
+    ClockCallback,
+    Observable,
+    batch,
+    combine,
+    get_clock,
+    set_clock,
+)
 
 # Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers and
 # backend-neutral pointer button codes for ``PointerEvent.button``)
@@ -170,7 +178,10 @@ __all__: list[str] = [
     "Observable",
     "batch",
     "combine",
-    "clock",
+    "Clock",
+    "ClockCallback",
+    "get_clock",
+    "set_clock",
     # Theme
     "Theme",
     "TypeScale",

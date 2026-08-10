@@ -1,0 +1,324 @@
+"""Regression tests for the fallback ``_ThreadClock`` (#522).
+
+These run against the **real** ``_ThreadClock``, on purpose. A fake clock that
+fires callbacks on the thread that pumps it and unschedules by equality masks
+every defect covered here.
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from typing import Iterator, List, Tuple
+
+import pytest
+
+import nuiitivet.material as nv
+from nuiitivet.observable import Clock, Observable
+from nuiitivet.observable import runtime
+from nuiitivet.observable.runtime import ClockCallback, _ThreadClock
+
+
+# The debounce window and the settle time used to prove no *second* emission
+# arrives. Generous enough not to flake on a loaded machine, short enough that
+# the file stays fast.
+_WINDOW = 0.05
+_SETTLE = 0.3
+_TIMEOUT = 2.0
+
+
+class _CountingThreadClock:
+    """Real ``_ThreadClock`` behaviour, plus a count of ``schedule_once`` calls.
+
+    The busy-loop defect shows up as an unbounded call count, so counting is
+    the assertion; delegation keeps the timing semantics honest.
+    """
+
+    def __init__(self) -> None:
+        self._inner = _ThreadClock()
+        self._lock = threading.Lock()
+        self.schedule_once_calls = 0
+
+    def schedule_once(self, fn: ClockCallback, delay: float) -> None:
+        with self._lock:
+            self.schedule_once_calls += 1
+        self._inner.schedule_once(fn, delay)
+
+    def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
+        self._inner.schedule_interval(fn, interval)
+
+    def unschedule(self, fn: ClockCallback) -> None:
+        self._inner.unschedule(fn)
+
+    def cancel_all(self) -> None:
+        self._inner.cancel_all()
+
+
+@pytest.fixture
+def thread_clock(monkeypatch) -> Iterator[_CountingThreadClock]:
+    """Install a fresh thread-based clock and leave no timer behind."""
+    clock = _CountingThreadClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    try:
+        yield clock
+    finally:
+        clock.cancel_all()
+
+
+class _Recorder:
+    """Thread-safe subscriber sink."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._values: List[object] = []
+        self.received = threading.Event()
+
+    def __call__(self, value: object) -> None:
+        with self._lock:
+            self._values.append(value)
+        self.received.set()
+
+    @property
+    def values(self) -> List[object]:
+        with self._lock:
+            return list(self._values)
+
+
+class TestDebounceUnderThreadClock:
+    def test_burst_emits_once(self, thread_clock: _CountingThreadClock) -> None:
+        """A burst inside the window collapses to a single emission.
+
+        Before the fix, ``unschedule(self._emit)`` missed — the bound method is
+        a fresh object per access, and the clock keyed timers on ``id(fn)`` —
+        so every write armed its own timer and the burst emitted N times.
+        """
+        source: Observable[str] = Observable("")
+        debounced = source.debounce(_WINDOW)
+
+        recorder = _Recorder()
+        debounced.subscribe(recorder)
+
+        for value in ("a", "b", "c", "d", "e"):
+            source.value = value
+
+        assert recorder.received.wait(_TIMEOUT), "debounce never emitted"
+        time.sleep(_SETTLE)
+
+        assert recorder.values == ["e"]
+
+    def test_unschedule_cancels_pending_emit(self, thread_clock: _CountingThreadClock) -> None:
+        """A write followed by disposal of the window leaves nothing armed."""
+        source: Observable[str] = Observable("")
+        debounced = source.debounce(_WINDOW)
+
+        recorder = _Recorder()
+        debounced.subscribe(recorder)
+
+        source.value = "a"
+        runtime.clock.unschedule(debounced._emit)
+
+        time.sleep(_WINDOW + _SETTLE)
+        assert recorder.values == []
+
+
+class TestThreadClockCallbackIdentity:
+    def test_unschedule_matches_equal_bound_method(self, thread_clock: _CountingThreadClock) -> None:
+        """``unschedule`` cancels a timer armed with an equal-but-not-identical callable."""
+
+        class Target:
+            def __init__(self) -> None:
+                self.fired = threading.Event()
+
+            def tick(self, dt: float) -> None:
+                self.fired.set()
+
+        target = Target()
+        assert target.tick is not target.tick, "bound methods are expected to be non-identical"
+        assert target.tick == target.tick
+
+        runtime.clock.schedule_once(target.tick, _WINDOW)
+        runtime.clock.unschedule(target.tick)
+
+        assert not target.fired.wait(_WINDOW + _SETTLE)
+
+    def test_reschedule_replaces_previous_timer(self, thread_clock: _CountingThreadClock) -> None:
+        """Arming an equal callable again cancels the previous timer instead of stacking."""
+
+        class Target:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def tick(self, dt: float) -> None:
+                self.calls += 1
+
+        target = Target()
+        for _ in range(5):
+            runtime.clock.schedule_once(target.tick, _WINDOW)
+
+        time.sleep(_WINDOW + _SETTLE)
+        assert target.calls == 1
+
+    def test_partial_falls_back_to_identity(self, thread_clock: _CountingThreadClock) -> None:
+        """Callables without ``__eq__`` keep the previous identity-based behaviour."""
+        import functools
+
+        fired: List[str] = []
+
+        def record(dt: float, tag: str) -> None:
+            fired.append(tag)
+
+        first = functools.partial(record, tag="first")
+        second = functools.partial(record, tag="second")
+
+        runtime.clock.schedule_once(first, _WINDOW)
+        runtime.clock.schedule_once(second, _WINDOW)
+        runtime.clock.unschedule(first)
+
+        time.sleep(_WINDOW + _SETTLE)
+        assert fired == ["second"]
+
+
+class TestDispatchToUiUnderThreadClock:
+    def test_single_worker_write_delivers_once(self, thread_clock: _CountingThreadClock) -> None:
+        """A worker-thread write reaches subscribers exactly once.
+
+        Before the fix the deferred flush re-entered the setter, which was
+        still off the main thread, so it queued the value again and rescheduled
+        forever: thousands of ``schedule_once`` calls and zero deliveries.
+        """
+        obs: Observable[int] = Observable(0)
+        obs.dispatch_to_ui()
+
+        recorder = _Recorder()
+        obs.subscribe(recorder)
+
+        def worker() -> None:
+            obs.value = 42
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join()
+
+        assert recorder.received.wait(_TIMEOUT), "dispatch_to_ui never delivered"
+        time.sleep(_SETTLE)
+
+        assert recorder.values == [42]
+        assert obs.value == 42
+        assert thread_clock.schedule_once_calls == 1
+
+    def test_burst_of_worker_writes_settles(self, thread_clock: _CountingThreadClock) -> None:
+        """Rapid worker writes coalesce, land on the final value, and stay bounded."""
+        writes = 7
+        obs: Observable[int] = Observable(0)
+        obs.dispatch_to_ui()
+
+        recorder = _Recorder()
+        obs.subscribe(recorder)
+
+        def worker() -> None:
+            for i in range(1, writes + 1):
+                obs.value = i
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join()
+
+        deadline = time.monotonic() + _TIMEOUT
+        while time.monotonic() < deadline and obs.value != writes:
+            time.sleep(0.01)
+        time.sleep(_SETTLE)
+
+        assert obs.value == writes
+        assert recorder.values, "dispatch_to_ui never delivered"
+        assert recorder.values[-1] == writes
+        # Coalescing means at most one scheduled flush per write, never more.
+        assert 1 <= thread_clock.schedule_once_calls <= writes
+
+    def test_main_thread_write_is_immediate(self, thread_clock: _CountingThreadClock) -> None:
+        """``dispatch_to_ui`` still applies synchronously on the main thread."""
+        obs: Observable[int] = Observable(0)
+        obs.dispatch_to_ui()
+
+        recorder = _Recorder()
+        obs.subscribe(recorder)
+
+        obs.value = 5
+
+        assert obs.value == 5
+        assert recorder.values == [5]
+        assert thread_clock.schedule_once_calls == 0
+
+
+def test_interval_stops_after_unschedule(thread_clock: _CountingThreadClock) -> None:
+    """``schedule_interval`` / ``unschedule`` also match by equality."""
+
+    class Ticker:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def tick(self, dt: float) -> None:
+            self.calls += 1
+
+    ticker = Ticker()
+    runtime.clock.schedule_interval(ticker.tick, 0.01)
+
+    deadline = time.monotonic() + _TIMEOUT
+    while time.monotonic() < deadline and ticker.calls == 0:
+        time.sleep(0.01)
+    assert ticker.calls > 0, "interval never fired"
+
+    runtime.clock.unschedule(ticker.tick)
+    time.sleep(_SETTLE)
+    settled = ticker.calls
+    time.sleep(_SETTLE)
+
+    assert ticker.calls == settled
+
+
+def test_manual_clock_drives_dispatch_to_ui(monkeypatch) -> None:
+    """A hand-rolled ``Clock`` — the shape the guide recommends — works end to end.
+
+    This is the documented way to test ``dispatch_to_ui`` deterministically:
+    install a clock that queues callbacks and run them on demand.
+    """
+
+    class ManualClock:
+        def __init__(self) -> None:
+            self._pending: List[Tuple[float, ClockCallback]] = []
+
+        def schedule_once(self, fn: ClockCallback, delay: float) -> None:
+            self.unschedule(fn)
+            self._pending.append((delay, fn))
+
+        def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
+            self._pending.append((interval, fn))
+
+        def unschedule(self, fn: ClockCallback) -> None:
+            self._pending = [entry for entry in self._pending if entry[1] != fn]
+
+        def tick(self, dt: float = 0.0) -> None:
+            pending, self._pending = self._pending, []
+            for _, fn in pending:
+                fn(dt)
+
+    clock: Clock = ManualClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    assert nv.get_clock() is clock, "get_clock must report the installed clock, not an import-time snapshot"
+
+    obs: Observable[int] = Observable(0)
+    obs.dispatch_to_ui()
+
+    recorder = _Recorder()
+    obs.subscribe(recorder)
+
+    thread = threading.Thread(target=lambda: setattr(obs, "value", 9))
+    thread.start()
+    thread.join()
+
+    assert recorder.values == []
+    assert obs.value == 0
+
+    clock.tick()  # type: ignore[attr-defined]
+
+    assert recorder.values == [9]
+    assert obs.value == 9
