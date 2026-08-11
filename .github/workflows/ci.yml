@@ -67,3 +67,43 @@ jobs:
 
       - name: Run pytest
         run: uv run pytest
+
+  # The plugin's async runner defers to pytest-asyncio whenever it is
+  # installed, and it always is in the job above — so the runner itself would
+  # ship untested. This job uninstalls pytest-asyncio and runs the whole
+  # suite: the @pytest.mark.asyncio tests become orphaned markers that the
+  # runner executes (issue #527).
+  check-without-pytest-asyncio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Skia system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            libfontconfig1 \
+            libegl1 \
+            libegl-mesa0 \
+            libgl1 \
+            libgl1-mesa-dri \
+            libglvnd0
+
+      - name: Sync locked dependencies
+        run: uv sync --locked --dev --extra mcp
+
+      - name: Uninstall pytest-asyncio
+        run: uv pip uninstall pytest-asyncio
+
+      - name: Run pytest
+        run: uv run --no-sync pytest
