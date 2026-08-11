@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 import inspect
@@ -8,6 +7,7 @@ import logging
 from typing import Any, Callable, Literal, Mapping, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.callbacks import spawn_task
 from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
@@ -433,7 +433,8 @@ class Navigator(ComposableWidget):
         return restored
 
     def pop(self) -> None:
-        asyncio.create_task(self.request_back())
+        """Request a back navigation. The pop itself runs as a task."""
+        spawn_task(self.request_back(), owner_name=f"{type(self).__name__}.pop")
 
     async def request_back(self) -> bool:
         """Request a single back action.
@@ -605,7 +606,10 @@ class Navigator(ComposableWidget):
 
     def _finish_pop(self) -> None:
         self._finish_pop_once()
-        asyncio.create_task(self._drain_pending_pops())
+        spawn_task(
+            self._drain_pending_pops(),
+            owner_name=f"{type(self).__name__}._drain_pending_pops",
+        )
 
     def focus_traversal_children(self) -> list[Widget]:
         """Return only the top route, so Tab never reaches a covered one.

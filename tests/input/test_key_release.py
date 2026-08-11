@@ -9,10 +9,8 @@ App-owned modifier-key mask that release maintenance and window deactivation fee
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
-import pytest
 from pyglet.window import key as pyglet_key
 
 from nuiitivet.backends.pyglet.runner import _normalize_key
@@ -165,37 +163,33 @@ def test_release_bubbling_stops_on_truthy_return() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_escape_release_triggers_back_navigation() -> None:
-    app = App(content=Container())
-    app.overlay
-    navigator = app.navigator
+async def test_escape_release_triggers_back_navigation(nuiitivet_app) -> None:
+    app = nuiitivet_app(Container(), size=(400, 300))
+    navigator = app.app.navigator
     navigator.push(Container())
 
     assert navigator.can_pop() is True
 
-    handled = app._dispatch_key_release("escape")
+    handled = app.app._dispatch_key_release("escape")
     assert handled is True
-    await asyncio.sleep(0)  # allow back event task to run
+    await app.idle()  # the back event runs as a task
     assert navigator.can_pop() is False
 
 
-@pytest.mark.asyncio
-async def test_escape_release_does_not_reach_focus_node() -> None:
+async def test_escape_release_does_not_reach_focus_node(nuiitivet_app) -> None:
     """Escape is consumed for back-navigation, mirroring the press path."""
     releases: list[str] = []
 
     child = _LeafWidget().modifier(focusable(on_key_up=lambda k, m: _record(releases, k, True)))
     root = Box()
     root.add_child(child)
-    app = _mounted_app(root)
+    app = nuiitivet_app(root, size=(400, 300))
     _focus(child)
 
-    app._dispatch_key_release("escape")
-    await asyncio.sleep(0)
-    assert releases == []
+    app.app._dispatch_key_release("escape")
+    await app.idle()  # escape starts a back event; let it finish
 
-    app.root.unmount()
+    assert releases == []
 
 
 # ---------------------------------------------------------------------------

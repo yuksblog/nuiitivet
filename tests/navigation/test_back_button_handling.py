@@ -19,37 +19,35 @@ def _force_finish_all_pop_transitions(navigator: Navigator) -> None:
         navigator._force_finish_pop_transition()
 
 
-@pytest.mark.asyncio
-async def test_escape_closes_overlay_before_navigator_pop() -> None:
-    app = App(content=Container())
-    overlay = app.overlay
-    navigator = app.navigator
+async def test_escape_closes_overlay_before_navigator_pop(nuiitivet_app) -> None:
+    app = nuiitivet_app(Container(), size=(400, 300))
+    overlay = app.app.overlay
+    navigator = app.app.navigator
     navigator.push(Container())
     overlay.show(Container(width=100, height=100), backdrop=True)
 
     assert overlay.has_entries() is True
     assert navigator.can_pop() is True
 
-    handled = app._dispatch_key_press("escape")
+    handled = app.app._dispatch_key_press("escape")
     assert handled is True
-    await asyncio.sleep(0)  # allow back event task to run
+    await app.idle()  # the back event runs as a task
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
 
 
-@pytest.mark.asyncio
-async def test_escape_pops_navigator_when_no_overlay_entries() -> None:
-    app = App(content=Container())
-    overlay = app.overlay
-    navigator = app.navigator
+async def test_escape_pops_navigator_when_no_overlay_entries(nuiitivet_app) -> None:
+    app = nuiitivet_app(Container(), size=(400, 300))
+    overlay = app.app.overlay
+    navigator = app.app.navigator
     navigator.push(Container())
 
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
 
-    handled = app._dispatch_key_press("escape")
+    handled = app.app._dispatch_key_press("escape")
     assert handled is True
-    await asyncio.sleep(0)  # allow back event task to run
+    await app.idle()  # the back event runs as a task
     assert navigator.can_pop() is False
 
 
@@ -66,20 +64,19 @@ async def test_back_event_is_unhandled_when_nothing_to_pop_or_close() -> None:
     assert await app.handle_back_event() is False
 
 
-@pytest.mark.asyncio
-async def test_escape_respects_will_pop_cancel() -> None:
+async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
-    app = App(content=Container())
-    overlay = app.overlay
-    navigator = app.navigator
+    app = nuiitivet_app(Container(), size=(400, 300))
+    overlay = app.app.overlay
+    navigator = app.app.navigator
     navigator.push(Container().modifier(cancel_pop))
 
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
 
-    handled = app._dispatch_key_press("escape")
+    handled = app.app._dispatch_key_press("escape")
     assert handled is True
-    await asyncio.sleep(0)  # allow back event task to run
+    await app.idle()  # the back event runs as a task
     assert navigator.can_pop() is True
 
 
@@ -230,8 +227,9 @@ async def test_sync_on_will_pop_still_works() -> None:
     assert navigator.can_pop() is False
 
 
-@pytest.mark.asyncio
-async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop() -> None:
+async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop(
+    nuiitivet_app,
+) -> None:
     """_handling flag prevents re-entrant back events during async on_will_pop."""
     gate = asyncio.Event()
 
@@ -240,13 +238,14 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop() -
         return True
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
-    navigator = app.navigator
+    app = nuiitivet_app(Container(), size=(400, 300))
+    navigator = app.app.navigator
     navigator.push(Container().modifier(scope_mod))
 
-    # Start first back event but don't complete it yet
-    task = asyncio.create_task(app.handle_back_event())
-    await asyncio.sleep(0)  # let task reach the await gate.wait()
+    # Start the first back event and let it park on gate.wait(): idle() returns
+    # when the loop is at rest, which is exactly the state this test needs.
+    task = asyncio.create_task(app.app.handle_back_event())
+    await app.idle()
 
     # WillPopScope._handling should be True while suspended in on_will_pop
     outgoing_widget = navigator._route_widget(navigator._stack.routes[-1])
@@ -254,7 +253,7 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop() -
     assert getattr(outgoing_widget, "_handling", None) is True
 
     # A second back event while the first is suspended should be blocked
-    second_result = await app.handle_back_event()
+    second_result = await app.app.handle_back_event()
     assert second_result is True  # handled (navigator.can_pop is True)
     # But pop was blocked by _handling — route still present
     assert navigator.can_pop() is True

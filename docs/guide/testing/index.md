@@ -163,6 +163,7 @@ marker:
 [tool.nuiitivet.testing]
 clock = "harness"    # "harness" (default) | "strict" | "real"
 isolate = true
+wait_timeout = 1.0   # default seconds for wait_for() and idle()
 ```
 
 ## Async tests
@@ -201,6 +202,10 @@ plugin's own loop instead, and their markers are registered so
 One behavioural consequence: with pytest-asyncio installed in strict mode, an
 *unmarked* `async def` test used to be collected and skipped with a warning.
 Now it runs, on the plugin's loop.
+
+Running the coroutine is only half of it. Knowing when the app has finished
+reacting — an async `on_click`, an awaited dialog, a debounced search — is
+[`idle()` and `wait_for()`](async.md).
 
 ## Concurrency
 

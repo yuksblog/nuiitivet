@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 import pytest
@@ -44,8 +43,7 @@ async def test_will_pop_modifier_chains_inner_to_outer() -> None:
     assert calls == ["inner", "outer"]
 
 
-@pytest.mark.asyncio
-async def test_navigator_pop_respects_will_pop_cancel() -> None:
+async def test_navigator_pop_respects_will_pop_cancel(nuiitivet_mount) -> None:
     calls: list[str] = []
     outgoing = _FlagWidget(label="outgoing")
 
@@ -60,19 +58,19 @@ async def test_navigator_pop_respects_will_pop_cancel() -> None:
         ]
     )
 
-    nav.rebuild()
+    host = nuiitivet_mount(nav)
+    host.layout(200, 100)
     assert nav.can_pop() is True
 
     nav.pop()
-    await asyncio.sleep(0)  # allow pop task to run
+    await host.idle()
 
     assert nav.can_pop() is True
     assert outgoing.unmounted is False
     assert calls == ["called"]
 
 
-@pytest.mark.asyncio
-async def test_navigator_pop_respects_will_pop_allow() -> None:
+async def test_navigator_pop_respects_will_pop_allow(nuiitivet_mount) -> None:
     outgoing = _FlagWidget(label="outgoing")
 
     def on_will_pop() -> bool:
@@ -85,17 +83,17 @@ async def test_navigator_pop_respects_will_pop_allow() -> None:
         ]
     )
 
-    nav.rebuild()
+    host = nuiitivet_mount(nav)
+    host.layout(200, 100)
     assert nav.can_pop() is True
 
     nav.pop()
-    await asyncio.sleep(0)  # allow pop task to run
+    await host.idle()
 
     assert nav.can_pop() is False
 
 
-@pytest.mark.asyncio
-async def test_navigator_pop_calls_will_pop_inside_build() -> None:
+async def test_navigator_pop_calls_will_pop_inside_build(nuiitivet_mount) -> None:
     calls: list[str] = []
 
     from nuiitivet.widgeting.widget import ComposableWidget
@@ -124,11 +122,12 @@ async def test_navigator_pop_calls_will_pop_inside_build() -> None:
         ]
     )
 
-    nav.mount("test_app")
+    host = nuiitivet_mount(nav)
+    host.layout(200, 100)
     assert nav.can_pop() is True
 
     nav.pop()
-    await asyncio.sleep(0)  # allow pop task to run
+    await host.idle()
 
     assert calls == ["called"]
     assert nav.can_pop() is True
@@ -205,8 +204,7 @@ async def test_handling_flag_is_released_after_exception() -> None:
     assert getattr(scoped, "_handling", True) is False
 
 
-@pytest.mark.asyncio
-async def test_normal_pop_allowed_works_after_previous_cancel() -> None:
+async def test_normal_pop_allowed_works_after_previous_cancel(nuiitivet_mount) -> None:
     """After a cancelled pop, a subsequent allow should still propagate."""
     call_count = 0
 
@@ -221,12 +219,13 @@ async def test_normal_pop_allowed_works_after_previous_cancel() -> None:
             Route(builder=lambda: _FlagWidget(label="outgoing").modifier(will_pop(on_will_pop))),
         ]
     )
-    nav.rebuild()
+    host = nuiitivet_mount(nav)
+    host.layout(200, 100)
 
     nav.pop()
-    await asyncio.sleep(0)  # allow first pop task to run
+    await host.idle()
     assert nav.can_pop() is True  # first pop was cancelled
 
     nav.pop()
-    await asyncio.sleep(0)  # allow second pop task to run
+    await host.idle()
     assert nav.can_pop() is False  # second pop was allowed

@@ -1,7 +1,5 @@
 """Tests for the two-axis ``Overlay.show`` API."""
 
-import asyncio
-
 from nuiitivet.layout.stack import Stack
 from nuiitivet.input.codes import BUTTON_MIDDLE, BUTTON_RIGHT
 from nuiitivet.input.pointer import PointerEventType
@@ -11,7 +9,6 @@ from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayDismissReason
-from nuiitivet.overlay.result import OverlayResult
 from nuiitivet.navigation import Route
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.clickable import clickable
@@ -317,30 +314,32 @@ def test_overlay_dialog_route_is_disposed_on_close_topmost() -> None:
     assert route._widget is None
 
 
-def test_overlay_dialog_async_resolves_with_close_result() -> None:
+async def test_overlay_dialog_async_resolves_with_close_result(nuiitivet_mount) -> None:
     overlay = Overlay()
+    host = nuiitivet_mount(overlay)
+    host.layout(400, 300)
 
-    async def run() -> OverlayResult[bool]:
-        handle = overlay.show(BasicDialog(title="Title"), backdrop=True)
-        await asyncio.sleep(0)
-        handle.close(True)
-        return await handle
+    handle = overlay.show(BasicDialog(title="Title"), backdrop=True)
+    await host.idle()
+    handle.close(True)
 
-    result = asyncio.run(run())
+    result = await handle
     assert result.value is True
     assert result.reason is OverlayDismissReason.CLOSED
 
 
-def test_overlay_dialog_async_resolves_none_on_close_without_result() -> None:
+async def test_overlay_dialog_async_resolves_none_on_close_without_result(
+    nuiitivet_mount,
+) -> None:
     overlay = Overlay()
+    host = nuiitivet_mount(overlay)
+    host.layout(400, 300)
 
-    async def run() -> OverlayResult[None]:
-        handle = overlay.show(BasicDialog(title="Title"), backdrop=True)
-        await asyncio.sleep(0)
-        handle.close()
-        return await handle
+    handle = overlay.show(BasicDialog(title="Title"), backdrop=True)
+    await host.idle()
+    handle.close()
 
-    result = asyncio.run(run())
+    result = await handle
     assert result.value is None
     assert result.reason is OverlayDismissReason.CLOSED
 

@@ -198,31 +198,37 @@ async def test_async_mount_task_is_cancelled_on_unmount() -> None:
     assert widget._mount_tasks == []
 
 
-@pytest.mark.asyncio
-async def test_completed_async_mount_task_is_discarded() -> None:
+async def test_completed_async_mount_task_is_discarded(nuiitivet_mount) -> None:
     async def _work() -> None:
         return None
 
     widget = _make_widget().modifier(on_mount(_work))
-    widget.mount(_DummyApp())
+    host = nuiitivet_mount(widget)
+    host.layout(100, 50)
 
-    # Let the task run to completion; the done callback drops it from the list.
-    await asyncio.sleep(0)
-    await asyncio.sleep(0)
+    # idle() runs the mount task to completion; its done callback drops it.
+    await host.idle()
 
     assert widget._mount_tasks == []
 
 
 @pytest.mark.asyncio
 async def test_exception_in_async_mount_callback_is_contained() -> None:
+    """Production behaviour: a raising mount callback must not kill the frame.
+
+    Deliberately *not* on a harness. Under one the containment is the bug -- a
+    handler that raised would otherwise read as one that worked -- so the
+    harness re-raises from ``idle()``. Testing the containment itself therefore
+    means testing it with nobody observing, which is what ``_DummyApp`` gives.
+    """
     async def _boom() -> None:
         raise RuntimeError("boom")
 
     widget = _make_widget().modifier(on_mount(_boom))
     widget.mount(_DummyApp())
 
-    await asyncio.sleep(0)
-    await asyncio.sleep(0)
+    # Awaiting the task itself, rather than guessing at a number of loop turns.
+    await asyncio.gather(*list(widget._mount_tasks), return_exceptions=True)
 
     assert widget._mount_tasks == []
 

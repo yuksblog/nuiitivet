@@ -58,18 +58,15 @@ async def test_overlay_async_close_topmost_respects_async_will_pop_cancel() -> N
     assert overlay.has_entries() is True
 
 
-@pytest.mark.asyncio
-async def test_app_escape_overlay_will_pop_cancels_close() -> None:
+async def test_app_escape_overlay_will_pop_cancels_close(nuiitivet_app) -> None:
     """ESC routed through App.handle_back_event respects will_pop on the top overlay entry."""
-    app = App(content=Container())
-    overlay = app.overlay
+    app = nuiitivet_app(Container(), size=(400, 300))
+    overlay = app.app.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
-    handled = app._dispatch_key_press("escape")
+    handled = app.app._dispatch_key_press("escape")
     assert handled is True
-    # Drain the scheduled async back-event task.
-    for _ in range(5):
-        await asyncio.sleep(0)
+    await app.idle()  # the back event runs as a task
     assert overlay.has_entries() is True
 
 
@@ -87,19 +84,18 @@ async def test_side_sheet_close_button_respects_will_pop() -> None:
     assert overlay.has_entries() is True
 
 
-@pytest.mark.asyncio
-async def test_side_sheet_close_button_proceeds_without_will_pop() -> None:
+async def test_side_sheet_close_button_proceeds_without_will_pop(nuiitivet_app) -> None:
     content = Container()
-    App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
+    app = nuiitivet_app(
+        content, size=(400, 300), overlay_factory=lambda: MaterialOverlay(intents={})
+    )
     overlay = MaterialOverlay.of(content)
     sheet = SideSheet(Container(width=10, height=10), headline="X")
     overlay.side_sheet(sheet)
 
     sheet._on_close_click()
-    # Default handle_back_event on ComposableWidget is async; let the
-    # scheduled dismiss task run.
-    for _ in range(5):
-        await asyncio.sleep(0)
+    # The default handle_back_event is async, so the dismiss runs as a task.
+    await app.idle()
     assert overlay.has_entries() is False
 
 
