@@ -6,6 +6,18 @@ test thread only when the test asks. It activates automatically on install —
 no `conftest.py` boilerplate — the moment `nuiitivet` is importable in the
 environment pytest runs in.
 
+On top of that environment sit the two objects you write tests against:
+
+| Level | Unit of test | Entry point |
+| --- | --- | --- |
+| Unit | one widget | [`mount()`](widgets.md) |
+| Integration | a screen: state, tree, input | [`AppHarness`](screens.md) |
+| E2E | the running process | [the dev bridge](../ai_pair_programming/dev_bridge_mcp.md) |
+
+Targeting is by `key` at every level and the action verbs are the dev bridge's,
+one for one, so what you learn at any level carries to the others. This page
+covers the environment underneath all three.
+
 ## Why the isolation exists
 
 The framework keeps process-global state: pending widget invalidations, the
@@ -38,13 +50,13 @@ the test **pumps** — on the test thread, deterministically, never on a timer
 thread.
 
 ```python
-def test_deferred_reset_fires_on_the_next_frame(harness_clock):
+def test_deferred_reset_fires_on_the_next_frame(nuiitivet_clock):
     widget.pointer_leave()            # schedules a next-frame reset
-    harness_clock.pump_immediate()    # play it, on the test thread
+    nuiitivet_clock.pump_immediate()    # play it, on the test thread
     assert widget.state.value == "idle"
 ```
 
-The `harness_clock` fixture returns the installed clock, typed. Two pumps
+The `nuiitivet_clock` fixture returns the installed clock, typed. Two pumps
 exist because `delay == 0` is a different request:
 
 - `pump_immediate()` fires **zero-delay one-shots only**. In this framework
@@ -59,10 +71,10 @@ exist because `delay == 0` is a different request:
 `None` when nothing is armed) let a test wait exactly as long as needed:
 
 ```python
-def test_debounce_delivers_after_its_delay(harness_clock):
+def test_debounce_delivers_after_its_delay(nuiitivet_clock):
     field.text.value = "hel"
-    time.sleep(harness_clock.next_deadline)
-    harness_clock.pump()
+    time.sleep(nuiitivet_clock.next_deadline)
+    nuiitivet_clock.pump()
     assert search.calls == 1
 ```
 
@@ -159,7 +171,7 @@ A bare `async def` test just runs — no `pytest-asyncio`, no marker, no
 configuration:
 
 ```python
-async def test_fetch_updates_the_model(harness_clock):
+async def test_fetch_updates_the_model(nuiitivet_clock):
     await model.refresh()
     assert model.items
 ```

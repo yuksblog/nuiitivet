@@ -294,7 +294,13 @@ def _describe_target(node: Any) -> dict[str, Any]:
     return info
 
 
-def settle(app: Any, *, strict: bool = False, max_passes: int = 3) -> None:
+def settle(
+    app: Any,
+    *,
+    strict: bool = False,
+    max_passes: int = 3,
+    before_pass: Optional[Callable[[], object]] = None,
+) -> None:
     """Flush pending reactive work and re-lay-out the tree after an action.
 
     An action mutates observables; the visible effect (and any layout change)
@@ -314,13 +320,20 @@ def settle(app: Any, *, strict: bool = False, max_passes: int = 3) -> None:
         max_passes: Cap on the strict pass count, so a size callback that resizes
             what it measures raises instead of looping forever. Ignored when
             ``strict`` is off.
+        before_pass: Called at the top of every pass, before the flushes. The
+            hook a driver needs to advance whatever *it* owns between passes --
+            the test harness pumps its clock's zero-delay queue here, so a
+            ``dispatch_to_ui`` marshal produced by one pass is applied in the
+            next. Not a policy this module has: the bridge runs against a real
+            clock that drains itself, and passes nothing. A raising hook
+            propagates, in both modes -- it is the caller's own code.
 
     Raises:
         LayoutNotConvergedError: If ``strict`` and the tree is still changing
             after ``max_passes``.
     """
     if strict:
-        _settle_strict(app, max_passes=max_passes)
+        _settle_strict(app, max_passes=max_passes, before_pass=before_pass)
         return
 
     from nuiitivet.widgeting.widget_binding import flush_binding_invalidations
@@ -328,6 +341,8 @@ def settle(app: Any, *, strict: bool = False, max_passes: int = 3) -> None:
     from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
     def _flush_reactive() -> None:
+        if before_pass is not None:
+            before_pass()
         try:
             flush_binding_invalidations()
         except Exception:
@@ -370,7 +385,9 @@ def settle(app: Any, *, strict: bool = False, max_passes: int = 3) -> None:
         logger.debug("settle: invalidate failed", exc_info=True)
 
 
-def _settle_strict(app: Any, *, max_passes: int) -> None:
+def _settle_strict(
+    app: Any, *, max_passes: int, before_pass: Optional[Callable[[], object]] = None
+) -> None:
     """Settle with nothing swallowed, looping until the tree stops changing.
 
     Mirrors :meth:`nuiitivet.runtime.app.App._settle_pending_size_changes`, the
@@ -384,6 +401,12 @@ def _settle_strict(app: Any, *, max_passes: int) -> None:
     from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
     def run_pass(root: Any) -> None:
+        # Before the flushes, not after: a hook that mutates observables (the
+        # harness pumping a ``dispatch_to_ui`` marshal) needs the same pass to
+        # turn that into an updated tree, or the value lands one pass late and
+        # the final pass never lands it at all.
+        if before_pass is not None:
+            before_pass()
         flush_binding_invalidations()
         flush_scope_recompositions()
         root.layout(int(app.width), int(app.height))

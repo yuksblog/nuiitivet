@@ -205,6 +205,8 @@ nav:
           - The nuiitivet-debug skill: guide/ai_pair_programming/nuiitivet_debug_skill.md
       - Testing:
           - guide/testing/index.md
+          - Testing a widget: guide/testing/widgets.md
+          - Testing a screen: guide/testing/screens.md
       - Advanced:
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md

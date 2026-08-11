@@ -103,3 +103,60 @@ def test_strict_settle_without_a_root_is_a_no_op() -> None:
     app.root = None  # type: ignore[assignment]
 
     settle(app, strict=True)
+
+
+# -- the ``before_pass`` hook ---------------------------------------------
+#
+# The core owns no policy here: it only promises to call the hook at the top of
+# every pass, before the flushes, so a caller that advances something of its own
+# between passes (the test harness pumps its clock) has the flush in the *same*
+# pass turn that into an updated tree.
+
+
+def test_before_pass_runs_at_the_top_of_every_strict_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _flushes(monkeypatch, True, True)
+    app = _App(_Root())
+    order: list[str] = []
+
+    original_layout = app.root.layout
+
+    def recording_layout(width: int, height: int) -> None:
+        order.append("layout")
+        original_layout(width, height)
+
+    app.root.layout = recording_layout  # type: ignore[method-assign]
+
+    settle(app, strict=True, before_pass=lambda: order.append("hook"))
+
+    assert order == ["hook", "layout", "hook", "layout", "hook", "layout"]
+
+
+def test_before_pass_runs_in_default_mode_too() -> None:
+    app = _App(_Root())
+    calls: list[int] = []
+
+    settle(app, before_pass=lambda: calls.append(1))
+
+    # One per flush round; the default settle runs two.
+    assert len(calls) == 2
+
+
+def test_before_pass_is_optional_and_the_bridge_passes_nothing() -> None:
+    app = _App(_Root())
+
+    settle(app)
+    settle(app, strict=True)
+
+    assert app.root.layouts == 3
+
+
+def test_a_raising_before_pass_reaches_the_caller() -> None:
+    app = _App(_Root())
+
+    def boom() -> None:
+        raise RuntimeError("hook failed")
+
+    with pytest.raises(RuntimeError, match="hook failed"):
+        settle(app, strict=True, before_pass=boom)

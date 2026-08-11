@@ -11,35 +11,29 @@ def _make_obs(initial):
     return _Tmp().x
 
 
-class DummyApp:
-
-    def __init__(self):
-        self.invalidated = 0
-
-    def invalidate(self):
-        self.invalidated += 1
-
-
-def test_text_auto_bind_and_unbind():
+def test_text_auto_bind_and_unbind(nuiitivet_mount):
     s = _make_obs("hello")
     t = Text(s)
-    app = DummyApp()
-    t.mount(app)
+    host = nuiitivet_mount(t)
     assert t._label_unsub is not None
     s.value = "world"
-    assert app.invalidated == 1
+    # `> 0`, not `== 1`: coalescing two invalidations into one would break an
+    # exact count with no change in behaviour. What matters is that the binding
+    # requested a repaint at all, and that unbinding stopped it.
+    assert host.invalidate_count > 0
+    after_bind = host.invalidate_count
+
     t.unmount()
     assert t._label_unsub is None
     s.value = "again"
-    assert app.invalidated == 1
+    assert host.invalidate_count == after_bind
 
 
-def test_text_observable_change_marks_layout_needs_on_parent() -> None:
+def test_text_observable_change_marks_layout_needs_on_parent(nuiitivet_mount) -> None:
     s = _make_obs("hi")
     bound = Text(s)
     root = Row([Text("Last click:"), bound], gap=8)
-    app = DummyApp()
-    root.mount(app)
+    nuiitivet_mount(root)
 
     root.layout(400, 40)
     assert root.needs_layout is False
