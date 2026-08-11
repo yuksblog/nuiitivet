@@ -355,19 +355,17 @@ def test_tooltip_esc_suppresses_reopen_while_hovered() -> None:
     assert box._user_dismissed is True
 
 
-def test_tooltip_esc_suppression_clears_after_pointer_leaves() -> None:
+def test_tooltip_esc_suppression_clears_after_pointer_leaves(harness_clock) -> None:
     """_user_dismissed resets once the pointer genuinely leaves the button.
 
     The reset is deferred to the next frame so that a sub-widget crossing does
     not clear the flag.  When the pointer truly leaves, the deferred callback
     fires and clears _user_dismissed so the next re-entry reopens normally.
 
-    The observable runtime clock is replaced with a no-op during the test to
-    prevent _ThreadClock from racing the assertions via background threads.
+    The harness clock holds every scheduled callback until pumped, so nothing
+    races the assertions from a background thread; ``pump_immediate()`` plays
+    the next-frame deferral on the test thread.
     """
-    import types
-    from nuiitivet.observable import runtime as _observable_runtime
-
     box = TooltipBox(_FixedWidget(10, 10), _FixedWidget(20, 20), delay=0.0, dismiss_delay=0.5)
 
     # Simulate: ESC dismissed while hovered.
@@ -376,30 +374,17 @@ def test_tooltip_esc_suppression_clears_after_pointer_leaves() -> None:
     box._on_closed_externally()
     box._is_open.value = False
 
-    # Replace clock with a no-op so that schedule_once never fires in the
-    # background, allowing the assertions below to be deterministic.
-    _prev_clock = _observable_runtime.clock
-    _observable_runtime.set_clock(
-        types.SimpleNamespace(
-            schedule_once=lambda fn, d: None,
-            unschedule=lambda fn: None,
-            schedule_interval=lambda fn, i: None,
-        )
-    )
-    try:
-        # Pointer leaves the button with no subsequent hover=True.
-        box._on_hover_change(False)
-        assert box._dismiss_reset_callback is not None
+    # Pointer leaves the button with no subsequent hover=True.
+    box._on_hover_change(False)
+    assert box._dismiss_reset_callback is not None
 
-        # Simulate next-frame deferred callback firing.
-        box._dismiss_reset_callback(0.0)
-        assert box._user_dismissed is False
+    # Fire the next-frame deferred reset on the test thread.
+    harness_clock.pump_immediate()
+    assert box._user_dismissed is False
 
-        # Re-entering the button now opens the tooltip normally.
-        box._on_hover_change(True)
-        assert box._is_open.value is True
-    finally:
-        _observable_runtime.set_clock(_prev_clock)
+    # Re-entering the button now opens the tooltip normally.
+    box._on_hover_change(True)
+    assert box._is_open.value is True
 
 
 # ---------------------------------------------------------------------------
