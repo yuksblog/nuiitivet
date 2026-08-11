@@ -95,6 +95,29 @@ def _set_clock_opted_out(value: bool) -> None:
     _clock_opted_out = value
 
 
+# This test's leak-check level, and whether it has already failed. Both are the
+# plugin's to set: the level comes from config the harness cannot read, and the
+# outcome is not known until after the test body has run.
+_leak_check: Optional[str] = None
+_test_failed = False
+
+
+def _set_leak_check(level: Optional[str]) -> None:
+    """Plugin-only: install this test's default ``leak_check`` level."""
+    global _leak_check
+    _leak_check = level
+
+
+def _set_test_failed(failed: bool) -> None:
+    """Plugin-only: record that the current test has already failed."""
+    global _test_failed
+    _test_failed = failed
+
+
+def _test_already_failed() -> bool:
+    return _test_failed
+
+
 def open_harnesses() -> List[Any]:
     """Plugin-only: the harnesses still open, in construction order."""
     return list(_open_harnesses)
@@ -212,13 +235,15 @@ class _HarnessBase:
 
     __test__ = False
 
-    def __init__(self) -> None:
+    def __init__(self, leak_check: Optional[str] = None) -> None:
         self._clock: Optional[HarnessClock] = None
         self._restore_clock: Optional[Callable[[], None]] = None
         self._last_action = _LastAction()
         self._teardown_hooks: List[Callable[[], None]] = []
         self._tasks = TaskRegistry()
         self._closed = False
+        self._exception_in_flight = False
+        self._install_leak_check(leak_check)
         # Observing starts here, before the subclass builds anything: mounting a
         # tree runs `on_mount`, which may itself be async, and a task started
         # while the harness was still being constructed is exactly the kind an
@@ -230,6 +255,32 @@ class _HarnessBase:
         # App owns it -- so two harnesses in one test wait for each other's
         # work. Over-waiting is slower; under-waiting is flaky.
         _callbacks._task_observers.add(self._tasks.record)
+
+    def _install_leak_check(self, level: Optional[str]) -> None:
+        """Register the subscription-leak check for this harness's teardown.
+
+        Registered first, so it runs first: a later hook that raises would
+        otherwise skip the check entirely.
+
+        The harness only *reads* the registry. Arming it is the plugin's job,
+        around the whole test, because a widget subscribes in its constructor --
+        ``Toggleable.__init__`` is the in-tree example -- which has already run by
+        the time ``mount(widget)`` sees it. A flag armed here would be armed too
+        late for the most common leak site in the framework.
+        """
+        from ._leaks import make_teardown_check, resolve_level
+
+        resolved = resolve_level(
+            level if level is not None else _leak_check,
+            source=f"{type(self).__name__}(leak_check=...)",
+        )
+        self._leak_check_level = resolved
+        self.add_teardown_hook(
+            make_teardown_check(
+                resolved,
+                skip=lambda: self._exception_in_flight or _test_already_failed(),
+            )
+        )
 
     def _stop_observing(self) -> None:
         """Drop the task observer. Safe to call twice."""
@@ -678,12 +729,24 @@ class _HarnessBase:
         self._stop_observing()
         try:
             self._teardown()
+            hook_error: Optional[BaseException] = None
             for hook in self._teardown_hooks:
-                hook()
-            # Last: a handler that failed after the test's final wait would
-            # otherwise be dropped on the floor, which is the containment this
-            # package exists to undo -- just later than usual.
+                try:
+                    hook()
+                except Exception as exc:
+                    # Held rather than raised, so one failing hook cannot skip
+                    # the rest -- and so a handler that raised still wins the
+                    # report below. A subscription leak is a real finding, but an
+                    # exception with a traceback into the app's own code is more
+                    # likely to be what went wrong first.
+                    if hook_error is None:
+                        hook_error = exc
+            # Before the held hook error: a handler that failed after the test's
+            # final wait would otherwise be dropped on the floor, which is the
+            # containment this package exists to undo -- just later than usual.
             self._raise_task_error()
+            if hook_error is not None:
+                raise hook_error
         finally:
             if self._restore_clock is not None:
                 self._restore_clock()
@@ -695,5 +758,11 @@ class _HarnessBase:
     def __enter__(self) -> Any:
         return self
 
-    def __exit__(self, *exc_info: Any) -> None:
+    def __exit__(self, exc_type: Any = None, *rest: Any) -> None:
+        # A teardown check must not replace the exception it is unwinding. The
+        # plugin does this for a fixture-managed harness by looking at the test's
+        # outcome, but a `with` block inside the test body closes *before* there
+        # is an outcome to look at -- and raising here would swap the assertion
+        # the author is reading for a report about its consequences.
+        self._exception_in_flight = exc_type is not None
         self.close()

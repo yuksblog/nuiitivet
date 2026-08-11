@@ -330,11 +330,13 @@ class TextField(InteractiveWidget):
 
         # Animation state
         has_text = bool(self._editable.value)
+        # Each of these is subscribed on mount, not here: an Animatable that is
+        # running holds its ticker on the clock, so a bare subscribe left every
+        # unmounted TextField reachable and repainting. See on_mount below.
         self._label_progress = Animatable(
             1.0 if has_text else 0.0,
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
-        self._label_progress.subscribe(lambda _: self.invalidate())
 
         # Indicator Animations
         init_ind_width = style.indicator_width
@@ -342,7 +344,6 @@ class TextField(InteractiveWidget):
             float(init_ind_width),
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
-        self._anim_indicator_width.subscribe(lambda _: self.invalidate())
 
         init_ind_color = resolve_color_to_rgba(style.indicator_color, theme=None)
         self._anim_indicator_color = Animatable.vector(
@@ -350,7 +351,6 @@ class TextField(InteractiveWidget):
             converter=RgbaTupleConverter(),
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
-        self._anim_indicator_color.subscribe(lambda _: self.invalidate())
 
         init_label_color = resolve_color_to_rgba(style.label_color, theme=None)
         self._anim_label_color = Animatable.vector(
@@ -358,7 +358,6 @@ class TextField(InteractiveWidget):
             converter=RgbaTupleConverter(),
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
-        self._anim_label_color.subscribe(lambda _: self.invalidate())
 
         # Handle initial disabled state
         if initial_disabled:
@@ -455,6 +454,18 @@ class TextField(InteractiveWidget):
 
     def on_mount(self) -> None:
         super().on_mount()
+
+        # Repaint as each animation ticks, for as long as this field is in the
+        # tree. Bound rather than subscribed bare so unmount disposes them: a
+        # running Animatable is held by the clock, so the subscription kept every
+        # unmounted TextField alive and repainting into a detached tree.
+        for animatable in (
+            self._label_progress,
+            self._anim_indicator_width,
+            self._anim_indicator_color,
+            self._anim_label_color,
+        ):
+            self.bind(animatable.subscribe(lambda _v: self.invalidate()))
 
         # Snap animation initial values to the correct theme-resolved colors now
         # that Theme.of(self) can reach the App's ThemeManager (unavailable at __init__).

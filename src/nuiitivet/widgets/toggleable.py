@@ -50,10 +50,25 @@ class Toggleable(Clickable):
             else:
                 setattr(self, "_state_internal", bool(value))
 
-        # Subscribe to update interaction state
-        self._get_state_obj().subscribe(self._on_value_change)
+        # Initial sync. The subscription that keeps it in sync is taken on mount,
+        # not here, but the interaction state has to be right before then: a
+        # widget can be measured offscreen without ever being mounted.
+        self._on_value_change(self.value)
 
-        # Initial sync
+    def on_mount(self) -> None:
+        """Track the value source for as long as this widget is in the tree.
+
+        Bound rather than subscribed bare, and taken here rather than in
+        ``__init__``, because the source may be an ``Observable`` the *app* owns
+        and outlives this widget by far. A bare ``subscribe`` in the constructor
+        left it holding ``self._on_value_change`` forever, so every unmounted
+        checkbox stayed alive and kept writing to its interaction state.
+        ``bind`` disposes at unmount; taking it on mount is what makes the widget
+        work again if it is re-mounted.
+        """
+        super().on_mount()
+        self.bind(self._get_state_obj().subscribe(self._on_value_change))
+        # The value may have moved while this widget was out of the tree.
         self._on_value_change(self.value)
 
     def _get_state_obj(self) -> ObservableProtocol[Optional[bool]]:

@@ -38,10 +38,11 @@ else:
     import tomli as tomllib  # ships with pytest on Python 3.10
 
 from nuiitivet.testing import _support
+from nuiitivet.testing._leaks import LEAK_CHECK_LEVELS, track_subscriptions
 from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 
 
-_CONFIG_KEYS = ("clock", "isolate", "wait_timeout")
+_CONFIG_KEYS = ("clock", "isolate", "wait_timeout", "leak_check")
 _CLOCK_MODES = ("harness", "strict", "real")
 _ASYNC_PLUGINS = ("asyncio", "anyio")
 _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
@@ -50,11 +51,13 @@ _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "nuiitivet(clock=..., isolate=..., wait_timeout=...): configure the "
-        'nuiitivet test harness. clock is "harness" (default), "strict" (fail on '
-        'callbacks armed and never fired), or "real" (keep the installed clock); '
-        "isolate=False skips the process-global resets; wait_timeout sets the "
-        "default seconds for wait_for() and idle().",
+        "nuiitivet(clock=..., isolate=..., wait_timeout=..., leak_check=...): "
+        'configure the nuiitivet test harness. clock is "harness" (default), '
+        '"strict" (fail on callbacks armed and never fired), or "real" (keep the '
+        "installed clock); isolate=False skips the process-global resets; "
+        "wait_timeout sets the default seconds for wait_for() and idle(); "
+        'leak_check is "error" (default), "warn" or "off" for the '
+        "subscription-leak check at harness teardown.",
     )
     config.stash[_DEFAULTS_KEY] = _load_defaults(config)
     # The async runner below executes tests whose asyncio/anyio marker is
@@ -99,6 +102,12 @@ def _validate_config(cfg: Dict[str, Any], *, source: str) -> None:
     isolate = cfg.get("isolate")
     if isolate is not None and not isinstance(isolate, bool):
         raise pytest.UsageError(f"isolate must be a bool in {source}, got {isolate!r}")
+    leak_check = cfg.get("leak_check")
+    if leak_check is not None and leak_check not in LEAK_CHECK_LEVELS:
+        raise pytest.UsageError(
+            f"invalid leak_check={leak_check!r} in {source}; "
+            f"expected one of: {', '.join(LEAK_CHECK_LEVELS)}"
+        )
     wait_timeout = cfg.get("wait_timeout")
     if wait_timeout is not None:
         if isinstance(wait_timeout, bool) or not isinstance(wait_timeout, (int, float)):
@@ -127,6 +136,22 @@ def _item_config(item: pytest.Item) -> Dict[str, Any]:
         _validate_config(dict(marker.kwargs), source=f"@pytest.mark.nuiitivet on {item.nodeid}")
         cfg.update(marker.kwargs)
     return cfg
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> Any:
+    """Record that the test failed, so teardown checks can stand down.
+
+    A subscription-leak report appended to a test that already failed is noise on
+    top of the thing worth reading -- and the first failure is usually why the
+    tree never reached the state that would have disposed the subscription. The
+    plugin is the only thing that can see the outcome; ``close()`` outside pytest
+    has nothing better to consult and keeps reporting.
+    """
+    outcome = yield
+    report = outcome.get_result()
+    if report.failed:
+        _support._set_test_failed(True)
 
 
 def _refuse_thread_parallel() -> None:
@@ -240,6 +265,8 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
 
     _support._set_clock_opted_out(clock_mode == "real")
     _support._set_wait_timeout(cfg.get("wait_timeout"))
+    _support._set_leak_check(cfg.get("leak_check"))
+    _support._set_test_failed(False)
 
     if not isolate and clock_mode == "real":
         try:
@@ -247,6 +274,7 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
         finally:
             _support._set_clock_opted_out(False)
             _support._set_wait_timeout(None)
+            _support._set_leak_check(None)
             _support.forget_open_harnesses()
         return
 
@@ -269,11 +297,30 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
         _clear_mutable_globals()
 
     try:
-        yield harness
+        # Around the *whole* test, not around each harness: a widget subscribes in
+        # its constructor -- Toggleable.__init__ is the in-tree example -- which
+        # has already run by the time mount(widget) sees it. Arming this from the
+        # harness would be too late for the framework's most common leak site.
+        #
+        # Function-scoped autouse fixtures are set up before the test's own
+        # fixtures, so a widget built in a fixture is covered too; one built in a
+        # module- or session-scoped fixture is not, and is out of the check's
+        # reach by construction.
+        with track_subscriptions():
+            try:
+                yield harness
+            finally:
+                # Inside the tracking block, so a harness the test forgot to
+                # close still gets its leak check rather than silently skipping
+                # it against a registry that has already been torn down. The
+                # fixture-owned harnesses closed before this point are inside it
+                # already: their finalizers run while this generator is still
+                # suspended at the yield.
+                _close_leaked_harnesses(request.node)
     finally:
         _support._set_clock_opted_out(False)
         _support._set_wait_timeout(None)
-        _close_leaked_harnesses(request.node)
+        _support._set_leak_check(None)
         if isolate and saved is not None:
             _clear_mutable_globals()
             _restore_rebindable_globals(saved)
