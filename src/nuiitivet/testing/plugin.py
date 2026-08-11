@@ -1,0 +1,239 @@
+"""The nuiitivet pytest plugin: per-test isolation and deterministic timers.
+
+Registered via the ``pytest11`` entry point, so it is active on install with
+no ``conftest.py`` boilerplate. Around every test it installs a
+:class:`~nuiitivet.testing.clock.HarnessClock` and resets the framework's
+process-global state, so a test is not affected by — and does not affect —
+anything outside itself.
+
+Per-test configuration goes through one marker::
+
+    @pytest.mark.nuiitivet(clock="real")    # keep the real clock
+    @pytest.mark.nuiitivet(clock="strict")  # fail on armed-but-never-fired
+    @pytest.mark.nuiitivet(isolate=False)   # skip the process-global resets
+
+Stacked ``nuiitivet`` markers merge their keyword arguments, nearest wins per
+key. Suite-wide defaults live in ``[tool.nuiitivet.testing]`` in
+``pyproject.toml``; the marker overrides them per test.
+"""
+
+from __future__ import annotations
+
+import sys
+import threading
+import warnings
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
+import pytest
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # ships with pytest on Python 3.10
+
+from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, PendingCallback
+
+
+_CONFIG_KEYS = ("clock", "isolate")
+_CLOCK_MODES = ("harness", "strict", "real")
+_DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "nuiitivet(clock=..., isolate=...): configure the nuiitivet test harness. "
+        'clock is "harness" (default), "strict" (fail on callbacks armed and '
+        'never fired), or "real" (keep the installed clock); isolate=False '
+        "skips the process-global resets.",
+    )
+    config.stash[_DEFAULTS_KEY] = _load_defaults(config)
+
+
+def _load_defaults(config: pytest.Config) -> Dict[str, Any]:
+    """Read ``[tool.nuiitivet.testing]`` from the rootdir's pyproject.toml."""
+    path = config.rootpath / "pyproject.toml"
+    if not path.is_file():
+        return {}
+    with path.open("rb") as fh:
+        data = tomllib.load(fh)
+    section = data.get("tool", {}).get("nuiitivet", {}).get("testing", {})
+    if not isinstance(section, dict):
+        raise pytest.UsageError("[tool.nuiitivet.testing] must be a table")
+    _validate_config(section, source=f"[tool.nuiitivet.testing] in {path}")
+    return section
+
+
+def _validate_config(cfg: Dict[str, Any], *, source: str) -> None:
+    for key in cfg:
+        if key not in _CONFIG_KEYS:
+            raise pytest.UsageError(
+                f"unknown nuiitivet testing option {key!r} in {source}; "
+                f"known options: {', '.join(_CONFIG_KEYS)}"
+            )
+    clock = cfg.get("clock")
+    if clock is not None and clock not in _CLOCK_MODES:
+        raise pytest.UsageError(
+            f"invalid clock={clock!r} in {source}; "
+            f"expected one of: {', '.join(_CLOCK_MODES)}"
+        )
+    isolate = cfg.get("isolate")
+    if isolate is not None and not isinstance(isolate, bool):
+        raise pytest.UsageError(f"isolate must be a bool in {source}, got {isolate!r}")
+
+
+def _item_config(item: pytest.Item) -> Dict[str, Any]:
+    """Merge suite defaults and every ``nuiitivet`` marker, nearest wins.
+
+    ``get_closest_marker`` would silently drop all but the nearest of stacked
+    markers — an ignored opt-out — so kwargs merge across the whole stack.
+    """
+    stored = item.config.stash.get(_DEFAULTS_KEY, None)
+    cfg: Dict[str, Any] = dict(stored) if stored else {}
+    for marker in reversed(list(item.iter_markers("nuiitivet"))):
+        if marker.args:
+            raise pytest.UsageError(
+                f"@pytest.mark.nuiitivet takes keyword arguments only ({item.nodeid})"
+            )
+        _validate_config(dict(marker.kwargs), source=f"@pytest.mark.nuiitivet on {item.nodeid}")
+        cfg.update(marker.kwargs)
+    return cfg
+
+
+def _refuse_thread_parallel() -> None:
+    if threading.current_thread() is not threading.main_thread():
+        pytest.fail(
+            "nuiitivet tests cannot run thread-parallel: the framework keeps "
+            "process-global state (runtime.clock, pending invalidations, the "
+            "theme reader stack), so concurrent tests in one process would "
+            "race and corrupt each other. Use pytest-xdist, which parallelises "
+            "across worker processes, instead of a thread-based plugin.",
+            pytrace=False,
+        )
+
+
+# -- process-global resets -------------------------------------------------
+#
+# Most inventory entries are mutable containers a test mutates *in place*, so
+# saving and restoring the reference isolates nothing — they are cleared at
+# both test boundaries. Only the entries a test *rebinds* are saved/restored.
+
+
+def _clear_mutable_globals() -> None:
+    from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
+    from nuiitivet.observable.contexts import _batch_context
+    from nuiitivet.theme import dependency
+    from nuiitivet.widgeting import widget_binding, widget_builder, widget_size_change
+
+    widget_binding._pending_invalidation.clear()
+    widget_builder._pending_scope_recompositions.clear()
+    widget_size_change._pending_size_changes.clear()
+    dependency._reader_stack.clear()
+    _batch_context.set(None)
+    _clear_log_once_keys_for_tests()
+
+
+def _save_rebindable_globals() -> Tuple[Any, ...]:
+    from nuiitivet.common import logging_once
+    from nuiitivet.dev import session
+
+    # widgeting/callbacks._task_observer joins this list when the async
+    # integration work adds it (#527's successor).
+    return (logging_once._LOG_ONCE_ENABLED, session._current_session)
+
+
+def _restore_rebindable_globals(saved: Tuple[Any, ...]) -> None:
+    from nuiitivet.common import logging_once
+    from nuiitivet.dev import session
+
+    logging_once._LOG_ONCE_ENABLED = saved[0]
+    session._current_session = saved[1]
+
+
+# -- the per-test fixture --------------------------------------------------
+
+
+def _cancel_all_on(clock: Any) -> None:
+    """Best-effort sweep of a clock we did not install (e.g. _ThreadClock)."""
+    cancel_all = getattr(clock, "cancel_all", None)
+    if cancel_all is not None:
+        cancel_all()
+
+
+def _format_leftover(leftover: List[PendingCallback]) -> str:
+    lines = []
+    for cb in leftover:
+        kind = "interval" if cb.is_interval else "one-shot"
+        state = "due, never fired" if cb.due else "armed, not yet due"
+        lines.append(f"  {cb.fn!r} ({kind}, delay={cb.delay}, {state}) scheduled at {cb.site}")
+    return "\n".join(lines)
+
+
+@pytest.fixture(autouse=True)
+def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[HarnessClock]]:
+    """Install the harness clock and reset process-global state per test."""
+    cfg = _item_config(request.node)
+    clock_mode = cfg.get("clock", "harness")
+    isolate = cfg.get("isolate", True)
+
+    if not isolate and clock_mode == "real":
+        yield None  # fully opted out
+        return
+
+    _refuse_thread_parallel()
+
+    from nuiitivet.observable.runtime import get_clock, set_clock
+
+    previous = get_clock()
+    # Timers armed before the test (import time, an earlier opted-out test)
+    # must not fire into this one.
+    _cancel_all_on(previous)
+
+    harness: Optional[HarnessClock] = None
+    if clock_mode != "real":
+        harness = HarnessClock()
+        set_clock(harness)
+
+    saved = _save_rebindable_globals() if isolate else None
+    if isolate:
+        _clear_mutable_globals()
+
+    try:
+        yield harness
+    finally:
+        if isolate and saved is not None:
+            _clear_mutable_globals()
+            _restore_rebindable_globals(saved)
+        if harness is not None:
+            set_clock(previous)
+            leftover = harness.cancel_all()
+            if clock_mode == "strict" and leftover:
+                pytest.fail(
+                    "clock=\"strict\": callbacks were armed and never fired "
+                    "(explicit unschedule exempts them):\n" + _format_leftover(leftover),
+                    pytrace=False,
+                )
+            else:
+                due = [cb for cb in leftover if cb.due]
+                if due:
+                    warnings.warn(
+                        "test ended with clock callbacks due and unpumped — a "
+                        "timed effect may have been asserted absent without "
+                        "elapsing:\n" + _format_leftover(due),
+                        NuiitivetClockWarning,
+                        stacklevel=2,
+                    )
+        else:
+            _cancel_all_on(get_clock())
+
+
+@pytest.fixture
+def harness_clock(_nuiitivet_test_env: Optional[HarnessClock]) -> HarnessClock:
+    """The :class:`HarnessClock` installed for this test, typed — no cast."""
+    if _nuiitivet_test_env is None:
+        pytest.fail(
+            'harness_clock requires the harness clock, but this test opted '
+            'out with @pytest.mark.nuiitivet(clock="real")',
+            pytrace=False,
+        )
+    return _nuiitivet_test_env

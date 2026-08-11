@@ -3,7 +3,9 @@ import sys
 import warnings
 
 import pyglet
-import pytest
+
+# The pytester fixture drives the sub-sessions in tests/testing/test_plugin.py.
+pytest_plugins = ["pytester"]
 
 # Importing pyglet.window creates a shadow window, which needs a display
 # connection and raises NoSuchDisplayException under headless CI. Tests never
@@ -47,35 +49,9 @@ warnings.filterwarnings(
 )
 
 
-@pytest.fixture(autouse=True)
-def cancel_pending_clock_callbacks():
-    """Leave no scheduled clock callback behind at the end of a test.
-
-    With no backend running, ``runtime.clock`` is the fallback
-    ``_ThreadClock``, which fires callbacks on background threads. A widget
-    that schedules a delayed callback — an Overlay auto-dismiss timeout, a
-    tooltip delay — and is never torn down leaves that timer armed for the
-    rest of the session. It then fires in the middle of some *later*,
-    unrelated test, mutating process-global widget state and logging an
-    ``assert_ui_thread`` failure into that test's ``caplog``. See #468.
-
-    Clocks installed by a test (the ``_FakeClock`` pattern) have no timers to
-    cancel and simply do not provide ``cancel_all``.
-    """
-    from nuiitivet.observable import runtime
-
-    def _cancel() -> None:
-        cancel_all = getattr(runtime.clock, "cancel_all", None)
-        if cancel_all is not None:
-            cancel_all()
-
-    _cancel()
-    try:
-        yield
-    finally:
-        _cancel()
-
-
-# An App's Overlay and Navigator are per-instance, so building an App in a test
-# leaks nothing into the next one. The autouse fixture that used to save and
-# restore the process-global roots is gone with them (#518).
+# No autouse isolation fixture lives here. The nuiitivet.testing pytest plugin
+# (registered via the pytest11 entry point) installs a HarnessClock and resets
+# the framework's process-global state around every test — we run on the
+# isolation we ship, so a regression there breaks this suite first. The
+# fixture that cancelled leaked _ThreadClock timers (#468) and the one that
+# restored the App roots (#518, made per-instance) are both superseded.
