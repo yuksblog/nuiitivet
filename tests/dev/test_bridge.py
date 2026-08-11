@@ -12,6 +12,7 @@ from typing import Any, Iterator
 
 import pytest
 
+from nuiitivet.dev import bridge as bridge_mod
 from nuiitivet.dev import session as dev_session
 from nuiitivet.dev.bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME, DevBridge
 from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discovery_file
@@ -577,7 +578,7 @@ def test_bridge_wait_for_times_out(tmp_path: Path, dev_run: None) -> None:
     try:
         with _Pump(bridge):
             client = BridgeClient("127.0.0.1", _port_of(bridge))
-            result = client.wait_for(label="never", timeout=0.15, interval=0.02)
+            result = client.wait_for(label="never", timeout=0.15, min_interval=0.02)
             assert result["satisfied"] is False
             assert result["timed_out"] is True
             assert result["polls"] >= 1
@@ -599,7 +600,7 @@ def test_bridge_wait_for_becomes_present(tmp_path: Path, dev_run: None) -> None:
             client = BridgeClient("127.0.0.1", _port_of(bridge))
             worker = threading.Thread(target=add_later)
             worker.start()
-            result = client.wait_for(label="Loaded", timeout=2.0, interval=0.02)
+            result = client.wait_for(label="Loaded", timeout=2.0, min_interval=0.02)
             worker.join()
             assert result["satisfied"] is True
             assert result["polls"] >= 2  # it did not pass on the first poll
@@ -622,12 +623,67 @@ def test_bridge_wait_for_absent(tmp_path: Path, dev_run: None) -> None:
             client = BridgeClient("127.0.0.1", _port_of(bridge))
             worker = threading.Thread(target=clear_later)
             worker.start()
-            result = client.wait_for(key="spinner", present=False, timeout=2.0, interval=0.02)
+            result = client.wait_for(key="spinner", present=False, timeout=2.0, min_interval=0.02)
             worker.join()
             assert result["satisfied"] is True
             assert result["condition"] == {"present": False, "key": "spinner"}
     finally:
         bridge.shutdown()
+
+
+class _CostedMarshaller:
+    """Stand-in marshaller whose every poll costs a fixed amount of wall clock.
+
+    ``job`` goes unrun: ``_run_wait_for`` only reads its truthiness, so what it
+    would have computed does not affect the cadence under test.
+    """
+
+    def __init__(self, poll_cost: float, *, satisfied_after: int = -1) -> None:
+        self._poll_cost = poll_cost
+        self._satisfied_after = satisfied_after
+        self.calls = 0
+
+    def call_on_ui_thread(self, job: Any, **kwargs: Any) -> bool:
+        self.calls += 1
+        time.sleep(self._poll_cost)
+        return self._satisfied_after >= 0 and self.calls >= self._satisfied_after
+
+
+def test_wait_for_expensive_poll_keeps_several_attempts() -> None:
+    # Uncapped, sleeping each 0.1 s poll's full cost fits ~2 attempts in 0.4 s.
+    marshaller: Any = _CostedMarshaller(0.1)
+    result = bridge_mod._run_wait_for(marshaller, {"key": "nope", "timeout": 0.4})
+
+    assert result["timed_out"] is True
+    assert result["polls"] >= 3
+
+
+def test_wait_for_expensive_poll_notices_a_late_condition() -> None:
+    marshaller: Any = _CostedMarshaller(0.1, satisfied_after=3)
+    result = bridge_mod._run_wait_for(marshaller, {"key": "late", "timeout": 0.4})
+
+    assert result["satisfied"] is True
+    assert result["polls"] == 3
+
+
+def test_wait_for_cheap_poll_gets_many_attempts() -> None:
+    marshaller: Any = _CostedMarshaller(0.0)
+    result = bridge_mod._run_wait_for(marshaller, {"key": "nope", "timeout": 0.1})
+
+    assert result["timed_out"] is True
+    assert result["polls"] > 5
+
+
+def test_wait_for_min_interval_floors_the_gap() -> None:
+    # ``timeout`` is generous so the cap (2.0 / 4) stays above the floor;
+    # shrink it and the cap wins and the floor is never exercised.
+    marshaller: Any = _CostedMarshaller(0.0, satisfied_after=2)
+    result = bridge_mod._run_wait_for(
+        marshaller, {"key": "late", "timeout": 2.0, "min_interval": 0.2}
+    )
+
+    assert result["polls"] == 2
+    assert result["waited"] >= 0.2
 
 
 def test_bridge_wait_for_empty_condition_is_400(tmp_path: Path, dev_run: None) -> None:

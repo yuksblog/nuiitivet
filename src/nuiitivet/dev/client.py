@@ -440,7 +440,7 @@ class BridgeClient:
         text: Optional[str] = None,
         present: bool = True,
         timeout: Optional[float] = None,
-        interval: Optional[float] = None,
+        min_interval: Optional[float] = None,
     ) -> dict[str, Any]:
         """Wait until a tree condition holds (or absent, with ``present=False``).
 
@@ -450,6 +450,11 @@ class BridgeClient:
         holds or ``timeout`` (seconds) elapses. Returns the bridge's structured
         result -- ``satisfied`` / ``timed_out`` / ``waited`` / ``polls`` -- and
         never raises on a plain timeout (only on transport failure).
+
+        Args:
+            min_interval: Floor on the gap between polls. The bridge sleeps for
+                the cost of the previous poll, so the real gap grows when the
+                tree is slow and shrinks when it is not.
         """
         payload: dict[str, Any] = {"present": present}
         for name, value in (("key", key), ("label", label), ("text", text)):
@@ -457,8 +462,8 @@ class BridgeClient:
                 payload[name] = value
         if timeout is not None:
             payload["timeout"] = timeout
-        if interval is not None:
-            payload["interval"] = interval
+        if min_interval is not None:
+            payload["min_interval"] = min_interval
         # Give the socket headroom beyond the server-side poll deadline so the
         # HTTP read never fires before the bridge returns its own timeout result.
         server_deadline = timeout if timeout is not None else _WAIT_FOR_DEFAULT_TIMEOUT
