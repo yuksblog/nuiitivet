@@ -1,4 +1,19 @@
-"""Shared helpers for pointer-event driven tests."""
+"""Shared helpers for pointer-event driven tests.
+
+**Why this is not `AppHarness.click`.** These helpers dispatch a pointer event
+straight at a *bare widget*, below the ``App`` level -- no window, no App, not
+even the minimal host ``nuiitivet.testing.mount`` installs. The harness verbs
+cannot go there: ``click`` resolves a target to a point and hands it to
+``app._dispatch_mouse_press``, which is the App's own input path, and
+reimplementing that outside ``App`` would be a second pointer pipeline to keep
+in sync with the real one.
+
+So the split is deliberate: ``mount()`` observes a single widget,
+``AppHarness`` drives a screen, and this drives one widget's own
+``on_pointer_event`` in isolation. Reach for the harness first; this stays for
+the unit tests that genuinely test a widget's event handling with nothing above
+it.
+"""
 
 from typing import Optional
 

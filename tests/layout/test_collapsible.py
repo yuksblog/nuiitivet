@@ -55,15 +55,6 @@ def _fake_clock() -> Generator[_FakeClock, None, None]:
         observable_runtime.set_clock(prev)
 
 
-class _DummyApp:
-    def __init__(self) -> None:
-        self.invalidated = 0
-
-    def invalidate(self, immediate: bool = False) -> None:
-        del immediate
-        self.invalidated += 1
-
-
 def _make_child(w: int = 100, h: int = 50) -> Box:
     return Box(width=Sizing.fixed(w), height=Sizing.fixed(h))
 
@@ -73,25 +64,25 @@ def _make_child(w: int = 100, h: int = 50) -> Box:
 # ---------------------------------------------------------------------------
 
 
-def test_initial_size_snaps_to_natural_without_animation() -> None:
+def test_initial_size_snaps_to_natural_without_animation(nuiitivet_mount) -> None:
     with _fake_clock():
         widget = Collapsible(_make_child(100, 50))
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         assert widget.preferred_size() == (100, 50)
 
 
-def test_opened_false_collapses_initial_size() -> None:
+def test_opened_false_collapses_initial_size(nuiitivet_mount) -> None:
     with _fake_clock():
         widget = Collapsible(_make_child(100, 50), opened=False)
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         assert widget.preferred_size() == (0, 0)
 
 
-def test_axis_horizontal_only_animates_width() -> None:
+def test_axis_horizontal_only_animates_width(nuiitivet_mount) -> None:
     with _fake_clock():
         opened = _ObservableValue(True)
         widget = Collapsible(_make_child(100, 50), opened=opened, axis="horizontal")
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         # Height passes through unchanged immediately even mid-animation.
         opened.value = False
         widget.preferred_size()
@@ -104,7 +95,7 @@ def test_axis_horizontal_only_animates_width() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_opened_toggle_animates_width_to_zero() -> None:
+def test_opened_toggle_animates_width_to_zero(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
         opened = _ObservableValue(True)
         widget = Collapsible(
@@ -113,7 +104,7 @@ def test_opened_toggle_animates_width_to_zero() -> None:
             axis="horizontal",
             motion=LinearMotion(0.2),
         )
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         assert widget.preferred_size()[0] == 100
 
         opened.value = False
@@ -126,7 +117,7 @@ def test_opened_toggle_animates_width_to_zero() -> None:
         assert widget.preferred_size()[0] == 0
 
 
-def test_distinct_motion_out_used_on_close() -> None:
+def test_distinct_motion_out_used_on_close(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
         opened = _ObservableValue(True)
         widget = Collapsible(
@@ -136,7 +127,7 @@ def test_distinct_motion_out_used_on_close() -> None:
             motion=LinearMotion(1.0),
             motion_out=LinearMotion(0.1),
         )
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         widget.preferred_size()
 
         opened.value = False
@@ -151,11 +142,11 @@ def test_distinct_motion_out_used_on_close() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_follows_child_natural_size_change() -> None:
+def test_follows_child_natural_size_change(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
         child = _make_child(100, 50)
         widget = Collapsible(child, motion=LinearMotion(0.2))
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         assert widget.preferred_size() == (100, 50)
 
         child.width_sizing = Sizing.fixed(200)
@@ -169,7 +160,7 @@ def test_follows_child_natural_size_change() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_unmount_stops_ticking_and_disposes() -> None:
+def test_unmount_stops_ticking_and_disposes(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
         opened = _ObservableValue(True)
         widget = Collapsible(
@@ -178,7 +169,7 @@ def test_unmount_stops_ticking_and_disposes() -> None:
             axis="horizontal",
             motion=LinearMotion(0.5),
         )
-        widget.mount(_DummyApp())
+        nuiitivet_mount(widget)
         widget.preferred_size()
         opened.value = False
         widget.preferred_size()

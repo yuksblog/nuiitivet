@@ -59,7 +59,7 @@ from nuiitivet.material.toolbar import (
     HorizontalFloatingToolbar,
     VerticalFloatingToolbar,
 )
-from nuiitivet.runtime.app import AppScope
+from nuiitivet.testing import WidgetHost, mount
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.theme import Theme
 from nuiitivet.widgeting.widget import Widget
@@ -75,27 +75,32 @@ def _theme_with(**theme_data_fields) -> Theme:
     )
 
 
-class _StubApp:
-    """Minimum an ``AppScope`` needs: a theme manager and a weak-referenceable
-    identity."""
+_HOSTS: list[WidgetHost] = []
 
-    def __init__(self, manager: ThemeManager) -> None:
-        self._theme_manager = manager
+
+@pytest.fixture(autouse=True)
+def _close_hosts() -> Iterator[None]:
+    """Unmount whatever ``_mount`` built, whether the test passed or failed."""
+    try:
+        yield
+    finally:
+        while _HOSTS:
+            _HOSTS.pop().close()
 
 
 def _mount(widget: Widget, theme: Theme) -> ThemeManager:
     """Attach ``widget`` under an ``AppScope`` serving ``theme``.
 
-    Returns the manager so a test can push a later theme through it. The scope
-    is kept alive on the widget: the whole point is that the widget can still
-    walk up to it after the call returns.
+    A thin adapter over :func:`nuiitivet.testing.mount`, which is the object this
+    module used to hand-roll -- a stub app, an ``AppScope`` built by hand, and
+    the scope stashed on the widget to keep it alive, with two ``type: ignore``s
+    for the stub that was not an ``App``. What is left here is only the return
+    value this file's vocabulary wants: the manager, so a test can push a
+    *later* theme through it and assert the widget followed.
     """
-    manager = ThemeManager(theme)
-    app = _StubApp(manager)
-    scope = AppScope(app, widget)  # type: ignore[arg-type]
-    scope.mount(app)
-    widget._test_scope = scope  # type: ignore[attr-defined]
-    return manager
+    host = mount(widget, theme=theme)
+    _HOSTS.append(host)
+    return host.theme_manager
 
 
 # --- Card -------------------------------------------------------------------

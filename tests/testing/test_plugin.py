@@ -49,8 +49,8 @@ def test_armed_timer_is_swept_between_tests(pytester: pytest.Pytester):
         def test_arms_and_forgets():
             get_clock().schedule_once(lambda dt: None, 60.0)
 
-        def test_next_starts_clean(harness_clock):
-            assert harness_clock.pending() == []
+        def test_next_starts_clean(nuiitivet_clock):
+            assert nuiitivet_clock.pending() == []
         """
     )
     result = pytester.runpytest_inprocess("-p", "no:asyncio")
@@ -62,10 +62,10 @@ def test_harness_clock_fixture_pumps(pytester: pytest.Pytester):
         """
         from nuiitivet.observable.runtime import get_clock
 
-        def test_pump(harness_clock):
+        def test_pump(nuiitivet_clock):
             fired = []
             get_clock().schedule_once(fired.append, 0)
-            assert harness_clock.pump_immediate() == 1
+            assert nuiitivet_clock.pump_immediate() == 1
             assert fired == [0.0]
         """
     )
@@ -176,11 +176,11 @@ def test_strict_passes_when_pumped(pytester: pytest.Pytester):
         import pytest
 
         @pytest.mark.nuiitivet(clock="strict")
-        def test_fires(harness_clock):
+        def test_fires(nuiitivet_clock):
             fired = []
-            harness_clock.schedule_once(fired.append, 0.01)
+            nuiitivet_clock.schedule_once(fired.append, 0.01)
             time.sleep(0.02)
-            harness_clock.pump()
+            nuiitivet_clock.pump()
             assert fired
         """
     )
@@ -210,13 +210,13 @@ def test_harness_clock_fixture_refuses_real_clock(pytester: pytest.Pytester):
         import pytest
 
         @pytest.mark.nuiitivet(clock="real")
-        def test_x(harness_clock):
+        def test_x(nuiitivet_clock):
             pass
         """
     )
     result = pytester.runpytest_inprocess("-p", "no:asyncio")
     result.assert_outcomes(errors=1)
-    result.stdout.fnmatch_lines(["*harness_clock requires the harness clock*"])
+    result.stdout.fnmatch_lines(["*nuiitivet_clock requires the harness clock*"])
 
 
 @pytest.mark.nuiitivet(clock="real")
@@ -305,8 +305,8 @@ def test_async_test_receives_fixtures(pytester: pytest.Pytester):
         """
         from nuiitivet.testing import HarnessClock
 
-        async def test_with_fixture(harness_clock):
-            assert isinstance(harness_clock, HarnessClock)
+        async def test_with_fixture(nuiitivet_clock):
+            assert isinstance(nuiitivet_clock, HarnessClock)
         """
     )
     result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio")
@@ -444,3 +444,87 @@ def test_refuses_non_main_thread():
 
 def test_accepts_the_main_thread():
     _refuse_thread_parallel()  # must not raise
+
+
+# -- the harness fixtures --------------------------------------------------
+
+
+def test_nuiitivet_app_fixture_closes_what_it_handed_out(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import nuiitivet.material as nv
+
+        held = {}
+
+        def test_builds(nuiitivet_app):
+            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            app = nuiitivet_app(screen, size=(200, 100))
+            assert app.get(key="greeting").text == "hello"
+            held["screen"] = screen
+
+        def test_the_previous_screen_was_unmounted():
+            assert held["screen"]._unmounted is True
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(passed=2)
+
+
+def test_nuiitivet_mount_fixture_closes_what_it_handed_out(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import nuiitivet.material as nv
+
+        held = {}
+
+        def test_builds(nuiitivet_mount):
+            widget = nv.Text("hello").modifier(nv.keyed("greeting"))
+            host = nuiitivet_mount(widget)
+            host.layout(200, 100)
+            assert host.get(key="greeting").text == "hello"
+            held["widget"] = widget
+
+        def test_the_previous_widget_was_unmounted():
+            assert held["widget"]._unmounted is True
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(passed=2)
+
+
+def test_a_harness_left_open_is_closed_and_reported(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import nuiitivet.material as nv
+        from nuiitivet.testing import AppHarness
+
+        held = {}
+
+        def test_forgets_to_close():
+            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            held["screen"] = screen
+            AppHarness(screen, size=(200, 100))   # never closed
+
+        def test_it_was_closed_anyway():
+            assert held["screen"]._unmounted is True
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-W", "default")
+    result.assert_outcomes(passed=2, warnings=1)
+    result.stdout.fnmatch_lines(["*ended with 1 harness(es) still open*"])
+
+
+def test_a_harness_the_test_closed_itself_is_not_reported(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import nuiitivet.material as nv
+        from nuiitivet.testing import AppHarness
+
+        def test_closes_properly():
+            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            with AppHarness(screen, size=(200, 100)) as app:
+                assert app.get(key="greeting").text == "hello"
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-W", "default")
+    result.assert_outcomes(passed=1, warnings=0)

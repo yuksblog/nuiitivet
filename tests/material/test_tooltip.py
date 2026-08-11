@@ -355,7 +355,7 @@ def test_tooltip_esc_suppresses_reopen_while_hovered() -> None:
     assert box._user_dismissed is True
 
 
-def test_tooltip_esc_suppression_clears_after_pointer_leaves(harness_clock) -> None:
+def test_tooltip_esc_suppression_clears_after_pointer_leaves(nuiitivet_clock) -> None:
     """_user_dismissed resets once the pointer genuinely leaves the button.
 
     The reset is deferred to the next frame so that a sub-widget crossing does
@@ -379,7 +379,7 @@ def test_tooltip_esc_suppression_clears_after_pointer_leaves(harness_clock) -> N
     assert box._dismiss_reset_callback is not None
 
     # Fire the next-frame deferred reset on the test thread.
-    harness_clock.pump_immediate()
+    nuiitivet_clock.pump_immediate()
     assert box._user_dismissed is False
 
     # Re-entering the button now opens the tooltip normally.

@@ -37,6 +37,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib  # ships with pytest on Python 3.10
 
+from nuiitivet.testing import _support
 from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 
 
@@ -186,6 +187,37 @@ def _format_leftover(leftover: List[PendingCallback]) -> str:
     return "\n".join(lines)
 
 
+class NuiitivetHarnessWarning(Warning):
+    """A test ended with a harness it constructed still open."""
+
+
+def _close_leaked_harnesses(item: pytest.Item) -> None:
+    """Close any harness the test constructed bare and never closed.
+
+    Defensive rather than disciplinary: an unclosed harness leaves its tree
+    mounted and subscribed into the next test, and the teardown hooks that later
+    checks hang off never run. Closing it silently would hide the omission, so
+    it is closed *and* reported -- the same policy an overlay left open gets.
+    """
+    leaked = _support.open_harnesses()
+    if not leaked:
+        return
+    names = ", ".join(sorted(type(h).__name__ for h in leaked))
+    for harness in reversed(leaked):
+        try:
+            harness.close()
+        except Exception:  # pragma: no cover - teardown must not mask the test
+            pass
+    _support.forget_open_harnesses()
+    warnings.warn(
+        f"{item.nodeid} ended with {len(leaked)} harness(es) still open ({names}); "
+        "closed for you. Use the nuiitivet_app / nuiitivet_mount fixtures, or a "
+        "'with' block, so teardown runs even when the test fails.",
+        NuiitivetHarnessWarning,
+        stacklevel=2,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[HarnessClock]]:
     """Install the harness clock and reset process-global state per test."""
@@ -193,8 +225,14 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
     clock_mode = cfg.get("clock", "harness")
     isolate = cfg.get("isolate", True)
 
+    _support._set_clock_opted_out(clock_mode == "real")
+
     if not isolate and clock_mode == "real":
-        yield None  # fully opted out
+        try:
+            yield None  # fully opted out
+        finally:
+            _support._set_clock_opted_out(False)
+            _support.forget_open_harnesses()
         return
 
     _refuse_thread_parallel()
@@ -218,6 +256,8 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
     try:
         yield harness
     finally:
+        _support._set_clock_opted_out(False)
+        _close_leaked_harnesses(request.node)
         if isolate and saved is not None:
             _clear_mutable_globals()
             _restore_rebindable_globals(saved)
@@ -290,12 +330,75 @@ def _cancel_leftover_tasks(loop: asyncio.AbstractEventLoop) -> None:
 
 
 @pytest.fixture
-def harness_clock(_nuiitivet_test_env: Optional[HarnessClock]) -> HarnessClock:
+def nuiitivet_clock(_nuiitivet_test_env: Optional[HarnessClock]) -> HarnessClock:
     """The :class:`HarnessClock` installed for this test, typed — no cast."""
     if _nuiitivet_test_env is None:
         pytest.fail(
-            'harness_clock requires the harness clock, but this test opted '
+            'nuiitivet_clock requires the harness clock, but this test opted '
             'out with @pytest.mark.nuiitivet(clock="real")',
             pytrace=False,
         )
     return _nuiitivet_test_env
+
+
+# -- the harness fixtures --------------------------------------------------
+#
+# Factories, not plain fixtures: a harness needs the widget under test, and a
+# fixture cannot know it. What they buy over a bare `with` block is that the
+# close happens on the failure path too, and at a point the test cannot skip --
+# which is what every later check hanging off teardown depends on.
+
+
+@pytest.fixture
+def nuiitivet_app() -> Iterator[Any]:
+    """Construct :class:`~nuiitivet.testing.AppHarness` instances for this test.
+
+    ``size`` is required; there is no default::
+
+        def test_counter(nuiitivet_app):
+            screen = CounterScreen()
+            app = nuiitivet_app(screen, size=(800, 600))
+            app.click(key="increment")
+            assert screen.count.value == 1
+    """
+    from nuiitivet.testing.harness import AppHarness
+
+    built: List[Any] = []
+
+    def factory(content: Any, **kwargs: Any) -> Any:
+        harness = AppHarness(content, **kwargs)
+        built.append(harness)
+        return harness
+
+    try:
+        yield factory
+    finally:
+        for harness in reversed(built):
+            harness.close()
+
+
+@pytest.fixture
+def nuiitivet_mount() -> Iterator[Any]:
+    """Construct :func:`~nuiitivet.testing.mount` hosts for this test.
+
+    The same shape as ``nuiitivet_app``, one level down::
+
+        def test_card(nuiitivet_mount):
+            card = Card(title="hello")
+            host = nuiitivet_mount(card)
+            host.layout(400, 200)
+    """
+    from nuiitivet.testing.mount import mount as _mount
+
+    built: List[Any] = []
+
+    def factory(widget: Any, **kwargs: Any) -> Any:
+        host = _mount(widget, **kwargs)
+        built.append(host)
+        return host
+
+    try:
+        yield factory
+    finally:
+        for host in reversed(built):
+            host.close()
