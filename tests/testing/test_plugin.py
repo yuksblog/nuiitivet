@@ -267,6 +267,162 @@ def test_pyproject_unknown_key_is_a_usage_error(pytester: pytest.Pytester):
     result.stderr.fnmatch_lines(["*unknown nuiitivet testing option*bogus*"])
 
 
+# -- the async test runner -------------------------------------------------
+#
+# Three configurations matter: pytest-asyncio absent (the runner runs the
+# test), strict mode, and auto mode (pytest-asyncio runs it). The absent
+# configuration is simulated with ``-p no:asyncio`` / ``-p no:anyio``; the
+# installed ones run in a subprocess so the inner pytest-asyncio session
+# cannot share state with the outer one.
+
+
+def test_bare_async_test_runs_without_asyncio_plugins(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import asyncio
+
+        async def test_bare():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio")
+    result.assert_outcomes(passed=1)
+
+
+def test_async_failure_is_reported_not_skipped(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        async def test_fails():
+            assert False
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio")
+    result.assert_outcomes(failed=1)
+
+
+def test_async_test_receives_fixtures(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        from nuiitivet.testing import HarnessClock
+
+        async def test_with_fixture(harness_clock):
+            assert isinstance(harness_clock, HarnessClock)
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio")
+    result.assert_outcomes(passed=1)
+
+
+def test_orphaned_asyncio_marker_still_runs(pytester: pytest.Pytester):
+    # --strict-markers also proves the plugin registers the orphaned marker.
+    pytester.makepyfile(
+        """
+        import asyncio
+        import pytest
+
+        @pytest.mark.asyncio
+        async def test_orphaned():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio", "--strict-markers")
+    result.assert_outcomes(passed=1)
+
+
+def test_orphaned_anyio_marker_still_runs(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import asyncio
+        import pytest
+
+        @pytest.mark.anyio
+        async def test_orphaned():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio", "-p", "no:anyio", "--strict-markers")
+    result.assert_outcomes(passed=1)
+
+
+def test_leftover_tasks_are_cancelled_before_loop_close(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import asyncio
+
+        async def test_leaves_a_task_behind():
+            async def linger():
+                await asyncio.sleep(60)
+            asyncio.get_running_loop().create_task(linger())
+        """
+    )
+    result = pytester.runpytest_subprocess("-p", "no:asyncio", "-p", "no:anyio")
+    result.assert_outcomes(passed=1)
+    result.stdout.no_fnmatch_line("*Task was destroyed but it is pending*")
+    result.stderr.no_fnmatch_line("*Task was destroyed but it is pending*")
+
+
+def test_defers_to_pytest_asyncio_strict_mode(pytester: pytest.Pytester):
+    pytest.importorskip("pytest_asyncio")
+    pytester.makepyfile(
+        """
+        import asyncio
+        import pytest
+
+        @pytest.mark.asyncio
+        async def test_marked():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_subprocess("-o", "asyncio_mode=strict")
+    result.assert_outcomes(passed=1)
+
+
+def test_defers_to_pytest_asyncio_auto_mode(pytester: pytest.Pytester):
+    pytest.importorskip("pytest_asyncio")
+    pytester.makepyfile(
+        """
+        import asyncio
+
+        async def test_unmarked():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_subprocess("-o", "asyncio_mode=auto")
+    result.assert_outcomes(passed=1)
+
+
+def test_runner_takes_unmarked_async_in_strict_mode(pytester: pytest.Pytester):
+    # In strict mode pytest-asyncio only runs *marked* tests; before this
+    # runner an unmarked async test was collected and silently skipped.
+    pytest.importorskip("pytest_asyncio")
+    pytester.makepyfile(
+        """
+        import asyncio
+
+        async def test_unmarked():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_subprocess("-o", "asyncio_mode=strict")
+    result.assert_outcomes(passed=1)
+
+
+def test_defers_to_anyio(pytester: pytest.Pytester):
+    pytest.importorskip("anyio")
+    pytester.makepyfile(
+        """
+        import asyncio
+        import pytest
+
+        @pytest.mark.anyio
+        async def test_marked():
+            await asyncio.sleep(0)
+        """
+    )
+    result = pytester.runpytest_subprocess("-p", "no:asyncio")
+    result.assert_outcomes(passed=1)
+
+
 def test_refuses_non_main_thread():
     outcome = {}
 

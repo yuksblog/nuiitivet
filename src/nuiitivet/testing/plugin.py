@@ -15,14 +15,20 @@ Per-test configuration goes through one marker::
 Stacked ``nuiitivet`` markers merge their keyword arguments, nearest wins per
 key. Suite-wide defaults live in ``[tool.nuiitivet.testing]`` in
 ``pyproject.toml``; the marker overrides them per test.
+
+Bare ``async def`` tests run on an event loop the plugin creates, so neither
+``pytest-asyncio`` nor ``anyio`` is required. When one of those plugins is
+installed *and* the test carries its marker, the plugin stands aside.
 """
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import sys
 import threading
 import warnings
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Coroutine, Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
@@ -36,6 +42,7 @@ from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, Pending
 
 _CONFIG_KEYS = ("clock", "isolate")
 _CLOCK_MODES = ("harness", "strict", "real")
+_ASYNC_PLUGINS = ("asyncio", "anyio")
 _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
 
 
@@ -48,6 +55,16 @@ def pytest_configure(config: pytest.Config) -> None:
         "skips the process-global resets.",
     )
     config.stash[_DEFAULTS_KEY] = _load_defaults(config)
+    # The async runner below executes tests whose asyncio/anyio marker is
+    # orphaned (plugin not installed), so it owns those markers too — without
+    # this an orphaned marker trips --strict-markers.
+    for plugin_name in _ASYNC_PLUGINS:
+        if not config.pluginmanager.hasplugin(plugin_name):
+            config.addinivalue_line(
+                "markers",
+                f"{plugin_name}: run by the nuiitivet async runner "
+                f"({plugin_name} plugin not installed)",
+            )
 
 
 def _load_defaults(config: pytest.Config) -> Dict[str, Any]:
@@ -225,6 +242,51 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
                     )
         else:
             _cancel_all_on(get_clock())
+
+
+# -- the async test runner -------------------------------------------------
+#
+# The harness owns the event loop, so pytest-asyncio is not a dependency.
+# Deferring must be conditional on the plugin actually being present: standing
+# aside for a marker whose plugin is absent defers to nobody, and the test is
+# then silently skipped — the failure class this hook exists to remove.
+
+
+def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> Optional[bool]:
+    """Run coroutine test functions on a fresh event loop."""
+    testfunction = pyfuncitem.obj
+    if not inspect.iscoroutinefunction(testfunction):
+        return None
+    pluginmanager = pyfuncitem.config.pluginmanager
+    for plugin_name in _ASYNC_PLUGINS:
+        if pyfuncitem.get_closest_marker(plugin_name) and pluginmanager.hasplugin(plugin_name):
+            return None  # the marked-for plugin is installed; its test, its loop
+    testargs = {name: pyfuncitem.funcargs[name] for name in pyfuncitem._fixtureinfo.argnames}
+    _run_on_fresh_loop(testfunction(**testargs))
+    return True
+
+
+def _run_on_fresh_loop(coro: Coroutine[Any, Any, object]) -> None:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        try:
+            loop.run_until_complete(coro)
+        finally:
+            _cancel_leftover_tasks(loop)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+    finally:
+        asyncio.set_event_loop(None)
+        loop.close()
+
+
+def _cancel_leftover_tasks(loop: asyncio.AbstractEventLoop) -> None:
+    """A task still pending when the loop closes warns outside any test."""
+    leftover = asyncio.all_tasks(loop)
+    for task in leftover:
+        task.cancel()
+    if leftover:
+        loop.run_until_complete(asyncio.gather(*leftover, return_exceptions=True))
 
 
 @pytest.fixture

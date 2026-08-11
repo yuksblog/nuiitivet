@@ -153,6 +153,43 @@ clock = "harness"    # "harness" (default) | "strict" | "real"
 isolate = true
 ```
 
+## Async tests
+
+A bare `async def` test just runs — no `pytest-asyncio`, no marker, no
+configuration:
+
+```python
+async def test_fetch_updates_the_model(harness_clock):
+    await model.refresh()
+    assert model.items
+```
+
+The plugin creates a fresh event loop for the test, runs the coroutine to
+completion on it, and closes the loop afterwards. Any task the test left
+pending is cancelled before the loop closes, so a forgotten background task
+cannot warn (or fire) outside its test. The loop runs in **real time** — the
+[harness clock](#the-harness-clock) controls the framework's scheduled
+callbacks, not asyncio's.
+
+If your suite already uses a dedicated async plugin, nothing changes:
+
+- A test marked `@pytest.mark.asyncio` runs under **pytest-asyncio** whenever
+  that plugin is installed — including its auto mode, which marks every async
+  test for you.
+- A test marked `@pytest.mark.anyio` runs under **anyio** whenever that plugin
+  is installed.
+
+The plugin stands aside only when the marked-for plugin is *actually there*.
+A marker without its plugin — say `@pytest.mark.asyncio` left behind after
+dropping the dependency — is orphaned; standing aside for it would defer to
+nobody and the test would silently never run. Orphaned tests run on the
+plugin's own loop instead, and their markers are registered so
+`--strict-markers` stays quiet.
+
+One behavioural consequence: with pytest-asyncio installed in strict mode, an
+*unmarked* `async def` test used to be collected and skipped with a warning.
+Now it runs, on the plugin's loop.
+
 ## Concurrency
 
 Tests must run **one at a time in one thread**. Plain pytest does that, and
