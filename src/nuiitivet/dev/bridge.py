@@ -70,11 +70,16 @@ _UI_CALL_TIMEOUT = 5.0
 # Type of a unit of UI-thread work: takes the App, returns anything.
 _UIJob = Callable[["App"], Any]
 
-# ``wait_for`` defaults: how long to keep polling before giving up, and how long
-# the worker thread sleeps between polls (leaving the UI thread free to advance
-# async work). Both are overridable per request.
 _WAIT_FOR_DEFAULT_TIMEOUT = 3.0
-_WAIT_FOR_DEFAULT_INTERVAL = 0.05
+
+# Every poll settles, and ``settle`` calls ``app.invalidate()``, so each poll
+# queues a UI-thread job and a repaint request. The floor bounds that to ~200
+# per second.
+_WAIT_FOR_DEFAULT_MIN_INTERVAL = 0.005
+
+# Cap on one sleep, as a share of the time left. Uncapped, a 1.4 s poll against
+# a 3 s timeout sleeps 1.4 s and leaves room for a single further attempt.
+_WAIT_FOR_REMAINING_SHARE = 4.0
 
 
 class _UIThreadMarshaller:
@@ -261,14 +266,14 @@ def _build_status(
 def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
     """Poll a tree condition until it holds or the timeout elapses.
 
-    The loop lives here on the HTTP worker thread -- *not* inside a single
-    UI-thread job -- on purpose: each poll marshals a short
-    :func:`~nuiitivet.dev.action.check_condition` onto the UI thread (settle +
-    evaluate), then the worker ``sleep``s. Blocking the UI thread instead would
-    freeze the very async work (network, timers, animation ticks) the caller is
-    waiting on, so the condition could never become true. With no global
-    scheduler hook to await, polling a predicate is the portable signal for
-    "async settled" (#413).
+    The loop stays on the HTTP worker thread: each poll marshals a
+    :func:`~nuiitivet.dev.action.check_condition` (settle + evaluate) onto the
+    UI thread, then the worker sleeps. Running the loop inside one UI-thread job
+    would freeze the async work the caller is waiting on.
+
+    Each gap between polls is the previous poll's duration, floored by
+    ``min_interval`` and capped at a share of the time left: a poll costs
+    O(tree), so a fixed gap would spin on a big tree and idle on a small one.
 
     Returns a structured result (never raises on timeout): ``satisfied`` is the
     outcome, ``timed_out`` distinguishes a miss from a hit, and ``waited`` /
@@ -284,7 +289,7 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
     if key is None and label is None and text is None:
         raise ValueError("wait_for needs one of: key, label, text")
     timeout = max(0.0, float(body.get("timeout", _WAIT_FOR_DEFAULT_TIMEOUT)))
-    interval = max(0.0, float(body.get("interval", _WAIT_FOR_DEFAULT_INTERVAL)))
+    min_interval = max(0.0, float(body.get("min_interval", _WAIT_FOR_DEFAULT_MIN_INTERVAL)))
 
     condition = {"present": present}
     for name, value in (("key", key), ("label", label), ("text", text)):
@@ -296,6 +301,7 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
     polls = 0
     while True:
         polls += 1
+        poll_started = time.monotonic()
         satisfied = bool(
             marshaller.call_on_ui_thread(
                 lambda app: check_condition(
@@ -303,24 +309,36 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
                 )
             )
         )
-        waited = time.monotonic() - started
+        now = time.monotonic()
         if satisfied:
             return {
                 "satisfied": True,
                 "timed_out": False,
-                "waited": round(waited, 3),
+                "waited": round(now - started, 3),
                 "polls": polls,
                 "condition": condition,
             }
-        if time.monotonic() >= deadline:
+        remaining = deadline - now
+        if remaining <= 0:
             return {
                 "satisfied": False,
                 "timed_out": True,
-                "waited": round(waited, 3),
+                "waited": round(now - started, 3),
                 "polls": polls,
                 "condition": condition,
             }
-        time.sleep(interval)
+        # ``min`` outside ``max``, not a clamp: near the deadline the cap drops
+        # below the floor, and a clamp with ``hi < lo`` is undefined.
+        elapsed = now - poll_started
+        time.sleep(
+            max(
+                0.0,
+                min(
+                    max(elapsed, min_interval),
+                    remaining / _WAIT_FOR_REMAINING_SHARE,
+                ),
+            )
+        )
 
 
 def _make_handler(

@@ -95,7 +95,7 @@ returning — async work is what `wait_for` is for.
 | `scroll_into_view` | Brings a target inside its region in one shot, nested regions included. `align` picks where it lands (`nearest` / `start` / `center` / `end`). |
 | `type` | Injects text into the focused widget — focus one first, or `handled` comes back `false`. |
 | `key` | A key press and release with optional modifiers (`shift`, `ctrl`, `alt`, `meta`, or `accel` for the platform Ctrl/Cmd). |
-| `wait_for` | Polls until a condition over the tree holds, or `timeout` (default `3.0` s) elapses. `present=False` waits for a target to *disappear* — a spinner clearing. <br> **A timeout is not an error.** It returns `satisfied: false`. Animations are waited *out*, not skipped: the condition must hold on a settled frame, so a mid-transition value is never mistaken for the final one. |
+| `wait_for` | Polls until a condition over the tree holds, or `timeout` (default `3.0` s) elapses. `present=False` waits for a target to *disappear* — a spinner clearing. <br> **A timeout is not an error.** It returns `satisfied: false`. Animations are waited *out*, not skipped: the condition must hold on a settled frame, so a mid-transition value is never mistaken for the final one. <br> The gap between polls adapts to what a poll costs — a slow tree backs the loop off, a fast one gets many more attempts — so `polls` and `waited` describe the effort spent, not a fixed cadence. Its floor is 5 ms; `BridgeClient.wait_for(min_interval=…)` raises it. |
 
 ### Logs — catch up and diagnose
 
