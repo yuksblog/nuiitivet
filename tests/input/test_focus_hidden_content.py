@@ -12,8 +12,6 @@ The subtree-wide counterpart (``Collapsible``, ``visible()``) lives in
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from nuiitivet.layout.column import Column
@@ -22,7 +20,7 @@ from nuiitivet.layout.for_each import ForEach
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.observable import Observable
 from nuiitivet.observable.value import _ObservableValue
-from nuiitivet.runtime.app import App
+from nuiitivet.testing import AppHarness
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
 
@@ -35,31 +33,29 @@ def _focus_node(widget: Clickable) -> FocusNode:
     return node
 
 
-def _mounted_app(root) -> App:
-    app = App(root)
-    root.mount(app)
-    return app
+@pytest.fixture
+def mounted_app(nuiitivet_app):
+    """Mount ``root`` on a harness, so async work can be awaited rather than guessed."""
+
+    def build(root) -> AppHarness:
+        return nuiitivet_app(root, size=(800, 600))
+
+    return build
 
 
-def _owners(app: App) -> list:
-    return [node.owner for node in app._collect_focus_nodes()]
-
-
-async def _settle() -> None:
-    """Let the overlay's route transitions and dispose callbacks run."""
-    for _ in range(5):
-        await asyncio.sleep(0)
+def _owners(app: AppHarness) -> list:
+    return [node.owner for node in app.app._collect_focus_nodes()]
 
 
 # --- Deck -----------------------------------------------------------------------
 
 
-def test_deck_tab_visits_only_the_selected_page() -> None:
+def test_deck_tab_visits_only_the_selected_page(mounted_app) -> None:
     before, after = Clickable(), Clickable()
     page0, page1a, page1b = Clickable(), Clickable(), Clickable()
     index = _ObservableValue(0)
     root = Column([before, Deck(children=[page0, Column([page1a, page1b])], index=index), after])
-    app = _mounted_app(root)
+    app = mounted_app(root)
 
     assert _owners(app) == [before, page0, after]
 
@@ -67,36 +63,36 @@ def test_deck_tab_visits_only_the_selected_page() -> None:
     assert _owners(app) == [before, page1a, page1b, after]
 
 
-def test_deck_shift_tab_walks_back_through_the_selected_page_only() -> None:
+def test_deck_shift_tab_walks_back_through_the_selected_page_only(mounted_app) -> None:
     before, after = Clickable(), Clickable()
     page0, page1 = Clickable(), Clickable()
     root = Column([before, Deck(children=[page0, page1], index=1), after])
-    app = _mounted_app(root)
+    app = mounted_app(root)
 
-    app.request_focus(_focus_node(after), FocusSource.KEYBOARD)
-    app._dispatch_key_press("tab", SHIFT)
+    app.app.request_focus(_focus_node(after), FocusSource.KEYBOARD)
+    app.app._dispatch_key_press("tab", SHIFT)
     assert page1.state.focused
 
-    app._dispatch_key_press("tab", SHIFT)
+    app.app._dispatch_key_press("tab", SHIFT)
     assert before.state.focused
     assert not page0.state.focused
 
 
-def test_switching_deck_page_releases_the_focus_it_held() -> None:
+def test_switching_deck_page_releases_the_focus_it_held(mounted_app) -> None:
     page0, page1 = Clickable(), Clickable()
     index = _ObservableValue(0)
     root = Column([Deck(children=[page0, page1], index=index)])
-    app = _mounted_app(root)
+    app = mounted_app(root)
 
-    app.request_focus(_focus_node(page0), FocusSource.KEYBOARD)
+    app.app.request_focus(_focus_node(page0), FocusSource.KEYBOARD)
     index.value = 1
-    app._release_focus_if_blocked()
+    app.app._release_focus_if_blocked()
 
     assert not page0.state.focused
-    assert app._focused_node is None
+    assert app.app._focused_node is None
 
 
-def test_deck_over_a_for_each_follows_the_live_expanded_list() -> None:
+def test_deck_over_a_for_each_follows_the_live_expanded_list(mounted_app) -> None:
     # The index addresses the post-expansion list, so traversal has to resolve it
     # on every call rather than caching the children it saw once.
     items = Observable(["a", "b", "c"])
@@ -108,7 +104,7 @@ def test_deck_over_a_for_each_follows_the_live_expanded_list() -> None:
         return widget
 
     deck = Deck(children=[ForEach(items, builder)], index=1)
-    app = _mounted_app(Column([deck]))
+    app = mounted_app(Column([deck]))
     deck.preferred_size()  # force the ForEach to expand
 
     assert _owners(app) == [built["b"]]
@@ -118,7 +114,7 @@ def test_deck_over_a_for_each_follows_the_live_expanded_list() -> None:
     assert _owners(app) == [built["y"]]
 
 
-def test_deck_over_a_for_each_keeps_its_sizing_and_painting() -> None:
+def test_deck_over_a_for_each_keeps_its_sizing_and_painting(mounted_app) -> None:
     # Regression guard for the rejected fix: wrapping each Deck child would have
     # swallowed the ForEach expansion, leaving the page empty.
     from nuiitivet.rendering.sizing import Sizing
@@ -126,7 +122,7 @@ def test_deck_over_a_for_each_keeps_its_sizing_and_painting() -> None:
 
     items = Observable([1, 2, 3])
     deck = Deck(children=[ForEach(items, lambda _i, _n: Box(width=Sizing.fixed(20), height=Sizing.fixed(10)))], index=1)
-    _mounted_app(Column([deck]))
+    mounted_app(Column([deck]))
 
     assert deck.preferred_size() == (20, 10)
     assert len(deck.focus_traversal_children()) == 1
@@ -135,10 +131,10 @@ def test_deck_over_a_for_each_keeps_its_sizing_and_painting() -> None:
 # --- Navigator ------------------------------------------------------------------
 
 
-def test_navigator_tab_visits_only_the_top_route() -> None:
+def test_navigator_tab_visits_only_the_top_route(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
     navigator = Navigator(Route(builder=lambda: Column([home])))
-    app = _mounted_app(Column([navigator]))
+    app = mounted_app(Column([navigator]))
     navigator.rebuild()
 
     assert _owners(app) == [home]
@@ -147,31 +143,30 @@ def test_navigator_tab_visits_only_the_top_route() -> None:
     assert _owners(app) == [pushed]
 
 
-def test_pushing_a_route_releases_the_focus_the_covered_one_held() -> None:
+def test_pushing_a_route_releases_the_focus_the_covered_one_held(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
     navigator = Navigator(Route(builder=lambda: Column([home])))
-    app = _mounted_app(Column([navigator]))
+    app = mounted_app(Column([navigator]))
     navigator.rebuild()
 
-    app.request_focus(_focus_node(home), FocusSource.KEYBOARD)
+    app.app.request_focus(_focus_node(home), FocusSource.KEYBOARD)
     navigator.push(Column([pushed]))
-    app._release_focus_if_blocked()
+    app.app._release_focus_if_blocked()
 
     assert not home.state.focused
-    assert app._focused_node is None
+    assert app.app._focused_node is None
 
 
-@pytest.mark.asyncio
-async def test_popping_a_route_makes_the_uncovered_one_traversable_again() -> None:
+async def test_popping_a_route_makes_the_uncovered_one_traversable_again(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
     navigator = Navigator(Route(builder=lambda: Column([home])))
-    app = _mounted_app(Column([navigator]))
+    app = mounted_app(Column([navigator]))
     navigator.rebuild()
     navigator.push(Column([pushed]))
     assert _owners(app) == [pushed]
 
     navigator.pop()
-    await _settle()
+    await app.idle()
 
     assert _owners(app) == [home]
 
@@ -179,118 +174,112 @@ async def test_popping_a_route_makes_the_uncovered_one_traversable_again() -> No
 # --- Modal overlay --------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_tab_stays_inside_a_blocking_overlay_entry() -> None:
+async def test_tab_stays_inside_a_blocking_overlay_entry(mounted_app) -> None:
     background, dialog_a, dialog_b = Clickable(), Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
+    app = mounted_app(root)
 
-    app.overlay.show(Column([dialog_a, dialog_b]), backdrop=True)
-    await _settle()
+    app.app.overlay.show(Column([dialog_a, dialog_b]), backdrop=True)
+    await app.idle()
 
     assert _owners(app) == [dialog_a, dialog_b]
 
     # Tab wraps within the dialog instead of crossing back to the background.
-    app.request_focus(_focus_node(dialog_b), FocusSource.KEYBOARD)
-    app._dispatch_key_press("tab")
+    app.app.request_focus(_focus_node(dialog_b), FocusSource.KEYBOARD)
+    app.app._dispatch_key_press("tab")
     assert dialog_a.state.focused
     assert not background.state.focused
 
 
-@pytest.mark.asyncio
-async def test_opening_a_modal_moves_focus_into_it() -> None:
+async def test_opening_a_modal_moves_focus_into_it(mounted_app) -> None:
     background, dialog = Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
-    app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app = mounted_app(root)
+    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    app.overlay.show(Column([dialog]), backdrop=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    app.app.overlay.show(Column([dialog]), backdrop=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
     assert not background.state.focused
     assert dialog.state.focused
 
 
-@pytest.mark.asyncio
-async def test_closing_a_modal_restores_focus_to_the_invoker() -> None:
+async def test_closing_a_modal_restores_focus_to_the_invoker(mounted_app) -> None:
     background, dialog = Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
-    app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app = mounted_app(root)
+    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = app.overlay.show(Column([dialog]), backdrop=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    handle = app.app.overlay.show(Column([dialog]), backdrop=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
     handle.close()
-    await _settle()
-    app._release_focus_if_blocked()
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
     assert not dialog._mounted
     assert background.state.focused
-    assert app._focused_node is _focus_node(background)
+    assert app.app._focused_node is _focus_node(background)
 
 
-@pytest.mark.asyncio
-async def test_closing_a_modal_clears_focus_when_the_invoker_is_gone() -> None:
+async def test_closing_a_modal_clears_focus_when_the_invoker_is_gone(mounted_app) -> None:
     background, dialog = Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
-    app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app = mounted_app(root)
+    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = app.overlay.show(Column([dialog]), backdrop=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    handle = app.app.overlay.show(Column([dialog]), backdrop=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
     root.remove_child(background)
     handle.close()
-    await _settle()
-    app._release_focus_if_blocked()
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
-    assert app._focused_node is None
+    assert app.app._focused_node is None
     assert not background.state.focused
 
 
-@pytest.mark.asyncio
-async def test_a_passthrough_entry_does_not_trap_focus() -> None:
+async def test_a_passthrough_entry_does_not_trap_focus(mounted_app) -> None:
     background, toast = Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
-    app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app = mounted_app(root)
+    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    app.overlay.show(Column([toast]), passthrough=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    app.app.overlay.show(Column([toast]), passthrough=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
 
     assert background.state.focused
     assert _owners(app) == [background, toast]
 
 
-@pytest.mark.asyncio
-async def test_nested_modals_hand_focus_back_one_layer_at_a_time() -> None:
+async def test_nested_modals_hand_focus_back_one_layer_at_a_time(mounted_app) -> None:
     background, outer, inner = Clickable(), Clickable(), Clickable()
     root = Column([background])
-    app = _mounted_app(root)
-    app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app = mounted_app(root)
+    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    outer_handle = app.overlay.show(Column([outer]), backdrop=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    outer_handle = app.app.overlay.show(Column([outer]), backdrop=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
     assert outer.state.focused
 
-    inner_handle = app.overlay.show(Column([inner]), backdrop=True)
-    await _settle()
-    app._release_focus_if_blocked()
+    inner_handle = app.app.overlay.show(Column([inner]), backdrop=True)
+    await app.idle()
+    app.app._release_focus_if_blocked()
     assert inner.state.focused
     assert _owners(app) == [inner]
 
     inner_handle.close()
-    await _settle()
-    app._release_focus_if_blocked()
+    await app.idle()
+    app.app._release_focus_if_blocked()
     assert outer.state.focused
 
     outer_handle.close()
-    await _settle()
-    app._release_focus_if_blocked()
+    await app.idle()
+    app.app._release_focus_if_blocked()
     assert background.state.focused

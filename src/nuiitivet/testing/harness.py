@@ -68,15 +68,21 @@ class AppHarness(_HarnessBase):
         # anything it schedules on the way must land on a clock we can pump
         # rather than on a timer thread.
         self._ensure_clock()
-        self._app = App(
-            content,
-            width=int(width),
-            height=int(height),
-            title=None,
-            chrome=None,
-            theme=theme,
-            **app_kwargs,
-        )
+        try:
+            self._app = App(
+                content,
+                width=int(width),
+                height=int(height),
+                title=None,
+                chrome=None,
+                theme=theme,
+                **app_kwargs,
+            )
+        except BaseException:
+            # Nothing else will: the harness never reached the open-harness
+            # registry, so no teardown sweep knows about its task observer.
+            self._stop_observing()
+            raise
         # Registered as soon as there is a mounted tree to tear down, so a
         # screen whose first settle raises is still cleaned up.
         self._register()

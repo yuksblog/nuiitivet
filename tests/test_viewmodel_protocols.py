@@ -271,6 +271,9 @@ async def test_view_model_awaits_a_dialog_result() -> None:
     vm = ItemViewModel(FakeNavigator(), overlay)
 
     task = asyncio.ensure_future(vm.delete(7))
+    # Not a harness wait: there is no widget tree here, only a ViewModel and a
+    # fake overlay, so there is nothing for idle() to settle. One turn is enough
+    # to reach `await overlay.dialog(...)`, and the fake resolves in-process.
     await asyncio.sleep(0)
 
     assert len(overlay.dialogs) == 1
@@ -287,7 +290,7 @@ async def test_view_model_honours_a_declined_dialog() -> None:
     vm = ItemViewModel(FakeNavigator(), overlay)
 
     task = asyncio.ensure_future(vm.delete(7))
-    await asyncio.sleep(0)
+    await asyncio.sleep(0)  # see above: no tree to settle, one turn to the await
     overlay._host._close_entry(overlay.dialogs[0], False)
 
     assert await task is False

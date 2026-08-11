@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from nuiitivet.layout.column import Column
@@ -208,19 +206,19 @@ def test_unmounted_widget_does_not_receive_a_queued_report() -> None:
 # --- Async callbacks --------------------------------------------------------
 
 
-def test_async_callback_is_scheduled_as_a_task() -> None:
+async def test_async_callback_is_scheduled_as_a_task(nuiitivet_mount) -> None:
     seen: list[Size] = []
 
     async def _on_size(size: Size) -> None:
         seen.append(size)
 
-    async def _run() -> None:
-        widget = _make_widget().modifier(on_size_changed(_on_size))
-        widget.set_layout_rect(0, 0, 300, 200)
-        flush_size_change_callbacks()
-        await asyncio.sleep(0)
+    widget = _make_widget().modifier(on_size_changed(_on_size))
+    host = nuiitivet_mount(widget)
+    widget.set_layout_rect(0, 0, 300, 200)
+    flush_size_change_callbacks()
 
-    asyncio.run(_run())
+    host.layout(300, 200)
+    await host.idle()
 
     assert seen == [Size(300, 200)]
 

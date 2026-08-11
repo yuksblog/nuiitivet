@@ -7,6 +7,7 @@ import inspect
 import logging
 from typing import Any, Callable, Dict, TypeVar
 
+from nuiitivet.widgeting.callbacks import spawn_task
 from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -513,7 +514,7 @@ class Overlay(ComposableWidget):
             return
         # Async handler: schedule resolution.
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
             # No event loop; cannot await will_pop. Fall back to immediate dismiss.
             self._dismiss_entry_with_value(entry, value=value, reason=reason)
@@ -523,7 +524,11 @@ class Overlay(ComposableWidget):
             if await self._consult_will_pop(content):
                 self._dismiss_entry_with_value(entry, value=value, reason=reason)
 
-        loop.create_task(_go())
+        # Through spawn_task, not loop.create_task, so a test harness can wait
+        # for the dismissal. The no-loop case is handled above rather than by
+        # spawn_task: dropping the dismissal is the wrong degradation here, and
+        # falling back to an immediate one is what this method already promises.
+        spawn_task(_go(), owner_name=f"{type(self).__name__}.dismiss")
 
     def _dismiss_entry_with_value(
         self,

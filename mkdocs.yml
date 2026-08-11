@@ -207,6 +207,7 @@ nav:
           - guide/testing/index.md
           - Testing a widget: guide/testing/widgets.md
           - Testing a screen: guide/testing/screens.md
+          - Testing async flows: guide/testing/async.md
       - Advanced:
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md

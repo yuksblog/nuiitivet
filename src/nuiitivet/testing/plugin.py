@@ -41,7 +41,7 @@ from nuiitivet.testing import _support
 from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 
 
-_CONFIG_KEYS = ("clock", "isolate")
+_CONFIG_KEYS = ("clock", "isolate", "wait_timeout")
 _CLOCK_MODES = ("harness", "strict", "real")
 _ASYNC_PLUGINS = ("asyncio", "anyio")
 _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
@@ -50,10 +50,11 @@ _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "nuiitivet(clock=..., isolate=...): configure the nuiitivet test harness. "
-        'clock is "harness" (default), "strict" (fail on callbacks armed and '
-        'never fired), or "real" (keep the installed clock); isolate=False '
-        "skips the process-global resets.",
+        "nuiitivet(clock=..., isolate=..., wait_timeout=...): configure the "
+        'nuiitivet test harness. clock is "harness" (default), "strict" (fail on '
+        'callbacks armed and never fired), or "real" (keep the installed clock); '
+        "isolate=False skips the process-global resets; wait_timeout sets the "
+        "default seconds for wait_for() and idle().",
     )
     config.stash[_DEFAULTS_KEY] = _load_defaults(config)
     # The async runner below executes tests whose asyncio/anyio marker is
@@ -98,6 +99,16 @@ def _validate_config(cfg: Dict[str, Any], *, source: str) -> None:
     isolate = cfg.get("isolate")
     if isolate is not None and not isinstance(isolate, bool):
         raise pytest.UsageError(f"isolate must be a bool in {source}, got {isolate!r}")
+    wait_timeout = cfg.get("wait_timeout")
+    if wait_timeout is not None:
+        if isinstance(wait_timeout, bool) or not isinstance(wait_timeout, (int, float)):
+            raise pytest.UsageError(
+                f"wait_timeout must be a number of seconds in {source}, got {wait_timeout!r}"
+            )
+        if wait_timeout <= 0:
+            raise pytest.UsageError(
+                f"wait_timeout must be greater than 0 in {source}, got {wait_timeout!r}"
+            )
 
 
 def _item_config(item: pytest.Item) -> Dict[str, Any]:
@@ -141,8 +152,12 @@ def _clear_mutable_globals() -> None:
     from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
     from nuiitivet.observable.contexts import _batch_context
     from nuiitivet.theme import dependency
-    from nuiitivet.widgeting import widget_binding, widget_builder, widget_size_change
+    from nuiitivet.widgeting import callbacks, widget_binding, widget_builder, widget_size_change
 
+    # A harness left behind by a failing test would otherwise keep receiving the
+    # next test's tasks into a registry nobody reads, so idle() there would
+    # return against work still in flight.
+    callbacks._task_observers.clear()
     widget_binding._pending_invalidation.clear()
     widget_builder._pending_scope_recompositions.clear()
     widget_size_change._pending_size_changes.clear()
@@ -155,8 +170,6 @@ def _save_rebindable_globals() -> Tuple[Any, ...]:
     from nuiitivet.common import logging_once
     from nuiitivet.dev import session
 
-    # widgeting/callbacks._task_observer joins this list when the async
-    # integration work adds it (#527's successor).
     return (logging_once._LOG_ONCE_ENABLED, session._current_session)
 
 
@@ -226,12 +239,14 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
     isolate = cfg.get("isolate", True)
 
     _support._set_clock_opted_out(clock_mode == "real")
+    _support._set_wait_timeout(cfg.get("wait_timeout"))
 
     if not isolate and clock_mode == "real":
         try:
             yield None  # fully opted out
         finally:
             _support._set_clock_opted_out(False)
+            _support._set_wait_timeout(None)
             _support.forget_open_harnesses()
         return
 
@@ -257,6 +272,7 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
         yield harness
     finally:
         _support._set_clock_opted_out(False)
+        _support._set_wait_timeout(None)
         _close_leaked_harnesses(request.node)
         if isolate and saved is not None:
             _clear_mutable_globals()
@@ -312,12 +328,44 @@ def _run_on_fresh_loop(coro: Coroutine[Any, Any, object]) -> None:
     try:
         try:
             loop.run_until_complete(coro)
+            # Here, and not in AppHarness.close(): fixture finalizers run in the
+            # teardown phase, which is after this loop is closed, so that is too
+            # late to see -- let alone wait on -- a task.
+            _warn_unobserved_tasks()
         finally:
             _cancel_leftover_tasks(loop)
             loop.run_until_complete(loop.shutdown_asyncgens())
     finally:
         asyncio.set_event_loop(None)
         loop.close()
+
+
+class NuiitivetPendingWorkWarning(Warning):
+    """A test ended with async work it started and never waited for."""
+
+
+def _warn_unobserved_tasks() -> None:
+    """Report async work the test started and never awaited.
+
+    Only what the test never *watched*: a handler parked on a dialog the test
+    then asserted was open is an app at rest, and reporting it would punish the
+    normal case. What is left was started by an action and abandoned -- where a
+    positive assertion would have failed loudly, but
+    ``assert app.query(key="error") is None`` passes for the wrong reason.
+    """
+    outstanding = _support.unobserved_in_flight()
+    if not outstanding:
+        return
+    listed = "\n".join(f"  {description}" for description in outstanding)
+    warnings.warn(
+        f"test ended with {len(outstanding)} async task(s) started and never "
+        "awaited, so anything they would have changed was asserted absent:\n"
+        f"{listed}\n"
+        "Add 'await app.idle()' after the action, or 'await app.wait_for(...)' "
+        "if a delay is involved.",
+        NuiitivetPendingWorkWarning,
+        stacklevel=2,
+    )
 
 
 def _cancel_leftover_tasks(loop: asyncio.AbstractEventLoop) -> None:

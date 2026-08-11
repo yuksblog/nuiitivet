@@ -3,13 +3,94 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from collections.abc import Awaitable
-from typing import Any, Callable, Optional, Union
+from collections.abc import Awaitable, Coroutine
+from typing import Any, Callable, Optional, Set, Union
 
-from nuiitivet.common.logging_once import exception_once_per_exc
+from nuiitivet.common.logging_once import exception_once_per_exc, warning_once
 from nuiitivet.observable import detach_batch
 
 logger = logging.getLogger(__name__)
+
+#: Observers notified of every task :func:`spawn_task` creates. Installed by the
+#: test harness and empty in production; a *set*, because one test may drive more
+#: than one harness and each keeps its own registry.
+_task_observers: Set[Callable[["asyncio.Task[Any]"], None]] = set()
+
+
+class UnschedulableAsyncWork(BaseException):
+    """Async work was requested with no event loop to run it on.
+
+    Raised only while a test harness is observing (see :data:`_task_observers`).
+    In production the same situation is logged and the work is dropped, because
+    one unschedulable callback must not kill the frame -- but a test that carries
+    on would be asserting against a handler that never ran, which is the failure
+    this package exists to remove.
+
+    **A BaseException on purpose.** Containment does not live at one layer: an
+    event handler is invoked inside ``PointerInputNode._invoke_callback``, which
+    runs inside a dispatch that ``runtime.app_events`` wraps in its own
+    ``except Exception`` -- and there are dozens more such sites. Raising an
+    ordinary exception here reaches none of them; it becomes one log line, once
+    per process, which is the silence this is meant to break. Like
+    ``KeyboardInterrupt`` and ``asyncio.CancelledError``, this is a signal to the
+    runner rather than an error the app can handle, so it declines to be caught.
+    ``pytest.raises`` accepts it unchanged.
+    """
+
+
+def spawn_task(
+    coro: "Coroutine[Any, Any, Any]", *, owner_name: str = "<unknown>"
+) -> Optional["asyncio.Task[Any]"]:
+    """Schedule framework-owned async work. The one place tasks are born.
+
+    Every task the framework creates goes through here -- async event handlers,
+    ``Navigator`` pops, overlay dismissals gated on ``will_pop``, back-button
+    handling -- so that the no-loop policy is written down once and so a test
+    harness can observe in-flight work by registration rather than by inspecting
+    ``asyncio.all_tasks()`` and guessing which tasks are its own.
+
+    Args:
+        coro: The coroutine to run. Always consumed: scheduled, or closed.
+        owner_name: Who asked, for the diagnostic when there is no loop.
+
+    Returns:
+        The scheduled task, or ``None`` when no event loop is running. Callers
+        that need to cancel the work later (e.g. on unmount) should keep it.
+
+    Raises:
+        UnschedulableAsyncWork: No running loop, *and* a test harness is
+            observing.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # Consume the coroutine either way, or it is collected unawaited and
+        # Python blames framework code for a warning the caller cannot see.
+        coro.close()
+        _report_unschedulable(owner_name)
+        return None
+    task = loop.create_task(coro)
+    for observe in tuple(_task_observers):
+        observe(task)
+    return task
+
+
+def _report_unschedulable(owner_name: str) -> None:
+    if _task_observers:
+        raise UnschedulableAsyncWork(
+            f"async work from {owner_name} could not be scheduled: no event loop "
+            "is running, so it never ran and never will. The test would be "
+            "asserting on a handler that did nothing. Make the test 'async def' "
+            "and 'await app.idle()' after the action -- the harness runs it on a "
+            "real loop, exactly as production does."
+        )
+    warning_once(
+        logger,
+        f"unschedulable_async_work:{owner_name}",
+        "Async work from %s was dropped: no event loop is running.",
+        owner_name,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Shared type aliases for user-facing event handler parameters.
@@ -52,33 +133,18 @@ def invoke_event_handler(
         The scheduled task when *cb* is async and an event loop is running,
         otherwise ``None``. Callers that need to cancel the handler later
         (e.g. on unmount) should keep the returned task.
+
+    Raises:
+        UnschedulableAsyncWork: *cb* is async, no event loop is running, and a
+            test harness is observing. Never in production.
     """
+    # Only the synchronous call is contained here. Scheduling is deliberately
+    # outside: UnschedulableAsyncWork is the harness's own signal, and catching
+    # it below would turn it into a single log line -- once per process, since
+    # exception_once_per_exc de-duplicates -- which is exactly the silence it
+    # exists to break.
     try:
         result = cb(*args)
-        if inspect.isawaitable(result):
-
-            async def _wrapper():
-                # Async tasks should not inherit the synchronous batch context
-                # because the batch will likely exit before the task completes.
-                detach_batch()
-                try:
-                    await result
-                except asyncio.CancelledError:
-                    raise
-                except Exception:
-                    exception_once_per_exc(
-                        logger,
-                        f"async_{error_key}_exc:{owner_name}",
-                        f"Async {error_msg} (owner=%s)",
-                        owner_name,
-                    )
-
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                # Event loop might not be running (e.g. during tests or shutdown)
-                return None
-            return loop.create_task(_wrapper())
     except Exception:
         exception_once_per_exc(
             logger,
@@ -86,4 +152,60 @@ def invoke_event_handler(
             f"{error_msg} (owner=%s)",
             owner_name,
         )
-    return None
+        return None
+
+    if not inspect.isawaitable(result):
+        return None
+
+    wrapper = _run_handler(
+        result, error_key=error_key, error_msg=error_msg, owner_name=owner_name
+    )
+    try:
+        task = spawn_task(wrapper, owner_name=owner_name)
+    except BaseException:
+        # spawn_task closed the wrapper; the handler's own coroutine is nested
+        # inside it and never started, so it needs closing on its own.
+        _close_unstarted(result)
+        raise
+    if task is None:
+        _close_unstarted(result)
+    return task
+
+
+async def _run_handler(
+    awaitable: Awaitable[Any],
+    *,
+    error_key: str,
+    error_msg: str,
+    owner_name: str,
+) -> None:
+    # Async tasks should not inherit the synchronous batch context because the
+    # batch will likely exit before the task completes.
+    detach_batch()
+    try:
+        await awaitable
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        exception_once_per_exc(
+            logger,
+            f"async_{error_key}_exc:{owner_name}",
+            f"Async {error_msg} (owner=%s)",
+            owner_name,
+        )
+        # Contained in production -- one broken handler must not kill the frame.
+        # Under a test harness the containment is the bug: the task would
+        # complete successfully and a handler that raised on line one would read
+        # as a handler that worked. The harness retrieves it from the task.
+        if _task_observers:
+            raise
+
+
+def _close_unstarted(awaitable: Awaitable[Any]) -> None:
+    """Close *awaitable* if it is a coroutine that will now never run.
+
+    Guarded, because ``inspect.isawaitable`` is also true for a ``Future`` and
+    for anything with ``__await__``, neither of which has ``close()``.
+    """
+    if inspect.iscoroutine(awaitable):
+        awaitable.close()

@@ -10,6 +10,7 @@ import weakref
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
 
+from ..widgeting.callbacks import spawn_task
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
@@ -1308,9 +1309,7 @@ class App:
             kname = None
 
         if kname == "escape":
-            import asyncio
-
-            asyncio.create_task(self.handle_back_event())
+            spawn_task(self.handle_back_event(), owner_name="App.on_key_press(escape)")
             return True
 
         if kname == "tab":
@@ -1547,9 +1546,7 @@ class App:
             kname = None
 
         if kname == "escape":
-            import asyncio
-
-            asyncio.create_task(self.handle_back_event())
+            spawn_task(self.handle_back_event(), owner_name="App.on_key_release(escape)")
             return True
 
         if self._focused_node:

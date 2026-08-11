@@ -29,10 +29,13 @@ from __future__ import annotations
 from .clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 from .errors import (
     ActionNotHandledError,
+    IdleTimeoutError,
     LayoutNotConvergedError,
     StaleNodeError,
     TargetNotFoundError,
     TargetNotVisibleError,
+    UnschedulableAsyncWork,
+    WaitTimeoutError,
 )
 from .harness import AppHarness
 from .mount import Invalidation, WidgetHost, mount
@@ -42,6 +45,7 @@ __all__ = [
     "ActionNotHandledError",
     "AppHarness",
     "HarnessClock",
+    "IdleTimeoutError",
     "Invalidation",
     "LayoutNotConvergedError",
     "Node",
@@ -50,6 +54,8 @@ __all__ = [
     "StaleNodeError",
     "TargetNotFoundError",
     "TargetNotVisibleError",
+    "UnschedulableAsyncWork",
+    "WaitTimeoutError",
     "WidgetHost",
     "mount",
 ]

@@ -7,6 +7,8 @@ same question at both levels, and two copies would drift.
 
 from __future__ import annotations
 
+import asyncio
+from time import monotonic
 from typing import Any, Callable, List, Optional, Set
 
 from nuiitivet._interaction.action import LayoutNotConvergedError
@@ -16,10 +18,13 @@ from nuiitivet._interaction.perception import (
     _iter_tree,
     describe_tree,
     find_targets,
+    match_condition,
 )
+from nuiitivet.widgeting import callbacks as _callbacks
 
+from ._tasks import TaskRegistry, describe_task, untracked_tasks
 from .clock import HarnessClock
-from .errors import TargetNotFoundError
+from .errors import IdleTimeoutError, TargetNotFoundError, WaitTimeoutError
 from .node import Node, _LastAction
 
 
@@ -31,6 +36,40 @@ _MAX_CLOCK_ROUNDS = 4
 
 # How many identities a failed ``get()`` lists before truncating.
 _MAX_REPORTED_IDENTITIES = 30
+
+# How much of each queue a timeout diagnostic lists.
+_MAX_REPORTED_CALLBACKS = 10
+_MAX_REPORTED_TASKS = 10
+
+# How long one round of ``idle()`` waits on its pending tasks. Short, because a
+# round that completes nothing must still come back to pump the clock; a task
+# that *does* complete wakes the wait immediately.
+_IDLE_TURN = 0.001
+
+# Rounds with no task movement before ``idle()`` calls the loop quiescent. More
+# than one, because a task can need several turns to make its next observable
+# move -- an await chain through an async mock resolves over two or three.
+_IDLE_QUIET_ROUNDS = 3
+
+# The sleep in ``idle()``'s no-task branch: enough of a turn for work the
+# registry cannot see to reach its next await.
+_IDLE_SPIN = 0.001
+
+# Gap between ``wait_for`` polls, when no armed clock callback comes due sooner.
+_POLL_INTERVAL = 0.005
+
+# Fallback wait timeout, overridable per suite via ``[tool.nuiitivet.testing]``
+# and per call via ``timeout=``.
+_DEFAULT_WAIT_TIMEOUT = 1.0
+
+_wait_timeout = _DEFAULT_WAIT_TIMEOUT
+
+
+def _set_wait_timeout(value: Optional[float]) -> None:
+    """Plugin-only: install this test's default ``wait_for`` / ``idle`` timeout."""
+    global _wait_timeout
+    _wait_timeout = _DEFAULT_WAIT_TIMEOUT if value is None else float(value)
+
 
 # Every harness constructed and not yet closed, in construction order. The
 # pytest plugin sweeps this at teardown so a harness a test forgot to close
@@ -64,6 +103,24 @@ def open_harnesses() -> List[Any]:
 def forget_open_harnesses() -> None:
     """Plugin-only: drop the registry, after closing whatever was in it."""
     _open_harnesses.clear()
+
+
+def unobserved_in_flight() -> List[str]:
+    """Plugin-only: descriptions of async work the test never waited for.
+
+    Called at the end of the test body, while the loop is still open. Tasks the
+    test *watched* park -- a handler blocked on a dialog it then asserted was
+    open -- are excluded; what is left was started by an action and never
+    awaited, which is the missing ``await app.idle()``.
+    """
+    described: List[str] = []
+    for harness in _open_harnesses:
+        registry = getattr(harness, "_tasks", None)
+        if registry is None:  # pragma: no cover - half-built harness
+            continue
+        for task in registry.unobserved_in_flight():
+            described.append(describe_task(task))
+    return described
 
 
 def _resolve_clock() -> tuple[HarnessClock, Optional[Callable[[], None]]]:
@@ -160,7 +217,23 @@ class _HarnessBase:
         self._restore_clock: Optional[Callable[[], None]] = None
         self._last_action = _LastAction()
         self._teardown_hooks: List[Callable[[], None]] = []
+        self._tasks = TaskRegistry()
         self._closed = False
+        # Observing starts here, before the subclass builds anything: mounting a
+        # tree runs `on_mount`, which may itself be async, and a task started
+        # while the harness was still being constructed is exactly the kind an
+        # author would never think to wait for.
+        #
+        # A set, not a slot: `nuiitivet_app` is a factory, so one test may drive
+        # more than one harness, and each keeps its own registry. Both then see
+        # every task, since the framework knows an owner *name* and not which
+        # App owns it -- so two harnesses in one test wait for each other's
+        # work. Over-waiting is slower; under-waiting is flaky.
+        _callbacks._task_observers.add(self._tasks.record)
+
+    def _stop_observing(self) -> None:
+        """Drop the task observer. Safe to call twice."""
+        _callbacks._task_observers.discard(self._tasks.record)
 
     def _register(self) -> None:
         """Join the open-harness registry. Called last, by the subclass.
@@ -242,6 +315,240 @@ class _HarnessBase:
             "keeps arming new zero-delay work. Something is rescheduling itself "
             f"through the clock -- still armed: {clock.pending()!r}"
         )
+
+    # -- awaiting ----------------------------------------------------------
+
+    async def idle(self, timeout: Optional[float] = None) -> None:
+        """Drain everything the app can do right now, then return.
+
+        Pumps the clock in full -- not ``settle()``'s zero-delay-only pump,
+        because inside an ``await`` the test is deliberately letting time pass,
+        so a callback that has come due has come due honestly -- settles, and
+        lets pending tasks run, until the loop is **quiescent**.
+
+        Quiescent means no registered task has started or finished for several
+        rounds. It deliberately does *not* mean "every task finished": a handler
+        parked on ``await overlay.confirm(...)`` is an app at rest waiting for
+        input, not work in progress, and waiting for it to complete would hang
+        every dialog test. It equally does not mean "the clock is empty": an
+        animation ticker fires forever by design, so clock firings are pumped
+        and never counted as progress.
+
+        Two things follow, and both are the point:
+
+        - ``idle()`` returns with a dialog open, or with an animation still
+          running. Waiting for either to *finish* is waiting for a future event,
+          which is :meth:`wait_for`'s job.
+        - it does not wait out a timer. A debounce, a tooltip delay or a mocked
+          call that sleeps is a future event too.
+
+        Raises:
+            IdleTimeoutError: Work never stopped -- a handler spawning a handler,
+                round after round.
+            Exception: Whatever an async handler raised. The framework contains
+                handler errors in production; under a harness that containment
+                would let a handler which raised on line one read as one that
+                worked, so the exception is re-raised here with its original
+                traceback.
+        """
+        self._require_open()
+        clock = self._ensure_clock()
+        deadline = monotonic() + self._resolve_timeout(timeout)
+        quiet = 0
+        while True:
+            clock.pump()
+            self.settle()
+            self._raise_task_error()
+
+            moved = self._tasks.take_progress()
+            pending = self._tasks.in_flight()
+            quiet = 0 if moved else quiet + 1
+
+            # One rule, no fast path. An "everything is already done" shortcut
+            # would return before the loop had run at all, so work the registry
+            # cannot see -- a handler's own `asyncio.create_task`, a coroutine a
+            # test drives by hand -- would never get a turn, and the wait would
+            # be a no-op exactly where the author most needs one.
+            if quiet >= _IDLE_QUIET_ROUNDS:
+                self._tasks.mark_observed()
+                return
+            if monotonic() > deadline:
+                raise IdleTimeoutError(
+                    "idle() gave up after "
+                    f"{self._resolve_timeout(timeout)}s: work is still being "
+                    "created faster than it finishes.\n" + self._diagnose()
+                )
+
+            if pending:
+                # FIRST_COMPLETED, not the default: a completion must be
+                # followed by a pump and a settle before the next wait, or a
+                # dispatch_to_ui marshal waits for a callback only a pump can
+                # fire -- a deadlock the harness itself created.
+                await asyncio.wait(
+                    pending, timeout=_IDLE_TURN, return_when=asyncio.FIRST_COMPLETED
+                )
+            else:
+                await asyncio.sleep(_IDLE_SPIN)
+
+    async def wait_for(
+        self,
+        condition: Optional[Callable[[], Any]] = None,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        text: Optional[str] = None,
+        present: bool = True,
+        timeout: Optional[float] = None,
+    ) -> None:
+        """Wait until something becomes true, or fail saying what did not.
+
+        The verb for anything involving a delay -- a debounce, a transition, a
+        mocked call that takes a moment. The delay itself never appears in the
+        test, so changing a debounce from 0.3s to 0.5s breaks nothing::
+
+            app.type("hello")
+            await app.wait_for(key="results")
+            await app.wait_for(key="spinner", present=False)
+            await app.wait_for(lambda: vm.saved.value)
+
+        Args:
+            condition: A zero-argument callable, truthy when the wait is over.
+                The tree vocabulary cannot say "this ``Observable`` changed",
+                and the epic sends every state assertion to the ``Observable``
+                that drove it, so a predicate is the other half of the surface.
+                Mutually exclusive with the identity keywords.
+            key: Wait for a node with this ``key``.
+            label: Wait for a node with this visible identity.
+            text: Wait for a node whose visible identity contains this substring.
+            present: ``False`` waits for the match to *disappear* instead.
+            timeout: Seconds, defaulting to the suite's ``wait_timeout``.
+
+        Raises:
+            WaitTimeoutError: The condition never held.
+            TypeError: Neither a predicate nor an identifier, or both.
+        """
+        self._require_open()
+        check = self._condition(condition, key=key, label=label, text=text, present=present)
+        clock = self._ensure_clock()
+        limit = self._resolve_timeout(timeout)
+        deadline = monotonic() + limit
+        while True:
+            clock.pump()
+            self.settle()
+            self._raise_task_error()
+            if check():
+                self._tasks.mark_observed()
+                return
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                self._tasks.mark_observed()
+                raise WaitTimeoutError(
+                    f"{self._describe_condition(condition, key, label, text, present)} "
+                    f"was not satisfied after {limit}s.\n" + self._diagnose()
+                )
+            # Sleep to the earlier of the next poll and the next armed callback:
+            # unlike the dev bridge, the harness owns the clock and can see what
+            # is coming rather than polling blind.
+            next_due = clock.next_deadline
+            gap = _POLL_INTERVAL if next_due is None else min(_POLL_INTERVAL, next_due)
+            await asyncio.sleep(max(_IDLE_SPIN, min(gap, remaining)))
+
+    def _condition(
+        self,
+        condition: Optional[Callable[[], Any]],
+        *,
+        key: Optional[str],
+        label: Optional[str],
+        text: Optional[str],
+        present: bool,
+    ) -> Callable[[], bool]:
+        names = [n for n, v in (("key", key), ("label", label), ("text", text)) if v is not None]
+        if condition is not None:
+            if names:
+                raise TypeError(
+                    "pass a predicate or a tree condition, not both: "
+                    f"wait_for(<callable>, {names[0]}=...) has two answers to "
+                    "'what am I waiting for' and no rule for which wins."
+                )
+            if not callable(condition):
+                raise TypeError(
+                    f"wait_for's first argument must be callable, got "
+                    f"{type(condition).__name__}. To wait on a tree node, name it: "
+                    "wait_for(key=...)."
+                )
+            return lambda: bool(condition())
+        if not names:
+            raise TypeError(
+                "wait_for needs something to wait for: a predicate "
+                "(wait_for(lambda: vm.loaded.value)) or a tree condition "
+                "(wait_for(key='results'))."
+            )
+        # match_condition, not the core's check_condition: that one runs a
+        # non-strict settle and never touches the clock, so a debounce armed on
+        # the harness clock would never fire and the wait would time out on work
+        # it was itself preventing.
+        return lambda: match_condition(
+            self._query_root, key=key, label=label, text=text, present=present
+        )
+
+    def _resolve_timeout(self, timeout: Optional[float]) -> float:
+        return _wait_timeout if timeout is None else float(timeout)
+
+    def _raise_task_error(self) -> None:
+        error = self._tasks.take_error()
+        if error is not None:
+            raise error
+
+    @staticmethod
+    def _describe_condition(
+        condition: Optional[Callable[[], Any]],
+        key: Optional[str],
+        label: Optional[str],
+        text: Optional[str],
+        present: bool,
+    ) -> str:
+        if condition is not None:
+            name = getattr(condition, "__qualname__", None) or repr(condition)
+            return f"predicate {name}"
+        parts = [f"{n}={v!r}" for n, v in (("key", key), ("label", label), ("text", text))
+                 if v is not None]
+        if not present:
+            parts.append("present=False")
+        return "condition {" + ", ".join(parts) + "}"
+
+    def _diagnose(self) -> str:
+        """What was outstanding, in both queues, when a wait gave up."""
+        lines: List[str] = []
+        clock = self._clock
+        pending_callbacks = clock.pending() if clock is not None else []
+        if pending_callbacks:
+            lines.append(f"  runtime.clock : {len(pending_callbacks)} pending callback(s)")
+            for callback in pending_callbacks[:_MAX_REPORTED_CALLBACKS]:
+                state = "due" if callback.due else "armed"
+                lines.append(
+                    f"                  {callback.fn!r} ({state}, delay={callback.delay}) "
+                    f"scheduled at {callback.site}"
+                )
+        else:
+            lines.append("  runtime.clock : nothing armed")
+
+        tracked = self._tasks.in_flight()
+        if tracked:
+            lines.append(f"  asyncio       : {len(tracked)} task(s) pending")
+            for task in list(tracked)[:_MAX_REPORTED_TASKS]:
+                lines.append(f"                  {describe_task(task)}")
+        else:
+            lines.append("  asyncio       : no tracked task pending")
+
+        untracked = untracked_tasks(tracked)
+        if untracked:
+            lines.append(
+                f"  untracked     : {len(untracked)} task(s) not created by the "
+                "framework, not waited on"
+            )
+            for task in untracked[:_MAX_REPORTED_TASKS]:
+                lines.append(f"                  {describe_task(task)}")
+        return "\n".join(lines)
 
     # -- queries -----------------------------------------------------------
 
@@ -355,16 +662,28 @@ class _HarnessBase:
             )
 
     def close(self) -> None:
-        """Unmount, run the teardown hooks, restore the clock. Idempotent."""
+        """Unmount, run the teardown hooks, restore the clock. Idempotent.
+
+        Deliberately does **not** cancel in-flight tasks. Under pytest this runs
+        in the teardown phase, which is *after* the runner closed the loop the
+        tasks live on, so there would be nothing to cancel them on; cancellation
+        belongs to the loop's owner and already happens there. What this can
+        still do is stop recording.
+        """
         if self._closed:
             return
         self._closed = True
         if self in _open_harnesses:
             _open_harnesses.remove(self)
+        self._stop_observing()
         try:
             self._teardown()
             for hook in self._teardown_hooks:
                 hook()
+            # Last: a handler that failed after the test's final wait would
+            # otherwise be dropped on the floor, which is the containment this
+            # package exists to undo -- just later than usual.
+            self._raise_task_error()
         finally:
             if self._restore_clock is not None:
                 self._restore_clock()
