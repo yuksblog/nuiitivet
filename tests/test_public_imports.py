@@ -6,6 +6,14 @@ Invariants:
    system root ``nuiitivet.material``.
 3. ``__all__`` lists contain no duplicates.
 4. Samples import *only* ``import nuiitivet.material as nv`` — no deep imports.
+
+Invariant 4 binds application code — ``samples/`` here, and apps in the wild. The
+suite deliberately does not follow it: a test imports from the module that
+*defines* the symbol (``from nuiitivet.layout.column import Column``), so that
+moving a symbol breaks the test that owns it, and so that a broken re-export is
+distinguishable from a broken widget. ``nv`` appears in a test only where the
+public surface is itself what is asserted on — this file, and the namespace-alias
+tests next to it.
 """
 from __future__ import annotations
 

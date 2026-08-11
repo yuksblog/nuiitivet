@@ -30,24 +30,6 @@ logger = logging.getLogger(__name__)
 Path = tuple[str, ...]
 
 
-def iter_child_widgets(node: Any) -> Iterator[Any]:
-    """Yield the direct child widgets of ``node`` in traversal order.
-
-    The mounted tree hangs off two attributes: ``children`` (the widgets a
-    container laid out) and ``built_child`` (the subtree a
-    :class:`ComposableWidget` produced). This is the single primitive both the
-    snapshot walk and the dev-bridge tree description use to descend the tree, so
-    they agree on exactly which nodes are "in" the mounted tree.
-    """
-    children = getattr(node, "children", ()) or ()
-    for child in children:
-        if child is not None:
-            yield child
-    built = getattr(node, "built_child", None)
-    if built is not None and built is not node:
-        yield built
-
-
 def _segment(node: Any, positional: str) -> str:
     """Return the path segment for ``node``, preferring its stable ``key``.
 

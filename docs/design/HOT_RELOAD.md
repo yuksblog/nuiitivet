@@ -372,14 +372,14 @@ edit again.
   is marshalled onto the UI thread (same watcher-thread → clock-drain primitive
   hot reload uses; see §9). The bound port is published to
   `<project_root>/.nuiitivet/dev-bridge.json` for clients to discover.
-- **Perception** (`dev/perception.py`, #374). `describe_tree` walks the mounted
+- **Perception** (`_interaction/perception.py`, #374). `describe_tree` walks the mounted
   tree into compact JSON — per node its type, human identity (`key` / `label` /
   `text` / `title`) and `rect` `[x, y, w, h]` in root coordinates. This is the
   semantic, low-token view a tool reasons over and resolves action targets from.
   `screenshot` renders the mounted tree to PNG on an offscreen raster surface
   (`_render_snapshot(for_display=False)`) rather than reading back the
   framebuffer, so defects in the GPU path or the swap chain never appear in it.
-- **State perception** (`dev/perception.py`, [#410](https://github.com/yuksblog/nuiitivet/issues/410)).
+- **State perception** (`_interaction/perception.py`, [#410](https://github.com/yuksblog/nuiitivet/issues/410)).
   `describe_tree` reports the *output* — the widget tree — but not the reactive
   state that produced it, and "the value updated but the UI didn't" (or the
   reverse) is exactly the bug the tree alone cannot diagnose. `describe_state`
@@ -403,7 +403,7 @@ edit again.
   Read-only: poking values (`set_state`) is deliberately out of scope. Because
   semantic widget state (`Checkbox.checked`, text-field value, toggles) is already
   `Observable`-backed, this surfaces it automatically.
-- **Action** (`dev/action.py`, [#375](https://github.com/yuksblog/nuiitivet/issues/375)).
+- **Action** (`_interaction/action.py`, [#375](https://github.com/yuksblog/nuiitivet/issues/375)).
   `click` / `type` / `key` synthesize the same input the real backend delivers.
   Targeting is by *stable identifier* (`key` / `label`), resolved to a rect
   centre, so it survives layout changes; raw coordinates are a fallback. Every
@@ -599,8 +599,8 @@ coordinate, and a scroll carries no content.
 | error resilience | `dev/error_overlay.py` |
 | CLI entry / startup flow | `dev/__main__.py` |
 | dev bridge (localhost, UI-thread marshalling, discovery) | `dev/bridge.py` + `dev/client.py` |
-| perception (`describe_tree` / `describe_state` / `screenshot`) | `dev/perception.py` |
+| perception (`describe_tree` / `describe_state` / `screenshot`) | `_interaction/perception.py`, re-exported by `dev/perception.py` |
 | reload journal (pull-able reload events for an AI pair) | `dev/journal.py` (recorded by `dev/controller.py`) |
 | interaction journal (pull-able human UI actions for an AI pair) | `dev/interaction.py` (recorded from the backend input handlers) |
-| action (`click` / `type` / `key`, target resolution) | `dev/action.py` |
+| action (`click` / `type` / `key`, target resolution) | `_interaction/action.py`, bound to the overlay observer by `dev/action.py` |
 | MCP server (bridge as MCP tools, stdio) | `dev/mcp_server.py` |
