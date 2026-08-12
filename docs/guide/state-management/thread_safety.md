@@ -1,20 +1,10 @@
 # Observable: Thread Safety
 
-## Problem
+## The default is safe
 
-Updating an Observable from a worker thread can trigger UI updates outside the UI thread.
-
-```python
-# worker thread
-viewmodel.data.value = result
-# UI subscriber may crash if callback touches UI directly
-```
-
-## Solution: `.dispatch_to_ui()`
-
-Use `.dispatch_to_ui()` for observables that drive UI rendering. Once enabled,
-notifications are marshalled onto the UI thread, so subscribers can safely touch
-widgets even when the value was set from a background thread.
+An `Observable` written from a thread other than the UI thread marshals the
+notification onto the UI thread for you. Subscribers therefore always run where
+it is safe to touch widgets, whichever thread set the value.
 
 ```python
 import threading
@@ -23,51 +13,91 @@ import nuiitivet.material as nv
 class ViewModel:
     data = nv.Observable([])
 
-    def __init__(self):
-        self.data.dispatch_to_ui()
-
     def load_async(self):
         def worker():
-            result = fetch_data()
-            self.data.value = result
+            self.data.value = fetch_data()   # safe: marshalled to the UI thread
 
         threading.Thread(target=worker).start()
 ```
 
-## Default Behavior
+There is nothing to enable. A write already on the UI thread stays synchronous
+and pays only an integer thread check, so this costs nothing on the hot path.
 
-Without `.dispatch_to_ui()`, notifications run in the current thread for lower overhead.
-This is suitable for pure logic-layer computations.
+## What marshalling changes
 
-## Chain Placement
+Two things follow from the write being deferred to the next tick, and both
+matter when the writer is a worker thread:
 
-`.dispatch_to_ui()` can appear before or after other operators.
+- **The write is asynchronous.** Reading the value back on the worker
+  immediately after setting it returns the *old* value; the new one lands on
+  the next tick.
+- **Rapid writes are coalesced.** If the worker produces values faster than the
+  UI consumes them, subscribers see only the latest per tick. This keeps a busy
+  worker from flooding the event loop, but intermediate values are dropped
+  rather than queued — a progress counter can skip numbers.
+
+Neither applies to writes made on the UI thread, which are applied inline.
+
+## Opting out: `dispatch=False`
+
+For an observable no widget will ever bind to — a value that lives entirely in
+the logic layer — pass `dispatch=False`:
 
 ```python
-total = (
-    price
-    .combine(quantity)
-    .compute(lambda p, q: p * q)
-    .dispatch_to_ui()
-)
+class Pipeline:
+    # Every step is consumed by a background stage, never by a widget.
+    processed = nv.Observable(0, dispatch=False)
 ```
 
-## Rapid Updates Are Coalesced
+Notification then stays synchronous on the writing thread, and **every**
+intermediate value is delivered rather than only the latest per tick. Reach for
+it when a consumer counts steps rather than rendering the newest one.
 
-When `.dispatch_to_ui()` is enabled, rapid updates from a background thread are
-automatically coalesced: if the worker produces values faster than the UI can
-process them, subscribers only receive the latest value on the next frame. This
-keeps a busy worker from flooding the UI event loop, but it also means
-intermediate values are dropped rather than queued — subscribers may not observe
-every value the worker sets (e.g. a progress counter can skip numbers).
+Binding a widget to a `dispatch=False` observable and then writing to it from a
+worker thread is the bug the default exists to prevent, so opt out only for
+values you are sure the UI never sees.
+
+### The opt-out propagates
+
+Derivations of a logic-layer observable stay logic-layer:
+
+```python
+internal = nv.Observable(0, dispatch=False)
+doubled = internal.map(lambda v: v * 2)      # also dispatch=False
+```
+
+`combine(...).compute(...)` follows the sources, dispatching unless **every**
+source opted out — one source that expects marshalling is enough to need it.
+Pass `dispatch=` explicitly to override either way.
 
 ## Testing
 
-To test code that relies on `.dispatch_to_ui()`, you need to control when the
-queued UI notifications are delivered. The indirection point is `nv.set_clock()`,
-not pyglet: nuiitivet schedules every deferred notification through the installed
-clock, and the backend installs pyglet's clock there at startup. Install your own
-clock and tick it yourself.
+Under the pytest plugin, a test body runs on the UI thread, so ordinary writes
+apply inline and need nothing special. A write from a worker thread is queued
+on the clock, and `settle()` pumps it:
+
+```python
+def test_worker_update_reaches_the_tree(nuiitivet_app):
+    app = nuiitivet_app(screen, size=(800, 600))
+
+    worker = threading.Thread(target=lambda: setattr(vm.data, "value", "after"))
+    worker.start()
+    worker.join()
+
+    app.settle()          # applies the queued write
+    assert app.get(key="readout").text == "after"
+```
+
+A worker that keeps running while you settle is fine: work it arms is pumped,
+but does not count towards the convergence bound, so a live background thread
+never turns into `LayoutNotConvergedError`.
+
+### Outside the harness
+
+Without the harness you control delivery through the clock. The indirection
+point is `nv.set_clock()`, not pyglet: nuiitivet schedules every deferred
+notification through the installed clock, and the backend installs pyglet's at
+startup.
 
 ```python
 import threading
@@ -134,8 +164,8 @@ Two rules for a hand-rolled clock:
   has to cancel a timer armed with `self._emit`, even though each attribute
   access produces a distinct bound-method object.
 - **Prefer running callbacks synchronously on the thread that ticks the clock.**
-  A `threading.Timer`-based clock delivers on a background thread, so
-  subscribers must not touch widgets, and assertions have to wait on real time.
+  The fallback clock delivers on its own servicing thread, so subscribers must
+  not touch widgets, and assertions have to wait on real time.
 
 Restore the previous clock afterwards, or later tests inherit yours.
 

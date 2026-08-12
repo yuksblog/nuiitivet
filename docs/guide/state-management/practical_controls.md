@@ -62,7 +62,6 @@ formatted_query = (
     query
     .debounce(0.5)
     .map(lambda q: q.strip().lower())
-    .dispatch_to_ui()
 )
 
 position_display = (

@@ -24,6 +24,7 @@ from nuiitivet.testing import (
     StaleNodeError,
     TargetNotFoundError,
 )
+from nuiitivet.testing._support import _has_immediate_work
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -254,10 +255,10 @@ def test_scroll_moves_the_region(nuiitivet_app) -> None:
 # -- settle: what is pumped and what is not -------------------------------
 
 
-def test_settle_applies_a_dispatch_to_ui_write_from_a_worker_thread(
+def test_settle_applies_a_write_from_a_worker_thread(
     nuiitivet_app,
 ) -> None:
-    label = Observable("before").dispatch_to_ui()
+    label = Observable("before")
 
     def screen() -> Widget:
         return Column(children=[_text(label, "greeting")])
@@ -275,6 +276,63 @@ def test_settle_applies_a_dispatch_to_ui_write_from_a_worker_thread(
     app.settle()
 
     assert app.get(key="greeting").text == "after"
+
+
+def test_settle_converges_while_a_worker_thread_keeps_writing(nuiitivet_app) -> None:
+    """A live background thread is not a tree that will not stop moving.
+
+    Every cross-thread write arms a zero-delay callback, so a worker writing in
+    a loop keeps zero-delay work pending for as long as it runs. Counting that
+    towards the convergence bound would turn any test with a background thread
+    into ``LayoutNotConvergedError``.
+    """
+    label = Observable("before")
+
+    def screen() -> Widget:
+        return Column(children=[_text(label, "greeting")])
+
+    app = nuiitivet_app(screen, size=(800, 600))
+
+    stop = threading.Event()
+
+    def worker() -> None:
+        i = 0
+        while not stop.is_set():
+            i += 1
+            label.value = f"tick-{i}"
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    try:
+        for _ in range(5):
+            app.settle()  # must not raise
+    finally:
+        stop.set()
+        thread.join()
+
+    app.settle()
+    assert app.get(key="greeting").text.startswith("tick-")
+
+
+def test_immediate_work_counts_only_what_this_thread_armed() -> None:
+    """The convergence question is "has the tree stopped", not "is the app idle".
+
+    Zero-delay work armed here still counts -- that is the self-rescheduling
+    the settle bound exists to catch. Identical work armed by another thread
+    does not.
+    """
+    clock = HarnessClock()
+
+    clock.schedule_once(lambda dt: None, 0)
+    assert _has_immediate_work(clock) is True
+
+    clock.cancel_all()
+    thread = threading.Thread(target=lambda: clock.schedule_once(lambda dt: None, 0))
+    thread.start()
+    thread.join()
+
+    assert clock.pending(), "the worker's callback is still armed and will be pumped"
+    assert _has_immediate_work(clock) is False
 
 
 def test_settle_leaves_a_debounce_armed(nuiitivet_app) -> None:

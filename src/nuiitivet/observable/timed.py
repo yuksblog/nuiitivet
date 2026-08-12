@@ -25,7 +25,6 @@ class DebouncedObservable(ObservableBase[T]):
         self._pending_value: Optional[T] = None
         self._scheduled = False
         self._subscribers: List[Callable[[T], None]] = []
-        self._dispatch_to_ui = False
         # Hold one callable so the clock sees the same object every time, as
         # the other schedule/unschedule call sites do.
         self._emit_callback: Callable[[float], None] = self._emit
@@ -58,10 +57,6 @@ class DebouncedObservable(ObservableBase[T]):
 
         return Disposable(_dispose)
 
-    def dispatch_to_ui(self) -> "DebouncedObservable[T]":
-        self._dispatch_to_ui = True
-        return self
-
     @property
     def value(self) -> T:
         return self._source.value
@@ -89,7 +84,6 @@ class ThrottledObservable(ObservableBase[T]):
         self._pending_value: Optional[T] = None
         self._scheduled_callback: Optional[Callable[[float], None]] = None
         self._subscribers: List[Callable[[T], None]] = []
-        self._dispatch_to_ui = False
 
         self._source_subscription = source.subscribe(self._on_source_changed)
 
@@ -129,10 +123,6 @@ class ThrottledObservable(ObservableBase[T]):
                 debug_once(logger, "throttled_dispose_remove_missing", "Subscriber callback was already removed")
 
         return Disposable(_dispose)
-
-    def dispatch_to_ui(self) -> "ThrottledObservable[T]":
-        self._dispatch_to_ui = True
-        return self
 
     @property
     def value(self) -> T:

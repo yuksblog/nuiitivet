@@ -323,7 +323,7 @@ def settle(
         before_pass: Called at the top of every pass, before the flushes. The
             hook a driver needs to advance whatever *it* owns between passes --
             the test harness pumps its clock's zero-delay queue here, so a
-            ``dispatch_to_ui`` marshal produced by one pass is applied in the
+            cross-thread marshal produced by one pass is applied in the
             next. Not a policy this module has: the bridge runs against a real
             clock that drains itself, and passes nothing. A raising hook
             propagates, in both modes -- it is the caller's own code.
@@ -402,7 +402,7 @@ def _settle_strict(
 
     def run_pass(root: Any) -> None:
         # Before the flushes, not after: a hook that mutates observables (the
-        # harness pumping a ``dispatch_to_ui`` marshal) needs the same pass to
+        # harness pumping a cross-thread marshal) needs the same pass to
         # turn that into an updated tree, or the value lands one pass late and
         # the final pass never lands it at all.
         if before_pass is not None:

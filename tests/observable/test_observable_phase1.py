@@ -3,20 +3,17 @@
 from nuiitivet.observable import ComputedObservable, Observable
 
 
-def test_dispatch_to_ui_basic():
-    """Test basic dispatch_to_ui functionality."""
+def test_dispatch_is_on_by_default():
+    """An observable marshals cross-thread writes unless told not to."""
 
     class Model:
         value = Observable(0)
+        internal = Observable(0, dispatch=False)
 
     model = Model()
-    obs = model.value.dispatch_to_ui()
 
-    # Should return self for chaining
-    assert obs is model.value
-
-    # Verify flag is set
     assert model.value._dispatch_to_ui is True
+    assert model.internal._dispatch_to_ui is False
 
 
 def test_map_basic():
@@ -84,20 +81,22 @@ def test_computed_with_subscription():
     assert 60 in values
 
 
-def test_map_dispatch_inheritance():
-    """Test that map inherits dispatch_to_ui from source."""
+def test_map_inherits_the_dispatch_opt_out():
+    """A derivation of a logic-layer observable stays logic-layer.
+
+    The opt-out is what has to propagate: re-enabling dispatch on the mapped
+    value would start coalescing values the source was declared to deliver in
+    full.
+    """
 
     class Model:
-        value = Observable(10)
+        bound = Observable(10)
+        internal = Observable(10, dispatch=False)
 
     model = Model()
 
-    # Enable dispatch on source
-    model.value.dispatch_to_ui()
-
-    # Map should inherit dispatch flag
-    doubled = model.value.map(lambda x: x * 2)
-    assert doubled._dispatch_to_ui is True
+    assert model.bound.map(lambda x: x * 2)._dispatch_to_ui is True
+    assert model.internal.map(lambda x: x * 2)._dispatch_to_ui is False
 
 
 def test_computed_dynamic_dependencies():

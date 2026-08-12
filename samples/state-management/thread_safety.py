@@ -1,10 +1,10 @@
 """Observable: Thread Safety
 
 Demonstrates:
-- .dispatch_to_ui() to route notifications to the UI thread
+- Cross-thread writes marshalled onto the UI thread automatically
 - Async data loading from a worker thread
 - Loading / error / success state pattern
-- Operator chaining with dispatch_to_ui() at the end of the chain
+- dispatch=False to opt a logic-layer observable out of marshalling
 """
 
 import threading
@@ -21,18 +21,16 @@ class AsyncLoaderViewModel:
     error: nv.Observable[str | None] = nv.Observable(None)
 
     def __init__(self) -> None:
-        # All three observables that touch UI must be dispatched to the UI thread
-        self.data.dispatch_to_ui()
-        self.loading.dispatch_to_ui()
-        self.error.dispatch_to_ui()
+        # Nothing to enable: a write from the worker below is marshalled onto
+        # the UI thread because that is what an Observable does by default.
 
         # Derived values built on top of dispatched observables
         self.status_text = self.loading.map(lambda loading: "⏳ Loading…" if loading else "")
         self.data_text = self.data.map(lambda d: d if d is not None else "(no data loaded yet)")
         self.error_text = self.error.map(lambda e: f"⚠ {e}" if e else "")
 
-        # Chaining example: derive display from data, then dispatch to UI
-        self.data_upper = self.data.map(lambda d: d.upper() if d else "").dispatch_to_ui()
+        # Derivations inherit the source's setting, so this marshals too.
+        self.data_upper = self.data.map(lambda d: d.upper() if d else "")
 
     def fetch(self, should_fail: bool = False) -> None:
         """Spawn a worker thread that updates observables safely."""
@@ -72,7 +70,7 @@ class ThreadSafetyApp(nv.ComposableWidget):
                 children=[
                     nv.Text("Observable: Thread Safety"),
                     nv.Text("Workers update observables from a background thread."),
-                    nv.Text("dispatch_to_ui() ensures callbacks run on the UI thread."),
+                    nv.Text("Observable marshals those writes onto the UI thread."),
                     nv.Text(vm.status_text),
                     nv.Text(vm.data_text),
                     nv.Text(vm.data_upper),

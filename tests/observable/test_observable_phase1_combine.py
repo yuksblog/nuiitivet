@@ -43,22 +43,45 @@ def test_combine_function():
     assert sum_obs.value == 15
 
 
-def test_combine_dispatch_ui():
-    """Test combine with dispatch_to_ui"""
+def test_combine_dispatches_unless_every_source_opted_out():
+    """One source that expects marshalling is enough to need it."""
 
     class State:
         x = Observable(1)
         y = Observable(2)
+        internal_a = Observable(1, dispatch=False)
+        internal_b = Observable(2, dispatch=False)
 
     state = State()
 
-    # Combine with dispatch_to_ui
-    sum_obs = state.x.combine(state.y).dispatch_to_ui().compute(lambda x, y: x + y)
-    assert sum_obs.value == 3
-    assert sum_obs._dispatch_to_ui is True
+    both_bound = state.x.combine(state.y).compute(lambda x, y: x + y)
+    assert both_bound.value == 3
+    assert both_bound._dispatch_to_ui is True
+
+    mixed = state.internal_a.combine(state.y).compute(lambda x, y: x + y)
+    assert mixed._dispatch_to_ui is True
+
+    neither = state.internal_a.combine(state.internal_b).compute(lambda x, y: x + y)
+    assert neither._dispatch_to_ui is False
 
     state.x.value = 10
-    assert sum_obs.value == 12
+    assert both_bound.value == 12
+
+
+def test_combine_compute_takes_an_explicit_dispatch():
+    """The inferred answer can be overridden either way."""
+
+    class State:
+        x = Observable(1)
+        internal = Observable(2, dispatch=False)
+
+    state = State()
+
+    assert state.x.combine(state.x).compute(lambda a, b: a + b, dispatch=False)._dispatch_to_ui is False
+    assert (
+        state.internal.combine(state.internal).compute(lambda a, b: a + b, dispatch=True)._dispatch_to_ui
+        is True
+    )
 
 
 def test_combine_subscription():
@@ -109,8 +132,8 @@ def test_observable_compute_static():
     assert sum_obs.value == 30
 
 
-def test_observable_compute_dispatch_ui():
-    """Test Observable.compute() with dispatch_to_ui"""
+def test_observable_compute_dispatch_flag():
+    """``Observable.compute`` dispatches by default and takes the opt-out."""
 
     class State:
         x = Observable(1)
@@ -118,9 +141,12 @@ def test_observable_compute_dispatch_ui():
 
     state = State()
 
-    sum_obs = Observable.compute(lambda: state.x.value + state.y.value, dispatch_to_ui=True)
+    sum_obs = Observable.compute(lambda: state.x.value + state.y.value)
     assert sum_obs.value == 3
     assert sum_obs._dispatch_to_ui is True
+
+    internal = Observable.compute(lambda: state.x.value + state.y.value, dispatch=False)
+    assert internal._dispatch_to_ui is False
 
 
 def test_batch_with_combine():

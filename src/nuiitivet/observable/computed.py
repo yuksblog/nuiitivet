@@ -5,6 +5,7 @@ import threading
 from typing import Any, Callable, List, Optional, Set, TypeVar, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once, exception_once
+from nuiitivet.runtime.threading import is_ui_thread
 
 from .contexts import _batch_context, _tracking_context
 from .protocols import Disposable, ObservableBase, ReadOnlyObservableProtocol
@@ -26,14 +27,14 @@ class ComputedObservable(ObservableBase[T]):
     def __init__(
         self,
         compute: Callable[[], T],
-        dispatch_to_ui: bool = False,
+        dispatch: bool = True,
     ):
         self._compute = compute
         self._value: Optional[T] = None
         self._subs: List[Callable[[T], None]] = []
         self._deps: Set[Any] = set()
         self._dep_disposables: List[Disposable] = []
-        self._dispatch_to_ui = dispatch_to_ui
+        self._dispatch_to_ui = dispatch
         self._disposed = False
 
         self._lock = threading.Lock()
@@ -93,7 +94,7 @@ class ComputedObservable(ObservableBase[T]):
             batch_ctx.record_computed(self)
             return
 
-        should_dispatch = self._dispatch_to_ui and threading.current_thread() is not threading.main_thread()
+        should_dispatch = self._dispatch_to_ui and not is_ui_thread()
 
         if should_dispatch:
             with self._lock:
@@ -126,7 +127,7 @@ class ComputedObservable(ObservableBase[T]):
             self._notify_subs()
 
     def _notify_subs(self) -> None:
-        should_dispatch = self._dispatch_to_ui and threading.current_thread() is not threading.main_thread()
+        should_dispatch = self._dispatch_to_ui and not is_ui_thread()
 
         if should_dispatch:
 
@@ -139,10 +140,6 @@ class ComputedObservable(ObservableBase[T]):
 
         for cb in list(self._subs):
             cb(self._value)  # type: ignore[arg-type]
-
-    def dispatch_to_ui(self) -> "ComputedObservable[T]":
-        self._dispatch_to_ui = True
-        return self
 
     def subscribe(self, cb: Callable[[T], None]) -> Disposable:
         self._subs.append(cb)
@@ -162,7 +159,7 @@ class ComputedObservable(ObservableBase[T]):
         def compute_fn() -> Any:
             return fn(self.value)
 
-        return ComputedObservable(compute_fn, dispatch_to_ui=self._dispatch_to_ui)
+        return ComputedObservable(compute_fn, dispatch=self._dispatch_to_ui)
 
     def combine(self, *others: ReadOnlyObservableProtocol[Any]) -> "CombineBuilder":
         from .combine import CombineBuilder

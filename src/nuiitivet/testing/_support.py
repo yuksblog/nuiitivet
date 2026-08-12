@@ -8,6 +8,7 @@ same question at both levels, and two copies would drift.
 from __future__ import annotations
 
 import asyncio
+import threading
 from time import monotonic
 from typing import Any, Callable, List, Optional, Set
 
@@ -161,11 +162,10 @@ def _resolve_clock() -> tuple[HarnessClock, Optional[Callable[[], None]]]:
     :class:`~nuiitivet.testing.clock.HarnessClock`, and the harness simply uses
     it. Outside pytest -- a plain ``with AppHarness(...)`` in a script, or a
     suite driven by something else -- nothing has, and the installed clock is
-    the fallback ``_ThreadClock``, which fires on timer threads and has no
-    ``pump_immediate`` at all. Settling against that would either raise or,
-    worse, silently skip the pump and let a ``dispatch_to_ui`` write go
-    unobserved. So the harness installs its own and gives the previous one back
-    on close.
+    the fallback ``_ThreadClock``, which fires on its own servicing thread and
+    has no ``pump_immediate`` at all. Settling against that would either raise
+    or, worse, silently skip the pump and let a marshalled write go unobserved.
+    So the harness installs its own and gives the previous one back on close.
     """
     from nuiitivet.observable.runtime import get_clock, set_clock
 
@@ -173,7 +173,7 @@ def _resolve_clock() -> tuple[HarnessClock, Optional[Callable[[], None]]]:
         raise RuntimeError(
             'this test opted out of the harness clock with '
             '@pytest.mark.nuiitivet(clock="real"), but a harness needs to pump '
-            "the zero-delay queue to settle -- a dispatch_to_ui write would "
+            "the zero-delay queue to settle -- a cross-thread write would "
             "never be applied and the test would assert on the stale value. "
             "Drop the marker, or drive the app without a harness."
         )
@@ -193,8 +193,24 @@ def _resolve_clock() -> tuple[HarnessClock, Optional[Callable[[], None]]]:
 
 
 def _has_immediate_work(clock: HarnessClock) -> bool:
-    """Whether a zero-delay one-shot is armed and would fire on the next pump."""
-    return any(not cb.is_interval and cb.delay == 0.0 for cb in clock.pending())
+    """Whether *this thread* armed a zero-delay one-shot that a pump would fire.
+
+    Only work armed by the settling thread counts. The non-convergence this
+    guards is the tree rescheduling itself -- a callback that arms another
+    callback that arms another -- and that is a UI-thread loop by construction.
+
+    A worker thread arming work is a different thing entirely, and now the
+    ordinary thing: every cross-thread ``Observable`` write marshals through a
+    zero-delay callback. A worker that keeps writing would keep this true
+    forever and turn a live background thread into ``LayoutNotConvergedError``.
+    Its writes are still pumped -- ``before_pass`` fires everything due,
+    whoever armed it -- they just do not get a vote on whether the tree has
+    stopped moving, which is the only question this asks.
+    """
+    here = threading.get_ident()
+    return any(
+        not cb.is_interval and cb.delay == 0.0 and cb.armed_by == here for cb in clock.pending()
+    )
 
 
 def _require_one_identifier(key: Optional[str], label: Optional[str]) -> None:
@@ -381,7 +397,7 @@ class _HarnessBase:
         :class:`~nuiitivet.testing.AppHarness` is the exception and resolves in
         its constructor: building an ``App`` mounts a whole tree, and mount-time
         ``schedule_once(fn, 0)`` calls have to land somewhere the harness can
-        pump rather than on a timer thread.
+        pump rather than on the fallback clock's servicing thread.
         """
         if self._clock is None:
             self._clock, self._restore_clock = _resolve_clock()
@@ -414,8 +430,8 @@ class _HarnessBase:
         half-laid-out frame the last pass produced.
 
         Pumps the clock's zero-delay queue at the top of every pass, so a
-        ``dispatch_to_ui`` write from a worker thread, a deferred batch flush or
-        a ``Computed``'s UI notify is applied and then turned into an updated
+        worker thread's observable write, a deferred batch flush or a
+        ``Computed``'s UI notify is applied and then turned into an updated
         tree by the flush in the same pass. Delayed callbacks and intervals stay
         armed: no time has passed in this call that the test asked for.
 
@@ -423,7 +439,8 @@ class _HarnessBase:
         scheduled *from* a layout is the in-tree example -- which the core's
         loop, converging on layout alone, would return without pumping. So this
         re-runs the core settle while such work remains, bounded, and raises if
-        it never stops.
+        it never stops. Work armed by *another* thread does not extend the loop;
+        see :func:`_has_immediate_work`.
         """
         self._require_open()
         clock = self._ensure_clock()
@@ -513,7 +530,7 @@ class _HarnessBase:
             if pending:
                 # FIRST_COMPLETED, not the default: a completion must be
                 # followed by a pump and a settle before the next wait, or a
-                # dispatch_to_ui marshal waits for a callback only a pump can
+                # cross-thread marshal waits for a callback only a pump can
                 # fire -- a deadlock the harness itself created.
                 await asyncio.wait(
                     pending, timeout=_IDLE_TURN, return_when=asyncio.FIRST_COMPLETED

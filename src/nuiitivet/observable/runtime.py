@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable, List, Protocol, Tuple
+import time
+from typing import Callable, List, Optional, Protocol
 
 from nuiitivet.common.logging_once import exception_once
 
@@ -17,9 +18,9 @@ class Clock(Protocol):
     """Clock API compatible with ``pyglet.clock``.
 
     Install an implementation with :func:`set_clock` to control when scheduled
-    callbacks run — a test that drives ``dispatch_to_ui`` or a debounced
-    observable needs this, since the default fallback clock fires on background
-    threads at wall-clock time.
+    callbacks run — a test that drives a cross-thread observable write or a
+    debounced observable needs this, since the default fallback clock fires on
+    a background thread at wall-clock time.
 
     Implementations must identify scheduled callbacks by **equality**, the rule
     ``pyglet.clock`` uses: ``unschedule(obj.method)`` has to cancel a timer
@@ -55,120 +56,124 @@ def _same_callback(a: ClockCallback, b: ClockCallback) -> bool:
         return False
 
 
-class _ThreadClock:
-    """Fallback clock implementation using threading.Timer.
+class _Entry:
+    """One armed callback on the fallback clock."""
 
-    This is used when no backend installs a UI clock.
+    __slots__ = ("fn", "delay", "deadline", "is_interval")
+
+    def __init__(self, fn: ClockCallback, delay: float, deadline: float, is_interval: bool) -> None:
+        self.fn = fn
+        self.delay = delay
+        self.deadline = deadline
+        self.is_interval = is_interval
+
+
+class _ThreadClock:
+    """Fallback clock used when no backend has installed a UI clock.
+
+    **One** daemon thread services every armed callback, waking on a condition
+    variable when the earliest deadline arrives or when a nearer one is armed.
+    The earlier implementation spent a ``threading.Timer`` -- a thread -- per
+    ``schedule_once`` and another per interval, which an ``Observable`` write
+    from a worker reaches on every tick now that dispatch is the default.
+
+    Callbacks still fire on that servicing thread, not on any UI thread: with
+    no backend running there is no UI thread to marshal to. Tests get
+    determinism from :class:`~nuiitivet.testing.clock.HarnessClock` instead.
+
+    Entries live in a scanned list rather than a heap: callbacks are matched by
+    **equality** (see :func:`_same_callback`), so an entry can be cancelled by a
+    value that is merely equal to the one that armed it, and lazy deletion off a
+    heap would have to scan anyway. The list stays short -- one entry per armed
+    callback -- and this mirrors ``HarnessClock``, which scans for the same
+    reason.
     """
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
-        # Scanned lists rather than dicts: callbacks are matched by equality,
-        # and an equality-based key would need a hashable callback.
-        self._timers: List[Tuple[ClockCallback, threading.Timer]] = []
-        self._intervals: List[Tuple[ClockCallback, threading.Thread]] = []
+        self._cond = threading.Condition()
+        self._entries: List[_Entry] = []
+        self._worker: Optional[threading.Thread] = None
 
-    def _pop_timers(self, fn: ClockCallback) -> List[threading.Timer]:
-        """Remove and return every pending timer scheduled for ``fn``. Caller holds the lock."""
-        matched: List[threading.Timer] = []
-        remaining: List[Tuple[ClockCallback, threading.Timer]] = []
-        for cb, timer in self._timers:
-            if _same_callback(cb, fn):
-                matched.append(timer)
-            else:
-                remaining.append((cb, timer))
-        self._timers = remaining
-        return matched
+    # -- Clock protocol ----------------------------------------------------
 
     def schedule_once(self, fn: ClockCallback, delay: float) -> None:
-        timer = threading.Timer(float(delay), lambda: self._run_once(fn, timer))
-        timer.daemon = True
-        with self._lock:
-            stale = self._pop_timers(fn)
-            self._timers.append((fn, timer))
-        for old in stale:
-            self._cancel(old)
-        timer.start()
-
-    def _run_once(self, fn: ClockCallback, timer: threading.Timer) -> None:
-        try:
-            fn(0.0)
-        finally:
-            with self._lock:
-                # Drop this timer only. A callback that reschedules itself has
-                # already registered its replacement by the time we get here.
-                self._timers = [entry for entry in self._timers if entry[1] is not timer]
+        self._arm(fn, float(delay), is_interval=False)
 
     def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
-        # Avoid creating recursive threads. Use a persistent loop for interval tasks.
-        # But for simplicity in this fallback clock, we just launch ONE daemon thread per interval task
-        # that sleeps and calls the function repeatedly.
-
-        def _loop() -> None:
-            import time
-
-            while True:
-                start_time = time.perf_counter()
-                try:
-                    # Check if still scheduled
-                    with self._lock:
-                        if not any(entry[1] is t for entry in self._intervals):
-                            break
-                    fn(interval)
-                except Exception:
-                    exception_once(_logger, "thread_clock_interval_exc", "Interval callback failed")
-
-                # Sleep for the remainder
-                elapsed = time.perf_counter() - start_time
-                wait_time = max(0.0, interval - elapsed)
-                if wait_time > 0:
-                    time.sleep(wait_time)
-                else:
-                    # If lagging, invoke immediately but yield time slice
-                    time.sleep(0.001)
-
-        t = threading.Thread(target=_loop, daemon=True)
-        with self._lock:
-            self._intervals.append((fn, t))
-        t.start()
+        self._arm(fn, float(interval), is_interval=True)
 
     def unschedule(self, fn: ClockCallback) -> None:
-        with self._lock:
-            timers = self._pop_timers(fn)
-            # Just drop the interval entries. The loop thread checks this list.
-            # We don't have a direct handle to stop the thread other than
-            # removing it from the list. (threading.Thread has no cancel())
-            self._intervals = [entry for entry in self._intervals if not _same_callback(entry[0], fn)]
+        with self._cond:
+            self._entries = [e for e in self._entries if not _same_callback(e.fn, fn)]
+            self._cond.notify()
 
-        for timer in timers:
-            self._cancel(timer)
+    def _arm(self, fn: ClockCallback, delay: float, *, is_interval: bool) -> None:
+        """Replace anything armed for ``fn`` with a fresh entry, and wake the worker.
 
-        # Interval thread will exit on next loop check.
+        Replacing rather than appending is what the previous implementation did
+        for one-shots, and what callers depend on: ``DebouncedObservable``
+        re-arms on every keystroke and expects one pending emit, not five.
+        """
+        with self._cond:
+            self._entries = [e for e in self._entries if not _same_callback(e.fn, fn)]
+            self._entries.append(_Entry(fn, delay, time.monotonic() + delay, is_interval))
+            self._ensure_worker()
+            self._cond.notify()
 
-    def _cancel(self, timer: threading.Timer) -> None:
-        try:
-            timer.cancel()
-        except Exception:
-            exception_once(_logger, "thread_clock_cancel_timer_exc", "Timer cancel failed")
+    # -- servicing ---------------------------------------------------------
+
+    def _ensure_worker(self) -> None:
+        """Start the servicing thread on first use. Caller holds the condition."""
+        if self._worker is not None:
+            return
+        self._worker = threading.Thread(target=self._run, name="nuiitivet-clock", daemon=True)
+        self._worker.start()
+
+    def _run(self) -> None:
+        while True:
+            with self._cond:
+                while not self._entries:
+                    self._cond.wait()
+                now = time.monotonic()
+                entry = min(self._entries, key=lambda e: e.deadline)
+                if entry.deadline > now:
+                    self._cond.wait(entry.deadline - now)
+                    # Re-scan rather than fire: the wait may have ended because
+                    # something nearer was armed, or this entry unscheduled.
+                    continue
+                if entry.is_interval:
+                    # Advance from the deadline so cadence does not drift, but
+                    # never into a backlog: a callback slower than its period
+                    # skips the missed ticks instead of firing a catch-up burst.
+                    entry.deadline = max(now, entry.deadline + entry.delay)
+                else:
+                    self._entries.remove(entry)
+            try:
+                entry.fn(entry.delay)
+            except Exception:
+                exception_once(_logger, "thread_clock_callback_exc", "Scheduled callback failed")
+
+    # -- teardown ----------------------------------------------------------
 
     def cancel_all(self) -> None:
-        """Cancel every pending timer and stop every interval loop.
+        """Drop every armed callback, one-shot and interval alike.
 
-        Callbacks scheduled on this fallback clock run on background threads,
+        Callbacks scheduled on this fallback clock run on the servicing thread,
         so anything still pending fires later at an arbitrary moment — long
         after whoever scheduled it is gone. Callbacks that touch the widget
         tree then trip :func:`assert_ui_thread` off the UI thread, and the
         resulting error surfaces in unrelated code. This drops the whole
         schedule in one call, for teardown paths that must leave no timer
-        behind. Interval loops exit on their next scheduling check.
+        behind.
         """
-        with self._lock:
-            timers = [timer for _, timer in self._timers]
-            self._timers.clear()
-            self._intervals.clear()
+        with self._cond:
+            self._entries.clear()
+            self._cond.notify()
 
-        for timer in timers:
-            self._cancel(timer)
+    def pending_count(self) -> int:
+        """How many callbacks are armed. For tests and teardown diagnostics."""
+        with self._cond:
+            return len(self._entries)
 
 
 clock: Clock = _ThreadClock()

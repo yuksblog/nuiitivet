@@ -20,6 +20,8 @@ Violating this rule raises a `RuntimeError` in debug mode. The rule applies to
 ## Working with Background Threads
 
 You can run expensive work (network requests, heavy computation) on background
-threads, but the results must reach the UI on the main thread. The framework
-provides `Observable.dispatch_to_ui()` as the supported bridge for this; see the
-[Observable: Thread Safety](../state-management/thread_safety.md) guide for how to use it.
+threads, but the results must reach the UI on the main thread. An `Observable`
+does that for you: a write from any other thread is marshalled onto the UI
+thread automatically. See the
+[Observable: Thread Safety](../state-management/thread_safety.md) guide for what
+that changes, and for the `dispatch=False` opt-out.

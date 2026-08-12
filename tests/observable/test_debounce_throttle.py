@@ -150,13 +150,6 @@ class TestDebounce:
 
         assert results == [10]
 
-    def test_debounce_dispatch_to_ui(self, mock_clock):
-        """Debounce supports dispatch_to_ui()."""
-        m = Model()
-        debounced = m.source.debounce(0.3).dispatch_to_ui()
-
-        assert debounced._dispatch_to_ui is True
-
 
 class TestThrottle:
     """Test throttle functionality."""
@@ -252,13 +245,6 @@ class TestThrottle:
 
         m.source.value = 5
         assert results == [10]  # Immediate
-
-    def test_throttle_dispatch_to_ui(self):
-        """Throttle supports dispatch_to_ui()."""
-        m = Model()
-        throttled = m.source.throttle(0.3).dispatch_to_ui()
-
-        assert throttled._dispatch_to_ui is True
 
 
 class TestDebounceThrottleComparison:

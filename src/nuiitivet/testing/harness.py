@@ -75,7 +75,7 @@ class AppHarness(_HarnessBase):
         super().__init__(leak_check=leak_check, callback_errors=callback_errors)
         # Before the App exists: constructing one mounts the whole tree, and
         # anything it schedules on the way must land on a clock we can pump
-        # rather than on a timer thread.
+        # rather than on the fallback clock's servicing thread.
         self._ensure_clock()
         try:
             self._app = App(
@@ -124,7 +124,7 @@ class AppHarness(_HarnessBase):
     # survive a bad frame. The harness settles again afterwards, strictly and
     # pumping the clock, and that second settle is the one the test observes: a
     # layout error the bridge's settle swallowed is raised by ours on the next
-    # pass, and a dispatch_to_ui write the action produced is applied.
+    # pass, and a marshalled write the action produced is applied.
 
     def click(
         self,

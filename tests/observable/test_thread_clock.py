@@ -178,7 +178,7 @@ class TestThreadClockCallbackIdentity:
         assert fired == ["second"]
 
 
-class TestDispatchToUiUnderThreadClock:
+class TestCrossThreadWritesUnderThreadClock:
     def test_single_worker_write_delivers_once(self, thread_clock: _CountingThreadClock) -> None:
         """A worker-thread write reaches subscribers exactly once.
 
@@ -187,7 +187,6 @@ class TestDispatchToUiUnderThreadClock:
         forever: thousands of ``schedule_once`` calls and zero deliveries.
         """
         obs: Observable[int] = Observable(0)
-        obs.dispatch_to_ui()
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -199,7 +198,7 @@ class TestDispatchToUiUnderThreadClock:
         thread.start()
         thread.join()
 
-        assert recorder.received.wait(_TIMEOUT), "dispatch_to_ui never delivered"
+        assert recorder.received.wait(_TIMEOUT), "the marshalled write never delivered"
         time.sleep(_SETTLE)
 
         assert recorder.values == [42]
@@ -210,7 +209,6 @@ class TestDispatchToUiUnderThreadClock:
         """Rapid worker writes coalesce, land on the final value, and stay bounded."""
         writes = 7
         obs: Observable[int] = Observable(0)
-        obs.dispatch_to_ui()
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -229,15 +227,14 @@ class TestDispatchToUiUnderThreadClock:
         time.sleep(_SETTLE)
 
         assert obs.value == writes
-        assert recorder.values, "dispatch_to_ui never delivered"
+        assert recorder.values, "the marshalled write never delivered"
         assert recorder.values[-1] == writes
         # Coalescing means at most one scheduled flush per write, never more.
         assert 1 <= thread_clock.schedule_once_calls <= writes
 
     def test_main_thread_write_is_immediate(self, thread_clock: _CountingThreadClock) -> None:
-        """``dispatch_to_ui`` still applies synchronously on the main thread."""
+        """A write already on the UI thread still applies synchronously."""
         obs: Observable[int] = Observable(0)
-        obs.dispatch_to_ui()
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -275,10 +272,10 @@ def test_interval_stops_after_unschedule(thread_clock: _CountingThreadClock) -> 
     assert ticker.calls == settled
 
 
-def test_manual_clock_drives_dispatch_to_ui(monkeypatch) -> None:
+def test_manual_clock_drives_a_marshalled_write(monkeypatch) -> None:
     """A hand-rolled ``Clock`` — the shape the guide recommends — works end to end.
 
-    This is the documented way to test ``dispatch_to_ui`` deterministically:
+    This is the documented way to test a cross-thread write deterministically:
     install a clock that queues callbacks and run them on demand.
     """
 
@@ -306,7 +303,6 @@ def test_manual_clock_drives_dispatch_to_ui(monkeypatch) -> None:
     assert nv.get_clock() is clock, "get_clock must report the installed clock, not an import-time snapshot"
 
     obs: Observable[int] = Observable(0)
-    obs.dispatch_to_ui()
 
     recorder = _Recorder()
     obs.subscribe(recorder)
@@ -322,3 +318,57 @@ def test_manual_clock_drives_dispatch_to_ui(monkeypatch) -> None:
 
     assert recorder.values == [9]
     assert obs.value == 9
+
+
+def test_opting_out_delivers_every_intermediate_value(thread_clock: _CountingThreadClock) -> None:
+    """``dispatch=False`` is the escape hatch from marshalling *and* coalescing.
+
+    Marshalling keeps only the latest value per tick, which is what a UI wants
+    and what a logic-layer consumer counting every step does not. Opting out
+    buys back the full sequence, delivered inline on the writing thread.
+    """
+    obs: Observable[int] = Observable(0, dispatch=False)
+
+    recorder = _Recorder()
+    obs.subscribe(recorder)
+
+    def worker() -> None:
+        for i in range(1, 6):
+            obs.value = i
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    thread.join()
+
+    # No clock involved at all: the writes applied where they were made.
+    assert thread_clock.schedule_once_calls == 0
+    assert obs.value == 5
+    assert recorder.values == [1, 2, 3, 4, 5]
+
+
+def test_one_servicing_thread_regardless_of_how_many_callbacks() -> None:
+    """The fallback clock costs one thread, not one per armed callback.
+
+    The previous implementation spent a ``threading.Timer`` -- a thread -- per
+    ``schedule_once``, which every cross-thread observable write now reaches.
+    """
+    def make_noop() -> ClockCallback:
+        def noop(dt: float) -> None:
+            return None
+
+        return noop
+
+    clock = _ThreadClock()
+    before = threading.active_count()
+    try:
+        # Distinct callables: arming re-arms by equality, so one shared
+        # function would leave a single entry rather than fifty.
+        for _ in range(50):
+            clock.schedule_once(make_noop(), _WINDOW * 4)
+        clock.schedule_interval(make_noop(), _WINDOW * 4)
+
+        assert clock.pending_count() == 51
+        # One servicing thread, started lazily on the first arm.
+        assert threading.active_count() - before == 1
+    finally:
+        clock.cancel_all()

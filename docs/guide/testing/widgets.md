@@ -49,8 +49,8 @@ It is strict. A layout that raises reaches your test instead of a debug log, and
 a tree that will not converge raises rather than leaving whichever half-built
 frame the last pass produced.
 
-It also pumps the zero-delay queue, so a `dispatch_to_ui` write from a worker
-thread, a deferred batch flush, or a `Computed`'s UI notify is applied. Delayed
+It also pumps the zero-delay queue, so a write from a worker thread, a deferred
+batch flush, or a `Computed`'s UI notify is applied. Delayed
 work — `debounce`, tooltip delays, animation ticks — stays frozen: no time has
 passed that your test asked for. See
 [the harness clock](index.md#the-harness-clock) for making a delayed effect

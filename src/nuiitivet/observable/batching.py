@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import threading
 from typing import Any, Optional, Set
+
+from nuiitivet.runtime.threading import is_ui_thread
 
 from .contexts import _batch_context
 from . import runtime
@@ -50,7 +51,7 @@ class BatchContext:
 
         processed = set()
 
-        needs_ui_dispatch = any(getattr(obs, "_dispatch_to_ui", False) for obs in self._pending_observables)
+        needs_ui_dispatch = any(getattr(obs, "_dispatch_to_ui", True) for obs in self._pending_observables)
 
         def do_flush() -> None:
             while queue:
@@ -67,7 +68,7 @@ class BatchContext:
                             queue.append(c)
                     self._pending_computeds.clear()
 
-        if needs_ui_dispatch and threading.current_thread() is not threading.main_thread():
+        if needs_ui_dispatch and not is_ui_thread():
             runtime.clock.schedule_once(lambda dt: do_flush(), 0)
             return
 
