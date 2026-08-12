@@ -38,11 +38,12 @@ else:
     import tomli as tomllib  # ships with pytest on Python 3.10
 
 from nuiitivet.testing import _support
+from nuiitivet.testing._contained import CALLBACK_ERROR_LEVELS
 from nuiitivet.testing._leaks import LEAK_CHECK_LEVELS, track_subscriptions
 from nuiitivet.testing.clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 
 
-_CONFIG_KEYS = ("clock", "isolate", "wait_timeout", "leak_check")
+_CONFIG_KEYS = ("clock", "isolate", "wait_timeout", "leak_check", "callback_errors")
 _CLOCK_MODES = ("harness", "strict", "real")
 _ASYNC_PLUGINS = ("asyncio", "anyio")
 _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
@@ -51,13 +52,15 @@ _DEFAULTS_KEY: pytest.StashKey[Dict[str, Any]] = pytest.StashKey()
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "nuiitivet(clock=..., isolate=..., wait_timeout=..., leak_check=...): "
+        "nuiitivet(clock=..., isolate=..., wait_timeout=..., leak_check=..., "
+        "callback_errors=...): "
         'configure the nuiitivet test harness. clock is "harness" (default), '
         '"strict" (fail on callbacks armed and never fired), or "real" (keep the '
         "installed clock); isolate=False skips the process-global resets; "
         "wait_timeout sets the default seconds for wait_for() and idle(); "
         'leak_check is "error" (default), "warn" or "off" for the '
-        "subscription-leak check at harness teardown.",
+        "subscription-leak check at harness teardown; callback_errors is the "
+        "same three levels for a callback the framework caught and contained.",
     )
     config.stash[_DEFAULTS_KEY] = _load_defaults(config)
     # The async runner below executes tests whose asyncio/anyio marker is
@@ -107,6 +110,12 @@ def _validate_config(cfg: Dict[str, Any], *, source: str) -> None:
         raise pytest.UsageError(
             f"invalid leak_check={leak_check!r} in {source}; "
             f"expected one of: {', '.join(LEAK_CHECK_LEVELS)}"
+        )
+    callback_errors = cfg.get("callback_errors")
+    if callback_errors is not None and callback_errors not in CALLBACK_ERROR_LEVELS:
+        raise pytest.UsageError(
+            f"invalid callback_errors={callback_errors!r} in {source}; "
+            f"expected one of: {', '.join(CALLBACK_ERROR_LEVELS)}"
         )
     wait_timeout = cfg.get("wait_timeout")
     if wait_timeout is not None:
@@ -181,8 +190,11 @@ def _clear_mutable_globals() -> None:
 
     # A harness left behind by a failing test would otherwise keep receiving the
     # next test's tasks into a registry nobody reads, so idle() there would
-    # return against work still in flight.
+    # return against work still in flight -- and the next test's contained
+    # callback errors into a queue that is never drained, where they would either
+    # vanish or be blamed on the wrong test.
     callbacks._task_observers.clear()
+    callbacks._error_sinks.clear()
     widget_binding._pending_invalidation.clear()
     widget_builder._pending_scope_recompositions.clear()
     widget_size_change._pending_size_changes.clear()
@@ -266,6 +278,7 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
     _support._set_clock_opted_out(clock_mode == "real")
     _support._set_wait_timeout(cfg.get("wait_timeout"))
     _support._set_leak_check(cfg.get("leak_check"))
+    _support._set_callback_errors(cfg.get("callback_errors"))
     _support._set_test_failed(False)
 
     if not isolate and clock_mode == "real":
@@ -275,6 +288,7 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
             _support._set_clock_opted_out(False)
             _support._set_wait_timeout(None)
             _support._set_leak_check(None)
+            _support._set_callback_errors(None)
             _support.forget_open_harnesses()
         return
 
@@ -321,6 +335,7 @@ def _nuiitivet_test_env(request: pytest.FixtureRequest) -> Iterator[Optional[Har
         _support._set_clock_opted_out(False)
         _support._set_wait_timeout(None)
         _support._set_leak_check(None)
+        _support._set_callback_errors(None)
         if isolate and saved is not None:
             _clear_mutable_globals()
             _restore_rebindable_globals(saved)

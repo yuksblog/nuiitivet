@@ -19,14 +19,23 @@ from __future__ import annotations
 import asyncio
 from typing import Any, List, Optional, Set
 
+from nuiitivet.widgeting.callbacks import ContainedError
+
 
 class TaskRegistry:
-    """The tasks one harness caused, and whether they are still moving."""
+    """The tasks one harness caused, and the user-code failures it contained.
+
+    The failure queue holds **both** halves of the same problem: an exception an
+    async handler raised inside its task, and one the framework contained from
+    synchronous user code (an ``on_click``, a rebuild, a dispose callback). One
+    queue rather than two, because the test drains them at shared points and two
+    queues would hand them over out of the order they happened in.
+    """
 
     def __init__(self) -> None:
         self._tasks: Set["asyncio.Task[Any]"] = set()
         self._observed: Set["asyncio.Task[Any]"] = set()
-        self._errors: List[BaseException] = []
+        self._errors: List[ContainedError] = []
         self._moves = 0
 
     # -- recording ---------------------------------------------------------
@@ -50,7 +59,16 @@ class TaskRegistry:
         # is caught and held for the next idle()/wait_for()/close().
         error = task.exception()
         if error is not None:
-            self._errors.append(error)
+            self.record_error(error, owner=describe_task(task), site="async handler")
+
+    def record_error(self, exc: BaseException, *, owner: str, site: str) -> None:
+        """Queue a failure the framework contained. The error sink's target.
+
+        Shares :meth:`take_error` with the task path above, so a test that
+        clicked a button whose sync handler raised and whose async handler also
+        raised sees the first one first.
+        """
+        self._errors.append(ContainedError(exc, owner, site))
 
     # -- what idle() asks --------------------------------------------------
 
@@ -69,11 +87,16 @@ class TaskRegistry:
         moves, self._moves = self._moves, 0
         return moves
 
-    def take_error(self) -> Optional[BaseException]:
+    def take_error(self) -> Optional[ContainedError]:
         """The first unreported handler failure, or ``None``."""
         if not self._errors:
             return None
         return self._errors.pop(0)
+
+    def pending_errors(self) -> List[ContainedError]:
+        """Every queued failure, drained. For the teardown report."""
+        errors, self._errors = self._errors, []
+        return errors
 
     # -- what the teardown report asks -------------------------------------
 

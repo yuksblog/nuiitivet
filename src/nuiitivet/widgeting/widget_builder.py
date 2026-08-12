@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TY
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
+from .callbacks import report_contained
 
 _logger = logging.getLogger(__name__)
 
@@ -341,11 +342,16 @@ def flush_scope_recompositions() -> None:
             continue
         try:
             handler(set(scopes))
-        except Exception:
+        except Exception as exc:
             exception_once(
                 _logger,
                 "widget_builder_flush_scope_recompositions_exc",
                 "Scope recomposition handler raised",
+            )
+            report_contained(
+                exc,
+                owner=type(host).__name__,
+                site="_process_scope_recompositions",
             )
 
 

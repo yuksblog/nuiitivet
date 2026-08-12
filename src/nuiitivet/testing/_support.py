@@ -21,6 +21,7 @@ from nuiitivet._interaction.perception import (
     match_condition,
 )
 from nuiitivet.widgeting import callbacks as _callbacks
+from nuiitivet.widgeting.callbacks import ContainedError
 
 from ._tasks import TaskRegistry, describe_task, untracked_tasks
 from .clock import HarnessClock
@@ -95,10 +96,11 @@ def _set_clock_opted_out(value: bool) -> None:
     _clock_opted_out = value
 
 
-# This test's leak-check level, and whether it has already failed. Both are the
-# plugin's to set: the level comes from config the harness cannot read, and the
+# This test's check levels, and whether it has already failed. All three are the
+# plugin's to set: the levels come from config the harness cannot read, and the
 # outcome is not known until after the test body has run.
 _leak_check: Optional[str] = None
+_callback_errors: Optional[str] = None
 _test_failed = False
 
 
@@ -106,6 +108,12 @@ def _set_leak_check(level: Optional[str]) -> None:
     """Plugin-only: install this test's default ``leak_check`` level."""
     global _leak_check
     _leak_check = level
+
+
+def _set_callback_errors(level: Optional[str]) -> None:
+    """Plugin-only: install this test's default ``callback_errors`` level."""
+    global _callback_errors
+    _callback_errors = level
 
 
 def _set_test_failed(failed: bool) -> None:
@@ -235,7 +243,11 @@ class _HarnessBase:
 
     __test__ = False
 
-    def __init__(self, leak_check: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        leak_check: Optional[str] = None,
+        callback_errors: Optional[str] = None,
+    ) -> None:
         self._clock: Optional[HarnessClock] = None
         self._restore_clock: Optional[Callable[[], None]] = None
         self._last_action = _LastAction()
@@ -243,7 +255,11 @@ class _HarnessBase:
         self._tasks = TaskRegistry()
         self._closed = False
         self._exception_in_flight = False
+        # Set before either installer runs, so a constructor that fails half-way
+        # still has something for _stop_observing to find.
+        self._error_sink: Optional[Callable[[ContainedError], None]] = None
         self._install_leak_check(leak_check)
+        self._install_error_sink(callback_errors)
         # Observing starts here, before the subclass builds anything: mounting a
         # tree runs `on_mount`, which may itself be async, and a task started
         # while the harness was still being constructed is exactly the kind an
@@ -282,9 +298,67 @@ class _HarnessBase:
             )
         )
 
+    def _install_error_sink(self, level: Optional[str]) -> None:
+        """Listen for exceptions the framework contains on user code's behalf.
+
+        Installed here rather than at the first action, for the same reason the
+        task observer is: mounting a tree runs ``on_mount``, and a constructor
+        that raised into a containment before the harness was finished building
+        is exactly the failure an author would never think to look for.
+
+        ``"off"`` installs nothing at all, so a test that opted out pays no
+        branch and the framework's own containment tests see the production
+        behaviour they are asserting on.
+        """
+        from ._contained import install_sink, resolve_level
+
+        resolved = resolve_level(
+            level if level is not None else _callback_errors,
+            source=f"{type(self).__name__}(callback_errors=...)",
+        )
+        self._callback_errors_level = resolved
+        if resolved == "off":
+            self._error_sink = None
+            return
+        self._error_sink = self._record_contained_error
+        install_sink(self._error_sink)
+
+    def _record_contained_error(self, error: ContainedError) -> None:
+        """The sink. Queues alongside async handler failures, never raises here.
+
+        Raising from a sink would unwind the very frame the containment exists
+        to protect, half-way through a dispatch that has already mutated state.
+        So the failure waits for a boundary the test controls -- the end of the
+        action verb, an ``idle()``, or teardown.
+        """
+        from ._contained import claim
+
+        if claim(error):
+            self._tasks.record_error(error.exc, owner=error.owner, site=error.site)
+
     def _stop_observing(self) -> None:
-        """Drop the task observer. Safe to call twice."""
+        """Drop the task observer and the error sink. Safe to call twice.
+
+        Both, because this is also the abandon path for a constructor that
+        failed: there is no teardown coming to remove them one at a time.
+        """
         _callbacks._task_observers.discard(self._tasks.record)
+        self._remove_error_sink()
+
+    def _remove_error_sink(self) -> None:
+        """Stop listening for contained failures. Safe to call twice.
+
+        Separate from :meth:`_stop_observing` because it happens *later* in a
+        normal teardown: unmounting runs ``on_unmount`` and the dispose
+        callbacks, both of which are user code behind a containment, so a sink
+        dropped before the unmount would miss the last failures the harness is
+        responsible for.
+        """
+        from ._contained import remove_sink
+
+        if self._error_sink is not None:
+            remove_sink(self._error_sink)
+            self._error_sink = None
 
     def _register(self) -> None:
         """Join the open-harness registry. Called last, by the subclass.
@@ -360,6 +434,12 @@ class _HarnessBase:
                 before_pass=clock.pump_immediate,
             )
             if not _has_immediate_work(clock):
+                # Every action verb ends here, so this one drain covers click,
+                # scroll, type, key and resize. A synchronous callback has
+                # finished raising by now -- unlike an async one, which is still
+                # a pending task -- so the failure surfaces at the line that
+                # caused it rather than three assertions later.
+                self._surface_contained_error()
                 return
         raise LayoutNotConvergedError(
             f"settle did not converge after {_MAX_CLOCK_ROUNDS} rounds: every pass "
@@ -409,7 +489,7 @@ class _HarnessBase:
         while True:
             clock.pump()
             self.settle()
-            self._raise_task_error()
+            self._surface_contained_error()
 
             moved = self._tasks.take_progress()
             pending = self._tasks.in_flight()
@@ -486,7 +566,7 @@ class _HarnessBase:
         while True:
             clock.pump()
             self.settle()
-            self._raise_task_error()
+            self._surface_contained_error()
             if check():
                 self._tasks.mark_observed()
                 return
@@ -545,10 +625,36 @@ class _HarnessBase:
     def _resolve_timeout(self, timeout: Optional[float]) -> float:
         return _wait_timeout if timeout is None else float(timeout)
 
-    def _raise_task_error(self) -> None:
+    def _surface_contained_error(self) -> None:
+        """Hand the test the first failure the framework contained for it.
+
+        The exception is raised **as itself** -- a handler's ``ValueError``
+        arrives as a ``ValueError`` -- so that a synchronous callback and an
+        async one read identically at the assert, and the traceback still points
+        at the line inside the handler. The owner and the containment site ride
+        along as a note where the interpreter supports one.
+
+        Below ``"error"`` nothing is taken from the queue, so the failures
+        accumulate and are reported together at teardown instead of one at a
+        time from wherever the test happened to settle.
+        """
+        from ._contained import annotate
+
+        if self._callback_errors_level != "error":
+            return
         error = self._tasks.take_error()
         if error is not None:
-            raise error
+            raise annotate(error)
+
+    def _report_contained_at_teardown(self) -> None:
+        """Whatever the test never waited long enough to be handed."""
+        from ._contained import report_at_teardown
+
+        report_at_teardown(
+            self._tasks.pending_errors(),
+            level=self._callback_errors_level,
+            demote=self._exception_in_flight or _test_already_failed(),
+        )
 
     @staticmethod
     def _describe_condition(
@@ -726,7 +832,10 @@ class _HarnessBase:
         self._closed = True
         if self in _open_harnesses:
             _open_harnesses.remove(self)
-        self._stop_observing()
+        # The task observer only: the error sink stays until the unmount below
+        # has run on_unmount and the dispose callbacks, which are the last user
+        # code this harness is answerable for.
+        _callbacks._task_observers.discard(self._tasks.record)
         try:
             self._teardown()
             hook_error: Optional[BaseException] = None
@@ -744,10 +853,14 @@ class _HarnessBase:
             # Before the held hook error: a handler that failed after the test's
             # final wait would otherwise be dropped on the floor, which is the
             # containment this package exists to undo -- just later than usual.
-            self._raise_task_error()
+            # All of them, not the first: this is the last chance any of them
+            # get, so the rest are warned about rather than discarded.
+            self._remove_error_sink()
+            self._report_contained_at_teardown()
             if hook_error is not None:
                 raise hook_error
         finally:
+            self._remove_error_sink()
             if self._restore_clock is not None:
                 self._restore_clock()
 

@@ -7,6 +7,7 @@ import weakref
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
+from .callbacks import report_contained
 from .widget_builder import flush_scope_recompositions
 from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
 
@@ -69,13 +70,18 @@ def flush_binding_invalidations() -> None:
             for scope_id in list(scopes):
                 try:
                     result = handler(scope_id)
-                except Exception:
+                except Exception as exc:
                     exception_once(
                         _logger,
                         f"widget_binding_handle_dependency_invalidation_scope_exc:{type(widget).__name__}",
                         "Exception in _handle_dependency_invalidation(scope_id=%s) for widget=%s",
                         scope_id,
                         type(widget).__name__,
+                    )
+                    report_contained(
+                        exc,
+                        owner=type(widget).__name__,
+                        site="_handle_dependency_invalidation(scope_id)",
                     )
                     continue
                 if result:
@@ -85,19 +91,24 @@ def flush_binding_invalidations() -> None:
             if not deps or _DEPENDENCY_ALL in deps:
                 try:
                     handler(None)
-                except Exception:
+                except Exception as exc:
                     exception_once(
                         _logger,
                         f"widget_binding_handle_dependency_invalidation_all_exc:{type(widget).__name__}",
                         "Exception in _handle_dependency_invalidation(None) for widget=%s",
                         type(widget).__name__,
                     )
+                    report_contained(
+                        exc,
+                        owner=type(widget).__name__,
+                        site="_handle_dependency_invalidation(None)",
+                    )
             else:
                 for dep in list(deps):
                     if isinstance(dep, str):
                         try:
                             handler(dep)
-                        except Exception:
+                        except Exception as exc:
                             exception_once(
                                 _logger,
                                 f"widget_binding_handle_dependency_invalidation_dep_exc:{type(widget).__name__}",
@@ -105,17 +116,27 @@ def flush_binding_invalidations() -> None:
                                 dep,
                                 type(widget).__name__,
                             )
+                            report_contained(
+                                exc,
+                                owner=type(widget).__name__,
+                                site=f"_handle_dependency_invalidation(dep={dep!r})",
+                            )
             continue
         invalidate = getattr(widget, "invalidate", None)
         if callable(invalidate):
             try:
                 invalidate()
-            except Exception:
+            except Exception as exc:
                 exception_once(
                     _logger,
                     f"widget_binding_invalidate_exc:{type(widget).__name__}",
                     "Exception in widget.invalidate() during binding flush for widget=%s",
                     type(widget).__name__,
+                )
+                report_contained(
+                    exc,
+                    owner=type(widget).__name__,
+                    site="invalidate() during a binding flush",
                 )
     try:
         flush_scope_recompositions()

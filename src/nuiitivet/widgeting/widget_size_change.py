@@ -24,7 +24,7 @@ from typing import Any, Callable, Dict, Tuple, Union
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.size import Size
 
-from .callbacks import invoke_event_handler
+from .callbacks import invoke_event_handler, report_contained
 
 _logger = logging.getLogger(__name__)
 
@@ -62,12 +62,17 @@ def queue_size_change(widget: Any, size: Size) -> None:
     if callable(invalidate):
         try:
             invalidate()
-        except Exception:
+        except Exception as exc:
             exception_once(
                 _logger,
                 f"widget_size_change_invalidate_exc:{type(widget).__name__}",
                 "Exception in invalidate() after a size change for widget=%s",
                 type(widget).__name__,
+            )
+            report_contained(
+                exc,
+                owner=type(widget).__name__,
+                site="invalidate() after a size change",
             )
 
 
