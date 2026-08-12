@@ -26,12 +26,14 @@ See ``docs/guide/testing/`` for the guide.
 
 from __future__ import annotations
 
+from ._leaks import SubscriptionLeakWarning, track_subscriptions
 from .clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 from .errors import (
     ActionNotHandledError,
     IdleTimeoutError,
     LayoutNotConvergedError,
     StaleNodeError,
+    SubscriptionLeakError,
     TargetNotFoundError,
     TargetNotVisibleError,
     UnschedulableAsyncWork,
@@ -52,10 +54,13 @@ __all__ = [
     "NuiitivetClockWarning",
     "PendingCallback",
     "StaleNodeError",
+    "SubscriptionLeakError",
+    "SubscriptionLeakWarning",
     "TargetNotFoundError",
     "TargetNotVisibleError",
     "UnschedulableAsyncWork",
     "WaitTimeoutError",
     "WidgetHost",
     "mount",
+    "track_subscriptions",
 ]

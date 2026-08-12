@@ -42,6 +42,7 @@ class WidgetHost(_HarnessBase):
         *,
         theme: Optional[Any] = None,
         scope: bool = True,
+        leak_check: Optional[str] = None,
     ) -> None:
         if theme is not None and not scope:
             raise ValueError(
@@ -49,7 +50,7 @@ class WidgetHost(_HarnessBase):
                 "the widget with no AppScope, so there is no provider for a theme "
                 "to be served through. Pass one or the other."
             )
-        super().__init__()
+        super().__init__(leak_check=leak_check)
 
         self.width: Optional[float] = None
         self.height: Optional[float] = None
@@ -166,7 +167,13 @@ class WidgetHost(_HarnessBase):
         self.root.unmount()
 
 
-def mount(widget: Any, *, theme: Optional[Any] = None, scope: bool = True) -> WidgetHost:
+def mount(
+    widget: Any,
+    *,
+    theme: Optional[Any] = None,
+    scope: bool = True,
+    leak_check: Optional[str] = None,
+) -> WidgetHost:
     """Mount ``widget`` on a minimal host, for a single-widget test.
 
     Use it as a context manager; the widget is unmounted on exit, so a test
@@ -190,11 +197,15 @@ def mount(widget: Any, *, theme: Optional[Any] = None, scope: bool = True) -> Wi
             of the detached path -- a widget deliberately measured outside an App,
             as offscreen sizing does -- actually wants. Passing ``theme=`` with
             ``scope=False`` is a contradiction and raises.
+        leak_check: ``"error"``, ``"warn"`` or ``"off"`` for the
+            subscription-leak check at teardown, overriding the suite default in
+            ``[tool.nuiitivet.testing]`` and the test's ``nuiitivet`` marker. The
+            narrowest of the three wins.
 
     Returns:
         The :class:`WidgetHost`, which is also the query surface.
     """
-    return WidgetHost(widget, theme=theme, scope=scope)
+    return WidgetHost(widget, theme=theme, scope=scope, leak_check=leak_check)
 
 
 __all__ = ["Invalidation", "WidgetHost", "mount"]

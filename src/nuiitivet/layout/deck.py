@@ -52,19 +52,34 @@ class Deck(Widget):
             for child in children:
                 self.add_child(child)
 
-        # Handle index (Observable or plain int)
+        # Handle index (Observable or plain int). The subscription itself is
+        # taken on mount, not here -- see on_mount.
         self._index_observable: Optional[ObservableBase[int]] = None
-        self._index_subscription = None
         if isinstance(index, ObservableBase):
             self._index_observable = index
             self._current_index = index.value
-            # Subscribe to changes
-            self._index_subscription = index.subscribe(self._on_index_changed)
         else:
             self._current_index = int(index)
 
         # Validate initial index
         self._validate_index()
+
+    def on_mount(self) -> None:
+        """Follow the index observable for as long as this Deck is in the tree.
+
+        The observable belongs to the app and outlives this widget, so a bare
+        ``subscribe`` in the constructor left it holding ``_on_index_changed``
+        forever -- the leak this framework's ``bind()`` convention exists to
+        prevent. A ``dispose()`` method used to sit here doing the cleanup, and
+        never ran: ``Widget`` has no ``dispose`` hook for anything to call it
+        from.
+        """
+        super().on_mount()
+        if self._index_observable is None:
+            return
+        self.bind(self._index_observable.subscribe(self._on_index_changed))
+        # The index may have moved while this Deck was out of the tree.
+        self._on_index_changed(self._index_observable.value)
 
     def _on_index_changed(self, new_index: int) -> None:
         """Handle Observable index changes."""
@@ -87,7 +102,17 @@ class Deck(Widget):
 
     @property
     def current_index(self) -> int:
-        """Get the currently selected child index."""
+        """The selected child index, clamped to the children that exist.
+
+        Resolved from the observable on every read rather than served from the
+        cache the subscription maintains. The subscription is mount-scoped -- it
+        exists to call ``mark_needs_layout``, which only means anything in a
+        tree -- so without this a Deck that had not been mounted yet, or had been
+        taken out, would report a stale index to code that is entitled to ask.
+        """
+        if self._index_observable is not None:
+            self._current_index = self._index_observable.value
+            self._validate_index()
         return self._current_index
 
     def set_index(self, index: int) -> None:
@@ -213,11 +238,3 @@ class Deck(Widget):
 
         selected_child = children[self._current_index]
         return self._resolve_hit(x, y, child_hit=selected_child.hit_test(x, y), self_opaque=False)
-
-    def dispose(self) -> None:
-        """Clean up subscriptions."""
-        if self._index_subscription is not None:
-            self._index_subscription.dispose()
-            self._index_subscription = None
-        # Note: Widget class doesn't have dispose, but we follow the pattern
-        # for future compatibility

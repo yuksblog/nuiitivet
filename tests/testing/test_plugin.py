@@ -528,3 +528,123 @@ def test_a_harness_the_test_closed_itself_is_not_reported(pytester: pytest.Pytes
     )
     result = pytester.runpytest_inprocess("-p", "no:asyncio", "-W", "default")
     result.assert_outcomes(passed=1, warnings=0)
+
+
+# -- leak_check ------------------------------------------------------------
+
+
+_LEAKY_MODULE = """
+    from nuiitivet.observable.value import _ObservableValue
+    from nuiitivet.testing import mount
+    from nuiitivet.widgeting.widget import Widget
+
+    class Leaky(Widget):
+        def __init__(self, source):
+            super().__init__()
+            self._source = source
+
+        def on_mount(self):
+            super().on_mount()
+            self._source.subscribe(self._noop)
+
+        def _noop(self, value):
+            pass
+
+    def test_leaks():
+        with mount(Leaky(_ObservableValue(0))) as host:
+            host.layout(100, 100)
+"""
+
+
+def test_leak_check_defaults_to_error(pytester: pytest.Pytester):
+    """A `with` block closes inside the test body, so the report is a failure."""
+    pytester.makepyfile(_LEAKY_MODULE)
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(failed=1)
+    result.stdout.fnmatch_lines(["*never disposed*"])
+
+
+def test_a_fixture_managed_leak_is_reported_at_teardown(pytester: pytest.Pytester):
+    """The fixture closes after the call phase, so the report is a teardown error."""
+    pytester.makepyfile(
+        _LEAKY_MODULE.replace(
+            """    def test_leaks():
+        with mount(Leaky(_ObservableValue(0))) as host:
+            host.layout(100, 100)""",
+            """    def test_leaks(nuiitivet_mount):
+        host = nuiitivet_mount(Leaky(_ObservableValue(0)))
+        host.layout(100, 100)""",
+        )
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(passed=1, errors=1)
+    result.stdout.fnmatch_lines(["*never disposed*"])
+
+
+def test_leak_check_suite_default_is_read_from_pyproject(pytester: pytest.Pytester):
+    pytester.makepyfile(_LEAKY_MODULE)
+    pytester.makepyprojecttoml(
+        """
+        [tool.nuiitivet.testing]
+        leak_check = "off"
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(passed=1, errors=0)
+
+
+def test_invalid_leak_check_errors(pytester: pytest.Pytester):
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.nuiitivet(leak_check="loud")
+        def test_x():
+            pass
+        """
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(errors=1)
+    result.stdout.fnmatch_lines(["*invalid leak_check*loud*"])
+
+
+def test_a_test_that_already_failed_gets_no_leak_report(pytester: pytest.Pytester):
+    """The first failure is usually why the tree never reached teardown intact.
+
+    Appending a leak report to it buries the thing worth reading, so the check
+    stands down -- and the test still fails, once, for its own reason.
+    """
+    pytester.makepyfile(
+        _LEAKY_MODULE.replace(
+            "            host.layout(100, 100)",
+            "            host.layout(100, 100)\n            assert False, 'the real failure'",
+        )
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(failed=1, errors=0)
+    result.stdout.fnmatch_lines(["*the real failure*"])
+    assert "never disposed" not in result.stdout.str()
+
+
+def test_a_failed_test_gets_no_leak_report_from_its_fixture(pytester: pytest.Pytester):
+    """The same suppression on the other path, where only the plugin can see it.
+
+    A fixture-managed harness closes in the teardown phase, after the outcome
+    exists -- so this is what `pytest_runtest_makereport` is for, and it is a
+    different code path from the `with` block's own unwinding check.
+    """
+    pytester.makepyfile(
+        _LEAKY_MODULE.replace(
+            """    def test_leaks():
+        with mount(Leaky(_ObservableValue(0))) as host:
+            host.layout(100, 100)""",
+            """    def test_leaks(nuiitivet_mount):
+        host = nuiitivet_mount(Leaky(_ObservableValue(0)))
+        host.layout(100, 100)
+        assert False, "the real failure\"""",
+        )
+    )
+    result = pytester.runpytest_inprocess("-p", "no:asyncio")
+    result.assert_outcomes(failed=1, errors=0)
+    result.stdout.fnmatch_lines(["*the real failure*"])
+    assert "never disposed" not in result.stdout.str()

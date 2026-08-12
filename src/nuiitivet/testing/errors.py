@@ -58,6 +58,20 @@ class IdleTimeoutError(TimeoutError):
     """
 
 
+class SubscriptionLeakError(AssertionError):
+    """Subscriptions outlived the widgets that made them.
+
+    A widget subscribed to an ``Observable`` and never disposed the
+    subscription, so the observable still holds a callback into a tree that has
+    been unmounted. The message names each creation site; ``self.bind(...)`` is
+    the fix, and ``leak_check="off"`` the escape hatch for a subscription that
+    genuinely outlives its widget.
+
+    An :class:`AssertionError` because it is an assertion the harness made on the
+    test's behalf, not a harness malfunction.
+    """
+
+
 class StaleNodeError(RuntimeError):
     """A :class:`~nuiitivet.testing.node.Node` outlived the tree it described.
 
@@ -73,6 +87,7 @@ __all__ = [
     "IdleTimeoutError",
     "LayoutNotConvergedError",
     "StaleNodeError",
+    "SubscriptionLeakError",
     "TargetNotFoundError",
     "TargetNotVisibleError",
     "UnschedulableAsyncWork",

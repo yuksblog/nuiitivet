@@ -5,6 +5,7 @@ from enum import IntEnum
 from nuiitivet.layout.deck import Deck
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.testing import mount
 
 
 def test_deck_basic_creation():
@@ -194,14 +195,44 @@ def test_deck_paint_only_selected():
     assert deck.current_index == 2
 
 
-def test_deck_dispose_cleanup():
-    """Deck should clean up Observable subscription on dispose."""
+def test_deck_stops_following_the_index_after_unmount():
+    """Unmounting must release the app's Observable.
+
+    This used to assert on a ``Deck.dispose()`` that nothing ever called --
+    ``Widget`` has no dispose hook -- so it passed while the subscription in fact
+    outlived every Deck ever built. The lifecycle is what matters, so the test
+    drives the lifecycle.
+    """
     index_obs = _ObservableValue(0)
     deck = Deck(children=[Text("A"), Text("B"), Text("C")], index=index_obs)
 
-    # Should have subscription
-    assert deck._index_subscription is not None
+    with mount(deck) as host:
+        host.layout(200, 100)
+        index_obs.value = 2
+        assert deck.current_index == 2
+        assert len(index_obs._subs) == 1
 
-    # Dispose should clean up
-    deck.dispose()
-    assert deck._index_subscription is None
+    # The app's observable must not still be holding the unmounted Deck. Asserted
+    # on the subscriber list rather than on behaviour, because `current_index`
+    # resolves through the observable on every read and would answer correctly
+    # either way -- the leak is the reference, not the reading.
+    assert index_obs._subs == []
+
+
+def test_deck_follows_the_index_again_after_remount():
+    """A Deck taken out of the tree and put back must work.
+
+    The subscription is taken on mount, so re-mounting has to re-take it -- and
+    pick up whatever the index did while the Deck was detached.
+    """
+    index_obs = _ObservableValue(0)
+    deck = Deck(children=[Text("A"), Text("B"), Text("C")], index=index_obs)
+
+    with mount(deck) as host:
+        host.layout(200, 100)
+    index_obs.value = 1
+    with mount(deck) as host:
+        host.layout(200, 100)
+        assert deck.current_index == 1
+        index_obs.value = 2
+        assert deck.current_index == 2

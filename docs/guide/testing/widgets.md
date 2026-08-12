@@ -107,6 +107,63 @@ than when the behaviour does. Where an exact count genuinely is the contract
 
 `settle()` itself never invalidates, so the count is yours alone.
 
+## Subscriptions are checked for you
+
+When the harness tears the widget down it fails the test if any subscription made
+during it is still open:
+
+```text
+SubscriptionLeakError: 1 subscription(s) were created during this test and never
+disposed. The observable still holds a callback into a widget that has been
+unmounted, so firing it now mutates a dead tree:
+
+  MyCard  subscribed at myapp/cards.py:64
+
+Wrap the call in self.bind(...), which disposes it on unmount, ...
+```
+
+You get this without asking for it, because it is the framework's most common
+bug and it is silent where it is introduced. An observable that outlives your
+widget — one the app passed in — keeps a reference to a callback into a tree that
+is gone; the symptom shows up somewhere unrelated, much later.
+
+**The fix is `bind()`.** It stores the `Disposable` and disposes it on unmount:
+
+```python
+def on_mount(self) -> None:
+    super().on_mount()
+    self.bind(self.source.subscribe(self._on_value))     # instead of a bare subscribe
+```
+
+`observe(obs, cb)` and `bind_to(obs, setter)` already do this for you, so a widget
+built out of those cannot leak. Subscribe **in `on_mount`, not `__init__`**: the
+binding is released at unmount, so a widget that subscribed in its constructor
+stops working if it is ever re-mounted.
+
+What is *not* reported: a widget that was never mounted (nothing outlived
+anything), a widget still mounted in another harness, and the observable graph's
+own internal edges. A subscription with no widget behind it — app code with a
+lifetime the harness cannot know — is counted in the message but never fails a
+test on its own.
+
+To turn it down, narrowest wins:
+
+```toml
+# pyproject.toml — the whole suite
+[tool.nuiitivet.testing]
+leak_check = "warn"        # "error" (default), "warn", "off"
+```
+
+```python
+@pytest.mark.nuiitivet(leak_check="off")   # this test
+...
+with mount(widget, leak_check="off"):      # this harness
+```
+
+Reach for `"off"` when a subscription genuinely outlives its widget — not to
+silence a report you have not read, which is the one thing this check cannot
+survive.
+
 ## What `mount()` will not do
 
 **It cannot click.** The action verbs go through the App's own pointer dispatch,

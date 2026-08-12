@@ -103,7 +103,7 @@ example above) instead. Two mechanisms back this rule up:
 
 Everything above is on by default, for every test, with nothing to set up.
 Configuration exists only to *deviate* from that default, per test, through
-one marker: `@pytest.mark.nuiitivet(...)`. It takes two keyword arguments.
+one marker: `@pytest.mark.nuiitivet(...)`.
 
 ### `clock=` — which clock the test runs on
 
@@ -142,9 +142,24 @@ it exists for tests that examine the framework's global state across test
 boundaries on purpose. If a test only *reads* some global, the default
 already works — opting out is never required for that.
 
+### `leak_check=` — subscriptions that outlived their widget
+
+**`leak_check="error"` (the default).** At harness teardown, a subscription made
+during the test and never disposed fails the test, naming the line that created
+it. This is the framework's most common bug class and it is silent where it is
+introduced, so the check is on by default; [Testing a
+widget](widgets.md#subscriptions-are-checked-for-you) covers what it reports and
+how to fix it.
+
+**`leak_check="warn"`.** The same report as a warning. Useful while working
+through an existing suite that has leaks in it.
+
+**`leak_check="off"`.** No check. For a subscription that genuinely outlives its
+widget — not for one you have not read.
+
 ### Combining and scoping
 
-The two arguments are independent and combine freely. Stacked markers merge
+The arguments are independent and combine freely. Stacked markers merge
 their keyword arguments (nearest to the function wins per key), so a
 file-wide `pytestmark` and a per-test marker compose:
 
@@ -164,6 +179,7 @@ marker:
 clock = "harness"    # "harness" (default) | "strict" | "real"
 isolate = true
 wait_timeout = 1.0   # default seconds for wait_for() and idle()
+leak_check = "error" # "error" (default) | "warn" | "off"
 ```
 
 ## Async tests

@@ -1,15 +1,46 @@
 from __future__ import annotations
 
-from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Callable, Generic, Optional, Protocol, TypeVar, runtime_checkable
 
 T = TypeVar("T")
 CompareFunc = Callable[[T, T], bool]
+
+
+# Called with every Disposable as it is constructed, when something is watching.
+#
+# ``None`` in production, and the ``is not None`` below is the whole cost there.
+# It is installed by ``nuiitivet.testing`` alone
+# (``testing/_leaks.py``), which is the only place that can do anything with a
+# subscription: a widget that forgets to dispose one keeps mutating an unmounted
+# tree, and this is the one point every subscription passes through. Every
+# ``subscribe`` implementation in the package -- ``value.py``, ``computed.py``,
+# and both in ``timed.py`` -- returns a ``Disposable`` built here, and
+# ``Animatable.subscribe`` delegates to the first, so watching this constructor
+# watches all of them without patching any.
+_subscription_tracker: Optional[Callable[["Disposable"], None]] = None
+
+
+def _set_subscription_tracker(tracker: Optional[Callable[["Disposable"], None]]) -> None:
+    """Test-support only: install or clear the subscription tracker."""
+    global _subscription_tracker
+    _subscription_tracker = tracker
 
 
 class Disposable:
     def __init__(self, dispose_fn: Callable[[], None]):
         self._dispose_fn = dispose_fn
         self._disposed = False
+        if _subscription_tracker is not None:
+            _subscription_tracker(self)
+
+    @property
+    def is_disposed(self) -> bool:
+        """Whether :meth:`dispose` has run.
+
+        Public because a test asserting that a widget cleaned up after itself has
+        no other way to ask, and the harness's own leak check reads it.
+        """
+        return self._disposed
 
     def dispose(self) -> None:
         if not self._disposed:

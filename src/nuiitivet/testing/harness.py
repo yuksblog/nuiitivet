@@ -44,6 +44,7 @@ class AppHarness(_HarnessBase):
         *,
         size: Tuple[float, float],
         theme: Optional[Any] = None,
+        leak_check: Optional[str] = None,
         **app_kwargs: Any,
     ) -> None:
         """Build an ``App`` around ``content`` and mount it at ``size``.
@@ -58,12 +59,16 @@ class AppHarness(_HarnessBase):
                 chose, and every geometry failure downstream would read as a
                 harness bug.
             theme: The theme to install. Defaults to the App's own default.
+            leak_check: ``"error"``, ``"warn"`` or ``"off"`` for the
+                subscription-leak check at teardown, overriding the suite default
+                in ``[tool.nuiitivet.testing]`` and the test's ``nuiitivet``
+                marker. The narrowest of the three wins.
             **app_kwargs: Passed through to ``App`` (``overlay_factory``, ...).
         """
         from nuiitivet.runtime.app import App
 
         width, height = size
-        super().__init__()
+        super().__init__(leak_check=leak_check)
         # Before the App exists: constructing one mounts the whole tree, and
         # anything it schedules on the way must land on a clock we can pump
         # rather than on a timer thread.
