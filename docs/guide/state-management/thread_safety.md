@@ -96,6 +96,23 @@ writes its row counter 400,000 times still paints one progress bar per frame,
 showing the newest count. It is the wrong behaviour only when a consumer has to
 see every value rather than the newest one.
 
+## After the widget is gone
+
+A worker outlives the widget that started it. Nothing in nuiitivet stops a
+thread when a screen unmounts — the framework did not create that thread and
+cannot know whether its work still matters — so writes keep arriving from a
+worker whose screen has left.
+
+They are safe. Unmounting disposes the widget's bindings, so the value lands on
+the observable with nobody subscribed: no paint, no error, no reference held to
+the departed widget tree. The observable itself stays alive exactly as long as
+the worker's own reference to it, and is collected after.
+
+So a worker that keeps running past unmount wastes work; it does not corrupt
+anything. Whether to let it run is the application's call — [Background
+Work](background_work.md#leaving-the-screen-mid-import) covers both answers and
+how to wire the stopping one.
+
 ## Opting out: `dispatch=False`
 
 For an observable no widget will ever bind to — a value that lives entirely in
