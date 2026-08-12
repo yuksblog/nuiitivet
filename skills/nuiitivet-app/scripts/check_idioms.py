@@ -13,6 +13,7 @@ Deliberately NOT flagged (legitimate in Nuiitivet, would be noisy):
   - `.of(self)`           -> Navigator.of / Overlay.of are real APIs
   - `.subscribe(`         -> valid for side effects; only pushing into UI is bad
   - `Padding` / `SizedBox`-> flagged only via the Flutter constructor shapes below
+  - `.cancel(`            -> too common; only the foreign cancellation type names hit
 
 Usage:
   python check_idioms.py <file-or-dir> [<file-or-dir> ...]
@@ -102,6 +103,10 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Define a ComposableWidget subclass with build(self)."),
     (re.compile(r"\bcomputed\s*\(|\bobservable\s*\(\s*\)|\bmakeAutoObservable\b"), "MobX/Vue",
      "Derived state: a.combine(b).compute(lambda a, b: ...)."),
+    (re.compile(r"\bCancellationTokenSource\b|\bCancellationToken\b|\bAbortController\b"), ".NET/JS",
+     "No cancellation primitive exists. Create a threading.Event per run, pass it to the "
+     "worker, and check cancel.is_set() in its loop; a reused Event that gets clear()ed "
+     "lets a superseded run resume."),
     (re.compile(r"\bIndexedStack\b|\bBottomNavigationBar\b"), "Flutter",
      "No IndexedStack / BottomNavigationBar: switch children with nv.Deck(index=obs, "
      "children=[...]); left-hand nav is nv.NavigationRail."),

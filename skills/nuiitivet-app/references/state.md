@@ -74,9 +74,56 @@ self.results = self.query.debounce(0.3).map(search_api)   # thin the keystrokes,
 # bind self.results into the UI like any other Observable
 ```
 
-`throttle(seconds)` is the rate-limited sibling of `debounce`. Remember the
-[threading rule](../SKILL.md): async results must be applied to `.value` on the
-UI thread.
+`throttle(seconds)` is the rate-limited sibling of `debounce`.
+
+## Background work (threads)
+
+Assign `.value` straight from a worker thread — the write is marshalled onto the
+UI thread. No dispatch wrapper, no queue, no hop back.
+
+```python
+def start(self, path: str) -> None:
+    threading.Thread(target=self._run, args=(path,), daemon=True).start()
+
+def _run(self, path: str) -> None:
+    self.rows.value = read_csv(path)      # marshalled; bound widgets just follow
+```
+
+- Marshalled writes land on the next tick and are **coalesced**: subscribers see
+  the latest value per tick, not every value. Correct for anything rendered;
+  wrong for a consumer that must see every value.
+- Reading `.value` back on the worker right after writing returns the old value.
+- `nv.Observable(0, dispatch=False)` opts out — synchronous, every value
+  delivered — for state no widget binds to. Derivations inherit it.
+- One-shot work with a result: `await asyncio.to_thread(fn, ...)` in an `async`
+  handler and assign the result; no thread of your own.
+
+### Cancellation
+
+There is no cancellation primitive — a Python thread cannot be killed from
+outside. Create a `threading.Event` **per run** and pass it to the worker:
+
+```python
+def start(self, path: str) -> None:
+    self._cancel.set()                          # supersede the previous run
+    cancel = self._cancel = threading.Event()   # this run's own flag
+    threading.Thread(target=self._run, args=(path, cancel), daemon=True).start()
+
+def _run(self, path: str, cancel: threading.Event) -> None:
+    for index, row in enumerate(rows, start=1):
+        if cancel.is_set():
+            return
+        self.imported_rows.value = index
+```
+
+Reusing one long-lived `Event` and calling `clear()` is the trap: the superseded
+worker sees the flag down and resumes, so two runs write the same observables.
+Guard `except` / `finally` writes with `cancel.is_set()` too, or a stale run
+reports over a live one.
+
+Unmounting does not stop a worker (its writes are inert, not unsafe). If the work
+exists only for that screen, cancel from an `on_unmount()` override — not an
+`on_unmount` modifier in `build()`, which fires on every rebuild.
 
 ## `subscribe()` — legitimate vs anti-pattern
 

@@ -76,6 +76,8 @@ it. You never write code that pushes a value into a widget.
 | `count.subscribe(lambda v: label.set_text(v))` (Rx habit) | pass the Observable in directly: `nv.Text(self.count)` |
 | `derived = computed(() => a + b)` (MobX/Vue) | `self.total = self.a.combine(self.b).compute(lambda a, b: a + b)` |
 | manual `.subscribe()` to trigger a re-render | not needed — binding regenerates the affected region automatically |
+| hop back to the UI thread before writing state (`runOnUiThread`, `DispatchQueue.main`, a hand-rolled queue) | assign `self.x.value` from the worker directly — cross-thread writes are marshalled |
+| `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | no cancellation API exists: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
 
 Note: `Observable.subscribe()` **does** exist and is legitimate for side effects
 (logging, calling a service). It is *only* an anti-pattern when used to manually
