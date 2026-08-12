@@ -4,11 +4,9 @@ Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
 - Derived state composition with map() and combine()
 - Memory management with Disposable
-- Async data fetch recipe across a worker thread
-"""
 
-import threading
-import time
+Work produced on a worker thread lives in background_work.py.
+"""
 
 import nuiitivet.material as nv
 
@@ -91,38 +89,6 @@ class ManagedViewModel:
 
 
 # ---------------------------------------------------------------------------
-# Pattern 4: Async data fetch recipe
-# ---------------------------------------------------------------------------
-
-
-class AsyncViewModel:
-    """Thread-safe async fetch: the worker just writes, the marshal is automatic."""
-
-    data: nv.Observable[str] = nv.Observable("")
-    loading: nv.Observable[bool] = nv.Observable(False)
-    error: nv.Observable[str | None] = nv.Observable(None)
-
-    def __init__(self) -> None:
-        self.status = self.loading.map(lambda loading: "Loading..." if loading else "")
-        self.data_display = self.data.map(lambda d: d if d else "(no data)")
-        self.error_display = self.error.map(lambda e: f"Error: {e}" if e else "")
-
-    def fetch(self) -> None:
-        def worker() -> None:
-            try:
-                self.loading.value = True
-                self.error.value = None
-                time.sleep(1.0)  # Simulate network latency
-                self.data.value = f"Fetched at {time.strftime('%H:%M:%S')}"
-            except Exception as exc:
-                self.error.value = str(exc)
-            finally:
-                self.loading.value = False
-
-        threading.Thread(target=worker, daemon=True).start()
-
-
-# ---------------------------------------------------------------------------
 # Combined demo widget
 # ---------------------------------------------------------------------------
 
@@ -132,7 +98,6 @@ class PatternsApp(nv.ComposableWidget):
         super().__init__()
         self.vm = TodoViewModel()
         self.cart = ShoppingCart()
-        self.async_vm = AsyncViewModel()
         self._counter = 1
 
     def _add_todo_item(self) -> None:
@@ -146,7 +111,6 @@ class PatternsApp(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         vm = self.vm
         cart = self.cart
-        avm = self.async_vm
 
         return nv.Box(
             padding=24,
@@ -189,16 +153,6 @@ class PatternsApp(nv.ComposableWidget):
                                 style=nv.ButtonStyle.outlined(),
                             ),
                         ],
-                    ),
-                    # --- Async fetch ---
-                    nv.Text("Pattern 4: Async Data Fetch"),
-                    nv.Text(avm.status),
-                    nv.Text(avm.data_display),
-                    nv.Text(avm.error_display),
-                    nv.Button(
-                        "Fetch data",
-                        on_click=lambda: avm.fetch(),
-                        style=nv.ButtonStyle.filled(),
                     ),
                 ],
             ),

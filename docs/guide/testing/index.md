@@ -126,7 +126,8 @@ harness exists to close: an assertion can now run *while* a timer fires on
 another thread. Reach for it only when a test is genuinely *about* real timer
 threads — testing a clock implementation itself, or thread interaction. If
 you only want a delayed callback to actually run, you do not need this:
-sleep and `pump()` instead.
+sleep and `pump()` instead. To install a clock of your own instead of
+inheriting the fallback, see [Testing outside the harness](clock.md).
 
 ### `isolate=` — whether the process-global resets run
 

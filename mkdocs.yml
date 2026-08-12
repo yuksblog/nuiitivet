@@ -187,6 +187,7 @@ nav:
           - Operators: guide/state-management/operators.md
           - Practical Controls: guide/state-management/practical_controls.md
           - Thread Safety: guide/state-management/thread_safety.md
+          - Background Work: guide/state-management/background_work.md
           - Patterns and Recipes: guide/state-management/patterns_and_recipes.md
       - UI Design System:
           - guide/design-system/index.md
@@ -208,6 +209,7 @@ nav:
           - Testing a widget: guide/testing/widgets.md
           - Testing a screen: guide/testing/screens.md
           - Testing async flows: guide/testing/async.md
+          - Testing outside the harness: guide/testing/clock.md
       - Advanced:
           - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md

@@ -42,7 +42,7 @@ class TodoView:
     def build(self):
         return nv.Column(
             children=[
-                nv.Text(text=self.vm.item_count.map(lambda c: f"Items: {c}")),
+                nv.Text(self.vm.item_count.map(lambda c: f"Items: {c}")),
                 nv.Button(
                     text="Add",
                     on_click=lambda: self.vm.add_item("New item")
@@ -73,39 +73,10 @@ class ShoppingCart:
         )
 ```
 
-## Async Data Fetch Recipe
-
-Use this pattern when data is loaded on a worker thread but rendered in the UI.
-The key point is to keep UI-facing observables dispatched to the UI thread while tracking loading and error state explicitly.
-This gives you predictable rendering for success, loading, and failure paths.
-
-```python
-import threading
-import nuiitivet.material as nv
-
-class DataViewModel:
-    data = nv.Observable([])
-    loading = nv.Observable(False)
-    error = nv.Observable(None)
-
-    def load_data_async(self):
-        def worker():
-            try:
-                self.loading.value = True
-                self.error.value = None
-                result = fetch_data_from_api()
-                self.data.value = result
-            except Exception as e:
-                self.error.value = str(e)
-            finally:
-                self.loading.value = False
-
-        threading.Thread(target=worker).start()
-```
-
 ---
 
 ## Next Steps
 
 - [State Management Overview](index.md)
-- [Async & Threading Guide](../advanced/threading.md)
+- [Background Work](background_work.md)
+- [Threading Model](../advanced/threading.md)
