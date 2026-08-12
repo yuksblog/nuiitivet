@@ -4,7 +4,7 @@ Demonstrates:
 - A long job on a worker thread, reported through observables
 - An indeterminate progress bar until the total is known, determinate after
 - A live step display fed by the worker
-- Cancellation from the UI thread with threading.Event
+- Cancellation from the UI thread with a per-run threading.Event
 - A worker exception surfaced through an observable instead of vanishing
 """
 
@@ -52,19 +52,32 @@ class CsvImportScreen(nv.ComposableWidget):
 
     def start(self, path: str, *, should_fail: bool = False) -> None:
         """Kick off the import and return immediately."""
-        self._cancel.clear()
+        # Supersede whatever is still running: a second Import must not leave
+        # the previous worker alive writing into the same observables.
+        self._cancel.set()
+        cancel = self._cancel = threading.Event()
+
         self.error.value = None
         self.imported_rows.value = 0
         self.total_rows.value = 0
+        self.step.value = ""
         self.running.value = True
-        threading.Thread(target=self._run, args=(path, should_fail), daemon=True).start()
+        threading.Thread(target=self._run, args=(path, should_fail, cancel), daemon=True).start()
 
     def cancel(self) -> None:
-        """Ask the worker to stop. Called on the UI thread."""
-        self._cancel.set()
+        """Ask the worker to stop, and settle the screen now.
 
-    def _run(self, path: str, should_fail: bool) -> None:
+        Called on the UI thread, which owns the outcome of an interrupted run:
+        the worker may be mid-row, and the screen should not wait for it.
+        """
+        self._cancel.set()
+        self.step.value = "Cancelled"
+        self.running.value = False
+
+    def _run(self, path: str, should_fail: bool, cancel: threading.Event) -> None:
         # Everything below runs off the UI thread; every write is marshalled.
+        # `cancel` belongs to *this* run, so a superseded worker never mistakes
+        # a later run's flag for its own.
         try:
             self.step.value = "Reading"
             rows = read_csv(path)
@@ -72,9 +85,8 @@ class CsvImportScreen(nv.ComposableWidget):
 
             self.step.value = "Importing"
             for index, row in enumerate(rows, start=1):
-                if self._cancel.is_set():
-                    self.step.value = "Cancelled"
-                    return
+                if cancel.is_set():
+                    return  # Cancelled or superseded: this run writes nothing more.
                 if should_fail and index == len(rows) // 3:
                     raise RuntimeError(f"malformed row: {row}")
                 validate(row)
@@ -82,10 +94,13 @@ class CsvImportScreen(nv.ComposableWidget):
 
             self.step.value = "Done"
         except Exception as exc:
+            if cancel.is_set():
+                return
             self.error.value = str(exc)
             self.step.value = "Failed"
         finally:
-            self.running.value = False
+            if not cancel.is_set():
+                self.running.value = False
 
     def build(self) -> nv.Widget:
         return nv.Box(

@@ -146,9 +146,15 @@ observable a widget binds to; give it its own `dispatch=False` observable, as
 
 ## Cancelling
 
-Marshalling carries values *to* the UI thread. Cancellation goes the other way
-— the UI thread has to tell the worker to stop — and for that direction plain
-`threading` is the whole answer:
+Marshalling carries values *to* the UI thread. Cancellation goes the other way,
+and there plain `threading` is the whole answer — it has to be. A Python thread
+cannot be killed from outside, so cancellation anywhere is a flag the worker
+agrees to check, and anything a framework shipped would be one underneath. The
+`Event` below is the mechanism, not a stand-in for one.
+
+What needs care is not the flag but its scope.
+
+### One flag per run
 
 ```python
     def __init__(self) -> None:
@@ -156,32 +162,86 @@ Marshalling carries values *to* the UI thread. Cancellation goes the other way
         self._cancel = threading.Event()
 
     def start(self, path: str) -> None:
-        self._cancel.clear()
+        self._cancel.set()                         # supersede the previous run
+        cancel = self._cancel = threading.Event()  # this run's own flag
         self.running.value = True
-        threading.Thread(target=self._run, args=(path,), daemon=True).start()
-
-    def cancel(self) -> None:
-        self._cancel.set()      # called from on_click, on the UI thread
+        threading.Thread(target=self._run, args=(path, cancel), daemon=True).start()
 ```
 
-The worker checks the flag where it is cheap to stop — once per row:
+Clearing one long-lived `Event` here instead is the obvious version, and it is
+wrong. Cancel then Import again — the ordinary use of a cancel button — and the
+first worker is still inside its loop when `clear()` runs: it finds the flag
+down, *resumes*, and two workers import into the same observables. An `Event`
+belonging to the screen can say "stop" but not *which run* to stop; one created
+per run and handed to the worker can.
+
+### A cancelled run writes nothing
+
+The worker checks its own flag where stopping is cheap — once per row — and
+returns without touching state:
 
 ```python
+    def _run(self, path: str, cancel: threading.Event) -> None:
+        try:
+            ...
             for index, row in enumerate(rows, start=1):
-                if self._cancel.is_set():
-                    self.step.value = "Cancelled"
+                if cancel.is_set():
                     return
                 store.insert(validate(row))
                 self.imported_rows.value = index
+            self.step.value = "Done"
+        except Exception as exc:
+            if cancel.is_set():
+                return
+            self.error.value = str(exc)
+            self.step.value = "Failed"
+        finally:
+            if not cancel.is_set():
+                self.running.value = False
 ```
 
-`Event.set()` is safe from any thread and needs no marshalling: it is not a
-value a widget renders. Wire it to a button and the screen never blocks —
-`cancel()` returns instantly, and the worker notices on its next row.
+A superseded worker keeps running for a while, so the guards on `except` and
+`finally` matter as much as the one in the loop: without them it clears
+`running` on top of a live run, or reports a failure the user has moved on from.
+Whichever run holds the current flag owns the screen.
+
+That leaves the interrupted outcome to the click itself:
 
 ```python
-                nv.Button("Cancel", on_click=self.cancel, style=nv.ButtonStyle.tonal()),
+    def cancel(self) -> None:
+        self._cancel.set()
+        self.step.value = "Cancelled"
+        self.running.value = False
 ```
+
+`Event.set()` is safe from any thread and needs no marshalling, so this returns
+instantly. Writing the outcome here rather than in the worker means the screen
+does not sit on a stale progress bar until the current row finishes, and gives
+each ending one owner: the worker announces the runs it completes, the UI thread
+the ones it interrupts.
+
+### Leaving the screen mid-import
+
+Navigating away does not stop the worker. Nothing unmounts a thread the way
+[`on_mount`](../modifiers/lifecycle.md) cancels a coroutine it started — that
+task belongs to the framework because the framework created it, whereas this
+thread is yours. The writes that keep arriving are inert, for the reason [Thread
+Safety](thread_safety.md#after-the-widget-is-gone) gives, so what remains is a
+policy question only the job can answer.
+
+An import the user asked for should usually finish anyway; work that exists only
+to feed this screen — a preview render, a search-as-you-type — should not. For
+the second, cancel from the screen's own `on_unmount`:
+
+```python
+    def on_unmount(self) -> None:
+        self.cancel()
+        super().on_unmount()
+```
+
+Not from an `on_unmount` modifier inside `build()`: a rebuild discards the
+subtree it built, so a modifier down there fires on every rebuild and would
+cancel a perfectly healthy import.
 
 ## When the worker raises
 
@@ -191,15 +251,17 @@ the user is told nothing. So catch it and route it into state, exactly like any
 other outcome:
 
 ```python
-    def _run(self, path: str) -> None:
-        self.error.value = None
+    def _run(self, path: str, cancel: threading.Event) -> None:
         try:
             ...
         except Exception as exc:
+            if cancel.is_set():
+                return
             self.error.value = str(exc)
             self.step.value = "Failed"
         finally:
-            self.running.value = False
+            if not cancel.is_set():
+                self.running.value = False
 ```
 
 `error` is an ordinary observable, so the write from the `except` block is
@@ -237,17 +299,22 @@ class CsvImportScreen(nv.ComposableWidget):
         self._cancel = threading.Event()
 
     def start(self, path: str) -> None:
-        self._cancel.clear()
+        self._cancel.set()
+        cancel = self._cancel = threading.Event()
+
         self.error.value = None
         self.imported_rows.value = 0
         self.total_rows.value = 0
+        self.step.value = ""
         self.running.value = True
-        threading.Thread(target=self._run, args=(path,), daemon=True).start()
+        threading.Thread(target=self._run, args=(path, cancel), daemon=True).start()
 
     def cancel(self) -> None:
         self._cancel.set()
+        self.step.value = "Cancelled"
+        self.running.value = False
 
-    def _run(self, path: str) -> None:
+    def _run(self, path: str, cancel: threading.Event) -> None:
         try:
             self.step.value = "Reading"
             rows = read_csv(path)
@@ -255,18 +322,20 @@ class CsvImportScreen(nv.ComposableWidget):
 
             self.step.value = "Importing"
             for index, row in enumerate(rows, start=1):
-                if self._cancel.is_set():
-                    self.step.value = "Cancelled"
+                if cancel.is_set():
                     return
                 store.insert(validate(row))
                 self.imported_rows.value = index
 
             self.step.value = "Done"
         except Exception as exc:
+            if cancel.is_set():
+                return
             self.error.value = str(exc)
             self.step.value = "Failed"
         finally:
-            self.running.value = False
+            if not cancel.is_set():
+                self.running.value = False
 
     def build(self) -> nv.Widget:
         return nv.Column(
