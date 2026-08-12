@@ -25,3 +25,7 @@ does that for you: a write from any other thread is marshalled onto the UI
 thread automatically. See the
 [Observable: Thread Safety](../state-management/thread_safety.md) guide for what
 that changes, and for the `dispatch=False` opt-out.
+
+For a worked example — progress, a live step display, cancellation, and a
+worker that raises — see
+[Background Work](../state-management/background_work.md).

@@ -8,20 +8,73 @@ it is safe to touch widgets, whichever thread set the value.
 
 ```python
 import threading
+
 import nuiitivet.material as nv
 
-class ViewModel:
-    data = nv.Observable([])
 
-    def load_async(self):
-        def worker():
-            self.data.value = fetch_data()   # safe: marshalled to the UI thread
+class CsvPreview(nv.ComposableWidget):
+    rows = nv.Observable([])
 
-        threading.Thread(target=worker).start()
+    def load(self, path: str) -> None:
+        def worker() -> None:
+            self.rows.value = read_csv(path)   # safe: marshalled to the UI thread
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def build(self) -> nv.Widget:
+        return RowTable(self.rows)
 ```
 
-There is nothing to enable. A write already on the UI thread stays synchronous
-and pays only an integer thread check, so this costs nothing on the hot path.
+The table repaints with the file's contents and never learns that a worker
+produced them. There is nothing to enable. A write already on the UI thread
+stays synchronous and pays only an integer thread check, so this costs nothing
+on the hot path.
+
+## Short work: await it instead of managing a thread
+
+The example above spawns its own thread because it has to be about a
+cross-thread write. Most short jobs do not: they run once, the screen waits for
+them, and the result is used the moment it arrives. For those, hand the thread
+to the runtime and `await` it. Event handlers may be `async`, so this is a
+handler like any other:
+
+```python
+import asyncio
+
+
+class CsvPreview(nv.ComposableWidget):
+    rows = nv.Observable([])
+
+    async def _open(self) -> None:
+        async with nv.Overlay.of(self).while_loading():
+            rows = await asyncio.to_thread(read_csv, "contacts.csv")
+        self.rows.value = rows
+
+    def build(self) -> nv.Widget:
+        return nv.Column(
+            gap=16,
+            children=[
+                nv.Button("Open CSV…", on_click=self._open, style=nv.ButtonStyle.filled()),
+                RowTable(self.rows),
+            ],
+        )
+```
+
+Two things fall out of this shape, and both are why it is worth preferring:
+
+- **The wait shows itself.** MD3 renders a short, indeterminate wait as a
+  loading indicator centred over the screen, and `while_loading()` owns that
+  overlay for the duration of the block — opened on entry, closed on exit,
+  including when the block raises. There is no handle to hold and no
+  subscription to dispose, so no `on_mount` / `on_unmount` pair either.
+- **The line after the `await` is back on the UI thread.** Only `read_csv` ran
+  on a worker; the assignment does not, so it applies inline. Marshalling has
+  nothing to do here — which is the point. It exists for values a worker
+  publishes *while it is still running*, not for the result you awaited.
+
+That second case — a job long enough to report progress and a current step
+while it works, and to need a cancel button — is
+[Background Work](background_work.md).
 
 ## What marshalling changes
 
@@ -38,20 +91,27 @@ matter when the writer is a worker thread:
 
 Neither applies to writes made on the UI thread, which are applied inline.
 
+Coalescing is what you want for anything a widget renders: an import that
+writes its row counter 400,000 times still paints one progress bar per frame,
+showing the newest count. It is the wrong behaviour only when a consumer has to
+see every value rather than the newest one.
+
 ## Opting out: `dispatch=False`
 
 For an observable no widget will ever bind to — a value that lives entirely in
 the logic layer — pass `dispatch=False`:
 
 ```python
-class Pipeline:
-    # Every step is consumed by a background stage, never by a widget.
-    processed = nv.Observable(0, dispatch=False)
+class CsvImport:
+    # Consumed by the audit-log writer on the worker thread, never by a widget.
+    rejected_row = nv.Observable(0, dispatch=False)
 ```
 
 Notification then stays synchronous on the writing thread, and **every**
 intermediate value is delivered rather than only the latest per tick. Reach for
-it when a consumer counts steps rather than rendering the newest one.
+it when a consumer counts values rather than rendering the newest one — a log
+that must record every rejected row cannot be built from an observable whose
+intermediate values are dropped.
 
 Binding a widget to a `dispatch=False` observable and then writing to it from a
 worker thread is the bug the default exists to prevent, so opt out only for
@@ -80,7 +140,7 @@ on the clock, and `settle()` pumps it:
 def test_worker_update_reaches_the_tree(nuiitivet_app):
     app = nuiitivet_app(screen, size=(800, 600))
 
-    worker = threading.Thread(target=lambda: setattr(vm.data, "value", "after"))
+    worker = threading.Thread(target=lambda: setattr(vm.rows, "value", "after"))
     worker.start()
     worker.join()
 
@@ -92,86 +152,14 @@ A worker that keeps running while you settle is fine: work it arms is pumped,
 but does not count towards the convergence bound, so a live background thread
 never turns into `LayoutNotConvergedError`.
 
-### Outside the harness
-
-Without the harness you control delivery through the clock. The indirection
-point is `nv.set_clock()`, not pyglet: nuiitivet schedules every deferred
-notification through the installed clock, and the backend installs pyglet's at
-startup.
-
-```python
-import threading
-from typing import List, Tuple
-
-import nuiitivet.material as nv
-
-
-class ManualClock:
-    """Queue scheduled callbacks and run them on demand.
-
-    Structurally an `nv.Clock` — the protocol a clock has to satisfy.
-    """
-
-    def __init__(self) -> None:
-        self._pending: List[Tuple[float, nv.ClockCallback]] = []
-
-    def schedule_once(self, fn: nv.ClockCallback, delay: float) -> None:
-        self.unschedule(fn)
-        self._pending.append((delay, fn))
-
-    def schedule_interval(self, fn: nv.ClockCallback, interval: float) -> None:
-        self._pending.append((interval, fn))
-
-    def unschedule(self, fn: nv.ClockCallback) -> None:
-        # Compare by equality, not `is`: `obj.method` is a fresh object on
-        # every access, so identity never matches and timers leak.
-        self._pending = [entry for entry in self._pending if entry[1] != fn]
-
-    def tick(self, dt: float = 0.0) -> None:
-        pending, self._pending = self._pending, []
-        for _, fn in pending:
-            fn(dt)
-
-
-def test_worker_update_reaches_subscribers():
-    previous = nv.get_clock()
-    manual = ManualClock()
-    nv.set_clock(manual)
-    try:
-        vm = ViewModel()
-        received = []
-        vm.data.subscribe(received.append)
-
-        thread = threading.Thread(target=vm.load_async)
-        thread.start()
-        thread.join()
-
-        assert received == []  # still queued
-        manual.tick()
-        assert received == [expected]
-    finally:
-        nv.set_clock(previous)
-```
-
-Read the current clock with `nv.get_clock()`, never `nv.clock`: the latter is
-bound when nuiitivet is imported, so it does not follow `nv.set_clock()` and
-still points at the startup fallback long after the backend installed its own.
-
-Two rules for a hand-rolled clock:
-
-- **Match callbacks by equality (`==`), never by `is` or `id()`.** This is what
-  `pyglet.clock` does, and nuiitivet relies on it — `unschedule(self._emit)`
-  has to cancel a timer armed with `self._emit`, even though each attribute
-  access produces a distinct bound-method object.
-- **Prefer running callbacks synchronously on the thread that ticks the clock.**
-  The fallback clock delivers on its own servicing thread, so subscribers must
-  not touch widgets, and assertions have to wait on real time.
-
-Restore the previous clock afterwards, or later tests inherit yours.
+Without the harness there is no `settle()`, and delivery is whatever the
+installed clock does. [Testing outside the harness](../testing/clock.md) covers
+driving a clock yourself.
 
 ---
 
 ## Next Steps
 
+- [Background Work](background_work.md)
 - [Patterns and Recipes](patterns_and_recipes.md)
 - [State Management Overview](index.md)

@@ -9,7 +9,8 @@ The Observable guide has been split into focused documents to improve readabilit
 3. [Operators](operators.md)
 4. [Practical Controls](practical_controls.md)
 5. [Thread Safety](thread_safety.md)
-6. [Patterns and Recipes](patterns_and_recipes.md)
+6. [Background Work](background_work.md)
+7. [Patterns and Recipes](patterns_and_recipes.md)
 
 ## Related Guides
 
