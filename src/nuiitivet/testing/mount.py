@@ -43,6 +43,7 @@ class WidgetHost(_HarnessBase):
         theme: Optional[Any] = None,
         scope: bool = True,
         leak_check: Optional[str] = None,
+        callback_errors: Optional[str] = None,
     ) -> None:
         if theme is not None and not scope:
             raise ValueError(
@@ -50,7 +51,7 @@ class WidgetHost(_HarnessBase):
                 "the widget with no AppScope, so there is no provider for a theme "
                 "to be served through. Pass one or the other."
             )
-        super().__init__(leak_check=leak_check)
+        super().__init__(leak_check=leak_check, callback_errors=callback_errors)
 
         self.width: Optional[float] = None
         self.height: Optional[float] = None
@@ -173,6 +174,7 @@ def mount(
     theme: Optional[Any] = None,
     scope: bool = True,
     leak_check: Optional[str] = None,
+    callback_errors: Optional[str] = None,
 ) -> WidgetHost:
     """Mount ``widget`` on a minimal host, for a single-widget test.
 
@@ -201,11 +203,20 @@ def mount(
             subscription-leak check at teardown, overriding the suite default in
             ``[tool.nuiitivet.testing]`` and the test's ``nuiitivet`` marker. The
             narrowest of the three wins.
+        callback_errors: ``"error"``, ``"warn"`` or ``"off"`` for the check that a
+            callback the framework contained fails the test, scoped and
+            overridden the same way.
 
     Returns:
         The :class:`WidgetHost`, which is also the query surface.
     """
-    return WidgetHost(widget, theme=theme, scope=scope, leak_check=leak_check)
+    return WidgetHost(
+        widget,
+        theme=theme,
+        scope=scope,
+        leak_check=leak_check,
+        callback_errors=callback_errors,
+    )
 
 
 __all__ = ["Invalidation", "WidgetHost", "mount"]

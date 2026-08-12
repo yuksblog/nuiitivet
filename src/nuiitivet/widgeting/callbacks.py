@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import inspect
 import logging
 from collections.abc import Awaitable, Coroutine
@@ -15,6 +16,62 @@ logger = logging.getLogger(__name__)
 #: test harness and empty in production; a *set*, because one test may drive more
 #: than one harness and each keeps its own registry.
 _task_observers: Set[Callable[["asyncio.Task[Any]"], None]] = set()
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class ContainedError:
+    """An exception the framework caught from user code and carried on past.
+
+    Compared by identity, not by value: one containment produces one record,
+    handed to every listening sink, and two harnesses in one test have to agree
+    on whether *this* failure has been reported yet. Two separate failures that
+    happen to look alike are two failures.
+
+    Attributes:
+        exc: The original exception, traceback intact.
+        owner: Who raised it -- the widget's type name, or the handler's
+            ``owner_name``.
+        site: Which containment reported it, so a test's message can say what
+            the framework was doing rather than only what failed.
+    """
+
+    exc: BaseException
+    owner: str
+    site: str
+
+
+#: Sinks notified of every exception the framework contains on behalf of user
+#: code. Installed by the test harness and empty in production, exactly like
+#: :data:`_task_observers`; a *set*, for the same reason.
+_error_sinks: Set[Callable[[ContainedError], None]] = set()
+
+
+def report_contained(exc: BaseException, *, owner: str, site: str) -> None:
+    """Tell any listening harness that user code raised and was contained.
+
+    Called from *inside* the ``except`` blocks that already log and swallow, and
+    it changes none of them: the exception stays caught, stays logged, and the
+    frame still survives. Containment is correct in production -- one broken
+    callback must not kill the frame -- and wrong in a test, where it lets an
+    ``on_click`` that raised read as an ``on_click`` that worked. Production
+    pays one iteration over an empty set.
+
+    A sink must not raise; it is called mid-containment, where an exception
+    would take out the very frame the containment exists to protect.
+    """
+    if not _error_sinks:
+        return
+    contained = ContainedError(exc, owner, site)
+    for sink in tuple(_error_sinks):
+        try:
+            sink(contained)
+        except Exception:
+            exception_once_per_exc(
+                logger,
+                f"contained_error_sink_exc:{site}",
+                "A contained-error sink raised; the report was dropped (site=%s)",
+                site,
+            )
 
 
 class UnschedulableAsyncWork(BaseException):
@@ -145,13 +202,18 @@ def invoke_event_handler(
     # exists to break.
     try:
         result = cb(*args)
-    except Exception:
+    except Exception as exc:
         exception_once_per_exc(
             logger,
             f"{error_key}_exc:{owner_name}",
             f"{error_msg} (owner=%s)",
             owner_name,
         )
+        # The synchronous mirror of _run_handler's re-raise below. That one can
+        # re-raise because the task is the harness's to await; this one is on
+        # the frame's own call stack, where unwinding would abandon the rest of
+        # the dispatch. So it is reported and the frame continues.
+        report_contained(exc, owner=owner_name, site=error_key)
         return None
 
     if not inspect.isawaitable(result):

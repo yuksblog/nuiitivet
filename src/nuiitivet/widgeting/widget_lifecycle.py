@@ -8,7 +8,7 @@ from typing import Any, Callable, List, Optional
 
 from ..common.logging_once import exception_once
 from ..runtime.threading import assert_ui_thread
-from .callbacks import VoidCallback, invoke_event_handler
+from .callbacks import VoidCallback, invoke_event_handler, report_contained
 
 
 _logger = logging.getLogger(__name__)
@@ -74,12 +74,17 @@ class LifecycleHostMixin:
         for dispose_callback in self._dispose_callbacks:
             try:
                 dispose_callback()
-            except Exception:
+            except Exception as exc:
                 exception_once(
                     _logger,
                     "widget_lifecycle_dispose_callback_exc",
                     "Exception in dispose callback: callback=%r",
                     dispose_callback,
+                )
+                report_contained(
+                    exc,
+                    owner=type(self).__name__,
+                    site=f"dispose callback {dispose_callback!r}",
                 )
         self._dispose_callbacks.clear()
         # Cancel any still-running async mount callbacks
@@ -185,13 +190,23 @@ class LifecycleHostMixin:
     def _safe_call(self, func, *args, **kwargs) -> Optional[Any]:
         try:
             return func(*args, **kwargs)
-        except Exception:
+        except Exception as exc:
             name = getattr(func, "__name__", "<unknown>")
             exception_once(
                 _logger,
                 f"widget_lifecycle_safe_call_exc:{name}",
                 "Exception in lifecycle hook: %s",
                 name,
+            )
+            # on_mount / on_unmount are the user-overridable half of what runs
+            # through here. The recursive child.mount / child.unmount calls also
+            # land here, but a hook that raised inside one has already been
+            # contained and reported one level down, so this sees only a genuine
+            # framework failure -- worth reporting for the same reason.
+            report_contained(
+                exc,
+                owner=type(self).__name__,
+                site=f"lifecycle hook {name}",
             )
             return None
 

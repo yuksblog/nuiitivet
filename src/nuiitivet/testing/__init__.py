@@ -26,6 +26,7 @@ See ``docs/guide/testing/`` for the guide.
 
 from __future__ import annotations
 
+from ._contained import ContainedCallbackWarning
 from ._leaks import SubscriptionLeakWarning, track_subscriptions
 from .clock import HarnessClock, NuiitivetClockWarning, PendingCallback
 from .errors import (
@@ -46,6 +47,7 @@ from .node import Node
 __all__ = [
     "ActionNotHandledError",
     "AppHarness",
+    "ContainedCallbackWarning",
     "HarnessClock",
     "IdleTimeoutError",
     "Invalidation",

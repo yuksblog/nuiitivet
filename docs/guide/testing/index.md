@@ -157,6 +157,63 @@ through an existing suite that has leaks in it.
 **`leak_check="off"`.** No check. For a subscription that genuinely outlives its
 widget — not for one you have not read.
 
+### `callback_errors=` — a callback that raised where nobody was looking
+
+The framework catches exceptions out of your callbacks and carries on. That is
+deliberate and it is not going to change: in a running app, one broken `on_click`
+must not take the frame down with it. The exception is logged and the next frame
+paints.
+
+In a test that same containment is the problem:
+
+```python
+def _save(self) -> None:
+    self.status.value = "saving"
+    self._client.put(self.form)      # raises
+    self.status.value = "saved"
+
+app.click(key="save")
+assert app.get(key="status").text != "saved"    # passes, for the wrong reason
+```
+
+The handler stopped on line two, the tree never updated, and the assertion read
+that absence as success — so the test is green and the feature is broken.
+
+**`callback_errors="error"` (the default).** The exception reaches the test, at
+the verb that caused it:
+
+```python
+with pytest.raises(RuntimeError):
+    app.click(key="save")
+```
+
+It arrives **as itself** — a `ValueError` stays a `ValueError` — with the
+traceback pointing at the line inside your callback, and (on Python 3.11+) a note
+naming the widget and the containment it came out of. An `async def` handler has
+behaved this way since `idle()` shipped; this is the same guarantee for the
+synchronous half, and it covers `on_click` and friends, `on_mount` / `on_unmount`,
+a rebuild triggered by a binding, a size-change callback and a dispose callback.
+
+Where it surfaces depends on when the callback runs. A synchronous handler has
+finished raising by the time the action returns, so `click()`, `type()`, `key()`,
+`scroll()`, `resize()` and `settle()` all raise. Anything that only fails later —
+an async handler, a dispose callback at unmount — surfaces at the next
+`await idle()`, `await wait_for(...)`, or at teardown.
+
+**`callback_errors="warn"`.** Nothing raises; every contained failure is
+collected and reported once, as a single warning at teardown. Useful while
+working through an existing suite.
+
+**`callback_errors="off"`.** No sink is installed at all, so the framework
+behaves exactly as it does in production. This is what a test that asserts *on*
+the containment wants — "a raising handler does not break the widget next to it"
+is a real thing to test, and it cannot be written with the check on.
+
+One deliberate difference from `leak_check`: if your test has **already failed**,
+the leak check stands down, but this one still reports — as a warning rather than
+a second failure. A callback that raised is usually *why* the assertion below it
+failed, so hiding it would hide the answer.
+
 ### Combining and scoping
 
 The arguments are independent and combine freely. Stacked markers merge
@@ -180,6 +237,7 @@ clock = "harness"    # "harness" (default) | "strict" | "real"
 isolate = true
 wait_timeout = 1.0   # default seconds for wait_for() and idle()
 leak_check = "error" # "error" (default) | "warn" | "off"
+callback_errors = "error"   # "error" (default) | "warn" | "off"
 ```
 
 ## Async tests
