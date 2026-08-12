@@ -197,9 +197,13 @@ class _OverlayEntryRoute(Route):
         transition_spec: TransitionSpec | None = None,
     ) -> None:
         super().__init__(builder=entry.build_widget, transition_spec=transition_spec or Transitions.empty())
+        # The route keeps the entry, not just its builder: the route stack is
+        # what ``Overlay.open_entries`` reports (it is the book that survives an
+        # exit animation), so the stack has to be able to name the entry each
+        # layer belongs to.
+        self.entry: OverlayEntry = entry
         self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
-        self._content_widget: Widget | None = None
         # Whether input reaches the content behind this entry. Pass-through
         # entries (toasts, banners, tooltips) do not occlude; blocking entries
         # do. Set by ``Overlay.show``.
@@ -210,6 +214,20 @@ class _OverlayEntryRoute(Route):
         # ``occluding_content_widget()``, which drives the modal focus trap and
         # FOREGROUND shortcut scoping.
         self._passthrough: bool = True
+
+    @property
+    def _content_widget(self) -> Widget | None:
+        """The entry's content, stored once on the entry rather than twice.
+
+        The route is the object the input and focus paths hold, the entry is the
+        object ``open_entries`` hands out, and both want the same widget. One
+        storage location, read from either side.
+        """
+        return self.entry._content
+
+    @_content_widget.setter
+    def _content_widget(self, widget: Widget | None) -> None:
+        self.entry._content = widget
 
     @property
     def transition_phase_obs(self) -> Observable[TransitionPhase]:
@@ -786,12 +804,35 @@ class Overlay(ComposableWidget):
     def _remove_modal_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
         self._modal_navigator.remove_route(route, on_disposed=on_disposed)
 
-    def has_entries(self) -> bool:
+    @property
+    def open_entries(self) -> tuple[OverlayEntry, ...]:
+        """The open entries, bottom to top.
+
+        An entry is open from the moment it is shown until its exit animation
+        has finalized -- **not** until it is dismissed. Those differ by the width
+        of the animation, during which the layer is still mounted, still laid out
+        and still painted, so reporting it as closed would be a lie a caller acts
+        on. To wait one out, wait for this to shrink::
+
+            overlay.close()
+            await app.wait_for(lambda: not overlay.open_entries)
+
+        Reading this never builds a widget. Asking what is open must not change
+        what is on screen, so the answer comes from the route stack and the
+        entries on it, never from ``build_widget()``.
+        """
         try:
-            return any(entry.is_visible for entry in self._entry_to_route)
+            routes = self._modal_navigator._stack.routes
         except Exception:
-            exception_once(logger, "overlay_has_entries_exc", "Overlay.has_entries raised")
-            return False
+            exception_once(logger, "overlay_open_entries_exc", "Overlay.open_entries raised")
+            return ()
+        # routes[0] is the pinned base route -- the empty layer the modal
+        # navigator always stands on, not an entry anyone showed.
+        return tuple(route.entry for route in routes[1:] if isinstance(route, _OverlayEntryRoute))
+
+    def has_entries(self) -> bool:
+        """Whether any entry is open. See :attr:`open_entries` for when one is."""
+        return bool(self.open_entries)
 
     def clear(self) -> None:
         for entry in list(self._entry_to_route.keys()):

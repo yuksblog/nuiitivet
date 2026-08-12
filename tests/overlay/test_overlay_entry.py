@@ -28,7 +28,6 @@ def test_overlay_entry_creation():
     entry = OverlayEntry(builder=builder)
 
     assert entry.builder is builder
-    assert entry.is_visible is True
     assert entry._widget is None
 
 
@@ -67,21 +66,6 @@ def test_overlay_entry_caches_widget():
     assert call_count[0] == 1
 
 
-def test_overlay_entry_mark_for_removal():
-    """Test marking an entry for removal."""
-
-    def builder():
-        return DummyWidget()
-
-    entry = OverlayEntry(builder=builder)
-
-    assert entry.is_visible is True
-
-    entry.mark_for_removal()
-
-    assert entry.is_visible is False
-
-
 def test_overlay_entry_dispose():
     """Test disposing an entry."""
     widget = DummyWidget()
@@ -103,7 +87,6 @@ def test_overlay_entry_dispose():
     # Widget should be unmounted
     assert widget.unmount_called is True
     assert entry._widget is None
-    assert entry.is_visible is False
 
 
 def test_overlay_entry_dispose_without_building():
@@ -119,7 +102,6 @@ def test_overlay_entry_dispose_without_building():
 
     # Should not raise an error
     assert entry._widget is None
-    assert entry.is_visible is False
 
 
 def test_overlay_entry_dispose_handles_exceptions():
@@ -144,4 +126,3 @@ def test_overlay_entry_dispose_handles_exceptions():
     entry.dispose()
 
     assert entry._widget is None
-    assert entry.is_visible is False

@@ -167,7 +167,86 @@ from nuiitivet.testing import (
 
 ## Navigation and overlays
 
-Not yet part of this surface: asserting on the current route stack or on what is
-open needs public accessors the framework does not have yet — `Navigator`'s
-`snapshot_stack()` is the hot-reload restore log, not the route stack. Reach
-through `app.app` in the meantime, and expect a narrower API later.
+A test about routing should break when routing changes, not when a headline
+moves. The tempting assertion does the opposite:
+
+```python
+app.click(key="open-detail")
+assert app.get(key="detail-title") is not None    # a test of the tree
+```
+
+That passes if the title is on a shared header, and keeps passing for a route
+that was pushed and popped straight back, because the outgoing screen is still
+mounted through its exit animation. Ask about navigation instead:
+
+```python
+app.click(key="open-detail")
+assert isinstance(app.current_screen, DetailScreen)
+assert len(app.route_stack) == 2
+```
+
+| Property | Is |
+| --- | --- |
+| `app.route_stack` | the screens on the stack, bottom → top |
+| `app.current_screen` | the one on top |
+| `app.in_transition` | whether a navigation is in flight |
+| `app.open_overlays` | the content of each open overlay layer, bottom → top |
+| `app.top_overlay` | the topmost, or `None` |
+
+Both lists are of widgets, so the vocabulary is the one you already have —
+`isinstance`, `is`, `len` — and `app.get(...)` still targets whatever is inside
+them. There is no `route_depth`: `len(app.route_stack)` says it.
+
+### A transition that started is not one that finished
+
+A push is synchronous, so a push needs no wait. A pop is not: it runs as a task
+and then animates, and the outgoing screen stays on the stack for both. So wait
+for it, and the wait is the assertion:
+
+```python
+app.click(key="back")
+await app.wait_for(lambda: len(app.route_stack) == 1)
+assert isinstance(app.current_screen, ListScreen)
+```
+
+Overlays work the same way. A dismissed dialog is still `open` until its exit
+animation finalizes — it is still on screen, after all — so an empty
+`open_overlays` means gone, not closing:
+
+```python
+app.click(key="confirm-cancel")
+await app.wait_for(lambda: not app.open_overlays)
+```
+
+Write `not app.open_overlays` rather than `app.open_overlays == []`: it is a
+tuple, which never equals a list, and the comparison would simply never come
+true.
+
+`in_transition` covers the whole flight, including the window after `click()`
+where the pop task has not yet run. That makes it safe, but prefer waiting on
+what actually changed — the stack, or the screen on top — and reach for
+`in_transition` when the depth is not what moved.
+
+### Reading never builds
+
+None of these properties builds a widget: asking what is on screen must not
+change what is on screen. The cost is that a route the app has never displayed
+reads as `None` — start an `AppHarness` three screens deep and the two below the
+top are `None` until something shows them.
+
+### A nested navigator
+
+`app.route_stack` is the App's root navigator. A nested one — tabs, a wizard
+inside a page — has its own stack, and rather than guess which one you meant, the
+harness makes you say. Key the nested navigator and read its `stack` directly:
+
+```python
+tabs = app.get(key="tabs").widget      # Node.widget -> the Navigator itself
+assert len(tabs.stack) == 2
+```
+
+`Navigator.stack` is public for exactly this. Note that `Navigator.of(widget)`
+is *not* the way in: it resolves the nearest **ancestor** navigator, so calling
+it on the nested one hands you the root instead. `.of()` is for widgets that want
+to navigate from inside a subtree, not for a test that already has the navigator
+in hand.

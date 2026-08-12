@@ -292,11 +292,107 @@ class AppHarness(_HarnessBase):
 
     # -- navigation / overlay ----------------------------------------------
     #
-    # Deliberately absent: asserting on the route stack or on what is open needs
-    # a public accessor the framework does not have yet (Navigator.snapshot_stack
-    # is the hot-reload restore log, not the stack, and Overlay exposes nothing),
-    # which is a framework API change rather than a harness one. Reach through
-    # `.app` in the meantime.
+    # Widgets, not routes or entries: the screen class is the identity a test
+    # already has a vocabulary for -- `isinstance`, `is`, `len`. A `Route` has a
+    # builder and no name, so handing one out would promise an identity it does
+    # not carry.
+    #
+    # None of these builds a widget. `Route.build_widget()` and
+    # `OverlayEntry.build_widget()` construct on demand and cache, so mapping a
+    # stack to widgets through them would make *asking* about navigation change
+    # what is on screen -- an observation with a side effect. A route nobody has
+    # displayed yet is therefore reported as None rather than built.
+
+    @property
+    def route_stack(self) -> Tuple[Optional[Any], ...]:
+        """The screens on the root navigator's stack, bottom to top.
+
+        A screen being animated out is still here, so a pop is something to wait
+        for rather than assume::
+
+            app.click(key="back")
+            await app.wait_for(lambda: len(app.route_stack) == 1)
+
+        ``None`` marks a route that has never been built -- an ``AppHarness``
+        started several screens deep displays only the top, and reading the stack
+        must not build the rest.
+
+        There is no ``route_depth``: ``len(app.route_stack)`` is not something
+        anyone writes wrong, and one vocabulary is the point.
+        """
+        self._require_open()
+        return tuple(getattr(route, "_widget", None) for route in self._navigator.stack)
+
+    @property
+    def current_screen(self) -> Optional[Any]:
+        """The screen on top of the root navigator's stack.
+
+        The value is the live widget instance, so it is also the thing a test
+        wants next::
+
+            assert isinstance(app.current_screen, DetailScreen)
+            assert app.current_screen.vm.loaded.value
+        """
+        stack = self.route_stack
+        return stack[-1] if stack else None
+
+    @property
+    def in_transition(self) -> bool:
+        """Whether a navigation is in flight on the root navigator.
+
+        Wider than "an animation is running", and deliberately: a pop runs as a
+        task, so the narrow reading would be ``False`` for the window between the
+        click and the task starting, and a test waiting on it would go through
+        having waited for nothing.
+
+        Prefer waiting on what changed -- :attr:`route_stack` or
+        :attr:`current_screen`. This is for when the depth is not what moved.
+        """
+        self._require_open()
+        return bool(self._navigator.in_transition)
+
+    @property
+    def open_overlays(self) -> Tuple[Optional[Any], ...]:
+        """The content widget of each open overlay layer, bottom to top.
+
+        The *content* -- the dialog, the sheet, the toast -- not the composed
+        layer with its backdrop and input blocker around it, so
+        ``isinstance(app.top_overlay, ConfirmDialog)`` asks what it looks like it
+        asks. ``app.get(...)`` still targets whatever is inside them.
+
+        A layer stays here until its exit animation finalizes, not merely until
+        it is dismissed, so an empty tuple means gone rather than closing::
+
+            app.click(key="cancel")
+            await app.wait_for(lambda: not app.open_overlays)
+
+        ``None`` is possible only for the low-level ``Overlay.insert_entry``
+        path; anything shown through ``Overlay.show`` -- every dialog, sheet and
+        toast -- has its content from before the first build.
+        """
+        self._require_open()
+        return tuple(entry.content for entry in self._overlay.open_entries)
+
+    @property
+    def top_overlay(self) -> Optional[Any]:
+        """The content of the topmost open overlay layer, or ``None`` if none is open."""
+        overlays = self.open_overlays
+        return overlays[-1] if overlays else None
+
+    @property
+    def _navigator(self) -> Any:
+        """The App's root navigator.
+
+        The root one only. A nested navigator (tabs, a wizard inside a page) has
+        its own stack, and guessing which one the test meant is worse than making
+        it say: ``Navigator.of(app.get(key="tabs").widget).stack``.
+        """
+        return self._app.navigator
+
+    @property
+    def _overlay(self) -> Any:
+        """The App's root overlay, for the same reason as :attr:`_navigator`."""
+        return self._app.overlay
 
     def _teardown(self) -> None:
         root = getattr(self._app, "root", None)

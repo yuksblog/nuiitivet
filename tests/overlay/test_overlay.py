@@ -193,21 +193,6 @@ def test_overlay_of_before_mount_reports_premature():
         Overlay.of(DummyWidget())
 
 
-def test_overlay_has_entries_with_invisible_entry():
-    """Test has_entries() when an entry is marked as invisible."""
-    overlay = Overlay()
-    entry = OverlayEntry(builder=lambda: DummyWidget("test"))
-
-    overlay.insert_entry(entry)
-    assert overlay.has_entries()
-
-    # Mark the entry as invisible
-    entry.mark_for_removal()
-
-    # has_entries() should return False
-    assert not overlay.has_entries()
-
-
 def test_overlay_entry_dispose_is_idempotent() -> None:
     dispose_calls = 0
 

@@ -44,7 +44,7 @@ class OverlayEntry:
         self.builder = builder
         self._on_dispose = on_dispose
         self._widget: Optional[Widget] = None
-        self._is_visible = True
+        self._content: Optional[Widget] = None
         self._is_disposed = False
 
     def build_widget(self) -> Widget:
@@ -60,13 +60,26 @@ class OverlayEntry:
         return self._widget
 
     @property
-    def is_visible(self) -> bool:
-        """Check if this entry is visible."""
-        return self._is_visible
+    def content(self) -> Optional[Widget]:
+        """The widget this entry is showing, **without building it**.
 
-    def mark_for_removal(self) -> None:
-        """Mark this entry for removal from the overlay."""
-        self._is_visible = False
+        This is the caller's content, not the composed layer that
+        :meth:`build_widget` returns -- that one wraps the content in a backdrop
+        and an input blocker, so ``isinstance(entry.content, ConfirmDialog)`` is
+        the question an observer can actually answer.
+
+        :meth:`Overlay.show` sets it before the entry is ever built, so a dialog,
+        sheet or toast has it from the start. The low-level
+        :meth:`Overlay.insert_entry` path has no content distinct from the
+        entry's own build, so this is the already-built widget there, or ``None``
+        before the first build.
+
+        Reading it never builds. Asking what is open must not change what is on
+        screen.
+        """
+        if self._content is not None:
+            return self._content
+        return self._widget
 
     def dispose(self) -> None:
         """Clean up resources associated with this entry."""
@@ -91,4 +104,4 @@ class OverlayEntry:
                         type(self._widget).__name__,
                     )
         self._widget = None
-        self._is_visible = False
+        self._content = None

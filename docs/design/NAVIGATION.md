@@ -255,6 +255,11 @@ In cases where `Esc` / `Back` are input in rapid succession (key repeat, hammeri
 
 - `App.handle_back_event()` processes exactly one request per input.
 - If the Overlay is empty, it calls `Navigator.request_back()`.
+- A back action never reaches past a **blocking** layer. An entry stays open
+  until its exit animation finalizes, so a dialog that has been dismissed but is
+  still on screen has nothing left to close — and the event stops there rather
+  than popping the route the user can still see behind it. A pass-through layer
+  (toast, banner) blocks neither.
 - `Navigator.request_back()` acts as the user input API, absorbing re-entrancy during transitions.
 
 #### Navigator Strategy

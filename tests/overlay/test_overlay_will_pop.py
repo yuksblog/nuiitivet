@@ -94,9 +94,12 @@ async def test_side_sheet_close_button_proceeds_without_will_pop(nuiitivet_app) 
     overlay.side_sheet(sheet)
 
     sheet._on_close_click()
-    # The default handle_back_event is async, so the dismiss runs as a task.
+    # The default handle_back_event is async, so the dismiss runs as a task --
+    # and being dismissed is not yet being gone. This overlay animates, so the
+    # sheet is still mounted and painted until the exit transition finalizes.
+    # ``idle()`` covers the task; the wait covers the animation.
     await app.idle()
-    assert overlay.has_entries() is False
+    await app.wait_for(lambda: not overlay.has_entries())
 
 
 @pytest.mark.asyncio
