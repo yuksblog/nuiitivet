@@ -6,6 +6,7 @@ import warnings
 from typing import Any, Callable, List, Optional, TypeVar, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once
+from nuiitivet.runtime.threading import is_ui_thread
 
 from .contexts import _batch_context, _tracking_context
 from .protocols import CompareFunc, Disposable, MutableObservableBase, ReadOnlyObservableProtocol
@@ -31,13 +32,14 @@ class _ObservableValue(MutableObservableBase[T]):
         owner: Optional[Any] = None,
         name: Optional[str] = None,
         compare: Optional[CompareFunc[T]] = None,
+        dispatch: bool = True,
     ):
         self._value = initial
         self._subs: List[Callable[[T], None]] = []
         self._owner = owner
         self._name = name
         self._compare = compare
-        self._dispatch_to_ui = False
+        self._dispatch_to_ui = dispatch
 
         self._lock = threading.Lock()
         self._pending_value: Any = _UNSET
@@ -74,7 +76,7 @@ class _ObservableValue(MutableObservableBase[T]):
 
     @value.setter
     def value(self, v: T) -> None:
-        should_dispatch = self._dispatch_to_ui and threading.current_thread() is not threading.main_thread()
+        should_dispatch = self._dispatch_to_ui and not is_ui_thread()
 
         if should_dispatch:
             with self._lock:
@@ -120,18 +122,16 @@ class _ObservableValue(MutableObservableBase[T]):
         for cb in list(self._subs):
             cb(self._value)
 
-    def dispatch_to_ui(self) -> "_ObservableValue[T]":
-        """Enable UI thread dispatching (chainable)."""
-        self._dispatch_to_ui = True
-        return self
-
     def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
         from .computed import ComputedObservable
 
         def compute_fn() -> Any:
             return fn(self.value)
 
-        return ComputedObservable(compute_fn, dispatch_to_ui=self._dispatch_to_ui)
+        # The opt-out propagates: a logic-layer observable's derivations are
+        # logic-layer too, and re-enabling dispatch here would silently start
+        # coalescing values the source was declared to deliver in full.
+        return ComputedObservable(compute_fn, dispatch=self._dispatch_to_ui)
 
     def combine(self, *others: ReadOnlyObservableProtocol[Any]) -> "CombineBuilder":
         from .combine import CombineBuilder
@@ -164,13 +164,27 @@ class _ObservableValue(MutableObservableBase[T]):
 
 
 class Observable(_ObservableValue[T]):
-    """Descriptor for a per-instance observable that can also be used standalone."""
+    """Descriptor for a per-instance observable that can also be used standalone.
 
-    def __init__(self, default: T, *, compare: Optional[CompareFunc[T]] = None):
-        super().__init__(initial=default, owner=None, name=None, compare=compare)
+    Writes from a thread other than the UI thread are marshalled onto it and
+    coalesced, so a subscriber may safely touch widgets whichever thread set
+    the value. Pass ``dispatch=False`` for an observable no widget will ever
+    bind to: notification then stays synchronous on the writing thread, and
+    every intermediate value is delivered rather than only the latest per tick.
+    """
+
+    def __init__(
+        self,
+        default: T,
+        *,
+        compare: Optional[CompareFunc[T]] = None,
+        dispatch: bool = True,
+    ):
+        super().__init__(initial=default, owner=None, name=None, compare=compare, dispatch=dispatch)
         self.default = default
         self.name: Optional[str] = None
         self.compare = compare
+        self.dispatch = dispatch
 
     def __set_name__(self, owner, name):
         self._name = name
@@ -180,7 +194,13 @@ class Observable(_ObservableValue[T]):
         storage_name = "_obs_" + (self.name if self.name is not None else "")
         storage = instance.__dict__.get(storage_name)
         if storage is None:
-            storage = _ObservableValue(self.default, owner=instance, name=self.name, compare=self.compare)
+            storage = _ObservableValue(
+                self.default,
+                owner=instance,
+                name=self.name,
+                compare=self.compare,
+                dispatch=self.dispatch,
+            )
             instance.__dict__[storage_name] = storage
         return storage
 
@@ -193,7 +213,7 @@ class Observable(_ObservableValue[T]):
         self._ensure(instance).value = value
 
     @staticmethod
-    def compute(fn: Callable[[], T], *, dispatch_to_ui: bool = False) -> "ComputedObservable[T]":
+    def compute(fn: Callable[[], T], *, dispatch: bool = True) -> "ComputedObservable[T]":
         from .computed import ComputedObservable
 
-        return ComputedObservable(fn, dispatch_to_ui=dispatch_to_ui)
+        return ComputedObservable(fn, dispatch=dispatch)

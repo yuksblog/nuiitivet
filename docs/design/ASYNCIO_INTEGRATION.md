@@ -7,7 +7,7 @@ For the overall concurrency entry point, see [CONCURRENCY_MODEL.md](CONCURRENCY_
 
 - Async tasks and async event handlers execute on the UI thread.
 - The threading model still applies: widgets must only be touched on the UI thread.
-- Use worker threads for CPU-heavy or blocking work, and publish results via `.dispatch_to_ui()` on an observable value.
+- Use worker threads for CPU-heavy or blocking work, and publish results by writing an observable value; the marshal onto the UI thread is automatic.
 
 ## Concurrency Model
 
@@ -99,7 +99,7 @@ See `samples/state-management/thread_safety.py` for an end-to-end demonstration:
 
 - `async with MaterialOverlay.of(self).while_loading(...)` while awaiting work.
 - Awaiting `MaterialOverlay.of(self).dialog(...)`.
-- Updating `Observable` values from async code without `dispatch_to_ui()`.
+- Updating `Observable` values from async code, which runs on the UI thread and so applies inline.
 
 ## Testing
 

@@ -38,6 +38,7 @@ from nuiitivet.input.codes import (
 from .gpu_frame import draw_gpu_frame
 
 from nuiitivet.observable.runtime import set_clock
+from nuiitivet.runtime.threading import set_ui_thread
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from nuiitivet.runtime.renderer import RendererMode
 
@@ -95,6 +96,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 pass
 
     try:
+        # The thread that installs the clock is the thread its callbacks fire
+        # on, which is what "the UI thread" has to mean for a marshalled
+        # observable write to land somewhere safe.
+        set_ui_thread()
         set_clock(pyglet.clock)
     except Exception:
         exception_once(logger, "pyglet_set_clock_exc", "set_clock(pyglet.clock) failed")

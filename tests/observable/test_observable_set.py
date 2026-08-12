@@ -111,7 +111,7 @@ def test_set_defers_to_the_ui_thread_like_the_setter():
 
     runtime.set_clock(_RecordingClock())
     try:
-        obs = _ObservableValue(0).dispatch_to_ui()
+        obs = _ObservableValue(0)
         seen: list[int] = []
         obs.subscribe(seen.append)
 

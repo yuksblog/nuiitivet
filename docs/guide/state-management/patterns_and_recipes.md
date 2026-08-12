@@ -20,8 +20,6 @@ class TodoViewModel:
     selected_item = nv.Observable(None)
 
     def __init__(self):
-        self.items.dispatch_to_ui()
-        self.selected_item.dispatch_to_ui()
         self.item_count = self.items.map(lambda items: len(items))
         self.has_items = self.item_count.map(lambda count: count > 0)
 
@@ -89,11 +87,6 @@ class DataViewModel:
     data = nv.Observable([])
     loading = nv.Observable(False)
     error = nv.Observable(None)
-
-    def __init__(self):
-        self.data.dispatch_to_ui()
-        self.loading.dispatch_to_ui()
-        self.error.dispatch_to_ui()
 
     def load_data_async(self):
         def worker():

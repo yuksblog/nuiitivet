@@ -104,7 +104,7 @@ class MutableObservableBase(ObservableBase[T]):
 
         Prefer the plain ``obs.value = v`` wherever a statement fits; this is
         the same write, not a second write path, so equality de-duping,
-        ``compare``, ``dispatch_to_ui`` and batching all behave identically.
+        ``compare``, UI-thread dispatch and batching all behave identically.
         """
         self.value = value
 

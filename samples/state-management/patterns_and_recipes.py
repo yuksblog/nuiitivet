@@ -4,7 +4,7 @@ Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
 - Derived state composition with map() and combine()
 - Memory management with Disposable
-- Async data fetch recipe using dispatch_to_ui()
+- Async data fetch recipe across a worker thread
 """
 
 import threading
@@ -24,9 +24,6 @@ class TodoViewModel:
     selected_index: nv.Observable[int | None] = nv.Observable(None)
 
     def __init__(self) -> None:
-        self.items.dispatch_to_ui()
-        self.selected_index.dispatch_to_ui()
-
         self.item_count = self.items.map(lambda lst: len(lst))
         self.has_items = self.item_count.map(lambda c: c > 0)
         self.summary = self.item_count.map(lambda c: f"{c} item(s)" if c > 0 else "No items")
@@ -99,17 +96,13 @@ class ManagedViewModel:
 
 
 class AsyncViewModel:
-    """Thread-safe async fetch using dispatch_to_ui()."""
+    """Thread-safe async fetch: the worker just writes, the marshal is automatic."""
 
     data: nv.Observable[str] = nv.Observable("")
     loading: nv.Observable[bool] = nv.Observable(False)
     error: nv.Observable[str | None] = nv.Observable(None)
 
     def __init__(self) -> None:
-        self.data.dispatch_to_ui()
-        self.loading.dispatch_to_ui()
-        self.error.dispatch_to_ui()
-
         self.status = self.loading.map(lambda loading: "Loading..." if loading else "")
         self.data_display = self.data.map(lambda d: d if d else "(no data)")
         self.error_display = self.error.map(lambda e: f"Error: {e}" if e else "")

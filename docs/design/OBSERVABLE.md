@@ -50,53 +50,54 @@ The framework provides a minimal, unified API for reactive transformations inspi
 - Dynamic dependency re-collection on every recompute handles conditional logic correctly
 - Full integration with `batch()` system prevents redundant computations
 
-## 3. Thread safety: Explicit UI dispatch via method chaining
+## 3. Thread safety: UI dispatch by default, with an explicit opt-out
 
 **Problem:** Worker threads updating observables can trigger UI updates from non-UI threads, causing crashes.
 
-**Design decision:** **Default to fast (no dispatch), opt-in to safety via `.dispatch_to_ui()`**
+**Design decision:** **Default to safe (marshal to the UI thread), opt out with `dispatch=False`** (#538)
 
 ```python
-# UI layer (ViewModel) - explicit dispatch required
+# UI layer (ViewModel) - nothing to enable
 class ViewModel:
     items = Observable([])
-
-    def __init__(self):
-        self.items.dispatch_to_ui()  # Thread-safe for UI binding
 
     def load_async(self):
         def worker():
             result = fetch_data()
-            self.items.value = result  # notify happens on UI thread
+            self.items.value = result  # notify happens on the UI thread
         threading.Thread(target=worker).start()
 
-# Logic layer - default fast path
+# Logic layer - opt out where no widget will ever bind
 class DataProcessor:
-    raw_data = Observable([])  # No dispatch = zero overhead
+    raw_data = Observable([], dispatch=False)
 
     def __init__(self):
-        self.filtered = self.raw_data.map(lambda x: [i for i in x if i > 0])  # Fast by default
+        # Inherits the opt-out: a derivation of a logic-layer value stays one.
+        self.filtered = self.raw_data.map(lambda x: [i for i in x if i > 0])
 ```
 
-**Rationale for default-off:**
+**Rationale for default-on:**
 
-1. **Zero overhead for single-threaded apps** (most beginner use cases)
-2. **Gradual learning curve**: Beginners ignore threading, intermediates learn `.dispatch_to_ui()` when needed
-3. **Performance**: Logic-layer observable chains stay fast without UI thread hops
-4. **Explicit intent**: UI-bound observables are clearly marked in code
+1. **The unsafe case must not be the quiet one.** Under default-off, forgetting a single call produced a crash or silent tree corruption whose cause was nowhere near the symptom. Under default-on, forgetting `dispatch=False` costs some coalescing on a value nothing renders.
+2. **Cost is small and bounded.** The added per-write work is one integer comparison against a cached UI-thread ident (~75 ns, ~9.5% of a write). `threading.current_thread()` was the expensive part and is gone.
+3. **The opt-out carries real information.** `dispatch=False` states "no widget binds to this, and every intermediate value matters" — which the reader could not previously infer from the absence of a call.
+
+**Reversal of the original decision.** This section first argued for default-off on zero-overhead and gradual-learning grounds. Both survive in weaker form: the overhead it avoided is now measured and small, and the learning curve it protected was in practice a trap, since the failure mode appears only under threading, only sometimes, and never at the line that caused it.
 
 **Implementation:**
 
-- `.dispatch_to_ui()` is chainable on observable values and computed observables
-- `_ObservableValue.__set__()` checks thread and uses `pyglet.clock.schedule_once()` to marshal notifications to UI thread when dispatch is enabled
-- `batch()` automatically dispatches flush to UI thread if any observable in the batch has dispatch enabled
-- Computed observables inherit dispatch setting via `CombineBuilder.dispatch_to_ui()` in method chains
+- `_ObservableValue`, `Observable` and `ComputedObservable` take `dispatch: bool = True`
+- The thread test is `nuiitivet.runtime.threading.is_ui_thread()` — a cached-ident comparison, and the single definition of "the UI thread" for both this and `assert_ui_thread()`
+- The setter marshals through the installed clock (`runtime.clock.schedule_once(..., 0)`), coalescing to one scheduled flush per tick
+- `batch()` dispatches its flush to the UI thread if any observable in the batch dispatches
+- `map()` propagates the **opt-out**; `combine(...).compute(...)` dispatches unless every source opted out, and takes an explicit `dispatch=` to override
 
 **Constraints:**
 
-- Compute functions execute on the triggering thread (may be worker thread)
-- Only notifications are marshalled to UI thread
+- Compute functions execute on the triggering thread (may be a worker thread)
+- Only notifications are marshalled to the UI thread
 - Compute functions must NOT access UI-thread-only objects (widgets, UI state) - only observable values
+- A marshalled write is asynchronous and coalesced: the writer reads back the old value until the next tick, and intermediate values are dropped
 
 ## 4. Timing control: Debounce and throttle (Phase 2 complete)
 
@@ -112,7 +113,7 @@ class DataProcessor:
 **Design principles:**
 
 1. **UI thread integration**: Use `pyglet.clock.schedule_once()` for timing to ensure thread safety
-2. **Chainable operators**: Work seamlessly with `.map()`, `.combine()`, `.compute()`, `.dispatch_to_ui()`
+2. **Chainable operators**: Work seamlessly with `.map()`, `.combine()`, `.compute()`
 3. **Cancellation semantics**:
    - Debounce: Each new value cancels pending timer and starts fresh delay
    - Throttle: First value emits immediately, subsequent values sampled at intervals
@@ -141,8 +142,8 @@ class MouseTracker:
 **Integration with other operators:**
 
 ```python
-# Debounce + map + dispatch
-query.debounce(0.5).map(str.lower).dispatch_to_ui()
+# Debounce + map
+query.debounce(0.5).map(str.lower)
 
 # Throttle + combine + compute
 mouse_pos.throttle(0.1).combine(viewport).compute(lambda pos, vp: is_inside(pos, vp))

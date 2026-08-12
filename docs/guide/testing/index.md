@@ -23,8 +23,8 @@ covers the environment underneath all three.
 The framework keeps process-global state: pending widget invalidations, the
 theme reader stack, the once-per-process log de-duplication, and — most
 importantly — `runtime.clock`, which schedules every delayed callback in the
-framework (`debounce`, tooltip delays, overlay auto-dismiss, cross-thread
-`dispatch_to_ui`).
+framework (`debounce`, tooltip delays, overlay auto-dismiss, and the marshal
+behind every cross-thread `Observable` write).
 
 Without the plugin, two things go wrong, and both have the same expensive
 signature — **the test that fails is not the test that is wrong**:
@@ -33,10 +33,10 @@ signature — **the test that fails is not the test that is wrong**:
   for every later test in the session. Whether an unrelated test passes then
   depends on collection order, and the failure moves when you reorder or filter
   the suite with `-k`.
-- With no backend running, the fallback clock fires scheduled callbacks on
-  `threading.Timer` threads at wall-clock time. A widget that arms a delayed
-  callback and is never torn down leaves that timer live; it fires in the
-  middle of some later test, mutating widget state off the UI thread.
+- With no backend running, the fallback clock fires scheduled callbacks on its
+  own servicing thread at wall-clock time. A widget that arms a delayed
+  callback and is never torn down leaves it armed; it fires in the middle of
+  some later test, mutating widget state off the UI thread.
 
 The plugin ends both: around every test it installs a fresh
 [`HarnessClock`](#the-harness-clock) and resets the framework's process-global

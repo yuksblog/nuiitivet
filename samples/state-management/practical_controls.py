@@ -4,7 +4,7 @@ Demonstrates:
 - batch() to group updates and suppress intermediate notifications
 - debounce() to fire only after input has settled
 - throttle() to sample high-frequency events at a fixed rate
-- Chaining operators (debounce → map → dispatch_to_ui)
+- Chaining operators (debounce → map)
 """
 
 import nuiitivet.material as nv

@@ -1,10 +1,10 @@
 """A deterministic :class:`~nuiitivet.observable.runtime.Clock` for tests.
 
-The fallback ``_ThreadClock`` fires scheduled callbacks on ``threading.Timer``
-threads at wall-clock time, so a test that arms a debounce, a tooltip delay or
-a ``dispatch_to_ui`` marshal races background threads. :class:`HarnessClock`
-holds every scheduled callback in a queue and fires it only when the test
-**pumps** — on the pumping thread, deterministically.
+The fallback ``_ThreadClock`` fires scheduled callbacks on its own servicing
+thread at wall-clock time, so a test that arms a debounce, a tooltip delay or a
+cross-thread observable write races that thread. :class:`HarnessClock` holds
+every scheduled callback in a queue and fires it only when the test **pumps** —
+on the pumping thread, deterministically.
 
 Real time, not virtual time: there is no ``advance()``. ``pump()`` fires what
 is due *now*, so a delayed callback fires only after its delay has genuinely
@@ -37,7 +37,9 @@ class PendingCallback:
 
     ``delay`` is the one-shot delay or the interval period, as passed to the
     scheduling call. ``due`` reports whether the callback's deadline had passed
-    when the snapshot was taken.
+    when the snapshot was taken. ``armed_by`` is the ident of the thread that
+    scheduled it, which is how ``settle`` tells work the tree armed from work a
+    worker thread armed.
     """
 
     fn: ClockCallback
@@ -45,10 +47,11 @@ class PendingCallback:
     is_interval: bool
     site: str
     due: bool
+    armed_by: int
 
 
 class _Entry:
-    __slots__ = ("fn", "delay", "deadline", "is_interval", "site", "seq")
+    __slots__ = ("fn", "delay", "deadline", "is_interval", "site", "seq", "armed_by")
 
     def __init__(
         self,
@@ -58,6 +61,7 @@ class _Entry:
         is_interval: bool,
         site: str,
         seq: int,
+        armed_by: int,
     ) -> None:
         self.fn = fn
         self.delay = delay
@@ -65,6 +69,7 @@ class _Entry:
         self.is_interval = is_interval
         self.site = site
         self.seq = seq
+        self.armed_by = armed_by
 
 
 def _caller_site() -> str:
@@ -81,8 +86,8 @@ class HarnessClock:
     fires idealistically — an interval of 0.1 pumped after 1.0 s has elapsed
     fires ten times with ``dt == 0.1`` — with no drift compensation.
 
-    Thread-safe: ``dispatch_to_ui`` schedules from worker threads. Callbacks
-    fire outside the lock, on the pumping thread, and may schedule or
+    Thread-safe: a marshalled observable write schedules from worker threads.
+    Callbacks fire outside the lock, on the pumping thread, and may schedule or
     unschedule freely while a pump is in progress; a callback that schedules
     another already-due callback has it fire in the same pump.
     """
@@ -97,18 +102,20 @@ class HarnessClock:
     def schedule_once(self, fn: ClockCallback, delay: float) -> None:
         """Arm ``fn`` to fire once, ``delay`` seconds from now, when pumped."""
         now = time.monotonic()
+        armed_by = threading.get_ident()
         with self._lock:
             self._entries.append(
-                _Entry(fn, float(delay), now + float(delay), False, _caller_site(), self._seq)
+                _Entry(fn, float(delay), now + float(delay), False, _caller_site(), self._seq, armed_by)
             )
             self._seq += 1
 
     def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
         """Arm ``fn`` to fire every ``interval`` seconds, when pumped."""
         now = time.monotonic()
+        armed_by = threading.get_ident()
         with self._lock:
             self._entries.append(
-                _Entry(fn, float(interval), now + float(interval), True, _caller_site(), self._seq)
+                _Entry(fn, float(interval), now + float(interval), True, _caller_site(), self._seq, armed_by)
             )
             self._seq += 1
 
@@ -229,4 +236,5 @@ class HarnessClock:
             is_interval=entry.is_interval,
             site=entry.site,
             due=entry.deadline <= now,
+            armed_by=entry.armed_by,
         )
