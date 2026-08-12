@@ -552,6 +552,13 @@ class App:
         Priority:
         - Overlay: close topmost entry if any
         - Navigator: pop one route if possible
+
+        A back action never reaches past a blocking layer. If the overlay had
+        nothing left to close but is still painting one -- a dialog already
+        dismissed and animating out is the case that reaches here -- the event
+        stops, rather than popping the screen the user can still see behind it.
+        This is the keyboard half of what ``Overlay.hit_test`` does for the
+        pointer; a pass-through layer (toast, banner) blocks neither.
         """
 
         overlay = self._overlay
@@ -561,6 +568,8 @@ class App:
                 if has_entries:
                     handled = bool(await overlay.async_request_close_topmost())
                     if handled:
+                        return True
+                    if overlay.occluding_content_widget() is not None:
                         return True
             except Exception:
                 exception_once(logger, "app_overlay_close_topmost_exc", "overlay.close_topmost() failed")

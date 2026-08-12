@@ -116,6 +116,13 @@ class Navigator(ComposableWidget):
         self._transition_handle: TransitionHandle | None = None
         self._transition_engine = TransitionEngine()
         self._pending_pop_requests: int = 0
+        # Back requests that have been made but have not finished. Distinct from
+        # ``_pending_pop_requests``, which only counts pops queued *behind* a
+        # running transition and is incremented inside ``request_back()`` -- a
+        # coroutine, so it is still 0 for the whole window between ``pop()``
+        # returning and the spawned task getting its turn. This one is
+        # incremented synchronously, so ``in_transition`` covers that window.
+        self._back_requests_in_flight: int = 0
         self._exiting_route: Route | None = None
         self._layer_composer: NavigationLayerComposer = layer_composer or _DefaultNavigationLayerComposer()
         # Ordered restore descriptors for routes added via ``push`` (not the
@@ -387,6 +394,46 @@ class Navigator(ComposableWidget):
         self.mark_needs_layout()
         self.invalidate()
 
+    @property
+    def stack(self) -> tuple[Route, ...]:
+        """The route stack, bottom to top.
+
+        A route that is being animated out **is still here**, and stays until its
+        exit transition finalizes and the route is disposed. Filtering it out
+        would report a pop as done while the outgoing screen is still mounted,
+        still laid out and still painted — a caller waiting on the depth would go
+        through on a transition that has not happened. So this reports what the
+        stack runtime holds, and code that wants "the pop finished" waits for it::
+
+            navigator.pop()
+            await app.wait_for(lambda: len(navigator.stack) == 1)
+
+        Reading this never builds a widget: the routes are handed out as they
+        are, and ``Route.build_widget()`` constructs on demand. Asking what is on
+        the stack must not change what is on screen.
+
+        Not to be confused with :meth:`snapshot_stack`, which is the hot-reload
+        restore log.
+        """
+        return tuple(self._stack.routes)
+
+    @property
+    def in_transition(self) -> bool:
+        """Whether a navigation is in flight — **not** merely whether one animates.
+
+        True from the moment a back navigation is requested, through the spawned
+        task, through any push or pop transition, until the stack has settled.
+        The wider definition is the load-bearing part: :meth:`pop` runs the pop as
+        a task, so on the narrow "is a transition object alive" reading this would
+        be ``False`` for the whole window between ``pop()`` returning and the task
+        starting, and ``await wait_for(lambda: not nav.in_transition)`` would go
+        through immediately, having waited for nothing.
+
+        Prefer waiting on what actually changed — :attr:`stack`, or the screen on
+        top — and reach for this when the depth is not what moved.
+        """
+        return self._transition is not None or self._back_requests_in_flight > 0 or self._pending_pop_requests > 0
+
     def snapshot_stack(self) -> list[_PushDescriptor | None]:
         """Capture the restorable descriptors of routes pushed onto this navigator.
 
@@ -395,6 +442,11 @@ class Navigator(ComposableWidget):
         push, or ``None`` for an opaque, non-restorable push. Routes from the
         initial construction stack are excluded — a hot reload rebuilds those
         from the factory. Pair with :meth:`restore_stack` across a reload (#378).
+
+        **This is not the route stack.** It is the restore log: one entry per
+        *declarative* push, ``None`` for a raw widget push, and nothing at all
+        for the routes the navigator was constructed with. For the stack, use
+        :attr:`stack`.
         """
         return list(self._restore_log)
 
@@ -434,7 +486,28 @@ class Navigator(ComposableWidget):
 
     def pop(self) -> None:
         """Request a back navigation. The pop itself runs as a task."""
-        spawn_task(self.request_back(), owner_name=f"{type(self).__name__}.pop")
+        # Counted here rather than in the coroutine: this call returns before the
+        # task has run a single line, and ``in_transition`` has to be true for
+        # that window too. See ``_back_requests_in_flight``.
+        self._back_requests_in_flight += 1
+        scheduled = False
+        try:
+            task = spawn_task(self._tracked_request_back(), owner_name=f"{type(self).__name__}.pop")
+            scheduled = task is not None
+        finally:
+            # With no running loop ``spawn_task`` closes the coroutine and either
+            # raises or returns None. A coroutine closed before it ever started
+            # runs no ``finally``, so the release has to happen here or
+            # ``in_transition`` would stay true for the rest of the process.
+            if not scheduled:
+                self._back_requests_in_flight -= 1
+
+    async def _tracked_request_back(self) -> bool:
+        """Run a back request whose in-flight count was taken by the caller."""
+        try:
+            return await self._request_back()
+        finally:
+            self._back_requests_in_flight -= 1
 
     async def request_back(self) -> bool:
         """Request a single back action.
@@ -447,7 +520,10 @@ class Navigator(ComposableWidget):
         - Intermediate queued pops are performed without animation.
         - The last queued pop (if any) uses the normal pop behavior.
         """
+        self._back_requests_in_flight += 1
+        return await self._tracked_request_back()
 
+    async def _request_back(self) -> bool:
         if not self.can_pop():
             return False
 
