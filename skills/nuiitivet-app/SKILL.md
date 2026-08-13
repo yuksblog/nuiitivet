@@ -196,10 +196,10 @@ which widget catches a click when layers overlap (default is `auto`; each takes 
 
 ## Gotchas
 
-- **Widget-tree mutation is main-thread only.** Never build, mount, or reassign
-  an `Observable.value` that drives the tree from a background thread. Do async
-  work off-thread, then hop back to the UI thread to update state. Reads are fine
-  anywhere; mutation is not.
+- **Widget-tree mutation is UI-thread only.** Never build, mount, or reassign a
+  widget from a background thread. `Observable.value` is the exception: a write
+  from a worker is marshalled onto the UI thread, so assign it directly — never
+  hand-roll a dispatch wrapper or a queue drained from a timer.
 - **Drawing is on-demand** — frames repaint when state changes, not on a fixed
   loop. Bind to an `Observable`; never drive animation with a per-frame `while`
   loop or busy polling.
@@ -237,7 +237,7 @@ day-to-day nuiitivet code is here, offline.
   "tempted to write X → in Nuiitivet write Y" table. Read this first when unsure.
 - **State, reactivity, derived/async values** →
   [references/state.md](references/state.md) — Observable, `combine`/`compute`,
-  `map`/`debounce`, ViewModel pattern.
+  `map`/`debounce`, background threads and cancellation, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
   [references/layout.md](references/layout.md).
 - **Navigation, dialogs, snackbars, overlays** →
