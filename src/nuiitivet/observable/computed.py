@@ -8,7 +8,12 @@ from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.runtime.threading import is_ui_thread
 
 from .contexts import _batch_context, _tracking_context
-from .protocols import Disposable, ObservableBase, ReadOnlyObservableProtocol
+from .protocols import (
+    Disposable,
+    ObservableBase,
+    ReadOnlyObservableProtocol,
+    mark_internal_subscription,
+)
 from . import runtime
 
 if TYPE_CHECKING:
@@ -73,7 +78,7 @@ class ComputedObservable(ObservableBase[T]):
                 return callback
 
             weak_ref = weakref.ref(self)
-            cb = make_callback(weak_ref)
+            cb = mark_internal_subscription(make_callback(weak_ref))
 
             disp = dep.subscribe(cb)
             self._dep_disposables.append(disp)

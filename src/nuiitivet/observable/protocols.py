@@ -26,6 +26,39 @@ def _set_subscription_tracker(tracker: Optional[Callable[["Disposable"], None]])
     _subscription_tracker = tracker
 
 
+# Set on a subscriber callback that is an edge of the observable graph itself --
+# a wrapper's subscription to its source, a computed's to a dependency -- rather
+# than an app or widget subscribing to observe a value.
+_INTERNAL_SUBSCRIPTION_ATTR = "_nuiitivet_internal_subscription"
+
+_C = TypeVar("_C", bound=Callable[..., None])
+
+
+def mark_internal_subscription(callback: _C) -> _C:
+    """Tag ``callback`` as the observable graph subscribing to itself.
+
+    The leak check reports subscriptions that outlive the widget that made them;
+    these belong to no widget and are released with the observable that owns
+    them, so they must be exempt. Marking is explicit rather than inferred
+    because the shape these callbacks happen to have -- a closure over a
+    ``weakref`` and nothing else -- is an implementation detail that has already
+    drifted once: it left ``ComputedObservable``'s dependency edges classified as
+    app subscriptions while ``debounce``'s were exempt, though the leak check
+    documented both as exempt.
+    """
+    setattr(callback, _INTERNAL_SUBSCRIPTION_ATTR, True)
+    return callback
+
+
+def is_internal_subscription(callback: object) -> bool:
+    """Whether ``callback`` was tagged by :func:`mark_internal_subscription`."""
+    return getattr(callback, _INTERNAL_SUBSCRIPTION_ATTR, False) is True
+
+
+def _already_disposed() -> None:
+    """Stand-in installed by :meth:`Disposable.dispose`, so the real closure frees."""
+
+
 class Disposable:
     def __init__(self, dispose_fn: Callable[[], None]):
         self._dispose_fn = dispose_fn
@@ -46,6 +79,13 @@ class Disposable:
         if not self._disposed:
             self._dispose_fn()
             self._disposed = True
+            # Drop the closure, which holds the observable and the subscriber --
+            # and, for an operator chain, every wrapper between them. Keeping it
+            # would pin all of that for as long as this object lives, which for a
+            # widget's ``bind()`` list is until the widget itself is collected.
+            # Safe because ``dispose`` never runs the closure twice, and the leak
+            # check only reads ``_dispose_fn`` on subscriptions still undisposed.
+            self._dispose_fn = _already_disposed
 
 
 class ObservableBase(Generic[T]):

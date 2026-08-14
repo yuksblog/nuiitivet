@@ -14,6 +14,7 @@ from .protocols import (
 from .runtime import Clock, ClockCallback, get_clock, set_clock
 from .timed import DebouncedObservable, ThrottledObservable
 from .value import Observable, _ObservableValue
+from .wrapper import SourceSubscribingObservable
 
 __all__ = [
     "BatchContext",
@@ -32,6 +33,7 @@ __all__ = [
     "ObservableBase",
     "ObservableProtocol",
     "ReadOnlyObservableProtocol",
+    "SourceSubscribingObservable",
     "ThrottledObservable",
     "_ObservableValue",
     "get_clock",
