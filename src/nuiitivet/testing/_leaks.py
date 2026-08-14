@@ -32,7 +32,12 @@ import sys
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
-from nuiitivet.observable.protocols import Disposable, ObservableBase, _set_subscription_tracker
+from nuiitivet.observable.protocols import (
+    Disposable,
+    ObservableBase,
+    _set_subscription_tracker,
+    is_internal_subscription,
+)
 
 from .errors import SubscriptionLeakError
 
@@ -232,7 +237,13 @@ def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
     subscription to its dependencies, ``Debounced``'s to its source. Those are
     disposed with the observable that owns them and have nothing to do with a
     widget's lifetime, so reporting them would be the check crying wolf on the
-    framework's own wiring.
+    framework's own wiring. They are recognised by an explicit mark
+    (:func:`~nuiitivet.observable.protocols.mark_internal_subscription`) rather
+    than by inferring an owner from the callback: both kinds now subscribe
+    through a ``weakref`` so their source cannot keep them alive, which leaves
+    no owner to infer. Inference previously caught ``Debounced`` -- which held a
+    bound method, the very thing that leaked -- and missed ``Computed``
+    entirely, so the sentence above described neither.
 
     ``live`` is a widget that has not been unmounted, and the distinction is
     load-bearing rather than pedantic. A leak is *the widget is gone and the
@@ -241,7 +252,9 @@ def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
     intended, and one constructed but never mounted never entered a tree for a
     subscription to outlive. Reporting either would fail tests that are correct.
     """
-    _observable, _callback, owner = attribute(record.disposable)
+    _observable, callback, owner = attribute(record.disposable)
+    if is_internal_subscription(callback):
+        return "internal", owner
     if owner is None:
         return "unattributed", None
     if isinstance(owner, ObservableBase):
