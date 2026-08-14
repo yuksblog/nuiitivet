@@ -41,7 +41,7 @@ The framework provides a minimal, unified API for reactive transformations inspi
 - **No `combine_latest`**: Redundant with `.combine().compute()`
 - **No `select` / `where`**: Aliases cause confusion
 - **No `zip` / `merge`**: Low usage frequency in UI frameworks
-- **No `filter`**: Initial value semantics are problematic for UI binding
+- **No `filter`**: Initial value semantics are problematic for UI binding — though §6 settles those semantics for every source-subscribing wrapper, which is the ground on which `filter` is worth revisiting
 
 **Implementation strategy:**
 
@@ -54,7 +54,7 @@ The framework provides a minimal, unified API for reactive transformations inspi
 
 **Problem:** Worker threads updating observables can trigger UI updates from non-UI threads, causing crashes.
 
-**Design decision:** **Default to safe (marshal to the UI thread), opt out with `dispatch=False`** (#538)
+**Design decision:** **Default to safe (marshal to the UI thread), opt out with `dispatch=False`**
 
 ```python
 # UI layer (ViewModel) - nothing to enable
@@ -161,9 +161,10 @@ mouse_pos.throttle(0.1).combine(viewport).compute(lambda pos, vp: is_inside(pos,
 - `DebouncedObservable` and `ThrottledObservable` classes wrap upstream observable
 - Both support full observable protocol: `.map()`, `.subscribe()`, chaining
 - Both subclass `SourceSubscribingObservable` and follow the lifetime contract in §5; timer cancellation happens in `dispose()`
+- Both report their **last emission** from `.value` (§6), so either can be bound straight into a widget
 - Testing uses `MockClock` with epsilon tolerance for deterministic timing assertions
 
-## 5. Lifetime contract for source-subscribing observables (#551)
+## 5. Lifetime contract for source-subscribing observables
 
 `map` and `compute` derive a value and hold nothing. `debounce`, `throttle` — and
 any future operator that shapes *notifications* rather than values — must stay
@@ -197,23 +198,15 @@ fires — the clock holds the bound callback — so a pending emit completes rat
 than vanishing mid-flight.
 
 **Rule 4 — a derivation depends on the wrapper, not on what the wrapper reads.**
-`debounce` / `throttle` read `.value` straight through to their source, so the
-naive implementation let that inner read register the *source* with the tracking
-context. A derivation then held two edges — one shaped, one raw — and the raw one
-fires first and unconditionally, so the shaping was bypassed entirely:
-`q.debounce(0.3).map(f)` recomputed on the keystroke instead of 0.3 s after it,
-and `debounce` had no effect whatsoever in a chain.
+The naive implementation let a wrapper's inner read of its source register that
+*source* with the tracking context. A derivation then held two edges — one
+shaped, one raw — and the raw one fires first and unconditionally, so the shaping
+was bypassed entirely: `q.debounce(0.3).map(f)` recomputed on the keystroke
+instead of 0.3 s after it, and `debounce` had no effect whatsoever in a chain.
 `SourceSubscribingObservable.value` registers itself and evaluates
-`_current_value()` with tracking suppressed.
-
-Rule 4 holds however `_current_value()` is defined, so it survives #557 — but the
-read-through it describes does not. **That pass-through is not a decision this
-project ever made**: nothing before #551 recorded what a wrapper's `.value`
-means, and the only prior artifact is a test documenting the implementation. It
-is very likely the shortest thing that compiled. #557 proposes that a wrapper
-hold the value it last emitted, which would also make binding one directly work
-and would settle #555's initial-value question generally rather than per
-operator. Do not read the read-through as intended design.
+`_current_value()` with tracking suppressed; the seed read in `__init__` is
+untracked for the same reason, so building a wrapper inside a `compute()` does
+not hand that computation an edge to the wrapper's source.
 
 **Corollary — `Disposable.dispose()` drops its closure.** That closure holds the
 observable, the subscriber, and every wrapper between them. Retaining it after
@@ -237,6 +230,56 @@ neither operator.
 
 **Implementation:**
 
-- `SourceSubscribingObservable` (`observable/wrapper.py`) owns all four rules; operators subclass it and implement `_on_source_changed`, `_current_value`, and `_clock_callbacks`
+- `SourceSubscribingObservable` (`observable/wrapper.py`) owns all four rules; operators subclass it and implement `_on_source_changed` and `_clock_callbacks`
 - Clock callbacks are matched by **equality**, so `dispose()` can unschedule a callback that was never armed at no cost
 - The pytest plugin arms `track_subscriptions` around every test and holds each `Disposable` strongly by design, so a test that asserts on *collection* must disarm it first (see `tests/observable/test_wrapper_lifecycle.py`)
+
+## 6. Value semantics for source-subscribing observables
+
+**A wrapper holds the value it last emitted.** `.value` is not a live read of the
+source; it is what this observable last published, seeded from the source when
+the wrapper is constructed. `_emit_to_subscribers()` stores the value before
+notifying, so a subscriber reading back through the wrapper sees what it was
+handed.
+
+```python
+d = q.debounce(0.3)     # d.value == q.value  (seeded at construction)
+q.value = "abc"         # d.value unchanged — still the seed
+# 0.3 s later           # d.value == "abc"
+nv.Text(d)              # binds correctly, no map() needed
+```
+
+**Why, given that shaping could have lived on the notification path alone.**
+`debounce` / `throttle` were the only observables in the framework where the
+headline rule — *pass the observable into the widget* — did the wrong thing.
+`nv.Text(q.debounce(0.3))` rendered whatever the source held at build time, with
+no error and no warning: the UI worked and silently ignored the operator that had
+been asked for. The workaround did not read as one either — `.map(str)` looks
+like type conversion, so nothing in the code said "this is what makes debounce
+take effect". And `.value` meant two different things depending on the object:
+"this observable's current value" on `Observable` / `ComputedObservable`, but
+"some *other* observable's current value" on a wrapper.
+
+The read-through it replaced was never a decision. Nothing recorded what a
+wrapper's `.value` meant before this section existed; the only prior artifact was
+a test whose docstring described the implementation. It was the shortest thing
+that compiled.
+
+**Before the first emission, a wrapper reports the seed.** For `debounce` that
+means the construction-time value until the input first settles. `throttle` emits
+on the leading edge, so the first change moves it immediately.
+
+**Cost.** "Thin the notifications but read the true current value on demand"
+(throttle as a sampler) is no longer expressible through the operator. No in-tree
+case needed it; `wrapper._source.value` still exists if one appears.
+
+**This generalises to any future operator.** Requiring `filter(pred, initial=...)`
+to hold "the last value that passed, or `initial`" would be the same decision, so
+`filter` is not a special case — and §2's objection that "initial value semantics
+are problematic for UI binding" is answered once, for every source-subscribing
+wrapper, rather than per operator.
+
+**Implementation:**
+
+- `SourceSubscribingObservable.__init__` seeds `_held_value` with an untracked read of the source; `_emit_to_subscribers()` updates it; the default `_current_value()` returns it
+- A subclass that must report something other than what it emitted overrides `_current_value()`, and the tracking suppression in `value` keeps that read from registering the source (Rule 4)

@@ -55,6 +55,19 @@ Typical use cases are scrolling, pointer movement, resize handling, and real-tim
 | Last change | Always execute | Depends on timing |
 | Execution count | Minimized | Regular |
 
+## Binding into a widget
+
+A `debounce()` / `throttle()` result holds the value it last emitted, so pass it
+into a widget the same way you would any other observable:
+
+```python
+nv.Text(query.debounce(0.5))
+```
+
+Until the first emission it reports the value the source had when the chain was
+built — with `debounce`, that is what you see until the input first settles;
+`throttle` emits on the first change, so it moves right away.
+
 ## Chaining
 
 ```python

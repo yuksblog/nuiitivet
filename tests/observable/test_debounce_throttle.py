@@ -1,5 +1,6 @@
 """Tests for debounce and throttle observables."""
 
+import time
 from typing import Optional
 
 import pytest
@@ -135,15 +136,44 @@ class TestDebounce:
         mock_clock.tick(0.3)
         assert results == [1, 2]
 
-    def test_debounce_value_property(self):
-        """Debounce.value returns current source value (not debounced)."""
+    def test_debounce_value_property(self, mock_clock):
+        """Debounce.value is the last debounced emission, seeded from the source."""
         m = Model()
         debounced = m.source2.debounce(0.3)
 
-        assert debounced.value == 10
+        assert debounced.value == 10  # seeded at construction
 
         m.source2.value = 20
-        assert debounced.value == 20  # Not debounced
+        assert debounced.value == 10  # still the seed: the input has not settled
+
+        mock_clock.tick(0.3)
+        assert debounced.value == 20
+
+    def test_debounce_value_holds_seed_until_first_emission(self, mock_clock):
+        """A source that keeps changing never moves the debounced value."""
+        m = Model()
+        debounced = m.source2.debounce(0.3)
+
+        for value in (20, 30, 40):
+            m.source2.value = value
+            mock_clock.tick(0.2)
+            assert debounced.value == 10
+
+        mock_clock.tick(0.3)
+        assert debounced.value == 40
+
+    def test_debounce_value_matches_emission_inside_subscriber(self, mock_clock):
+        """A subscriber reading back through the wrapper sees what it was handed."""
+        m = Model()
+        debounced = m.source2.debounce(0.3)
+
+        seen = []
+        debounced.subscribe(lambda v: seen.append((v, debounced.value)))
+
+        m.source2.value = 20
+        mock_clock.tick(0.3)
+
+        assert seen == [(20, 20)]
 
     def test_debounce_emits_none(self, mock_clock):
         """Debounce treats a legitimate None like any other value."""
@@ -306,15 +336,21 @@ class TestThrottle:
         m.selection.value = "bob"
         assert results == ["alice", None, "bob"]
 
-    def test_throttle_value_property(self):
-        """Throttle.value returns current source value (not throttled)."""
+    def test_throttle_value_property(self, mock_clock):
+        """Throttle.value is the last throttled emission, seeded from the source."""
         m = Model()
         throttled = m.source2.throttle(0.3)
 
-        assert throttled.value == 10
+        assert throttled.value == 10  # seeded at construction
 
         m.source2.value = 20
-        assert throttled.value == 20  # Not throttled
+        assert throttled.value == 20  # leading edge emits, so the value follows
+
+        m.source2.value = 30
+        assert throttled.value == 20  # suppressed inside the window
+
+        mock_clock.tick(0.3)
+        assert throttled.value == 30  # trailing emission
 
     def test_throttle_map_chain(self, mock_clock):
         """Throttle can be chained with map."""
@@ -403,3 +439,91 @@ class TestWithComputed:
 
         mock_clock.tick(0.1)  # Emit pending: 6
         assert results == [2, 6]
+
+
+class TestBindingDirectlyIntoAWidget:
+    """The headline rule — pass the observable in — must hold for wrappers too.
+
+    Each pair of tests moves the source past the last emission *before* the
+    widget renders, which is what a read-through ``.value`` would leak.
+    """
+
+    @staticmethod
+    def _screen(bound):
+        from nuiitivet.layout.column import Column
+        from nuiitivet.material.text import Text
+        from nuiitivet.modifiers.keyed import keyed
+
+        return lambda: Column(children=[Text(bound).modifier(keyed("readout"))])
+
+    def test_debounce_bound_without_map_is_debounced(self, nuiitivet_app):
+        source = Observable("start")
+        debounced = source.debounce(5.0)  # long enough that it cannot fire here
+
+        source.value = "typing"
+
+        app = nuiitivet_app(self._screen(debounced), size=(800, 600))
+        assert app.get(key="readout").text == "start", "the debounce was bypassed"
+
+    def test_debounce_bound_without_map_follows_the_emission(self, nuiitivet_app):
+        source = Observable("start")
+        debounced = source.debounce(0.01)
+
+        app = nuiitivet_app(self._screen(debounced), size=(800, 600))
+
+        source.value = "typing"
+        time.sleep(0.02)
+        app.clock.pump()
+        app.settle()
+
+        assert app.get(key="readout").text == "typing"
+
+    def test_throttle_bound_without_map_is_throttled(self, nuiitivet_app):
+        source = Observable("start")
+        throttled = source.throttle(5.0)
+
+        source.value = "first"  # leading edge: emitted
+        source.value = "second"  # inside the window: held back
+
+        app = nuiitivet_app(self._screen(throttled), size=(800, 600))
+        assert app.get(key="readout").text == "first", "the throttle was bypassed"
+
+    def test_an_inline_wrapper_is_held_by_the_binding(self, nuiitivet_app):
+        """Nothing names the wrapper, so only the widget's binding can hold it."""
+        import gc
+
+        source = Observable("start")
+
+        def screen():
+            from nuiitivet.layout.column import Column
+            from nuiitivet.material.text import Text
+            from nuiitivet.modifiers.keyed import keyed
+
+            return Column(children=[Text(source.debounce(0.01)).modifier(keyed("readout"))])
+
+        app = nuiitivet_app(screen, size=(800, 600))
+        gc.collect()
+
+        source.value = "typing"
+        time.sleep(0.02)
+        app.clock.pump()
+        app.settle()
+
+        assert app.get(key="readout").text == "typing"
+
+    def test_throttle_bound_without_map_follows_the_emission(self, nuiitivet_app):
+        source = Observable("start")
+        throttled = source.throttle(0.01)
+
+        app = nuiitivet_app(self._screen(throttled), size=(800, 600))
+
+        source.value = "first"
+        app.settle()
+        assert app.get(key="readout").text == "first"
+
+        source.value = "second"
+        time.sleep(0.02)
+        app.clock.pump()
+        app.settle()
+
+        assert app.get(key="readout").text == "second"
