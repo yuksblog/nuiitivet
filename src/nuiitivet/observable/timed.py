@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence, TypeVar
+from typing import Callable, Sequence, TypeVar
 
+from ._sentinel import UNSET, _Unset
 from .protocols import ReadOnlyObservableProtocol
 from .wrapper import SourceSubscribingObservable
 from . import runtime
@@ -19,7 +20,7 @@ class DebouncedObservable(SourceSubscribingObservable[T]):
 
     def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
         self._seconds = seconds
-        self._pending_value: Optional[T] = None
+        self._pending_value: T | _Unset = UNSET
         self._scheduled = False
         super().__init__(source)
 
@@ -37,8 +38,12 @@ class DebouncedObservable(SourceSubscribingObservable[T]):
 
     def _emit(self, dt: float) -> None:
         self._scheduled = False
-        if self._pending_value is not None:
-            self._emit_to_subscribers(self._pending_value)
+        pending = self._pending_value
+        if pending is UNSET:
+            return
+
+        self._pending_value = UNSET
+        self._emit_to_subscribers(pending)
 
     def _current_value(self) -> T:
         return self._source.value
@@ -55,7 +60,7 @@ class ThrottledObservable(SourceSubscribingObservable[T]):
     def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
         self._seconds = seconds
         self._throttling = False
-        self._pending_value: Optional[T] = None
+        self._pending_value: T | _Unset = UNSET
         super().__init__(source)
 
     def _clock_callbacks(self) -> Sequence[Callable[[float], None]]:
@@ -71,13 +76,14 @@ class ThrottledObservable(SourceSubscribingObservable[T]):
         self._pending_value = value
 
     def _emit_pending(self, dt: float) -> None:
-        if self._pending_value is not None:
-            self._emit_to_subscribers(self._pending_value)
-            self._pending_value = None
-            runtime.clock.schedule_once(self._emit_pending, self._seconds)
+        pending = self._pending_value
+        if pending is UNSET:
+            self._throttling = False
             return
 
-        self._throttling = False
+        self._pending_value = UNSET
+        self._emit_to_subscribers(pending)
+        runtime.clock.schedule_once(self._emit_pending, self._seconds)
 
     def _current_value(self) -> T:
         return self._source.value
