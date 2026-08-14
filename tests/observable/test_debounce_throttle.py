@@ -1,5 +1,7 @@
 """Tests for debounce and throttle observables."""
 
+from typing import Optional
+
 import pytest
 from nuiitivet.observable import Observable
 
@@ -12,6 +14,12 @@ class Model:
     price = Observable(100)
     qty = Observable(1)
     count = Observable(0)
+
+
+class OptionalModel:
+    """Test model whose observable legitimately carries ``None``."""
+
+    selection: Observable[Optional[str]] = Observable(None)
 
 
 class MockClock:
@@ -137,6 +145,39 @@ class TestDebounce:
         m.source2.value = 20
         assert debounced.value == 20  # Not debounced
 
+    def test_debounce_emits_none(self, mock_clock):
+        """Debounce treats a legitimate None like any other value."""
+        m = OptionalModel()
+        debounced = m.selection.debounce(0.3)
+
+        results = []
+        debounced.subscribe(lambda v: results.append(v))
+
+        m.selection.value = "alice"
+        mock_clock.tick(0.3)
+        assert results == ["alice"]
+
+        # Clearing the selection must reach subscribers, not be swallowed
+        m.selection.value = None
+        mock_clock.tick(0.3)
+        assert results == ["alice", None]
+
+    def test_debounce_ignores_tick_with_nothing_pending(self, mock_clock):
+        """A tick after the pending value was consumed emits nothing."""
+        m = OptionalModel()
+        debounced = m.selection.debounce(0.3)
+
+        results = []
+        debounced.subscribe(lambda v: results.append(v))
+
+        m.selection.value = "alice"
+        mock_clock.tick(0.3)
+        assert results == ["alice"]
+
+        # Force the callback again without a new source change
+        debounced._emit(0.0)
+        assert results == ["alice"]
+
     def test_debounce_map_chain(self, mock_clock):
         """Debounce can be chained with map."""
         m = Model()
@@ -224,6 +265,46 @@ class TestThrottle:
         # t=0.3 (0.25 + 0.05): scheduled callback runs, emit pending 4
         mock_clock.tick(0.05)
         assert results == [1, 2, 3, 4]
+
+    def test_throttle_emits_trailing_none(self, mock_clock):
+        """A trailing None inside the throttle window is emitted, not dropped."""
+        m = OptionalModel()
+        throttled = m.selection.throttle(0.3)
+
+        results = []
+        throttled.subscribe(lambda v: results.append(v))
+
+        # Leading edge
+        m.selection.value = "alice"
+        assert results == ["alice"]
+
+        # Cleared while throttling: must survive as the trailing emission
+        m.selection.value = None
+        assert results == ["alice"]
+
+        mock_clock.tick(0.3)
+        assert results == ["alice", None]
+
+    def test_throttle_stops_after_trailing_none(self, mock_clock):
+        """A consumed None leaves nothing pending, so throttling winds down."""
+        m = OptionalModel()
+        throttled = m.selection.throttle(0.3)
+
+        results = []
+        throttled.subscribe(lambda v: results.append(v))
+
+        m.selection.value = "alice"
+        m.selection.value = None
+        mock_clock.tick(0.3)
+        assert results == ["alice", None]
+
+        # Next window is idle: no repeat of the None, and throttling ends
+        mock_clock.tick(0.3)
+        assert results == ["alice", None]
+
+        # Having wound down, the next change emits on the leading edge again
+        m.selection.value = "bob"
+        assert results == ["alice", None, "bob"]
 
     def test_throttle_value_property(self):
         """Throttle.value returns current source value (not throttled)."""

@@ -8,6 +8,7 @@ from typing import Any, Callable, List, Optional, TypeVar, TYPE_CHECKING
 from nuiitivet.common.logging_once import debug_once
 from nuiitivet.runtime.threading import is_ui_thread
 
+from ._sentinel import UNSET, _Unset
 from .contexts import _batch_context, _tracking_context
 from .protocols import CompareFunc, Disposable, MutableObservableBase, ReadOnlyObservableProtocol
 from . import runtime
@@ -21,8 +22,6 @@ T = TypeVar("T")
 
 
 logger = logging.getLogger(__name__)
-
-_UNSET = object()
 
 
 class _ObservableValue(MutableObservableBase[T]):
@@ -42,7 +41,7 @@ class _ObservableValue(MutableObservableBase[T]):
         self._dispatch_to_ui = dispatch
 
         self._lock = threading.Lock()
-        self._pending_value: Any = _UNSET
+        self._pending_value: T | _Unset = UNSET
         self._is_scheduled = False
 
     def _is_equal(self, candidate: T) -> bool:
@@ -109,14 +108,14 @@ class _ObservableValue(MutableObservableBase[T]):
 
     def _process_pending_update(self, dt: float) -> None:
         with self._lock:
-            if self._pending_value is _UNSET:
+            pending = self._pending_value
+            if pending is UNSET:
                 self._is_scheduled = False
                 return
-            v = self._pending_value
-            self._pending_value = _UNSET
+            self._pending_value = UNSET
             self._is_scheduled = False
 
-        self._apply(v)
+        self._apply(pending)
 
     def _notify_subs(self) -> None:
         for cb in list(self._subs):
