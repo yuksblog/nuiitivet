@@ -4,6 +4,7 @@ Demonstrates:
 - batch() to group updates and suppress intermediate notifications
 - debounce() to fire only after input has settled
 - throttle() to sample high-frequency events at a fixed rate
+- filter() to update only on values that pass a predicate
 - Chaining operators (debounce → map)
 """
 
@@ -82,17 +83,34 @@ class ThrottleModel:
         self.raw_count.value += 1
 
 
+class FilterModel:
+    """Filter: only values passing the predicate get through."""
+
+    def __init__(self) -> None:
+        self.raw_count = nv.Observable(0)
+
+        # initial= is required: it is what .value reports until something passes.
+        # Same shape again - name the filtered observable, then derive from it.
+        self.multiples_of_5 = self.raw_count.filter(lambda n: n % 5 == 0, initial=0)
+        self.last_pass = self.multiples_of_5.map(lambda n: f"Last multiple of 5: {n}")
+
+    def click(self) -> None:
+        self.raw_count.value += 1
+
+
 class PracticalControlsApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.batch_model = BatchModel()
         self.debounce_model = DebounceModel()
         self.throttle_model = ThrottleModel()
+        self.filter_model = FilterModel()
 
     def build(self) -> nv.Widget:
         bm = self.batch_model
         dm = self.debounce_model
         tm = self.throttle_model
+        fm = self.filter_model
 
         return nv.Box(
             padding=24,
@@ -138,6 +156,15 @@ class PracticalControlsApp(nv.ComposableWidget):
                     nv.Button(
                         "Click (throttled)",
                         on_click=lambda: tm.click(),
+                        style=nv.ButtonStyle.filled(),
+                    ),
+                    # --- filter() ---
+                    nv.Text("filter(n % 5 == 0, initial=0)"),
+                    nv.Text(fm.raw_count.map(lambda n: f"Clicks: {n}")),
+                    nv.Text(fm.last_pass),  # filter -> map, bound directly
+                    nv.Button(
+                        "Click (filtered)",
+                        on_click=lambda: fm.click(),
                         style=nv.ButtonStyle.filled(),
                     ),
                 ],

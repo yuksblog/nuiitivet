@@ -107,15 +107,28 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "No cancellation primitive exists. Create a threading.Event per run, pass it to the "
      "worker, and check cancel.is_set() in its loop; a reused Event that gets clear()ed "
      "lets a superseded run resume."),
-    # Bare-statement subscribe on a debounce/throttle chain. In Rx the stream is
-    # owned by the source, so dropping the subscription handle is normal; here the
+    # Bare-statement subscribe on a debounce/throttle/filter chain. In Rx the stream
+    # is owned by the source, so dropping the subscription handle is normal; here the
     # chain is owned by whoever holds it, so this silently never fires. Excludes
-    # lines containing "=" (assigned) or "bind(" (held by the widget).
-    (re.compile(r"^\s*(?!.*=)(?!.*\bbind\s*\().*"
-                r"\.(?:debounce|throttle)\s*\([^()]*\)\s*\.\s*subscribe\s*\("), "Rx habit",
-     "Hold what you derive: debounce/throttle returns a new Observable that is collected "
-     "unless something holds it, so this never fires. Name it (self.results = ...), or "
-     "keep the Disposable: self.bind(source.debounce(0.3).subscribe(cb))."),
+    # lines that assign the result, or pass it to "bind(" (held by the widget).
+    # The exclusion tests for an assignment *target* rather than for any "=" at
+    # all: `filter` always carries `initial=`, so a bare "=" test would exempt
+    # every filter chain — the one operator whose seed makes "=" unavoidable.
+    # Both guards are anchored at "^" and swallow the indentation themselves: a
+    # leading "^\s*" outside them would backtrack to a shorter run of spaces and
+    # slip past a guard that had already matched.
+    (re.compile(r"^(?![ \t]*[\w.\[\]'\"]+\s*=[^=])(?!.*\bbind\s*\().*"
+                r"\.(?:debounce|throttle|filter)\s*\([^()]*\)\s*\.\s*subscribe\s*\("), "Rx habit",
+     "Hold what you derive: debounce/throttle/filter returns a new Observable that is "
+     "collected unless something holds it, so this never fires. Name it (self.results = ...), "
+     "or keep the Disposable: self.bind(source.debounce(0.3).subscribe(cb))."),
+    # LINQ / Rx operator aliases. Neither exists: aliases for the same operation
+    # were rejected outright, and `where` in particular now has a real counterpart
+    # whose required seed is the whole point.
+    (re.compile(r"\.(?:where|select)\s*\(\s*lambda\b"), "Rx/LINQ",
+     "No where/select aliases. Filtering is .filter(pred, initial=...) — initial is required "
+     "and keyword-only, because a filtered Observable has no value until something passes. "
+     "Projection is .map(fn)."),
     (re.compile(r"\bIndexedStack\b|\bBottomNavigationBar\b"), "Flutter",
      "No IndexedStack / BottomNavigationBar: switch children with nv.Deck(index=obs, "
      "children=[...]); left-hand nav is nv.NavigationRail."),
@@ -139,11 +152,11 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
 # keeps running afterwards. Retaining either half (`self._sub = x.subscribe(...)`,
 # `self.bind(x.subscribe(...))`) is legitimate anywhere and never fires.
 _SETUP_DEF = re.compile(r"^([ \t]*)def\s+(?:__init__|on_mount)\s*\(")
-_LOCAL_WRAPPER = re.compile(r"^[ \t]+([A-Za-z_]\w*)\s*=\s*[^=].*\.(?:debounce|throttle)\s*\(")
+_LOCAL_WRAPPER = re.compile(r"^[ \t]+([A-Za-z_]\w*)\s*=\s*[^=].*\.(?:debounce|throttle|filter)\s*\(")
 _DISCARDED_SUBSCRIBE = r"^[ \t]*{name}\s*\.\s*subscribe\s*\("
 
 _DEAD_CHAIN_FIX = (
-    "Hold what you derive: this local debounce/throttle Observable is collected when the "
+    "Hold what you derive: this local debounce/throttle/filter Observable is collected when the "
     "setup method returns, and the discarded Disposable does not hold it either, so it "
     "never fires. Store one of them: self._sub = source.debounce(0.5).subscribe(cb), or "
     "self.bind(...) in a widget."

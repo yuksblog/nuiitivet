@@ -1,8 +1,9 @@
 """Lifetime contract for observables that subscribe to an upstream source.
 
 ``map`` and ``compute`` derive a value and hold nothing; ``debounce``,
-``throttle`` and anything else that shapes *notifications* must stay subscribed
-to a source for as long as they live. That subscription is an edge the garbage
+``throttle``, ``filter`` and anything else that shapes *when* or *whether* a
+source's values are republished must stay subscribed to a source for as long as
+they live. That subscription is an edge the garbage
 collector can see, and pointing it the wrong way makes the whole chain
 uncollectable. :class:`SourceSubscribingObservable` owns that edge so each
 operator does not re-decide it.
@@ -63,22 +64,29 @@ if TYPE_CHECKING:
     from .computed import ComputedObservable
 
 T = TypeVar("T")
+_R = TypeVar("_R")
 
 
 logger = logging.getLogger(__name__)
 
 
-def _read_untracked(source: ReadOnlyObservableProtocol[T]) -> T:
-    """Read ``source.value`` without registering it with the tracking context.
+def _untracked(fn: Callable[[], _R]) -> _R:
+    """Run ``fn`` with dependency tracking suppressed.
 
-    A wrapper reads its source on behalf of *itself*, never on behalf of whatever
-    derivation happens to be recording dependencies at the time.
+    Whatever a wrapper reads internally — its source, or a user callback that
+    happens to read an observable — is read on behalf of the wrapper itself,
+    never on behalf of whatever derivation is recording dependencies at the time.
     """
     token = _tracking_context.set(None)
     try:
-        return source.value
+        return fn()
     finally:
         _tracking_context.reset(token)
+
+
+def _read_untracked(source: ReadOnlyObservableProtocol[T]) -> T:
+    """Read ``source.value`` without registering it with the tracking context."""
+    return _untracked(lambda: source.value)
 
 
 class SourceSubscribingObservable(ObservableBase[T]):
