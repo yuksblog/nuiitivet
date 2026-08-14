@@ -28,6 +28,14 @@ Dropping the ``Disposable`` on the floor instead drops the chain with it, which
 is the same rule ``compute`` and ``map`` already follow: a derived observable
 nobody holds does not exist.
 
+**A wrapper holds the value it last emitted.** Shaping is not a property of the
+notification path alone: ``.value`` reports what this observable last emitted,
+seeded from the source when the wrapper is constructed. That is what makes
+``nv.Text(query.debounce(0.3))`` show debounced text — reading through to the
+source instead would silently ignore the operator the caller asked for. Between
+construction and the first emission a wrapper therefore reports the seed: for
+``debounce``, the construction-time value until the input first settles.
+
 **Teardown releases the source and disarms the clock.** :meth:`dispose` is
 idempotent and runs from ``__del__`` as a backstop, so a wrapper that goes out of
 scope with a timer armed does not fire into a dead chain.
@@ -60,12 +68,26 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
+def _read_untracked(source: ReadOnlyObservableProtocol[T]) -> T:
+    """Read ``source.value`` without registering it with the tracking context.
+
+    A wrapper reads its source on behalf of *itself*, never on behalf of whatever
+    derivation happens to be recording dependencies at the time.
+    """
+    token = _tracking_context.set(None)
+    try:
+        return source.value
+    finally:
+        _tracking_context.reset(token)
+
+
 class SourceSubscribingObservable(ObservableBase[T]):
     """Base for observables that hold a live subscription to an upstream source.
 
     Subclasses implement :meth:`_on_source_changed` (what to do with an upstream
-    value) and :attr:`value` (what the current value *is*), and list any clock
-    callbacks they arm in :meth:`_clock_callbacks` so teardown can disarm them.
+    value) and decide when to call :meth:`_emit_to_subscribers`, which is also
+    what updates the value this wrapper reports. Any clock callbacks they arm go
+    in :meth:`_clock_callbacks` so teardown can disarm them.
     """
 
     # Class-level defaults so ``__del__`` is safe on an instance whose
@@ -77,6 +99,7 @@ class SourceSubscribingObservable(ObservableBase[T]):
     def __init__(self, source: ReadOnlyObservableProtocol[T]):
         self._source = source
         self._subscribers: List[Callable[[T], None]] = []
+        self._held_value: T = _read_untracked(source)
         self._disposed = False
         self._source_subscription = self._subscribe_weakly(source)
 
@@ -102,14 +125,15 @@ class SourceSubscribingObservable(ObservableBase[T]):
 
     @property
     def value(self) -> T:
-        """Current value, registering **this wrapper** as the dependency.
+        """Value this wrapper last emitted, registering **it** as the dependency.
 
         A derivation built on a wrapper must depend on the wrapper, not on what
-        the wrapper reads. Letting the inner read register the source as well
+        the wrapper reads. Letting an inner read register the source as well
         would hand the derivation a second edge that is unshaped and fires
         first, so the shaping would be bypassed entirely: ``q.debounce(0.3).map(f)``
         recomputed on the keystroke rather than 0.3 s after it. Reads inside
-        :meth:`_current_value` are therefore untracked.
+        :meth:`_current_value` are therefore untracked, which matters for any
+        subclass that does read its source there.
         """
         tracker = _tracking_context.get()
         if tracker is not None and tracker is not self:
@@ -120,9 +144,13 @@ class SourceSubscribingObservable(ObservableBase[T]):
         finally:
             _tracking_context.reset(token)
 
-    def _current_value(self) -> T:  # pragma: no cover - overridden
-        """What :attr:`value` reports. Reads made here are not tracked."""
-        raise NotImplementedError
+    def _current_value(self) -> T:
+        """What :attr:`value` reports: the last emitted value, or the seed.
+
+        Reads made here are not tracked. A subclass that reports something other
+        than what it emitted overrides this.
+        """
+        return self._held_value
 
     def _clock_callbacks(self) -> Sequence[Callable[[float], None]]:
         """Callbacks this observable may have armed, for :meth:`dispose` to disarm.
@@ -163,6 +191,12 @@ class SourceSubscribingObservable(ObservableBase[T]):
         raise NotImplementedError
 
     def _emit_to_subscribers(self, value: T) -> None:
+        """Publish ``value`` and make it what :attr:`value` reports from now on.
+
+        Held before the callbacks run, so a subscriber that reads back through
+        the wrapper sees the value it was just handed.
+        """
+        self._held_value = value
         for callback in list(self._subscribers):
             callback(value)
 

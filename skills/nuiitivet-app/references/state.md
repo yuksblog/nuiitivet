@@ -95,18 +95,20 @@ where the source owns the subscription and dropping the handle is normal. The
 local-variable spelling is the easy one to miss: it looks like setup, but nothing
 survives the constructor.
 
-**End the chain in `map()` before binding it.** `debounce` / `throttle` currently
-pass `.value` straight through to the live source — only notifications are shaped
-— so binding one directly shows unshaped values. `map()` produces a computed that
-stores what it was given, which is what makes it bindable:
+**Bind one directly — `.value` is the last shaped emission.** A wrapper holds
+what it last emitted, seeded from the source when it is built, so no `map()` is
+needed to make it bindable:
 
 ```python
-nv.Text(self.query.debounce(0.3).map(str))   # debounced
-nv.Text(self.query.debounce(0.3))            # reads through: not debounced at all
+nv.Text(self.query.debounce(0.3))            # debounced
 ```
 
-> Temporary. nuiitivet#557 makes wrappers hold their own value, after which
-> binding one directly works and this whole paragraph goes away.
+Until the first emission it reports the seed: `debounce` shows the value the
+source had when the chain was built, `throttle` moves on the first change.
+
+Inline like that is safe even under "hold what you derive": the widget's binding
+holds the wrapper, exactly as `subscribe()`'s `Disposable` does. What is *not*
+safe is the local variable in `__init__` above — nothing binds it.
 
 ## Background work (threads)
 

@@ -13,7 +13,9 @@ T = TypeVar("T")
 class DebouncedObservable(SourceSubscribingObservable[T]):
     """Debounced observable that emits value only after delay with no new changes.
 
-    Lifetime follows the contract in
+    ``value`` is the last debounced emission — the construction-time value of the
+    source until the input first settles — so binding this straight into a widget
+    shows debounced values. Lifetime follows the contract in
     :mod:`~nuiitivet.observable.wrapper`: hold this object, or the ``Disposable``
     from :meth:`subscribe`, for as long as the emissions are wanted.
     """
@@ -45,16 +47,15 @@ class DebouncedObservable(SourceSubscribingObservable[T]):
         self._pending_value = UNSET
         self._emit_to_subscribers(pending)
 
-    def _current_value(self) -> T:
-        return self._source.value
-
 
 class ThrottledObservable(SourceSubscribingObservable[T]):
     """Throttled observable that emits first value then ignores changes for duration.
 
-    Lifetime follows the contract in
-    :mod:`~nuiitivet.observable.wrapper`: hold this object, or the ``Disposable``
-    from :meth:`subscribe`, for as long as the emissions are wanted.
+    ``value`` is the last throttled emission — the construction-time value of the
+    source until the first change, which is emitted on the leading edge — so
+    binding this straight into a widget shows throttled values. Lifetime follows
+    the contract in :mod:`~nuiitivet.observable.wrapper`: hold this object, or the
+    ``Disposable`` from :meth:`subscribe`, for as long as the emissions are wanted.
     """
 
     def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
@@ -84,6 +85,3 @@ class ThrottledObservable(SourceSubscribingObservable[T]):
         self._pending_value = UNSET
         self._emit_to_subscribers(pending)
         runtime.clock.schedule_once(self._emit_pending, self._seconds)
-
-    def _current_value(self) -> T:
-        return self._source.value

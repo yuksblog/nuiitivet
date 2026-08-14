@@ -48,10 +48,8 @@ class DebounceModel:
         # nobody holds is collected and never fires.
         self.debounced = self.raw_count.debounce(0.5)
 
-        # Chained and bound straight into the UI. The map() is required for now:
-        # the wrapper's own .value reads through to the live source, so binding
-        # it directly would not be debounced at all. #557 makes wrappers hold
-        # their own value; the map() becomes optional then.
+        # Chained and bound straight into the UI. The map() only formats the
+        # label - self.debounced binds on its own, holding what it last emitted.
         self.settled = self.debounced.map(lambda n: f"Settled at: {n} clicks")
 
         # subscribe() because counting *emissions* is accumulation over history,

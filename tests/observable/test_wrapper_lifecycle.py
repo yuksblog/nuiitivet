@@ -11,6 +11,7 @@ import weakref
 import pytest
 
 from nuiitivet.observable import Observable
+from nuiitivet.observable.computed import ComputedObservable
 from nuiitivet.observable.timed import DebouncedObservable, ThrottledObservable
 
 
@@ -273,14 +274,38 @@ class TestDerivationsDependOnTheWrapper:
         mock_clock.fire_all()
         assert seen == [10, 14]
 
-    def test_value_still_reads_through_to_the_source(self, mock_clock):
-        """Shaping applies to notifications; `.value` stays a live read."""
+    def test_value_holds_the_last_emission(self, mock_clock):
+        """Shaping applies to reads too: `.value` is what the wrapper emitted."""
         source = Observable(1)
-        for wrapper in _wrappers(source):
-            assert wrapper.value == 1
-            source.value = 2
-            assert wrapper.value == 2
-            source.value = 1
+        debounced = source.debounce(0.3)
+
+        assert debounced.value == 1  # seeded from the source
+        source.value = 2
+        assert debounced.value == 1, "`.value` read through, bypassing the debounce"
+
+        mock_clock.fire_all()
+        assert debounced.value == 2
+
+    def test_seeding_does_not_leak_into_an_enclosing_derivation(self, mock_clock):
+        """Building a wrapper inside a compute must not register its source."""
+        source = Observable(1)
+        other = Observable(10)
+        wrappers = []
+
+        def build() -> int:
+            wrappers.append(source.debounce(0.3))
+            return other.value
+
+        derived = ComputedObservable(build)
+        seen = []
+        derived.subscribe(seen.append)
+
+        source.value = 2
+        mock_clock.fire_all()
+        assert seen == [], "the seed read registered the source as a dependency"
+
+        other.value = 20
+        assert seen == [20]
 
 
 class TestDisposableReleasesItsClosure:
