@@ -36,12 +36,14 @@ The framework provides a minimal, unified API for reactive transformations inspi
 | `combine(a, b, ...)` | Explicit multi-source composition (function form, 3+ sources) | `combine(price, qty, discount).compute(lambda p, q, d: ...)` |
 | `Observable.compute(fn)` | Automatic dependency tracking for complex logic | `Observable.compute(lambda: self.a.value if self.flag.value else self.b.value)` |
 
+The operators that wrap a source rather than derive from it have their own
+sections: timing in §4 (`debounce`, `throttle`), value gating in §7 (`filter`).
+
 **Why this API over Rx-style operators:**
 
 - **No `combine_latest`**: Redundant with `.combine().compute()`
 - **No `select` / `where`**: Aliases cause confusion
 - **No `zip` / `merge`**: Low usage frequency in UI frameworks
-- **No `filter`**: Initial value semantics are problematic for UI binding — though §6 settles those semantics for every source-subscribing wrapper, which is the ground on which `filter` is worth revisiting
 
 **Implementation strategy:**
 
@@ -91,6 +93,7 @@ class DataProcessor:
 - The setter marshals through the installed clock (`runtime.clock.schedule_once(..., 0)`), coalescing to one scheduled flush per tick
 - `batch()` dispatches its flush to the UI thread if any observable in the batch dispatches
 - `map()` propagates the **opt-out**; `combine(...).compute(...)` dispatches unless every source opted out, and takes an explicit `dispatch=` to override
+- Source-subscribing wrappers (`debounce`, `throttle`, `filter`) make no dispatch decision at all: they emit synchronously inside a notification their source has already marshalled, so the source's decision is the only one
 
 **Constraints:**
 
@@ -166,10 +169,11 @@ mouse_pos.throttle(0.1).combine(viewport).compute(lambda pos, vp: is_inside(pos,
 
 ## 5. Lifetime contract for source-subscribing observables
 
-`map` and `compute` derive a value and hold nothing. `debounce`, `throttle` — and
-any future operator that shapes *notifications* rather than values — must stay
-subscribed to a source for as long as they live. That subscription is a reference
-edge, and pointing it the wrong way makes the whole chain uncollectable.
+`map` and `compute` derive a value and hold nothing. `debounce`, `throttle`,
+`filter` — and any future operator that shapes *when* or *whether* a source's
+values are republished, rather than deriving new ones — must stay subscribed to a
+source for as long as they live. That subscription is a reference edge, and
+pointing it the wrong way makes the whole chain uncollectable.
 
 **Rule 1 — the source must not keep the wrapper alive.** `source.subscribe(self._on_x)`
 stores a *bound method*, which strongly references the wrapper. The source then
@@ -267,19 +271,68 @@ that compiled.
 
 **Before the first emission, a wrapper reports the seed.** For `debounce` that
 means the construction-time value until the input first settles. `throttle` emits
-on the leading edge, so the first change moves it immediately.
+on the leading edge, so the first change moves it immediately. `filter` reports
+`initial` — the one seed a wrapper cannot take from its source (§7).
 
 **Cost.** "Thin the notifications but read the true current value on demand"
 (throttle as a sampler) is no longer expressible through the operator. No in-tree
 case needed it; `wrapper._source.value` still exists if one appears.
 
-**This generalises to any future operator.** Requiring `filter(pred, initial=...)`
-to hold "the last value that passed, or `initial`" would be the same decision, so
-`filter` is not a special case — and §2's objection that "initial value semantics
-are problematic for UI binding" is answered once, for every source-subscribing
-wrapper, rather than per operator.
-
 **Implementation:**
 
 - `SourceSubscribingObservable.__init__` seeds `_held_value` with an untracked read of the source; `_emit_to_subscribers()` updates it; the default `_current_value()` returns it
 - A subclass that must report something other than what it emitted overrides `_current_value()`, and the tracking suppression in `value` keeps that read from registering the source (Rule 4)
+- A subclass whose seed is not the source's value replaces `_held_value` after `super().__init__()`, which is what `filter` does with `initial` (§7)
+
+## 7. Value gating: filter
+
+**Problem:** some of a source's values must not reach the UI — an amount that has
+not validated yet, a selection that is sometimes empty. `map` cannot express
+this: it must return something for every input, so the rejected value still
+arrives, merely transformed.
+
+**Solution:** `.filter(pred, initial=...)` updates only when `pred` accepts the
+source's value. `.value` is the last value that passed, or `initial` if none has.
+
+```python
+valid = amount.filter(lambda n: n > 0, initial=0)
+nv.Text(valid.map(str))   # never shows a rejected amount
+```
+
+**The seed is required**, keyword-only and without a default. Every other
+operator derives `.value` from its source; `filter` alone cannot, because the
+predicate may reject everything the source ever produces. The caller therefore
+states what the UI shows until the first value passes. Two alternatives were not
+chosen:
+
+- **Pass the source through until the first pass.** It displays a value the
+  predicate rejected, which is the one outcome the operator exists to prevent,
+  and it is the read-through §6 rules out
+- **Report `Optional[T]`.** Every downstream `.map()` grows a `None` check, and
+  the seed answers the same question without changing the type
+
+**Semantics:**
+
+- **The seed is tested too.** At construction the source's current value runs
+  through `pred` and is kept if it passes, so `initial` means strictly "nothing
+  has passed", not "nothing has arrived yet"
+- **A rejected value changes nothing**: no emission, and `.value` keeps reporting
+  the last value that passed
+- **`None` is an ordinary value.** "Nothing has passed" is carried by the seed
+  rather than by the value, so no sentinel is needed and a legitimate `None`
+  passes like any other value
+- **No equality check of its own.** `_ObservableValue` de-dupes before it
+  notifies, and no wrapper second-guesses that
+- **`pred` is a pure function of the value it is handed.** It runs with tracking
+  suppressed (§5 Rule 4), so reading another observable inside it creates no edge
+  and cannot re-run the filter; that dependency belongs in `combine`
+
+**Implementation:**
+
+- `FilteredObservable` (`observable/filtered.py`) subclasses
+  `SourceSubscribingObservable`, so §5's lifetime contract and §6's value
+  semantics are inherited rather than restated
+- The seed is the only departure from the base: `__init__` replaces `_held_value`
+  with `initial` unless the source's construction-time value passes `pred`
+- `wrapper._untracked(fn)` runs both the seed's predicate call and the source
+  read with tracking suppressed

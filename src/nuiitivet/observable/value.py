@@ -16,6 +16,7 @@ from . import runtime
 if TYPE_CHECKING:
     from .combine import CombineBuilder
     from .computed import ComputedObservable
+    from .filtered import FilteredObservable
     from .timed import DebouncedObservable, ThrottledObservable
 
 T = TypeVar("T")
@@ -136,6 +137,17 @@ class _ObservableValue(MutableObservableBase[T]):
         from .combine import CombineBuilder
 
         return CombineBuilder(self, *others)
+
+    def filter(self, pred: Callable[[T], bool], *, initial: T) -> "FilteredObservable[T]":
+        """Observable of the values passing ``pred``, seeded with ``initial``.
+
+        ``initial`` is required because a filtered observable has no value of
+        its own until something passes; see
+        :class:`~nuiitivet.observable.filtered.FilteredObservable`.
+        """
+        from .filtered import FilteredObservable
+
+        return FilteredObservable(self, pred, initial=initial)
 
     def debounce(self, seconds: float) -> "DebouncedObservable[T]":
         from .timed import DebouncedObservable

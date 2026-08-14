@@ -76,6 +76,20 @@ self.results = self.query.debounce(0.3).map(search_api)   # thin the keystrokes,
 
 `throttle(seconds)` is the rate-limited sibling of `debounce`.
 
+`filter(pred, initial=...)` updates only on values passing `pred`. **`initial` is
+required and keyword-only** — a filtered Observable has no value of its own until
+something passes, so the caller states what the UI shows meanwhile:
+
+```python
+self.valid_amount = self.amount.filter(lambda n: n > 0, initial=0)
+```
+
+Rejected values change nothing: no notification, and `.value` keeps reporting the
+last one that passed. The source's current value is tested at construction too, so
+`initial` shows only while nothing has passed. `pred` must be a pure function of
+the value it is handed — reading another Observable inside it creates no
+dependency and will not re-run the filter; use `combine` for that.
+
 **Hold what you derive.** `q.debounce(0.3)` creates a new Observable, and like
 every derived Observable it is collected unless something holds it — by name, or
 by the `Disposable` that `subscribe()` returns:
@@ -90,7 +104,7 @@ debounced = self.query.debounce(0.3)                            # a local in __i
 debounced.subscribe(self._on_query)                             # ...gone when it returns
 ```
 
-`debounce` / `throttle` invite the mistake because they look like Rx streams,
+`debounce` / `throttle` / `filter` invite the mistake because they look like Rx streams,
 where the source owns the subscription and dropping the handle is normal. The
 local-variable spelling is the easy one to miss: it looks like setup, but nothing
 survives the constructor.
@@ -104,7 +118,8 @@ nv.Text(self.query.debounce(0.3))            # debounced
 ```
 
 Until the first emission it reports the seed: `debounce` shows the value the
-source had when the chain was built, `throttle` moves on the first change.
+source had when the chain was built, `throttle` moves on the first change, and
+`filter` shows `initial` until something passes.
 
 Inline like that is safe even under "hold what you derive": the widget's binding
 holds the wrapper, exactly as `subscribe()`'s `Disposable` does. What is *not*
@@ -178,7 +193,7 @@ points at the cause on its own:
 | Subscribed to | Symptom |
 | --- | --- |
 | a plain Observable | the source holds the callback, so it keeps firing after unmount — into a dead tree |
-| anything derived (`map`, `combine`, `debounce`, `throttle`) | nothing holds the derived Observable, so it is collected and never fires at all |
+| anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`) | nothing holds the derived Observable, so it is collected and never fires at all |
 
 ## Initialization that must run exactly once
 

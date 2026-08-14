@@ -3,6 +3,7 @@
 from .batching import BatchContext, batch, detach_batch
 from .combine import CombineBuilder, combine
 from .computed import ComputedObservable
+from .filtered import FilteredObservable
 from .protocols import (
     CompareFunc,
     Disposable,
@@ -28,6 +29,7 @@ __all__ = [
     "ComputedObservable",
     "DebouncedObservable",
     "Disposable",
+    "FilteredObservable",
     "MutableObservableBase",
     "Observable",
     "ObservableBase",
