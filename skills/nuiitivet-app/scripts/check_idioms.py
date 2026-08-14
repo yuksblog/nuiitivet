@@ -107,10 +107,82 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "No cancellation primitive exists. Create a threading.Event per run, pass it to the "
      "worker, and check cancel.is_set() in its loop; a reused Event that gets clear()ed "
      "lets a superseded run resume."),
+    # Bare-statement subscribe on a debounce/throttle chain. In Rx the stream is
+    # owned by the source, so dropping the subscription handle is normal; here the
+    # chain is owned by whoever holds it, so this silently never fires. Excludes
+    # lines containing "=" (assigned) or "bind(" (held by the widget).
+    (re.compile(r"^\s*(?!.*=)(?!.*\bbind\s*\().*"
+                r"\.(?:debounce|throttle)\s*\([^()]*\)\s*\.\s*subscribe\s*\("), "Rx habit",
+     "Hold what you derive: debounce/throttle returns a new Observable that is collected "
+     "unless something holds it, so this never fires. Name it (self.results = ...), or "
+     "keep the Disposable: self.bind(source.debounce(0.3).subscribe(cb))."),
     (re.compile(r"\bIndexedStack\b|\bBottomNavigationBar\b"), "Flutter",
      "No IndexedStack / BottomNavigationBar: switch children with nv.Deck(index=obs, "
      "children=[...]); left-hand nav is nv.NavigationRail."),
 ]
+
+
+# The same dead chain as the RULES entry above, but split across two lines:
+#
+#     debounced = self.raw_count.debounce(0.5)     # local, not stored on self
+#     debounced.subscribe(cb)                      # Disposable discarded too
+#
+# Neither line is damning alone — a local is fine if the Disposable is kept, and
+# a bare `.subscribe(` is fine on something that is held — so this needs both
+# halves, which a line-at-a-time rule cannot see.
+#
+# Scoped to __init__ / on_mount, and that scoping is load-bearing rather than
+# cautious. A local holds the chain for the rest of the call, so this shape is
+# perfectly correct in a function that also *uses* it before returning — which is
+# what most test code looks like. It is only a bug where the chain has to outlive
+# the call, and setup methods are where that is certain: whatever is being set up
+# keeps running afterwards. Retaining either half (`self._sub = x.subscribe(...)`,
+# `self.bind(x.subscribe(...))`) is legitimate anywhere and never fires.
+_SETUP_DEF = re.compile(r"^([ \t]*)def\s+(?:__init__|on_mount)\s*\(")
+_LOCAL_WRAPPER = re.compile(r"^[ \t]+([A-Za-z_]\w*)\s*=\s*[^=].*\.(?:debounce|throttle)\s*\(")
+_DISCARDED_SUBSCRIBE = r"^[ \t]*{name}\s*\.\s*subscribe\s*\("
+
+_DEAD_CHAIN_FIX = (
+    "Hold what you derive: this local debounce/throttle Observable is collected when the "
+    "setup method returns, and the discarded Disposable does not hold it either, so it "
+    "never fires. Store one of them: self._sub = source.debounce(0.5).subscribe(cb), or "
+    "self.bind(...) in a widget."
+)
+
+
+def _indent_of(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def find_dead_chains(text: str) -> list[tuple[int, str]]:
+    """``(lineno, source)`` for setup-local wrapper chains whose Disposable is dropped."""
+    lines = [strip_comment(raw) for raw in text.splitlines()]
+    findings = []
+    body_indent: int | None = None
+
+    for index, line in enumerate(lines):
+        setup = _SETUP_DEF.match(line)
+        if setup:
+            body_indent = len(setup.group(1))
+            continue
+        if body_indent is None or not line.strip():
+            continue
+        if _indent_of(line) <= body_indent:
+            body_indent = None  # dedented out of the setup method
+            continue
+
+        candidate = _LOCAL_WRAPPER.match(line)
+        if not candidate:
+            continue
+        subscribe = re.compile(_DISCARDED_SUBSCRIBE.format(name=re.escape(candidate.group(1))))
+        for follow_index in range(index + 1, len(lines)):
+            follow = lines[follow_index]
+            if follow.strip() and _indent_of(follow) <= body_indent:
+                break  # left the setup method without ever holding it
+            if subscribe.match(follow) and "=" not in follow and "bind(" not in follow:
+                findings.append((follow_index + 1, text.splitlines()[follow_index].strip()))
+                break
+    return findings
 
 
 def iter_py_files(targets: list[str]):
@@ -168,6 +240,11 @@ def main(argv: list[str]) -> int:
                     findings += 1
                     print(f"{path}:{lineno}: [{framework}] {raw.strip()}")
                     print(f"    -> {fix}")
+
+        for lineno, source in find_dead_chains(text):
+            findings += 1
+            print(f"{path}:{lineno}: [Rx habit] {source}")
+            print(f"    -> {_DEAD_CHAIN_FIX}")
 
     if findings:
         print(f"\n{findings} foreign-idiom warning(s). See "

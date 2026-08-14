@@ -160,5 +160,83 @@ mouse_pos.throttle(0.1).combine(viewport).compute(lambda pos, vp: is_inside(pos,
 
 - `DebouncedObservable` and `ThrottledObservable` classes wrap upstream observable
 - Both support full observable protocol: `.map()`, `.subscribe()`, chaining
-- Timer cancellation happens in `__set__()` to prevent memory leaks
+- Both subclass `SourceSubscribingObservable` and follow the lifetime contract in §5; timer cancellation happens in `dispose()`
 - Testing uses `MockClock` with epsilon tolerance for deterministic timing assertions
+
+## 5. Lifetime contract for source-subscribing observables (#551)
+
+`map` and `compute` derive a value and hold nothing. `debounce`, `throttle` — and
+any future operator that shapes *notifications* rather than values — must stay
+subscribed to a source for as long as they live. That subscription is a reference
+edge, and pointing it the wrong way makes the whole chain uncollectable.
+
+**Rule 1 — the source must not keep the wrapper alive.** `source.subscribe(self._on_x)`
+stores a *bound method*, which strongly references the wrapper. The source then
+outlives the wrapper and keeps it, and everything it holds, reachable forever.
+Wrappers therefore subscribe through a **weak reference to `self`**, the shape
+`ComputedObservable` already used for its dependency edges.
+
+**Rule 2 — a wrapper lives exactly as long as something holds it.** Either the
+object itself, or the `Disposable` that `subscribe()` returns, whose closure holds
+the wrapper. This is what makes the framework's own convention correct without
+further thought:
+
+```python
+self.bind(self.query.debounce(0.3).subscribe(self._on_query))
+```
+
+`bind()` retains the `Disposable`, which retains the chain; unmount disposes it,
+and the chain is collectable once the widget is. Dropping the `Disposable` on the
+floor drops the chain with it — the same rule `compute` and `map` already follow:
+**a derived observable nobody holds does not exist.**
+
+**Rule 3 — teardown releases the source and disarms the clock.** `dispose()` is
+idempotent, unschedules every callback the wrapper may have armed, and runs from
+`__del__` as a backstop. A wrapper with a timer already armed survives until it
+fires — the clock holds the bound callback — so a pending emit completes rather
+than vanishing mid-flight.
+
+**Rule 4 — a derivation depends on the wrapper, not on what the wrapper reads.**
+`debounce` / `throttle` read `.value` straight through to their source, so the
+naive implementation let that inner read register the *source* with the tracking
+context. A derivation then held two edges — one shaped, one raw — and the raw one
+fires first and unconditionally, so the shaping was bypassed entirely:
+`q.debounce(0.3).map(f)` recomputed on the keystroke instead of 0.3 s after it,
+and `debounce` had no effect whatsoever in a chain.
+`SourceSubscribingObservable.value` registers itself and evaluates
+`_current_value()` with tracking suppressed.
+
+Rule 4 holds however `_current_value()` is defined, so it survives #557 — but the
+read-through it describes does not. **That pass-through is not a decision this
+project ever made**: nothing before #551 recorded what a wrapper's `.value`
+means, and the only prior artifact is a test documenting the implementation. It
+is very likely the shortest thing that compiled. #557 proposes that a wrapper
+hold the value it last emitted, which would also make binding one directly work
+and would settle #555's initial-value question generally rather than per
+operator. Do not read the read-through as intended design.
+
+**Corollary — `Disposable.dispose()` drops its closure.** That closure holds the
+observable, the subscriber, and every wrapper between them. Retaining it after
+disposal pinned the whole chain for as long as the `Disposable` lived, which for
+a widget's `bind()` list is until the widget itself is collected. Disposal now
+installs a no-op in its place; the leak check is unaffected because it only reads
+`_dispose_fn` on subscriptions that are still undisposed.
+
+**Reversal of the original decision.** §4 previously claimed "timer cancellation
+happens in `__set__()` to prevent memory leaks". There was no `__set__` in
+`timed.py` and no `dispose()` either; neither class ever released its source
+subscription. The line described an implementation that did not exist.
+
+**Consequence for the leak check.** `testing/_leaks.py` exempts the observable
+graph's own edges from leak reporting. It recognises them by an explicit mark
+(`mark_internal_subscription`) rather than by inferring an owner from the
+callback, because under Rule 1 there is no owner left to infer. The previous
+inference caught `debounce` — which held the bound method that was the leak — and
+missed `ComputedObservable` entirely, so the exemption it documented matched
+neither operator.
+
+**Implementation:**
+
+- `SourceSubscribingObservable` (`observable/wrapper.py`) owns all four rules; operators subclass it and implement `_on_source_changed`, `_current_value`, and `_clock_callbacks`
+- Clock callbacks are matched by **equality**, so `dispose()` can unschedule a callback that was never armed at no cost
+- The pytest plugin arms `track_subscriptions` around every test and holds each `Disposable` strongly by design, so a test that asserts on *collection* must disarm it first (see `tests/observable/test_wrapper_lifecycle.py`)

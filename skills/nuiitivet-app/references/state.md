@@ -76,6 +76,38 @@ self.results = self.query.debounce(0.3).map(search_api)   # thin the keystrokes,
 
 `throttle(seconds)` is the rate-limited sibling of `debounce`.
 
+**Hold what you derive.** `q.debounce(0.3)` creates a new Observable, and like
+every derived Observable it is collected unless something holds it — by name, or
+by the `Disposable` that `subscribe()` returns:
+
+```python
+self.results = self.query.debounce(0.3).map(search_api)         # named -> held
+self.bind(self.query.debounce(0.3).subscribe(self._on_query))   # bind keeps the Disposable
+self._sub = self.query.debounce(0.3).subscribe(self._on_query)  # no bind()? keep it yourself
+
+self.query.debounce(0.3).subscribe(self._on_query)              # nothing held -> never fires
+debounced = self.query.debounce(0.3)                            # a local in __init__ is
+debounced.subscribe(self._on_query)                             # ...gone when it returns
+```
+
+`debounce` / `throttle` invite the mistake because they look like Rx streams,
+where the source owns the subscription and dropping the handle is normal. The
+local-variable spelling is the easy one to miss: it looks like setup, but nothing
+survives the constructor.
+
+**End the chain in `map()` before binding it.** `debounce` / `throttle` currently
+pass `.value` straight through to the live source — only notifications are shaped
+— so binding one directly shows unshaped values. `map()` produces a computed that
+stores what it was given, which is what makes it bindable:
+
+```python
+nv.Text(self.query.debounce(0.3).map(str))   # debounced
+nv.Text(self.query.debounce(0.3))            # reads through: not debounced at all
+```
+
+> Temporary. nuiitivet#557 makes wrappers hold their own value, after which
+> binding one directly works and this whole paragraph goes away.
+
 ## Background work (threads)
 
 Assign `.value` straight from a worker thread — the write is marshalled onto the
@@ -127,12 +159,24 @@ exists only for that screen, cancel from an `on_unmount()` override — not an
 
 ## `subscribe()` — legitimate vs anti-pattern
 
-`Observable.subscribe(fn)` exists and returns a `Disposable` you can dispose. In
-UI code cleanup is usually handled by the framework lifecycle.
+`Observable.subscribe(fn)` returns a `Disposable`. **Always keep it.** In a widget
+that means `self.bind(...)`, which disposes it at unmount:
+
+```python
+self.bind(self.user.subscribe(self._log_change))
+```
 
 - OK: side effects — logging, calling a service, analytics.
 - Anti-pattern: subscribing to copy a value into a widget. That is what binding
   is for; pass the Observable into the widget instead.
+
+Dropping the `Disposable` fails in one of two opposite ways, so neither symptom
+points at the cause on its own:
+
+| Subscribed to | Symptom |
+| --- | --- |
+| a plain Observable | the source holds the callback, so it keeps firing after unmount — into a dead tree |
+| anything derived (`map`, `combine`, `debounce`, `throttle`) | nothing holds the derived Observable, so it is collected and never fires at all |
 
 ## Initialization that must run exactly once
 

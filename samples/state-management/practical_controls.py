@@ -44,8 +44,23 @@ class DebounceModel:
         self.raw_count = nv.Observable(0)
         self.execute_count = nv.Observable(0)
 
-        debounced = self.raw_count.debounce(0.5)
-        debounced.subscribe(lambda _: self.execute_count.set(self.execute_count.value + 1))
+        # Named -> held. One window, two consumers below. A derived Observable
+        # nobody holds is collected and never fires.
+        self.debounced = self.raw_count.debounce(0.5)
+
+        # Chained and bound straight into the UI. The map() is required for now:
+        # the wrapper's own .value reads through to the live source, so binding
+        # it directly would not be debounced at all. #557 makes wrappers hold
+        # their own value; the map() becomes optional then.
+        self.settled = self.debounced.map(lambda n: f"Settled at: {n} clicks")
+
+        # subscribe() because counting *emissions* is accumulation over history,
+        # which map()/compute() cannot express - they recompute from the current
+        # value. There is no handler to hold an imperative counter either: the
+        # thing being counted is an operator's output, not a user action.
+        self._subscription = self.debounced.subscribe(
+            lambda _: self.execute_count.set(self.execute_count.value + 1)
+        )
 
     def click(self) -> None:
         self.raw_count.value += 1
@@ -58,8 +73,12 @@ class ThrottleModel:
         self.raw_count = nv.Observable(0)
         self.execute_count = nv.Observable(0)
 
-        throttled = self.raw_count.throttle(0.5)
-        throttled.subscribe(lambda _: self.execute_count.set(self.execute_count.value + 1))
+        # Same shape as DebounceModel: name the window, then derive from it.
+        self.throttled = self.raw_count.throttle(0.5)
+        self.sampled = self.throttled.map(lambda n: f"Sampled at: {n} clicks")
+        self._subscription = self.throttled.subscribe(
+            lambda _: self.execute_count.set(self.execute_count.value + 1)
+        )
 
     def click(self) -> None:
         self.raw_count.value += 1
@@ -106,6 +125,7 @@ class PracticalControlsApp(nv.ComposableWidget):
                     # --- debounce() ---
                     nv.Text("debounce(0.5 s)"),
                     nv.Text(dm.raw_count.map(lambda n: f"Clicks: {n}")),
+                    nv.Text(dm.settled),  # debounce -> map, bound directly
                     nv.Text(dm.execute_count.map(lambda n: f"Executed: {n}x")),
                     nv.Button(
                         "Click (debounced)",
@@ -115,6 +135,7 @@ class PracticalControlsApp(nv.ComposableWidget):
                     # --- throttle() ---
                     nv.Text("throttle(0.5 s)"),
                     nv.Text(tm.raw_count.map(lambda n: f"Clicks: {n}")),
+                    nv.Text(tm.sampled),  # throttle -> map, bound directly
                     nv.Text(tm.execute_count.map(lambda n: f"Executed: {n}x")),
                     nv.Button(
                         "Click (throttled)",
