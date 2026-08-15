@@ -48,7 +48,9 @@ async def test_escape_pops_navigator_when_no_overlay_entries(nuiitivet_app) -> N
     handled = app.app._dispatch_key_press("escape")
     assert handled is True
     await app.idle()  # the back event runs as a task
-    assert navigator.can_pop() is False
+    # The depth drops when the exit transition finalizes, not when the key was
+    # handled: the harness runs the app's Material navigator, which animates.
+    await app.wait_for(lambda: navigator.can_pop() is False)
 
 
 @pytest.mark.asyncio
@@ -262,4 +264,4 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop(
     gate.set()
     result = await task
     assert result is True
-    assert navigator.can_pop() is False
+    await app.wait_for(lambda: navigator.can_pop() is False)

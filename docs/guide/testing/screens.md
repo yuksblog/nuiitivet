@@ -1,7 +1,9 @@
 # Testing a screen
 
-`AppHarness` runs a real `App` with no window: fixed size, settled after every
-action, and drivable with the same verbs the dev bridge uses.
+`AppHarness` runs your app's `nv.App` with no window: fixed size, settled after
+every action, and drivable with the same verbs the dev bridge uses. Same
+overlay, same theme, same navigator — whatever a screen needs no setup for in
+the app, it needs no setup for here.
 
 ```python
 def test_counter_increments(nuiitivet_app):
@@ -196,6 +198,21 @@ assert len(app.route_stack) == 2
 Both lists are of widgets, so the vocabulary is the one you already have —
 `isinstance`, `is`, `len` — and `app.get(...)` still targets whatever is inside
 them. There is no `route_depth`: `len(app.route_stack)` says it.
+
+An overlay a screen opens for itself is asked about the same way. Nothing is
+registered or configured first — `dialog()`, `snackbar()`, `loading()` and the
+sheets resolve here exactly as they do when the app is running:
+
+```python
+def test_delete_asks_before_it_deletes(nuiitivet_app):
+    screen = ItemScreen(item)                     # calls nv.Overlay.of(self).dialog(...)
+    app = nuiitivet_app(screen, size=(800, 600))
+
+    app.click(key="delete")
+
+    assert isinstance(app.top_overlay, ConfirmDialog)
+    assert item.deleted is False                  # not until the dialog is answered
+```
 
 ### A transition that started is not one that finished
 
