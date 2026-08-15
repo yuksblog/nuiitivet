@@ -47,7 +47,40 @@ The `TextField` widget follows the Material Design 3 specification and uses a si
 
 ### State Management
 
-`TextField` holds an internal `Observable[TextEditingValue]`. It synchronizes this internal state with any external `value` (if provided as an Observable) or `on_change` callback.
+`TextField` holds an internal `Observable[TextEditingValue]`. When `value` is given as an observable, that observable is the field's value cell in the sense of [OBSERVABLE.md §6](OBSERVABLE.md): edits are written back to it, so no separate copy of the text is kept for the caller to fall out of sync with.
+
+It is nonetheless the framework's one **mirror** rather than a true storage substitution, and the reason is a type mismatch. The internal cell holds a `TextEditingValue` — text *and* selection *and* composing range — while the bound observable holds only a `str`. A `str` cell cannot carry the caret, so it cannot be adopted as the cell outright; the widget keeps its own `TextEditingValue` and reconciles the text half with the observable in both directions.
+
+Three rules make that mirror behave:
+
+- **Write-back is suppressed while a composition is active.** The provisional text of a half-converted candidate is not a value the application should see, and anything it wrote in response would fight the IME. The composition commits through the normal text path, which lands with the composing range cleared. The guard compares against the observable's own value rather than the previous text, so ending a composition reconciles even when that particular update left the text alone.
+- **An incoming write keeps the caret, clamped into the new text.** Resetting it to the end would be correct only for a field nobody is editing: an application that normalizes on write-back (upper-casing, trimming, reformatting) changes the text under an actively edited field, and moving the caret to the end on every keystroke would make such a field unusable.
+- **The loop terminates on equality.** A write-back delivers back into the widget, which returns early once the text it is handed already matches.
+
+A read-only observable (a computed or mapped value) has nowhere to write, so it is displayed and not written to. Such a field is still editable, and the edits go only to the internal cell; pair it with `disabled=True` to make that visible.
+
+**What would remove the mirror.** Accepting an `ObservableProtocol[TextEditingValue]` as `value` — a cell whose type matches the internal one — would make the field a plain storage substitution like every other input widget, and the three rules above would have nothing left to reconcile. It is not offered, because the only thing it buys is letting the application own the caret, and the reconciliation above is what a `str` cell needs anyway: every caller who wants to bind a string still needs it. Reasons to revisit, none of them present today: an application that has to restore a caret position (across navigation, or a re-created field); a second widget editing the same text alongside the field; or a caller who needs to drive the selection programmatically, which the widget's own `value` setter cannot express.
+
+### Input Filters
+
+An input filter is a rule applied to text between a keystroke and the value cell — `widgets/input_filter.py`, exposed as `input_filter`.
+
+The placement is forced. Correcting text requires knowing where the caret was, what it was in, and what it became; the observable knows none of these, so a rule enforced there would return through the mirror on every keystroke and drag the caret with it. The widget is the only participant that holds all three. `_strip_control_chars` was already doing exactly this for control characters; the filter generalizes that hook.
+
+- **A filter defines what is *typeable*, not what is *valid*.** A decimal field has to let `"1."` be typed, because otherwise `.` can never be entered. Whether a finished value is acceptable is `is_error` / `error_text`; reshaping a finished value is `on_submit`.
+- **Filters run on insertion only** — typing, an IME commit, a paste. Running them over deletions as well would let a whole-string rule reject the backspace that breaks its pattern, leaving a field whose contents cannot be erased.
+- **Filters do not touch values the application assigns.** The initial `value`, and a write to the bound observable, pass through untouched: the field does not silently rewrite what its owner put there.
+- **The internal contract carries the selection** (`apply(old, new) -> TextEditingValue`), so the built-in filters move the caret exactly. The public shorthand is a `Callable[[str], str]`, which reports only the resulting string and therefore has its caret inferred from the length change. Widening the public escape hatch to the selection-aware form later is additive.
+
+Composition uses `|`, matching the modifier vocabulary. Masking — displaying `1,234,567` while storing `"1234567"` — is out of scope: it needs the displayed and the stored text to differ, and whatever a filter returns *is* the value.
+
+### Commit
+
+`on_submit` fires when the user presses Enter **and** when the field loses focus, in both cases only if the text moved since the last commit.
+
+Focus loss counts because commit-time work — parsing, padding an incomplete `"1."` to `"1.0"` — would otherwise only ever happen for the users who press Enter, leaving half-typed text behind for everyone who Tabs away. The "changed since last commit" guard is what makes that safe to add: an `on_submit` that runs a search or saves a record must not fire every time the field is merely tabbed through. A value the application assigns counts as already committed, so loading a record into a form does not report it straight back.
+
+Supplying `on_submit` is also what makes the field **claim the Enter key** (see [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)); a field that handles commit owns Enter. The coupling is deliberate — a field with an `on_submit` that let Enter pass through to a shortcut would be harder to explain than the cost, which is that setting `on_submit` purely for blur-time normalization also takes Enter away from a shortcut.
 
 ### Interaction
 

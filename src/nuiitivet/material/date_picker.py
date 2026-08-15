@@ -1663,7 +1663,7 @@ class DockedDatePicker(ComposableWidget):
         from nuiitivet.material.text_fields import TextField
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        self._text_field: TextField = TextField.two_way(
+        self._text_field: TextField = TextField(
             self._text_obs,
             label=label,
             supporting_text=self._supporting_text_obs,
@@ -2397,7 +2397,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         from nuiitivet.material.text_fields import TextField
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        self._text_field: TextField = TextField.two_way(
+        self._text_field: TextField = TextField(
             self._text_obs,
             label=input_label,
             supporting_text=self._supporting_text_obs,

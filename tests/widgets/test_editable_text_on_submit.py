@@ -1,11 +1,19 @@
-"""``on_submit`` callback on EditableText (issue #318).
+"""``on_submit`` callback on EditableText (issues #318, #565).
 
 Pressing Enter in a single-line field confirms the text and fires ``on_submit``
 with the current value. It must not modify the value (see #307) and must not
 fire while an IME composition is in progress.
+
+Leaving the field commits it as well (#565), so a field finished in
+``on_submit`` is finished for the users who Tab away too. Both paths fire only
+when the text moved since the last commit.
 """
 
+from unittest.mock import MagicMock
+
+from nuiitivet.observable import Observable
 from nuiitivet.widgets.editable_text import EditableText
+from nuiitivet.widgets.interaction import FocusSource
 from nuiitivet.widgets.text_editing import TextRange
 
 
@@ -119,8 +127,6 @@ def test_commit_marker_cleared_by_cursor_motion():
 
 
 def test_commit_marker_cleared_by_focus_change():
-    from nuiitivet.widgets.interaction import FocusSource
-
     seen: list[str] = []
     w = EditableText(on_submit=seen.append)
 
@@ -180,3 +186,102 @@ def test_selection_unchanged_after_submit():
     w._handle_key("enter", 0)
 
     assert w._state_internal.value.selection == TextRange(1, 1)
+
+
+def test_losing_focus_commits_the_field():
+    seen: list[str] = []
+    w = EditableText(on_submit=seen.append)
+    for ch in "1.":
+        w._handle_text(ch)
+
+    w._handle_focus_change(False, FocusSource.KEYBOARD)
+
+    assert seen == ["1."]
+
+
+def test_gaining_focus_does_not_commit():
+    seen: list[str] = []
+    w = EditableText(on_submit=seen.append)
+    w._handle_text("a")
+
+    w._handle_focus_change(True, FocusSource.KEYBOARD)
+
+    assert seen == []
+
+
+def test_an_untouched_field_is_not_committed_on_the_way_past():
+    """Tabbing through a field must not re-run a search or a save."""
+    seen: list[str] = []
+    w = EditableText(value="preset", on_submit=seen.append)
+
+    w._handle_focus_change(True, FocusSource.KEYBOARD)
+    w._handle_focus_change(False, FocusSource.KEYBOARD)
+
+    assert seen == []
+
+
+def test_enter_then_focus_loss_commits_once():
+    seen: list[str] = []
+    w = EditableText(on_submit=seen.append)
+    w._handle_text("a")
+
+    w._handle_key("enter", 0)
+    w._handle_focus_change(False, FocusSource.POINTER)
+
+    assert seen == ["a"]
+
+
+def test_repeated_enter_on_an_unchanged_value_commits_once():
+    seen: list[str] = []
+    w = EditableText(on_submit=seen.append)
+    w._handle_text("a")
+
+    w._handle_key("enter", 0)
+    w._handle_key("enter", 0)
+
+    assert seen == ["a"]
+
+
+def test_editing_after_a_commit_makes_the_field_committable_again():
+    seen: list[str] = []
+    w = EditableText(on_submit=seen.append)
+    w._handle_text("a")
+    w._handle_key("enter", 0)
+
+    w._handle_text("b")
+    w._handle_focus_change(False, FocusSource.KEYBOARD)
+
+    assert seen == ["a", "ab"]
+
+
+def test_a_value_set_by_the_application_is_not_reported_back_as_a_commit():
+    seen: list[str] = []
+    obs = Observable("")
+    w = EditableText(value=obs, on_submit=seen.append)
+    w.mount(MagicMock())
+
+    obs.value = "loaded from a record"
+    w._handle_focus_change(False, FocusSource.KEYBOARD)
+
+    assert seen == []
+
+
+def test_normalizing_in_on_submit_does_not_recommit():
+    """The rewritten value is the committed one, so it does not fire again."""
+    seen: list[str] = []
+    obs = Observable("")
+
+    def finish(text: str) -> None:
+        seen.append(text)
+        obs.value = text + "0"
+
+    w = EditableText(value=obs, on_submit=finish)
+    w.mount(MagicMock())
+    for ch in "1.":
+        w._handle_text(ch)
+
+    w._handle_key("enter", 0)
+    w._handle_focus_change(False, FocusSource.KEYBOARD)
+
+    assert seen == ["1."]
+    assert obs.value == "1.0"

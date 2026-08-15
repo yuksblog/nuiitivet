@@ -38,6 +38,17 @@ from nuiitivet.rendering.sizing import Sizing, SizingKind, SizingLike
 from nuiitivet.widgeting.widget import Widget, ComposableWidget
 from nuiitivet.widgets.box import Box
 
+# Input filters (rules applied to text as the user types it)
+from nuiitivet.widgets.input_filter import (
+    InputFilter,
+    InputFilterLike,
+    allow,
+    deny,
+    digits_only,
+    matching,
+    max_length,
+)
+
 # Geometry (container-scoped measured size)
 from nuiitivet.geometry import Geometry, Size
 
@@ -164,6 +175,14 @@ __all__: list[str] = [
     "Widget",
     "ComposableWidget",
     "Box",
+    # Input filters
+    "InputFilter",
+    "InputFilterLike",
+    "allow",
+    "deny",
+    "digits_only",
+    "matching",
+    "max_length",
     # Geometry
     "Geometry",
     "Size",

@@ -17,7 +17,7 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
 )
-from nuiitivet.observable import Disposable, Observable, ObservableProtocol
+from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.platform import IMEManager, get_system_clipboard
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.interaction import (
@@ -27,6 +27,7 @@ from nuiitivet.widgets.interaction import (
     FocusChangeCallback,
     FocusSource,
 )
+from nuiitivet.widgets.input_filter import InputFilter, InputFilterLike, to_input_filter
 from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
 from nuiitivet.rendering.skia import (
     make_font,
@@ -41,6 +42,11 @@ from nuiitivet.theme.types import ColorSpec
 from nuiitivet.common.logging_once import exception_once
 
 _logger = logging.getLogger(__name__)
+
+
+def _clamp_index(index: int, length: int) -> int:
+    """Clamp a text index into ``[0, length]``."""
+    return 0 if index < 0 else (length if index > length else index)
 
 
 def _strip_control_chars(text: str) -> str:
@@ -69,10 +75,11 @@ class EditableText(InteractionHostMixin, Widget):
 
     def __init__(
         self,
-        value: Union[str, ObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_submit: Optional[StrCallback] = None,
+        input_filter: Optional[InputFilterLike] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
         selection_color: ColorSpec = "#B3D7FF",  # Default selection color
@@ -103,8 +110,15 @@ class EditableText(InteractionHostMixin, Widget):
         # flag mirrors the browser's ``KeyboardEvent.isComposing`` signal: it
         # is set when a composition commits and consumed by the next key press.
         self._ime_just_committed = False
-        self._external_str_obs: ObservableProtocol[str] | None = None
+        self._external_str_obs: ReadOnlyObservableProtocol[str] | None = None
+        # The same object as ``_external_str_obs`` when that source is writable.
+        # Kept separately so the write-back path needs no repeated type check,
+        # and so a read-only source is display-only rather than half-bound.
+        self._external_writable: ObservableProtocol[str] | None = None
         self._external_sub: Optional[Disposable] = None
+        self._input_filter: Optional[InputFilter] = (
+            to_input_filter(input_filter) if input_filter is not None else None
+        )
 
         # Horizontal scroll offset (pixels) used to keep the cursor visible
         # when the text exceeds the available width.
@@ -117,16 +131,23 @@ class EditableText(InteractionHostMixin, Widget):
         # ring per MD3 spec.
         self._focus_from_pointer: bool = False
 
-        # Initialize state
+        # Initialize state. An observable passed here is the field's value
+        # cell: edits are written back to it (see ``_update_value``), matching
+        # every other input widget. A read-only source has nowhere to write, so
+        # it displays only -- pair it with ``disabled=True``.
         initial_text = ""
         if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._external_str_obs = cast("ObservableProtocol[str]", value)
+            self._external_str_obs = cast("ReadOnlyObservableProtocol[str]", value)
             initial_text = self._external_str_obs.value
+            if isinstance(value, ObservableProtocol):
+                self._external_writable = cast("ObservableProtocol[str]", value)
         elif isinstance(value, str):
             initial_text = value
 
         initial_value = TextEditingValue(text=initial_text, selection=TextRange(len(initial_text), len(initial_text)))
         setattr(self, "_state_internal", initial_value)
+        # Baseline for the "changed since the last commit" guard on on_submit.
+        self._last_submitted_text = initial_text
 
         # Focus handling
         self.add_node(
@@ -222,8 +243,22 @@ class EditableText(InteractionHostMixin, Widget):
                 if current.text == new_text:
                     return
 
-                new_val = TextEditingValue(text=new_text, selection=TextRange(len(new_text), len(new_text)))
+                # Keep the caret where the user left it, clamped into the new
+                # text, rather than forcing it to the end. Normalizing on
+                # write-back (upper-casing, trimming, reformatting) changes the
+                # text under an actively edited field, and sending the caret to
+                # the end on every keystroke would make such a field unusable.
+                new_val = TextEditingValue(
+                    text=new_text,
+                    selection=TextRange(
+                        _clamp_index(current.selection.start, len(new_text)),
+                        _clamp_index(current.selection.end, len(new_text)),
+                    ),
+                )
                 self._state_internal.value = new_val
+                # The application set this text, so it is already "seen": a
+                # later focus loss must not report it back as a fresh commit.
+                self._last_submitted_text = new_text
                 self.invalidate()
                 # Notify listeners so that decorators (e.g. floating label
                 # state in TextField) can synchronize with externally-driven
@@ -258,6 +293,9 @@ class EditableText(InteractionHostMixin, Widget):
         if current.text == new_text:
             return
 
+        # Assigned by code, not typed: no input filter (a filter governs what
+        # is typeable, not what the owner may store) and no pending commit.
+        self._last_submitted_text = new_text
         new_val = TextEditingValue(text=new_text, selection=TextRange(len(new_text), len(new_text)))
         self._update_value(new_val)
 
@@ -268,6 +306,7 @@ class EditableText(InteractionHostMixin, Widget):
 
         self._state_internal.value = new_value
         self.invalidate()
+        self._write_back(new_value)
 
         if current.text != new_value.text and self._on_change:
             invoke_event_handler(
@@ -276,6 +315,35 @@ class EditableText(InteractionHostMixin, Widget):
                 error_key="editable_text_on_change",
                 error_msg="EditableText on_change raised",
                 owner_name=type(self).__name__,
+            )
+
+    def _write_back(self, new_value: TextEditingValue) -> None:
+        """Push the edited text into the bound observable, if there is one.
+
+        Held back while an IME composition is active: the provisional text of a
+        half-converted composition is not a value the application should see,
+        and anything it wrote in response would fight the IME. The composition
+        commits through ``_handle_text``, which lands here with the composing
+        range cleared.
+
+        The guard compares against the observable's own value rather than the
+        previous text, so ending a composition reconciles even when this
+        particular update left the text alone. The loop that the write starts
+        terminates in ``_on_external_change``, which returns early once the
+        text it is handed already matches.
+        """
+        obs = self._external_writable
+        if obs is None or new_value.is_composing:
+            return
+        try:
+            if obs.value == new_value.text:
+                return
+            obs.value = new_value.text
+        except Exception:
+            exception_once(
+                _logger,
+                "editable_text_write_back_failed",
+                "EditableText failed to write the edited value back to its observable",
             )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
@@ -412,6 +480,12 @@ class EditableText(InteractionHostMixin, Widget):
             # Clear the pointer-origin marker so the next keyboard focus
             # acquisition correctly shows the focus ring.
             self._focus_from_pointer = False
+            # Leaving the field commits it, the same as pressing Enter. Without
+            # this, a field whose value is finished in ``on_submit`` (parsing,
+            # padding an incomplete "1." to "1.0") is only ever finished by the
+            # users who press Enter, and Tabbing away leaves the half-typed
+            # text behind.
+            self._submit_if_changed()
         self.invalidate()
         if self._on_focus_change_callback:
             invoke_event_handler(
@@ -422,6 +496,43 @@ class EditableText(InteractionHostMixin, Widget):
                 error_msg="EditableText on_focus_change raised",
                 owner_name=type(self).__name__,
             )
+
+    def _submit_if_changed(self) -> None:
+        """Fire ``on_submit`` if the text moved since the last commit.
+
+        The guard is what makes committing on focus loss safe to add: an
+        ``on_submit`` that runs a search or saves a record would otherwise fire
+        every time the field is merely tabbed through, and repeated Enter on an
+        unchanged value would repeat the work.
+        """
+        if self._on_submit is None:
+            return
+        text = self._state_internal.value.text
+        if text == self._last_submitted_text:
+            return
+        self._last_submitted_text = text
+        invoke_event_handler(
+            self._on_submit,
+            text,
+            error_key="editable_text_on_submit",
+            error_msg="EditableText on_submit raised",
+        )
+
+    def _filter_input(self, old: TextEditingValue, new: TextEditingValue) -> TextEditingValue:
+        """Run the configured input filter over an insertion.
+
+        Applied where text is *added* -- typing, an IME commit, a paste -- and
+        nowhere else. Running it over deletions too would let a whole-string
+        rule such as ``matching(r"\\d{3}-\\d{4}")`` reject the backspace that
+        breaks the pattern, leaving a field whose contents cannot be erased.
+        """
+        if self._input_filter is None:
+            return new
+        try:
+            return self._input_filter.apply(old, new)
+        except Exception:
+            exception_once(_logger, "editable_text_input_filter_raised", "EditableText input_filter raised")
+            return new
 
     def _handle_text(self, text: str) -> bool:
         text = _strip_control_chars(text)
@@ -446,8 +557,11 @@ class EditableText(InteractionHostMixin, Widget):
             new_text = selection.text_before(full_text) + text + selection.text_after(full_text)
             new_cursor_pos = selection.min + len(text)
 
-        new_value = current_value.copy_with(
-            text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos), composing=TextRange(-1, -1)
+        new_value = self._filter_input(
+            current_value,
+            current_value.copy_with(
+                text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos), composing=TextRange(-1, -1)
+            ),
         )
 
         if new_value != current_value:
@@ -583,12 +697,7 @@ class EditableText(InteractionHostMixin, Widget):
             if current_value.is_composing or ime_just_committed:
                 return False
             if self._on_submit is not None:
-                invoke_event_handler(
-                    self._on_submit,
-                    current_value.text,
-                    error_key="editable_text_on_submit",
-                    error_msg="EditableText on_submit raised",
-                )
+                self._submit_if_changed()
                 return True
             return False
 
@@ -616,7 +725,10 @@ class EditableText(InteractionHostMixin, Widget):
             if clipboard_text:
                 new_text = selection.text_before(text) + clipboard_text + selection.text_after(text)
                 new_cursor_pos = selection.min + len(clipboard_text)
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
+                new_value = self._filter_input(
+                    current_value,
+                    current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos)),
+                )
                 self._update_value(new_value)
             return True
 

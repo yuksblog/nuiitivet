@@ -8,6 +8,7 @@ from nuiitivet.material.buttons import IconButton
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.observable import Observable
+from nuiitivet.widgets.input_filter import digits_only, max_length
 from nuiitivet.input.codes import MOD_META, TEXT_MOTION_BACKSPACE
 from nuiitivet.input.pointer import PointerEventType
 
@@ -192,3 +193,31 @@ def test_text_field_api_supporting_text_and_is_error_color_contract() -> None:
     tf._set_is_error(True)
     assert tf.is_error is True
     assert tf._editable.cursor_color == style.error_cursor_color
+
+
+def test_text_field_input_filter_is_applied_to_typing() -> None:
+    tf = TextField(value="", input_filter=digits_only())
+
+    for ch in "1a2":
+        tf._editable._handle_text(ch)
+
+    assert tf.value == "12"
+
+
+def test_text_field_input_filter_composes() -> None:
+    tf = TextField(value="", input_filter=digits_only() | max_length(3))
+
+    for ch in "1a2b3c4":
+        tf._editable._handle_text(ch)
+
+    assert tf.value == "123"
+
+
+def test_text_field_input_filter_does_not_touch_an_assigned_value() -> None:
+    """A filter governs what is typeable, not what the owner may store."""
+    tf = TextField(value="preset", input_filter=digits_only())
+    assert tf.value == "preset"
+
+    tf.value = "still not digits"
+
+    assert tf.value == "still not digits"

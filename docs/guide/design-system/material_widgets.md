@@ -137,6 +137,46 @@ Text input. Available as `FilledTextField` and `OutlinedTextField`, with leading
 
 ![TextField](../../assets/material_widgets_text_field.png)
 
+An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it. This is the same binding every other input widget uses:
+
+```python
+nv.TextField(value=self.query, label="Search")
+```
+
+A read-only source (`.map(...)`, a computed value) has nowhere to write, so it is displayed only; pair it with `disabled=True` so that is visible to the user.
+
+**Restricting what can be typed.** `input_filter` runs on every keystroke, before the value changes:
+
+```python
+nv.TextField(value=self.pin,   input_filter=nv.digits_only() | nv.max_length(4))
+nv.TextField(value=self.rate,  input_filter=nv.matching(r"[0-9]*\.?[0-9]*"))
+nv.TextField(value=self.code,  input_filter=lambda s: s.upper())
+```
+
+| Filter | Effect |
+| --- | --- |
+| `nv.digits_only()` | keeps ASCII digits, drops everything else |
+| `nv.allow(pattern)` | keeps the characters matching `pattern` |
+| `nv.deny(pattern)` | drops the characters matching `pattern` |
+| `nv.max_length(n)` | truncates to `n` characters |
+| `nv.matching(pattern)` | rejects the keystroke unless the whole text matches |
+
+Combine them with `|`. `allow` / `deny` / `digits_only` work one character at a time and always keep something; `matching` is a rule about the text as a whole and rejects the edit outright when it would not hold — which is what expresses "at most one decimal point".
+
+A filter says what is **typeable**, not what is **valid**. `"1."` has to be typeable or the `.` can never be entered, so `matching(r"[0-9]*\.?[0-9]*")` accepts it. Whether a finished value is acceptable belongs in `is_error` / `error_text`.
+
+**Finishing a value.** `on_submit` fires when the user presses Enter *and* when the field loses focus, in both cases only if the text changed since the last commit. It is where an incomplete but typeable value gets finished:
+
+```python
+nv.TextField(
+    value=self.rate,
+    input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
+    on_submit=lambda text: self.rate.set(f"{float(text or 0):.2f}"),
+)
+```
+
+Setting `on_submit` also makes the field claim the `Enter` key — see [Interaction modifiers](../modifiers/interaction.md).
+
 [API Reference](../../api/material.md#nuiitivet.material.TextField)
 
 ---

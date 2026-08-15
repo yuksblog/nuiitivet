@@ -9,12 +9,13 @@ to obtain the standard M3 presets.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple, Type, TypeVar, Union, TYPE_CHECKING, cast
+from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import (
@@ -101,17 +102,22 @@ class TextField(InteractiveWidget):
     """A text input widget base class.
 
     Note:
-        The constructor `TextField(value=observable)` establishes a **one-way binding**.
-        Changes in the observable will update the text field, but user input will NOT
-        update the observable automatically.
-
-        For **two-way binding**, use the `TextField.two_way(observable)` factory method.
+        An observable passed as ``value`` becomes the field's value cell, the
+        same as for every other input widget: it is displayed, and edits are
+        written back to it. A read-only observable (``.map(...)``, a computed
+        value) has nowhere to write, so it displays only -- pair it with
+        ``disabled=True`` to make that visible to the user.
 
     Parameters:
-    - value: Initial text value (str or TextEditingValue) OR External observable
+    - value: Initial text (str), or the observable that holds the field's value
     - on_change: Callback when value changes
     - on_submit: Callback invoked with the confirmed value when the user presses
-      Enter in the field
+      Enter in the field or moves focus away from it, and only when the text
+      changed since the last commit
+    - input_filter: Rule applied to text as the user types it -- see
+      :mod:`nuiitivet.widgets.input_filter`. It governs what is *typeable*;
+      whether a finished value is acceptable belongs in ``is_error`` /
+      ``error_text``, and reshaping a finished value belongs in ``on_submit``
     - label: Floating label text (supports Observable)
     - leading_icon: Icon source (Symbol/str or Observable of them)
     - on_tap_leading_icon: Callback invoked when the leading icon is tapped.
@@ -131,46 +137,13 @@ class TextField(InteractiveWidget):
     - disabled: Disable interaction (supports Observable)
     """
 
-    TTextField = TypeVar("TTextField", bound="TextField")
-
-    @classmethod
-    def two_way(
-        cls: type[TTextField],
-        value: ObservableProtocol[str],
-        *,
-        on_change: Optional[Callable[[str], None]] = None,
-        **kwargs: Any,
-    ) -> TTextField:
-        """Create a two-way bound TextField.
-
-        Args:
-            value: The observable value to bind to.
-            on_change: Optional callback when value changes (in addition to updating the observable).
-            **kwargs: Additional arguments passed to the constructor.
-
-        Returns:
-            Review instance of the TextField class.
-        """
-
-        def _bound_on_change(new_text: str) -> None:
-            try:
-                value.value = new_text
-            except Exception:
-                exception_once(_logger, "text_field_two_way_set_value_exc", "TextField.two_way failed to set value")
-            if on_change is not None:
-                try:
-                    on_change(new_text)
-                except Exception:
-                    exception_once(_logger, "text_field_two_way_on_change_exc", "TextField.two_way on_change raised")
-
-        return cls(value=value, on_change=_bound_on_change, **kwargs)
-
     def __init__(
         self,
-        value: Union[str, ObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
         on_change: Optional[Callable[[str], None]] = None,
         *,
         on_submit: Optional[Callable[[str], None]] = None,
+        input_filter: Optional[InputFilterLike] = None,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
         on_tap_leading_icon: Optional[Callable[[], None]] = None,
@@ -190,10 +163,13 @@ class TextField(InteractiveWidget):
         """Initialize TextField.
 
         Args:
-            value: Initial text value or observable.
+            value: Initial text, or the observable holding the field's value.
+                Edits are written back to a writable observable.
             on_change: Callback when value changes.
             on_submit: Callback invoked with the confirmed value when the user
-                presses Enter in the field.
+                presses Enter in the field or moves focus away from it. Fires
+                only when the text changed since the last commit.
+            input_filter: Rule applied to text as the user types it.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
             on_tap_leading_icon: Callback invoked when the leading icon is tapped.
@@ -319,6 +295,7 @@ class TextField(InteractiveWidget):
             # otherwise so the key can reach a shortcut — a dialog's default
             # action. Wrapping unconditionally would claim Enter and drop it.
             on_submit=self._handle_editable_submit if on_submit is not None else None,
+            input_filter=input_filter,
             text_color=style.text_color,
             cursor_color=style.error_cursor_color if self.is_error else style.cursor_color,
             selection_color=style.selection_color,

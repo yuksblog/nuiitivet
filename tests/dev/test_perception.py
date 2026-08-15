@@ -278,9 +278,6 @@ def test_describe_state_skips_unreadable_observable() -> None:
         def subscribe(self, cb: Any) -> Any:  # pragma: no cover - never called
             return None
 
-        def changes(self) -> Any:  # pragma: no cover - never called
-            return self
-
     root = _Node()
     root._obs_ok = Observable(1)  # type: ignore[attr-defined]
     # A real observable whose getter raises is dropped, not fatal.

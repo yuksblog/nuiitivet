@@ -154,12 +154,14 @@ def test_text_field_controlled():
     state.value = "Reset"
     # The subscription should update internal state
     assert tf.value == "Reset"
-    assert tf._editable._state_internal.value.selection == TextRange(5, 5)  # Cursor moved to end
+    # The caret was at 6 ("Start!") and is clamped into the shorter text.
+    assert tf._editable._state_internal.value.selection == TextRange(5, 5)
 
     tf.on_unmount()
 
 
-def test_text_field_observable_value_is_read_only_by_default() -> None:
+def test_text_field_observable_value_is_two_way() -> None:
+    """A writable observable is the field's value cell, so edits land in it."""
     state = _make_obs("Start")
     tf = TextField(value=state)
 
@@ -168,14 +170,30 @@ def test_text_field_observable_value_is_read_only_by_default() -> None:
 
     tf._editable._handle_text("!")
     assert tf.value == "Start!"
-    assert state.value == "Start"
+    assert state.value == "Start!"
+
+    tf.on_unmount()
+
+
+def test_text_field_read_only_observable_value_is_display_only() -> None:
+    """A read-only source has nowhere to write, so it is not written to."""
+    source = _make_obs("Start")
+    derived = source.map(lambda s: s.upper())
+    tf = TextField(value=derived)
+
+    tf.mount(MagicMock())
+    assert tf.value == "START"
+
+    tf._editable._handle_text("!")
+    assert tf.value == "START!"
+    assert source.value == "Start"
 
     tf.on_unmount()
 
 
 def test_text_field_bind_updates_observable() -> None:
     state = _make_obs("Start")
-    tf = TextField.two_way(state)
+    tf = TextField(state)
 
     tf._editable._handle_text("!")
     assert tf.value == "Start!"
