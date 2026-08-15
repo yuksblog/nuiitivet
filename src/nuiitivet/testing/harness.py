@@ -20,6 +20,11 @@ class AppHarness(_HarnessBase):
             app.click(key="increment")
             assert app.get(key="count").text == "Count: 1"
 
+    The App it builds is ``nv.App`` -- the same class the app under test runs
+    under, with the same overlay, theme and navigator -- so a screen that needs
+    no setup in the app needs none here. ``app=`` swaps the class for a test
+    that is about a different one.
+
     Under pytest, prefer the ``nuiitivet_app`` fixture, which owns the ``with``
     on the test's behalf -- the harness must be closed, and a test that forgets
     leaves its tree mounted and subscribed.
@@ -44,6 +49,7 @@ class AppHarness(_HarnessBase):
         *,
         size: Tuple[float, float],
         theme: Optional[Any] = None,
+        app: Optional[Callable[..., Any]] = None,
         leak_check: Optional[str] = None,
         callback_errors: Optional[str] = None,
         **app_kwargs: Any,
@@ -60,6 +66,11 @@ class AppHarness(_HarnessBase):
                 chose, and every geometry failure downstream would read as a
                 harness bug.
             theme: The theme to install. Defaults to the App's own default.
+            app: The App class to build, defaulting to ``nv.App``
+                (``MaterialApp``) -- the one an app author actually writes, so a
+                screen that needs no setup in the app needs none here either.
+                Pass ``app=App`` for the core ``nuiitivet.runtime.app.App``, the
+                same downgrade the app would be making.
             leak_check: ``"error"``, ``"warn"`` or ``"off"`` for the
                 subscription-leak check at teardown, overriding the suite default
                 in ``[tool.nuiitivet.testing]`` and the test's ``nuiitivet``
@@ -67,9 +78,19 @@ class AppHarness(_HarnessBase):
             callback_errors: ``"error"``, ``"warn"`` or ``"off"`` for the check
                 that a callback the framework contained fails the test, scoped
                 and overridden the same way.
-            **app_kwargs: Passed through to ``App`` (``overlay_factory``, ...).
+            **app_kwargs: Passed through to the App class (``overlay_routes``,
+                ``background``, ...).
         """
-        from nuiitivet.runtime.app import App
+        # Defaulting to the Material App is what keeps the harness standing in
+        # for the app rather than for a stripped-down cousin of it: the overlay,
+        # the theme and the navigator all differ between the two, and a screen
+        # written against ``nv.App`` would fail here on all three. The import is
+        # deferred so the design system is only pulled in when it is the one
+        # being built -- ``app=App`` never reaches it.
+        if app is None:
+            from nuiitivet.material.app import MaterialApp
+
+            app = MaterialApp
 
         width, height = size
         super().__init__(leak_check=leak_check, callback_errors=callback_errors)
@@ -78,7 +99,7 @@ class AppHarness(_HarnessBase):
         # rather than on the fallback clock's servicing thread.
         self._ensure_clock()
         try:
-            self._app = App(
+            self._app = app(
                 content,
                 width=int(width),
                 height=int(height),

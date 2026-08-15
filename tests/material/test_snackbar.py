@@ -3,11 +3,11 @@
 import pytest
 
 from nuiitivet.layout.container import Container
+from nuiitivet.material.app import MaterialApp
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.material.styles.snackbar_style import SnackbarStyle
 from nuiitivet.observable import runtime
-from nuiitivet.runtime.app import App
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -159,7 +159,7 @@ def test_material_overlay_snackbar_creates_entry() -> None:
 def test_material_overlay_app_snackbar() -> None:
     """A screen reaches the App's overlay through the fallback, with its type kept."""
     content = Container()
-    app = App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
+    app = MaterialApp(content=content)
 
     MaterialOverlay.of(content).snackbar("App snackbar")
 

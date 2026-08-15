@@ -70,11 +70,10 @@ async def test_app_escape_overlay_will_pop_cancels_close(nuiitivet_app) -> None:
     assert overlay.has_entries() is True
 
 
-@pytest.mark.asyncio
-async def test_side_sheet_close_button_respects_will_pop() -> None:
+async def test_side_sheet_close_button_respects_will_pop(nuiitivet_app) -> None:
     """Close button on SideSheet routes through request_close, which honors will_pop."""
     content = Container()
-    App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
+    app = nuiitivet_app(content, size=(400, 300))
     overlay = MaterialOverlay.of(content)
     sheet = SideSheet(Container(width=10, height=10), headline="X")
     overlay.side_sheet(sheet.modifier(will_pop(on_will_pop=lambda: False)))
@@ -82,13 +81,14 @@ async def test_side_sheet_close_button_respects_will_pop() -> None:
     sheet._on_close_click()
     # Sync will_pop: cancellation is immediate.
     assert overlay.has_entries() is True
+    # And nothing later undoes it: the sheet animates in, so let that run out.
+    await app.idle()
+    assert overlay.has_entries() is True
 
 
 async def test_side_sheet_close_button_proceeds_without_will_pop(nuiitivet_app) -> None:
     content = Container()
-    app = nuiitivet_app(
-        content, size=(400, 300), overlay_factory=lambda: MaterialOverlay(intents={})
-    )
+    app = nuiitivet_app(content, size=(400, 300))
     overlay = MaterialOverlay.of(content)
     sheet = SideSheet(Container(width=10, height=10), headline="X")
     overlay.side_sheet(sheet)
@@ -102,25 +102,26 @@ async def test_side_sheet_close_button_proceeds_without_will_pop(nuiitivet_app) 
     await app.wait_for(lambda: not overlay.has_entries())
 
 
-@pytest.mark.asyncio
-async def test_bottom_sheet_close_button_respects_will_pop() -> None:
+async def test_bottom_sheet_close_button_respects_will_pop(nuiitivet_app) -> None:
     content = Container()
-    App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
+    app = nuiitivet_app(content, size=(400, 300))
     overlay = MaterialOverlay.of(content)
     sheet = BottomSheet(Container(width=10, height=10), headline="Y")
     overlay.bottom_sheet(sheet.modifier(will_pop(on_will_pop=lambda: False)))
 
     sheet._on_close_click()
     assert overlay.has_entries() is True
+    await app.idle()
+    assert overlay.has_entries() is True
 
 
-@pytest.mark.asyncio
-async def test_material_overlay_side_sheet_accepts_wrapped_widget() -> None:
+async def test_material_overlay_side_sheet_accepts_wrapped_widget(nuiitivet_app) -> None:
     """MaterialOverlay.side_sheet walks the tree to find SideSheet inside a wrapper."""
     content = Container()
-    App(content=content, overlay_factory=lambda: MaterialOverlay(intents={}))
+    app = nuiitivet_app(content, size=(400, 300))
     overlay = MaterialOverlay.of(content)
     sheet = SideSheet(Container(width=10, height=10), headline="X")
     handle = overlay.side_sheet(sheet.modifier(will_pop(on_will_pop=lambda: True)), side="left")
     assert handle is not None
     assert overlay.has_entries() is True
+    await app.idle()

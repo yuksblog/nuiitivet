@@ -173,7 +173,9 @@ async def test_escape_release_triggers_back_navigation(nuiitivet_app) -> None:
     handled = app.app._dispatch_key_release("escape")
     assert handled is True
     await app.idle()  # the back event runs as a task
-    assert navigator.can_pop() is False
+    # The depth drops when the exit transition finalizes, not when the key was
+    # handled: the harness runs the app's Material navigator, which animates.
+    await app.wait_for(lambda: navigator.can_pop() is False)
 
 
 async def test_escape_release_does_not_reach_focus_node(nuiitivet_app) -> None:

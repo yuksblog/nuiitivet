@@ -46,6 +46,15 @@ def _animated(widget: Widget) -> Route:
     return Route(builder=lambda: widget, transition_spec=MaterialTransitions.page())
 
 
+def _instant(widget: Widget) -> Route:
+    """A route that arrives with no transition, for the tests timing is not about.
+
+    A bare widget push animates -- the harness builds the app's Material
+    navigator -- and a live push transition is itself ``in_transition``.
+    """
+    return Route(builder=lambda: widget)
+
+
 # -- the route stack ------------------------------------------------------
 
 
@@ -163,8 +172,9 @@ def test_in_transition_does_not_stick_when_the_pop_could_not_be_scheduled() -> N
 
     with AppHarness(ListScreen(), size=SIZE) as app:
         nav = app.app.navigator
-        nav.push(DetailScreen())
+        nav.push(_instant(DetailScreen()))
         app.settle()
+        assert app.in_transition is False
 
         # Sync test: there is no loop, and the harness is observing.
         try:
@@ -241,9 +251,7 @@ async def test_a_dismissed_dialog_is_still_open_until_its_animation_finalizes() 
     below -- act on a dialog that is still on screen.
     """
     content = Container(width="wt", height="wt")
-    with AppHarness(
-        content, size=SIZE, overlay_factory=lambda: MaterialOverlay(intents={})
-    ) as app:
+    with AppHarness(content, size=SIZE) as app:
         overlay = MaterialOverlay.of(content)
         overlay.show(ConfirmDialog(), backdrop=True, transition_spec=MaterialTransitions.page())
         assert len(app.open_overlays) == 1
@@ -276,9 +284,7 @@ async def test_a_click_during_the_exit_animation_does_not_reach_the_screen_behin
             )
 
     behind = Behind()
-    with AppHarness(
-        behind, size=SIZE, overlay_factory=lambda: MaterialOverlay(intents={})
-    ) as app:
+    with AppHarness(behind, size=SIZE) as app:
         overlay = MaterialOverlay.of(behind)
         overlay.show(ConfirmDialog(), backdrop=True, transition_spec=MaterialTransitions.page())
         app.settle()
@@ -302,9 +308,7 @@ async def test_escape_during_the_exit_animation_is_a_no_op() -> None:
     because the dialog the user is still looking at is still blocking.
     """
     content = Container(width="wt", height="wt")
-    with AppHarness(
-        content, size=SIZE, overlay_factory=lambda: MaterialOverlay(intents={})
-    ) as app:
+    with AppHarness(content, size=SIZE) as app:
         overlay = MaterialOverlay.of(content)
         nav = app.app.navigator
         nav.push(_animated(DetailScreen()))
