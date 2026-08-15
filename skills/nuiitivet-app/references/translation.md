@@ -79,7 +79,10 @@ it. You never write code that pushes a value into a widget.
 | `source.debounce(0.3).subscribe(cb)` as a bare statement (Rx habit: the source owns the subscription, so dropping the handle is normal) | hold what you derive — name it, or keep the `Disposable`: `self.bind(source.debounce(0.3).subscribe(cb))`. Held by nothing, it is collected and never fires |
 | `source.where(lambda v: ...)` / `source.select(lambda v: ...)` (Rx/LINQ) | `source.filter(pred, initial=...)` and `source.map(fn)`. `initial` is required and keyword-only: a filtered Observable has no value of its own until something passes, and the caller decides what the UI shows meanwhile |
 | hop back to the UI thread before writing state (`runOnUiThread`, `DispatchQueue.main`, a hand-rolled queue) | assign `self.x.value` from the worker directly — cross-thread writes are marshalled |
-| `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | no cancellation API exists: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
+| `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | for work derived from an Observable's value, `switch_map` supersedes the previous run for you and hands `fn` a `nv.CancelToken`. Otherwise there is no cancellation API: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
+| `switchMap` / `flatMapLatest` (Rx), `collectLatest` (Kotlin), a `useEffect` that aborts the previous fetch | `source.switch_map(fn, initial=...)` — same name, same semantics. `fn` takes `(value, cancel)`, runs off the UI thread, and must **return** failure as a value rather than raising; there is no `.error` channel |
+| `.map(fetch)` / `.map(search_api)` — an async call inside a `map` (Rx habit, where `map` is on a stream) | `switch_map(fn, initial=...)`. A `map`/`compute` function is **synchronous** and runs on the triggering thread — the UI thread for a `debounce` chain — so I/O in it freezes the window, and two in-flight calls have no ordering guarantee |
+| `Observable<AsyncValue<T>>` / `Resource<T>` / `RemoteData` wrappers around loading + error (Flutter/Compose/Elm) | keep the value position plain and put failure in your own result type: `SearchOutcome(items=..., error=...)`. A wrapper type forces every downstream `map`/`filter`/`combine` and every binding to unwrap it |
 
 Note: `Observable.subscribe()` **does** exist and is legitimate for side effects
 (logging, calling a service). It is *only* an anti-pattern when used to manually
@@ -87,9 +90,9 @@ push a value into the UI — that is what binding is for.
 
 ```python
 # Correct: derived + async, both bound straight into the UI
-self.total   = self.a.combine(self.b).compute(lambda a, b: a + b)   # derived
-self.results = self.query.debounce(0.3).map(search_api)             # async, Rx-style operator
-# ... in build(): nv.Text(self.total), and bind self.results to a list
+self.total   = self.a.combine(self.b).compute(lambda a, b: a + b)   # derived, synchronous
+self.outcome = self.query.debounce(0.3).switch_map(self._search, initial=SearchOutcome())
+# ... in build(): nv.Text(self.total), and bind self.outcome.map(lambda o: o.items) to a list
 ```
 
 See [state.md](state.md) for the full API and the ViewModel pattern.

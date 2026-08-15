@@ -17,9 +17,11 @@ if TYPE_CHECKING:
     from .combine import CombineBuilder
     from .computed import ComputedObservable
     from .filtered import FilteredObservable
+    from .switched import CancelToken, SwitchMappedObservable
     from .timed import DebouncedObservable, ThrottledObservable
 
 T = TypeVar("T")
+_R = TypeVar("_R")
 
 
 logger = logging.getLogger(__name__)
@@ -158,6 +160,20 @@ class _ObservableValue(MutableObservableBase[T]):
         from .timed import ThrottledObservable
 
         return ThrottledObservable(self, seconds)
+
+    def switch_map(
+        self,
+        fn: Callable[[T, "CancelToken"], _R],
+        *,
+        initial: _R,
+    ) -> "SwitchMappedObservable[T, _R]":
+        """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
+
+        See :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        """
+        from .switched import SwitchMappedObservable
+
+        return SwitchMappedObservable(self, fn, initial=initial)
 
     def subscribe(self, cb: Callable[[T], None]) -> Disposable:
         self._subs.append(cb)

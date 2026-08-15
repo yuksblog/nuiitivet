@@ -104,9 +104,33 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bcomputed\s*\(|\bobservable\s*\(\s*\)|\bmakeAutoObservable\b"), "MobX/Vue",
      "Derived state: a.combine(b).compute(lambda a, b: ...)."),
     (re.compile(r"\bCancellationTokenSource\b|\bCancellationToken\b|\bAbortController\b"), ".NET/JS",
-     "No cancellation primitive exists. Create a threading.Event per run, pass it to the "
-     "worker, and check cancel.is_set() in its loop; a reused Event that gets clear()ed "
-     "lets a superseded run resume."),
+     "No cancellation primitive of that shape. If the work is a function of an Observable's "
+     "value, use source.switch_map(fn, initial=...) — it supersedes the previous run and hands "
+     "fn an nv.CancelToken. Otherwise create a threading.Event per run, pass it to the worker, "
+     "and check cancel.is_set() in its loop; a reused Event that gets clear()ed lets a "
+     "superseded run resume."),
+    # Foreign spellings of switch_map. The latest-wins operator exists under that
+    # name, so the fix is a rename; the flattening operators below do not exist at
+    # all, which is why they are named separately rather than pointed at it.
+    (re.compile(r"\.(?:switchMap|flatMapLatest|switchLatest|collectLatest)\s*\("), "Rx/Kotlin",
+     "Nuiitivet spells this switch_map(fn, initial=...) — fn takes (value, cancel) and initial "
+     "is required and keyword-only."),
+    (re.compile(r"\.(?:exhaustMap|concatMap|mergeMap|flatMap)\s*\("), "Rx",
+     "Only the latest-wins variant exists: switch_map(fn, initial=...). There is no "
+     "exhaust/concat/merge flattening — a derived Observable holds one value, not a queue of "
+     "in-flight runs."),
+    # switch_map's fn takes (value, cancel). A one-parameter lambda is the natural
+    # thing to write coming from map(), and fails only once a run actually starts.
+    (re.compile(r"\.switch_map\s*\(\s*lambda\s+[A-Za-z_]\w*\s*:"), "map habit",
+     "switch_map's fn takes two arguments: (value, cancel). Write "
+     "switch_map(lambda value, cancel: ..., initial=...) — the token is cooperative, so "
+     "ignoring it is fine, but it is always passed."),
+    # Three-state async wrapper types. Rejected deliberately: a wrapper in the
+    # value position forces every downstream operator and binding to unwrap it.
+    (re.compile(r"\bAsyncValue\b|\bRemoteData\b|\bAsyncSnapshot\b"), "Flutter/Elm",
+     "No loading/error wrapper type around the value. switch_map returns a plain Observable; "
+     "put failure in your own result type (SearchOutcome(items=..., error=...)) so one value "
+     "carries both and downstream map/filter/combine need no unwrapping."),
     # Bare-statement subscribe on a debounce/throttle/filter chain. In Rx the stream
     # is owned by the source, so dropping the subscription handle is normal; here the
     # chain is owned by whoever holds it, so this silently never fires. Excludes
@@ -198,6 +222,63 @@ def find_dead_chains(text: str) -> list[tuple[int, str]]:
     return findings
 
 
+# An `on_mount` override on a ComposableWidget that never calls `super()`.
+#
+# The base implementation is what runs `build()`, so skipping it mounts a widget
+# with no children: a blank screen, no exception, nothing in the log. It is the
+# quietest failure in the framework, and the shape that causes it -- needing
+# `X.of(self)`, which cannot run in `__init__` -- is exactly what the references
+# tell an author to write.
+#
+# Scoped to ComposableWidget subclasses on purpose. `Widget.on_mount` is a no-op,
+# so omitting `super()` there costs nothing and flagging it would be noise;
+# `BuilderHostMixin.on_mount` is the one with work to do.
+_COMPOSABLE_CLASS = re.compile(r"^([ \t]*)class\s+\w+\s*\([^)]*\bComposableWidget\b")
+_ON_MOUNT_DEF = re.compile(r"^([ \t]*)def\s+on_mount\s*\(")
+_SUPER_ON_MOUNT = re.compile(r"\bsuper\s*\(\s*\)\s*\.\s*on_mount\s*\(")
+
+_MISSING_SUPER_FIX = (
+    "Call super().on_mount() in the override. The base implementation is what runs build(), "
+    "so without it the widget mounts with no children -- a blank screen that raises nothing. "
+    "Place it before your setup, or after it if build() reads what the setup produces."
+)
+
+
+def find_missing_super_on_mount(text: str) -> list[tuple[int, str]]:
+    """``(lineno, source)`` for ComposableWidget ``on_mount`` overrides missing ``super()``."""
+    raw_lines = text.splitlines()
+    lines = [strip_comment(raw) for raw in raw_lines]
+    findings = []
+    class_indent: int | None = None
+
+    for index, line in enumerate(lines):
+        klass = _COMPOSABLE_CLASS.match(line)
+        if klass:
+            class_indent = len(klass.group(1))
+            continue
+        if class_indent is None or not line.strip():
+            continue
+        if _indent_of(line) <= class_indent:
+            class_indent = None  # dedented out of the class body
+            continue
+
+        method = _ON_MOUNT_DEF.match(line)
+        if not method:
+            continue
+        body_indent = len(method.group(1))
+        for follow in lines[index + 1:]:
+            if follow.strip() and _indent_of(follow) <= body_indent:
+                break  # end of the override, no super() seen
+            if _SUPER_ON_MOUNT.search(follow):
+                break
+        else:
+            findings.append((index + 1, raw_lines[index].strip()))
+            continue
+        if not _SUPER_ON_MOUNT.search(follow):
+            findings.append((index + 1, raw_lines[index].strip()))
+    return findings
+
+
 def iter_py_files(targets: list[str]):
     for t in targets:
         p = Path(t)
@@ -258,6 +339,11 @@ def main(argv: list[str]) -> int:
             findings += 1
             print(f"{path}:{lineno}: [Rx habit] {source}")
             print(f"    -> {_DEAD_CHAIN_FIX}")
+
+        for lineno, source in find_missing_super_on_mount(text):
+            findings += 1
+            print(f"{path}:{lineno}: [lifecycle] {source}")
+            print(f"    -> {_MISSING_SUPER_FIX}")
 
     if findings:
         print(f"\n{findings} foreign-idiom warning(s). See "

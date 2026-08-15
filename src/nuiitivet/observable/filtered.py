@@ -3,7 +3,7 @@
 ``map`` answers "what is ``.value`` right now?" with a pure function of the
 source, so it is always defined. ``filter`` cannot: its source may produce
 nothing the predicate accepts, ever. That gap is why the operator was originally
-rejected (``OBSERVABLE.md`` §2), and the seed is what closes it — the caller
+rejected (``OBSERVABLE.md`` §3.1), and the seed is what closes it — the caller
 states what the UI shows before the first value passes, rather than the framework
 inventing a fallback. ``initial`` is therefore keyword-only and **required**.
 
@@ -18,12 +18,12 @@ from __future__ import annotations
 from typing import Callable, TypeVar
 
 from .protocols import ReadOnlyObservableProtocol
-from .wrapper import SourceSubscribingObservable, _untracked
+from .wrapper import ShapingObservable, _untracked
 
 T = TypeVar("T")
 
 
-class FilteredObservable(SourceSubscribingObservable[T]):
+class FilteredObservable(ShapingObservable[T]):
     """Observable that emits only the source values satisfying ``pred``.
 
     ``value`` is the last value that passed, or ``initial`` if none has. At

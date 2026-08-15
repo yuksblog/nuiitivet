@@ -40,13 +40,21 @@ construction and the first emission a wrapper therefore reports the seed: for
 **Teardown releases the source and disarms the clock.** :meth:`dispose` is
 idempotent and runs from ``__del__`` as a backstop, so a wrapper that goes out of
 scope with a timer armed does not fire into a dead chain.
+
+**Two type parameters, because one operator changes the type.** ``debounce``,
+``throttle`` and ``filter`` reshape *when* or *whether* a value is republished
+and hand on what they were given, so their input and output types agree;
+:class:`ShapingObservable` names that case and seeds them from the source.
+``switch_map`` maps ``TIn`` to a different ``TOut`` and cannot be seeded from the
+source at all, which is why the seed is a method rather than a line in
+``__init__``.
 """
 
 from __future__ import annotations
 
 import logging
 import weakref
-from typing import Any, Callable, List, Optional, Sequence, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Generic, List, Optional, Sequence, TypeVar, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once
 
@@ -62,8 +70,13 @@ from . import runtime
 if TYPE_CHECKING:
     from .combine import CombineBuilder
     from .computed import ComputedObservable
+    from .filtered import FilteredObservable
+    from .switched import CancelToken, SwitchMappedObservable
+    from .timed import DebouncedObservable, ThrottledObservable
 
 T = TypeVar("T")
+TIn = TypeVar("TIn")
+TOut = TypeVar("TOut")
 _R = TypeVar("_R")
 
 
@@ -89,13 +102,18 @@ def _read_untracked(source: ReadOnlyObservableProtocol[T]) -> T:
     return _untracked(lambda: source.value)
 
 
-class SourceSubscribingObservable(ObservableBase[T]):
+class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
     """Base for observables that hold a live subscription to an upstream source.
 
-    Subclasses implement :meth:`_on_source_changed` (what to do with an upstream
-    value) and decide when to call :meth:`_emit_to_subscribers`, which is also
+    Subclasses implement :meth:`_seed` (what :attr:`value` reports before the
+    first emission) and :meth:`_on_source_changed` (what to do with an upstream
+    value), and decide when to call :meth:`_emit_to_subscribers`, which is also
     what updates the value this wrapper reports. Any clock callbacks they arm go
     in :meth:`_clock_callbacks` so teardown can disarm them.
+
+    ``TIn`` is what the source publishes, ``TOut`` what this observable does.
+    Operators that hand values on unchanged subclass :class:`ShapingObservable`
+    instead, which fixes the two together.
     """
 
     # Class-level defaults so ``__del__`` is safe on an instance whose
@@ -104,16 +122,24 @@ class SourceSubscribingObservable(ObservableBase[T]):
     _disposed: bool = True
     _source_subscription: Optional[Disposable] = None
 
-    def __init__(self, source: ReadOnlyObservableProtocol[T]):
+    def __init__(self, source: ReadOnlyObservableProtocol[TIn]):
         self._source = source
-        self._subscribers: List[Callable[[T], None]] = []
-        self._held_value: T = _read_untracked(source)
+        self._subscribers: List[Callable[[TOut], None]] = []
+        self._held_value: TOut = self._seed(source)
         self._disposed = False
         self._source_subscription = self._subscribe_weakly(source)
 
+    def _seed(self, source: ReadOnlyObservableProtocol[TIn]) -> TOut:
+        """What :attr:`value` reports before this observable has emitted anything.
+
+        Called from ``__init__`` before the source subscription exists, so an
+        implementation that reads the source sees its construction-time value.
+        """
+        raise NotImplementedError
+
     # -- lifetime ----------------------------------------------------------
 
-    def _subscribe_weakly(self, source: ReadOnlyObservableProtocol[T]) -> Disposable:
+    def _subscribe_weakly(self, source: ReadOnlyObservableProtocol[TIn]) -> Disposable:
         """Subscribe to ``source`` without letting it hold this object alive.
 
         The callback closes over a ``weakref`` and never over ``self``; once the
@@ -122,7 +148,7 @@ class SourceSubscribingObservable(ObservableBase[T]):
         """
         weak_self = weakref.ref(self)
 
-        def on_source_changed(value: T) -> None:
+        def on_source_changed(value: TIn) -> None:
             target = weak_self()
             if target is not None:
                 target._on_source_changed(value)
@@ -132,7 +158,7 @@ class SourceSubscribingObservable(ObservableBase[T]):
     # -- reading ------------------------------------------------------------
 
     @property
-    def value(self) -> T:
+    def value(self) -> TOut:
         """Value this wrapper last emitted, registering **it** as the dependency.
 
         A derivation built on a wrapper must depend on the wrapper, not on what
@@ -152,7 +178,7 @@ class SourceSubscribingObservable(ObservableBase[T]):
         finally:
             _tracking_context.reset(token)
 
-    def _current_value(self) -> T:
+    def _current_value(self) -> TOut:
         """What :attr:`value` reports: the last emitted value, or the seed.
 
         Reads made here are not tracked. A subclass that reports something other
@@ -195,10 +221,10 @@ class SourceSubscribingObservable(ObservableBase[T]):
 
     # -- protocol ----------------------------------------------------------
 
-    def _on_source_changed(self, value: T) -> None:  # pragma: no cover - overridden
+    def _on_source_changed(self, value: TIn) -> None:  # pragma: no cover - overridden
         raise NotImplementedError
 
-    def _emit_to_subscribers(self, value: T) -> None:
+    def _emit_to_subscribers(self, value: TOut) -> None:
         """Publish ``value`` and make it what :attr:`value` reports from now on.
 
         Held before the callbacks run, so a subscriber that reads back through
@@ -208,7 +234,7 @@ class SourceSubscribingObservable(ObservableBase[T]):
         for callback in list(self._subscribers):
             callback(value)
 
-    def subscribe(self, callback: Callable[[T], None]) -> Disposable:
+    def subscribe(self, callback: Callable[[TOut], None]) -> Disposable:
         self._subscribers.append(callback)
 
         def _dispose() -> None:
@@ -223,10 +249,20 @@ class SourceSubscribingObservable(ObservableBase[T]):
 
         return Disposable(_dispose)
 
-    def changes(self) -> ReadOnlyObservableProtocol[T]:
+    def changes(self) -> ReadOnlyObservableProtocol[TOut]:
         return self
 
-    def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
+    # -- operators ---------------------------------------------------------
+    #
+    # The same set ``_ObservableValue`` and ``ComputedObservable`` expose, so a
+    # chain does not run out of operators partway through. Deliberately not
+    # factored into a shared mixin: those two propagate the ``dispatch=False``
+    # opt-out into what they build and a wrapper has no opt-out to propagate
+    # (§4.4 -- it emits inside a notification its source already marshalled), so
+    # the bodies only look alike. ``tests/observable/test_operator_parity.py``
+    # asserts the three surfaces stay equal instead.
+
+    def map(self, fn: Callable[[TOut], Any]) -> "ComputedObservable[Any]":
         from .computed import ComputedObservable
 
         def compute_fn() -> Any:
@@ -238,3 +274,52 @@ class SourceSubscribingObservable(ObservableBase[T]):
         from .combine import CombineBuilder
 
         return CombineBuilder(self, *others)
+
+    def filter(self, pred: Callable[[TOut], bool], *, initial: TOut) -> "FilteredObservable[TOut]":
+        """Observable of the values passing ``pred``, seeded with ``initial``.
+
+        ``initial`` is required because a filtered observable has no value of
+        its own until something passes; see
+        :class:`~nuiitivet.observable.filtered.FilteredObservable`.
+        """
+        from .filtered import FilteredObservable
+
+        return FilteredObservable(self, pred, initial=initial)
+
+    def debounce(self, seconds: float) -> "DebouncedObservable[TOut]":
+        from .timed import DebouncedObservable
+
+        return DebouncedObservable(self, seconds)
+
+    def throttle(self, seconds: float) -> "ThrottledObservable[TOut]":
+        from .timed import ThrottledObservable
+
+        return ThrottledObservable(self, seconds)
+
+    def switch_map(
+        self,
+        fn: Callable[[TOut, "CancelToken"], _R],
+        *,
+        initial: _R,
+    ) -> "SwitchMappedObservable[TOut, _R]":
+        """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
+
+        See :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        """
+        from .switched import SwitchMappedObservable
+
+        return SwitchMappedObservable(self, fn, initial=initial)
+
+
+class ShapingObservable(SourceSubscribingObservable[T, T]):
+    """A wrapper that changes *when* or *whether* a value is republished, not what.
+
+    ``debounce``, ``throttle`` and ``filter`` all hand the source's own values
+    on, so their input and output types are the same one and the seed is simply
+    the source's construction-time value. Naming that here keeps the rule in one
+    place: reading the source to seed is correct **because** the types agree,
+    which is exactly what ``switch_map`` cannot claim.
+    """
+
+    def _seed(self, source: ReadOnlyObservableProtocol[T]) -> T:
+        return _read_untracked(source)

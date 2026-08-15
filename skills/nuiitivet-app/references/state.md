@@ -70,11 +70,15 @@ Observables read inside `fn`.
 
 ```python
 self.query   = nv.Observable("")
-self.results = self.query.debounce(0.3).map(search_api)   # thin the keystrokes, then map
+self.results = self.query.debounce(0.3).map(format_query)   # thin the keystrokes, then map
 # bind self.results into the UI like any other Observable
 ```
 
 `throttle(seconds)` is the rate-limited sibling of `debounce`.
+
+**`map` is synchronous — no I/O in it.** It runs on the thread that triggered the
+change, the UI thread in a `debounce` chain, so `.map(search_api)` freezes the
+window. Use `switch_map`.
 
 `filter(pred, initial=...)` updates only on values passing `pred`. **`initial` is
 required and keyword-only** — a filtered Observable has no value of its own until
@@ -90,12 +94,50 @@ last one that passed. The source's current value is tested at construction too, 
 the value it is handed — reading another Observable inside it creates no
 dependency and will not re-run the filter; use `combine` for that.
 
+### `switch_map(fn, initial=...)` — async `map`
+
+`fn` runs **off the UI thread**; if the source changes again before it answers,
+that answer is **discarded**. Search-as-you-type — do not hand-roll it.
+
+```python
+@dataclass(frozen=True)
+class SearchOutcome:
+    items: list[str] = field(default_factory=list)
+    error: str | None = None
+
+def _search(self, query: str, cancel: nv.CancelToken) -> SearchOutcome:
+    try:
+        return SearchOutcome(items=search_api(query))
+    except RequestError as exc:
+        return SearchOutcome(items=[], error=str(exc))   # failure is a *value*
+
+self.outcome = self.query.debounce(0.3).switch_map(self._search, initial=SearchOutcome())
+self.items   = self.outcome.map(lambda o: o.items)       # chains like any Observable
+```
+
+- **`initial` is required and keyword-only.** No run starts at construction, so
+  it is what the UI shows until the first result lands.
+- **`fn` takes `(value, cancel)`** — both, always.
+- **`fn` must not raise.** Return failure as a value in your own result type;
+  there is no `.error` channel. An escaping exception is a bug: logged, nothing
+  published.
+- **No widgets in `fn`** — it is off the UI thread; read and return Observable
+  values only. Results are marshalled back before subscribers run.
+- **`cancel.superseded` is optional.** The result is discarded either way;
+  checking only saves wasted work, and a blocking call never gets to check.
+
+Only for work that is a **function of an Observable's value**. Hand-write it
+instead (see Cancellation) when it is started by a button — a Retry button
+changes no value, so nothing fires — reports progress, is cancelled explicitly,
+or appends to the previous result. Neither the amount of data returned nor the
+weight of the work matters.
+
 **Hold what you derive.** `q.debounce(0.3)` creates a new Observable, and like
 every derived Observable it is collected unless something holds it — by name, or
 by the `Disposable` that `subscribe()` returns:
 
 ```python
-self.results = self.query.debounce(0.3).map(search_api)         # named -> held
+self.results = self.query.debounce(0.3).map(format_query)       # named -> held
 self.bind(self.query.debounce(0.3).subscribe(self._on_query))   # bind keeps the Disposable
 self._sub = self.query.debounce(0.3).subscribe(self._on_query)  # no bind()? keep it yourself
 
@@ -148,6 +190,10 @@ def _run(self, path: str) -> None:
   handler and assign the result; no thread of your own.
 
 ### Cancellation
+
+**Try `switch_map` first** — it owns the threading and the superseding. The rest
+of this section is for what it cannot express: work started by a button,
+reporting progress, or cancelled explicitly.
 
 There is no cancellation primitive — a Python thread cannot be killed from
 outside. Create a `threading.Event` **per run** and pass it to the worker:
@@ -208,9 +254,13 @@ class DashboardScreen(nv.ComposableWidget):
         self.rows = nv.Observable([])
 
     def on_mount(self):
-        super().on_mount()
+        super().on_mount()                # REQUIRED: this is what runs build()
         self._load()                      # once; the tree is reachable here
 ```
+
+**Never omit that `super()` call.** It is what invokes `build()`; without it the
+widget mounts with no children — blank screen, no exception, nothing logged. Put
+it first, or last if `build()` reads what the setup produces.
 
 Inside `build()` it is different: `X.modifier(nv.on_mount(cb))` registers on a
 widget that is rebuilt every time, so guard it with a flag owned by something that

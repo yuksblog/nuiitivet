@@ -13,14 +13,16 @@ from .protocols import (
     ReadOnlyObservableProtocol,
 )
 from .runtime import Clock, ClockCallback, get_clock, set_clock
+from .switched import CancelToken, SwitchMappedObservable
 from .timed import DebouncedObservable, ThrottledObservable
 from .value import Observable, _ObservableValue
-from .wrapper import SourceSubscribingObservable
+from .wrapper import ShapingObservable, SourceSubscribingObservable
 
 __all__ = [
     "BatchContext",
     "batch",
     "detach_batch",
+    "CancelToken",
     "Clock",
     "ClockCallback",
     "CombineBuilder",
@@ -35,7 +37,9 @@ __all__ = [
     "ObservableBase",
     "ObservableProtocol",
     "ReadOnlyObservableProtocol",
+    "ShapingObservable",
     "SourceSubscribingObservable",
+    "SwitchMappedObservable",
     "ThrottledObservable",
     "_ObservableValue",
     "get_clock",
