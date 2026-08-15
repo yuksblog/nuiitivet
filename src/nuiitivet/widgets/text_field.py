@@ -7,16 +7,16 @@ without any specific design system styling.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, TypeVar, Union
+from typing import Optional, Tuple, Union
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
+from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgets.interaction import InteractionHostMixin, FocusSource
 from nuiitivet.widgets.editable_text import EditableText
-from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
 
 _logger = logging.getLogger(__name__)
@@ -30,8 +30,12 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     (floating labels, M3 styling) should be implemented in subclasses.
 
     Parameters:
-    - value: Initial text value (str) OR External observable
+    - value: Initial text (str), or the observable that holds the field's value.
+      An observable is the field's value cell: edits are written back to it.
+      A read-only observable has nowhere to write, so it displays only.
     - on_change: Callback when value changes
+    - input_filter: Rule applied to text as it is typed (see
+      :mod:`nuiitivet.widgets.input_filter`)
     - text_color: Color for input text
     - cursor_color: Color for cursor
     - selection_color: Color for text selection
@@ -42,39 +46,11 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     - disabled: Disable interaction
     """
 
-    TTextFieldBase = TypeVar("TTextFieldBase", bound="TextFieldBase")
-
-    @classmethod
-    def two_way(
-        cls: type[TTextFieldBase],
-        value: ObservableProtocol[str],
-        *,
-        on_change: Optional[StrCallback] = None,
-        **kwargs,
-    ) -> TTextFieldBase:
-        """Create a two-way bound TextField."""
-
-        def _bound_on_change(new_text: str) -> None:
-            try:
-                value.value = new_text
-            except Exception:
-                exception_once(
-                    _logger, "text_field_base_two_way_set_value_exc", "TextFieldBase.two_way failed to set value"
-                )
-            if on_change is not None:
-                invoke_event_handler(
-                    on_change,
-                    new_text,
-                    error_key="text_field_base_two_way_on_change",
-                    error_msg="TextFieldBase.two_way on_change raised",
-                )
-
-        return cls(value=value, on_change=_bound_on_change, **kwargs)
-
     def __init__(
         self,
-        value: Union[str, ObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
+        input_filter: Optional[InputFilterLike] = None,
         text_color: str = "#000000",
         cursor_color: str = "#000000",
         selection_color: str = "#0000FF",
@@ -93,6 +69,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
             value=value,
             on_change=self._handle_editable_change,
             on_focus_change=self._on_editable_focus_change,
+            input_filter=input_filter,
             text_color=text_color,
             cursor_color=cursor_color,
             selection_color=selection_color,

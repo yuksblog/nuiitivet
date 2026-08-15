@@ -181,7 +181,7 @@ def test_type_focuses_its_target_first(nuiitivet_app) -> None:
     value = Observable("")
 
     def screen() -> Widget:
-        return Column(children=[TextField.two_way(value).modifier(keyed("field"))])
+        return Column(children=[TextField(value).modifier(keyed("field"))])
 
     app = nuiitivet_app(screen, size=(800, 600))
     app.type("hi", key="field")

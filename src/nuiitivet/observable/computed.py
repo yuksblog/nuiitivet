@@ -160,9 +160,6 @@ class ComputedObservable(ObservableBase[T]):
 
         return Disposable(_dispose)
 
-    def changes(self) -> ReadOnlyObservableProtocol[T]:
-        return self  # type: ignore[return-value]
-
     def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
         def compute_fn() -> Any:
             return fn(self.value)

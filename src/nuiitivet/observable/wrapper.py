@@ -249,9 +249,6 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
 
         return Disposable(_dispose)
 
-    def changes(self) -> ReadOnlyObservableProtocol[TOut]:
-        return self
-
     # -- operators ---------------------------------------------------------
     #
     # The same set ``_ObservableValue`` and ``ComputedObservable`` expose, so a

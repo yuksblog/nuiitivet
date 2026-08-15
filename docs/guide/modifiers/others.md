@@ -85,10 +85,9 @@ class EditScreen(nv.ComposableWidget):
             child=nv.Column(
                 children=[
                     nv.Text("Edit text. Back/Esc asks confirmation when unsaved."),
-                    nv.TextField.two_way(
+                    nv.TextField(
                         self.text,
                         width=420,
-                        height=52,
                         padding=10,
                     ),
                     nv.Row(

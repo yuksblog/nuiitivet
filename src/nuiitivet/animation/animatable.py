@@ -149,9 +149,6 @@ class Animatable(ObservableBase[T]):
     def subscribe(self, cb: Callable[[T], None]):
         return self._value.subscribe(cb)
 
-    def changes(self):
-        return self._value.changes()
-
     def map(self, transform: Callable[[T], Any]):
         return self._value.map(transform)
 

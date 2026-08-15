@@ -126,7 +126,8 @@ catalog below), not a job for `Container` — its box is layout-only.
 
 | Need | Widget | Canonical construction |
 | --- | --- | --- |
-| Text input | `TextField` | `nv.TextField(value=obs, label="Name")` |
+| Text input | `TextField` | `nv.TextField(value=obs, label="Name")` — `obs` is the value, written back as the user types |
+| Restricted text input | `TextField` + `input_filter` | `nv.TextField(value=obs, input_filter=nv.digits_only() \| nv.max_length(4))` |
 | Boolean toggle | `Checkbox` / `Switch` | `nv.Switch(checked=obs)` |
 | Single choice | `RadioButton` / `RadioGroup` | `nv.RadioGroup(child, value=obs)` |
 | Numeric / range slider | `HorizontalSlider` / `HorizontalRangeSlider` (+ vertical/centered variants) | `nv.HorizontalSlider(value=obs)` |

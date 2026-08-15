@@ -426,3 +426,52 @@ Against a hand-rolled `threading.Event` it removes the ways to misuse one: no
   result superseded in between is still dropped
 - `exception_once` is keyed on the function's qualname, so two `switch_map`s
   cannot de-duplicate each other's bug into silence
+
+## 6. Binding an observable to a widget: the value cell
+
+Every input widget holds a value somewhere. Passing an observable to its
+constructor **substitutes that storage cell** — it does not describe a direction
+of flow. `Toggleable` states the rule in code:
+
+```python
+def _get_state_obj(self):
+    if self._state_external is not None:
+        return self._state_external
+    return self._state_internal
+```
+
+Both the read path and the write path go through `_get_state_obj()`, and only
+one of the two cells is ever live. With a single cell there is no second copy to
+keep in sync and no direction to choose: the user's edit lands wherever the
+widget's value lives, which is the caller's observable when the caller supplied
+one. Two-way binding is therefore a consequence of the structure, not a mode
+that gets selected. `Checkbox`, `Switch`, `RadioButton`, `RadioGroup` and the
+sliders all behave this way without any of them implementing "two-way binding".
+
+Three consequences follow, and they are what makes the rule worth stating:
+
+- **A widget must not keep its own copy alongside an external observable.** Two
+  cells make a direction expressible, and any direction chosen is then wrong
+  half the time. Where a widget's internal representation is richer than what
+  the caller's observable can hold, the widget mirrors instead of substituting,
+  and the mirror has to be justified and documented — see the state-management
+  section of [TEXT_EDITING.md](TEXT_EDITING.md), which is currently the only
+  such case.
+- **A read-only observable is display-only**, because there is nothing to write
+  to. This is what a computed or mapped value is, and it is how a caller asks
+  for display without an edit path.
+- **The distinction is enforced at runtime, not by the type checker.** Whether a
+  source is writable is decided by `isinstance(value, ObservableProtocol)`,
+  which separates the two protocols by the presence of `set`. A static overload
+  cannot express it: both arms take the same argument and return the same
+  widget, so there is nothing for the checker to discriminate on.
+
+  This is why **no operator may hand back a read-only static type over a
+  runtime-writable object**. Such an operator produces a source that the caller
+  has declared display-only and that a widget then writes to anyway, and no
+  runtime check can catch it because there is nothing to check. `changes()` was
+  exactly that — it returned `self` under a `ReadOnlyObservableProtocol` return
+  type — and was removed rather than repaired: `subscribe()` already delivers
+  changes and nothing else, so the operator had no second meaning to fall back
+  on. Should a genuine read-only view be wanted later, it has to be a real
+  wrapper object, so that the runtime agrees with the type.

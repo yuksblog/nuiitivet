@@ -53,7 +53,7 @@ def test_no_operator_is_missing_from_the_list():
     known = set(OPERATORS)
     # Everything public and callable on all three that is not part of the
     # read interface every observable also has.
-    read_interface = {"subscribe", "changes", "value", "set", "dispose"}
+    read_interface = {"subscribe", "value", "set", "dispose"}
     candidates = {
         name
         for name in dir(_ObservableValue)

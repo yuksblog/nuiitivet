@@ -200,7 +200,6 @@ Implementation notes:
 `Animatable` exposes `_ObservableValue` APIs:
 
 - `subscribe(cb)`
-- `changes()`
 - `map(transform)`
 
 Ownership rules:

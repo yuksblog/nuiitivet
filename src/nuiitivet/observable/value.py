@@ -186,9 +186,6 @@ class _ObservableValue(MutableObservableBase[T]):
 
         return Disposable(_dispose)
 
-    def changes(self) -> ReadOnlyObservableProtocol[T]:
-        return self
-
 
 class Observable(_ObservableValue[T]):
     """Descriptor for a per-instance observable that can also be used standalone.

@@ -53,6 +53,16 @@ def inc(self):
     self.count.value += 1                            # the Text follows on its own
 ```
 
+**An Observable handed to an input widget is that widget's value** — displayed
+*and* written to. `nv.TextField(value=self.query)`, `nv.Switch(checked=self.on)`,
+`nv.HorizontalSlider(value=self.level)` all write the user's edit straight back.
+There is no separate opt-in, and no `on_change` is needed to keep the Observable
+in sync. Use `on_change` only for a *side effect* of the change.
+
+A read-only source — anything from `.map(...)`, `.compute(...)`, `combine(...)` —
+has no setter, so an input widget can only display it. That is the correct way
+to show a derived value; add `disabled=True` so the field does not look editable.
+
 ## Derived state (declare a formula, not an update)
 
 ```python

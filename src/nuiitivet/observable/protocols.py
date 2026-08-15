@@ -5,6 +5,13 @@ from typing import Callable, Generic, Optional, Protocol, TypeVar, runtime_check
 T = TypeVar("T")
 CompareFunc = Callable[[T, T], bool]
 
+# The read-only protocol only ever hands a value *out* -- from ``value``, and
+# into the callback ``subscribe`` is given -- so it is covariant, and a
+# ``ReadOnlyObservableProtocol[Dog]`` is usable where one of ``Animal`` is
+# wanted. ``ObservableProtocol`` re-declares the parameter as invariant,
+# because writing ``value`` puts a T back in.
+T_co = TypeVar("T_co", covariant=True)
+
 
 # Called with every Disposable as it is constructed, when something is watching.
 #
@@ -108,9 +115,6 @@ class ObservableBase(Generic[T]):
     def subscribe(self, cb: Callable[[T], None]) -> Disposable:  # pragma: no cover - overridden
         raise NotImplementedError
 
-    def changes(self) -> "ReadOnlyObservableProtocol[T]":  # pragma: no cover - overridden
-        raise NotImplementedError
-
     @property
     def value(self) -> T:  # pragma: no cover - overridden
         raise NotImplementedError
@@ -150,13 +154,11 @@ class MutableObservableBase(ObservableBase[T]):
 
 
 @runtime_checkable
-class ReadOnlyObservableProtocol(Protocol, Generic[T]):
-    def subscribe(self, cb: Callable[[T], None]) -> Disposable: ...
-
-    def changes(self) -> "ReadOnlyObservableProtocol[T]": ...
+class ReadOnlyObservableProtocol(Protocol, Generic[T_co]):
+    def subscribe(self, cb: Callable[[T_co], None]) -> Disposable: ...
 
     @property
-    def value(self) -> T: ...
+    def value(self) -> T_co: ...
 
 
 @runtime_checkable
