@@ -4,13 +4,13 @@ from typing import Callable, Sequence, TypeVar
 
 from ._sentinel import UNSET, _Unset
 from .protocols import ReadOnlyObservableProtocol
-from .wrapper import SourceSubscribingObservable
+from .wrapper import ShapingObservable
 from . import runtime
 
 T = TypeVar("T")
 
 
-class DebouncedObservable(SourceSubscribingObservable[T]):
+class DebouncedObservable(ShapingObservable[T]):
     """Debounced observable that emits value only after delay with no new changes.
 
     ``value`` is the last debounced emission — the construction-time value of the
@@ -48,7 +48,7 @@ class DebouncedObservable(SourceSubscribingObservable[T]):
         self._emit_to_subscribers(pending)
 
 
-class ThrottledObservable(SourceSubscribingObservable[T]):
+class ThrottledObservable(ShapingObservable[T]):
     """Throttled observable that emits first value then ignores changes for duration.
 
     ``value`` is the last throttled emission — the construction-time value of the

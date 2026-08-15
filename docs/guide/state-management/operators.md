@@ -78,7 +78,13 @@ display = nv.Observable.compute(lambda: (
     self.tax_included.value if self.show_tax.value
     else self.tax_excluded.value
 ))
+
+# the transformation takes time to answer
+results = query.switch_map(search, initial=SearchOutcome())
 ```
+
+The last one runs off the UI thread and keeps only the newest run's result. See
+[Async State](async_state.md).
 
 ## Keep Transformations Pure
 

@@ -187,6 +187,7 @@ nav:
           - Operators: guide/state-management/operators.md
           - Practical Controls: guide/state-management/practical_controls.md
           - Thread Safety: guide/state-management/thread_safety.md
+          - Async State: guide/state-management/async_state.md
           - Background Work: guide/state-management/background_work.md
           - Patterns and Recipes: guide/state-management/patterns_and_recipes.md
       - UI Design System:
