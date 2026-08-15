@@ -134,7 +134,7 @@ For the common "right-click → menu at the cursor" case, reach for the [`contex
 
 ### Staying on screen
 
-Anchored and point positions keep their content inside the viewport, so a menu opened near the right or bottom edge is pulled back into view rather than clipped. Pass `clamp=False` to opt out.
+Anchored and point positions keep their content inside the viewport, so a menu opened near the right or bottom edge stays in view rather than being clipped. An anchored position does it without ever covering its anchor: `flip` places the content against the anchor's opposite edge when the anchored side has no room, and `shift` slides it along the cross axis only. Pass `flip=False` to keep the content on the side you asked for and let it overflow instead, or `shift=False` to opt out of sliding.
 
 ## OverlayAware
 

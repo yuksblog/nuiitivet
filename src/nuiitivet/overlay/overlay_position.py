@@ -33,6 +33,80 @@ from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
 from nuiitivet.widgeting.widget import Widget
 
 
+_Side = str  # "above" | "below" | "left" | "right"
+
+
+def _placement_side(target: Tuple[str, str], content: Tuple[str, str]) -> Optional[_Side]:
+    """Return which side of the anchor the content sits on, if any.
+
+    A side exists only when the two anchors name *opposing* edges on one axis:
+    the anchor's bottom against the content's top is "below", and so on. When
+    they do not (a point placement, or a deliberate overlap), there is no side
+    to mirror across and no anchor area to avoid.
+    """
+    th, tv = target
+    ch, cv = content
+    if tv == "end" and cv == "start":
+        return "below"
+    if tv == "start" and cv == "end":
+        return "above"
+    if th == "end" and ch == "start":
+        return "right"
+    if th == "start" and ch == "end":
+        return "left"
+    return None
+
+
+def _mirror_axis(value: str) -> str:
+    return {"start": "end", "end": "start"}.get(value, value)
+
+
+def _mirrored_placement(
+    side: _Side,
+    target: Tuple[str, str],
+    content: Tuple[str, str],
+    offset: Tuple[float, float],
+) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[float, float]]:
+    """Return the placement mirrored to the opposite side of the anchor.
+
+    Both anchors mirror together — flipping one alone would land the content
+    inside the anchor instead of against its other edge. The offset mirrors with
+    them: it is an absolute pixel vector here, not a placement-relative one, so
+    a gap below the anchor has to become a gap *above* it rather than an
+    intrusion of the same size.
+    """
+    dx, dy = offset
+    if side in ("above", "below"):
+        return (
+            (target[0], _mirror_axis(target[1])),
+            (content[0], _mirror_axis(content[1])),
+            (dx, -dy),
+        )
+    return (
+        (_mirror_axis(target[0]), target[1]),
+        (_mirror_axis(content[0]), content[1]),
+        (-dx, dy),
+    )
+
+
+def _fits(side: _Side, px: int, py: int, cw: int, ch: int, width: int, height: int) -> bool:
+    """Whether content placed at ``(px, py)`` stays inside the viewport on its side."""
+    if side == "below":
+        return py + ch <= height
+    if side == "above":
+        return py >= 0
+    if side == "right":
+        return px + cw <= width
+    return px >= 0
+
+
+def _shift_into_view(pos: int, size: int, extent: int) -> int:
+    """Slide ``pos`` so the span fits inside ``extent``; oversized content pins to 0."""
+    if size > extent:
+        return 0
+    return max(0, min(pos, extent - size))
+
+
 class OverlayPosition:
     """Where overlay content is placed within the overlay root.
 
@@ -65,7 +139,8 @@ class OverlayPosition:
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
         *,
-        clamp: bool = True,
+        flip: bool = True,
+        shift: bool = True,
     ) -> "OverlayPosition":
         """Place content relative to a widget's screen rect.
 
@@ -79,14 +154,20 @@ class OverlayPosition:
             target_anchor: Reference point on the anchor widget.
             content_anchor: Reference point on the content widget.
             offset: Additional ``(dx, dy)`` offset in screen pixels.
-            clamp: Keep the content inside the viewport (default ``True``).
+            flip: Place the content against the anchor's opposite edge when it
+                does not fit against the anchored one. If neither side fits the
+                anchored side is kept and the content overflows.
+            shift: Slide the content along the *cross* axis to keep it inside
+                the viewport. It is never moved along the placement axis, so it
+                cannot end up covering the anchor.
         """
         return _AnchoredOverlayPosition(
             rect_provider,
             target_anchor,
             content_anchor,
             offset,
-            clamp=clamp,
+            flip=flip,
+            shift=shift,
         )
 
     @staticmethod
@@ -96,7 +177,7 @@ class OverlayPosition:
         *,
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
-        clamp: bool = True,
+        shift: bool = True,
     ) -> "OverlayPosition":
         """Place content relative to a fixed screen point.
 
@@ -109,7 +190,10 @@ class OverlayPosition:
             y: Screen y coordinate.
             content_anchor: Reference point on the content widget.
             offset: Additional ``(dx, dy)`` offset in screen pixels.
-            clamp: Keep the content inside the viewport (default ``True``).
+            shift: Slide the content to keep it inside the viewport. A point has
+                no area, so there is nothing for the content to cover and it
+                shifts on both axes — which also makes ``flip`` meaningless
+                here, since sliding already achieves what mirroring would.
         """
         point = (int(round(x)), int(round(y)), 0, 0)
         return _AnchoredOverlayPosition(
@@ -117,7 +201,8 @@ class OverlayPosition:
             "top-left",
             content_anchor,
             offset,
-            clamp=clamp,
+            flip=False,
+            shift=shift,
         )
 
     @staticmethod
@@ -126,7 +211,7 @@ class OverlayPosition:
         *,
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
-        clamp: bool = True,
+        shift: bool = True,
     ) -> "OverlayPosition":
         """Place content at the screen point a pointer event occurred at.
 
@@ -139,14 +224,14 @@ class OverlayPosition:
             event: The pointer event to place the content at.
             content_anchor: Reference point on the content widget.
             offset: Additional ``(dx, dy)`` offset in screen pixels.
-            clamp: Keep the content inside the viewport (default ``True``).
+            shift: Slide the content to keep it inside the viewport.
         """
         return OverlayPosition.at_point(
             event.x,
             event.y,
             content_anchor=content_anchor,
             offset=offset,
-            clamp=clamp,
+            shift=shift,
         )
 
     def make_position_content(self, content: Widget) -> Widget:
@@ -258,7 +343,8 @@ class _AnchoredPositionedContent(Widget):
         target_anchor: Tuple[str, str],
         content_anchor: Tuple[str, str],
         offset: Tuple[float, float],
-        clamp: bool,
+        flip: bool,
+        shift: bool,
     ) -> None:
         super().__init__(width="wt", height="wt")
         self._child = child
@@ -266,7 +352,8 @@ class _AnchoredPositionedContent(Widget):
         self._target_anchor = target_anchor
         self._content_anchor = content_anchor
         self._offset = offset
-        self._clamp = clamp
+        self._flip = flip
+        self._shift = shift
         self.add_child(child)
 
     def preferred_size(
@@ -286,22 +373,58 @@ class _AnchoredPositionedContent(Widget):
             child.set_layout_rect(0, 0, cw, ch)
             return
 
-        ax, ay, aw, ah = rect
-        tx, ty = _alignment_to_point(self._target_anchor, aw, ah)
-        cx, cy = _alignment_to_point(self._content_anchor, cw, ch)
-        dx, dy = self._offset
-        px = int(round(ax + tx - cx + dx))
-        py = int(round(ay + ty - cy + dy))
+        # ``width``/``height`` are the overlay root's extent, i.e. the viewport.
+        side = _placement_side(self._target_anchor, self._content_anchor)
+        if rect[2] == 0 and rect[3] == 0:
+            # A point anchor has no area to cover, so there is no side to
+            # protect: sliding on both axes is both safe and what a context
+            # menu wants near a corner.
+            side = None
+        px, py = self._place(rect, cw, ch, self._target_anchor, self._content_anchor, self._offset)
 
-        if self._clamp:
-            # ``width``/``height`` are the overlay root's extent, i.e. the
-            # viewport. Content larger than the viewport pins to the top-left so
-            # its leading edge stays reachable rather than scrolling off.
-            px = max(0, min(px, width - cw)) if cw <= width else 0
-            py = max(0, min(py, height - ch)) if ch <= height else 0
+        if self._flip and side is not None and not _fits(side, px, py, cw, ch, width, height):
+            target, content, offset = _mirrored_placement(
+                side, self._target_anchor, self._content_anchor, self._offset
+            )
+            fx, fy = self._place(rect, cw, ch, target, content, offset)
+            mirrored = {"below": "above", "above": "below", "left": "right", "right": "left"}[side]
+            if _fits(mirrored, fx, fy, cw, ch, width, height):
+                px, py = fx, fy
+            # Neither side fits: keep the anchored one and let it overflow.
+            # Choosing "whichever has more room" instead would make placement
+            # depend on content the caller cannot see.
+
+        if self._shift:
+            # Cross axis only. Sliding along the placement axis is what would
+            # push the content over the anchor, so it is never done here. With
+            # no side (a point placement) there is no anchor area to cover and
+            # both axes shift.
+            if side in ("below", "above"):
+                px = _shift_into_view(px, cw, width)
+            elif side in ("left", "right"):
+                py = _shift_into_view(py, ch, height)
+            else:
+                px = _shift_into_view(px, cw, width)
+                py = _shift_into_view(py, ch, height)
 
         child.layout(cw, ch)
         child.set_layout_rect(px, py, cw, ch)
+
+    def _place(
+        self,
+        rect: Tuple[int, int, int, int],
+        cw: int,
+        ch: int,
+        target: Tuple[str, str],
+        content: Tuple[str, str],
+        offset: Tuple[float, float],
+    ) -> Tuple[int, int]:
+        """Line ``content``'s anchor point up with ``target``'s on the rect."""
+        ax, ay, aw, ah = rect
+        tx, ty = _alignment_to_point(target, aw, ah)
+        cx, cy = _alignment_to_point(content, cw, ch)
+        dx, dy = offset
+        return (int(round(ax + tx - cx + dx)), int(round(ay + ty - cy + dy)))
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         child = self._child
@@ -333,13 +456,15 @@ class _AnchoredOverlayPosition(OverlayPosition):
         content_anchor: AlignmentLike,
         offset: Tuple[float, float],
         *,
-        clamp: bool = True,
+        flip: bool = True,
+        shift: bool = True,
     ) -> None:
         self._rect_provider = rect_provider
         self._target_anchor = normalize_alignment(target_anchor, default=("start", "end"))
         self._content_anchor = normalize_alignment(content_anchor, default=("start", "start"))
         self._offset = (float(offset[0]), float(offset[1]))
-        self._clamp = bool(clamp)
+        self._flip = bool(flip)
+        self._shift = bool(shift)
 
     def make_position_content(self, content: Widget) -> Widget:
         """Wrap *content* in a full-screen container that places it at the anchor."""
@@ -349,5 +474,6 @@ class _AnchoredOverlayPosition(OverlayPosition):
             target_anchor=self._target_anchor,
             content_anchor=self._content_anchor,
             offset=self._offset,
-            clamp=self._clamp,
+            flip=self._flip,
+            shift=self._shift,
         )

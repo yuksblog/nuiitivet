@@ -1804,6 +1804,11 @@ class DockedDatePicker(ComposableWidget):
                 target_anchor="bottom-left",
                 content_anchor="top-left",
                 offset=(0.0, self.style.dropdown_gap),
+                # Stay below the field even when the window is too short for the
+                # calendar: it overflows rather than opening upwards. Opening
+                # above is the other reasonable answer -- turn ``flip`` back on
+                # if that is wanted.
+                flip=False,
             )
         )
 

@@ -184,19 +184,46 @@ class TestViewportClamping:
         placed.layout(800, 600)
         assert content.layout_rect == (0, 0, 1000, 900)
 
-    def test_clamp_false_leaves_the_content_off_screen(self) -> None:
-        pos = OverlayPosition.at_point(780, 100, clamp=False)
+    def test_shift_false_leaves_the_content_off_screen(self) -> None:
+        pos = OverlayPosition.at_point(780, 100, shift=False)
         content = _FixedWidget(100, 40)
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
         assert content.layout_rect == (780, 100, 100, 40)
 
-    def test_widget_anchored_content_is_clamped_too(self) -> None:
+    def test_anchored_content_flips_instead_of_covering_its_anchor(self) -> None:
+        """No room below, so it opens above -- never slid up over the anchor."""
         pos = OverlayPosition.anchored(lambda: (760, 560, 40, 40))
         content = _FixedWidget(120, 90)
         placed = pos.make_position_content(content)
         placed.layout(800, 600)
-        assert content.layout_rect == (680, 510, 120, 90)
+        # y: 560 - 90 = 470, against the anchor's top edge.
+        # x: shifted along the cross axis to keep the right edge at 800.
+        assert content.layout_rect == (680, 470, 120, 90)
+
+    def test_anchored_content_keeps_its_side_when_neither_fits(self) -> None:
+        """Nowhere to go: stay put and overflow, rather than pick a surprise."""
+        pos = OverlayPosition.anchored(lambda: (100, 300, 40, 40))
+        content = _FixedWidget(100, 5000)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (100, 340, 100, 5000)
+
+    def test_flip_false_stays_below_and_overflows(self) -> None:
+        pos = OverlayPosition.anchored(lambda: (760, 560, 40, 40), flip=False)
+        content = _FixedWidget(120, 90)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        assert content.layout_rect == (680, 600, 120, 90)
+
+    def test_flip_mirrors_the_offset_so_the_gap_stays_a_gap(self) -> None:
+        """A 10px gap below has to become a 10px gap above, not a 10px overlap."""
+        pos = OverlayPosition.anchored(lambda: (100, 560, 40, 40), offset=(0.0, 10.0))
+        content = _FixedWidget(50, 100)
+        placed = pos.make_position_content(content)
+        placed.layout(800, 600)
+        # anchor top is 560, so the content's bottom sits at 550.
+        assert content.layout_rect == (100, 450, 50, 100)
 
 
 # ---------------------------------------------------------------------------
