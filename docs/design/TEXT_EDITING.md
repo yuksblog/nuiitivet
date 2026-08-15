@@ -59,6 +59,8 @@ Three rules make that mirror behave:
 
 A read-only observable (a computed or mapped value) has nowhere to write, so it is displayed and not written to. Such a field is still editable, and the edits go only to the internal cell; pair it with `disabled=True` to make that visible.
 
+**What would remove the mirror.** Accepting an `ObservableProtocol[TextEditingValue]` as `value` — a cell whose type matches the internal one — would make the field a plain storage substitution like every other input widget, and the three rules above would have nothing left to reconcile. It is not offered, because the only thing it buys is letting the application own the caret, and the reconciliation above is what a `str` cell needs anyway: every caller who wants to bind a string still needs it. Reasons to revisit, none of them present today: an application that has to restore a caret position (across navigation, or a re-created field); a second widget editing the same text alongside the field; or a caller who needs to drive the selection programmatically, which the widget's own `value` setter cannot express.
+
 ### Input Filters
 
 An input filter is a rule applied to text between a keystroke and the value cell — `widgets/input_filter.py`, exposed as `input_filter`.
