@@ -24,7 +24,7 @@ class SearchScreen(nv.ComposableWidget):
         return nv.Column(
             gap=16,
             children=[
-                nv.TextField(value=self.query, label="Search", width=320),
+                nv.SearchBar(self.query, placeholder="Search", width=420),
                 nv.ForEach(self.results, lambda item, index: nv.Text(item)),
             ],
         )

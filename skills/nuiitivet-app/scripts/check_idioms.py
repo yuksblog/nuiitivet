@@ -92,6 +92,10 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "await nv.Overlay.of(self).dialog(nv.BasicDialog(...)); close with overlay.close(v)."),
     (re.compile(r"\bScaffoldMessenger\b"), "Flutter",
      "nv.Overlay.of(self).snackbar(\"...\")."),
+    (re.compile(r"\bshowSearch\s*\(|\bSearchDelegate\b|\bSearchAnchor\b"), "Flutter",
+     "No full-screen search widget: put nv.SearchBar(obs, placeholder=...) in a screen "
+     "you lay out yourself, or use nv.DockedSearchBar(obs, content=widget) for a "
+     "dropdown. width names the box; the bar is inset inside it."),
     (re.compile(r"\bpushReplacement\b|\bpushNamed\b|\bpopUntil\b"), "Flutter",
      "No push_replacement / pop_until in Nuiitivet: push a widget or Intent with "
      "Navigator.of(self).push(...); go back with Navigator.of(self).pop()."),

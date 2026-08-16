@@ -13,6 +13,43 @@ Collected: 2026-05-26
 - Primary surfaces stay on `surface-container-high` or `surface-container-low`, text and icon roles mostly stay on neutral or neutral-variant roles, and both search surfaces expose a `surface-tint` layer color of `#6750A4`.
 - Search bar and search view text both resolve to body-large typography metrics: `Roboto 16pt/24pt 400 0.5pt`.
 
+## Variant attribution and implementation scope
+
+Added when Search was implemented (`SearchBar` / `DockedSearchBar`). The viewer's
+**Color** group is not split by variant, so the tables below cannot say which of
+contained / Divided consumes those tokens. That was settled by hand; recording it
+here so it is not re-derived from a table that cannot answer it.
+
+Only the **contained (expressive)** variant is implemented. Baseline / **Divided**
+is deprecated, so every `Layout and Text / Divided (baseline)` row is a non-target.
+
+| Token | Attribution | Basis |
+|-------|-------------|-------|
+| `search-view.container.elevation`, `search-bar.container.elevation` | **Divided — not implemented** | surface-tint and elevation are the mechanism M3 superseded with the `surface-container-*` roles; the expressive samples show no shadow on either search surface |
+| `search-*.container.surface-tint-layer.color` | **Divided — not implemented** | same; the viewer flags the search-bar row with a warning glyph (noted in the table below) |
+| `search-view.divider.color` | **Divided — not implemented** | contained separates with `contained.docked.bar-results.gap` = 2dp, not with a line — which is what the two variant names contrast |
+| `search-bar.contained.leading/trailing-margin` (24dp) and `search-view.contained.leading/trailing-margin` (12dp) | **contained — implemented as one animated property** | the Measurements row `Leading padding — Unfocused: 24dp, focused: 12dp` is filed under `Search bar`; the two endpoints sit in different token sets only because the View set takes over after activation |
+| `search-view.full-screen.*`, `search-view.contained.background.color` | **contained, but out of widget scope** | the full-screen container is the application's screen to lay out; nuiitivet ships no full-screen search widget |
+
+Three containers, of which two are widgets:
+
+| Container | Widget |
+|-----------|--------|
+| Search bar container | `SearchBar` |
+| Docked container | `DockedSearchBar` (bar + container) |
+| Full-screen container | none — the app lays out its own screen and places a `SearchBar` in it |
+
+Also unimplemented, deliberately: `search-bar.avatar.*` and
+`search-bar.contained.avatar.target-size` (no avatar slot),
+`search-bar.contained.trailing-actions.*` (a single generic trailing icon
+instead), and any disabled state — the `Search - Bar` colour group specifies
+Enabled, Hovered, Pressed and Focused only.
+
+Note one internal inconsistency in this document: `full-screen.container.shape`
+is listed under **Common tokens** in the table below, but the Implementation
+Notes at the end assign "no rounding for full-screen results" to Divided. Neither
+claim was relied on, since the full-screen container is out of scope.
+
 ## Tokens & Specs
 
 ### Token sets discovered

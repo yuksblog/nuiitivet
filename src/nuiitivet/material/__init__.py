@@ -63,6 +63,8 @@ if TYPE_CHECKING:
     from .symbols import Symbol, Symbols
     from .text_fields import TextField
     from .styles.text_field_style import TextFieldStyle
+    from .search import DockedSearchBar, SearchBar
+    from .styles.search_bar_style import DockedSearchBarStyle, SearchBarStyle
     from .styles.text_style import TextStyle
     from .styles.icon_style import IconStyle
     from .styles.divider_style import DividerStyle
@@ -158,6 +160,10 @@ __all__ = [
     "FabSize",
     "TextField",
     "TextFieldStyle",
+    "SearchBar",
+    "DockedSearchBar",
+    "SearchBarStyle",
+    "DockedSearchBarStyle",
     "TextStyle",
     "IconStyle",
     "DividerStyle",
@@ -270,6 +276,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "FabSize": ("styles.button_size", "FabSize"),
     "TextField": ("text_fields", "TextField"),
     "TextFieldStyle": ("styles.text_field_style", "TextFieldStyle"),
+    "SearchBar": ("search", "SearchBar"),
+    "DockedSearchBar": ("search", "DockedSearchBar"),
+    "SearchBarStyle": ("styles.search_bar_style", "SearchBarStyle"),
+    "DockedSearchBarStyle": ("styles.search_bar_style", "DockedSearchBarStyle"),
     "TextStyle": ("styles.text_style", "TextStyle"),
     "IconStyle": ("styles.icon_style", "IconStyle"),
     "DividerStyle": ("styles.divider_style", "DividerStyle"),

@@ -181,6 +181,69 @@ Setting `on_submit` also makes the field claim the `Enter` key — see [Interact
 
 ---
 
+## SearchBar
+
+A search input. `DockedSearchBar` is the same bar with a panel anchored below it.
+
+![SearchBar](../../assets/material_widgets_search_bar.png)
+
+`value` binds exactly as `TextField`'s does — pass an `Observable` and what the user types is written into it.
+
+```python
+nv.SearchBar(self.query, placeholder="Search fruit", width=440)
+```
+
+**`DockedSearchBar`** puts one widget in that panel, as `content`. It holds whatever the query currently calls for — recent searches, suggestions, results, a spinner, "no matches" — and you swap what is inside it from your own observables:
+
+```python
+nv.DockedSearchBar(
+    self.query,
+    placeholder="Search fruit",
+    content=nv.Column(
+        children=[nv.ForEach(self.matches, lambda item, index: nv.Text(item))],
+    ),
+    on_submit=self.search,
+    width=440,
+)
+```
+
+`content` stays live while the panel is closed, so whatever drives it keeps running. Gate that with your own observable if it is expensive.
+
+### Opening and closing the panel
+
+The widget drives one observable from four triggers:
+
+| Trigger | Effect |
+| --- | --- |
+| The bar takes focus | Open — including on an empty query, where MD3 shows recent searches |
+| The user edits the text | Open, even if it was just closed |
+| `Enter` | Close, unless you pass `close_on_enter=False` |
+| Focus leaves, or a tap outside | Close |
+
+That default gives you the usual desktop loop for free: `Enter` puts the panel away, `on_submit` renders results on the page, and typing again brings the panel back. To keep the results *in* the panel instead, pass `close_on_enter=False` and swap `content` when the search returns.
+
+Only *user* edits reopen it. Assigning to the bound observable does not, so filling the bar in after the user picks something leaves the panel closed:
+
+```python
+def pick(self, item: str) -> None:
+    self.query.value = item      # the panel stays closed
+    self.search(item)
+```
+
+Pass `is_open=self.panel_open` to drive the panel from your own `Observable[bool]`, or to react to it opening and closing. Writing to it opens and closes the panel directly; omit it and the widget keeps its own, readable as `bar.is_open`.
+
+In a window too short for the panel, it keeps its minimum height and extends past the bottom edge rather than covering the bar.
+
+`Escape` does not close the panel yet — click outside it, or write `False` to `is_open`.
+
+**There is no full-screen search widget.** Lay the screen out yourself and put a `SearchBar` in it; the bar keeps its focus animation there.
+
+**Not supported:** an avatar slot, multiple trailing actions, and a disabled state. `trailing_icon` is a single generic slot — clearing the query is one thing you can wire it to, not built-in behaviour.
+
+[API Reference](../../api/material.md#nuiitivet.material.SearchBar)
+
+---
+
 ## Card
 
 Container for grouped content. Three variants — Filled, Outlined, Elevated.

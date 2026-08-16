@@ -129,6 +129,7 @@ SAMPLES = [
     ("samples/design-system/material_widgets/selection_controls.py", "material_widgets_selection_controls.png"),
     ("samples/design-system/material_widgets/slider.py", "material_widgets_slider.png"),
     ("samples/design-system/material_widgets/text_field.py", "material_widgets_text_field.png"),
+    ("samples/design-system/material_widgets/search_bar.py", "material_widgets_search_bar.png"),
     ("samples/design-system/material_widgets/card.py", "material_widgets_card.png"),
     ("samples/design-system/material_widgets/chip.py", "material_widgets_chip.png"),
     ("samples/design-system/material_widgets/badge.py", "material_widgets_badge.png"),

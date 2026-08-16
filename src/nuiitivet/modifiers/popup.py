@@ -64,6 +64,8 @@ class PopupBox(Widget):
         target_anchor: AlignmentLike = "bottom-left",
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
+        flip: bool = True,
+        shift: bool = True,
         transition_spec: Optional["TransitionSpec"] = None,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -80,6 +82,10 @@ class PopupBox(Widget):
             target_anchor: Reference point on the anchor widget.
             content_anchor: Reference point on the popup content.
             offset: Additional ``(dx, dy)`` offset in pixels.
+            flip: Whether the content may be placed against the anchor's
+                opposite edge when it does not fit against the anchored one.
+            shift: Whether the content may slide along the cross axis to stay
+                inside the viewport.
             transition_spec: Optional transition passed to ``Overlay.show``.
             width: Width sizing for this wrapper.
             height: Height sizing for this wrapper.
@@ -89,6 +95,8 @@ class PopupBox(Widget):
         self._target_anchor = target_anchor
         self._content_anchor = content_anchor
         self._offset = offset
+        self._flip = bool(flip)
+        self._shift = bool(shift)
         self._transition_spec = transition_spec
         self._passthrough = bool(passthrough)
         self._dismiss_on_outside_tap = _resolve_dismiss_on_outside_tap(self._passthrough, dismiss_on_outside_tap)
@@ -163,6 +171,8 @@ class PopupBox(Widget):
             target_anchor=self._target_anchor,
             content_anchor=self._content_anchor,
             offset=self._offset,
+            flip=self._flip,
+            shift=self._shift,
         )
         try:
             overlay = Overlay.of(self, root=True)
@@ -303,6 +313,8 @@ class PopupModifier(ModifierElement):
     target_anchor: AlignmentLike = "bottom-left"
     content_anchor: AlignmentLike = "top-left"
     offset: Tuple[float, float] = (0.0, 0.0)
+    flip: bool = True
+    shift: bool = True
     transition_spec: Optional["TransitionSpec"] = None
 
     def apply(self, widget: Widget) -> Widget:
@@ -323,6 +335,8 @@ class PopupModifier(ModifierElement):
             target_anchor=self.target_anchor,
             content_anchor=self.content_anchor,
             offset=self.offset,
+            flip=self.flip,
+            shift=self.shift,
             transition_spec=self.transition_spec,
             width=widget.width_sizing,
             height=widget.height_sizing,
@@ -338,6 +352,8 @@ def popup(
     target_anchor: AlignmentLike = "bottom-left",
     content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
+    flip: bool = True,
+    shift: bool = True,
     transition_spec: Optional["TransitionSpec"] = None,
 ) -> PopupModifier:
     """Return an anchored popup overlay modifier for the modified widget.
@@ -371,6 +387,13 @@ def popup(
         content_anchor: Reference point on the content widget (default
             ``"top-left"``).
         offset: Additional ``(dx, dy)`` offset in screen pixels.
+        flip: Place the content against the anchor's opposite edge when it does
+            not fit against the anchored one — a dropdown with no room below
+            opens above instead. If neither side fits, the anchored side is kept
+            and the content overflows.
+        shift: Slide the content along the *cross* axis to keep it inside the
+            viewport. The content is never moved along the placement axis, so it
+            cannot end up covering the anchor.
         transition_spec: Passed directly to :meth:`Overlay.show` for enter/exit
             animation.
 
@@ -408,5 +431,7 @@ def popup(
         target_anchor=target_anchor,
         content_anchor=content_anchor,
         offset=offset,
+        flip=flip,
+        shift=shift,
         transition_spec=transition_spec,
     )

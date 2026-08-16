@@ -1,25 +1,92 @@
 # Popup Modifiers
 
-Popup modifiers attach transient overlay content to a widget. They are useful for menus, dropdowns, and tooltips that appear anchored to a specific widget.
+Popup modifiers attach transient overlay content to a widget — menus, dropdowns, and tooltips that float above the widget tree and are not clipped by it.
 
-The family is `popup`, `tooltip`, and `context_menu`. `popup` and `tooltip` share the same placement model: a `target_anchor` point on the anchor widget is lined up with a `content_anchor` point on the overlay content, with an optional pixel `offset`. `context_menu` anchors to the click point instead of the widget.
+Pick the one that matches how the content opens:
+
+| Modifier | Opens when | Anchored to | Closes when |
+| --- | --- | --- | --- |
+| [`popup`](#popup) | your `Observable[bool]` turns `True` | the widget's rect | you set it back to `False`, or an outside tap |
+| [`tooltip`](#tooltip) | the pointer hovers or focus arrives | the widget's rect | the pointer leaves, after a delay |
+| [`context_menu`](#context_menu) | the widget is right-clicked | the click point | an outside tap |
 
 ## popup
 
-The `popup` modifier opens a floating overlay anchored to the widget. The overlay sits above the widget tree and is not clipped.
+`popup` opens a floating overlay anchored to the widget it modifies. You own the open state: pass an `Observable[bool]` as `is_open` and toggle it.
 
-Use `is_open` to control when the overlay is shown. Pass an `Observable[bool]` and toggle it in response to user actions.
+```python
+import nuiitivet.material as nv
 
-Behaviour is described by two input axes rather than by a scenario name:
+is_open: nv.Observable[bool] = nv.Observable(False)
+
+button.modifier(nv.popup(nv.Menu(items=[...]), is_open=is_open))
+```
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `Widget` | required | Widget shown in the overlay |
+| `is_open` | `Observable[bool] \| None` | `None` | Open state you control |
+| `passthrough` | `bool` | `False` | Whether input reaches the UI behind the popup |
+| `dismiss_on_outside_tap` | `bool \| None` | `None` | Whether an outside tap closes it; follows `passthrough` |
+| `target_anchor` | placement string | `"bottom-left"` | Reference point on the **anchor widget** |
+| `content_anchor` | placement string | `"top-left"` | Reference point on the **content** |
+| `offset` | `(float, float)` | `(0.0, 0.0)` | Extra `(dx, dy)` in pixels |
+| `flip` | `bool` | `True` | May open against the anchor's opposite edge when short of room |
+| `shift` | `bool` | `True` | May slide sideways to stay in view |
+| `transition_spec` | `TransitionSpec \| None` | `None` | Entry/exit animation |
+
+### Blocking or floating
+
+Two calls cover almost every case:
 
 | Call | Result |
 | --- | --- |
-| `popup(x)` | blocks input behind it, closes on an outside tap — the menu shape |
-| `popup(x, passthrough=True)` | lets input through, does not close on an outside tap — the toast shape |
+| `popup(x, is_open=…)` | Blocks input behind it and closes on an outside tap — the **menu** shape |
+| `popup(x, is_open=…, passthrough=True)` | Lets input through and stays open on an outside tap — the **toast** shape |
 
-`dismiss_on_outside_tap` defaults to `None`, which resolves to `not passthrough`, so each of the two combinations is spellable with a single flag. Setting `passthrough=True` together with an explicit `dismiss_on_outside_tap=True` raises `ValueError`: a layer that lets a tap through cannot also observe it.
+You rarely set `dismiss_on_outside_tap` yourself — left at `None` it follows `passthrough`. Set it explicitly only for a blocking popup that must *not* close on an outside tap (`passthrough=False, dismiss_on_outside_tap=False`). Combining `passthrough=True` with `dismiss_on_outside_tap=True` raises `ValueError`: a popup that lets a tap through cannot also observe it.
 
-### Menu (default)
+Leaving `is_open` at `None` is legal, but the modifier then owns the observable and you have nothing to open the popup with. Always pass your own.
+
+### Placement
+
+`target_anchor` names a point on the anchor widget, `content_anchor` names the point on the content that is placed onto it, and `offset` nudges the result. The defaults (`"bottom-left"` → `"top-left"`) hang the content below the widget, left edges aligned.
+
+Both accept `"top-left"`, `"top-center"`, `"top-right"`, `"center-left"`, `"center"`, `"center-right"`, `"bottom-left"`, `"bottom-center"`, `"bottom-right"`.
+
+```python
+# Centered above the widget, with a 4 px gap
+nv.popup(
+    panel,
+    is_open=is_open,
+    target_anchor="top-center",
+    content_anchor="bottom-center",
+    offset=(0.0, -4.0),
+)
+```
+
+The anchor rect is re-read on every layout pass, so the content follows the widget as it moves or resizes.
+
+### Staying on screen
+
+A popup near a window edge may not fit where you anchored it. Two behaviours handle that, both on by default:
+
+| | What it does |
+| --- | --- |
+| `flip` | No room below the anchor? Open against its **top** edge instead — and mirror left/right the same way. The `offset` is mirrored with it, so a gap stays a gap. If neither side fits, the anchored side is kept and the content overflows. |
+| `shift` | Slide the content along the **cross** axis to stay in view — horizontally for a popup below its anchor, vertically for one beside it. |
+
+Neither ever moves the content along the placement axis, so **a popup cannot end up covering its own anchor**.
+
+Turn `flip` off when the content must stay on the side you asked for, and let it overflow the window instead:
+
+```python
+field.modifier(nv.popup(calendar, is_open=is_open, offset=(0.0, 2.0), flip=False))
+```
+
+`DockedDatePicker` and `DockedSearchBar` both do this — in a short window their panels stay below the field rather than jumping above it and hiding what you are typing into.
+
+### Example: menu
 
 ```python
 import nuiitivet.material as nv
@@ -65,7 +132,7 @@ anchor = (
 
 ![popup Modifier (menu)](../../assets/modifier_popup_menu.png)
 
-### Pass-through panel
+### Example: pass-through panel
 
 With `passthrough=True` the overlay floats above the UI without blocking it, and an outside click goes to whatever is underneath instead of closing the popup.
 
@@ -120,9 +187,9 @@ anchor = (
 
 ## tooltip
 
-The `tooltip` modifier attaches tooltip behavior to any widget. The tooltip opens automatically when the user hovers or focuses the widget (on desktop) or long-presses it (on touch), and closes automatically after `dismiss_delay` seconds.
+The `tooltip` modifier attaches tooltip behavior to any widget. The tooltip opens when the user hovers or focuses the widget (on desktop) or long-presses it (on touch), and closes automatically `dismiss_delay` seconds after they leave.
 
-Unlike `popup`, `tooltip` has no external open state. Its lifecycle is managed entirely by pointer and focus events. It is a pass-through popup, so it never blocks the UI underneath.
+Unlike `popup`, `tooltip` has no open state to wire up — its lifecycle is driven entirely by pointer and focus events. It always floats, so it never blocks the UI underneath.
 
 ```python
 import nuiitivet.material as nv
@@ -140,6 +207,8 @@ target = nv.Container(
 ![tooltip Modifier](../../assets/modifier_popup_tooltip.png)
 
 The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.material`, but any widget is accepted.
+
+`delay` (default `0.5`) is how long the pointer must rest before it opens, `dismiss_delay` (default `1.5`) how long it lingers after leaving. Placement works exactly as in [popup](#placement), with defaults that centre the tooltip above the widget (`target_anchor="top-center"`, `content_anchor="bottom-center"`, `offset=(0.0, -4.0)`).
 
 ## context_menu
 
@@ -171,34 +240,8 @@ tile = nv.Container(
 )
 ```
 
-`content_anchor` decides which corner of the menu lands on the click point (default `"top-left"`, so the menu hangs down-right of the cursor). There is no `target_anchor`: a point has no extent.
-
-The menu is kept inside the viewport, so a right-click near the right or bottom edge pulls it back into view instead of clipping it.
+There is no `target_anchor` here — a point has no extent, so `content_anchor` alone decides which corner of the menu lands on the click point (default `"top-left"`, so the menu hangs down-right of the cursor). A right-click near the right or bottom edge pulls the menu back into view instead of clipping it.
 
 A second right-click elsewhere dismisses the open menu rather than moving it, because outside-tap dismissal fires for any button.
 
 For an imperative variant — placing arbitrary content at a click point without a menu — use [`OverlayPosition.at_pointer()`](../overlay/primitives.md#relative-to-a-point) directly.
-
-### Placement
-
-`popup` and `tooltip` accept `target_anchor`, `content_anchor`, and `offset` parameters to control placement relative to the anchor widget. (`context_menu` anchors to a point, so it takes `content_anchor` and `offset` only.)
-
-| Parameter        | Description                                     | Default            |
-|------------------|-------------------------------------------------|--------------------|
-| `target_anchor`  | Reference point on the **anchor widget**        | See each modifier  |
-| `content_anchor` | Reference point on the **overlay content**      | See each modifier  |
-| `offset`         | Additional `(dx, dy)` pixel offset              | `(0.0, 0.0)`       |
-
-Common placement strings: `"top-left"`, `"top-center"`, `"top-right"`, `"bottom-left"`, `"bottom-center"`, `"bottom-right"`, `"center"`.
-
-```python
-# Place tooltip above the widget, centered
-.modifier(
-    nv.tooltip(
-        nv.Tooltip("Above center"),
-        target_anchor="top-center",
-        content_anchor="bottom-center",
-        offset=(0.0, -4.0),
-    )
-)
-```
