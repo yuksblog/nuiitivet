@@ -80,7 +80,6 @@ class EditableText(InteractionHostMixin, Widget):
         on_user_edit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_submit: Optional[StrCallback] = None,
-        on_enter_key: Optional[StrCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
@@ -111,10 +110,10 @@ class EditableText(InteractionHostMixin, Widget):
         # closed, say) would otherwise mistake its own write-back for input.
         self._on_user_edit = on_user_edit
         self._on_focus_change_callback = on_focus_change
+        # Fires on every Enter, and never on focus loss: it reports the user
+        # asking for an action, not the value settling. Its presence is also
+        # what makes the field claim the Enter key.
         self._on_submit = on_submit
-        # Every Enter press, where ``on_submit`` reports only the ones that
-        # carry a changed value. Either one makes the field claim the key.
-        self._on_enter_key = on_enter_key
         # Tracks whether the most recent input event committed an IME
         # composition. On macOS the commit arrives as ``on_text`` *before* the
         # Enter key's ``on_key_press`` (the composition is already cleared by
@@ -159,8 +158,9 @@ class EditableText(InteractionHostMixin, Widget):
 
         initial_value = TextEditingValue(text=initial_text, selection=TextRange(len(initial_text), len(initial_text)))
         setattr(self, "_state_internal", initial_value)
-        # Baseline for the "changed since the last commit" guard on on_submit.
-        self._last_submitted_text = initial_text
+        # The last text handed to the application, by either shape of the
+        # announcement. See ``_announce``.
+        self._announced_text = initial_text
 
         # Focus handling
         self.add_node(
@@ -269,9 +269,7 @@ class EditableText(InteractionHostMixin, Widget):
                     ),
                 )
                 self._state_internal.value = new_val
-                # The application set this text, so it is already "seen": a
-                # later focus loss must not report it back as a fresh commit.
-                self._last_submitted_text = new_text
+                self._announced_text = new_text
                 self.invalidate()
                 # Notify listeners so that decorators (e.g. floating label
                 # state in TextField) can synchronize with externally-driven
@@ -306,9 +304,8 @@ class EditableText(InteractionHostMixin, Widget):
         if current.text == new_text:
             return
 
-        # Assigned by code, not typed: no input filter (a filter governs what
-        # is typeable, not what the owner may store) and no pending commit.
-        self._last_submitted_text = new_text
+        # Assigned by code, not typed: no input filter, since a filter governs
+        # what is typeable rather than what the owner may store.
         new_val = TextEditingValue(text=new_text, selection=TextRange(len(new_text), len(new_text)))
         self._update_value(new_val, user_edit=False)
 
@@ -325,21 +322,13 @@ class EditableText(InteractionHostMixin, Widget):
 
         self._state_internal.value = new_value
         self.invalidate()
-        self._write_back(new_value)
+        self._announce(new_value)
 
-        if current.text == new_value.text:
-            # A caret or selection move. Neither callback describes it.
-            return
-
-        if self._on_change:
-            invoke_event_handler(
-                self._on_change,
-                new_value.text,
-                error_key="editable_text_on_change",
-                error_msg="EditableText on_change raised",
-                owner_name=type(self).__name__,
-            )
-        if user_edit and self._on_user_edit:
+        if user_edit and self._on_user_edit and current.text != new_value.text:
+            # Deliberately *not* held back during a composition, unlike the
+            # announcement above: this one reports that the user is typing, and
+            # they are typing while they convert. A suggestion panel watching
+            # it should be open throughout.
             invoke_event_handler(
                 self._on_user_edit,
                 new_value.text,
@@ -348,8 +337,12 @@ class EditableText(InteractionHostMixin, Widget):
                 owner_name=type(self).__name__,
             )
 
-    def _write_back(self, new_value: TextEditingValue) -> None:
-        """Push the edited text into the bound observable, if there is one.
+    def _announce(self, new_value: TextEditingValue) -> None:
+        """Publish the text the application is meant to see.
+
+        The bound observable and ``on_change`` are the same signal in two
+        shapes, so both are driven from here under one condition and can never
+        disagree about what the application saw.
 
         Held back while an IME composition is active: the provisional text of a
         half-converted composition is not a value the application should see,
@@ -357,19 +350,40 @@ class EditableText(InteractionHostMixin, Widget):
         commits through ``_handle_text``, which lands here with the composing
         range cleared.
 
-        The guard compares against the observable's own value rather than the
-        previous text, so ending a composition reconciles even when this
-        particular update left the text alone. The loop that the write starts
-        terminates in ``_on_external_change``, which returns early once the
-        text it is handed already matches.
+        The guard is a baseline rather than "did the text change in this
+        update", because ending a composition has to reconcile even when it
+        left the text alone -- confirming a single-character candidate clears
+        the composing range without touching the text, and that is the moment
+        the application first learns of it. A caret or selection move changes
+        nothing here and announces nothing.
+        """
+        if new_value.is_composing or new_value.text == self._announced_text:
+            return
+        self._announced_text = new_value.text
+
+        self._write_back(new_value.text)
+        if self._on_change:
+            invoke_event_handler(
+                self._on_change,
+                new_value.text,
+                error_key="editable_text_on_change",
+                error_msg="EditableText on_change raised",
+                owner_name=type(self).__name__,
+            )
+
+    def _write_back(self, text: str) -> None:
+        """Push the edited text into the bound observable, if there is one.
+
+        The loop that the write starts terminates in ``_on_external_change``,
+        which returns early once the text it is handed already matches.
         """
         obs = self._external_writable
-        if obs is None or new_value.is_composing:
+        if obs is None:
             return
         try:
-            if obs.value == new_value.text:
+            if obs.value == text:
                 return
-            obs.value = new_value.text
+            obs.value = text
         except Exception:
             exception_once(
                 _logger,
@@ -511,12 +525,6 @@ class EditableText(InteractionHostMixin, Widget):
             # Clear the pointer-origin marker so the next keyboard focus
             # acquisition correctly shows the focus ring.
             self._focus_from_pointer = False
-            # Leaving the field commits it, the same as pressing Enter. Without
-            # this, a field whose value is finished in ``on_submit`` (parsing,
-            # padding an incomplete "1." to "1.0") is only ever finished by the
-            # users who press Enter, and Tabbing away leaves the half-typed
-            # text behind.
-            self._submit_if_changed()
         self.invalidate()
         if self._on_focus_change_callback:
             invoke_event_handler(
@@ -527,27 +535,6 @@ class EditableText(InteractionHostMixin, Widget):
                 error_msg="EditableText on_focus_change raised",
                 owner_name=type(self).__name__,
             )
-
-    def _submit_if_changed(self) -> None:
-        """Fire ``on_submit`` if the text moved since the last commit.
-
-        The guard is what makes committing on focus loss safe to add: an
-        ``on_submit`` that runs a search or saves a record would otherwise fire
-        every time the field is merely tabbed through, and repeated Enter on an
-        unchanged value would repeat the work.
-        """
-        if self._on_submit is None:
-            return
-        text = self._state_internal.value.text
-        if text == self._last_submitted_text:
-            return
-        self._last_submitted_text = text
-        invoke_event_handler(
-            self._on_submit,
-            text,
-            error_key="editable_text_on_submit",
-            error_msg="EditableText on_submit raised",
-        )
 
     def _filter_input(self, old: TextEditingValue, new: TextEditingValue) -> TextEditingValue:
         """Run the configured input filter over an insertion.
@@ -727,23 +714,18 @@ class EditableText(InteractionHostMixin, Widget):
             # same keystroke just before the Enter reached us.
             if current_value.is_composing or ime_just_committed:
                 return False
-            if self._on_submit is None and self._on_enter_key is None:
+            if self._on_submit is None:
                 return False
-            if self._on_enter_key is not None:
-                # Unguarded, unlike on_submit: a caller listening for the key
-                # itself (dismissing a panel, say) wants every press, and
-                # ``_submit_if_changed`` deliberately swallows a repeat of an
-                # unchanged value. Runs first so that on_submit, which is where
-                # an application does its work, gets the last word.
-                invoke_event_handler(
-                    self._on_enter_key,
-                    current_value.text,
-                    error_key="editable_text_on_enter_key",
-                    error_msg="EditableText on_enter_key raised",
-                    owner_name=type(self).__name__,
-                )
-            if self._on_submit is not None:
-                self._submit_if_changed()
+            # Every press, with no "has it changed?" guard: pressing Enter
+            # again on the same query means run it again, and only the caller
+            # knows whether repeating its work is wasteful.
+            invoke_event_handler(
+                self._on_submit,
+                current_value.text,
+                error_key="editable_text_on_submit",
+                error_msg="EditableText on_submit raised",
+                owner_name=type(self).__name__,
+            )
             return True
 
         is_ctrl = bool(modifier_keys & (MOD_CTRL | MOD_META))

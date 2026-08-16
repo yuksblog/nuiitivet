@@ -67,7 +67,9 @@ from nuiitivet.rendering.skia import (
 )
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.widgeting.callbacks import invoke_event_handler
 from nuiitivet.widgets.editable_text import EditableText
+from nuiitivet.widgets.interaction import FocusChangeCallback, FocusSource
 from nuiitivet.widgets.input_filter import InputFilterLike
 
 # The "decorative Icon vs tappable IconButton" rule is identical for a search
@@ -114,7 +116,7 @@ class _SearchBarCore(InteractiveWidget):
         on_change: Optional[Callable[[str], None]] = None,
         on_user_edit: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
-        on_enter_key: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         style: Optional[SearchBarStyle] = None,
     ) -> None:
@@ -133,6 +135,7 @@ class _SearchBarCore(InteractiveWidget):
         self._placeholder = placeholder
         self._on_change = on_change
         self._on_submit = on_submit
+        self._on_focus_change = on_focus_change
 
         # Read by the pane (to drive the margin animation) and by
         # DockedSearchBar (to open the docked container).
@@ -160,10 +163,9 @@ class _SearchBarCore(InteractiveWidget):
             # would add nothing.
             on_user_edit=on_user_edit,
             on_focus_change=self._handle_editable_focus_change,
-            # EditableText claims Enter only when it has one of these, and
+            # EditableText claims Enter only when it has an on_submit, and
             # declines it otherwise so the key can still reach a shortcut.
             on_submit=self._handle_editable_submit if on_submit is not None else None,
-            on_enter_key=on_enter_key,
             input_filter=input_filter,
             text_color=resolved.input_text_color,
             cursor_color=resolved.cursor_color,
@@ -239,6 +241,7 @@ class _SearchBarCore(InteractiveWidget):
         self._editable.request_focus_from_pointer()
 
     def _handle_editable_change(self, new_text: str) -> None:
+        # The placeholder shows and hides with the text.
         self.invalidate()
         if self._on_change is not None:
             self._on_change(new_text)
@@ -251,9 +254,18 @@ class _SearchBarCore(InteractiveWidget):
         except Exception:
             exception_once(_logger, "search_bar_on_submit_exc", "SearchBar on_submit raised")
 
-    def _handle_editable_focus_change(self, focused: bool, source) -> None:
+    def _handle_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self.focused.value = bool(focused)
         self.invalidate()
+        if self._on_focus_change is not None:
+            invoke_event_handler(
+                self._on_focus_change,
+                focused,
+                source,
+                error_key="search_bar_on_focus_change",
+                error_msg="SearchBar on_focus_change raised",
+                owner_name=type(self).__name__,
+            )
 
     # ------------------------------------------------------------------
     # Layout / paint
@@ -624,9 +636,17 @@ class SearchBar(ComposableWidget):
         on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
             The slot is generic — clearing the query is one use of it, not a
             built-in behaviour.
-        on_change: Callback invoked as the query changes.
-        on_submit: Callback invoked with the query when Enter is pressed, or
-            when focus leaves after an edit.
+        on_change: Callback invoked with the query as it changes, for a side
+            effect of the change. The observable bound to *value* carries the
+            same signal without it.
+        on_submit: Callback invoked with the query when Enter is pressed.
+            Fires on every press, including a repeat on an unchanged query,
+            and never on focus loss.
+        on_focus_change: Callback invoked as focus arrives and leaves, with
+            ``(focused, source)`` -- the same signature as ``focusable()``. It
+            can arrive more than once with ``focused=True`` for a single
+            acquisition, because the *source* is re-announced when the user
+            switches from keyboard to pointer; ``focused=False`` arrives once.
         input_filter: Rule applied to text as the user types it.
         width: Sizing for the **box**, not for the bar drawn inside it. The bar
             is the box minus the margins, so ``width=440`` draws a 392dp bar
@@ -649,6 +669,7 @@ class SearchBar(ComposableWidget):
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         on_change: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[SearchBarStyle] = None,
@@ -666,6 +687,7 @@ class SearchBar(ComposableWidget):
             on_tap_trailing_icon=on_tap_trailing_icon,
             on_change=on_change,
             on_submit=on_submit,
+            on_focus_change=on_focus_change,
             input_filter=input_filter,
             style=style,
         )
@@ -724,17 +746,25 @@ class DockedSearchBar(ComposableWidget):
             exposed as :attr:`is_open`.
         close_on_enter: Whether Enter closes the container. The default suits
             a page that renders its own results; pass ``False`` to keep the
-            container up and swap ``content`` to the results instead. Named
-            for the key, not for ``on_submit``: a second Enter on an unchanged
-            query reports no submit but still puts the container away.
+            container up and swap ``content`` to the results instead. The
+            close runs before *on_submit*, so a search that wants the
+            container to stay up can reopen it from inside its own callback.
         placeholder: Supporting text shown inside the bar while it is empty.
         leading_icon: Icon source for the leading slot.
         on_tap_leading_icon: Makes the leading icon a tappable icon button.
         trailing_icon: Icon source for the trailing slot.
         on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
-        on_change: Callback invoked as the query changes.
-        on_submit: Callback invoked with the query when Enter is pressed, or
-            when focus leaves after an edit.
+        on_change: Callback invoked with the query as it changes, for a side
+            effect of the change. The observable bound to *value* carries the
+            same signal without it.
+        on_submit: Callback invoked with the query when Enter is pressed.
+            Fires on every press, including a repeat on an unchanged query,
+            and never on focus loss.
+        on_focus_change: Callback invoked as focus arrives and leaves, with
+            ``(focused, source)`` -- the same signature as ``focusable()``. It
+            can arrive more than once with ``focused=True`` for a single
+            acquisition, because the *source* is re-announced when the user
+            switches from keyboard to pointer; ``focused=False`` arrives once.
         input_filter: Rule applied to text as the user types it.
         width: Sizing for the box — see :class:`SearchBar`.
         style: Custom style configuration.
@@ -754,6 +784,7 @@ class DockedSearchBar(ComposableWidget):
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         on_change: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[DockedSearchBarStyle] = None,
@@ -769,11 +800,12 @@ class DockedSearchBar(ComposableWidget):
         # focus.
         self._is_open: Observable[bool] = is_open if is_open is not None else Observable(False)
 
-        # Closing listens for the key rather than riding on ``on_submit``:
-        # ``on_submit`` is suppressed when the query has not changed since the
-        # last commit, and a second Enter on the same query must still put the
-        # container away. EditableText declines Enter when neither hook is
-        # given, so the key stays available to a shortcut.
+        # EditableText declines Enter when it has no on_submit, so the key
+        # stays available to a shortcut. The wrapper is withheld unless Enter
+        # has something to do here -- the app's callback, closing the
+        # container, or both.
+        wants_enter = on_submit is not None or self._close_on_enter
+
         self._core = _SearchBarCore(
             value=value,
             placeholder=placeholder,
@@ -783,8 +815,8 @@ class DockedSearchBar(ComposableWidget):
             on_tap_trailing_icon=on_tap_trailing_icon,
             on_change=on_change,
             on_user_edit=self._handle_user_edit,
-            on_submit=on_submit,
-            on_enter_key=self._handle_enter_key if self._close_on_enter else None,
+            on_submit=self._handle_submit if wants_enter else None,
+            on_focus_change=on_focus_change,
             input_filter=input_filter,
             style=self._style.bar,
         )
@@ -850,14 +882,17 @@ class DockedSearchBar(ComposableWidget):
         """
         self._is_open.value = True
 
-    def _handle_enter_key(self, _text: str) -> None:
-        """Put the container away on Enter.
+    def _handle_submit(self, text: str) -> None:
+        """Close the container, then hand the query to the application.
 
-        Runs before ``on_submit`` reaches the application, so a search that
-        wants the container to stay up can reopen it from inside its own
-        callback.
+        Closing first lets a search that wants the container to stay up reopen
+        it from inside its own callback, and keeps the close from being
+        skipped when that callback raises.
         """
-        self._is_open.value = False
+        if self._close_on_enter:
+            self._is_open.value = False
+        if self._on_submit is not None:
+            self._on_submit(text)
 
     def build(self) -> Widget:
         """Return the pane, with a popup anchored to the inset bar.

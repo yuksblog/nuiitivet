@@ -133,19 +133,22 @@ API References: [HorizontalSlider](../../api/material.md#nuiitivet.material.Hori
 
 ## TextField
 
-Text input. Available as `FilledTextField` and `OutlinedTextField`, with leading icons, supporting text, and error states.
+Text input, with leading icons, supporting text and error states. The filled and outlined variants come from `style`.
 
 ![TextField](../../assets/material_widgets_text_field.png)
 
-An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it. This is the same binding every other input widget uses:
+An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it:
 
 ```python
 nv.TextField(value=self.query, label="Search")
+nv.TextField(value=self.query, label="Search", style=nv.TextFieldStyle.outlined())
 ```
 
-A read-only source (`.map(...)`, a computed value) has nowhere to write, so it is displayed only; pair it with `disabled=True` so that is visible to the user.
+A read-only source (`.map(...)`, a computed value) has nowhere to write, so it only displays; pair it with `disabled=True`.
 
-**Restricting what can be typed.** `input_filter` runs on every keystroke, before the value changes:
+### Restricting what can be typed
+
+`input_filter` runs on every keystroke, before the value changes:
 
 ```python
 nv.TextField(value=self.pin,   input_filter=nv.digits_only() | nv.max_length(4))
@@ -161,21 +164,37 @@ nv.TextField(value=self.code,  input_filter=lambda s: s.upper())
 | `nv.max_length(n)` | truncates to `n` characters |
 | `nv.matching(pattern)` | rejects the keystroke unless the whole text matches |
 
-Combine them with `|`. `allow` / `deny` / `digits_only` work one character at a time and always keep something; `matching` is a rule about the text as a whole and rejects the edit outright when it would not hold — which is what expresses "at most one decimal point".
+Combine them with `|`. `matching` is the odd one out: it judges the text as a whole and rejects the keystroke outright, which is how "at most one decimal point" is expressed.
 
-A filter says what is **typeable**, not what is **valid**. `"1."` has to be typeable or the `.` can never be entered, so `matching(r"[0-9]*\.?[0-9]*")` accepts it. Whether a finished value is acceptable belongs in `is_error` / `error_text`.
+A filter says what is **typeable**, not what is **valid** — `"1."` has to be typeable or the `.` could never be entered. Whether a finished value is acceptable belongs in `is_error` / `error_text`.
 
-**Finishing a value.** `on_submit` fires when the user presses Enter *and* when the field loses focus, in both cases only if the text changed since the last commit. It is where an incomplete but typeable value gets finished:
+### Reacting to the user
+
+| You want to | Use |
+| --- | --- |
+| Derive something from the text | the `Observable` bound to `value` — `.debounce(...)`, `.map(...)`, `.switch_map(...)` |
+| Run a side effect on every change | `on_change` |
+| Act when the user presses `Enter` | `on_submit` |
+| Act when the user arrives at, or leaves, the field | `on_focus_change` |
+
+The observable is updated with or without `on_change`, so reach for the callback only when a change has a side effect. Neither reports the provisional text of an IME composition; both arrive once it commits.
+
+**`on_submit`** fires on **every** `Enter` — including a repeat on an unchanged value — and never on focus loss. Setting it makes the field claim the `Enter` key, so a `key_shortcut("enter", ...)` elsewhere stops firing while the field is focused; see [Interaction modifiers](../modifiers/interaction.md).
+
+**`on_focus_change(focused, source)`** is where blur-time work goes: validating once the user is done, saving an inline edit, finishing a half-typed value. It can fire more than once with `focused=True`, so branch on `focused` rather than counting calls.
 
 ```python
+def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
+    if focused:
+        return
+    self.rate.value = f"{float(self.rate.value or 0):.2f}"
+
 nv.TextField(
     value=self.rate,
     input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
-    on_submit=lambda text: self.rate.set(f"{float(text or 0):.2f}"),
+    on_focus_change=self.finish_rate,
 )
 ```
-
-Setting `on_submit` also makes the field claim the `Enter` key — see [Interaction modifiers](../modifiers/interaction.md).
 
 [API Reference](../../api/material.md#nuiitivet.material.TextField)
 
@@ -220,7 +239,7 @@ The widget drives one observable from four triggers:
 | `Enter` | Close, unless you pass `close_on_enter=False` |
 | Focus leaves, or a tap outside | Close |
 
-That default gives you the usual desktop loop for free: `Enter` puts the panel away, `on_submit` renders results on the page, and typing again brings the panel back. To keep the results *in* the panel instead, pass `close_on_enter=False` and swap `content` when the search returns.
+That default gives you the usual desktop loop for free: `Enter` puts the panel away, `on_submit` renders results on the page, and typing again brings the panel back. The close runs *before* `on_submit`, so a search that wants the panel to stay up can reopen it from inside its own callback. To keep the results *in* the panel instead, pass `close_on_enter=False` and swap `content` when the search returns.
 
 Only *user* edits reopen it. Assigning to the bound observable does not, so filling the bar in after the user picks something leaves the panel closed:
 

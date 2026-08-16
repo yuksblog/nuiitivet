@@ -283,9 +283,9 @@ a field is focused.
 `key_shortcut("enter", ...)` fires even with a `TextField` focused, unless that
 field claims `Enter` itself — which it only does when an `on_submit` is set. So
 whether `Enter` reaches your binding depends on how the *field* was configured,
-which is easy to trip over. Note that `on_submit` also fires when the field
-loses focus, so a field that only needs blur-time normalization still has to set
-it, and still takes `Enter` with it. There is no notion of a dialog "default
+which is easy to trip over. A field that only needs to react to the user
+*leaving* it takes `on_focus_change` instead, and leaves `Enter` alone. There is
+no notion of a dialog "default
 action" yet; until there is, do not rely on `Enter` as a shortcut in a screen
 that also has text fields.
 

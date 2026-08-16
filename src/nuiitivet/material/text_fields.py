@@ -16,7 +16,8 @@ from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
-from nuiitivet.widgets.interaction import FocusNode, FocusSource
+from nuiitivet.widgeting.callbacks import invoke_event_handler
+from nuiitivet.widgets.interaction import FocusChangeCallback, FocusNode, FocusSource
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import (
     draw_round_rect,
@@ -140,9 +141,10 @@ class TextField(InteractiveWidget):
     def __init__(
         self,
         value: Union[str, ReadOnlyObservableProtocol[str]] = "",
-        on_change: Optional[Callable[[str], None]] = None,
         *,
+        on_change: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
         leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
@@ -165,10 +167,24 @@ class TextField(InteractiveWidget):
         Args:
             value: Initial text, or the observable holding the field's value.
                 Edits are written back to a writable observable.
-            on_change: Callback when value changes.
-            on_submit: Callback invoked with the confirmed value when the user
-                presses Enter in the field or moves focus away from it. Fires
-                only when the text changed since the last commit.
+            on_change: Callback invoked with the text as it changes, for a
+                side effect of the change. The observable bound to *value* is
+                already updated without it, and carries the same signal: the
+                two are announced together, so neither reports the provisional
+                text of an unconfirmed IME composition.
+            on_submit: Callback invoked with the text when the user presses
+                Enter. Fires on every press, including a repeat on an unchanged
+                value, and never on focus loss -- it reports a request to act,
+                not a value settling. To react to the user leaving the field,
+                use *on_focus_change*.
+            on_focus_change: Callback invoked as focus arrives and leaves,
+                with ``(focused, source)`` -- the same signature as the
+                ``focusable()`` modifier. This is where blur-triggered work
+                belongs: validating once the user has left, saving an inline
+                edit, finishing a half-typed value. It can arrive more than
+                once with ``focused=True`` for a single acquisition, because
+                the *source* is re-announced when the user switches from
+                keyboard to pointer; ``focused=False`` arrives once.
             input_filter: Rule applied to text as the user types it.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
@@ -277,6 +293,7 @@ class TextField(InteractiveWidget):
 
         self._on_change = on_change
         self._on_submit = on_submit
+        self._on_focus_change = on_focus_change
 
         # Children
         if self.leading_icon is not None:
@@ -549,7 +566,13 @@ class TextField(InteractiveWidget):
     def _handle_editable_change(self, new_text: str) -> None:
         self._update_label_state()
         if self._on_change:
-            self._on_change(new_text)
+            invoke_event_handler(
+                self._on_change,
+                new_text,
+                error_key="text_field_on_change",
+                error_msg="TextField on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _handle_editable_submit(self, value: str) -> None:
         if self._on_submit:
@@ -561,6 +584,15 @@ class TextField(InteractiveWidget):
     def _on_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self._update_label_state()
         self.invalidate()
+        if self._on_focus_change:
+            invoke_event_handler(
+                self._on_focus_change,
+                focused,
+                source,
+                error_key="text_field_on_focus_change",
+                error_msg="TextField on_focus_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Return the preferred (width, height) for this TextField."""

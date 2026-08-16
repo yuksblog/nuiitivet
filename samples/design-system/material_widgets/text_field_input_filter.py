@@ -2,8 +2,8 @@
 
 An Observable passed as ``value`` is the field's value: it is displayed, and
 what the user types is written back into it. ``input_filter`` decides what may
-be typed in the first place, and ``on_submit`` finishes the value once the user
-is done with the field (Enter, or moving focus away).
+be typed in the first place, and ``on_focus_change`` finishes the value once
+the user leaves the field.
 """
 
 from __future__ import annotations
@@ -23,13 +23,17 @@ class Form(nv.ComposableWidget):
             lambda pin, rate, code: f"pin={pin!r} rate={rate!r} code={code!r}"
         )
 
-    def _finish_rate(self, text: str) -> None:
-        """Turn a typeable value into a finished one.
+    def _finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
+        """Turn a typeable value into a finished one, once the user leaves.
 
         ``"1."`` has to be typeable or the ``.`` could never be entered, so the
-        filter accepts it and the rounding happens here instead.
+        filter accepts it and the rounding happens here instead. This belongs
+        to focus rather than to ``on_submit``: leaving the field is what
+        finishes a value, and pressing Enter is a request to *act* on it.
         """
-        self.rate.value = f"{float(text or 0):.2f}"
+        if focused:
+            return
+        self.rate.value = f"{float(self.rate.value or 0):.2f}"
 
     def build(self) -> nv.Widget:
         return nv.Container(
@@ -49,8 +53,8 @@ class Form(nv.ComposableWidget):
                         value=self.rate,
                         label="Rate (one decimal point)",
                         input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
-                        on_submit=self._finish_rate,
-                        supporting_text="Rounded to 2 decimals on Enter or focus loss",
+                        on_focus_change=self._finish_rate,
+                        supporting_text="Rounded to 2 decimals when you leave the field",
                         width=320,
                         style=nv.TextFieldStyle.outlined(),
                     ),

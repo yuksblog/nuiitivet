@@ -1,8 +1,12 @@
-"""Observable binding on EditableText (issue #565).
+"""Observable binding on EditableText (issues #565, #575).
 
 An observable passed as ``value`` is the field's value cell, not a source it
 mirrors: edits are written back to it, the same as for every other input
 widget. A read-only observable has nowhere to write, so it displays only.
+
+``on_change`` is the same signal in callback shape: both are announced from one
+place, so they can never disagree about what the application saw -- including
+across an IME composition, which neither reports until it commits.
 """
 
 from unittest.mock import MagicMock
@@ -10,6 +14,7 @@ from unittest.mock import MagicMock
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.input_filter import digits_only
+from nuiitivet.input.codes import TEXT_MOTION_LEFT
 from nuiitivet.widgets.text_editing import TextRange
 
 
@@ -156,3 +161,94 @@ def test_an_unbound_field_still_edits():
     w._handle_text("c")
 
     assert w.value == "abc"
+
+
+# ---------------------------------------------------------------------------
+# on_change and the observable are one signal (#575)
+# ---------------------------------------------------------------------------
+
+
+def _announced(**kwargs):
+    """Return (observable, on_change log) for a field bound to both."""
+    obs = Observable("")
+    seen: list[str] = []
+    w = _mounted(value=obs, on_change=seen.append, **kwargs)
+    return w, obs, seen
+
+
+def test_on_change_and_the_observable_agree_while_typing():
+    w, obs, seen = _announced()
+
+    for ch in "ab":
+        w._handle_text(ch)
+
+    assert seen == ["a", "ab"]
+    assert obs.value == "ab"
+
+
+def test_on_change_is_silent_during_an_ime_composition():
+    """The provisional text reaches neither the observable nor the callback."""
+    w, obs, seen = _announced()
+
+    w._handle_ime_composition("にほんご", 4, 0)
+
+    assert seen == []
+    assert obs.value == ""
+    assert w.value == "にほんご"  # shown, but not announced
+
+
+def test_a_committed_composition_is_announced_once_to_both():
+    w, obs, seen = _announced()
+
+    w._handle_ime_composition("にほんご", 4, 0)
+    w._handle_ime_composition("日本語", 3, 0)
+    w._handle_text("日本語")  # commit
+
+    assert seen == ["日本語"]
+    assert obs.value == "日本語"
+
+
+def test_a_commit_that_leaves_the_text_alone_is_still_announced():
+    """Confirming a one-character candidate clears the composing range only.
+
+    The text does not change at that moment, but it is the moment the
+    application first learns of it, so both shapes have to report it.
+    """
+    w, obs, seen = _announced()
+
+    w._handle_ime_composition("か", 1, 0)
+    assert seen == []
+
+    w._handle_text("か")  # confirm, same text
+
+    assert seen == ["か"]
+    assert obs.value == "か"
+
+
+def test_a_caret_move_announces_nothing():
+    w, obs, seen = _announced()
+    w._handle_text("ab")
+    seen.clear()
+
+    w._handle_text_motion(TEXT_MOTION_LEFT)
+
+    assert seen == []
+
+
+def test_a_programmatic_assignment_is_announced_to_both():
+    w, obs, seen = _announced()
+
+    w.value = "loaded"
+
+    assert seen == ["loaded"]
+    assert obs.value == "loaded"
+
+
+def test_an_unbound_field_still_announces_to_on_change():
+    """With no observable to bind, the callback is the only way to observe."""
+    seen: list[str] = []
+    w = _mounted(value="", on_change=seen.append)
+
+    w._handle_text("x")
+
+    assert seen == ["x"]
