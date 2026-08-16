@@ -136,10 +136,9 @@ def _make_obs(initial):
 def test_text_field_controlled():
     state = _make_obs("Start")
 
-    def on_change(val):
-        state.value = val
-
-    tf = TextField(value=state, on_change=on_change)
+    # The bound observable is the field's value cell: edits are written back
+    # to it directly, with no callback to wire up (#575).
+    tf = TextField(value=state)
 
     # Simulate mount to setup subscription
     tf.mount(MagicMock())

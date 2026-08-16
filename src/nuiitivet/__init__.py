@@ -85,6 +85,10 @@ from nuiitivet.input.codes import (
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 
+# Second argument of every ``on_focus_change`` callback -- ``focusable()`` and
+# the text inputs alike -- so it belongs to the public surface with them.
+from nuiitivet.widgets.interaction import FocusSource
+
 # Theme
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScale, TypeScaleToken
@@ -261,6 +265,7 @@ __all__: list[str] = [
     "BUTTON_LEFT",
     "BUTTON_MIDDLE",
     "BUTTON_RIGHT",
+    "FocusSource",
     "PointerEvent",
     "PointerEventType",
     "Shortcut",

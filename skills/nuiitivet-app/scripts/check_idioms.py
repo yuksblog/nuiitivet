@@ -92,6 +92,12 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "await nv.Overlay.of(self).dialog(nv.BasicDialog(...)); close with overlay.close(v)."),
     (re.compile(r"\bScaffoldMessenger\b"), "Flutter",
      "nv.Overlay.of(self).snackbar(\"...\")."),
+    (re.compile(r"\bTextEditingController\b"), "Flutter",
+     "No controller object: bind an Observable as the field's value, "
+     "nv.TextField(value=obs). Set the text with obs.value = ..."),
+    (re.compile(r"\bonEditingComplete\b"), "Flutter",
+     "Finishing a value on blur is nv.TextField(on_focus_change=fn), called as "
+     "(focused, source). on_submit is Enter only and never fires on blur."),
     (re.compile(r"\bshowSearch\s*\(|\bSearchDelegate\b|\bSearchAnchor\b"), "Flutter",
      "No full-screen search widget: put nv.SearchBar(obs, placeholder=...) in a screen "
      "you lay out yourself, or use nv.DockedSearchBar(obs, content=widget) for a "

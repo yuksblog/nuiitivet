@@ -57,7 +57,12 @@ def inc(self):
 *and* written to. `nv.TextField(value=self.query)`, `nv.Switch(checked=self.on)`,
 `nv.HorizontalSlider(value=self.level)` all write the user's edit straight back.
 There is no separate opt-in, and no `on_change` is needed to keep the Observable
-in sync. Use `on_change` only for a *side effect* of the change.
+in sync. Use `on_change` only for a *side effect* of the change; anything you can
+derive (`query.debounce(0.3).switch_map(...)`) belongs on the Observable.
+
+On a text input, `on_submit` means **Enter only** -- every press, never on blur.
+Blur-time work (validating, saving an inline edit, finishing a half-typed value)
+goes to `on_focus_change(focused, source)`.
 
 A read-only source — anything from `.map(...)`, `.compute(...)`, `combine(...)` —
 has no setter, so an input widget can only display it. That is the correct way

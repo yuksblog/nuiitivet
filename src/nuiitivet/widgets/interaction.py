@@ -29,7 +29,7 @@ DragUpdateCallback = Union[
 class FocusSource(str, Enum):
     """Indicates how a :class:`FocusNode` acquired focus.
 
-    Args:
+    Attributes:
         KEYBOARD: Focus acquired via keyboard navigation (Tab / Shift-Tab).
         POINTER: Focus acquired via a pointer interaction (click-to-focus).
     """

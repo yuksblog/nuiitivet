@@ -18,6 +18,7 @@ from nuiitivet.material.search import (
 )
 from nuiitivet.material.styles.search_bar_style import DockedSearchBarStyle, SearchBarStyle
 from nuiitivet.observable import Observable
+from nuiitivet.widgets.interaction import FocusSource
 from nuiitivet.widgets.box import Box
 
 
@@ -388,12 +389,8 @@ class TestDockedSearchBar:
         finally:
             docked.unmount()
 
-    def test_a_repeat_enter_on_an_unchanged_query_still_closes_it(self):
-        """on_submit is suppressed for an unchanged value; the close is not.
-
-        Searching, reopening the container and pressing Enter again is an
-        ordinary thing to do, and the key has to keep working.
-        """
+    def test_a_repeat_enter_on_an_unchanged_query_searches_and_closes_again(self):
+        """Searching, reopening the container and pressing Enter again."""
         seen: list[str] = []
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), on_submit=seen.append))
         try:
@@ -405,9 +402,22 @@ class TestDockedSearchBar:
             docked.is_open.value = True  # the user comes back to the bar
             docked._core._editable._handle_key("enter", 0)
 
-            assert seen == ["k"]  # unchanged query: no second search
+            assert seen == ["k", "k"]  # the query is run again, as asked
             assert docked.is_open.value is False
 
+        finally:
+            docked.unmount()
+
+    def test_focus_loss_does_not_search(self):
+        """Clicking away must not run the query the user never submitted."""
+        seen: list[str] = []
+        docked = _mount(DockedSearchBar(content=Box(width=200, height=100), on_submit=seen.append))
+        try:
+            docked._core.focused.value = True
+            docked._core._editable._handle_text("k")
+            docked._core._editable._handle_focus_change(False, FocusSource.POINTER)
+
+            assert seen == []
         finally:
             docked.unmount()
 
@@ -415,7 +425,6 @@ class TestDockedSearchBar:
         """No submit handler and no close: the key stays free for a shortcut."""
         docked = DockedSearchBar(content=Box(width=200, height=100), close_on_enter=False)
         assert docked._core._editable._on_submit is None
-        assert docked._core._editable._on_enter_key is None
         assert docked._core._editable._handle_key("enter", 0) is False
 
     def test_popup_is_anchored_to_the_bar_not_the_pane(self):

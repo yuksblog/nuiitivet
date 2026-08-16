@@ -1,12 +1,12 @@
-"""``on_submit`` callback on EditableText (issues #318, #565).
+"""``on_submit`` callback on EditableText (issues #318, #565, #575).
 
-Pressing Enter in a single-line field confirms the text and fires ``on_submit``
-with the current value. It must not modify the value (see #307) and must not
-fire while an IME composition is in progress.
+Pressing Enter in a single-line field fires ``on_submit`` with the current
+value. It must not modify the value (see #307) and must not fire while an IME
+composition is in progress.
 
-Leaving the field commits it as well (#565), so a field finished in
-``on_submit`` is finished for the users who Tab away too. Both paths fire only
-when the text moved since the last commit.
+``on_submit`` reports a request to act, not a value settling (#575): it fires
+on **every** Enter, including a repeat on an unchanged value, and never on
+focus loss. Work that belongs to leaving the field goes to ``on_focus_change``.
 """
 
 from unittest.mock import MagicMock
@@ -188,7 +188,8 @@ def test_selection_unchanged_after_submit():
     assert w._state_internal.value.selection == TextRange(1, 1)
 
 
-def test_losing_focus_commits_the_field():
+def test_focus_loss_does_not_submit():
+    """The user left the field; they did not ask for anything to be run."""
     seen: list[str] = []
     w = EditableText(on_submit=seen.append)
     for ch in "1.":
@@ -196,10 +197,10 @@ def test_losing_focus_commits_the_field():
 
     w._handle_focus_change(False, FocusSource.KEYBOARD)
 
-    assert seen == ["1."]
+    assert seen == []
 
 
-def test_gaining_focus_does_not_commit():
+def test_gaining_focus_does_not_submit():
     seen: list[str] = []
     w = EditableText(on_submit=seen.append)
     w._handle_text("a")
@@ -209,8 +210,7 @@ def test_gaining_focus_does_not_commit():
     assert seen == []
 
 
-def test_an_untouched_field_is_not_committed_on_the_way_past():
-    """Tabbing through a field must not re-run a search or a save."""
+def test_tabbing_through_a_field_submits_nothing():
     seen: list[str] = []
     w = EditableText(value="preset", on_submit=seen.append)
 
@@ -220,7 +220,7 @@ def test_an_untouched_field_is_not_committed_on_the_way_past():
     assert seen == []
 
 
-def test_enter_then_focus_loss_commits_once():
+def test_enter_then_focus_loss_submits_once():
     seen: list[str] = []
     w = EditableText(on_submit=seen.append)
     w._handle_text("a")
@@ -231,7 +231,8 @@ def test_enter_then_focus_loss_commits_once():
     assert seen == ["a"]
 
 
-def test_repeated_enter_on_an_unchanged_value_commits_once():
+def test_repeated_enter_on_an_unchanged_value_submits_every_time():
+    """Pressing Enter again means run it again -- searching, re-fetching."""
     seen: list[str] = []
     w = EditableText(on_submit=seen.append)
     w._handle_text("a")
@@ -239,22 +240,10 @@ def test_repeated_enter_on_an_unchanged_value_commits_once():
     w._handle_key("enter", 0)
     w._handle_key("enter", 0)
 
-    assert seen == ["a"]
+    assert seen == ["a", "a"]
 
 
-def test_editing_after_a_commit_makes_the_field_committable_again():
-    seen: list[str] = []
-    w = EditableText(on_submit=seen.append)
-    w._handle_text("a")
-    w._handle_key("enter", 0)
-
-    w._handle_text("b")
-    w._handle_focus_change(False, FocusSource.KEYBOARD)
-
-    assert seen == ["a", "ab"]
-
-
-def test_a_value_set_by_the_application_is_not_reported_back_as_a_commit():
+def test_a_value_set_by_the_application_does_not_submit():
     seen: list[str] = []
     obs = Observable("")
     w = EditableText(value=obs, on_submit=seen.append)
@@ -266,22 +255,11 @@ def test_a_value_set_by_the_application_is_not_reported_back_as_a_commit():
     assert seen == []
 
 
-def test_normalizing_in_on_submit_does_not_recommit():
-    """The rewritten value is the committed one, so it does not fire again."""
-    seen: list[str] = []
-    obs = Observable("")
+def test_on_focus_change_reports_both_directions_with_the_source():
+    seen: list[tuple[bool, FocusSource]] = []
+    w = EditableText(on_focus_change=lambda focused, source: seen.append((focused, source)))
 
-    def finish(text: str) -> None:
-        seen.append(text)
-        obs.value = text + "0"
+    w._handle_focus_change(True, FocusSource.KEYBOARD)
+    w._handle_focus_change(False, FocusSource.POINTER)
 
-    w = EditableText(value=obs, on_submit=finish)
-    w.mount(MagicMock())
-    for ch in "1.":
-        w._handle_text(ch)
-
-    w._handle_key("enter", 0)
-    w._handle_focus_change(False, FocusSource.KEYBOARD)
-
-    assert seen == ["1."]
-    assert obs.value == "1.0"
+    assert seen == [(True, FocusSource.KEYBOARD), (False, FocusSource.POINTER)]
