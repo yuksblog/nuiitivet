@@ -27,6 +27,7 @@ if TYPE_CHECKING:
         LinearProgressIndicatorStyle,
     )
     from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
+    from nuiitivet.material.styles.search_bar_style import SearchBarStyle
     from nuiitivet.material.styles.slider_style import SliderStyle
     from nuiitivet.material.styles.switch_style import SwitchStyle
     from nuiitivet.material.styles.text_style import TextStyle
@@ -83,6 +84,7 @@ class MaterialThemeData(ThemeExtension):
     _text_style: "TextStyle | None" = None
     _menu_style: "MenuStyle | None" = None
     _toolbar_style: "ToolbarStyle | None" = None
+    _search_bar_style: "SearchBarStyle | None" = None
 
     # Loading indicator variants
     _loading_indicator_style: "LoadingIndicatorStyle | None" = None
@@ -235,6 +237,15 @@ class MaterialThemeData(ThemeExtension):
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
         return TextFieldStyle.filled()
+
+    @property
+    def search_bar_style(self) -> "SearchBarStyle":
+        """Get SearchBarStyle for this theme."""
+        if self._search_bar_style is not None:
+            return self._search_bar_style
+        from nuiitivet.material.styles.search_bar_style import SearchBarStyle
+
+        return SearchBarStyle()
 
     @property
     def outlined_text_field_style(self) -> "TextFieldStyle":

@@ -84,7 +84,7 @@ Turn `flip` off when the content must stay on the side you asked for, and let it
 field.modifier(nv.popup(calendar, is_open=is_open, offset=(0.0, 2.0), flip=False))
 ```
 
-`DockedDatePicker` does this — in a short window its calendar stays below the field rather than jumping above it and hiding what you are typing into.
+`DockedDatePicker` and `DockedSearchBar` both do this — in a short window their panels stay below the field rather than jumping above it and hiding what you are typing into.
 
 ### Example: menu
 

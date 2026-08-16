@@ -77,8 +77,10 @@ class EditableText(InteractionHostMixin, Widget):
         self,
         value: Union[str, ReadOnlyObservableProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
+        on_user_edit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_submit: Optional[StrCallback] = None,
+        on_enter_key: Optional[StrCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
@@ -100,8 +102,19 @@ class EditableText(InteractionHostMixin, Widget):
         self._obscure_text = obscure_text
 
         self._on_change = on_change
+        # Fires for text the *user* produced -- typing, IME, paste, delete --
+        # and never for an assignment made by code. ``on_change`` cannot answer
+        # "did the user do this?": it is deliberately fired for every text
+        # change, including ``value = ...`` and a push from a bound observable,
+        # so decorators stay in sync. A caller that must react to the user
+        # specifically (reopening an autocomplete panel the application just
+        # closed, say) would otherwise mistake its own write-back for input.
+        self._on_user_edit = on_user_edit
         self._on_focus_change_callback = on_focus_change
         self._on_submit = on_submit
+        # Every Enter press, where ``on_submit`` reports only the ones that
+        # carry a changed value. Either one makes the field claim the key.
+        self._on_enter_key = on_enter_key
         # Tracks whether the most recent input event committed an IME
         # composition. On macOS the commit arrives as ``on_text`` *before* the
         # Enter key's ``on_key_press`` (the composition is already cleared by
@@ -297,9 +310,15 @@ class EditableText(InteractionHostMixin, Widget):
         # is typeable, not what the owner may store) and no pending commit.
         self._last_submitted_text = new_text
         new_val = TextEditingValue(text=new_text, selection=TextRange(len(new_text), len(new_text)))
-        self._update_value(new_val)
+        self._update_value(new_val, user_edit=False)
 
-    def _update_value(self, new_value: TextEditingValue) -> None:
+    def _update_value(self, new_value: TextEditingValue, *, user_edit: bool = True) -> None:
+        """Adopt *new_value* and notify.
+
+        Every input handler lands here, so *user_edit* defaults to ``True`` and
+        only the ``value`` setter -- the one path reached by code rather than by
+        a key, an IME or a pointer -- opts out.
+        """
         current = self._state_internal.value
         if current == new_value:
             return
@@ -308,12 +327,24 @@ class EditableText(InteractionHostMixin, Widget):
         self.invalidate()
         self._write_back(new_value)
 
-        if current.text != new_value.text and self._on_change:
+        if current.text == new_value.text:
+            # A caret or selection move. Neither callback describes it.
+            return
+
+        if self._on_change:
             invoke_event_handler(
                 self._on_change,
                 new_value.text,
                 error_key="editable_text_on_change",
                 error_msg="EditableText on_change raised",
+                owner_name=type(self).__name__,
+            )
+        if user_edit and self._on_user_edit:
+            invoke_event_handler(
+                self._on_user_edit,
+                new_value.text,
+                error_key="editable_text_on_user_edit",
+                error_msg="EditableText on_user_edit raised",
                 owner_name=type(self).__name__,
             )
 
@@ -696,10 +727,24 @@ class EditableText(InteractionHostMixin, Widget):
             # same keystroke just before the Enter reached us.
             if current_value.is_composing or ime_just_committed:
                 return False
+            if self._on_submit is None and self._on_enter_key is None:
+                return False
+            if self._on_enter_key is not None:
+                # Unguarded, unlike on_submit: a caller listening for the key
+                # itself (dismissing a panel, say) wants every press, and
+                # ``_submit_if_changed`` deliberately swallows a repeat of an
+                # unchanged value. Runs first so that on_submit, which is where
+                # an application does its work, gets the last word.
+                invoke_event_handler(
+                    self._on_enter_key,
+                    current_value.text,
+                    error_key="editable_text_on_enter_key",
+                    error_msg="EditableText on_enter_key raised",
+                    owner_name=type(self).__name__,
+                )
             if self._on_submit is not None:
                 self._submit_if_changed()
-                return True
-            return False
+            return True
 
         is_ctrl = bool(modifier_keys & (MOD_CTRL | MOD_META))
 

@@ -128,7 +128,8 @@ class SearchScreen(nv.ComposableWidget):
                 children=[
                     nv.Text("Observable: Async State"),
                     nv.Text("Type fast -- only the newest query's result is shown."),
-                    nv.TextField(value=self.model.query, label="Search fruit", width=320),
+                    # width names the box the bar is inset into, not the bar.
+                    nv.SearchBar(self.model.query, placeholder="Search fruit", width=420),
                     nv.Text(self.model.status),
                     nv.Column(
                         gap=4,

@@ -128,6 +128,8 @@ catalog below), not a job for `Container` — its box is layout-only.
 | --- | --- | --- |
 | Text input | `TextField` | `nv.TextField(value=obs, label="Name")` — `obs` is the value, written back as the user types |
 | Restricted text input | `TextField` + `input_filter` | `nv.TextField(value=obs, input_filter=nv.digits_only() \| nv.max_length(4))` |
+| Search input | `SearchBar` | `nv.SearchBar(obs, placeholder="Search", width=440)` — `width` names the **box**; the bar is inset 24dp inside it (12dp while focused) |
+| Search + dropdown panel | `DockedSearchBar` | `nv.DockedSearchBar(obs, placeholder="Search", content=panel_widget, on_submit=search, width=440)` — one slot, `content`: a live widget bound to your observables (suggestions, results, spinner), not a rebuild callback. Opens on focus and on typing, closes on Enter (`close_on_enter=False` keeps it up) and on blur; pass `is_open` to drive it yourself |
 | Boolean toggle | `Checkbox` / `Switch` | `nv.Switch(checked=obs)` |
 | Single choice | `RadioButton` / `RadioGroup` | `nv.RadioGroup(child, value=obs)` |
 | Numeric / range slider | `HorizontalSlider` / `HorizontalRangeSlider` (+ vertical/centered variants) | `nv.HorizontalSlider(value=obs)` |
