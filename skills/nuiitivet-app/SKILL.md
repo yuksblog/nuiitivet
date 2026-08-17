@@ -134,7 +134,9 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Single choice | `RadioButton` / `RadioGroup` | `nv.RadioGroup(child, value=obs)` |
 | Numeric / range slider | `HorizontalSlider` / `HorizontalRangeSlider` (+ vertical/centered variants) | `nv.HorizontalSlider(value=obs)` |
 | Chips | `AssistChip` / `FilterChip` / `InputChip` / `SuggestionChip` | `nv.FilterChip("Tag", selected=obs)` |
-| Date selection | `DockedDatePicker` | `nv.DockedDatePicker(...)` |
+| Date selection | `DockedDatePicker` | `nv.DockedDatePicker(value=text_obs, label="Arrival")` — `value` is the field's **text**; derive the date with `text_obs.map(nv.parse_date)`. The widget flags nothing: pass `is_error` / `supporting_text` derived from the same text. `min_date` / `max_date` scope the calendar only |
+| Non-default date pattern | `DateFormat` | `fmt = nv.DateFormat("dd.mm.yyyy")`, then `date_format=fmt` on the widget and `text_obs.map(fmt.parse)` in the app — one object so parse, render and hint text cannot disagree. Tokens: `yyyy` `yy` `mm` `dd`, lowercase; everything else is a literal (`"yyyy年mm月dd日"` works) |
+| Typed value from a text field | any text input | `obs.map(conv)` reports invalid as `None`; `obs.filter(pred, initial=seed).map(conv)` holds the last valid one. Never bind a widget to the typed value and mirror the text back — the widget writes into the text |
 
 **Containers, navigation & overlays**
 

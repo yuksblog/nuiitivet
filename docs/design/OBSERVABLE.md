@@ -475,3 +475,55 @@ Three consequences follow, and they are what makes the rule worth stating:
   changes and nothing else, so the operator had no second meaning to fall back
   on. Should a genuine read-only view be wanted later, it has to be a real
   wrapper object, so that the runtime agrees with the type.
+
+### 6.1 When the caller's type is not the widget's input type
+
+A text field edits `str`. Applications want dates, amounts, quantities. This
+looks like the one case §6 cannot serve: there is no single cell, because the
+two sides hold different types.
+
+**The answer is not a mirror but an inversion. The text is the cell; the typed
+value is derived from it.**
+
+```python
+self.arrival_text = nv.Observable("")            # the cell, bound to the field
+self.arrival = self.arrival_text.map(parse_date)  # derived, read-only
+```
+
+A widget's value type therefore follows its **primary input mechanism**, not the
+type the application finds most convenient. `DockedDatePicker` binds `str`
+because it can be typed into; `DatePicker`, the inline calendar, binds
+`date | None` because it cannot. These are the same rule, not an inconsistency.
+
+Three things rule out keeping the typed value as the cell:
+
+- **The mirror exception does not stretch this far.** TEXT_EDITING.md's mirror
+  is a *total* enrichment: text plus selection contains the text, so the two
+  always agree about the value. A conversion is **partial** — `"06/1"` is not a
+  date. A widget mirroring across a partial map has to invent a policy for the
+  gap, and needs an error cell to express it. It is then the sole writer of that
+  cell, so an application that wants to report a business-level error ("already
+  booked") has to write to it too, and the two-writer problem reappears one
+  level up. The gap is not a defect to be handled; it is the normal state of a
+  field someone is typing into.
+
+- **An observable-side conversion operator cannot see the commit.** Whether a
+  value is finished is a widget event — Enter, or focus leaving. An Observable
+  is not told about either, so an operator-shaped conversion has no choice but
+  to convert on every keystroke, which is the behaviour it was introduced to
+  avoid. Commit-time work belongs on `on_submit` / `on_focus_change`, which is
+  where the widget's own value already lives.
+
+- **Derivation loses nothing.** `filter().map()` holds the last valid value,
+  `map()` alone reports the invalid state, `debounce()` composes into the same
+  chain, and the error message is one more `map()` of the same text — one
+  writer, no disagreement possible. The widget contributes nothing that the
+  chain does not already express.
+
+This is a consequence of reactivity being **observable-driven**. In a
+rebuild-driven framework an application influences a widget by supplying values
+that are read during rebuild, so a date field can accept a validity predicate
+and a set of error strings and the application never needs to own a cell —
+Flutter's `InputDatePickerFormField` is built exactly that way. Here the cell
+*is* the influence path. Handing the application the cell is therefore not one
+option among several; it is the only way to give it control at all.

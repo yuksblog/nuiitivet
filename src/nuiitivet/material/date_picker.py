@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import calendar
 import logging
-from datetime import date as _Date, datetime as _DateTime, timedelta as _TimeDelta
-from typing import Any, Callable, Literal, Optional, Tuple, TYPE_CHECKING
+from datetime import date as _Date, timedelta as _TimeDelta
+from typing import Any, Callable, cast, Literal, Optional, Tuple, TYPE_CHECKING
 
 from nuiitivet.animation import Animatable
 from nuiitivet.layout.column import Column
@@ -29,6 +29,7 @@ from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.scrolling import ScrollableStyle, ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
+from nuiitivet.material.date_format import DateFormat, DEFAULT_DATE_FORMAT
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.modifiers.popup import popup
 from nuiitivet.modifiers.transform import rotate
@@ -42,11 +43,16 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
-from nuiitivet.observable import Observable, ObservableProtocol, ObservableBase
+from nuiitivet.observable import (
+    Observable,
+    ObservableProtocol,
+    ObservableBase,
+    ReadOnlyObservableProtocol,
+)
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
-from nuiitivet.widgets.interaction import VoidCallback
+from nuiitivet.widgets.interaction import FocusChangeCallback, VoidCallback
 from nuiitivet.common.logging_once import exception_once
 
 if TYPE_CHECKING:
@@ -77,42 +83,6 @@ def _next_month(year: int, month: int) -> Tuple[int, int]:
     if month == 12:
         return year + 1, 1
     return year, month + 1
-
-
-# Formats accepted when parsing user input; the first one is also the format
-# used to render a date back into a text field.
-_DATE_INPUT_FORMATS: Tuple[str, ...] = ("%m/%d/%Y", "%m-%d-%Y", "%Y-%m-%d")
-
-
-def _parse_date(text: str) -> Optional[_Date]:
-    """Attempt to parse ``text`` as a date using common formats.
-
-    Args:
-        text: Raw user input.
-
-    Returns:
-        Parsed :class:`datetime.date` or ``None`` if parsing fails.
-    """
-    for fmt in _DATE_INPUT_FORMATS:
-        try:
-            return _DateTime.strptime(text.strip(), fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
-def _format_date(value: Optional[_Date]) -> str:
-    """Render ``value`` in the canonical input format, or ``""`` when unset.
-
-    Args:
-        value: Date to render, or ``None``.
-
-    Returns:
-        Text that :func:`_parse_date` round-trips back to ``value``.
-    """
-    if value is None:
-        return ""
-    return value.strftime(_DATE_INPUT_FORMATS[0])
 
 
 def _fill_six_weeks(year: int, month: int) -> list[list[_Date]]:
@@ -1579,81 +1549,132 @@ class DockedDatePicker(ComposableWidget):
 
     A text field with a trailing calendar icon button that opens a
     :class:`DatePicker` in a dropdown anchored below the field.  The date can be
-    entered either by typing it or by picking it from the calendar; ``value`` is
-    the single source of truth for both.
+    entered either by typing it or by picking it from the calendar.
 
-    Typing an unparseable date puts the field into its error state and leaves
-    ``value`` untouched.  Clearing the field sets ``value`` to ``None``.
+    ``value`` is the field's **text**, not a date.  The typed date is derived
+    from it by the application::
+
+        self.date_text = nv.Observable("")
+        self.date = self.date_text.filter(nv.is_date, initial="").map(nv.parse_date)
+
+        nv.DockedDatePicker(value=self.date_text, label="Arrival")
+
+    Binding the text is what lets the application decide what an invalid date
+    means.  Half-typed input is a normal state of a field the user is allowed to
+    type into, and only the application knows whether ``"06/1"`` should be shown
+    as an error yet, or whether a perfectly parseable date is nonetheless
+    unacceptable ("already booked").  So the widget reports no errors of its own:
+    pass *supporting_text* and *is_error* -- derived from the same text -- and
+    they have exactly one writer.
+
+    A date-bound field would have to keep the date and the text in step, and
+    would have to own the error state in order to describe text that has no
+    date.  This binding removes both.  :class:`DatePicker`, the inline calendar, keeps
+    ``Observable[Optional[date]]``: a widget's value type follows its primary
+    input mechanism, and a calendar cannot be typed into.
 
     Per MD3 the dropdown carries a Cancel/OK action row, so picking a day is a
     selection rather than a commit.  The calendar edits an internal draft; only
-    OK copies it into ``value`` and fires ``on_change``.  Cancel — and any other
-    dismissal, such as tapping outside the dropdown — drops the draft, so an
-    abandoned selection is never observable from ``value``.
+    OK writes it into ``value``.  Cancel -- and any other dismissal, such as
+    tapping outside the dropdown -- drops the draft, so an abandoned selection is
+    never observable from ``value``.
 
-    Typing into the field has no OK to wait for, so it commits as soon as the
-    text parses.
+    A read-only observable makes the field display-only, as it does for
+    :class:`TextField`; the calendar's OK then has nowhere to write and does
+    nothing.
+
+    *date_format* is one object rather than a parse and a format function,
+    because the two directions must be inverses and two separate arguments
+    cannot be checked for that.  ``str(date_format)`` is its pattern, so the
+    same object also spells the hint an application chooses to show.
 
     MD3 reference: ``md.comp.date-picker.docked.*``
 
     Args:
-        value: Observable holding the currently selected :class:`datetime.date`
-            (or ``None``).  Both reads and writes are performed on this object.
-            Keyword-only, so call sites written against the pre-rename
-            ``DockedDatePicker`` (the inline calendar, now :class:`DatePicker`)
-            fail loudly instead of silently changing behavior.
-        on_change: Optional callback invoked after the value is updated.
-        min_date: Earliest selectable date.
-        max_date: Latest selectable date.
+        value: Observable holding the field's text.  Typing writes into it, and
+            the calendar's OK writes the picked date into it formatted by
+            *format*.  Keyword-only, so call sites written against the
+            pre-rename ``DockedDatePicker`` (the inline calendar, now
+            :class:`DatePicker`) fail loudly instead of silently changing
+            behavior.
+        on_change: Optional callback invoked with the text as it changes, by
+            typing or by the calendar alike.  The observable bound to *value*
+            carries the same signal.
+        on_submit: Optional callback invoked with the text when the user presses
+            Enter -- a request to act, not a value settling.
+        on_focus_change: Optional callback invoked as focus arrives and leaves.
+            Where blur-triggered work belongs, such as reformatting a
+            half-typed date once the user has left the field.
+        date_format: How text is read as a date and how a picked date is written
+            back.  Reading is used only to decide which month the calendar opens
+            on and which day it highlights, never to validate -- unparseable
+            text simply leaves the calendar where it was.  One object rather
+            than a parse and a format, because the two have to be inverses and
+            nothing could check that they were.  Pass the same one the
+            application derives its date with, and they agree by construction.
+        min_date: Earliest date selectable **in the calendar**.
+        max_date: Latest date selectable in the calendar.  The calendar cannot
+            produce a date outside these bounds, but typing can: enforcing a
+            range on typed text is the application's, via *is_error*.  An
+            application that wants both states the bounds in both places.
         label: Floating label for the text field.
-        date_format: Format hint shown as supporting text (e.g. ``"mm/dd/yyyy"``).
+        supporting_text: Text shown below the field.  Empty by default: the
+            widget has nothing of its own to say there, and the slot is where an
+            application puts its error message.  For a format hint, pass
+            ``str(date_format)`` -- though a hint belongs in a placeholder,
+            which this widget's text field does not have yet.
+        is_error: Whether to show the field in its error state.  A separate axis
+            from *supporting_text*: it recolors the whole field, so a field can
+            be flagged without a message and carry one without being flagged.
         style: Visual style.  Defaults to :class:`DockedDatePickerStyle`.
     """
 
     def __init__(
         self,
         *,
-        value: ObservableProtocol[Optional[_Date]],
-        on_change: Optional[Callable[[Optional[_Date]], None]] = None,
+        value: ReadOnlyObservableProtocol[str],
+        on_change: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
+        date_format: DateFormat = DEFAULT_DATE_FORMAT,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         label: str = "Date",
-        date_format: str = "mm/dd/yyyy",
+        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
+        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
         style: Optional["DockedDatePickerStyle"] = None,
     ) -> None:
         """Initialize DockedDatePicker.
 
         Args:
-            value: Observable holding the selected date (or None).
-            on_change: Callback invoked when the value changes.
-            min_date: Minimum selectable date.
-            max_date: Maximum selectable date.
+            value: Observable holding the field's text.
+            on_change: Callback invoked with the text as it changes.
+            on_submit: Callback invoked with the text when Enter is pressed.
+            on_focus_change: Callback invoked as focus arrives and leaves.
+            date_format: How text is read as a date and written back.
+            min_date: Earliest date selectable in the calendar.
+            max_date: Latest date selectable in the calendar.
             label: Text field label.
-            date_format: Format hint shown below the text field.
+            supporting_text: Text shown below the field.  Empty by default.
+            is_error: Whether to show the field in its error state.
             style: Optional style override.
         """
         super().__init__()
         self._value_obs = value
-        self._on_change = on_change
-        self._min_date = min_date
-        self._max_date = max_date
+        # The one writable cell this widget touches, and only when the calendar
+        # commits. A read-only source displays only -- the same rule TextField
+        # applies to typing, extended to the calendar.
+        self._writable: Optional[ObservableProtocol[str]] = (
+            cast("ObservableProtocol[str]", value) if isinstance(value, ObservableProtocol) else None
+        )
         self._date_format = date_format
         self._user_style = style
-
-        initial = getattr(value, "value", None)
-        self._text_obs: Observable[str] = Observable(_format_date(initial if isinstance(initial, _Date) else None))
-        self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format)
-        self._is_error_obs: Observable[bool] = Observable(False)
         self._is_open: Observable[bool] = Observable(False)
 
-        # Set while propagating a change between ``value`` and the text field so
-        # the observer on the other side does not echo it back.
-        self._syncing = False
-
         # The dropdown calendar writes here, not to ``value``. Opening seeds it
-        # from ``value``; OK copies it back. Cancelling just drops it, so an
-        # abandoned selection never reaches ``value`` or ``on_change``.
-        self._draft_obs: Observable[Optional[_Date]] = Observable(initial if isinstance(initial, _Date) else None)
+        # from the text; OK copies it back. Cancelling just drops it, so an
+        # abandoned selection never reaches ``value``.
+        self._draft_obs: Observable[Optional[_Date]] = Observable(date_format.parse(self._text()))
 
         style_ = self.style
 
@@ -1664,10 +1685,13 @@ class DockedDatePicker(ComposableWidget):
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
         self._text_field: TextField = TextField(
-            self._text_obs,
+            value,
+            on_change=on_change,
+            on_submit=on_submit,
+            on_focus_change=on_focus_change,
             label=label,
-            supporting_text=self._supporting_text_obs,
-            is_error=self._is_error_obs,
+            supporting_text=supporting_text,
+            is_error=is_error,
             trailing_icon="calendar_today",
             on_tap_trailing_icon=self._toggle_dropdown,
             style=TextFieldStyle.outlined(),
@@ -1692,108 +1716,51 @@ class DockedDatePicker(ComposableWidget):
         return DockedDatePickerStyle()
 
     def on_mount(self) -> None:
-        """Subscribe to text input, external value changes and dropdown state."""
+        """Track the text so the calendar follows it, and the dropdown state.
+
+        Both observers only ever write to the internal draft, so neither can
+        echo back into ``value`` -- there is nothing here to guard against.
+        """
         super().on_mount()
-        # ``observe`` applies the current value immediately. The text field and
-        # ``value`` were already reconciled in ``__init__``, so suppress the
-        # initial callbacks: replaying them would report a mount as a user edit.
-        self._syncing = True
-        try:
-            self.observe(self._text_obs, self._on_text_changed)
-            self.observe(self._value_obs, self._on_value_changed)
-            self.observe(self._is_open, self._on_open_changed)
-        finally:
-            self._syncing = False
+        self.observe(self._value_obs, self._place_calendar)
+        self.observe(self._is_open, self._on_open_changed)
 
     def _toggle_dropdown(self) -> None:
         self._is_open.value = not self._is_open.value
 
-    def _current_value(self) -> Optional[_Date]:
-        selected = getattr(self._value_obs, "value", None)
-        return selected if isinstance(selected, _Date) else None
+    def _text(self) -> str:
+        return self._value_obs.value
+
+    def _place_calendar(self, text: str) -> None:
+        """Point the calendar at whatever date the text currently reads as.
+
+        Unparseable text -- including the half-typed kind -- clears the
+        selection but leaves the month on display alone, so the grid does not
+        jump around while a date is being typed.
+        """
+        parsed = self._date_format.parse(text)
+        self._draft_obs.value = parsed
+        if parsed is not None:
+            self._calendar.show_month(parsed.year, parsed.month)
 
     def _on_open_changed(self, opened: bool) -> None:
-        """Seed the draft from ``value`` each time the dropdown opens."""
-        if self._syncing or not opened:
-            return
+        """Re-seed the draft from the text each time the dropdown opens.
 
-        current = self._current_value()
-        self._draft_obs.value = current
-        if current is not None:
-            self._calendar.show_month(current.year, current.month)
+        Needed on top of :meth:`_place_calendar` because a cancelled selection
+        leaves the draft holding a date the text never had.
+        """
+        if opened:
+            self._place_calendar(self._text())
 
     def _on_calendar_confirm(self, selected: Optional[_Date]) -> None:
-        """OK: commit the draft selection to ``value`` and close."""
+        """OK: write the draft selection into ``value`` as text, and close."""
         self._is_open.value = False
-        if selected == self._current_value():
-            return
-        self._write_value(selected)
-        self._set_text(_format_date(selected))
-        self._clear_error()
+        if self._writable is not None:
+            self._writable.value = self._date_format.format(selected)
 
     def _on_calendar_cancel(self) -> None:
         """Cancel: close and drop the draft.  ``value`` never saw it."""
         self._is_open.value = False
-
-    def _set_error(self, message: str) -> None:
-        self._is_error_obs.value = True
-        self._supporting_text_obs.value = message
-
-    def _clear_error(self) -> None:
-        self._is_error_obs.value = False
-        self._supporting_text_obs.value = self._date_format
-
-    def _write_value(self, selected: Optional[_Date]) -> None:
-        """Write through to ``value`` without echoing back into the text field."""
-        self._syncing = True
-        try:
-            self._value_obs.value = selected  # type: ignore[attr-defined]
-        except AttributeError:
-            pass
-        finally:
-            self._syncing = False
-        if self._on_change is not None:
-            self._on_change(selected)
-
-    def _on_text_changed(self, text: str) -> None:
-        if self._syncing:
-            return
-
-        if not text.strip():
-            self._clear_error()
-            self._write_value(None)
-            return
-
-        parsed = _parse_date(text)
-        if parsed is None:
-            self._set_error("Invalid date")
-            return
-        if self._min_date is not None and parsed < self._min_date:
-            self._set_error(f"Date must be on or after {self._min_date.strftime('%b %d, %Y')}")
-            return
-        if self._max_date is not None and parsed > self._max_date:
-            self._set_error(f"Date must be on or before {self._max_date.strftime('%b %d, %Y')}")
-            return
-
-        self._clear_error()
-        self._write_value(parsed)
-        # Keep the calendar in step, in case the dropdown is open while typing.
-        self._draft_obs.value = parsed
-        self._calendar.show_month(parsed.year, parsed.month)
-
-    def _set_text(self, text: str) -> None:
-        """Drive the text field without echoing back through ``_on_text_changed``."""
-        self._syncing = True
-        try:
-            self._text_obs.value = text
-        finally:
-            self._syncing = False
-
-    def _on_value_changed(self, selected: Optional[_Date]) -> None:
-        if self._syncing:
-            return
-        self._set_text(_format_date(selected if isinstance(selected, _Date) else None))
-        self._clear_error()
 
     def build(self) -> Widget:
         """Build the text field with its anchored calendar dropdown."""
@@ -2356,7 +2323,8 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         init_value: Optional initial date used to pre-populate the text field.
         supporting_text: Small label shown at the top of the header (14pt).
         input_label: Label for the date text field.
-        date_format: Format hint shown as supporting text (e.g. ``"mm/dd/yyyy"``).
+        date_format: How the typed date is read and rendered.  Its pattern is
+            also the hint shown below the field.
         min_date: Earliest acceptable date.
         max_date: Latest acceptable date.
         style: Visual style.  Defaults to :class:`ModalDateInputStyle`.
@@ -2368,7 +2336,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         init_value: Optional[_Date] = None,
         supporting_text: str = "Enter date",
         input_label: str = "Date",
-        date_format: str = "mm/dd/yyyy",
+        date_format: DateFormat = DEFAULT_DATE_FORMAT,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDateInputStyle"] = None,
@@ -2379,7 +2347,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
             init_value: Initial date to pre-populate the text field.
             supporting_text: Small label shown at the top of the header (14pt).
             input_label: Text field label.
-            date_format: Format hint shown below the text field.
+            date_format: How the typed date is read and rendered.
             min_date: Minimum acceptable date.
             max_date: Maximum acceptable date.
             style: Optional style override.
@@ -2394,8 +2362,8 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         self._user_style = style
 
         # Internal observables for the text field
-        self._text_obs: Observable[str] = Observable(_format_date(init_value))
-        self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format)
+        self._text_obs: Observable[str] = Observable(date_format.format(init_value))
+        self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format.pattern)
 
         # Build the TextField once and reuse across rebuild cycles to preserve
         # focus state and cursor position.
@@ -2429,7 +2397,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         return ModalDateInputStyle()
 
     def _on_confirm(self) -> None:
-        parsed = _parse_date(self._text_obs.value)
+        parsed = self._date_format.parse(self._text_obs.value)
         if parsed is None:
             self._supporting_text_obs.value = "Invalid date"
             return
@@ -2439,7 +2407,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         if self._max_date and parsed > self._max_date:
             self._supporting_text_obs.value = f"Date must be on or before {self._max_date.strftime('%b %d, %Y')}"
             return
-        self._supporting_text_obs.value = self._date_format
+        self._supporting_text_obs.value = self._date_format.pattern
         try:
             self.overlay_handle.close(parsed)
         except RuntimeError:
@@ -2461,7 +2429,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         style = self.style
         shadow = md3_elevation_to_shadow(style.elevation)
 
-        parsed_date = _parse_date(self._text_obs.value)
+        parsed_date = self._date_format.parse(self._text_obs.value)
         date_str = parsed_date.strftime("%b %d, %Y") if parsed_date is not None else "—"
         # Header layout (measurement image):
         # Supporting text: padding=(16, 24, 18, 24)

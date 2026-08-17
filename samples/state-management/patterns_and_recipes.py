@@ -4,9 +4,12 @@ Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
 - Derived state composition with map() and combine()
 - Memory management with Disposable
+- Typed values derived from a text field's text
 
 Work produced on a worker thread lives in background_work.py.
 """
+
+from datetime import date
 
 import nuiitivet.material as nv
 
@@ -89,6 +92,59 @@ class ManagedViewModel:
 
 
 # ---------------------------------------------------------------------------
+# Pattern 4: Typed values from text input
+# ---------------------------------------------------------------------------
+
+# Dates the room is already taken. A parseable date can still be unacceptable,
+# which is why the application decides what counts as an error, not the widget.
+BOOKED = {date(2026, 7, 4), date(2026, 7, 5)}
+
+
+def to_int(text: str) -> int | None:
+    """Read the text as an integer, tolerating what a paste brings with it.
+
+    ``int()`` strips whitespace itself, including the U+00A0 that copying from a
+    web page produces; a ``str.isdigit()`` test would reject all of those.
+    """
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+
+def arrival_error(text: str) -> str | None:
+    """What is wrong with this text, if anything -- the whole decision, once."""
+    if not text:
+        return None
+    arrival = nv.parse_date(text)
+    if arrival is None:
+        return "Invalid date"
+    if arrival in BOOKED:
+        return "Already booked"
+    return None
+
+
+class OrderForm:
+    """The field writes into the text; everything else is derived from it.
+
+    ``qty`` converts every value the text takes, reporting None when it cannot.
+    ``qty_held`` passes only values the predicate accepts, so one it refuses
+    leaves the previous result standing -- an empty field included.
+    """
+
+    def __init__(self) -> None:
+        self.qty_text = nv.Observable("1")
+        self.qty = self.qty_text.map(to_int)
+        self.qty_held = self.qty_text.filter(str.isdigit, initial="1").map(int)
+
+        self.arrival_text = nv.Observable("")
+        self.arrival = self.arrival_text.map(nv.parse_date)
+        # One decision, two presentations of it: deriving is_error and
+        # supporting_text from the text separately would write it twice.
+        self.error = self.arrival_text.map(arrival_error)
+
+
+# ---------------------------------------------------------------------------
 # Combined demo widget
 # ---------------------------------------------------------------------------
 
@@ -98,6 +154,7 @@ class PatternsApp(nv.ComposableWidget):
         super().__init__()
         self.vm = TodoViewModel()
         self.cart = ShoppingCart()
+        self.form = OrderForm()
         self._counter = 1
 
     def _add_todo_item(self) -> None:
@@ -111,6 +168,7 @@ class PatternsApp(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         vm = self.vm
         cart = self.cart
+        form = self.form
 
         return nv.Box(
             padding=24,
@@ -154,15 +212,34 @@ class PatternsApp(nv.ComposableWidget):
                             ),
                         ],
                     ),
+                    # --- Typed values from text input ---
+                    nv.Text("Pattern 4: Typed Values from Text Input"),
+                    nv.TextField(
+                        value=form.qty_text,
+                        label="Quantity",
+                        # Runs on paste too, so "1,234" lands as "1234".
+                        input_filter=nv.digits_only(),
+                        width=320,
+                        style=nv.TextFieldStyle.outlined(),
+                    ),
+                    nv.Text(form.qty.map(lambda n: f"map():           {n}")),
+                    nv.Text(form.qty_held.map(lambda n: f"filter().map():  {n}")),
+                    nv.DockedDatePicker(
+                        value=form.arrival_text,
+                        label="Arrival",
+                        supporting_text=form.error,
+                        is_error=form.error.map(lambda e: e is not None),
+                    ),
+                    nv.Text(form.arrival.map(lambda d: f"arrival:         {d}")),
                 ],
             ),
         )
 
 
+def main() -> None:
+    # The class, not an instance: hot reload rebuilds the root by calling it.
+    nv.App(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=900).run()
+
+
 if __name__ == "__main__":
-    widget = PatternsApp()
-    app = nv.App(content=widget)
-    try:
-        app.run()
-    except Exception:
-        print("Patterns and Recipes demo requires pyglet/skia to run.")
+    main()

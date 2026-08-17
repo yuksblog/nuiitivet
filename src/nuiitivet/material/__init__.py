@@ -107,6 +107,13 @@ if TYPE_CHECKING:
         ModalDateRangePicker,
         ModalDateInput,
     )
+    from .date_format import (
+        DateFormat,
+        DEFAULT_DATE_FORMAT,
+        parse_date,
+        format_date,
+        is_date,
+    )
     from .styles.date_picker_style import (
         DatePickerStyle,
         DockedDatePickerStyle,
@@ -222,6 +229,11 @@ __all__ = [
     "ModalDatePickerStyle",
     "ModalDateRangePickerStyle",
     "ModalDateInputStyle",
+    "DateFormat",
+    "DEFAULT_DATE_FORMAT",
+    "parse_date",
+    "format_date",
+    "is_date",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -340,6 +352,11 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ModalDatePickerStyle": ("styles.date_picker_style", "ModalDatePickerStyle"),
     "ModalDateRangePickerStyle": ("styles.date_picker_style", "ModalDateRangePickerStyle"),
     "ModalDateInputStyle": ("styles.date_picker_style", "ModalDateInputStyle"),
+    "DateFormat": ("date_format", "DateFormat"),
+    "DEFAULT_DATE_FORMAT": ("date_format", "DEFAULT_DATE_FORMAT"),
+    "parse_date": ("date_format", "parse_date"),
+    "format_date": ("date_format", "format_date"),
+    "is_date": ("date_format", "is_date"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),

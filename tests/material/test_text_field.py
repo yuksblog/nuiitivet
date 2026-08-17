@@ -494,27 +494,34 @@ def test_text_field_supporting_text_and_is_error_support_observable() -> None:
     tf.on_unmount()
 
 
-def test_text_field_error_text_legacy_alias_still_updates_error_state() -> None:
-    error_text = _make_obs(None)
+def test_text_field_supporting_text_does_not_imply_the_error_state() -> None:
+    """The message and the visual state are separate axes, each with its own source."""
+    supporting_text = _make_obs(None)
     style = TextFieldStyle.outlined()
-    tf = TextField(value="", error_text=error_text, style=style)
+    tf = TextField(value="", supporting_text=supporting_text, style=style)
 
     tf.mount(MagicMock())
-    assert tf.error_text is None
     assert tf.supporting_text is None
     assert tf.is_error is False
-    assert tf._editable.cursor_color == style.cursor_color
 
-    error_text.value = "Oops"
-    assert tf.error_text == "Oops"
-    assert tf.supporting_text == "Oops"
-    assert tf.is_error is True
-    assert tf._editable.cursor_color == style.error_cursor_color
-
-    error_text.value = None
-    assert tf.error_text is None
+    supporting_text.value = "Between 1 and 10"
+    assert tf.supporting_text == "Between 1 and 10"
+    # A message is a message; only is_error recolors the field.
     assert tf.is_error is False
     assert tf._editable.cursor_color == style.cursor_color
+
+    tf.on_unmount()
+
+
+def test_text_field_error_state_needs_no_message() -> None:
+    """is_error stands alone: the field is flagged with nothing written below it."""
+    style = TextFieldStyle.outlined()
+    tf = TextField(value="", is_error=True, style=style)
+
+    tf.mount(MagicMock())
+    assert tf.supporting_text is None
+    assert tf.is_error is True
+    assert tf._editable.cursor_color == style.error_cursor_color
 
     tf.on_unmount()
 

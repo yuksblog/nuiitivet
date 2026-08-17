@@ -7,7 +7,7 @@ lands in the field.
 A filter defines **what is typeable, not what is valid**. The two are not the
 same: a decimal field must let ``"1."`` be typed even though it is not a valid
 decimal, because otherwise the ``.`` can never be entered. Rules about whether
-a *finished* value is acceptable belong in ``is_error`` / ``error_text``, and
+a *finished* value is acceptable belong in ``is_error`` / ``supporting_text``, and
 rules that reshape a finished value belong in ``on_submit``.
 
 Filters are applied to user input only. A value the application assigns --

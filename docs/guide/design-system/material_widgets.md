@@ -166,7 +166,7 @@ nv.TextField(value=self.code,  input_filter=lambda s: s.upper())
 
 Combine them with `|`. `matching` is the odd one out: it judges the text as a whole and rejects the keystroke outright, which is how "at most one decimal point" is expressed.
 
-A filter says what is **typeable**, not what is **valid** — `"1."` has to be typeable or the `.` could never be entered. Whether a finished value is acceptable belongs in `is_error` / `error_text`.
+A filter says what is **typeable**, not what is **valid** — `"1."` has to be typeable or the `.` could never be entered. Whether a finished value is acceptable belongs in `is_error` / `supporting_text`.
 
 ### Reacting to the user
 
@@ -388,18 +388,18 @@ With a literal `opened=True` and no `on_close_click`, no close button is rendere
 
 ## DockedDatePicker
 
-A text field with a trailing calendar icon button. Tapping the icon opens a `DatePicker` in a dropdown anchored below the field; the date can also be typed directly. `value` is the single source of truth for both routes.
+A text field with a trailing calendar icon button. Tapping the icon opens a calendar in a dropdown anchored below the field; the date can also be typed directly.
+
+`value` is the field's **text**, not a date. The date is derived from it, and so is anything the application wants to say about it — the widget flags nothing on its own, so `is_error` and `supporting_text` are derived from the same text and passed in.
 
 ```python
-selected: nv.Observable[date | None] = nv.Observable(None)
-nv.DockedDatePicker(value=selected, min_date=date(2026, 1, 1))
+self.arrival_text = nv.Observable("")
+self.arrival = self.arrival_text.map(nv.parse_date)      # date | None
+
+nv.DockedDatePicker(value=self.arrival_text, label="Arrival")
 ```
 
-`value` is keyword-only.
-
-Per MD3 the dropdown carries a Cancel/OK action row, so clicking a day selects it without committing: the calendar edits an internal draft, and only OK copies it into `value` and fires `on_change`. Cancel — and any other dismissal, such as tapping outside — drops the draft, so an abandoned selection is never observable from `value`.
-
-Typing has no OK to wait for, so it commits as soon as the text parses. An unparseable date puts the field into its error state and leaves `value` untouched, while clearing the field sets `value` to `None`.
+See [Typed Values from Text Input](../state-management/patterns_and_recipes.md#typed-values-from-text-input) for the recipe, and `nv.DateFormat` for a pattern other than `mm/dd/yyyy`.
 
 ![DockedDatePicker](../../assets/material_widgets_docked_date_picker.png)
 
