@@ -13,7 +13,7 @@ from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, c
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler
@@ -103,10 +103,10 @@ class TextField(InteractiveWidget):
     """A text input widget base class.
 
     Note:
-        An observable passed as ``value`` becomes the field's value cell, the
-        same as for every other input widget: it is displayed, and edits are
-        written back to it. A read-only observable (``.map(...)``, a computed
-        value) has nowhere to write, so it displays only -- pair it with
+        An observable passed as ``value`` holds the field's value, the same as
+        for every other input widget: it is displayed, and edits are written
+        back to it. A read-only observable (``.map(...)``, a computed value)
+        has nowhere to write, so it displays only -- pair it with
         ``disabled=True`` to make that visible to the user.
 
     Parameters:
@@ -118,7 +118,8 @@ class TextField(InteractiveWidget):
     - input_filter: Rule applied to text as the user types it -- see
       :mod:`nuiitivet.widgets.input_filter`. It governs what is *typeable*;
       whether a finished value is acceptable belongs in ``is_error`` /
-      ``error_text``, and reshaping a finished value belongs in ``on_submit``
+      ``supporting_text``, and reshaping a finished value belongs in
+      ``on_submit``
     - label: Floating label text (supports Observable)
     - leading_icon: Icon source (Symbol/str or Observable of them)
     - on_tap_leading_icon: Callback invoked when the leading icon is tapped.
@@ -155,9 +156,8 @@ class TextField(InteractiveWidget):
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         obscure_text: bool = False,
         supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ObservableProtocol[bool] | None = None,
-        error_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        disabled: bool | ObservableProtocol[bool] = False,
+        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = 200,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[TextFieldStyle] = None,
@@ -193,8 +193,11 @@ class TextField(InteractiveWidget):
             on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
             obscure_text: Whether to mask text display (password-style).
             supporting_text: Supporting text displayed below the field.
-            is_error: Whether to use error colors for the field.
-            error_text: Deprecated alias for supporting_text.
+            is_error: Whether the field is in its error state. This is a
+                visual axis of the whole field -- outline, label, cursor and
+                supporting text all change -- and is independent of what
+                *supporting_text* says, so a field can be flagged without a
+                message and carry a message without being flagged.
             disabled: Whether the text field is disabled.
             width: Width specification.
             padding: Padding around the text field.
@@ -220,8 +223,8 @@ class TextField(InteractiveWidget):
 
         self._label_source: ReadOnlyObservableProtocol[str] | None = None
         self._supporting_text_source: ReadOnlyObservableProtocol[str | None] | None = None
-        self._is_error_source: ObservableProtocol[bool] | None = None
-        self._disabled_source: ObservableProtocol[bool] | None = None
+        self._is_error_source: ReadOnlyObservableProtocol[bool] | None = None
+        self._disabled_source: ReadOnlyObservableProtocol[bool] | None = None
 
         label_value: str | None
         if hasattr(label, "subscribe") and hasattr(label, "value"):
@@ -233,35 +236,30 @@ class TextField(InteractiveWidget):
         else:
             label_value = str(label) if label is not None else None
 
-        self._legacy_error_text_mode = supporting_text is None and error_text is not None and is_error is None
-
         supporting_text_value: str | None
-        supporting_source = supporting_text if supporting_text is not None else error_text
-        if hasattr(supporting_source, "subscribe") and hasattr(supporting_source, "value"):
-            self._supporting_text_source = cast("ReadOnlyObservableProtocol[str | None]", supporting_source)
+        if hasattr(supporting_text, "subscribe") and hasattr(supporting_text, "value"):
+            self._supporting_text_source = cast("ReadOnlyObservableProtocol[str | None]", supporting_text)
             try:
                 v = self._supporting_text_source.value
                 supporting_text_value = str(v) if v is not None else None
             except Exception:
                 supporting_text_value = None
         else:
-            supporting_text_value = str(supporting_source) if supporting_source is not None else None
+            supporting_text_value = str(supporting_text) if supporting_text is not None else None
 
         initial_is_error: bool
         if hasattr(is_error, "subscribe") and hasattr(is_error, "value"):
-            self._is_error_source = cast("ObservableProtocol[bool]", is_error)
+            self._is_error_source = cast("ReadOnlyObservableProtocol[bool]", is_error)
             try:
                 initial_is_error = bool(self._is_error_source.value)
             except Exception:
                 initial_is_error = False
-        elif is_error is None:
-            initial_is_error = self._legacy_error_text_mode and supporting_text_value is not None
         else:
             initial_is_error = bool(is_error)
 
         initial_disabled: bool
         if hasattr(disabled, "subscribe") and hasattr(disabled, "value"):
-            self._disabled_source = cast("ObservableProtocol[bool]", disabled)
+            self._disabled_source = cast("ReadOnlyObservableProtocol[bool]", disabled)
             try:
                 initial_disabled = bool(self._disabled_source.value)
             except Exception:
@@ -418,8 +416,6 @@ class TextField(InteractiveWidget):
 
     def _set_supporting_text(self, value: Any) -> None:
         self.supporting_text = str(value) if value is not None else None
-        if self._legacy_error_text_mode:
-            self.is_error = self.supporting_text is not None
         style = self.style
         self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
         self._update_label_state()
@@ -431,20 +427,6 @@ class TextField(InteractiveWidget):
         self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
         self._update_label_state()
         self.invalidate()
-
-    @property
-    def error_text(self) -> str | None:
-        """Deprecated alias for supporting_text."""
-        return self.supporting_text
-
-    @error_text.setter
-    def error_text(self, value: str | None) -> None:
-        self.supporting_text = value
-        self.is_error = value is not None
-        style = self.style
-        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
-        self._update_label_state()
-        self.mark_needs_layout()
 
     def on_mount(self) -> None:
         super().on_mount()

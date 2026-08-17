@@ -31,8 +31,8 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
 
     Parameters:
     - value: Initial text (str), or the observable that holds the field's value.
-      An observable is the field's value cell: edits are written back to it.
-      A read-only observable has nowhere to write, so it displays only.
+      Edits are written back to that observable. A read-only one has nowhere to
+      write, so it displays only.
     - on_change: Callback when value changes
     - input_filter: Rule applied to text as it is typed (see
       :mod:`nuiitivet.widgets.input_filter`)

@@ -2,7 +2,11 @@
 
 A text field with a trailing calendar icon button. Tapping the icon opens a
 :class:`DatePicker` in a dropdown anchored below the field; the date can also be
-typed directly. Both routes write back to the same shared observable.
+typed directly.
+
+``value`` is the field's *text*, so typing and the calendar write to the same
+observable. The date is derived from it -- see ``date_field_derived_value.py``
+for what an application does with it, including reporting errors.
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ import nuiitivet.material as nv
 
 
 def main(png_path: str = "") -> None:
-    selected: nv.Observable[date | None] = nv.Observable(date(2026, 6, 25))
+    text = nv.Observable(nv.format_date(date(2026, 6, 25)))
+    selected = text.map(nv.parse_date)
 
     if png_path:
         # For screenshot: place the dropdown calendar directly in the layout,
@@ -21,8 +26,8 @@ def main(png_path: str = "") -> None:
         style = nv.DockedDatePickerStyle()
         content = nv.Column(
             children=[
-                nv.DockedDatePicker(value=selected),
-                nv.DatePicker(selected, style=style.calendar),
+                nv.DockedDatePicker(value=text),
+                nv.DatePicker(nv.Observable(selected.value), style=style.calendar),
             ],
             gap=int(style.dropdown_gap),
             padding=24,
@@ -33,9 +38,15 @@ def main(png_path: str = "") -> None:
 
     content = nv.Container(
         padding=24,
-        child=nv.DockedDatePicker(
-            value=selected,
-            on_change=lambda value: print(f"Selected: {value}"),
+        child=nv.Column(
+            gap=16,
+            cross_alignment="start",
+            children=[
+                nv.DockedDatePicker(value=text),
+                # The derived date, not the text: this is what the rest of an
+                # application would work with.
+                nv.Text(selected.map(lambda d: f"Selected: {d}")),
+            ],
         ),
     )
     # Tall enough for the anchored dropdown: the calendar hangs ~460dp below the
