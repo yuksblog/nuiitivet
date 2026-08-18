@@ -1,5 +1,8 @@
 """Tests for DatePicker widgets."""
 
+import calendar
+import locale
+from contextlib import contextmanager
 from datetime import date
 
 import pytest
@@ -10,6 +13,10 @@ from nuiitivet.material.date_picker import (
     ModalDateInput,
     ModalDatePicker,
     ModalDateRangePicker,
+    _MenuListItem,
+    _MonthList,
+    _MonthYearHeader,
+    _MONTH_NAMES,
     _prev_month,
     _next_month,
 )
@@ -26,6 +33,7 @@ from nuiitivet.modifiers.popup import PopupBox
 from nuiitivet.observable import Observable
 from nuiitivet.runtime.app import App
 from nuiitivet.widgets.box import Box
+from nuiitivet.widgets.text import TextBase
 
 # ---------------------------------------------------------------------------
 # DatePickerStyle
@@ -897,3 +905,83 @@ def test_modal_date_input_build_returns_box():
     picker = ModalDateInput()
     result = picker.build()
     assert isinstance(result, Box)
+
+
+# ---------------------------------------------------------------------------
+# Month names (locale independence — interim measure for #582)
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _lc_time(name: str):
+    """Run the block under an LC_TIME that actually translates month names.
+
+    Skips when the locale is missing from the host C library, or when it is
+    installed but leaves month names in English — in that case the test could
+    not tell a locale-sensitive implementation from a fixed one.
+    """
+    previous = locale.setlocale(locale.LC_TIME)
+    try:
+        locale.setlocale(locale.LC_TIME, name)
+    except locale.Error:
+        pytest.skip(f"LC_TIME={name} is not available on this machine")
+    try:
+        if calendar.month_name[8] == "August":
+            pytest.skip(f"LC_TIME={name} does not translate month names here")
+        yield
+    finally:
+        locale.setlocale(locale.LC_TIME, previous)
+
+
+def _text_labels(widget) -> list[str]:
+    """Collect the labels of every Text in a built widget tree, in tree order."""
+    found: list[str] = []
+    for child in widget.children_snapshot():
+        if isinstance(child, TextBase) and isinstance(child.label, str):
+            found.append(child.label)
+        found.extend(_text_labels(child))
+    return found
+
+
+def _menu_item_labels(widget) -> list[str]:
+    """Collect the labels of every _MenuListItem in a built widget tree."""
+    found: list[str] = []
+    for child in widget.children_snapshot():
+        if isinstance(child, _MenuListItem):
+            found.append(child._label)
+        found.extend(_menu_item_labels(child))
+    return found
+
+
+def test_month_names_are_english():
+    """_MONTH_NAMES is 0-indexed English, unlike 1-indexed calendar.month_name."""
+    assert len(_MONTH_NAMES) == 12
+    assert _MONTH_NAMES[0] == "January"
+    assert _MONTH_NAMES[7] == "August"
+    assert _MONTH_NAMES[11] == "December"
+
+
+def test_month_year_header_stays_english_under_a_translating_locale():
+    """The inline header reads "August 2026" whatever LC_TIME says."""
+    with _lc_time("ja_JP.UTF-8"):
+        header = _MonthYearHeader(
+            2026,
+            8,
+            on_prev=lambda: None,
+            on_next=lambda: None,
+            style=CalendarStyle(),
+        )
+        assert _text_labels(header.build()) == ["August", "2026"]
+
+
+def test_month_list_stays_english_under_a_translating_locale():
+    """The month dropdown lists English month names whatever LC_TIME says."""
+    with _lc_time("ja_JP.UTF-8"):
+        month_list = _MonthList(
+            8,
+            on_select=lambda _m: None,
+            list_height=200,
+            item_width=100.0,
+            style=DatePickerStyle(),
+        )
+        assert _menu_item_labels(month_list.build()) == list(_MONTH_NAMES)

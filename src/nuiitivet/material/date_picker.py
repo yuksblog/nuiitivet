@@ -16,7 +16,6 @@ This module provides the date-picker variants following MD3 Expressive spec:
 
 from __future__ import annotations
 
-import calendar
 import logging
 from datetime import date as _Date, timedelta as _TimeDelta
 from typing import Any, Callable, cast, Literal, Optional, Tuple, TYPE_CHECKING
@@ -69,6 +68,26 @@ _logger = logging.getLogger(__name__)
 
 # Weekday column headers — Sunday first, matching the MD3 spec.
 _WEEKDAY_LABELS: Tuple[str, ...] = ("S", "M", "T", "W", "T", "F", "S")
+
+# Month names, 0-indexed by ``month - 1``.  Fixed to English rather than read
+# from the ``calendar`` module, whose names are locale-sensitive and would
+# translate the month while the weekday headers, the Sunday-first grid and the
+# month-before-year header layout all stay English.  Locale support is #582;
+# this tuple goes away with it.
+_MONTH_NAMES: Tuple[str, ...] = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
 
 
 def _prev_month(year: int, month: int) -> Tuple[int, int]:
@@ -756,7 +775,7 @@ class _MonthList(ComposableWidget):
             _m = m
             items.append(
                 _MenuListItem(
-                    calendar.month_name[m],
+                    _MONTH_NAMES[m - 1],
                     is_selected=(m == self._current_month),
                     on_tap=lambda _m=_m: self._on_select(_m),
                     item_width=item_w,
@@ -913,7 +932,7 @@ class _MonthYearHeader(ComposableWidget):
 
     def build(self) -> Widget:
         """Build the navigation header row."""
-        month_name = calendar.month_name[self._month]
+        month_name = _MONTH_NAMES[self._month - 1]
         s = self._style
 
         if self._variant == "inline":
