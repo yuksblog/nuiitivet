@@ -15,12 +15,18 @@ and ``dispose`` releases it.
 
 from __future__ import annotations
 
+import logging
 from typing import Callable, TypeVar
+
+from nuiitivet.common.logging_once import exception_once_per_exc
 
 from .protocols import ReadOnlyObservableProtocol
 from .wrapper import ShapingObservable, _untracked
 
 T = TypeVar("T")
+
+
+logger = logging.getLogger(__name__)
 
 
 class FilteredObservable(ShapingObservable[T]):
@@ -41,6 +47,13 @@ class FilteredObservable(ShapingObservable[T]):
     dependency tracking suppressed, so reading another observable inside it
     creates no edge and will not re-run the filter — express that dependency
     with ``combine`` instead.
+
+    A ``pred`` that raises is a bug, and is treated as one: logged, and the value
+    is taken not to have passed, so nothing is emitted and ``value`` keeps
+    reporting the last one that did (``OBSERVABLE.md`` §7). It is guarded here
+    rather than by the source's notify loop because this predicate runs on the
+    graph's own edge to that source, where an escaping exception would surface on
+    whichever thread happened to write it.
     """
 
     def __init__(
@@ -57,7 +70,15 @@ class FilteredObservable(ShapingObservable[T]):
             self._held_value = initial
 
     def _passes(self, value: T) -> bool:
-        return bool(_untracked(lambda: self._pred(value)))
+        try:
+            return bool(_untracked(lambda: self._pred(value)))
+        except Exception:
+            exception_once_per_exc(
+                logger,
+                "filter_pred_raised",
+                "filter predicate raised; the value was treated as not passing",
+            )
+            return False
 
     def _on_source_changed(self, value: T) -> None:
         # No equality check of our own: the source already de-dupes before it

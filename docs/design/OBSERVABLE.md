@@ -14,7 +14,8 @@ rule. §3 is the operator surface as a whole. §4 is the contract every
 source-wrapping operator obeys, stated once; §5 gives each such operator only
 what the contract does not already say. Adding an operator should therefore touch
 §3.2's table and one subsection of §5 — and §4 only if it genuinely changes a
-rule shared by all wrappers.
+rule shared by all wrappers. §6 is what binding an observable to a widget means,
+and §7 is what happens when any callback in the graph raises.
 
 ## 1. Core model
 
@@ -527,3 +528,83 @@ and a set of error strings and the application never needs to own a cell —
 Flutter's `InputDatePickerFormField` is built exactly that way. Here the cell
 *is* the influence path. Handing the application the cell is therefore not one
 option among several; it is the only way to give it control at all.
+
+## 7. Failure semantics
+
+§5.3 states the rule for `switch_map`: **failure the UI must render is a value,
+not an exception.** `fn` catches what it can handle and returns it in the app's
+own result type, and an exception that escapes is a bug rather than a result.
+That rule is not specific to asynchronous work. It is the whole of this
+section, generalized to every callback the graph runs.
+
+**So an exception reaching the framework is always a bug**, never an outcome to
+publish. And a bug needs a place to be reported. It cannot be *raised*, because
+there is no caller who could handle it: a derivation re-runs because something
+changed, and "something" is a clock callback marshalling a worker's write, a
+`debounce` timer, or an unrelated handler three widgets away. None of them wrote
+the broken function. Raising there only decides, by which thread happened to be
+passing, whose stack the failure lands on — the undefined behaviour this section
+replaces (#562).
+
+**Every such bug is therefore logged and contained**, through
+`exception_once_per_exc`, keyed by the failure's own type and innermost frame.
+Two different broken derivations are reported separately; one that keeps failing
+every keystroke stays a single line. The compute function's *name* cannot do
+that job: every `.map()` shares one `compute_fn` closure inside
+`ComputedObservable.map`, so keying on it would collapse unrelated bugs into the
+first one reported. `switch_map` keys on the qualname instead because there the
+user's own `fn` is what runs.
+
+**Containment is per callback, and what the observable holds is the previous
+value:**
+
+| What raises | Where it is caught | What `.value` reports afterwards |
+| :--- | :--- | :--- |
+| a derivation (`map`, `combine().compute`, `Observable.compute`) | `ComputedObservable._recompute` | the previous value — no emission, so subscribers see nothing |
+| a `filter` predicate | `FilteredObservable._passes` | the last value that *passed* — the tested value counts as not passing |
+| a `switch_map` function | `SwitchMappedObservable._run` (§5.3) | the last landed result — the failed run publishes nothing |
+| a subscriber | `_notify.notify_all` | unaffected; the remaining subscribers are still notified |
+
+Keeping the previous value is chosen over propagating a sentinel, which would
+leak into every consumer and into every operator downstream of one. The cost is
+stated plainly rather than hidden: **a failed derivation is silently stale**, and
+the log line is the only signal. That is the same trade `filter` already makes
+for a value the predicate rejects.
+
+**A failed derivation is retried.** Its dependency edges are torn down before
+each run and re-armed after it, *whether or not it succeeded* — so the next
+change to a source runs it again, and a transiently broken derivation recovers
+on its own. Leaving the edges down would be worse than the original bug: one log
+line, and then an observable frozen for the rest of the process. The one case
+that cannot recover is a run that raised before reading anything, which has no
+source to recover from.
+
+**The subscriber guard is per callback, not one `try` around the loop.** A
+single `try` would relocate the truncation rather than remove it: the first
+raising subscriber would still stop every one registered after it, which is what
+makes the symptom "a binding that sometimes does not update" — registration
+order decides who breaks. The loop also re-reads the value per callback, because
+a subscriber may write back to the observable notifying it (§6's cell, where an
+application normalizes what a text field produced), and the subscribers after it
+must be handed what that write left behind.
+
+**The graph's own subscriptions are exempt.** A computed's dependency edges and
+a wrapper's edge to its source are tagged `mark_internal_subscription` (§4.1),
+and an exception on one of them re-raises rather than being logged. Such an
+exception is not a broken subscriber but the framework's own signal — the batch
+queue's infinite-loop detector reaches the notify loop through exactly this path,
+and swallowing it would turn a loud protection into a silent one. Every internal
+edge that runs application code guards it at its own site instead, which is also
+where the log can name what actually broke.
+
+**Implementation:**
+
+- `observable/_notify.py` holds the one notify loop, used by `_ObservableValue`,
+  `ComputedObservable` (both the direct and the marshalled path) and
+  `SourceSubscribingObservable`
+- `ComputedObservable._recompute` records success in a sentinel-typed local and
+  assigns `_value` only on success, so "keep the previous value" is the absence
+  of a write rather than a restore
+- Equality failure after a recompute is a separate, older guard
+  (`computed_value_eq_exc`): a `__eq__` that raises is treated as "not equal",
+  which emits rather than suppresses
