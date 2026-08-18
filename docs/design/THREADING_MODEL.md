@@ -2,7 +2,7 @@
 
 This document describes the internal threading architecture of the framework.
 For a broader entry point, see [CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md).
-For user-facing guidelines, see [docs/guide/advanced/threading.md](../guide/advanced/threading.md).
+For user-facing guidelines, see [docs/guide/concurrency.md](../guide/concurrency.md).
 
 ## Core Principles
 

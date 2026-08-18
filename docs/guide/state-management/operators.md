@@ -124,5 +124,4 @@ nv.Text(count_label)
 ## Next Steps
 
 - [Practical Controls](practical_controls.md)
-- [Thread Safety](thread_safety.md)
 - [State Management Overview](index.md)

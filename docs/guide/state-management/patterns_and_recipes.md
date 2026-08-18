@@ -188,5 +188,4 @@ Bind the observable you created, and derive from it — never the other way roun
 ## Next Steps
 
 - [State Management Overview](index.md)
-- [Background Work](background_work.md)
-- [Threading Model](../advanced/threading.md)
+- [Concurrency: choosing a tool](../concurrency.md)

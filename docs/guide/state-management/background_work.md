@@ -378,6 +378,5 @@ sleeping. See [the `settle()` example](thread_safety.md#testing).
 
 ## Next Steps
 
-- [Thread Safety](thread_safety.md)
 - [Patterns and Recipes](patterns_and_recipes.md)
-- [Threading Model](../advanced/threading.md)
+- [State Management Overview](index.md)

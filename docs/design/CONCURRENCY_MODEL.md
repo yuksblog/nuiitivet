@@ -23,9 +23,12 @@ See also:
 
 ## Choosing a concurrency tool
 
-- **CPU-bound work**: Use a worker thread, then publish results through an observable (`self.progress.value = ...`); the marshal is automatic.
+- **A value derived asynchronously from another value**: Use `switch_map`. It runs the transform on a worker thread per source change and publishes only the newest run's result; superseded runs are discarded rather than raced.
+- **CPU-bound work**: Use a worker thread, then publish results through an observable (`self.progress.value = ...`); the marshal is automatic. This is the answer whenever the job needs progress, an explicit start or an explicit cancel — none of which `switch_map` expresses.
 - **I/O-bound work**: Use `asyncio` (`await` network / file I/O), keeping the UI responsive.
 - **High-frequency updates**: The default marshal already coalesces (last-write-wins per tick). Pass `dispatch=False` only where every intermediate value is needed and no widget is bound.
+
+The user-facing form of this chooser is [docs/guide/concurrency.md](../guide/concurrency.md).
 
 ## Interaction: threads × asyncio
 

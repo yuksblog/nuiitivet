@@ -93,5 +93,4 @@ For most cases, start with instance attributes in `__init__`.
 ## Next Steps
 
 - [Basic API](basic_api.md)
-- [Operators](operators.md)
 - [State Management Overview](index.md)

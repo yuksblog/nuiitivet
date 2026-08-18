@@ -190,6 +190,7 @@ nav:
           - Async State: guide/state-management/async_state.md
           - Background Work: guide/state-management/background_work.md
           - Patterns and Recipes: guide/state-management/patterns_and_recipes.md
+      - Concurrency: guide/concurrency.md
       - UI Design System:
           - guide/design-system/index.md
           - Material App: guide/design-system/material_app.md
@@ -212,7 +213,6 @@ nav:
           - Testing async flows: guide/testing/async.md
           - Testing outside the harness: guide/testing/clock.md
       - Advanced:
-          - Threading Model: guide/advanced/threading.md
           - Interaction Region: guide/advanced/interaction_region.md
           - Geometry: guide/advanced/geometry.md
       - Packaging:

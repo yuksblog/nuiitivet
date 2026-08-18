@@ -177,6 +177,5 @@ driving a clock yourself.
 
 ## Next Steps
 
-- [Background Work](background_work.md)
-- [Patterns and Recipes](patterns_and_recipes.md)
+- [Async State](async_state.md)
 - [State Management Overview](index.md)

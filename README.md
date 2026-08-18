@@ -313,7 +313,7 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 
 | Guide | Summary |
 | ----- | ------- |
-| [Async & Threading](docs/guide/advanced/threading.md) | Safe UI updates from background work. |
+| [Concurrency](docs/guide/concurrency.md) | Choosing a concurrency tool, and safe UI updates from background work. |
 | [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Live edit-save-see, the MCP dev bridge, and the `nuiitivet-app` skill. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
