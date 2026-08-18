@@ -64,8 +64,7 @@ async def test_app_escape_overlay_will_pop_cancels_close(nuiitivet_app) -> None:
     overlay = app.app.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
-    handled = app.app._dispatch_key_press("escape")
-    assert handled is True
+    assert app.key("escape")["handled"] is True
     await app.idle()  # the back event runs as a task
     assert overlay.has_entries() is True
 
