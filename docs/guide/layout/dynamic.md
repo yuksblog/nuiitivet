@@ -1,4 +1,4 @@
-# Dynamically Generating a List from Data
+# Dynamic Children
 
 Screens often need to render a collection of items — tags, cards, list rows —
 whose contents come from data rather than being written out one by one.

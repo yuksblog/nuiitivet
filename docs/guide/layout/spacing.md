@@ -141,5 +141,5 @@ Depending on the component, the method of setting spacing differs slightly.
 
 ## Next Steps
 
-- Determining Size: [layout_sizing.md](sizing.md)
-- Determining Alignment: [layout_alignment.md](alignment.md)
+- [Layout Sizing](sizing.md)
+- [Layout Overview](index.md)
