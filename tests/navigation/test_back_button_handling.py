@@ -29,8 +29,7 @@ async def test_escape_closes_overlay_before_navigator_pop(nuiitivet_app) -> None
     assert overlay.has_entries() is True
     assert navigator.can_pop() is True
 
-    handled = app.app._dispatch_key_press("escape")
-    assert handled is True
+    assert app.key("escape")["handled"] is True
     await app.idle()  # the back event runs as a task
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
@@ -45,8 +44,7 @@ async def test_escape_pops_navigator_when_no_overlay_entries(nuiitivet_app) -> N
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
 
-    handled = app.app._dispatch_key_press("escape")
-    assert handled is True
+    assert app.key("escape")["handled"] is True
     await app.idle()  # the back event runs as a task
     # The depth drops when the exit transition finalizes, not when the key was
     # handled: the harness runs the app's Material navigator, which animates.
@@ -66,6 +64,44 @@ async def test_back_event_is_unhandled_when_nothing_to_pop_or_close() -> None:
     assert await app.handle_back_event() is False
 
 
+async def test_escape_verb_pops_exactly_one_route(nuiitivet_app) -> None:
+    """One synthetic Escape pops once, like one real Escape.
+
+    ``key()`` dispatches both halves of the tap, so this is the shape that
+    caught the press path spawning back navigation on top of the release path:
+    every synthetic Escape popped two routes while a human's popped one.
+    """
+    app = nuiitivet_app(Container(), size=(400, 300))
+    navigator = app.app.navigator
+    for _ in range(3):
+        navigator.push(Container())
+    await app.idle()
+    assert len(navigator._stack.routes) == 4
+
+    assert app.key("escape")["handled"] is True
+    await app.idle()
+    await app.wait_for(lambda: not app.in_transition)
+
+    assert len(navigator._stack.routes) == 3
+
+
+async def test_escape_verb_closes_the_overlay_without_popping_behind_it(nuiitivet_app) -> None:
+    """The dev-bridge symptom: closing a dialog must leave the screen behind."""
+    app = nuiitivet_app(Container(), size=(400, 300))
+    overlay = app.app.overlay
+    navigator = app.app.navigator
+    navigator.push(Container())
+    await app.idle()
+    overlay.show(Container(width=100, height=100), backdrop=True)
+    await app.idle()
+
+    assert app.key("escape")["handled"] is True
+    await app.idle()
+    await app.wait_for(lambda: not overlay.has_entries())
+
+    assert len(navigator._stack.routes) == 2
+
+
 async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
     app = nuiitivet_app(Container(), size=(400, 300))
@@ -76,8 +112,7 @@ async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
     assert overlay.has_entries() is False
     assert navigator.can_pop() is True
 
-    handled = app.app._dispatch_key_press("escape")
-    assert handled is True
+    assert app.key("escape")["handled"] is True
     await app.idle()  # the back event runs as a task
     assert navigator.can_pop() is True
 

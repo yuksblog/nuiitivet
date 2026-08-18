@@ -1306,6 +1306,12 @@ class App:
         """Handle key presses for focus navigation and activation.
 
         Accepts simple string names: 'tab', 'space', 'enter'. Returns True if handled.
+
+        Escape is consumed here but *acts* on release: the press only latches
+        intent, so it must not reach the focused node or Tab traversal, while
+        :meth:`_dispatch_key_release` is what runs :meth:`handle_back_event`.
+        Spawning back navigation from both halves would pop twice for every
+        caller that synthesizes a full key tap.
         """
         self._last_input_source = FocusSource.KEYBOARD
 
@@ -1318,7 +1324,7 @@ class App:
             kname = None
 
         if kname == "escape":
-            spawn_task(self.handle_back_event(), owner_name="App.on_key_press(escape)")
+            # Consume without acting -- the release half runs back navigation.
             return True
 
         if kname == "tab":

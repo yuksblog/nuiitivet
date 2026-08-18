@@ -319,7 +319,7 @@ async def test_escape_during_the_exit_animation_is_a_no_op() -> None:
         overlay.close(None)
         assert overlay.has_entries() is True
 
-        handled = app.app._dispatch_key_press("escape")
+        handled = app.key("escape")["handled"]
         await app.idle()
 
         # Consumed by the fading dialog, not passed to the navigator.
