@@ -30,6 +30,12 @@ def _mounted_app(root) -> App:
     return app
 
 
+def _frame(widget) -> None:
+    """Measure then lay out, as a parent does. Collapsible retargets on layout."""
+    width, height = widget.preferred_size()
+    widget.layout(width, height)
+
+
 # --- Collapsible ---------------------------------------------------------------
 
 
@@ -104,18 +110,18 @@ def test_collapsible_traversal_follows_opened_not_the_size_animation() -> None:
     collapsible = Collapsible(content, opened=opened)
     app = _mounted_app(Column([collapsible]))
 
-    collapsible.preferred_size()
+    _frame(collapsible)
     assert app._collect_focus_nodes() == []
 
     # Opening: reachable right away, while the collapsible is still expanding.
     opened.value = True
-    collapsible.preferred_size()
+    _frame(collapsible)  # starts the expand animation; no frame has run yet
     assert collapsible.preferred_size()[0] < 100  # still animating open
     assert app._collect_focus_nodes() == [_focus_node(inside)]
 
     # Closing: unreachable right away, before the collapse animation finishes.
     opened.value = False
-    collapsible.preferred_size()
+    _frame(collapsible)
     assert app._collect_focus_nodes() == []
 
 

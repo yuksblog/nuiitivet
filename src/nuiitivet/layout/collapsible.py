@@ -81,6 +81,11 @@ class Collapsible(FocusTraversalBlocker, Widget):
     *allocated* rectangle reported to the parent is interpolated per axis.
     The animated rectangle is clipped internally, so the child never overflows
     its allocated bounds.
+
+    ``preferred_size`` only *reports* that interpolated rectangle: measuring is
+    speculative and repeated, so it never retargets. ``layout`` owns the
+    animation -- both the retarget and the first-layout snap to the initial
+    state.
     """
 
     def __init__(
@@ -120,6 +125,10 @@ class Collapsible(FocusTraversalBlocker, Widget):
         self._width_sub: Optional["Disposable"] = None
         self._height_sub: Optional["Disposable"] = None
         self._initialized = False
+        # Constraints of the most recent measure pass. ``layout`` reuses them
+        # so the child is measured identically on both paths and the animation
+        # target cannot depend on which pass asked.
+        self._measure_constraints: Tuple[Optional[int], Optional[int]] = (None, None)
 
         if child is not None:
             self.add_child(child)
@@ -154,8 +163,12 @@ class Collapsible(FocusTraversalBlocker, Widget):
     # --- Lifecycle ---------------------------------------------------------
     def on_mount(self) -> None:
         super().on_mount()
-        self._width_sub = self._width_anim.subscribe(self._on_tick)
-        self._height_sub = self._height_anim.subscribe(self._on_tick)
+        # Only the animated axes drive relayout; the other Animatable is never
+        # retargeted, so subscribing to it would keep a dead callback alive.
+        if self._animates_width():
+            self._width_sub = self._width_anim.subscribe(self._on_tick)
+        if self._animates_height():
+            self._height_sub = self._height_anim.subscribe(self._on_tick)
         if isinstance(self._opened, ObservableBase):
             self.observe(self._opened, self._on_opened_changed)
 
@@ -199,6 +212,23 @@ class Collapsible(FocusTraversalBlocker, Widget):
         self.invalidate()
 
     # --- Target resolution -------------------------------------------------
+    def _child_constraints(self) -> Tuple[Optional[int], Optional[int]]:
+        """Constraints to measure the child under, on both passes.
+
+        Taken from the latest measure pass, minus every axis this widget
+        animates. A parent derives what it offers from the size we last
+        reported, which on an animated axis is the interpolated one -- feeding
+        that back in would let an axis that reached zero measure its child as
+        zero and never reopen. Axes that merely pass through carry the parent's
+        constraint as usual, so a child that reflows (wrapping text) is still
+        measured against the width it will really get.
+        """
+        max_width, max_height = self._measure_constraints
+        return (
+            None if self._animates_width() else max_width,
+            None if self._animates_height() else max_height,
+        )
+
     def _natural_size(self, max_width: Optional[int], max_height: Optional[int]) -> Tuple[int, int]:
         child = self._child()
         if child is None:
@@ -220,10 +250,11 @@ class Collapsible(FocusTraversalBlocker, Widget):
         anim.set_motion(motion)
         anim.target = target
 
-    def _sync_targets(self, natural_w: int, natural_h: int) -> Tuple[int, int]:
+    def _sync_targets(self, natural_w: int, natural_h: int) -> None:
         """Sync animation targets to current natural size / opened state.
 
-        Returns the resolved (possibly animating) outer size.
+        Called from ``layout`` only: retargeting is a command, and measuring
+        must not perform it (#531).
         """
         open_ = _read_opened(self._opened)
 
@@ -231,23 +262,34 @@ class Collapsible(FocusTraversalBlocker, Widget):
         height_target = float(natural_h) if open_ else 0.0
 
         if not self._initialized:
-            # Snap to initial state without animating on first measure.
+            # Snap to the initial state without animating on the first layout.
             self._initialized = True
-            self._width_anim.snap_to(width_target if self._animates_width() else float(natural_w))
-            self._height_anim.snap_to(height_target if self._animates_height() else float(natural_h))
+            if self._animates_width():
+                self._width_anim.snap_to(width_target)
+            if self._animates_height():
+                self._height_anim.snap_to(height_target)
+            return
 
         if self._animates_width():
             self._retarget(self._width_anim, width_target)
-            out_w = int(round(self._width_anim.value))
-        else:
-            out_w = natural_w
-
         if self._animates_height():
             self._retarget(self._height_anim, height_target)
-            out_h = int(round(self._height_anim.value))
-        else:
-            out_h = natural_h
 
+    def _resolve_size(self, natural_w: int, natural_h: int) -> Tuple[int, int]:
+        """Return the outer size implied by the current animation state.
+
+        Read-only: animated axes report their interpolated value, other axes
+        pass the natural size through. Before the first layout no target has
+        been resolved yet, so report the size that layout is about to snap to.
+        """
+        if not self._initialized:
+            open_ = _read_opened(self._opened)
+            out_w = natural_w if open_ or not self._animates_width() else 0
+            out_h = natural_h if open_ or not self._animates_height() else 0
+            return (max(0, out_w), max(0, out_h))
+
+        out_w = int(round(self._width_anim.value)) if self._animates_width() else natural_w
+        out_h = int(round(self._height_anim.value)) if self._animates_height() else natural_h
         return (max(0, out_w), max(0, out_h))
 
     # --- Layout / measure --------------------------------------------------
@@ -256,8 +298,15 @@ class Collapsible(FocusTraversalBlocker, Widget):
         max_width: Optional[int] = None,
         max_height: Optional[int] = None,
     ) -> Tuple[int, int]:
-        natural_w, natural_h = self._natural_size(max_width, max_height)
-        return self._sync_targets(natural_w, natural_h)
+        """Report the current (possibly interpolated) outer size.
+
+        Measuring never touches the animation: the reported size follows
+        whatever ``layout`` last resolved. The constraints are remembered so
+        the following ``layout`` measures the child the same way.
+        """
+        self._measure_constraints = (max_width, max_height)
+        natural_w, natural_h = self._natural_size(*self._child_constraints())
+        return self._resolve_size(natural_w, natural_h)
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -267,8 +316,10 @@ class Collapsible(FocusTraversalBlocker, Widget):
 
         # Child is always laid out at its natural size; only the outer
         # allocation animates. The child is then aligned within `width`/
-        # `height` and clipped to those bounds.
-        natural_w, natural_h = self._natural_size(None, None)
+        # `height` and clipped to those bounds. The natural size is measured
+        # under the constraints of the preceding measure pass so that the
+        # target matches the size the parent was told about.
+        natural_w, natural_h = self._natural_size(*self._child_constraints())
         self._sync_targets(natural_w, natural_h)
 
         child_w = natural_w if self._animates_width() else width
@@ -309,7 +360,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
             cx, cy, cw, ch = x + rx, y + ry, rw, rh
 
         clip_saved = False
-        if canvas is not None and width > 0 and height > 0:
+        if canvas is not None:
             clip_area = make_rect(x, y, width, height)
             try:
                 canvas.save()
