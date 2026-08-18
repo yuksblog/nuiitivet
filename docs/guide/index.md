@@ -22,8 +22,9 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 1. [Layout](layout/index.md)
 2. [Observable](state-management/index.md)
-3. [UI Design System](design-system/index.md)
-4. [Packaging](packaging.md)
+3. [Concurrency](concurrency.md)
+4. [UI Design System](design-system/index.md)
+5. [Packaging](packaging.md)
 
 ## Topics
 
@@ -41,6 +42,5 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 ## Advanced
 
-- [Async & Threading](advanced/threading.md)
 - [Interaction](advanced/interaction_region.md)
 - [Geometry: scoped measured size](advanced/geometry.md)

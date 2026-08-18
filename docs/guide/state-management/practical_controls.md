@@ -117,5 +117,4 @@ long_enough_query = (
 ## Next Steps
 
 - [Thread Safety](thread_safety.md)
-- [Patterns and Recipes](patterns_and_recipes.md)
 - [State Management Overview](index.md)

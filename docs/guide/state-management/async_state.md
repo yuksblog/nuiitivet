@@ -153,3 +153,10 @@ the work is (`switch_map` uses a worker thread either way).
 
 `samples/state-management/async_state.py` — a runnable screen with the failure
 path wired up (search for `boom`).
+
+---
+
+## Next Steps
+
+- [Background Work](background_work.md)
+- [State Management Overview](index.md)

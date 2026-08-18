@@ -15,5 +15,5 @@ The Observable guide has been split into focused documents to improve readabilit
 
 ## Related Guides
 
-- [Async & Threading](../advanced/threading.md)
+- [Concurrency: choosing a tool](../concurrency.md)
 - [Layout](../layout/index.md)

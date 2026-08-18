@@ -66,5 +66,4 @@ user = nv.Observable(None, compare=compare_users)
 ## Next Steps
 
 - [Operators](operators.md)
-- [Practical Controls](practical_controls.md)
 - [State Management Overview](index.md)
