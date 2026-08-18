@@ -76,5 +76,5 @@ nv.Row([
 
 ## Next Steps
 
-- Determining Alignment: [layout_alignment.md](alignment.md)
-- Adjusting Spacing: [layout_spacing.md](spacing.md)
+- [Layout Alignment](alignment.md)
+- [Layout Overview](index.md)

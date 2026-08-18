@@ -33,14 +33,14 @@ Refer to the following guides based on what you want to create.
 
 | What you want to do | Reference | Main Components |
 | --- | --- | --- |
-| Arrange vertically or horizontally | [layout_basics.md](basics.md) | `Row`, `Column` |
-| Partitioning like header/sidebar | [layout_grid.md](grid.md) | `Grid` |
-| Overlay elements (Badges, backgrounds, etc.) | [layout_extras.md](extras.md) | `Stack` |
-| Create wrapping lists (Tag lists, etc.) | [layout_extras.md](extras.md) | `Flow` |
-| Make scrollable | [layout_overflow.md](overflow.md) | `VerticalScrollable` / `HorizontalScrollable` |
-| Create tab switching | [layout_extras.md](extras.md) | `Deck` |
-| Dynamically generate a list from data | [layout_dynamic.md](dynamic.md) | `builder()` / `ForEach` |
-| Adapt layout to a container's size | [layout_adaptive.md](adaptive.md) | `on_size_changed` |
+| Arrange vertically or horizontally | [Layout Basics](basics.md) | `Row`, `Column` |
+| Partitioning like header/sidebar | [Layout Grid](grid.md) | `Grid` |
+| Overlay elements (Badges, backgrounds, etc.) | [Layout Extras](extras.md) | `Stack` |
+| Create wrapping lists (Tag lists, etc.) | [Layout Extras](extras.md) | `Flow` |
+| Make scrollable | [Layout Overflow](overflow.md) | `VerticalScrollable` / `HorizontalScrollable` |
+| Create tab switching | [Layout Extras](extras.md) | `Deck` |
+| Dynamically generate a list from data | [Dynamic Children](dynamic.md) | `builder()` / `ForEach` |
+| Adapt layout to a container's size | [Adaptive Layout](adaptive.md) | `on_size_changed` |
 
 ## More Details
 

@@ -134,7 +134,7 @@ nv.Flow(
 
 ![Flow example](../../assets/layout_extras_flow.png)
 
-> To generate the children from a data collection (including reactive updates), see [layout_dynamic.md](dynamic.md).
+> To generate the children from a data collection (including reactive updates), see [Dynamic Children](dynamic.md).
 
 ## UniformFlow (Uniform Grid)
 
@@ -166,7 +166,7 @@ nv.UniformFlow(
 - Use **Flow** for wrapping rows with variable-width items (tags, chips, variable text).
 - Use **UniformFlow** for grid-like layouts with uniform columns (tiles, cards, image grids).
 
-> To generate the children from a data collection (including reactive updates), see [layout_dynamic.md](dynamic.md).
+> To generate the children from a data collection (including reactive updates), see [Dynamic Children](dynamic.md).
 
 ## Container (Decoration/Size Control)
 

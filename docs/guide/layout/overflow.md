@@ -97,5 +97,4 @@ widget. Following the framework-wide `ThemeData` / `Style` split:
 
 ## Next Steps
 
-- Basic Spacing: [layout_spacing.md](spacing.md)
-- Other Components: [layout_extras.md](extras.md)
+- [Layout Overview](index.md)

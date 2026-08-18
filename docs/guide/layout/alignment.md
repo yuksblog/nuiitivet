@@ -359,5 +359,4 @@ content = nv.Column(
 
 ## Next Steps
 
-- Designing Sizes: [layout_sizing.md](sizing.md)
-- Separation of Duties in Grid: [layout_grid.md](grid.md)
+- [Layout Overview](index.md)

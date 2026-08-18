@@ -90,6 +90,5 @@ In this way, you construct screens by putting Column inside Row or Row inside Co
 
 ## Next Steps
 
-- Adjusting Spacing: [layout_spacing.md](spacing.md)
-- Determining Size: [layout_sizing.md](sizing.md)
-- Determining Alignment: [layout_alignment.md](alignment.md)
+- [Layout Spacing](spacing.md)
+- [Layout Overview](index.md)
