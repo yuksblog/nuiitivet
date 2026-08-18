@@ -8,6 +8,7 @@ from typing import Any, Callable, List, Optional, TypeVar, TYPE_CHECKING
 from nuiitivet.common.logging_once import debug_once
 from nuiitivet.runtime.threading import is_ui_thread
 
+from ._notify import notify_all
 from ._sentinel import UNSET, _Unset
 from .contexts import _batch_context, _tracking_context
 from .protocols import CompareFunc, Disposable, MutableObservableBase, ReadOnlyObservableProtocol
@@ -121,8 +122,7 @@ class _ObservableValue(MutableObservableBase[T]):
         self._apply(pending)
 
     def _notify_subs(self) -> None:
-        for cb in list(self._subs):
-            cb(self._value)
+        notify_all(self._subs, lambda: self._value, logger=logger, key="observable")
 
     def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
         from .computed import ComputedObservable

@@ -58,6 +58,7 @@ from typing import Any, Callable, Generic, List, Optional, Sequence, TypeVar, TY
 
 from nuiitivet.common.logging_once import debug_once
 
+from ._notify import notify_all
 from .contexts import _tracking_context
 from .protocols import (
     Disposable,
@@ -229,10 +230,12 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
 
         Held before the callbacks run, so a subscriber that reads back through
         the wrapper sees the value it was just handed.
+
+        A subscriber that raises does not stop the rest from being notified; see
+        :mod:`~nuiitivet.observable._notify`.
         """
         self._held_value = value
-        for callback in list(self._subscribers):
-            callback(value)
+        notify_all(self._subscribers, lambda: value, logger=logger, key=type(self).__name__)
 
     def subscribe(self, callback: Callable[[TOut], None]) -> Disposable:
         self._subscribers.append(callback)

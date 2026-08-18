@@ -4,9 +4,11 @@ import logging
 import threading
 from typing import Any, Callable, List, Optional, Set, TypeVar, TYPE_CHECKING
 
-from nuiitivet.common.logging_once import debug_once, exception_once
+from nuiitivet.common.logging_once import debug_once, exception_once, exception_once_per_exc
 from nuiitivet.runtime.threading import is_ui_thread
 
+from ._notify import notify_all
+from ._sentinel import UNSET, _Unset
 from .contexts import _batch_context, _tracking_context
 from .protocols import (
     Disposable,
@@ -55,6 +57,23 @@ class ComputedObservable(ObservableBase[T]):
             self._deps.add(dep)
 
     def _recompute(self) -> None:
+        """Re-run the derivation, re-arm its dependency edges, store the result.
+
+        A derivation that raises is a bug in the caller's function rather than a
+        value this observable could publish, so it is logged and the previous
+        value kept (``OBSERVABLE.md`` §7). Nothing is raised at any caller: the
+        thread that triggered the recompute is whichever one happened to write
+        the source -- a clock callback, a ``debounce`` timer -- and none of them
+        is a handler for the derivation's bug.
+
+        The dependency edges are re-armed **whether or not the run succeeded**.
+        They are torn down before the run, so leaving them down after a failure
+        would make this observable permanently deaf: the derivation would never
+        be retried, not even once the source that fixes it changes. A run that
+        raised before reading anything registers no edge to re-arm, which is the
+        one case that stays stuck -- and one that could not have recovered
+        anyway, having no source to recover from.
+        """
         if self._disposed:
             return
 
@@ -63,9 +82,20 @@ class ComputedObservable(ObservableBase[T]):
         self._dep_disposables.clear()
         self._deps = set()
 
+        new_value: T | _Unset = UNSET
         token = _tracking_context.set(self)
         try:
             new_value = self._compute()
+        except Exception:
+            # Keyed by the failure itself, so two broken derivations are
+            # reported separately and one that keeps failing stays a single
+            # line -- the compute function's own name cannot do that job here,
+            # every ``map`` sharing the one ``compute_fn`` closure below.
+            exception_once_per_exc(
+                logger,
+                "computed_fn_raised",
+                "Computed function raised; keeping the previous value",
+            )
         finally:
             _tracking_context.reset(token)
 
@@ -86,7 +116,8 @@ class ComputedObservable(ObservableBase[T]):
             disp = dep.subscribe(cb)
             self._dep_disposables.append(disp)
 
-        self._value = new_value
+        if new_value is not UNSET:
+            self._value = new_value
 
     @property
     def value(self) -> T:
@@ -134,20 +165,27 @@ class ComputedObservable(ObservableBase[T]):
         if not is_equal:
             self._notify_subs()
 
+    def _current_value(self) -> T:
+        """What a subscriber is handed, read afresh for each one.
+
+        ``_value`` is ``Optional[T]`` only because a derivation that raised at
+        construction never produced one (§7); every read of it makes the same
+        claim, which :attr:`value` already states the same way.
+        """
+        return self._value  # type: ignore[return-value]
+
     def _notify_subs(self) -> None:
         should_dispatch = self._dispatch_to_ui and not is_ui_thread()
 
         if should_dispatch:
 
             def notify_on_ui(dt: float) -> None:
-                for cb in list(self._subs):
-                    cb(self._value)  # type: ignore[arg-type]
+                notify_all(self._subs, self._current_value, logger=logger, key="computed")
 
             runtime.clock.schedule_once(notify_on_ui, 0)
             return
 
-        for cb in list(self._subs):
-            cb(self._value)  # type: ignore[arg-type]
+        notify_all(self._subs, self._current_value, logger=logger, key="computed")
 
     def subscribe(self, cb: Callable[[T], None]) -> Disposable:
         self._subs.append(cb)
