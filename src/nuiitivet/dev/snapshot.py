@@ -19,7 +19,7 @@ module-level observables are out of scope (§9.5).
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterator
+from typing import Any, Iterator, Optional
 
 from nuiitivet.observable.protocols import MutableObservableBase
 
@@ -73,6 +73,30 @@ def _walk(widget: Any) -> Iterator[tuple[Path, Any]]:
             yield from visit(built, path + (seg,))
 
     yield from visit(widget, ())
+
+
+def path_of(root: Any, node: Any) -> Optional[Path]:
+    """Return ``node``'s structural path within ``root``'s tree, or ``None``.
+
+    The same key-preferring path :func:`snapshot_observables` builds, exposed for
+    anything that has to survive a reload by naming *where* a widget was rather
+    than holding the object -- the inspect-mode selection (#591) re-resolves its
+    members this way, for the same reason and with the same degradation: a
+    keyless widget that moves loses its match.
+    """
+    for candidate, widget in _walk(root):
+        if widget is node:
+            return candidate
+    return None
+
+
+def widgets_by_path(root: Any) -> dict[Path, Any]:
+    """Return every widget in ``root``'s tree, keyed by its structural path.
+
+    The lookup side of :func:`path_of`: one walk answers any number of paths, so
+    re-resolving a whole selection after a reload costs a single traversal.
+    """
+    return {path: widget for path, widget in _walk(root)}
 
 
 def snapshot_observables(root: Any) -> dict[Path, Any]:

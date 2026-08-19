@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -87,7 +87,26 @@ top to bottom.
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, so you re-sync instead of acting on a stale screen |
+| The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
+| `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
+
+### Reading a designation
+
+`describe_selection` is the one channel that runs **from the human to you**. Every
+other tool tells you what the app *is*; this tells you what the human *meant*.
+
+- Each node carries `key` / `label` usable directly as a `click` target, a `path`
+  (root → node types) for finding it in `describe_tree`, and `tree` / `state`
+  **scoped to that node** — read those instead of dumping the whole tree.
+- `index` matches the number badged on the human's screen, so "the second one"
+  means `index: 2`. Refer to designations by that number back to them.
+- `active: true` means inspect mode is still on and they may still be
+  designating. Prefer waiting over acting on a half-made set.
+- `lost` counts designations a hot reload could not re-resolve. When it is
+  non-zero, **say so** — do not reason over a silently shortened list.
+- Do not arm it yourself: there is no tool to request a designation. If nothing
+  is designated and you need one, ask the human to press `Ctrl+Shift+C` and click.
 
 ### Blind spots
 

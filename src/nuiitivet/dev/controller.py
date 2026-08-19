@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Iterable, Optional, cast
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
 from .navigation_snapshot import restore_navigation, snapshot_navigation
+from .selection import Selection
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
 from .watcher import FileWatcher
@@ -54,6 +55,7 @@ class HotReloadController:
         poll_interval: float = 0.4,
         drain_interval: float = 0.1,
         journal: Optional[ReloadJournal] = None,
+        selection: Optional[Selection] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -63,6 +65,11 @@ class HotReloadController:
         # When present, every reload -- success or failure -- is recorded so the
         # assistant can notice the code changed under it between turns.
         self._journal = journal
+        # The human's inspect-mode designation, whose members are weak and so
+        # evaporate when the rebuild replaces every live object. Re-resolved
+        # below like observable state and the navigation stack, because a reload
+        # lands in the middle of essentially every use of it (#591).
+        self._selection = selection
         # Per-module source hashes from the last reload, so the next one can
         # report which files' *content* actually changed vs. a no-op save (the
         # watcher fires on mtime, which an editor autosave/formatter bumps even
@@ -125,6 +132,8 @@ class HotReloadController:
             app._commit_content_root(new_content)
             restored = restore_observables(app.root, snapshot)
             restored_routes = restore_navigation(app, nav_snapshot)
+            if self._selection is not None:
+                self._selection.restore(app.root)
         except Exception:
             # The new root is already committed; report but stay alive.
             tb = traceback.format_exc()

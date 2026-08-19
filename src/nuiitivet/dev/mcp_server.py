@@ -201,6 +201,11 @@ def build_server() -> "FastMCP":
           white/blank screen where nothing painted (a build that produced no
           content, or a paint that raised). A heuristic: an intentionally solid
           screen also reads blank.
+        - ``selection`` -- ``{"seq", "active", "nodes", "regions"}`` (or ``null``):
+          what the human has pointed at in inspect mode. A ``seq`` you have not
+          seen before means they designated something for you since your last
+          turn -- call `describe_selection` to read it. ``active: true`` means
+          they are still designating.
 
         Use `describe_tree` when you need the actual on-screen structure.
         """
@@ -245,6 +250,36 @@ def build_server() -> "FastMCP":
         state").
         """
         return _client().describe_state(include_animations=include_animations)
+
+    @server.tool()
+    def describe_selection() -> dict[str, Any]:
+        """Return what the human deliberately pointed at in the running app.
+
+        The one channel that runs *from* the human *to* you. `describe_tree` and
+        `describe_state` tell you what the app is; `interaction_log` tells you
+        what the human did. This tells you what the human **meant** -- the widgets
+        they entered inspect mode and designated on purpose.
+
+        Reach for it whenever `status` reports a `selection` whose `seq` you have
+        not seen, and whenever the human says "this is wrong" / "look at this
+        part" without naming a widget: they may well have pointed at it already,
+        and guessing from a screenshot when a designation is waiting is wasted
+        effort.
+
+        Returns ``{"seq", "active", "nodes", "regions", "lost"}``. Each node is
+        ``{"index", "type", optional "key"/"label", "path", "rect", "tree",
+        "state"}`` -- `index` matches the number badged on screen, so "the second
+        one" means `index: 2`; `key`/`label` are directly usable as a `click`
+        target; `path` is the root -> node type chain for locating it in
+        `describe_tree`; `tree` and `state` are those dumps **scoped to that
+        node**, which is usually all you need instead of a whole-tree read.
+
+        `active: true` means inspect mode is still on and the human may still be
+        designating -- prefer waiting over acting on a half-made set. `lost` is
+        how many designated widgets a hot reload could not re-resolve; when it is
+        non-zero, say so rather than reasoning over a silently shortened list.
+        """
+        return _client().describe_selection()
 
     @server.tool()
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:

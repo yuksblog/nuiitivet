@@ -768,3 +768,80 @@ def test_get_cleans_up_on_connection_refused(tmp_path: Path) -> None:
     with pytest.raises(BridgeNotFoundError):
         client.describe_tree()
     assert not path.exists()
+
+
+# --- selection (#591) --------------------------------------------------------
+
+
+def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) -> None:
+    """The human -> assistant direction: what they pointed at, pulled on demand."""
+    from nuiitivet.dev.selection import Selection
+
+    app = _fake_app()
+    selection = Selection()
+    selection.toggle(app.root)
+    bridge = DevBridge(app, tmp_path, selection=selection)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            payload = client.describe_selection()
+
+            assert payload["regions"] == []
+            assert payload["lost"] == 0
+            (node,) = payload["nodes"]
+            assert node["index"] == 1
+            assert node["key"] == "submit"
+            assert node["path"] == ["_FakeNode"]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_without_a_selection_serves_an_empty_designation(
+    tmp_path: Path, dev_run: None
+) -> None:
+    """A bridge built without one (as tests do) reads as nothing designated."""
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            assert client.describe_selection()["nodes"] == []
+    finally:
+        bridge.shutdown()
+
+
+def test_status_carries_the_selection_roll_up(tmp_path: Path, dev_run: None) -> None:
+    """The discoverability hook: status is the cheapest tool and the first called."""
+    from nuiitivet.dev.selection import Selection
+
+    app = _fake_app()
+    selection = Selection()
+    selection.enter()
+    selection.toggle(app.root)
+    bridge = DevBridge(app, tmp_path, selection=selection)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            summary = client.status()["selection"]
+            assert summary["active"] is True
+            assert summary["nodes"] == 1
+            assert summary["regions"] == 0
+            assert summary["seq"] > 0
+    finally:
+        bridge.shutdown()
+
+
+def test_status_selection_is_null_without_one(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            assert client.status()["selection"] is None
+    finally:
+        bridge.shutdown()

@@ -295,6 +295,144 @@ def find_obstruction(root: Any, node: Any, x: float, y: float) -> Optional[str]:
     return f"covered by {type(hit).__name__} at that point"
 
 
+def _visible_children(node: Any) -> list[Any]:
+    """Return the children a *pick* may descend into, in traversal order.
+
+    A container that keeps content mounted while it is off screen -- a ``Deck``
+    showing one page, a ``Navigator`` whose top route covers the rest -- narrows
+    ``focus_traversal_children()`` to what the user can currently act on, on the
+    grounds (see
+    :meth:`nuiitivet.widgeting.widget_children.WidgetChildren.focus_traversal_children`)
+    that "``paint`` and ``hit_test`` already narrow the same way ... so Tab stops
+    where the eye does". A picker has to stop where the eye does too, so it asks
+    the same question rather than inventing a second notion of visibility.
+
+    Occlusion filtering cannot substitute for this. :func:`find_obstruction`
+    deliberately does not report a ``None`` hit as an obstruction -- that is what
+    keeps a non-interactive target reachable -- so an entirely non-interactive
+    hidden subtree (two ``Text`` pages in a ``Deck``) is invisible to the
+    occlusion check and would otherwise be picked in preference to the page on
+    screen.
+
+    ``FocusTraversalBlocker`` is deliberately *not* honoured: it hides a subtree
+    from Tab, but a disabled ``Clickable`` is plainly visible and must stay
+    pickable. It is a separate mechanism (a ``blocks_focus_traversal`` property),
+    so descending through ``focus_traversal_children()`` alone skips it.
+
+    Falls back to ``children`` for anything without the hook, and always appends
+    ``built_child`` -- the default ``focus_traversal_children()`` reports only the
+    laid-out children, so a :class:`ComposableWidget`'s subtree would be lost.
+    """
+    probe = getattr(node, "focus_traversal_children", None)
+    kids: list[Any] = []
+    if callable(probe):
+        try:
+            kids = [child for child in probe() if child is not None]
+        except Exception:
+            kids = []
+    else:
+        kids = [child for child in (getattr(node, "children", ()) or ()) if child is not None]
+    built = getattr(node, "built_child", None)
+    if built is not None and built is not node and not any(child is built for child in kids):
+        kids.append(built)
+    return kids
+
+
+def _is_visually_empty(node: Any) -> bool:
+    """Whether ``node`` is currently drawing nothing at all.
+
+    The opt-in companion to ``visual_offset`` / ``visual_clip_rect``, probed by
+    name for the same reason: a container that stays mounted at full size while
+    showing nothing -- an ``Overlay`` with no open entries -- reports
+    ``is_visually_empty() -> True`` and drops out of picking along with its whole
+    subtree.
+
+    Geometry cannot detect this and neither can occlusion. Such a container keeps
+    a full-window rect, so it contains every point; and ``find_obstruction``
+    clears it, because ``hit_test`` there returns ``None`` and a ``None`` hit is
+    deliberately not an obstruction (that rule is what keeps a non-interactive
+    target reachable). Painted on top of everything, it would otherwise shadow
+    the entire app -- and precisely for the non-interactive widgets ``pick_at``
+    exists to reach.
+    """
+    probe = getattr(node, "is_visually_empty", None)
+    if not callable(probe):
+        return False
+    try:
+        return bool(probe())
+    except Exception:
+        return False
+
+
+def _pick(root: Any, node: Any, x: float, y: float, seen: set[int]) -> Optional[Any]:
+    """Depth-first, top-most-first search for the deepest reachable node at ``(x, y)``."""
+    if node is None or id(node) in seen:
+        return None
+    seen.add(id(node))
+    if _is_visually_empty(node):
+        return None
+
+    # Reversed, so a later sibling -- painted on top -- is tried first. This is
+    # the convention ``_hit_test_children`` already works in.
+    for child in reversed(_visible_children(node)):
+        picked = _pick(root, child, x, y, seen)
+        if picked is not None:
+            return picked
+
+    rect = global_visual_rect(node)
+    if rect is None or rect[2] <= 0 or rect[3] <= 0:
+        return None
+    if not _contains(rect, x, y):
+        return None
+    if find_obstruction(root, node, x, y) is not None:
+        return None
+    return node
+
+
+def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
+    """Return the widget a human pointing at root-space ``(x, y)`` means, or ``None``.
+
+    The devtools-picker counterpart to ``hit_test``, and deliberately not built on
+    it: ``hit_test`` returns the deepest *hit-participating* widget, but the node
+    a human wants to point at is frequently one that participates in no hit
+    testing at all -- a plain ``Text``, a spacing ``Container``. This is purely
+    geometric, so those are reachable.
+
+    The deepest node whose :func:`global_visual_rect` contains the point wins,
+    with three qualifications:
+
+    * **Descent is narrowed to what is on screen** (:func:`_visible_children`), so
+      a ``Deck``'s hidden page or a ``Navigator``'s covered route is never a
+      candidate in the first place, and a container that reports itself
+      :func:`visually empty <_is_visually_empty>` -- an ``Overlay`` with nothing
+      open -- drops out with its whole subtree.
+    * **Siblings are visited in reverse**, matching the top-most-first order
+      ``_hit_test_children`` uses, so the node painted on top wins an overlap.
+    * **Zero-size nodes are skipped, and unreachable ones rejected**
+      (:func:`find_obstruction`: clipped out of a scrolled region, or covered by
+      something in an unrelated subtree). A rejected candidate falls back to the
+      next one out, so a click over a clipped row lands on whatever is genuinely
+      painted there.
+
+    A layout-only wrapper stacking several rects under one pixel is skipped in
+    favour of its deepest child; walking back out to it is the caller's job (the
+    ancestor walk in inspect mode), not this function's.
+
+    Must be called on the UI thread (it reads live layout state).
+
+    Args:
+        root: The mounted root widget (``App.root``).
+        x: Root-space x coordinate.
+        y: Root-space y coordinate.
+
+    Returns:
+        The picked widget, or ``None`` if the point reaches nothing.
+    """
+    if root is None:
+        return None
+    return _pick(root, root, float(x), float(y), set())
+
+
 def _node_matches(
     node: Any,
     *,
