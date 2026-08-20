@@ -221,6 +221,31 @@ class Box(CachedPaintMixin, Widget):
             return True
         return super()._hit_self_opaque()
 
+    def visual_clip_rect(self) -> Optional[Tuple[float, float, float, float]]:
+        """Return the rect content is clipped to, in this widget's local coords.
+
+        ``None`` when the box clips nothing, which is the common case.
+
+        This publishes, under the name geometric readers probe for (see
+        ``nuiitivet._interaction.perception``), the same answer ``paint`` and
+        :meth:`hit_test` already act on. Without it a child laid out *outside*
+        the box -- an oversized decorative shape trimmed to a corner, the idiom
+        that fakes a gradient -- keeps its full layout rect as far as anything
+        reading the tree geometrically is concerned, and so looks reachable at
+        coordinates where none of it is painted.
+
+        Derived from layout state rather than ``last_rect``: an action settles
+        the tree by laying it out without painting, so paint state is stale
+        exactly when this is needed.
+        """
+        if not self.clip_content:
+            return None
+        rect = self.layout_rect
+        if rect is None:
+            return None
+        _x, _y, w, h = rect
+        return (0.0, 0.0, float(w), float(h))
+
     def hit_test(self, x: int, y: int):
         if self.clip_content:
             rect = self.last_rect

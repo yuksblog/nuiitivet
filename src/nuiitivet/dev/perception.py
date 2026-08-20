@@ -14,6 +14,7 @@ from nuiitivet._interaction.perception import (
     find_target,
     global_visual_rect,
     match_condition,
+    pick_at,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "find_target",
     "global_visual_rect",
     "match_condition",
+    "pick_at",
 ]

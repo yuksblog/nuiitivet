@@ -164,6 +164,7 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
                 exception_once(logger, "gpu_frame_chrome_border_exc", "Failed to draw CustomChrome border")
 
     _paint_dev_action_overlay(app, canvas)
+    _paint_dev_selection_overlay(app, canvas)
 
     # Cache this fully-painted frame so a later surface-loss redraw can re-blit it
     # instead of walking the tree again. The snapshot captures the surface at its
@@ -174,6 +175,20 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
     _flush_gpu(app, gr_context)
     app._dirty = False
     return True
+
+
+def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:
+    """Draw inspect-mode feedback on the live frame only (#591).
+
+    Live frames only, like the action overlay: the human's designations must not
+    reach ``screenshot``, or the assistant would read them back as app content.
+    """
+    try:
+        from nuiitivet.dev import selection_overlay
+
+        selection_overlay.paint_selection(app, canvas, int(app.width), int(app.height))
+    except Exception:
+        exception_once(logger, "gpu_frame_dev_selection_overlay_exc", "dev selection overlay paint raised")
 
 
 def _paint_dev_action_overlay(app: Any, canvas: Any) -> None:

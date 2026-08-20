@@ -8,6 +8,7 @@ Subcommands::
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
+    python -m nuiitivet.dev describe-selection      # dump what the human pointed at
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
@@ -38,11 +39,13 @@ from typing import Optional, Sequence
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
+from .inspect import InspectMode
 from .interaction import InteractionJournal, InteractionRecorder
 from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
+from .selection import Selection
 from .session import DevSession, set_dev_session
 
 # Subcommands that may appear as the first token. Anything else is treated as a
@@ -54,6 +57,7 @@ _SUBCOMMANDS = frozenset(
         "screenshot",
         "describe-tree",
         "describe-state",
+        "describe-selection",
         "reload-log",
         "interaction-log",
         "click",
@@ -111,6 +115,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--include-animations",
         action="store_true",
         help="Also report Animatable state, which is filtered out by default.",
+    )
+
+    subparsers.add_parser(
+        "describe-selection",
+        help="Print what the human designated in the running app's inspect mode, as JSON.",
     )
 
     reload_log = subparsers.add_parser(
@@ -292,12 +301,18 @@ def _run(args: argparse.Namespace) -> int:
         # into it, the bridge serves them at ``/reload_log`` so an AI pair can
         # notice the code changed between its turns (#388).
         journal = ReloadJournal()
+        # What the human *points at* (#591), the reverse of the interaction
+        # journal's "what the human did". Inspect mode writes designations from
+        # the real input path; the controller re-resolves them across a reload;
+        # the bridge serves them at ``/describe_selection``.
+        selection = Selection()
         controller = HotReloadController(
             app,
             loaded.project_root,
             session.root_factory,
             poll_interval=args.poll_interval,
             journal=journal,
+            selection=selection,
         )
         # The complementary surface (#390): the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
@@ -305,6 +320,7 @@ def _run(args: argparse.Namespace) -> int:
         # app between its turns.
         interaction_journal = InteractionJournal()
         app._interaction_recorder = InteractionRecorder(interaction_journal)
+        app._inspect_mode = InspectMode(selection, journal=interaction_journal)
         # The runtime log (#409): capture taps route the app's log output and
         # uncaught exceptions (UI, background threads, asyncio) into this journal,
         # which the bridge serves at ``/runtime_log`` so an AI pair can see *why*
@@ -322,6 +338,7 @@ def _run(args: argparse.Namespace) -> int:
             interaction_journal=interaction_journal,
             runtime_journal=runtime_journal,
             runtime_capture=runtime_capture,
+            selection=selection,
         )
 
         print(
@@ -338,7 +355,7 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(status / describe-tree / describe-state / screenshot / click / scroll / "
+            "(status / describe-tree / describe-state / describe-selection / screenshot / click / scroll / "
             "scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
@@ -376,6 +393,19 @@ def _describe_tree(_args: argparse.Namespace) -> int:
     import json
 
     print(json.dumps(tree, indent=2))
+    return 0
+
+
+def _describe_selection() -> int:
+    try:
+        client = BridgeClient.discover()
+        payload = client.describe_selection()
+    except (BridgeNotFoundError, OSError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(payload, indent=2))
     return 0
 
 
@@ -535,6 +565,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _describe_tree(args)
     if args.command == "describe-state":
         return _describe_state(args)
+    if args.command == "describe-selection":
+        return _describe_selection()
     if args.command == "reload-log":
         return _reload_log(args)
     if args.command == "interaction-log":

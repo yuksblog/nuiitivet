@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -87,7 +87,41 @@ top to bottom.
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, so you re-sync instead of acting on a stale screen |
+| The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
+| `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
+
+### Reading a designation
+
+`describe_selection` is the one channel that runs **from the human to you** —
+what they *meant*, not what the app is.
+
+- Read a node's `tree` / `state` (both scoped to it) instead of dumping the whole
+  tree. `key` / `label` drive it; `path` locates it in `describe_tree`.
+- **No `key`, `label`, or `target` on it?** Expected — most apps carry no
+  `keyed()`, and then `resolve_target` has nothing to anchor on. Its scoped
+  `tree` is what tells two same-typed nodes apart (two bare `_RailItemButton`s by
+  the `Text` inside each), and `path` is how you reach it.
+- A node's `rect` here is what is **on screen** of it, clips applied — unlike
+  `describe_tree`'s. A node clipped away entirely reports no `rect` at all.
+- Refer to a designation by its `index`: it matches the badge on their screen.
+- `lost` > 0 — some designations did not survive a reload. **Say so.** Never
+  reason over a silently shortened list.
+- `active: true` — they are still in inspect mode and have not pressed `Enter`,
+  so the set is not committed. Do not act on it: tell them that, or ask them to
+  press `Enter`.
+- `regions` are areas, numbered in the same sequence as `nodes`:
+  - `container` is the widget enclosing the box; `contents` is a nested tree of
+    what the box crosses, tagged `contained` / `clipped` (no tag = only on the
+    path to a match).
+  - One box, two meanings — "the gap between these things" (`container`) or
+    "these things" (`contents`). Nothing is collapsed for you; pick from what the
+    human said.
+  - Empty `contents` is an answer, not a miss: nothing is painted there, and
+    `container` names what should have been.
+  - Re-derived on every call, so read one again after your fix.
+- You cannot arm it and cannot clear it. If nothing is designated, ask them to
+  press `Ctrl+Shift+C`, click a widget or drag a box over the area, then `Enter`.
 
 ### Blind spots
 

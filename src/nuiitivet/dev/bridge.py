@@ -50,6 +50,7 @@ from .action import (
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
+from .selection import Selection, describe_selection
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .session import current_dev_session
@@ -243,6 +244,7 @@ def _build_status(
     marshaller: _UIThreadMarshaller,
     journal: Optional[ReloadJournal],
     runtime_journal: Optional[RuntimeJournal],
+    selection: Optional[Selection] = None,
 ) -> dict[str, Any]:
     """Aggregate a cheap liveness/health snapshot of the running app.
 
@@ -260,6 +262,10 @@ def _build_status(
         "blank": blank,
         "last_reload": _latest_reload(journal),
         "error_count": _error_count(runtime_journal),
+        # A pull-only surface nobody calls does not exist. ``status`` is the
+        # cheapest tool and the one called first, so it is the most reliable
+        # place for an assistant to notice the human designated something (#591).
+        "selection": selection.summary() if selection is not None else None,
     }
 
 
@@ -347,6 +353,7 @@ def _make_handler(
     interaction_journal: Optional[InteractionJournal],
     runtime_journal: Optional[RuntimeJournal],
     runtime_capture: Optional[RuntimeLogCapture],
+    selection: Optional[Selection] = None,
 ) -> type[BaseHTTPRequestHandler]:
     """Build the request handler class bound to ``marshaller`` and the journals."""
 
@@ -478,7 +485,7 @@ def _make_handler(
                     # positively-named alternative to a screenshot for "is it up
                     # and healthy?" (#420).
                     self._send_json(
-                        200, _build_status(marshaller, journal, runtime_journal)
+                        200, _build_status(marshaller, journal, runtime_journal, selection)
                     )
                 elif path == "/describe_tree":
                     tree = marshaller.call_on_ui_thread(lambda app: describe_tree(app.root))
@@ -494,6 +501,17 @@ def _make_handler(
                         )
                     )
                     self._send_json(200, {"state": state})
+                elif path == "/describe_selection":
+                    # What the *human* pointed at, the mirror of describe_tree /
+                    # describe_state. Read on the UI thread: the payload carries
+                    # each member's live rect plus a scoped tree/state dump
+                    # (#591).
+                    self._send_json(
+                        200,
+                        marshaller.call_on_ui_thread(
+                            lambda app: describe_selection(app.root, selection)
+                        ),
+                    )
                 elif path == "/screenshot":
                     png = marshaller.call_on_ui_thread(lambda app: app._render_to_png_bytes())
                     self._send_png(png)
@@ -559,6 +577,7 @@ class DevBridge:
         interaction_journal: Optional[InteractionJournal] = None,
         runtime_journal: Optional[RuntimeJournal] = None,
         runtime_capture: Optional[RuntimeLogCapture] = None,
+        selection: Optional[Selection] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -575,6 +594,9 @@ class DevBridge:
         # verbose capture via the capture handle at ``/runtime_log/verbose`` (#409).
         self._runtime_journal = runtime_journal
         self._runtime_capture = runtime_capture
+        # Written by the app's inspect mode when the human designates a widget;
+        # the bridge serves it at ``/describe_selection`` (#591).
+        self._selection = selection
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -608,6 +630,7 @@ class DevBridge:
             self._interaction_journal,
             self._runtime_journal,
             self._runtime_capture,
+            self._selection,
         )
         self._server = ThreadingHTTPServer((self._host, 0), handler)
         self._thread = threading.Thread(

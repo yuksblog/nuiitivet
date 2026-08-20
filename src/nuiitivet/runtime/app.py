@@ -427,6 +427,10 @@ class App:
         # actions can be recorded for an AI pair to pull; ``None`` -- and zero
         # overhead -- in production.
         self._interaction_recorder: Optional[Any] = None
+        # Dev-only designation mode (#591). The dev runner attaches an
+        # ``InspectMode`` here so the human can point at a widget for an AI pair
+        # to read; ``None`` -- and zero overhead -- in production.
+        self._inspect_mode: Optional[Any] = None
         # Last known pointer position / held buttons (screen coords), used to
         # synthesize the pointer event delivered on a modifier-key mask change.
         self._last_pointer_pos: Optional[Tuple[float, float]] = None
@@ -1025,6 +1029,15 @@ class App:
                 action_overlay.paint_markers(canvas=canvas, app=self, width=self.width, height=self.height)
             except Exception:
                 exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
+
+            try:
+                from nuiitivet.dev import selection_overlay
+
+                selection_overlay.paint_selection(self, canvas, self.width, self.height)
+            except Exception:
+                exception_once(
+                    logger, "app_snapshot_dev_selection_overlay_exc", "dev selection overlay paint raised"
+                )
 
         img = surface.makeImageSnapshot()
         if img is None:

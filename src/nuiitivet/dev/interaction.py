@@ -208,6 +208,29 @@ def _visible_label(node: Any) -> Optional[str]:
     return None
 
 
+def own_identity(node: Any) -> dict[str, Any]:
+    """Return ``node``'s *own* identity, without :func:`resolve_target`'s walk up.
+
+    The counterpart to :func:`resolve_target`, and the two answer different
+    questions. ``resolve_target`` answers "how would you drive this?", which for
+    a click on a button's inner label is the button. That is exactly right for an
+    action, and wrong as the sole answer to "what is this node?" -- inspect-mode
+    picking (#591) exists precisely so an anonymous ``Text`` can be designated,
+    and reporting the button's identity beside that text's rect would describe
+    neither node.
+
+    Same shape either way: ``{"type", optional "key", optional "label"}``.
+    """
+    info: dict[str, Any] = {"type": type(node).__name__}
+    key = _coerce_display(getattr(node, "key", None))
+    if key is not None:
+        info["key"] = key
+    label = _visible_label(node)
+    if label is not None:
+        info["label"] = label
+    return info
+
+
 def resolve_target(node: Any) -> dict[str, Any]:
     """Resolve a hit-tested ``node`` to a stable, coordinate-free identity.
 
@@ -318,7 +341,7 @@ class InteractionEvent:
             is re-issued a fresh one, so an ongoing gesture reads as new activity.
         timestamp: Unix time (seconds) when the event was recorded -- for a
             coalesced ``scroll``, when it was last updated.
-        kind: ``"click"``, ``"key"``, ``"text"``, or ``"scroll"``.
+        kind: ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, or ``"select"``.
         target: For a ``click`` or a ``scroll``, the resolved widget identity
             (``{"type", optional "key"/"label"}``); ``None`` otherwise. Never a
             coordinate.
@@ -423,6 +446,20 @@ class InteractionJournal:
     def record_key(self, name: str, modifiers: tuple[str, ...] = ()) -> InteractionEvent:
         """Record a key press ``name`` with held ``modifiers`` and return the event."""
         return self._record("key", key=name, modifiers=modifiers)
+
+    def record_select(self) -> InteractionEvent:
+        """Record a content-free marker that the human designated something (#591).
+
+        The counterpart to :meth:`record_text`, and content-free for a different
+        reason. A designation *may* carry rects and field text -- it is an
+        explicit act of disclosure, unlike this journal's ambient recording -- but
+        the layering still holds: the marker here says only *that* it happened,
+        and the payload is served only when the assistant explicitly calls
+        ``describe_selection``. So an assistant catching up on the journal sees
+        the designation without the journal itself becoming a second, unasked-for
+        channel for it.
+        """
+        return self._record("select")
 
     def record_text(self) -> InteractionEvent:
         """Record a content-free marker that the human typed, and return the event."""
@@ -649,6 +686,7 @@ __all__ = [
     "InteractionEvent",
     "InteractionJournal",
     "InteractionRecorder",
+    "own_identity",
     "read_scroll_metrics",
     "resolve_target",
 ]

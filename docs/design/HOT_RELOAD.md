@@ -484,17 +484,123 @@ edit again.
   new error from the same handler after a hot-reload fix still surfaces. A
   process-wide **verbose** switch (`POST /runtime_log/verbose`) flips
   `set_log_once_enabled(False)` so a debugging session can see every occurrence.
+- **Designation** (`dev/selection.py`, `dev/inspect.py`, `dev/selection_overlay.py`,
+  [#591](https://github.com/yuksblog/nuiitivet/issues/591)).
+  Every surface above runs assistant → app. This one runs **human → assistant**:
+  it records what the human *pointed at*. Prose is an expensive channel for a
+  location, and for two cases it barely works at all — an anonymous inner node
+  (no phrase identifies it) and a *gap* (no widget to name). Inspect mode is
+  a latched, dev-only gesture layer sitting on the backend's *real* input
+  handlers — the same layer the interaction recorder uses, and for the same
+  reason: the assistant's synthesized actions enter below it at `app._dispatch_*`
+  and so can never forge a designation. The bridge serves the result at
+  `GET /describe_selection`, with a `selection` roll-up on `/status` and a
+  content-free `select` marker on the interaction journal so an assistant
+  notices it without being told. The gestures themselves are the user guide's
+  business.
+  - **Ownership and threading.** One `Selection` per app, built by the dev runner
+    and shared three ways: `InspectMode` writes it from the UI thread,
+    `HotReloadController` re-resolves it after a rebuild, and the bridge reads it
+    on HTTP worker threads. It carries its own `RLock` for that last split — the
+    same shape as the reload and interaction journals. Nodes and regions live in
+    one ordered list because they share one on-screen numbering.
+  - **Session semantics.** `enter()` snapshots the marks; `commit()` keeps what
+    the session did and `discard()` restores the snapshot, so a cancel scopes to
+    one session rather than to everything, and clearing is undoable because it
+    happens inside one. A reload remaps the snapshot alongside the live marks —
+    without that, cancelling after a rebuild would restore members whose
+    referents are already gone.
+  - **`pick_at`** (`_interaction/perception.py`) is the geometry-only picker.
+    `hit_test` cannot serve: it returns the deepest *hit-participating* widget,
+    but the node a human means is often one that participates in none (a plain
+    `Text`, a spacing `Container`). Descent is narrowed through
+    `focus_traversal_children()` — the same question the keyboard already asks,
+    so the picker stops where the eye does — and candidates are then filtered by
+    `find_obstruction`. Narrowing the *descent* rather than filtering afterwards
+    is load-bearing: `find_obstruction` deliberately does not report a `None` hit
+    as an obstruction (that is what keeps a non-interactive target reachable), so
+    an entirely non-interactive hidden subtree — two `Text` pages in a `Deck` —
+    is invisible to the occlusion check.
+  - **`is_visually_empty()`** is the second half of that same gap, opted into by
+    name like `visual_offset` / `visual_clip_rect`. An `Overlay` with nothing
+    open stays mounted at full window size and paints nothing; it therefore
+    contains every point, sits on top of the content, and is cleared by
+    `find_obstruction` for the very reason above. Every App wraps its content in
+    one, so without this probe the idle overlay shadows the whole app for exactly
+    the non-interactive widgets picking exists to reach. `Overlay.hit_test`
+    already short-circuits on `has_entries()`; this is the same answer for
+    anything reading the tree geometrically rather than dispatching input.
+  - **`Box.visual_clip_rect()`** closes the third instance of that same gap,
+    found by pointing at a real app rather than by a spike. `Box.hit_test` has
+    always honoured `clip_content`, but the clip was never published, so
+    `find_obstruction` could not see it — and the occlusion check cannot cover
+    for it, because a point trimmed away lands on nothing and a `None` hit is
+    deliberately not an obstruction. The idiom that exposes it is ordinary: a
+    decorative shape laid out far larger than its parent and clipped to a
+    corner, which is how a gradient gets faked. Its layout rect then reaches
+    well outside anything painted — into a neighbouring pane, or into negative
+    coordinates — and both the picker and the reported rect believed it.
+  - **Reporting uses `visible_rect`, not `global_visual_rect`.** "Where is this
+    node" and "what of it is on screen" are different questions, and the second
+    is the one a designation answers. `global_visual_rect` stays as it is: it
+    positions a pointer, and an action must aim at the node's actual origin.
+    `visible_rect` intersects that with every ancestor clip and is what the
+    payload and the on-screen brackets both use, so the box drawn on the glass
+    and the rect handed to the assistant are the same claim. A node clipped away
+    entirely has no visible rect at all.
+  - **Reload re-resolution.** Members are held weakly and keyed on *object
+    identity* (two anonymous siblings resolve to the same identity dict, so
+    keying on that would make picking the second remove the first). A rebuild
+    therefore evaporates them, which is the normal case rather than an edge one —
+    "point at it, then have the assistant fix it" puts a reload in the middle of
+    nearly every use. They are matched back by the same key-preferring structural
+    path §7.4 restores state with (`snapshot.path_of` / `widgets_by_path`), and
+    misses are counted in `lost` rather than shortening the list silently.
+  - **Regions** (the drag gesture) are the half node picking cannot express: an
+    area with no widget in it. Only the rect is stored; `container` (the
+    innermost enclosing node, plus its immediate children) and `contents` are
+    derived on every read. That is what carries a region across a reload with no
+    restore step, and what makes it a *continuing* observation point rather than
+    a single-use note. `contents` intersects rather than requiring full
+    containment — humans drag rough boxes — and is scoped to `container`'s
+    subtree, which is what makes intersection workable at all: `container`
+    encloses the region by definition, so the ancestor chain, which trivially
+    overlaps, drops out without a special case. Each entry is tagged `contained`
+    or `clipped`. An empty `contents` is the signal, not a failure; `container`
+    still answers.
+
+    `contents` is a **pruned tree, not a collapsed list**, and that is the point.
+    A rectangle carries two readings the geometry cannot separate: "the gap
+    between these things" wants the enclosing owner, "these things" wants what
+    the box crosses. An earlier form applied `find_targets`' rule — drop a match
+    nested inside another match — which answers "which widget did you name?" and
+    is simply a different question: a band drawn down a column reported only the
+    column, the one thing the human already knew. So the two readings get one
+    field each (`container` and `contents`), neither collapsed into the other,
+    and the caller — which knows what the human *said* — chooses.
+  - **Privacy.** A designation may carry rects and on-screen text, unlike the
+    interaction journal, which records neither. That is not an inconsistency: the
+    journal records *ambiently*, without item-by-item consent, while a
+    designation is an explicit act of disclosure — the same ground on which
+    `screenshot` may. The layering holds because the journal marker stays
+    content-free and the payload is served only on an explicit
+    `describe_selection`.
+  - **Overlay.** Amber, against the action overlay's indigo: indigo means "the
+    assistant did this", amber means "the human means this", and one visual
+    language for opposite directions would mislead. Same paint-only,
+    outside-the-tree, live-frames-only constraint, so `describe_tree` never sees
+    it and `screenshot` never contains it.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
-  `describe-state`, `reload-log`, `interaction-log`, `runtime-log`, `screenshot`,
-  `click`, `type`, and `key` are one-shot subcommands that discover the running
+  `describe-state`, `describe-selection`, `reload-log`, `interaction-log`,
+  `runtime-log`, `screenshot`, `click`, `type`, and `key` are one-shot subcommands that discover the running
   app and issue plain HTTP, dependency-free (`urllib`).
 
 ### 12.1 MCP server ([#376](https://github.com/yuksblog/nuiitivet/issues/376))
 
 `dev/mcp_server.py` is the MCP-host-facing surface over the same bridge: it
-exposes `describe_tree`, `describe_state`, `reload_log`, `interaction_log`,
-`runtime_log`, `set_runtime_log_verbose`, `screenshot`, `click`, `type`, and
-`key` as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
+exposes `describe_tree`, `describe_state`, `describe_selection`, `reload_log`,
+`interaction_log`, `runtime_log`, `set_runtime_log_verbose`, `screenshot`,
+`click`, `type`, and `key` as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
 just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
 `mcp` SDK is an optional dependency (the `[mcp]` extra); importing the module

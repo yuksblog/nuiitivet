@@ -57,6 +57,24 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return True
 
 
+def _inspect_consumed(app: Any, hook: str, *args: Any) -> bool:
+    """Offer an input event to the dev-only inspect mode; ``True`` if it took it.
+
+    Absent -- production, or any run without the dev runner -- this is a single
+    ``getattr`` returning ``None``, so the input path pays nothing for it. A
+    failure inside the mode must never swallow the human's input, so it degrades
+    to "not consumed" and the event continues to the app (#591).
+    """
+    mode = getattr(app, "_inspect_mode", None)
+    if mode is None:
+        return False
+    try:
+        return bool(getattr(mode, hook)(*args))
+    except Exception:
+        exception_once(logger, "pyglet_inspect_mode_exc", "Inspect mode hook raised")
+        return False
+
+
 def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode = "auto") -> None:
     """Run an interactive window for the given App-like object.
 
@@ -840,6 +858,12 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
+        # Dev-only: while inspect mode is latched, a press is the human aiming a
+        # designation, not an interaction. It is consumed *before* dispatch --
+        # letting it through would fire the button they were merely pointing at
+        # (#591).
+        if _inspect_consumed(app, "on_mouse_press", app, x_log, y_conv):
+            return True
         try:
             app._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
@@ -859,6 +883,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
+        # Dev-only: release is where a designation resolves -- travel distance
+        # tells a click (pick a widget) from a drag (#591).
+        if _inspect_consumed(app, "on_mouse_release", app, x_log, y_conv):
+            return True
         try:
             app._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
@@ -867,6 +895,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     @window.event
     def on_mouse_motion(x, y, dx, dy):
         x_log, y_conv = _to_logical(x, y)
+        # Dev-only: tracks the pick candidate under the cursor for the overlay's
+        # hover highlight (#591).
+        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv):
+            return True
         try:
             app._dispatch_mouse_motion(x_log, y_conv)
         except Exception:
@@ -877,6 +909,11 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         x_log, y_conv = _to_logical(x, y)
         buttons_n = _normalize_mouse_buttons(buttons)
         modifier_keys = _normalize_modifiers(modifiers)
+        # Dev-only: a drag mid-designation is the human sweeping out a region.
+        # Routed to the same hook as a plain move, which tells the two apart by
+        # whether a press is outstanding (#591).
+        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv):
+            return True
         try:
             app._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
         except Exception:
@@ -909,6 +946,18 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             app._set_modifier_keys(modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
+
+        # Dev-only: inspect mode owns Ctrl+Shift+C, and every key while it is
+        # latched. Checked before the recorder and the escape latch so its own
+        # exit key reaches it rather than closing a dialog behind it (#591).
+        #
+        # Returning ``True`` is load-bearing, not tidiness: pyglet treats a falsy
+        # return as "not handled" and runs the next handler in the stack, whose
+        # default ESC behaviour closes the window -- exactly what the latch below
+        # relies on with its explicit ``return False``. Falling out of here
+        # without a value would quit the app on the mode's own exit key.
+        if _inspect_consumed(app, "on_key_press", app, key_name, modifier_keys):
+            return True
 
         # Dev-only: record semantic keys (shortcuts / navigation) for the
         # interaction journal (#390). Recorded here -- before the escape latch and
@@ -982,6 +1031,11 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             app._set_modifier_keys(modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
+
+        # Dev-only: inspect mode consumed the press, so its release must not
+        # reach the focused widget on its own (#591).
+        if _inspect_consumed(app, "on_key_release", app, key_name, modifier_keys):
+            return True
 
         nonlocal esc_down
         if str(key_name).strip().lower() == "escape":

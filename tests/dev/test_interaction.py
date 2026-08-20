@@ -293,3 +293,22 @@ def test_recorder_never_receives_or_stores_typed_text() -> None:
     recorder.on_text()
     event = journal.recent()[0]
     assert event.to_dict() == {"seq": event.seq, "timestamp": event.timestamp, "kind": "text"}
+
+
+def test_select_marker_is_content_free() -> None:
+    """A designation may disclose rects and text -- but not through this journal (#591).
+
+    The marker says only *that* the human designated something; the payload is
+    served solely by ``describe_selection``, so the ambient journal never becomes
+    a second, unasked-for channel for it.
+    """
+    journal = InteractionJournal()
+
+    journal.record_select()
+
+    (event,) = journal.recent()
+    assert event.to_dict() == {
+        "seq": event.seq,
+        "timestamp": event.timestamp,
+        "kind": "select",
+    }

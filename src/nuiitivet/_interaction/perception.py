@@ -201,14 +201,20 @@ def _visual_clip_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
 
     The opt-in companion to ``visual_offset``: ``visual_clip_rect()`` reports the
     clip in the widget's *own* coordinates, which this translates to root space.
+    A widget that has the hook but is not clipping right now says so by
+    returning ``None`` -- ``Box`` does exactly that unless ``clip_content`` is
+    set, which is the common case.
     """
     probe = getattr(node, "visual_clip_rect", None)
     if not callable(probe):
         return None
     try:
-        cx, cy, cw, ch = probe()
+        clip = probe()
     except Exception:
         return None
+    if clip is None:
+        return None
+    cx, cy, cw, ch = clip
     origin = global_visual_rect(node)
     if origin is None:
         return None
@@ -238,6 +244,38 @@ def global_visual_rect(node: Any) -> Optional[tuple[float, float, float, float]]
         dx += adx
         dy += ady
     return (float(x) + dx, float(y) + dy, float(w), float(h))
+
+
+def visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """Return the part of ``node`` that is actually on screen, in root coordinates.
+
+    :func:`global_visual_rect` answers "where is this node", which is the right
+    question for aiming a pointer at it but the wrong one for *reporting* it: a
+    child laid out larger than the ancestor that clips it keeps its full rect
+    there, so the answer can name an area where nothing of the node is painted.
+    A decorative shape oversized on purpose and trimmed to a corner is the
+    common case, and a rect spanning a neighbouring pane is actively misleading
+    to anyone -- human or assistant -- reading it as "this is what I pointed at".
+
+    So this intersects the node's rect with every ancestor clip, and returns
+    ``None`` when nothing survives (the node is laid out somewhere it is painted
+    nowhere).
+    """
+    rect = global_visual_rect(node)
+    if rect is None:
+        return None
+    x, y, w, h = rect
+    for ancestor in ancestors(node):
+        clip = _visual_clip_rect(ancestor)
+        if clip is None:
+            continue
+        cx, cy, cw, ch = clip
+        left, top = max(x, cx), max(y, cy)
+        right, bottom = min(x + w, cx + cw), min(y + h, cy + ch)
+        if right <= left or bottom <= top:
+            return None
+        x, y, w, h = left, top, right - left, bottom - top
+    return (x, y, w, h)
 
 
 def _contains(rect: tuple[float, float, float, float], x: float, y: float) -> bool:
@@ -293,6 +331,262 @@ def find_obstruction(root: Any, node: Any, x: float, y: float) -> Optional[str]:
     if hit is None or _on_path(node, hit):
         return None
     return f"covered by {type(hit).__name__} at that point"
+
+
+def _visible_children(node: Any) -> list[Any]:
+    """Return the children a *pick* may descend into, in traversal order.
+
+    A container that keeps content mounted while it is off screen -- a ``Deck``
+    showing one page, a ``Navigator`` whose top route covers the rest -- narrows
+    ``focus_traversal_children()`` to what the user can currently act on, on the
+    grounds (see
+    :meth:`nuiitivet.widgeting.widget_children.WidgetChildren.focus_traversal_children`)
+    that "``paint`` and ``hit_test`` already narrow the same way ... so Tab stops
+    where the eye does". A picker has to stop where the eye does too, so it asks
+    the same question rather than inventing a second notion of visibility.
+
+    Occlusion filtering cannot substitute for this. :func:`find_obstruction`
+    deliberately does not report a ``None`` hit as an obstruction -- that is what
+    keeps a non-interactive target reachable -- so an entirely non-interactive
+    hidden subtree (two ``Text`` pages in a ``Deck``) is invisible to the
+    occlusion check and would otherwise be picked in preference to the page on
+    screen.
+
+    ``FocusTraversalBlocker`` is deliberately *not* honoured: it hides a subtree
+    from Tab, but a disabled ``Clickable`` is plainly visible and must stay
+    pickable. It is a separate mechanism (a ``blocks_focus_traversal`` property),
+    so descending through ``focus_traversal_children()`` alone skips it.
+
+    Falls back to ``children`` for anything without the hook, and always appends
+    ``built_child`` -- the default ``focus_traversal_children()`` reports only the
+    laid-out children, so a :class:`ComposableWidget`'s subtree would be lost.
+    """
+    probe = getattr(node, "focus_traversal_children", None)
+    kids: list[Any] = []
+    if callable(probe):
+        try:
+            kids = [child for child in probe() if child is not None]
+        except Exception:
+            kids = []
+    else:
+        kids = [child for child in (getattr(node, "children", ()) or ()) if child is not None]
+    built = getattr(node, "built_child", None)
+    if built is not None and built is not node and not any(child is built for child in kids):
+        kids.append(built)
+    return kids
+
+
+def _is_visually_empty(node: Any) -> bool:
+    """Whether ``node`` is currently drawing nothing at all.
+
+    The opt-in companion to ``visual_offset`` / ``visual_clip_rect``, probed by
+    name for the same reason: a container that stays mounted at full size while
+    showing nothing -- an ``Overlay`` with no open entries -- reports
+    ``is_visually_empty() -> True`` and drops out of picking along with its whole
+    subtree.
+
+    Geometry cannot detect this and neither can occlusion. Such a container keeps
+    a full-window rect, so it contains every point; and ``find_obstruction``
+    clears it, because ``hit_test`` there returns ``None`` and a ``None`` hit is
+    deliberately not an obstruction (that rule is what keeps a non-interactive
+    target reachable). Painted on top of everything, it would otherwise shadow
+    the entire app -- and precisely for the non-interactive widgets ``pick_at``
+    exists to reach.
+    """
+    probe = getattr(node, "is_visually_empty", None)
+    if not callable(probe):
+        return False
+    try:
+        return bool(probe())
+    except Exception:
+        return False
+
+
+def _pick(root: Any, node: Any, x: float, y: float, seen: set[int]) -> Optional[Any]:
+    """Depth-first, top-most-first search for the deepest reachable node at ``(x, y)``."""
+    if node is None or id(node) in seen:
+        return None
+    seen.add(id(node))
+    if _is_visually_empty(node):
+        return None
+
+    # Reversed, so a later sibling -- painted on top -- is tried first. This is
+    # the convention ``_hit_test_children`` already works in.
+    for child in reversed(_visible_children(node)):
+        picked = _pick(root, child, x, y, seen)
+        if picked is not None:
+            return picked
+
+    rect = global_visual_rect(node)
+    if rect is None or rect[2] <= 0 or rect[3] <= 0:
+        return None
+    if not _contains(rect, x, y):
+        return None
+    if find_obstruction(root, node, x, y) is not None:
+        return None
+    return node
+
+
+def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
+    """Return the widget a human pointing at root-space ``(x, y)`` means, or ``None``.
+
+    The devtools-picker counterpart to ``hit_test``, and deliberately not built on
+    it: ``hit_test`` returns the deepest *hit-participating* widget, but the node
+    a human wants to point at is frequently one that participates in no hit
+    testing at all -- a plain ``Text``, a spacing ``Container``. This is purely
+    geometric, so those are reachable.
+
+    The deepest node whose :func:`global_visual_rect` contains the point wins,
+    with three qualifications:
+
+    * **Descent is narrowed to what is on screen** (:func:`_visible_children`), so
+      a ``Deck``'s hidden page or a ``Navigator``'s covered route is never a
+      candidate in the first place, and a container that reports itself
+      :func:`visually empty <_is_visually_empty>` -- an ``Overlay`` with nothing
+      open -- drops out with its whole subtree.
+    * **Siblings are visited in reverse**, matching the top-most-first order
+      ``_hit_test_children`` uses, so the node painted on top wins an overlap.
+    * **Zero-size nodes are skipped, and unreachable ones rejected**
+      (:func:`find_obstruction`: clipped out of a scrolled region, or covered by
+      something in an unrelated subtree). A rejected candidate falls back to the
+      next one out, so a click over a clipped row lands on whatever is genuinely
+      painted there.
+
+    A layout-only wrapper stacking several rects under one pixel is skipped in
+    favour of its deepest child; walking back out to it is the caller's job (the
+    ancestor walk in inspect mode), not this function's.
+
+    Must be called on the UI thread (it reads live layout state).
+
+    Args:
+        root: The mounted root widget (``App.root``).
+        x: Root-space x coordinate.
+        y: Root-space y coordinate.
+
+    Returns:
+        The picked widget, or ``None`` if the point reaches nothing.
+    """
+    if root is None:
+        return None
+    return _pick(root, root, float(x), float(y), set())
+
+
+def _rect_intersects(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah
+
+
+def _rect_encloses(outer: tuple[float, ...], inner: tuple[float, ...]) -> bool:
+    ox, oy, ow, oh = outer
+    ix, iy, iw, ih = inner
+    return ox <= ix and oy <= iy and ox + ow >= ix + iw and oy + oh >= iy + ih
+
+
+def _visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """A node's painted rect, or ``None`` when it has none or is degenerate."""
+    rect = visible_rect(node)
+    if rect is None or rect[2] <= 0 or rect[3] <= 0:
+        return None
+    return rect
+
+
+def _iter_visible(node: Any, seen: set[int]) -> Any:
+    """Yield ``node`` and every descendant the eye can currently reach."""
+    if node is None or id(node) in seen or _is_visually_empty(node):
+        return
+    seen.add(id(node))
+    yield node
+    for child in _visible_children(node):
+        yield from _iter_visible(child, seen)
+
+
+def enclosing_container(root: Any, rect: tuple[float, float, float, float]) -> Optional[Any]:
+    """Return the innermost visible node whose rect wholly encloses ``rect``.
+
+    The anchor for a designated *region* (#591). When the human draws a box over
+    empty space there is no widget to name, and this is the entire answer: it
+    names the widget that *should* have painted something there.
+
+    Descends through the same narrowing :func:`pick_at` uses, so a ``Deck``'s
+    hidden page or an idle ``Overlay`` never answers for a region drawn over the
+    content in front of it.
+
+    Must be called on the UI thread (it reads live layout state).
+    """
+    if root is None:
+        return None
+    found: Optional[Any] = None
+    for node in _iter_visible(root, set()):
+        node_rect = _visible_rect(node)
+        if node_rect is not None and _rect_encloses(node_rect, rect):
+            # Pre-order, so a later match is always deeper than an earlier one.
+            found = node
+    return found
+
+
+def _relation(node_rect: tuple[float, ...], rect: tuple[float, ...]) -> Optional[str]:
+    """How ``node_rect`` stands to a designated region, or ``None`` if it misses it."""
+    if not _rect_intersects(node_rect, rect):
+        return None
+    return "contained" if _rect_encloses(rect, node_rect) else "clipped"
+
+
+def _intersection_node(
+    node: Any, rect: tuple[float, float, float, float], seen: set[int]
+) -> Optional[tuple[Any, Optional[str], list[Any]]]:
+    """Build the pruned intersection subtree rooted at ``node``, or ``None``."""
+    if node is None or id(node) in seen or _is_visually_empty(node):
+        return None
+    seen.add(id(node))
+    children = [
+        described
+        for described in (_intersection_node(child, rect, seen) for child in _visible_children(node))
+        if described is not None
+    ]
+    node_rect = _visible_rect(node)
+    relation = _relation(node_rect, rect) if node_rect is not None else None
+    if relation is None and not children:
+        return None
+    return (node, relation, children)
+
+
+def intersecting_subtree(
+    container: Any, rect: tuple[float, float, float, float]
+) -> list[tuple[Any, Optional[str], list[Any]]]:
+    """Return what a designated region covers, as a pruned ``(node, relation, children)`` tree.
+
+    Scoped to ``container``'s subtree, which is what makes an *intersection* rule
+    workable at all: humans drag rough boxes, but a bare intersection test
+    against the whole tree would also match every ancestor, each of which
+    trivially overlaps. ``container`` encloses the region by definition, so its
+    subtree is exactly the right scope and the ancestor chain drops out without a
+    special case.
+
+    ``relation`` is ``"contained"`` when the node lies wholly inside the region,
+    ``"clipped"`` when it only overlaps, and ``None`` for a node kept solely
+    because a descendant matched -- the same pruning shape
+    :func:`describe_state` uses, so the result reads like the other dumps.
+
+    **Nothing is collapsed.** An earlier flat form applied :func:`find_targets`'
+    rule -- drop a match nested inside another match -- and that is wrong here.
+    It answers "which widget did you name?", where the outermost match is the one
+    meant; a region asks "what is under this box?", where the same rectangle may
+    equally mean the gap between things or the things it crosses. Geometry cannot
+    tell those apart, so collapsing to one reading destroyed the other: a band
+    drawn across a column reported only the column. The structure is reported
+    instead, and the caller -- which knows what the human said -- decides.
+
+    May legitimately be empty: a region over blank space covers nothing, which is
+    the signal rather than a failure. :func:`enclosing_container` still answers.
+
+    Must be called on the UI thread (it reads live layout state).
+    """
+    if container is None:
+        return []
+    described = _intersection_node(container, rect, set())
+    # The container itself always intersects; its subtree is the answer.
+    return described[2] if described is not None else []
 
 
 def _node_matches(

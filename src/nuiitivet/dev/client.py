@@ -260,6 +260,18 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return payload.get("tree", {})
 
+    def describe_selection(self) -> dict[str, Any]:
+        """Fetch what the human designated in inspect mode (#591).
+
+        The human -> assistant direction of the loop: where ``describe_tree`` and
+        ``describe_state`` report what the app *is*, this reports what the human
+        *meant* -- the widgets they deliberately pointed at, each with its
+        identity, rect, and a tree/state dump scoped to it.
+        """
+        body, _ = self._get("/describe_selection")
+        payload: dict[str, Any] = json.loads(body.decode("utf-8"))
+        return payload
+
     def describe_state(self, include_animations: bool = False) -> dict[str, Any]:
         """Fetch the reactive ``Observable`` state of the running app (#410).
 

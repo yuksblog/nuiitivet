@@ -63,7 +63,7 @@ Everything below assumes this setup is in place.
 
 ## What the assistant can do
 
-Fourteen tools, grouped by the question each one answers. Skim the tool names;
+Fifteen tools, grouped by the question each one answers. Skim the tool names;
 where a row carries a **bold note**, that is the thing worth knowing as the human
 in the loop. *When* the assistant should reach for which is the
 [`nuiitivet-debug` skill](nuiitivet_debug_skill.md)'s business, not yours.
@@ -76,6 +76,7 @@ in the loop. *When* the assistant should reach for which is the
 | `describe_tree` | The mounted tree as compact JSON — each node's type, identity (`key` / `label` / `text` / `title`), and rect. The cheap view the assistant reasons over and resolves action targets from. |
 | `describe_state` | The live `Observable` values behind that tree, in the same shape as `describe_tree` so the two join node-for-node. Answers "the value updated but the UI didn't", and the reverse. <br> **Animation state is omitted by default.** `Animatable` channels carry visual rather than semantic state and would dominate the dump; `include_animations=True` brings them back. |
 | `screenshot` | The mounted tree rendered to PNG. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
+| `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-inspect-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
 
 ### Act — drive it
 
@@ -109,6 +110,56 @@ between them, and not what the app wrote to a console it cannot read.
 | `runtime_log` | The app's recent log output and uncaught exceptions, with `exc_type` / `traceback` when one carries a failure — background threads and unretrieved asyncio tasks included. <br> **This is where a silent failure surfaces.** A handler that raises is swallowed to keep the app alive, so the tree looks unchanged and only this log says why. Repeated identical failures collapse to one entry. |
 | `set_runtime_log_verbose` | Turns `runtime_log`'s de-duplication off process-wide — every occurrence of a repeated failure is then recorded — and back on. |
 
+## Point at something (inspect mode)
+
+Every tool above runs assistant → app. Inspect mode runs the other way: it is how
+you **point**.
+
+Prose is a poor way to name a location, and for two cases it barely works — an
+inner widget with no `key` and no distinctive text, and a *gap*, where nothing
+painted and there is no widget to name at all.
+
+| Gesture | What it does |
+| --- | --- |
+| `Ctrl+Shift+C` | Enter inspect mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). The shortcut Chrome DevTools uses. |
+| Click | Designate the widget under the cursor; click it again to remove it. |
+| Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
+| `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
+| `Backspace` | Remove the newest designation. |
+| `Ctrl+Backspace` | Remove them all. |
+| `Enter` | Keep them and leave. |
+| `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
+
+Every designation and both removals take effect *inside* the session, so `Esc`
+undoes any of them.
+
+While the mode is on your clicks go to the picker, not the app, so you cannot
+fire the button you are pointing at. A corner badge shows the mode and lists the
+keys. Widgets get **corner brackets** and areas a **soft fill**, so they stay
+distinct when one sits inside the other, and each carries a **numbered badge**
+matching what the assistant sees — "fix the second one" is unambiguous.
+
+You do not have to say you did it: `status` carries a `selection` summary, so the
+assistant notices on the cheapest call it makes. Designations survive a reload
+too, so an edit mid-conversation does not make you point again, and any that
+cannot be found afterwards are reported as lost rather than quietly dropped.
+
+Two things about areas:
+
+- **An empty result is the answer, not a failure.** Nothing is painted there —
+  and the enclosing widget names what should have been.
+- **A rough box is fine.** "The gap between these" and "these things" are drawn
+  the same way; both are reported, and what you *say* settles which you meant.
+
+Only the rectangle is stored, so the assistant can re-read the same area after a
+fix to see what is there now.
+
+> **Privacy note.** `interaction_log` records neither coordinates nor typed
+> content, because it records ambiently. A designation may carry both — that is
+> the point of it, since you chose to show it. The journal still only gains a
+> content-free marker that you designated *something*; the payload goes out only
+> when the assistant asks for it.
+
 ## Watch the assistant act (on-screen)
 
 `interaction_log` closes the loop in one direction — it lets the assistant catch
@@ -123,6 +174,9 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `scroll` / `scroll_into_view` | A chevron drifting along the scroll direction as it fades, captioned in words (`scroll down feed`). Both draw the same marker — what you need to see is that the view moved. |
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
+
+These markers are **indigo**; inspect mode's are **amber**. The two directions
+must never be confusable.
 
 ## No MCP host? Use the CLI
 

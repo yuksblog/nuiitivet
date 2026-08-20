@@ -138,6 +138,7 @@ def test_build_server_registers_the_tools() -> None:
         "status",
         "describe_tree",
         "describe_state",
+        "describe_selection",
         "reload_log",
         "interaction_log",
         "runtime_log",

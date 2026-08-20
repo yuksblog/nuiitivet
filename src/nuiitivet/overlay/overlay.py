@@ -768,6 +768,17 @@ class Overlay(ComposableWidget):
             return None
         return super().hit_test(x, y)
 
+    def is_visually_empty(self) -> bool:
+        """Whether the overlay is drawing nothing right now.
+
+        The declarative counterpart to :meth:`hit_test`'s short-circuit: with no
+        entries the overlay is fully transparent, but its scaffolding stays
+        mounted at full window size. ``hit_test`` answers that for input; this
+        answers it for anything reading the tree geometrically, which cannot tell
+        an empty layer from an opaque one by its rect (#591).
+        """
+        return not self.has_entries()
+
     def build(self) -> Widget:
         return self._modal_navigator
 
