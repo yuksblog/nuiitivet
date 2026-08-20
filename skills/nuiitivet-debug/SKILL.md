@@ -98,6 +98,12 @@ what they *meant*, not what the app is.
 
 - Read a node's `tree` / `state` (both scoped to it) instead of dumping the whole
   tree. `key` / `label` drive it; `path` locates it in `describe_tree`.
+- **No `key`, `label`, or `target` on it?** Expected — most apps carry no
+  `keyed()`, and then `resolve_target` has nothing to anchor on. Its scoped
+  `tree` is what tells two same-typed nodes apart (two bare `_RailItemButton`s by
+  the `Text` inside each), and `path` is how you reach it.
+- A node's `rect` here is what is **on screen** of it, clips applied — unlike
+  `describe_tree`'s. A node clipped away entirely reports no `rect` at all.
 - Refer to a designation by its `index`: it matches the badge on their screen.
 - `lost` > 0 — some designations did not survive a reload. **Say so.** Never
   reason over a silently shortened list.

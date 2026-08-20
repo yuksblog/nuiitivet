@@ -530,6 +530,24 @@ edit again.
     the non-interactive widgets picking exists to reach. `Overlay.hit_test`
     already short-circuits on `has_entries()`; this is the same answer for
     anything reading the tree geometrically rather than dispatching input.
+  - **`Box.visual_clip_rect()`** closes the third instance of that same gap,
+    found by pointing at a real app rather than by a spike. `Box.hit_test` has
+    always honoured `clip_content`, but the clip was never published, so
+    `find_obstruction` could not see it — and the occlusion check cannot cover
+    for it, because a point trimmed away lands on nothing and a `None` hit is
+    deliberately not an obstruction. The idiom that exposes it is ordinary: a
+    decorative shape laid out far larger than its parent and clipped to a
+    corner, which is how a gradient gets faked. Its layout rect then reaches
+    well outside anything painted — into a neighbouring pane, or into negative
+    coordinates — and both the picker and the reported rect believed it.
+  - **Reporting uses `visible_rect`, not `global_visual_rect`.** "Where is this
+    node" and "what of it is on screen" are different questions, and the second
+    is the one a designation answers. `global_visual_rect` stays as it is: it
+    positions a pointer, and an action must aim at the node's actual origin.
+    `visible_rect` intersects that with every ancestor clip and is what the
+    payload and the on-screen brackets both use, so the box drawn on the glass
+    and the rect handed to the assistant are the same claim. A node clipped away
+    entirely has no visible rect at all.
   - **Reload re-resolution.** Members are held weakly and keyed on *object
     identity* (two anonymous siblings resolve to the same identity dict, so
     keying on that would make picking the second remove the first). A rebuild

@@ -12,14 +12,18 @@ from typing import Any
 
 from nuiitivet._interaction.perception import (
     enclosing_container,
+    find_obstruction,
+    global_visual_rect,
     intersecting_subtree,
     pick_at,
+    visible_rect,
 )
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.stack import Stack
+from nuiitivet.modifiers.clip import clip
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
 from nuiitivet.testing import mount
@@ -307,3 +311,95 @@ def test_no_enclosing_container_for_a_region_outside_the_tree() -> None:
         host.layout(300, 200)
 
         assert enclosing_container(host.root, (9_000.0, 9_000.0, 10.0, 10.0)) is None
+
+
+# --- clipped-away content (#591) ---------------------------------------------
+
+
+def _clipped_tile() -> tuple[Any, Any, Any]:
+    """The gradient idiom: an oversized shape trimmed to a small box.
+
+    ``samples/readme/readme_hero_showcase.py`` fakes a gradient this way -- a
+    circle far larger than its parent, anchored to one corner and clipped, so
+    only a soft wedge of it shows. The child's *layout* rect therefore extends
+    well outside anything painted, and here reaches negative coordinates.
+    """
+    bubble = Container(width=200, height=200)
+    tile = Container(
+        child=Stack([bubble], width="wt", height="wt", alignment=("end", "start")),
+        width=60,
+        height=60,
+    ).modifier(clip())
+    return bubble, tile, Stack([Text("BACKDROP"), tile])
+
+
+def test_a_clipped_away_child_is_not_picked_where_it_paints_nothing() -> None:
+    """The third instance of one blind spot, found in a real app (#591).
+
+    ``Box.hit_test`` has always honoured ``clip_content``, but the clip was not
+    published under ``visual_clip_rect``, so ``find_obstruction`` could not see
+    it. The occlusion check cannot cover for that here: the point lands on
+    nothing, and a ``None`` hit is deliberately not an obstruction.
+    """
+    bubble, _tile, root = _clipped_tile()
+    with mount(root) as host:
+        host.layout(300, 300)
+        host.settle()
+
+        rect = global_visual_rect(bubble)
+        assert rect is not None
+        assert rect[0] < 0, "the bubble must overhang its parent for this to test anything"
+        outside = (rect[0] + 10, rect[1] + 150)
+
+        assert root.hit_test(int(outside[0]), int(outside[1])) is None
+        assert find_obstruction(root, bubble, *outside) is not None
+        assert pick_at(root, *outside) is not bubble
+
+
+def test_a_clipped_child_is_still_picked_where_it_does_paint() -> None:
+    """The trimming must not cost the reachable part."""
+    bubble, tile, root = _clipped_tile()
+    with mount(root) as host:
+        host.layout(300, 300)
+        host.settle()
+
+        assert find_obstruction(root, bubble, 50.0, 5.0) is None
+        assert pick_at(root, 50.0, 5.0) is bubble
+        assert tile is not None
+
+
+def test_a_clipped_nodes_reported_rect_is_what_survives_the_clip() -> None:
+    """What the human sees drawn, and what the payload says, must be one rect.
+
+    Reporting the layout rect drew a bracket across a neighbouring pane and told
+    the assistant the designation covered it -- the visible symptom that led
+    here.
+    """
+    bubble, _tile, root = _clipped_tile()
+    with mount(root) as host:
+        host.layout(300, 300)
+        host.settle()
+
+        assert global_visual_rect(bubble) == (-140.0, 0.0, 200.0, 200.0)
+        assert visible_rect(bubble) == (0.0, 0.0, 60.0, 60.0)
+
+
+def test_a_node_clipped_entirely_out_of_sight_has_no_visible_rect() -> None:
+    """A collapsed label (a clip of zero height) is painted nowhere at all."""
+    hidden = Text("COLLAPSED")
+    box = Container(child=hidden, width=96, height=0).modifier(clip())
+    with mount(Column(children=[box])) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        assert visible_rect(hidden) is None
+
+
+def test_an_unclipped_box_reports_no_clip_at_all() -> None:
+    """The common case must stay free: no clip means the rect is untouched."""
+    leaf = Text("AAA")
+    with mount(Container(child=leaf, width=100, height=40)) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        assert visible_rect(leaf) == global_visual_rect(leaf)

@@ -44,7 +44,7 @@ import logging
 import os
 from typing import Any
 
-from nuiitivet._interaction.perception import global_visual_rect
+from nuiitivet._interaction.perception import visible_rect
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
         font, typeface = _font(skia)
         newest_index = marks[-1][0] if marks else None
         for index, kind, mark in marks:
-            rect = mark if kind == "region" else global_visual_rect(mark)
+            rect = mark if kind == "region" else visible_rect(mark)
             if rect is None:
                 continue
             # While designating, only the newest mark carries full weight; once
@@ -212,7 +212,7 @@ def _paint_hover(
     candidate = mode.hovered
     if candidate is None or any(candidate is member for member in members):
         return
-    rect = global_visual_rect(candidate)
+    rect = visible_rect(candidate)
     if rect is None:
         return
     x, y, w, h = rect

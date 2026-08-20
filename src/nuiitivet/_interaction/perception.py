@@ -201,14 +201,20 @@ def _visual_clip_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
 
     The opt-in companion to ``visual_offset``: ``visual_clip_rect()`` reports the
     clip in the widget's *own* coordinates, which this translates to root space.
+    A widget that has the hook but is not clipping right now says so by
+    returning ``None`` -- ``Box`` does exactly that unless ``clip_content`` is
+    set, which is the common case.
     """
     probe = getattr(node, "visual_clip_rect", None)
     if not callable(probe):
         return None
     try:
-        cx, cy, cw, ch = probe()
+        clip = probe()
     except Exception:
         return None
+    if clip is None:
+        return None
+    cx, cy, cw, ch = clip
     origin = global_visual_rect(node)
     if origin is None:
         return None
@@ -238,6 +244,38 @@ def global_visual_rect(node: Any) -> Optional[tuple[float, float, float, float]]
         dx += adx
         dy += ady
     return (float(x) + dx, float(y) + dy, float(w), float(h))
+
+
+def visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """Return the part of ``node`` that is actually on screen, in root coordinates.
+
+    :func:`global_visual_rect` answers "where is this node", which is the right
+    question for aiming a pointer at it but the wrong one for *reporting* it: a
+    child laid out larger than the ancestor that clips it keeps its full rect
+    there, so the answer can name an area where nothing of the node is painted.
+    A decorative shape oversized on purpose and trimmed to a corner is the
+    common case, and a rect spanning a neighbouring pane is actively misleading
+    to anyone -- human or assistant -- reading it as "this is what I pointed at".
+
+    So this intersects the node's rect with every ancestor clip, and returns
+    ``None`` when nothing survives (the node is laid out somewhere it is painted
+    nowhere).
+    """
+    rect = global_visual_rect(node)
+    if rect is None:
+        return None
+    x, y, w, h = rect
+    for ancestor in ancestors(node):
+        clip = _visual_clip_rect(ancestor)
+        if clip is None:
+            continue
+        cx, cy, cw, ch = clip
+        left, top = max(x, cx), max(y, cy)
+        right, bottom = min(x + w, cx + cw), min(y + h, cy + ch)
+        if right <= left or bottom <= top:
+            return None
+        x, y, w, h = left, top, right - left, bottom - top
+    return (x, y, w, h)
 
 
 def _contains(rect: tuple[float, float, float, float], x: float, y: float) -> bool:
@@ -447,7 +485,7 @@ def _rect_encloses(outer: tuple[float, ...], inner: tuple[float, ...]) -> bool:
 
 def _visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
     """A node's painted rect, or ``None`` when it has none or is degenerate."""
-    rect = global_visual_rect(node)
+    rect = visible_rect(node)
     if rect is None or rect[2] <= 0 or rect[3] <= 0:
         return None
     return rect

@@ -62,8 +62,8 @@ from nuiitivet._interaction.perception import (
     describe_state,
     describe_tree,
     enclosing_container,
-    global_visual_rect,
     intersecting_subtree,
+    visible_rect,
 )
 
 from .interaction import own_identity, resolve_target
@@ -428,7 +428,9 @@ def _type_path(node: Any) -> list[str]:
 
 
 def _rect_payload(node: Any) -> Optional[list[float]]:
-    rect = global_visual_rect(node)
+    # The visible rect, not the layout one: a node trimmed by a clipping
+    # ancestor must not report an area it is painted nowhere in.
+    rect = visible_rect(node)
     return None if rect is None else [round(value, 2) for value in rect]
 
 
