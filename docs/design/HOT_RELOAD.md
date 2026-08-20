@@ -548,6 +548,75 @@ edit again.
     payload and the on-screen brackets both use, so the box drawn on the glass
     and the rect handed to the assistant are the same claim. A node clipped away
     entirely has no visible rect at all.
+  - **Construction sites** (`dev/source.py`) answer the question that follows
+    every designation: which line built this. The dev runner wraps
+    `Widget.__init__` — verified as the single chokepoint, since all 142 of the
+    150 `Widget` subclasses that define `__init__` call `super()` — and walks
+    `f_back` to the first frame outside the package. The wrap is installed by the
+    runner and never by the framework, so a production launch pays nothing at
+    all, not even a flag check on the construction path. Python's runtime frames
+    are what make this cheaper than Flutter's `--track-widget-creation`, which
+    needs a compile-time transform to learn the same thing.
+    Two properties fall out. Sites are captured at construction and a reload
+    rebuilds everything, so a site can never go stale — there is no invalidation
+    step to get wrong. And sites are *interned*, because they are shared far more
+    than they are distinct (one helper builds fourteen cards), which turns a
+    per-widget field into a pointer into a small table: 421 nodes, 144 sites.
+    The payload keeps a short chain rather than one location, for the reason the
+    region fields keep two: "change every tile" wants the helper and "change this
+    one" wants the call site, and only the caller knows which was meant. The
+    innermost frame is flagged as the single place an editor can open.
+  - **The jump** (`dev/editor.py`) is `Ctrl`/`Cmd`+click, which does *not*
+    designate -- reading several widgets' code in a row must not leave a mark per
+    widget. It also does not leave the mode, which is only safe because the
+    overlay repaints on every state change: returning from the editor shows the
+    badge that says the mode is still on. Discoverability comes from the hover
+    caption carrying `file:line` and the HUD listing the gesture, which is what
+    let this be a modifier instead of a button -- a pressable control would need
+    hit testing inside a registry that deliberately has none, and reaching it
+    would move the pointer off the widget being hovered.
+    The editor is launched by its own CLI, never through a shell: the command
+    template is split into arguments first and the path substituted into the
+    resulting tokens, so a path with spaces stays one argument and a path with
+    shell metacharacters stays inert. `PATH` is consulted first and, for the
+    *default* command only, the well-known VS Code install locations after it:
+    that shim is an opt-in step on macOS, so an editor that is plainly installed
+    is routinely unfindable -- which the first real use hit immediately. A
+    command the human configured is never redirected that way, since opening a
+    different program would hide the cause rather than fix it. A failure is
+    shown in place of the caption, short because it has nowhere to wrap, with
+    the actionable half logged; a jump that does nothing and says nothing is
+    indistinguishable from a broken feature. **Success is announced the same
+    way**, for a reason the numbers make plain: spawning costs this process
+    ~5 ms, but the editor's own CLI takes ~1.4 s to reach an already-running
+    window, because its launcher boots a Node runtime to talk to it. That second
+    is unfixable from here and reads exactly like a click that did nothing, so
+    the overlay says what is being opened.
+    On macOS with VS Code installed the CLI is skipped entirely for the
+    **`vscode://` URL**, handed to LaunchServices: ~95 ms against ~1400 ms,
+    fourteen times faster, with the line intact. An earlier attempt at the same
+    shortcut, `open -a ... --args --goto`, was **rejected** -- LaunchServices
+    passes `--args` only when it actually *launches* the application, so an
+    already-running editor received the file without the line. Both were
+    verified by watching where the cursor landed rather than by reading the
+    documentation. The line rides inside the URL, so there is nothing for that
+    rule to drop.
+    The route is chosen by whether VS Code is installed, not by probing the
+    scheme: probing means waiting on the opener and paying its ~95 ms on the UI
+    thread for an answer that never changes. Each platform's standard opener is
+    used -- `open`, `xdg-open`, and on Windows the shell API rather than a
+    process, which is also the one platform where a missing handler raises
+    instead of failing silently. Linux falls back to the CLI when `xdg-open` is
+    absent, since a desktop without it has nothing to hand a URL to. **Only the
+    macOS path is verified**; the others are the platform-standard mechanisms and
+    the same launcher makes the win very likely, but CI is headless and this
+    needs a running editor to observe. `NUIITIVET_DEV_OPEN_COMMAND` is the escape
+    hatch if one misbehaves, and it outranks the URL everywhere: speed does not
+    outrank the human's choice of editor.
+    The URL's path is absolute, slash-separated and leading-slashed, which is
+    what turns a Windows `C:\dir\app.py` into `/C:/dir/app.py`; percent-encoding
+    keeps a space from ending the URL early while leaving the separators and the
+    drive-letter colon intact.
   - **Reload re-resolution.** Members are held weakly and keyed on *object
     identity* (two anonymous siblings resolve to the same identity dict, so
     keying on that would make picking the second remove the first). A rebuild

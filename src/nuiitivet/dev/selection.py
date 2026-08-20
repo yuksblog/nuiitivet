@@ -67,6 +67,7 @@ from nuiitivet._interaction.perception import (
 )
 
 from .interaction import own_identity, resolve_target
+from .source import payload as source_payload
 from .snapshot import Path, path_of, widgets_by_path
 
 logger = logging.getLogger(__name__)
@@ -457,6 +458,12 @@ def _node_payload(index: int, widget: Any) -> dict[str, Any]:
     rect = _rect_payload(widget)
     if rect is not None:
         info["rect"] = rect
+    # Where the widget was built (#593). Absent when the dev runner is not
+    # recording sites, and for the few widgets framework scaffolding builds with
+    # no user frame in the stack -- both of which read as "unknown", not "none".
+    source = source_payload(widget)
+    if source is not None:
+        info["source"] = source
     info["tree"] = describe_tree(widget)
     info["state"] = describe_state(widget)
     # How to *drive* the designated node, which is a different question from

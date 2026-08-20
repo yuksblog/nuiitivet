@@ -862,7 +862,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # designation, not an interaction. It is consumed *before* dispatch --
         # letting it through would fire the button they were merely pointing at
         # (#591).
-        if _inspect_consumed(app, "on_mouse_press", app, x_log, y_conv):
+        if _inspect_consumed(app, "on_mouse_press", app, x_log, y_conv, modifier_keys):
             return True
         try:
             app._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
@@ -884,8 +884,11 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
         # Dev-only: release is where a designation resolves -- travel distance
-        # tells a click (pick a widget) from a drag (#591).
-        if _inspect_consumed(app, "on_mouse_release", app, x_log, y_conv):
+        # tells a click (pick a widget) from a drag (#591), and the accelerator
+        # turns the click into a jump to the widget's source instead (#593).
+        # Modifiers are read here, not on press, so the two decisions are made at
+        # the same moment from the same event.
+        if _inspect_consumed(app, "on_mouse_release", app, x_log, y_conv, modifier_keys):
             return True
         try:
             app._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
@@ -912,7 +915,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # Dev-only: a drag mid-designation is the human sweeping out a region.
         # Routed to the same hook as a plain move, which tells the two apart by
         # whether a press is outstanding (#591).
-        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv):
+        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv, modifier_keys):
             return True
         try:
             app._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)

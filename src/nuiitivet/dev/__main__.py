@@ -47,6 +47,7 @@ from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .selection import Selection
 from .session import DevSession, set_dev_session
+from . import source
 
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
@@ -280,6 +281,10 @@ def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
 def _run(args: argparse.Namespace) -> int:
     session = DevSession()
     set_dev_session(session)
+    # Before the user's module is even imported (#593): a construction site is
+    # only knowable while the constructing frame is on the stack, so anything
+    # built at import time is lost if this lands any later.
+    source.install()
     try:
         loaded = load_app_module(args.target, is_module=args.module)
         entry = resolve_entry(loaded.module, args.entry)
