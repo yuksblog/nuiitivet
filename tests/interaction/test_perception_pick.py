@@ -8,7 +8,7 @@ not -- even when nothing occludes it in the hit-testing sense.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from nuiitivet._interaction.perception import (
     enclosing_container,
@@ -28,6 +28,14 @@ from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
+
+
+def _covers(rect: Optional[tuple[float, float, float, float]], x: float, y: float) -> bool:
+    """Whether ``rect`` contains the point, tolerating a node with no rect."""
+    if rect is None:
+        return False
+    rx, ry, rw, rh = rect
+    return rx <= x < rx + rw and ry <= y < ry + rh
 
 
 def test_picks_a_widget_that_does_not_participate_in_hit_testing() -> None:
@@ -129,7 +137,22 @@ def test_a_row_clipped_by_the_viewport_loses_to_what_is_painted_there() -> None:
         host.layout(200, 300)
         host.settle()
 
-        assert pick_at(host.root, 5, 70) is below
+        # Aim at the middle of ``below`` rather than a fixed offset. Text
+        # metrics differ per platform, and a hardcoded y that lands just past
+        # its bottom edge on one of them makes the pick fall outwards to the
+        # enclosing Column -- failing for a reason the test is not about.
+        target = global_visual_rect(below)
+        assert target is not None and target[2] > 0 and target[3] > 0, (
+            f"BELOW must occupy a real rect for there to be a point to aim at, got {target}"
+        )
+        x, y = target[0] + target[2] / 2, target[1] + target[3] / 2
+
+        # State the premise instead of assuming it: some row must be laid out
+        # across that point while painted nowhere near it, or there is nothing
+        # for the clip check to reject and the assertion below proves nothing.
+        assert any(_covers(global_visual_rect(row), x, y) for row in rows)
+
+        assert pick_at(host.root, x, y) is below
 
 
 def test_a_point_reaching_nothing_is_none() -> None:
