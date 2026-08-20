@@ -93,20 +93,29 @@ top to bottom.
 
 ### Reading a designation
 
-`describe_selection` is the one channel that runs **from the human to you**. Every
-other tool tells you what the app *is*; this tells you what the human *meant*.
+`describe_selection` is the one channel that runs **from the human to you** —
+what they *meant*, not what the app is.
 
-- Each node carries `key` / `label` usable directly as a `click` target, a `path`
-  (root → node types) for finding it in `describe_tree`, and `tree` / `state`
-  **scoped to that node** — read those instead of dumping the whole tree.
-- `index` matches the number badged on the human's screen, so "the second one"
-  means `index: 2`. Refer to designations by that number back to them.
-- `active: true` means inspect mode is still on and they may still be
-  designating. Prefer waiting over acting on a half-made set.
-- `lost` counts designations a hot reload could not re-resolve. When it is
-  non-zero, **say so** — do not reason over a silently shortened list.
-- Do not arm it yourself: there is no tool to request a designation. If nothing
-  is designated and you need one, ask the human to press `Ctrl+Shift+C` and click.
+- Read a node's `tree` / `state` (both scoped to it) instead of dumping the whole
+  tree. `key` / `label` drive it; `path` locates it in `describe_tree`.
+- Refer to a designation by its `index`: it matches the badge on their screen.
+- `lost` > 0 — some designations did not survive a reload. **Say so.** Never
+  reason over a silently shortened list.
+- `active: true` — they are still in inspect mode and have not pressed `Enter`,
+  so the set is not committed. Do not act on it: tell them that, or ask them to
+  press `Enter`.
+- `regions` are areas, numbered in the same sequence as `nodes`:
+  - `container` is the widget enclosing the box; `contents` is a nested tree of
+    what the box crosses, tagged `contained` / `clipped` (no tag = only on the
+    path to a match).
+  - One box, two meanings — "the gap between these things" (`container`) or
+    "these things" (`contents`). Nothing is collapsed for you; pick from what the
+    human said.
+  - Empty `contents` is an answer, not a miss: nothing is painted there, and
+    `container` names what should have been.
+  - Re-derived on every call, so read one again after your fix.
+- You cannot arm it and cannot clear it. If nothing is designated, ask them to
+  press `Ctrl+Shift+C`, click a widget or drag a box over the area, then `Enter`.
 
 ### Blind spots
 

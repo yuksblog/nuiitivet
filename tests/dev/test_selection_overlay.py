@@ -121,7 +121,7 @@ def test_a_committed_designation_still_marks_the_screen(
 ) -> None:
     """Leaving commits, so the badges survive the mode being switched off."""
     app, mode = designating
-    mode.on_key_press(app, "escape", 0)
+    mode.on_key_press(app, "enter", 0)
     canvas = _Canvas()
 
     so.paint_selection(app, canvas, app.width, app.height)
@@ -141,3 +141,73 @@ def test_painting_never_raises_on_a_broken_canvas(
     app, _mode = designating
 
     so.paint_selection(app, _Broken(), app.width, app.height)
+
+
+def test_a_region_is_marked_on_screen(designating: tuple[_App, InspectMode]) -> None:
+    app, mode = designating
+    mode.selection.add_region((10.0, 10.0, 40.0, 30.0))
+    canvas = _Canvas()
+
+    so.paint_selection(app, canvas, app.width, app.height)
+
+    assert "drawRect" in canvas.calls, "a designated area needs its own wash"
+
+
+def test_a_region_only_selection_still_paints(designating: tuple[_App, InspectMode]) -> None:
+    """Regions and nodes are independent, so either alone must be drawable."""
+    app, mode = designating
+    mode.selection.clear()
+    mode.selection.add_region((10.0, 10.0, 40.0, 30.0))
+    mode.on_key_press(app, "enter", 0)
+    canvas = _Canvas()
+
+    so.paint_selection(app, canvas, app.width, app.height)
+
+    assert canvas.calls
+
+
+def test_the_rubber_band_is_drawn_while_dragging(
+    designating: tuple[_App, InspectMode]
+) -> None:
+    app, mode = designating
+    mode.on_mouse_press(app, 10, 10)
+    mode.on_mouse_motion(app, 60, 40)
+    canvas = _Canvas()
+
+    so.paint_selection(app, canvas, app.width, app.height)
+
+    assert mode.band is not None
+    assert "drawRect" in canvas.calls
+
+
+def test_the_hud_names_every_gesture_that_unmakes_a_designation() -> None:
+    """The badge is the only place a human can learn these keys.
+
+    ``Backspace`` went undiscovered in real use precisely because the HUD never
+    mentioned it, so a key the badge omits is a key nobody finds.
+    """
+    assert set(so._HINTS) == {
+        "Enter keep",
+        "Esc discard",
+        "Backspace remove",
+        "Ctrl+Backspace clear",
+    }
+
+
+def test_the_hud_wraps_instead_of_running_off_a_narrow_window() -> None:
+    """A dev app is often a few hundred pixels wide; a hint off the edge teaches
+    nothing."""
+    from nuiitivet.rendering.skia.font import (
+        get_default_font_fallbacks,
+        get_typeface,
+        measure_text_width,
+    )
+
+    typeface = get_typeface(family_candidates=get_default_font_fallbacks(), fallback_to_default=True)
+    limit = 200.0
+
+    lines = so._wrap(so._HINTS, typeface, limit)
+
+    assert len(lines) > 1
+    for line in lines:
+        assert measure_text_width(typeface, so._FONT_SIZE, line) <= limit

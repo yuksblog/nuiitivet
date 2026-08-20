@@ -8,7 +8,13 @@ not -- even when nothing occludes it in the hit-testing sense.
 
 from __future__ import annotations
 
-from nuiitivet._interaction.perception import pick_at
+from typing import Any
+
+from nuiitivet._interaction.perception import (
+    enclosing_container,
+    intersecting_subtree,
+    pick_at,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.deck import Deck
@@ -182,3 +188,122 @@ def test_an_empty_overlay_does_not_shadow_the_app() -> None:
         host.settle()
 
         assert pick_at(host.root, 2, 2) is leaf
+
+
+# --- region geometry (#591) --------------------------------------------------
+
+
+def test_the_container_of_a_region_over_blank_space_names_what_should_have_painted() -> None:
+    """The case node picking cannot express at all.
+
+    A box over an empty band covers no widget, so ``contents`` is empty -- and
+    the container is the whole answer: it names the widget that should have put
+    something there.
+    """
+    leaf = Text("AAA")
+    column = Column(children=[leaf], padding=40)
+    with mount(column) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        blank = (4.0, 4.0, 20.0, 20.0)
+        container = enclosing_container(host.root, blank)
+
+        assert container is column
+        assert intersecting_subtree(container, blank) == []
+
+
+def test_a_rough_box_over_rows_reports_them_by_intersection() -> None:
+    """Humans drag rough boxes, so a clipped row still counts -- and says so."""
+    rows = [Text(f"Item {index}") for index in range(4)]
+    column = Column(children=rows)
+    with mount(column) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        first, second = rows[0].global_layout_rect, rows[1].global_layout_rect
+        assert first is not None and second is not None
+        # From halfway down the first row to the bottom of the second: the first
+        # is clipped by the box, the second wholly inside it.
+        rough = (0.0, first[1] + first[3] / 2, 300.0, second[1] + second[3] - first[1])
+
+        found = {node: relation for node, relation, _children in intersecting_subtree(column, rough)}
+
+        assert found.get(rows[0]) == "clipped"
+        assert found.get(rows[1]) == "contained"
+        assert rows[3] not in found
+
+
+def test_region_contents_keep_the_structure_instead_of_collapsing_it() -> None:
+    """Nothing is dropped for being nested inside another match.
+
+    ``find_targets`` collapses that way because it answers "which widget did you
+    name?". A region asks "what is under this box?", and the same rectangle may
+    equally mean the gap between things or the things it crosses -- geometry
+    cannot tell those apart, so collapsing to one reading would destroy the
+    other. The caller, which knows what the human said, decides.
+    """
+    inner = Text("inner")
+    card = Column(children=[inner])
+    outer = Column(children=[card])
+    with mount(outer) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        whole = (0.0, 0.0, 300.0, 200.0)
+        (top,) = intersecting_subtree(outer, whole)
+        node, relation, children = top
+
+        assert node is card
+        assert relation == "contained"
+        assert [child[0] for child in children] == [inner]
+
+
+def test_a_band_across_a_column_reports_what_it_actually_crosses() -> None:
+    """The case that motivated keeping the structure (#591).
+
+    A narrow band drawn down a column overlaps the column itself, so collapsing
+    to the outermost match reported only the column -- telling the human what
+    they already knew and hiding every row the band went through.
+    """
+    first, second = Text("Item one"), Text("Item two")
+    column = Column(children=[first, second])
+    with mount(column) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        band = (0.0, 0.0, 8.0, 200.0)
+        (top,) = intersecting_subtree(host.root, band)
+
+        def flatten(entry: tuple[Any, Any, list[Any]]) -> list[Any]:
+            node, _relation, children = entry
+            found: list[Any] = [node]
+            for child in children:
+                found.extend(flatten(child))
+            return found
+
+        crossed = flatten(top)
+        assert first in crossed
+        assert second in crossed
+
+
+def test_an_idle_overlay_never_answers_for_a_region() -> None:
+    """Same shadowing hazard as picking: the idle layer encloses everything."""
+    from nuiitivet.overlay.overlay import Overlay
+
+    content = Column(children=[Text("AAA")])
+    with mount(Stack(children=[content, Overlay()])) as host:
+        host.layout(300, 200)
+        host.settle()
+
+        container = enclosing_container(host.root, (2.0, 2.0, 10.0, 10.0))
+
+        assert container is not None
+        assert type(container).__name__ != "Container"
+
+
+def test_no_enclosing_container_for_a_region_outside_the_tree() -> None:
+    with mount(Column(children=[Text("AAA")])) as host:
+        host.layout(300, 200)
+
+        assert enclosing_container(host.root, (9_000.0, 9_000.0, 10.0, 10.0)) is None

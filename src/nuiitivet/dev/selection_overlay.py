@@ -23,8 +23,11 @@ committing are different things:
 * *While latched* -- a HUD badge, a hover highlight on the pick candidate, the
   newest designation at full strength, and every earlier one dimmed to its badge.
   Designation is sequential, so full legibility is only ever needed for the one
-  just made; this is what keeps the overlay readable as the count grows.
-* *After committing* (``Esc``) -- **numbered badges only**. The human is done
+  just made; this is what keeps the overlay readable as the count grows. The HUD
+  names **every** gesture that leaves or unmakes a designation, because it is the
+  only place a human can learn them -- there is no menu and no panel, and a key
+  the badge does not mention is a key nobody finds.
+* *After committing* (``Enter``) -- **numbered badges only**. The human is done
   pointing and wants to see their app again; the durable record lives in the
   payload, not on the glass. It is the numbered-pin behaviour every annotation
   tool converges on, and it also defuses the "latched mode left on obscures the
@@ -89,8 +92,8 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
     try:
         selection = mode.selection
         active = bool(mode.active)
-        members = selection.members()
-        if not active and not members:
+        marks = selection.marks()
+        if not active and not marks:
             return
 
         from nuiitivet.rendering.skia.skia_module import get_skia
@@ -100,21 +103,29 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
             return
 
         font, typeface = _font(skia)
-        newest = members[-1] if members else None
-        for index, widget in enumerate(members, start=1):
-            rect = global_visual_rect(widget)
+        newest_index = marks[-1][0] if marks else None
+        for index, kind, mark in marks:
+            rect = mark if kind == "region" else global_visual_rect(mark)
             if rect is None:
                 continue
             # While designating, only the newest mark carries full weight; once
             # committed every mark is equal and reduced to its badge.
-            full = active and widget is newest
-            if full:
+            full = active and index == newest_index
+            if kind == "region":
+                # A wash rather than an outline: "this area", against a node's
+                # brackets meaning "this object". Two stroked rectangles of the
+                # same weight would be the unreadable case when they nest.
+                _paint_wash(skia, canvas, rect, 0.22 if full else 0.13)
+            elif full:
                 _paint_brackets(skia, canvas, rect, 1.0)
             _paint_badge(skia, canvas, rect, str(index), font, typeface, 1.0 if full else 0.75)
 
         if active:
-            _paint_hover(skia, canvas, mode, font, typeface, members)
-            _paint_hud(skia, canvas, font, typeface, len(members), width, height)
+            band = mode.band
+            if band is not None:
+                _paint_band(skia, canvas, band)
+            _paint_hover(skia, canvas, mode, font, typeface, selection.members())
+            _paint_hud(skia, canvas, font, typeface, marks, width, height)
     except Exception:
         logger.debug("selection_overlay: paint failed", exc_info=True)
 
@@ -142,6 +153,25 @@ def _paint_brackets(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: floa
         for cy, sy in ((y, 1.0), (y + h, -1.0)):
             canvas.drawLine(cx, cy, cx + arm * sx, cy, paint)
             canvas.drawLine(cx, cy, cx, cy + arm * sy, paint)
+
+
+def _paint_wash(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float) -> None:
+    """Fill a designated area -- "this region", as distinct from "this object"."""
+    x, y, w, h = rect
+    paint = skia.Paint(AntiAlias=True)
+    paint.setColor(_color(skia, _ACCENT, alpha))
+    canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), paint)
+
+
+def _paint_band(skia: Any, canvas: Any, rect: tuple[float, ...]) -> None:
+    """Draw the rect a drag has swept so far, so the human can aim before letting go."""
+    x, y, w, h = rect
+    _paint_wash(skia, canvas, rect, 0.18)
+    stroke = skia.Paint(AntiAlias=True)
+    stroke.setStyle(skia.Paint.kStroke_Style)
+    stroke.setStrokeWidth(1.5)
+    stroke.setColor(_color(skia, _ACCENT, 0.9))
+    canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), stroke)
 
 
 def _paint_badge(
@@ -204,17 +234,72 @@ def _describe(node: Any) -> str:
     )
 
 
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
+# Every gesture that leaves or unmakes a designation. The HUD is the only place
+# a human can learn these -- there is no menu and no panel -- and leaving one out
+# makes it effectively nonexistent: `Backspace` went undiscovered precisely
+# because the badge never mentioned it.
+_HINTS = (
+    "Enter keep",
+    "Esc discard",
+    "Backspace remove",
+    "Ctrl+Backspace clear",
+)
+
+_SEPARATOR = "  ·  "
+
+
+def _wrap(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
+    """Greedily pack ``parts`` into lines that fit ``max_width``.
+
+    Measured rather than split at a fixed point, because the hint has to stay
+    readable in a narrow window -- a dev app is often a few hundred pixels wide,
+    and a hint running off the edge teaches nothing.
+    """
+    from nuiitivet.rendering.skia.font import measure_text_width
+
+    lines: list[str] = []
+    current = ""
+    for part in parts:
+        candidate = f"{current}{_SEPARATOR}{part}" if current else part
+        if current and measure_text_width(typeface, _FONT_SIZE, candidate) > max_width:
+            lines.append(current)
+            current = part
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
 def _paint_hud(
-    skia: Any, canvas: Any, font: Any, typeface: Any, count: int, width: int, height: int
+    skia: Any,
+    canvas: Any,
+    font: Any,
+    typeface: Any,
+    marks: list[tuple[int, str, Any]],
+    width: int,
+    height: int,
 ) -> None:
     """A persistent badge while the mode is latched.
 
     A latched mode can be left on by accident, so it must be unmistakable that
-    clicks are being taken as designations rather than reaching the app.
+    clicks are being taken as designations rather than reaching the app. The two
+    counts stay separate for the same reason the payload keeps them apart: they
+    mean different things.
     """
-    noun = "widget" if count == 1 else "widgets"
-    text = f"INSPECT  ·  {count} {noun}  ·  Esc to finish"
-    _caption(skia, canvas, text, font, typeface, _HUD_MARGIN, _HUD_MARGIN)
+    regions = sum(1 for _index, kind, _mark in marks if kind == "region")
+    parts = [_plural(len(marks) - regions, "widget")]
+    if regions:
+        parts.append(_plural(regions, "region"))
+
+    lines = ["INSPECT" + _SEPARATOR + _SEPARATOR.join(parts)]
+    lines.extend(_wrap(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
+    for index, line in enumerate(lines):
+        _caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
 
 
 def _caption(

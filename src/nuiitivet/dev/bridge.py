@@ -509,7 +509,7 @@ def _make_handler(
                     self._send_json(
                         200,
                         marshaller.call_on_ui_thread(
-                            lambda app: describe_selection(selection)
+                            lambda app: describe_selection(app.root, selection)
                         ),
                     )
                 elif path == "/screenshot":

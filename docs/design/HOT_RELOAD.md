@@ -490,10 +490,26 @@ edit again.
   it records what the human *pointed at*. Prose is an expensive channel for a
   location, and for two cases it barely works at all — an anonymous inner node
   (no phrase identifies it) and a *gap* (no widget to name). Inspect mode is
-  latched with `Ctrl+Shift+C` and left with `Esc`; leaving commits, and the
-  bridge serves the result at `GET /describe_selection`, with a `selection`
-  roll-up on `/status` and a content-free `select` marker on the interaction
-  journal so an assistant notices it without being told.
+  a latched, dev-only gesture layer sitting on the backend's *real* input
+  handlers — the same layer the interaction recorder uses, and for the same
+  reason: the assistant's synthesized actions enter below it at `app._dispatch_*`
+  and so can never forge a designation. The bridge serves the result at
+  `GET /describe_selection`, with a `selection` roll-up on `/status` and a
+  content-free `select` marker on the interaction journal so an assistant
+  notices it without being told. The gestures themselves are the user guide's
+  business.
+  - **Ownership and threading.** One `Selection` per app, built by the dev runner
+    and shared three ways: `InspectMode` writes it from the UI thread,
+    `HotReloadController` re-resolves it after a rebuild, and the bridge reads it
+    on HTTP worker threads. It carries its own `RLock` for that last split — the
+    same shape as the reload and interaction journals. Nodes and regions live in
+    one ordered list because they share one on-screen numbering.
+  - **Session semantics.** `enter()` snapshots the marks; `commit()` keeps what
+    the session did and `discard()` restores the snapshot, so a cancel scopes to
+    one session rather than to everything, and clearing is undoable because it
+    happens inside one. A reload remaps the snapshot alongside the live marks —
+    without that, cancelling after a rebuild would restore members whose
+    referents are already gone.
   - **`pick_at`** (`_interaction/perception.py`) is the geometry-only picker.
     `hit_test` cannot serve: it returns the deepest *hit-participating* widget,
     but the node a human means is often one that participates in none (a plain
@@ -522,6 +538,28 @@ edit again.
     nearly every use. They are matched back by the same key-preferring structural
     path §7.4 restores state with (`snapshot.path_of` / `widgets_by_path`), and
     misses are counted in `lost` rather than shortening the list silently.
+  - **Regions** (the drag gesture) are the half node picking cannot express: an
+    area with no widget in it. Only the rect is stored; `container` (the
+    innermost enclosing node, plus its immediate children) and `contents` are
+    derived on every read. That is what carries a region across a reload with no
+    restore step, and what makes it a *continuing* observation point rather than
+    a single-use note. `contents` intersects rather than requiring full
+    containment — humans drag rough boxes — and is scoped to `container`'s
+    subtree, which is what makes intersection workable at all: `container`
+    encloses the region by definition, so the ancestor chain, which trivially
+    overlaps, drops out without a special case. Each entry is tagged `contained`
+    or `clipped`. An empty `contents` is the signal, not a failure; `container`
+    still answers.
+
+    `contents` is a **pruned tree, not a collapsed list**, and that is the point.
+    A rectangle carries two readings the geometry cannot separate: "the gap
+    between these things" wants the enclosing owner, "these things" wants what
+    the box crosses. An earlier form applied `find_targets`' rule — drop a match
+    nested inside another match — which answers "which widget did you name?" and
+    is simply a different question: a band drawn down a column reported only the
+    column, the one thing the human already knew. So the two readings get one
+    field each (`container` and `contents`), neither collapsed into the other,
+    and the caller — which knows what the human *said* — chooses.
   - **Privacy.** A designation may carry rects and on-screen text, unlike the
     interaction journal, which records neither. That is not an inconsistency: the
     journal records *ambiently*, without item-by-item consent, while a

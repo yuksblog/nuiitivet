@@ -76,7 +76,7 @@ in the loop. *When* the assistant should reach for which is the
 | `describe_tree` | The mounted tree as compact JSON — each node's type, identity (`key` / `label` / `text` / `title`), and rect. The cheap view the assistant reasons over and resolves action targets from. |
 | `describe_state` | The live `Observable` values behind that tree, in the same shape as `describe_tree` so the two join node-for-node. Answers "the value updated but the UI didn't", and the reverse. <br> **Animation state is omitted by default.** `Animatable` channels carry visual rather than semantic state and would dominate the dump; `include_animations=True` brings them back. |
 | `screenshot` | The mounted tree rendered to PNG. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
-| `describe_selection` | The widgets *you* pointed at in inspect mode — see [Point at something](#point-at-something-inspect-mode). Each one carries its identity, rect, and a `describe_tree` / `describe_state` dump scoped to it. <br> **This is the only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
+| `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-inspect-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
 
 ### Act — drive it
 
@@ -112,47 +112,53 @@ between them, and not what the app wrote to a console it cannot read.
 
 ## Point at something (inspect mode)
 
-The tools above all run in one direction: the assistant reads the app and drives
-it. Inspect mode is the one that runs the other way — it is how you **point**.
+Every tool above runs assistant → app. Inspect mode runs the other way: it is how
+you **point**.
 
-Describing a location in prose is expensive for both of you, and there are two
-cases where it barely works at all: an inner widget with no `key` and no
-distinctive text (there is no phrase that identifies it), and a *gap* — a band of
-empty space that should have painted something and didn't (there is no widget to
-name at all).
-
-So: point at it instead.
+Prose is a poor way to name a location, and for two cases it barely works — an
+inner widget with no `key` and no distinctive text, and a *gap*, where nothing
+painted and there is no widget to name at all.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) | Enter inspect mode. The same shortcut Chrome DevTools uses. |
-| Click | Designate the widget under the cursor. Click a designated one to remove it. |
-| `↑` / `↓` | Walk up to the parent of the newest designation, or back down the way you came — for when the click landed one level off. |
+| `Ctrl+Shift+C` | Enter inspect mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). The shortcut Chrome DevTools uses. |
+| Click | Designate the widget under the cursor; click it again to remove it. |
+| Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
+| `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
 | `Backspace` | Remove the newest designation. |
-| `Esc` | Leave. **Leaving is the commit** — your designations persist, and the assistant reads them on its next turn. |
+| `Ctrl+Backspace` | Remove them all. |
+| `Enter` | Keep them and leave. |
+| `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
 
-While the mode is on, a badge in the corner says so and your clicks go to the
-picker rather than to the app — so a click cannot fire the button you were merely
-pointing at. Each designation gets a **numbered badge**, and those numbers match
-the `index` in what the assistant reads, so "fix the second one" is unambiguous.
-When you leave, the marks collapse to just those badges and you get your screen
-back.
+Every designation and both removals take effect *inside* the session, so `Esc`
+undoes any of them.
 
-You do not have to tell the assistant you did it: `status` carries a `selection`
-summary, so it notices on the cheapest call it makes.
+While the mode is on your clicks go to the picker, not the app, so you cannot
+fire the button you are pointing at. A corner badge shows the mode and lists the
+keys. Widgets get **corner brackets** and areas a **soft fill**, so they stay
+distinct when one sits inside the other, and each carries a **numbered badge**
+matching what the assistant sees — "fix the second one" is unambiguous.
 
-**Designations survive a reload.** That matters more than it sounds — the whole
-point is "point at it, then have the assistant fix it", so a rebuild lands in the
-middle of nearly every use. Members are matched back into the new tree by the
-same stable identity hot reload uses for state, and a widget that cannot be found
-again is *reported* as lost rather than quietly dropped.
+You do not have to say you did it: `status` carries a `selection` summary, so the
+assistant notices on the cheapest call it makes. Designations survive a reload
+too, so an edit mid-conversation does not make you point again, and any that
+cannot be found afterwards are reported as lost rather than quietly dropped.
 
-> **Privacy note.** Unlike `interaction_log` — which never records coordinates or
-> typed content, because it records ambiently — a designation may carry rects and
-> on-screen text. That is the point of it: it is something you deliberately chose
-> to show. The layering still holds, though: `interaction_log` only ever gains a
-> content-free marker that you designated *something*, and the payload is served
-> only when the assistant explicitly asks for it.
+Two things about areas:
+
+- **An empty result is the answer, not a failure.** Nothing is painted there —
+  and the enclosing widget names what should have been.
+- **A rough box is fine.** "The gap between these" and "these things" are drawn
+  the same way; both are reported, and what you *say* settles which you meant.
+
+Only the rectangle is stored, so the assistant can re-read the same area after a
+fix to see what is there now.
+
+> **Privacy note.** `interaction_log` records neither coordinates nor typed
+> content, because it records ambiently. A designation may carry both — that is
+> the point of it, since you chose to show it. The journal still only gains a
+> content-free marker that you designated *something*; the payload goes out only
+> when the assistant asks for it.
 
 ## Watch the assistant act (on-screen)
 
@@ -169,9 +175,8 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
-The action overlay's markers are **indigo**; inspect mode's are **amber**. The
-colours are load-bearing: indigo means "the assistant did this", amber means "you
-meant this", and the two directions must never be confusable.
+These markers are **indigo**; inspect mode's are **amber**. The two directions
+must never be confusable.
 
 ## No MCP host? Use the CLI
 

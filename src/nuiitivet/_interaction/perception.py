@@ -433,6 +433,124 @@ def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
     return _pick(root, root, float(x), float(y), set())
 
 
+def _rect_intersects(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah
+
+
+def _rect_encloses(outer: tuple[float, ...], inner: tuple[float, ...]) -> bool:
+    ox, oy, ow, oh = outer
+    ix, iy, iw, ih = inner
+    return ox <= ix and oy <= iy and ox + ow >= ix + iw and oy + oh >= iy + ih
+
+
+def _visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
+    """A node's painted rect, or ``None`` when it has none or is degenerate."""
+    rect = global_visual_rect(node)
+    if rect is None or rect[2] <= 0 or rect[3] <= 0:
+        return None
+    return rect
+
+
+def _iter_visible(node: Any, seen: set[int]) -> Any:
+    """Yield ``node`` and every descendant the eye can currently reach."""
+    if node is None or id(node) in seen or _is_visually_empty(node):
+        return
+    seen.add(id(node))
+    yield node
+    for child in _visible_children(node):
+        yield from _iter_visible(child, seen)
+
+
+def enclosing_container(root: Any, rect: tuple[float, float, float, float]) -> Optional[Any]:
+    """Return the innermost visible node whose rect wholly encloses ``rect``.
+
+    The anchor for a designated *region* (#591). When the human draws a box over
+    empty space there is no widget to name, and this is the entire answer: it
+    names the widget that *should* have painted something there.
+
+    Descends through the same narrowing :func:`pick_at` uses, so a ``Deck``'s
+    hidden page or an idle ``Overlay`` never answers for a region drawn over the
+    content in front of it.
+
+    Must be called on the UI thread (it reads live layout state).
+    """
+    if root is None:
+        return None
+    found: Optional[Any] = None
+    for node in _iter_visible(root, set()):
+        node_rect = _visible_rect(node)
+        if node_rect is not None and _rect_encloses(node_rect, rect):
+            # Pre-order, so a later match is always deeper than an earlier one.
+            found = node
+    return found
+
+
+def _relation(node_rect: tuple[float, ...], rect: tuple[float, ...]) -> Optional[str]:
+    """How ``node_rect`` stands to a designated region, or ``None`` if it misses it."""
+    if not _rect_intersects(node_rect, rect):
+        return None
+    return "contained" if _rect_encloses(rect, node_rect) else "clipped"
+
+
+def _intersection_node(
+    node: Any, rect: tuple[float, float, float, float], seen: set[int]
+) -> Optional[tuple[Any, Optional[str], list[Any]]]:
+    """Build the pruned intersection subtree rooted at ``node``, or ``None``."""
+    if node is None or id(node) in seen or _is_visually_empty(node):
+        return None
+    seen.add(id(node))
+    children = [
+        described
+        for described in (_intersection_node(child, rect, seen) for child in _visible_children(node))
+        if described is not None
+    ]
+    node_rect = _visible_rect(node)
+    relation = _relation(node_rect, rect) if node_rect is not None else None
+    if relation is None and not children:
+        return None
+    return (node, relation, children)
+
+
+def intersecting_subtree(
+    container: Any, rect: tuple[float, float, float, float]
+) -> list[tuple[Any, Optional[str], list[Any]]]:
+    """Return what a designated region covers, as a pruned ``(node, relation, children)`` tree.
+
+    Scoped to ``container``'s subtree, which is what makes an *intersection* rule
+    workable at all: humans drag rough boxes, but a bare intersection test
+    against the whole tree would also match every ancestor, each of which
+    trivially overlaps. ``container`` encloses the region by definition, so its
+    subtree is exactly the right scope and the ancestor chain drops out without a
+    special case.
+
+    ``relation`` is ``"contained"`` when the node lies wholly inside the region,
+    ``"clipped"`` when it only overlaps, and ``None`` for a node kept solely
+    because a descendant matched -- the same pruning shape
+    :func:`describe_state` uses, so the result reads like the other dumps.
+
+    **Nothing is collapsed.** An earlier flat form applied :func:`find_targets`'
+    rule -- drop a match nested inside another match -- and that is wrong here.
+    It answers "which widget did you name?", where the outermost match is the one
+    meant; a region asks "what is under this box?", where the same rectangle may
+    equally mean the gap between things or the things it crosses. Geometry cannot
+    tell those apart, so collapsing to one reading destroyed the other: a band
+    drawn across a column reported only the column. The structure is reported
+    instead, and the caller -- which knows what the human said -- decides.
+
+    May legitimately be empty: a region over blank space covers nothing, which is
+    the signal rather than a failure. :func:`enclosing_container` still answers.
+
+    Must be called on the UI thread (it reads live layout state).
+    """
+    if container is None:
+        return []
+    described = _intersection_node(container, rect, set())
+    # The container itself always intersects; its subtree is the answer.
+    return described[2] if described is not None else []
+
+
 def _node_matches(
     node: Any,
     *,

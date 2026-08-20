@@ -266,7 +266,8 @@ def build_server() -> "FastMCP":
         and guessing from a screenshot when a designation is waiting is wasted
         effort.
 
-        Returns ``{"seq", "active", "nodes", "regions", "lost"}``. Each node is
+        Returns ``{"seq", "active", "nodes", "regions", "lost"}`` -- two
+        independent lists, either of which may be empty. Each node is
         ``{"index", "type", optional "key"/"label", "path", "rect", "tree",
         "state"}`` -- `index` matches the number badged on screen, so "the second
         one" means `index: 2`; `key`/`label` are directly usable as a `click`
@@ -274,8 +275,25 @@ def build_server() -> "FastMCP":
         `describe_tree`; `tree` and `state` are those dumps **scoped to that
         node**, which is usually all you need instead of a whole-tree read.
 
-        `active: true` means inspect mode is still on and the human may still be
-        designating -- prefer waiting over acting on a half-made set. `lost` is
+        A **region** is an area they dragged a box over rather than a widget,
+        numbered in the same sequence as `nodes`. It carries `rect`, the
+        `container` enclosing it (with that container's immediate children), and
+        `contents` -- a nested tree of the nodes it covers, each tagged
+        `contained` or `clipped` (a node with no tag is only on the path to one).
+
+        The two fields answer two readings of the same rectangle, and **you**
+        pick: "the gap between these things" is `container`, "these things" is
+        `contents`. The geometry cannot tell them apart, so nothing is collapsed
+        for you -- decide from what the human actually said. **An empty
+        `contents` is the answer, not a miss**: they drew a box where nothing is
+        painted, and `container` names the widget that should have put something
+        there. Regions are re-derived on every call, so read one again after your
+        fix to see what occupies the area now.
+
+        `active: true` means inspect mode is still on: the human may still be
+        designating, and has not yet pressed `Enter` to keep it (`Esc` throws the
+        session away). Prefer waiting over acting on a half-made set -- and if
+        they say they pointed at something but the lists are empty, this is why. `lost` is
         how many designated widgets a hot reload could not re-resolve; when it is
         non-zero, say so rather than reasoning over a silently shortened list.
         """

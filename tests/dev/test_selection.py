@@ -84,7 +84,7 @@ def test_seq_bumps_on_every_change() -> None:
     seen.append(selection.summary()["seq"])
     selection.toggle(node)
     seen.append(selection.summary()["seq"])
-    selection.leave()
+    selection.commit()
     seen.append(selection.summary()["seq"])
 
     assert seen == sorted(set(seen)), f"seq must strictly increase, got {seen}"
@@ -182,7 +182,7 @@ def test_describe_selection_reports_identity_rect_path_and_scoped_views() -> Non
         selection = Selection()
         selection.toggle(tree.children[1], root=host.root)
 
-        payload = describe_selection(selection)
+        payload = describe_selection(host.root, selection)
 
     assert payload["regions"] == []
     assert payload["lost"] == 0
@@ -209,7 +209,7 @@ def test_a_node_is_described_as_itself_not_as_its_keyed_ancestor() -> None:
         selection = Selection()
         selection.toggle(inner, root=host.root)
 
-        (node,) = describe_selection(selection)["nodes"]
+        (node,) = describe_selection(host.root, selection)["nodes"]
 
     assert node["type"] == "TextBase"
     assert "key" not in node
@@ -225,13 +225,184 @@ def test_target_is_omitted_when_it_would_restate_the_node() -> None:
         selection = Selection()
         selection.toggle(tree.children[1], root=host.root)
 
-        (node,) = describe_selection(selection)["nodes"]
+        (node,) = describe_selection(host.root, selection)["nodes"]
 
     assert "target" not in node
 
 
 def test_describe_selection_without_a_selection_is_an_empty_payload() -> None:
     """The bridge runs without one in tests; that reads as nothing designated."""
-    payload = describe_selection(None)
+    payload = describe_selection(None, None)
 
     assert payload == {"seq": 0, "active": False, "nodes": [], "regions": [], "lost": 0}
+
+
+# --- regions (#591) ---------------------------------------------------------
+
+
+def test_a_region_is_designated_and_numbered_alongside_nodes() -> None:
+    """One ordinal sequence across both, because the human sees one numbering."""
+    node = Text("A")
+    selection = Selection()
+
+    selection.toggle(node)
+    selection.add_region((10.0, 10.0, 40.0, 20.0))
+    selection.toggle(Text("B"))
+
+    assert [(index, kind) for index, kind, _mark in selection.marks()] == [
+        (1, "node"),
+        (2, "region"),
+        (3, "node"),
+    ]
+
+
+def test_a_zero_area_drag_is_not_a_region() -> None:
+    """That is a click the gesture layer failed to classify, not an area."""
+    selection = Selection()
+
+    selection.add_region((10.0, 10.0, 0.0, 20.0))
+
+    assert selection.regions() == []
+
+
+def test_the_ancestor_walk_skips_regions() -> None:
+    """A walk has no meaning for an area, so one drawn after a node must not put
+    the node out of the walk's reach."""
+    first, walked = Text("A"), Text("B")
+    selection = Selection()
+    selection.toggle(first)
+    selection.add_region((0.0, 0.0, 10.0, 10.0))
+
+    selection.replace_last(walked)
+
+    assert selection.members() == [walked]
+    assert len(selection.regions()) == 1
+
+
+def test_backspace_removes_whichever_kind_came_last() -> None:
+    selection = Selection()
+    selection.toggle(Text("A"))
+    selection.add_region((0.0, 0.0, 10.0, 10.0))
+
+    selection.remove_last()
+
+    assert selection.regions() == []
+    assert len(selection.members()) == 1
+
+
+def test_summary_counts_the_two_kinds_apart() -> None:
+    selection = Selection()
+    selection.toggle(Text("A"))
+    selection.add_region((0.0, 0.0, 10.0, 10.0))
+
+    assert selection.summary()["nodes"] == 1
+    assert selection.summary()["regions"] == 1
+
+
+def test_a_region_survives_a_reload_untouched() -> None:
+    """A rect is stable across a rebuild by construction, so there is nothing to
+    re-resolve and nothing that can be lost."""
+    old = _tree("BEFORE")
+    with mount(old) as host:
+        host.layout(300, 200)
+        selection = Selection()
+        selection.add_region((5.0, 5.0, 50.0, 50.0))
+        selection.toggle(old.children[1], root=host.root)
+
+    with mount(_tree("AFTER")) as host:
+        host.layout(300, 200)
+        selection.restore(host.root)
+
+    assert selection.regions() == [(5.0, 5.0, 50.0, 50.0)]
+    assert selection.lost == 0
+
+
+def test_a_region_payload_is_derived_from_the_tree_as_it_is_now() -> None:
+    """Not frozen when it was drawn -- which is what makes it a continuing
+    observation point rather than a single-use note."""
+    tree = _tree("BODY")
+    with mount(tree) as host:
+        host.layout(300, 200)
+        host.settle()
+        selection = Selection()
+        selection.add_region((0.0, 0.0, 300.0, 200.0))
+
+        (region,) = describe_selection(host.root, selection)["regions"]
+
+    assert region["index"] == 1
+    assert region["rect"] == [0.0, 0.0, 300.0, 200.0]
+    assert "children" in region["container"]
+    assert "path" in region["container"]
+    assert region["contents"]
+
+
+def test_a_region_over_blank_space_still_names_its_container() -> None:
+    """The empty list is the signal, not a failure: the container answers."""
+    tree = Column(children=[_keyed("BODY", "body")], padding=40)
+    with mount(tree) as host:
+        host.layout(300, 200)
+        host.settle()
+        selection = Selection()
+        selection.add_region((2.0, 2.0, 12.0, 12.0))
+
+        (region,) = describe_selection(host.root, selection)["regions"]
+
+    assert region["contents"] == []
+    assert region["container"]["type"] == "Column"
+    assert region["container"]["children"]
+
+
+def test_a_region_reports_the_structure_it_crosses_without_collapsing_it() -> None:
+    """Both readings of a rectangle are served, because geometry cannot choose.
+
+    ``container`` answers "I mean the space between things"; ``contents`` answers
+    "I mean these things". A band down a column used to report only the column,
+    which is the one thing the human already knew.
+    """
+    first, second = _keyed("ONE", "one"), _keyed("TWO", "two")
+    with mount(Column(children=[first, second])) as host:
+        host.layout(300, 200)
+        host.settle()
+        selection = Selection()
+        selection.add_region((0.0, 0.0, 6.0, 200.0))
+
+        (region,) = describe_selection(host.root, selection)["regions"]
+
+    def keys(entries: list[dict[str, Any]]) -> set[str]:
+        found: set[str] = set()
+        for entry in entries:
+            if "key" in entry:
+                found.add(entry["key"])
+            found |= keys(entry.get("children", []))
+        return found
+
+    assert keys(region["contents"]) == {"one", "two"}
+
+
+def test_a_node_kept_only_for_a_descendant_carries_no_relation() -> None:
+    """It is on the path to the answer, not part of it."""
+    leaf = _keyed("LEAF", "leaf")
+    with mount(Column(children=[Column(children=[leaf], padding=20)])) as host:
+        host.layout(300, 200)
+        host.settle()
+        rect = leaf.global_layout_rect
+        assert rect is not None
+        selection = Selection()
+        # A little wider than the leaf, so the enclosing container is its parent
+        # and the leaf itself lands wholly inside the region.
+        selection.add_region(
+            (float(rect[0]) - 4, float(rect[1]) - 4, float(rect[2]) + 8, float(rect[3]) + 8)
+        )
+
+        (region,) = describe_selection(host.root, selection)["regions"]
+
+    def find(entries: list[dict[str, Any]], key: str) -> dict[str, Any]:
+        for entry in entries:
+            if entry.get("key") == key:
+                return entry
+            hit = find(entry.get("children", []), key)
+            if hit:
+                return hit
+        return {}
+
+    assert find(region["contents"], "leaf")["relation"] == "contained"

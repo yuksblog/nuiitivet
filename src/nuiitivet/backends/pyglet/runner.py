@@ -909,6 +909,11 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         x_log, y_conv = _to_logical(x, y)
         buttons_n = _normalize_mouse_buttons(buttons)
         modifier_keys = _normalize_modifiers(modifiers)
+        # Dev-only: a drag mid-designation is the human sweeping out a region.
+        # Routed to the same hook as a plain move, which tells the two apart by
+        # whether a press is outstanding (#591).
+        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv):
+            return True
         try:
             app._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
         except Exception:

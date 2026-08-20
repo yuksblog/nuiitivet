@@ -6,7 +6,8 @@ bypass -- so a designation is always the human's, with no need to tag synthetic
 events. Same placement, and the same reason, as
 :class:`~nuiitivet.dev.interaction.InteractionRecorder`.
 
-The mode is **latched** (``Ctrl+Shift+C`` on, ``Esc`` off) rather than held. A
+The mode is **latched** (``Ctrl+Shift+C`` on, ``Enter`` or ``Esc`` off) rather
+than held. A
 held modifier cannot carry a persistent affordance and cannot survive a
 multi-pick sequence, and ``Shift`` -- the obvious candidate -- is the modifier
 applications own most (see ``_COMMAND_MODS`` in :mod:`.interaction`). The
@@ -16,9 +17,10 @@ While latched, input is **consumed**: a click is a designation, not an
 interaction, and letting it also reach the app would fire the button the human
 was merely pointing at.
 
-Leaving commits. There is no separate confirm key, because the designation is
-not a transaction the human might want to abandon -- it is a note left for the
-assistant, and the cost of an unwanted one is a keystroke to remove it.
+Leaving is a decision: ``Enter`` keeps the session's work, ``Esc`` throws it
+away. That is what those keys mean everywhere, and an earlier design that made
+leaving an implicit commit had no way to abandon a session at all -- five marks
+took five ``Backspace`` presses to undo.
 """
 
 from __future__ import annotations
@@ -78,6 +80,8 @@ class InspectMode:
         self._anchor: Optional[Callable[[], Any]] = None
         # The node under the cursor, for the overlay's hover highlight.
         self._hover: Optional[Callable[[], Any]] = None
+        # The rect a drag has swept so far, for the overlay's rubber band.
+        self._band: Optional[tuple[float, float, float, float]] = None
 
     @property
     def selection(self) -> Selection:
@@ -94,6 +98,11 @@ class InspectMode:
         """The pick candidate under the cursor, for the overlay to highlight."""
         return self._hover() if self._hover is not None else None
 
+    @property
+    def band(self) -> Optional[tuple[float, float, float, float]]:
+        """The rect a drag has swept so far, or ``None`` when not dragging."""
+        return self._band
+
     # --- keys -------------------------------------------------------------
 
     def on_key_press(self, app: Any, name: str, modifier_keys: int) -> bool:
@@ -101,7 +110,7 @@ class InspectMode:
 
         While latched, **every** key is consumed. A half-passed-through keyboard
         would let the app act on input the human meant for the picker, and the
-        mode's own exit (``Esc``) is always available.
+        mode's own exits (``Enter`` / ``Esc``) are always available.
         """
         key = str(name).strip().lower()
         physical = _resolve_physical_modifiers(int(modifier_keys))
@@ -114,9 +123,18 @@ class InspectMode:
             return False
 
         if key == "escape":
-            self._leave(app)
+            self._discard(app)
+        elif key == "enter":
+            self._commit(app)
         elif key == "backspace":
-            self._selection.remove_last()
+            # Ctrl (or Cmd) escalates "remove one" to "remove all", the way an
+            # accelerator escalates a backspace to a whole word in a text field.
+            # Both land *inside* the session, so ``Esc`` undoes either -- which
+            # is what makes clearing safe to reach for.
+            if physical & (MOD_CTRL | MOD_META):
+                self._selection.clear()
+            else:
+                self._selection.remove_last()
             self._changed(app)
         elif key == "up":
             self._walk_up(app)
@@ -137,12 +155,22 @@ class InspectMode:
         self._selection.enter()
         self._press = None
         self._hover = None
+        self._band = None
         self._changed(app, note=False)
 
-    def _leave(self, app: Any) -> None:
-        self._selection.leave()
+    def _commit(self, app: Any) -> None:
+        self._selection.commit()
+        self._reset(app)
+
+    def _discard(self, app: Any) -> None:
+        self._selection.discard()
+        self._reset(app)
+
+    def _reset(self, app: Any) -> None:
         self._press = None
         self._hover = None
+        self._band = None
+        self._anchor = None
         self._changed(app)
 
     # --- pointer ----------------------------------------------------------
@@ -158,16 +186,20 @@ class InspectMode:
         """Resolve the gesture. Returns ``True`` when the mode consumed it.
 
         Travel below :data:`_DRAG_THRESHOLD` is a click, which toggles the widget
-        under the cursor. A drag designates a *region*, which is the second half
-        of #591; until then it is deliberately a no-op rather than falling back
-        to a click, so the gesture does not quietly mean something else.
+        under the cursor; anything further is a drag, which designates the area
+        it swept. Deciding here rather than on press is what lets one gesture
+        serve both without the press handler committing to a reading it cannot
+        yet make.
         """
         if not self.active:
             return False
         press, self._press = self._press, None
+        self._band = None
         if press is None:
             return True
         if abs(float(x) - press[0]) > _DRAG_THRESHOLD or abs(float(y) - press[1]) > _DRAG_THRESHOLD:
+            self._selection.add_region(_normalized(press, (float(x), float(y))))
+            self._changed(app)
             return True
 
         root = getattr(app, "root", None)
@@ -182,9 +214,20 @@ class InspectMode:
         return True
 
     def on_mouse_motion(self, app: Any, x: float, y: float) -> bool:
-        """Track the pick candidate. Returns ``True`` when the mode consumed it."""
+        """Track the pick candidate, or the rubber band mid-drag.
+
+        Returns ``True`` when the mode consumed it. The two cases are told apart
+        by whether a press is outstanding, so the backend can route a plain move
+        and a drag to the same hook.
+        """
         if not self.active:
             return False
+        if self._press is not None:
+            band = _normalized(self._press, (float(x), float(y)))
+            if band != self._band:
+                self._band = band
+                _invalidate(app)
+            return True
         root = getattr(app, "root", None)
         candidate = self._pick(root, x, y) if root is not None else None
         if candidate is self.hovered:
@@ -260,6 +303,13 @@ def _invalidate(app: Any) -> None:
         app.invalidate()
     except Exception:
         logger.debug("inspect: invalidate failed", exc_info=True)
+
+
+def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float, float, float]:
+    """Return the rect two corners span, whichever direction the drag went."""
+    x0, x1 = sorted((a[0], b[0]))
+    y0, y1 = sorted((a[1], b[1]))
+    return (x0, y0, x1 - x0, y1 - y0)
 
 
 def _weak(obj: Any) -> Optional[Callable[[], Any]]:
