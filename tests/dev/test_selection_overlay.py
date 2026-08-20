@@ -180,17 +180,21 @@ def test_the_rubber_band_is_drawn_while_dragging(
     assert "drawRect" in canvas.calls
 
 
-def test_the_hud_names_every_gesture_that_unmakes_a_designation() -> None:
-    """The badge is the only place a human can learn these keys.
+def test_the_hud_names_every_gesture_the_mode_binds() -> None:
+    """The badge is the only place a human can learn these, so an omission hides
+    a feature completely.
 
     ``Backspace`` went undiscovered in real use precisely because the HUD never
-    mentioned it, so a key the badge omits is a key nobody finds.
+    mentioned it. The list has since widened past "ways to unmake a designation":
+    the source jump (#593) is discoverable the same way and nowhere else, which
+    is what let it be a modifier rather than a button on the glass.
     """
     assert set(so._HINTS) == {
         "Enter keep",
         "Esc discard",
         "Backspace remove",
         "Ctrl+Backspace clear",
+        "Ctrl+Click source",
     }
 
 
@@ -211,3 +215,33 @@ def test_the_hud_wraps_instead_of_running_off_a_narrow_window() -> None:
     assert len(lines) > 1
     for line in lines:
         assert measure_text_width(typeface, so._FONT_SIZE, line) <= limit
+
+
+def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
+    """What makes the jump discoverable without anything pressable (#593).
+
+    The overlay is a paint-only registry outside the widget tree; a button would
+    need its own hit testing. Seeing the location is what tells the human it can
+    be reached, and the HUD says how.
+    """
+    from nuiitivet.dev import source
+
+    source.install()
+    try:
+        leaf = Text("AAA")
+        with mount(Column(children=[leaf])) as host:
+            host.layout(300, 200)
+            host.settle()
+
+            caption = so._describe(leaf)
+    finally:
+        source.uninstall()
+
+    assert "test_selection_overlay.py:" in caption
+
+
+def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
+    """A production-shaped run reads exactly as it did before #593."""
+    leaf = Text("AAA")
+
+    assert "·" not in so._describe(leaf)

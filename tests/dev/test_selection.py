@@ -406,3 +406,44 @@ def test_a_node_kept_only_for_a_descendant_carries_no_relation() -> None:
         return {}
 
     assert find(region["contents"], "leaf")["relation"] == "contained"
+
+
+# --- construction site (#593) -----------------------------------------------
+
+
+def test_a_designated_node_carries_where_it_was_built() -> None:
+    """The step after "which widget is this": which line built it.
+
+    Without it, an app carrying no ``keyed()`` leaves the reader a chain of
+    anonymous types and a grep -- which is how this was found.
+    """
+    from nuiitivet.dev import source
+
+    source.install()
+    try:
+        tree = _tree("BODY")
+        with mount(tree) as host:
+            host.layout(300, 200)
+            selection = Selection()
+            selection.toggle(tree.children[1], root=host.root)
+
+            (node,) = describe_selection(host.root, selection)["nodes"]
+    finally:
+        source.uninstall()
+
+    assert node["source"][0]["target"] is True
+    assert node["source"][0]["file"].endswith("test_selection.py")
+    assert node["source"][0]["line"] > 0
+
+
+def test_the_payload_omits_source_when_nothing_is_recording() -> None:
+    """A production-shaped run reports no field at all, rather than nulls."""
+    tree = _tree("BODY")
+    with mount(tree) as host:
+        host.layout(300, 200)
+        selection = Selection()
+        selection.toggle(tree.children[1], root=host.root)
+
+        (node,) = describe_selection(host.root, selection)["nodes"]
+
+    assert "source" not in node

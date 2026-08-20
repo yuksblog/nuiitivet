@@ -125,6 +125,7 @@ painted and there is no widget to name at all.
 | Click | Designate the widget under the cursor; click it again to remove it. |
 | Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
 | `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
+| `Ctrl+Click` | **Open the code that built this widget**, in your editor. Does not designate, so you can read through several without leaving marks behind. |
 | `Backspace` | Remove the newest designation. |
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
@@ -138,6 +139,14 @@ fire the button you are pointing at. A corner badge shows the mode and lists the
 keys. Widgets get **corner brackets** and areas a **soft fill**, so they stay
 distinct when one sits inside the other, and each carries a **numbered badge**
 matching what the assistant sees — "fix the second one" is unambiguous.
+
+Hovering names the widget **and the line that built it**, and the assistant is
+given that same line — so it edits the right place instead of hunting for it.
+That is worth most in the apps where naming a widget in prose is hardest: the
+ones with no `keyed()` anywhere.
+
+VS Code works as installed. For another editor, set
+`NUIITIVET_DEV_OPEN_COMMAND="pycharm --line {line} {file}"`.
 
 You do not have to say you did it: `status` carries a `selection` summary, so the
 assistant notices on the cheapest call it makes. Designations survive a reload

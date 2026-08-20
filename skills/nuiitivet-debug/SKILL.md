@@ -104,6 +104,11 @@ what they *meant*, not what the app is.
   the `Text` inside each), and `path` is how you reach it.
 - A node's `rect` here is what is **on screen** of it, clips applied — unlike
   `describe_tree`'s. A node clipped away entirely reports no `rect` at all.
+- **`source` is the line that built it** — edit there instead of searching.
+  Innermost first; the `target: true` frame is the construction site, and the
+  rest are its callers, so a widget built by a shared helper shows both "change
+  every one" and "change this one" and *what the human said* picks. Absent when
+  the runner is not recording sites.
 - Refer to a designation by its `index`: it matches the badge on their screen.
 - `lost` > 0 — some designations did not survive a reload. **Say so.** Never
   reason over a silently shortened list.

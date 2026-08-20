@@ -26,6 +26,7 @@ took five ``Backspace`` presses to undo.
 from __future__ import annotations
 
 import logging
+import os
 import weakref
 from typing import Any, Callable, Optional
 
@@ -37,8 +38,10 @@ from nuiitivet.input.codes import (
     resolve_modifiers as _resolve_physical_modifiers,
 )
 
+from .editor import open_at
 from .interaction import InteractionJournal
 from .selection import Selection
+from .source import absolute_target
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +85,9 @@ class InspectMode:
         self._hover: Optional[Callable[[], Any]] = None
         # The rect a drag has swept so far, for the overlay's rubber band.
         self._band: Optional[tuple[float, float, float, float]] = None
+        # A one-off message shown in place of the hover caption, for the cases a
+        # jump cannot happen. Cleared on the next move, so it never lingers.
+        self._notice: Optional[str] = None
 
     @property
     def selection(self) -> Selection:
@@ -102,6 +108,11 @@ class InspectMode:
     def band(self) -> Optional[tuple[float, float, float, float]]:
         """The rect a drag has swept so far, or ``None`` when not dragging."""
         return self._band
+
+    @property
+    def notice(self) -> Optional[str]:
+        """Why the last jump did not happen, for the overlay to show. Transient."""
+        return self._notice
 
     # --- keys -------------------------------------------------------------
 
@@ -175,14 +186,14 @@ class InspectMode:
 
     # --- pointer ----------------------------------------------------------
 
-    def on_mouse_press(self, app: Any, x: float, y: float) -> bool:
+    def on_mouse_press(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Record where a press landed. Returns ``True`` when the mode consumed it."""
         if not self.active:
             return False
         self._press = (float(x), float(y))
         return True
 
-    def on_mouse_release(self, app: Any, x: float, y: float) -> bool:
+    def on_mouse_release(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Resolve the gesture. Returns ``True`` when the mode consumed it.
 
         Travel below :data:`_DRAG_THRESHOLD` is a click, which toggles the widget
@@ -198,6 +209,9 @@ class InspectMode:
         if press is None:
             return True
         if abs(float(x) - press[0]) > _DRAG_THRESHOLD or abs(float(y) - press[1]) > _DRAG_THRESHOLD:
+            # A modified press that travelled is still just a drag: the accelerator
+            # only ever means "jump instead of designate", and there is nothing to
+            # jump to for an area.
             self._selection.add_region(_normalized(press, (float(x), float(y))))
             self._changed(app)
             return True
@@ -208,12 +222,17 @@ class InspectMode:
         node = self._pick(root, press[0], press[1])
         if node is None:
             return True
+        if _resolve_physical_modifiers(int(modifier_keys)) & (MOD_CTRL | MOD_META):
+            # Go to the source instead of designating (#593). Browsing ten
+            # widgets' code must not leave ten marks behind to clear.
+            self._open_source(app, node)
+            return True
         self._selection.toggle(node, root=root)
         self._anchor = _weak(node)
         self._changed(app)
         return True
 
-    def on_mouse_motion(self, app: Any, x: float, y: float) -> bool:
+    def on_mouse_motion(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Track the pick candidate, or the rubber band mid-drag.
 
         Returns ``True`` when the mode consumed it. The two cases are told apart
@@ -222,6 +241,9 @@ class InspectMode:
         """
         if not self.active:
             return False
+        if self._notice is not None:
+            self._notice = None
+            _invalidate(app)
         if self._press is not None:
             band = _normalized(self._press, (float(x), float(y)))
             if band != self._band:
@@ -277,6 +299,30 @@ class InspectMode:
                 self._changed(app)
                 return
             previous = node
+
+    def _open_source(self, app: Any, node: Any) -> None:
+        """Take the human to where ``node`` was built (#593).
+
+        Deliberately does *not* leave inspect mode. Reading several widgets'
+        code in a row is the normal use, and leaving would make each one cost a
+        re-entry. That is only safe because the overlay repaints on every state
+        change, so coming back from the editor shows the badge that says the mode
+        is still on.
+        """
+        target = absolute_target(node)
+        if target is None:
+            self._notice = "no source recorded for this widget"
+        else:
+            path, line = target
+            # Success is announced too, not just failure. The editor's own CLI
+            # takes over a second to reach an already-running window -- measured
+            # at ~1.4 s, essentially all of it booting the Node runtime its
+            # launcher shells out to -- and that is a second of nothing visible
+            # happening. Saying what is being opened costs nothing and turns an
+            # apparently dead click into a wait.
+            reason = open_at(path, line)
+            self._notice = reason or f"opening {os.path.basename(path)}:{line}"
+        _invalidate(app)
 
     # --- change notification ----------------------------------------------
 

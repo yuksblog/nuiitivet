@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
 
@@ -220,7 +220,12 @@ def _paint_hover(
     wash.setColor(_color(skia, _ACCENT, 0.16))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
     _paint_brackets(skia, canvas, rect, 0.7)
-    _caption(skia, canvas, _describe(candidate), font, typeface, x, max(0.0, y - 22.0))
+    # A failed jump replaces the caption rather than sitting beside it: the
+    # reason is the only thing worth reading at that moment, and it is cleared by
+    # the next pointer move.
+    notice = getattr(mode, "notice", None)
+    text = notice if notice else _describe(candidate)
+    _caption(skia, canvas, text, font, typeface, x, max(0.0, y - 22.0))
 
 
 def _describe(node: Any) -> str:
@@ -229,9 +234,25 @@ def _describe(node: Any) -> str:
 
     identity = resolve_target(node)
     name = identity.get("key") or identity.get("label")
-    return f"{identity.get('type', type(node).__name__)}  {name}" if name else str(
-        identity.get("type", type(node).__name__)
-    )
+    head = identity.get("type", type(node).__name__)
+    label = f"{head}  {name}" if name else str(head)
+    # Where it was built (#593). Shown so the jump gesture is discoverable
+    # without adding anything pressable to a paint-only overlay -- seeing the
+    # location is what tells the human it can be reached. Basename only: the
+    # caption has to stay readable in a window a few hundred pixels wide.
+    where = _origin(node)
+    return f"{label}  ·  {where}" if where else label
+
+
+def _origin(node: Any) -> Optional[str]:
+    """``file:line`` for the node's construction site, or ``None``."""
+    from nuiitivet.dev.source import site_of
+
+    site = site_of(node)
+    if not site:
+        return None
+    filename, line, _function = site[0]
+    return f"{os.path.basename(filename)}:{line}"
 
 
 def _plural(count: int, noun: str) -> str:
@@ -247,6 +268,7 @@ _HINTS = (
     "Esc discard",
     "Backspace remove",
     "Ctrl+Backspace clear",
+    "Ctrl+Click source",
 )
 
 _SEPARATOR = "  ·  "
