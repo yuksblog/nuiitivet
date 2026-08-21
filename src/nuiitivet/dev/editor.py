@@ -58,8 +58,9 @@ def open_at(path: str, line: int) -> Optional[str]:
     Three routes, in order:
 
     1. A command the human configured. Theirs, always, unmodified.
-    2. The ``vscode://`` URL, on macOS with VS Code installed -- **fourteen times
-       faster**, measured at ~95 ms against ~1400 ms for the CLI.
+    2. The ``vscode://`` URL, wherever the platform has an opener and VS Code is
+       installed -- **fourteen times faster**, measured at ~95 ms against
+       ~1400 ms for the CLI.
     3. The CLI template.
     """
     configured = os.environ.get(COMMAND_ENV)
@@ -76,11 +77,11 @@ def _url_opener() -> Optional[str]:
     ``"startfile"`` names the Windows API rather than a command, since there is
     no process to spawn there.
 
-    **Only the macOS path is verified.** The others are the platform-standard
-    mechanisms and the same Electron-as-Node launcher makes the win very likely,
-    but neither could be measured here -- CI is headless and this needs a running
-    editor to observe. Set ``NUIITIVET_DEV_OPEN_COMMAND`` to fall back to a CLI
-    if one of them misbehaves.
+    All three routes were confirmed against a real editor -- the caret lands on
+    the line, and the jump is fast enough to be the URL rather than the CLI. CI
+    cannot check any of this: it is headless, and the question is where the
+    cursor ended up. Set ``NUIITIVET_DEV_OPEN_COMMAND`` to fall back to a CLI if
+    one of them misbehaves.
     """
     if sys.platform == "darwin":
         return "open"

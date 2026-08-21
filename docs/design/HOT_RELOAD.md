@@ -592,11 +592,12 @@ edit again.
     window, because its launcher boots a Node runtime to talk to it. That second
     is unfixable from here and reads exactly like a click that did nothing, so
     the overlay says what is being opened.
-    On macOS with VS Code installed the CLI is skipped entirely for the
-    **`vscode://` URL**, handed to LaunchServices: ~95 ms against ~1400 ms,
-    fourteen times faster, with the line intact. An earlier attempt at the same
-    shortcut, `open -a ... --args --goto`, was **rejected** -- LaunchServices
-    passes `--args` only when it actually *launches* the application, so an
+    Where VS Code is installed and the platform has a URL opener, the CLI is
+    skipped entirely for the **`vscode://` URL**, handed to the registered
+    handler: on macOS ~95 ms against ~1400 ms, fourteen times faster, with the
+    line intact. An earlier attempt at the same shortcut there,
+    `open -a ... --args --goto`, was **rejected** -- LaunchServices passes
+    `--args` only when it actually *launches* the application, so an
     already-running editor received the file without the line. Both were
     verified by watching where the cursor landed rather than by reading the
     documentation. The line rides inside the URL, so there is nothing for that
@@ -607,12 +608,13 @@ edit again.
     used -- `open`, `xdg-open`, and on Windows the shell API rather than a
     process, which is also the one platform where a missing handler raises
     instead of failing silently. Linux falls back to the CLI when `xdg-open` is
-    absent, since a desktop without it has nothing to hand a URL to. **Only the
-    macOS path is verified**; the others are the platform-standard mechanisms and
-    the same launcher makes the win very likely, but CI is headless and this
-    needs a running editor to observe. `NUIITIVET_DEV_OPEN_COMMAND` is the escape
-    hatch if one misbehaves, and it outranks the URL everywhere: speed does not
-    outrank the human's choice of editor.
+    absent, since a desktop without it has nothing to hand a URL to. **All three
+    were confirmed against a real editor** -- the caret lands on the line, and
+    the jump is fast enough to be the URL rather than the CLI. CI can check none
+    of it, being headless where the question is where the cursor ended up.
+    `NUIITIVET_DEV_OPEN_COMMAND` is the escape hatch if one misbehaves, and it
+    outranks the URL everywhere: speed does not outrank the human's choice of
+    editor.
     The URL's path is absolute, slash-separated and leading-slashed, which is
     what turns a Windows `C:\dir\app.py` into `/C:/dir/app.py`; percent-encoding
     keeps a space from ending the URL early while leaving the separators and the
