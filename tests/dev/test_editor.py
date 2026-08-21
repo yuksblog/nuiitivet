@@ -320,8 +320,7 @@ def test_a_configured_command_wins_over_the_url_route(monkeypatch: Any) -> None:
 
 
 def test_linux_hands_the_url_to_xdg_open(monkeypatch: Any) -> None:
-    """The freedesktop standard opener. **Not verified on real hardware** --
-    CI is headless and this needs a running editor to observe."""
+    """The freedesktop standard opener."""
     monkeypatch.delenv(editor.COMMAND_ENV, raising=False)
     monkeypatch.setattr(editor.sys, "platform", "linux")
     monkeypatch.setattr(editor.shutil, "which", lambda name: f"/usr/bin/{name}")
@@ -350,7 +349,7 @@ def test_linux_falls_back_to_the_cli_without_xdg_open(monkeypatch: Any) -> None:
 
 
 def test_windows_uses_the_shell_api_rather_than_a_process(monkeypatch: Any) -> None:
-    """There is no opener process on Windows. **Not verified on real hardware.**"""
+    """There is no opener process on Windows."""
     monkeypatch.delenv(editor.COMMAND_ENV, raising=False)
     monkeypatch.setattr(editor.sys, "platform", "win32")
     monkeypatch.setattr(editor.shutil, "which", lambda name: f"C:/bin/{name}")
