@@ -575,50 +575,55 @@ edit again.
     let this be a modifier instead of a button -- a pressable control would need
     hit testing inside a registry that deliberately has none, and reaching it
     would move the pointer off the widget being hovered.
-    The editor is launched by its own CLI, never through a shell: the command
-    template is split into arguments first and the path substituted into the
-    resulting tokens, so a path with spaces stays one argument and a path with
-    shell metacharacters stays inert. `PATH` is consulted first and, for the
-    *default* command only, the well-known VS Code install locations after it:
-    that shim is an opt-in step on macOS, so an editor that is plainly installed
-    is routinely unfindable -- which the first real use hit immediately. A
-    command the human configured is never redirected that way, since opening a
-    different program would hide the cause rather than fix it. A failure is
-    shown in place of the caption, short because it has nowhere to wrap, with
-    the actionable half logged; a jump that does nothing and says nothing is
-    indistinguishable from a broken feature. **Success is announced the same
-    way**, for a reason the numbers make plain: spawning costs this process
-    ~5 ms, but the editor's own CLI takes ~1.4 s to reach an already-running
-    window, because its launcher boots a Node runtime to talk to it. That second
-    is unfixable from here and reads exactly like a click that did nothing, so
-    the overlay says what is being opened.
-    Where VS Code is installed and the platform has a URL opener, the CLI is
-    skipped entirely for the **`vscode://` URL**, handed to the registered
-    handler: on macOS ~95 ms against ~1400 ms, fourteen times faster, with the
-    line intact. An earlier attempt at the same shortcut there,
-    `open -a ... --args --goto`, was **rejected** -- LaunchServices passes
-    `--args` only when it actually *launches* the application, so an
-    already-running editor received the file without the line. Both were
-    verified by watching where the cursor landed rather than by reading the
-    documentation. The line rides inside the URL, so there is nothing for that
-    rule to drop.
+    The editor is opened by its **URL scheme**, handed to whatever the platform
+    has registered for it -- `vscode://file/path/to/app.py:171:1`. There is no
+    CLI route, not even as a fallback, and the numbers are why: the `code` shim
+    is a shell script whose last line runs the Electron binary *as Node*, so a
+    jump through it boots a whole runtime to send one IPC message. ~1400 ms
+    against the URL's ~95 ms, measured on macOS, and that launcher is shared
+    across platforms. A CLI fallback would hand the slow path to exactly the
+    people who had to configure something.
+    An earlier attempt at the same shortcut on macOS, `open -a ... --args
+    --goto`, was **rejected** -- LaunchServices passes `--args` only when it
+    actually *launches* the application, so an already-running editor received
+    the file without the line. Both were verified by watching where the cursor
+    landed rather than by reading the documentation. The line rides inside the
+    URL, so there is nothing for that rule to drop.
+    Each platform's standard opener is used -- `open`, `xdg-open`, and on
+    Windows the shell API rather than a process, which is also the one platform
+    where a missing handler raises instead of failing silently. **All three were
+    confirmed against a real editor** -- the caret lands on the line, and the
+    jump is fast enough to be the URL rather than a CLI. CI can check none of
+    it, being headless where the question is where the cursor ended up. A desktop
+    with no `xdg-open` has nothing to hand a URL to and is simply told so: the
+    accepted cost of one mechanism, and one that `--editor` could not have
+    rescued anyway, since what is missing is the opener rather than the scheme.
     The route is chosen by whether VS Code is installed, not by probing the
     scheme: probing means waiting on the opener and paying its ~95 ms on the UI
-    thread for an answer that never changes. Each platform's standard opener is
-    used -- `open`, `xdg-open`, and on Windows the shell API rather than a
-    process, which is also the one platform where a missing handler raises
-    instead of failing silently. Linux falls back to the CLI when `xdg-open` is
-    absent, since a desktop without it has nothing to hand a URL to. **All three
-    were confirmed against a real editor** -- the caret lands on the line, and
-    the jump is fast enough to be the URL rather than the CLI. CI can check none
-    of it, being headless where the question is where the cursor ended up.
-    `NUIITIVET_DEV_OPEN_COMMAND` is the escape hatch if one misbehaves, and it
-    outranks the URL everywhere: speed does not outrank the human's choice of
-    editor.
-    The URL's path is absolute, slash-separated and leading-slashed, which is
-    what turns a Windows `C:\dir\app.py` into `/C:/dir/app.py`; percent-encoding
-    keeps a space from ending the URL early while leaving the separators and the
-    drive-letter colon intact.
+    thread for an answer that never changes. That check is a *proxy* -- it looks
+    for the `code` shim and the macOS app bundle, while what the URL needs is a
+    registered handler, so a Flatpak install reads as missing. `--editor vscode`
+    says so and skips it. Naming an editor is asserting it exists.
+    **`--editor` takes a URL template**, not a command --
+    `"cursor://file{file}:{line}:1"`. That shape is deliberate. What goes stale
+    here is the built-in list, and it goes stale by way of VS Code *forks*,
+    whose URLs differ only in the scheme -- so one line catches up, and it
+    catches up onto the fast route. The list holds VS Code alone for the same
+    reason it is a template at all: PyCharm's `jetbrains://` wants a `project=`
+    name this cannot know, which makes it a documented example rather than an
+    entry. The path is substituted absolute, slash-separated, leading-slashed
+    and percent-encoded -- what turns a Windows `C:\dir\app.py` into
+    `/C:/dir/app.py` -- so nobody writing a template has to know any of that,
+    and the encoding suits a `?path=` query as well as a path.
+    A template is validated **at startup**, not at click time, because a URL is
+    the one route that cannot report its own failure: openers succeed whether or
+    not anything is registered. A typo would otherwise arrive as silence on the
+    first Ctrl+Click. What survives the check is a well-formed URL for a scheme
+    nobody has registered, and nothing can catch that. That is also why
+    **success is announced**, not just failure: naming the file is the only
+    evidence the click was received, which is what makes "nothing happened"
+    readable as an editor problem. Failures replace the caption, short because
+    they have nowhere to wrap, with the actionable half logged.
   - **Reload re-resolution.** Members are held weakly and keyed on *object
     identity* (two anonymous siblings resolve to the same identity dict, so
     keying on that would make picking the second remove the first). A rebuild

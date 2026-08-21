@@ -145,8 +145,14 @@ given that same line — so it edits the right place instead of hunting for it.
 That is worth most in the apps where naming a widget in prose is hardest: the
 ones with no `keyed()` anywhere.
 
-VS Code works as installed. For another editor, set
-`NUIITIVET_DEV_OPEN_COMMAND="pycharm --line {line} {file}"`.
+VS Code works as installed. For another editor, pass its URL scheme to
+`--editor` — `{file}` and `{line}` are filled in for you, encoding and all:
+
+```bash
+python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
+python -m nuiitivet.dev run app.py \
+  --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
+```
 
 You do not have to say you did it: `status` carries a `selection` summary, so the
 assistant notices on the cheapest call it makes. Designations survive a reload

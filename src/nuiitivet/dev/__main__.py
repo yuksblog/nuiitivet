@@ -47,7 +47,7 @@ from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .selection import Selection
 from .session import DevSession, set_dev_session
-from . import source
+from . import editor, source
 
 # Subcommands that may appear as the first token. Anything else is treated as a
 # ``run`` target so ``python -m nuiitivet.dev app.py`` keeps working.
@@ -100,6 +100,15 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.4,
         help="File-watch poll interval in seconds (default: 0.4).",
+    )
+    run.add_argument(
+        "--editor",
+        help=(
+            "Where a Ctrl+Click in inspect mode opens the code (default: vscode). "
+            "Either 'vscode' or your editor's URL scheme as a template carrying "
+            '{file} and {line}, e.g. "cursor://file{file}:{line}:1". The path is '
+            "made absolute and percent-encoded for you."
+        ),
     )
 
     subparsers.add_parser(
@@ -285,6 +294,12 @@ def _run(args: argparse.Namespace) -> int:
     # only knowable while the constructing frame is on the stack, so anything
     # built at import time is lost if this lands any later.
     source.install()
+    if args.editor is not None:
+        problem = editor.validate(args.editor)
+        if problem is not None:
+            print(f"[nuiitivet.dev] --editor: {problem}", file=sys.stderr)
+            return 1
+        editor.configure(args.editor)
     try:
         loaded = load_app_module(args.target, is_module=args.module)
         entry = resolve_entry(loaded.module, args.entry)
