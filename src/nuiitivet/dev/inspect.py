@@ -314,12 +314,12 @@ class InspectMode:
             self._notice = "no source recorded for this widget"
         else:
             path, line = target
-            # Success is announced too, not just failure. The editor's own CLI
-            # takes over a second to reach an already-running window -- measured
-            # at ~1.4 s, essentially all of it booting the Node runtime its
-            # launcher shells out to -- and that is a second of nothing visible
-            # happening. Saying what is being opened costs nothing and turns an
-            # apparently dead click into a wait.
+            # Success is announced too, not just failure -- and since #597 that
+            # matters more, not less. The URL is fire-and-forget: an opener
+            # succeeds whether or not anything is registered for the scheme, so
+            # a jump that goes nowhere leaves no trace at all. Naming the file
+            # is the only evidence the click was received, which is what makes
+            # "nothing happened" readable as an editor problem.
             reason = open_at(path, line)
             self._notice = reason or f"opening {os.path.basename(path)}:{line}"
         _invalidate(app)

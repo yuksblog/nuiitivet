@@ -1,50 +1,98 @@
-"""Open an editor at a file and line (#593).
+"""Open an editor at a file and line (#593, #597).
 
 The other half of :mod:`nuiitivet.dev.source`: that module answers *which line
 built this widget*, and this one takes the human there.
 
-The whole mechanism is the editor's own CLI, because a Nuiitivet app is a local
-process and can simply spawn one. Worth contrasting with the browser-based prior
+The mechanism is the editor's **URL scheme**, handed to whatever the platform
+has already registered for it. Worth contrasting with the browser-based prior
 art -- React's and Vue's devtools route this through a dev-server endpoint
-(``__open-in-editor``) purely because a page cannot start a process. That detour
-buys nothing here.
+(``__open-in-editor``) purely because a page cannot start a process. A Nuiitivet
+app is a local process and has no such constraint, but the CLI it could spawn
+turns out to be the *worse* option anyway: see :func:`_open_url`.
 
-An MCP server would be the wrong shape for the same reason: MCP is how a *model*
-calls tools, and no model is involved -- inspect mode picks the node, reads its
-site, and launches the editor, all in one process.
+An MCP server would be the wrong shape for a different reason: MCP is how a
+*model* calls tools, and no model is involved -- inspect mode picks the node,
+reads its site, and opens the editor, all in one process.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import shlex
 import shutil
 import subprocess
 import sys
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 logger = logging.getLogger(__name__)
 
-#: Overrides the command, so any editor works: ``"pycharm --line {line} {file}"``.
-COMMAND_ENV = "NUIITIVET_DEV_OPEN_COMMAND"
+# VS Code, because in 2026 it is effectively the one Python editor worth a
+# built-in entry. Anything else is one ``--editor`` away, which is also why this
+# stays a single entry rather than a registry: a table of schemes goes stale
+# every time another VS Code fork appears, and the template does not.
+_VSCODE_TEMPLATE = "vscode://file{file}:{line}:1"
 
-# VS Code, because it is the common case and its CLI takes the whole location as
-# one argument. Anything else is one environment variable away.
-_DEFAULT_TEMPLATE = "code --goto {file}:{line}"
+#: Editor names accepted by ``--editor``, mapped to their URL template.
+_KNOWN = {"vscode": _VSCODE_TEMPLATE}
 
-# Where VS Code keeps its CLI when the ``code`` shim was never put on ``PATH``.
-# That shim is an explicit opt-in step on macOS ("Shell Command: Install 'code'
-# command in PATH"), so an editor that is plainly installed routinely fails to
-# be found -- which the first real use of this feature hit immediately. Falling
-# back is only ever done for the *default* command: a template the human
-# configured is theirs, and quietly substituting something else for it would be
-# worse than saying it is missing.
-_FALLBACKS = (
+# Where to look for VS Code when the ``code`` shim was never put on ``PATH``.
+# Nothing is ever *run* from here -- the shim is merely the cheapest proof of an
+# installation, and on macOS putting it on ``PATH`` is an explicit opt-in step
+# ("Shell Command: Install 'code' command in PATH"), so a plainly-installed
+# editor routinely fails to be found by ``PATH`` alone.
+_VSCODE_INSTALLS = (
     "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
     os.path.expanduser("~/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"),
 )
+
+#: The template in force, or ``None`` for the default route. Process-wide,
+#: because the dev runner *is* the process: ``--editor`` is read once at startup
+#: and cannot change while an app is running.
+_template: Optional[str] = None
+
+
+def configure(spec: Optional[str]) -> None:
+    """Point the jump at ``spec`` -- a known editor name, or a URL template.
+
+    Call :func:`validate` first; this assumes the spec is already known good.
+    ``None`` restores the default route, which is the one the tests reset to.
+    """
+    global _template
+    _template = None if spec is None else _KNOWN.get(spec, spec)
+
+
+def validate(spec: str) -> Optional[str]:
+    """Say what is wrong with ``spec``, or ``None`` if nothing is.
+
+    Checked at startup rather than at click time, because the failure this
+    guards against is a typo in a hand-written template, and a URL is the one
+    route that *cannot* report its own failure: ``open`` and ``xdg-open``
+    succeed whether or not anything is registered for the scheme. Discovering
+    that on the first ``Ctrl+Click``, as silence, would be the worst of both.
+
+    What survives this check is a well-formed URL for a scheme nobody has
+    registered. Nothing here can catch that.
+    """
+    if spec in _KNOWN:
+        return None
+    if spec.startswith("-"):
+        # An opener would read it as a flag rather than a location.
+        return "an editor template cannot start with '-'"
+    scheme = urlsplit(spec).scheme
+    if not scheme or "://" not in spec:
+        return (
+            f"{spec!r} is neither a known editor ({', '.join(sorted(_KNOWN))}) "
+            "nor a URL template like 'cursor://file{file}:{line}:1'"
+        )
+    missing = [name for name in ("{file}", "{line}") if name not in spec]
+    if missing:
+        return f"an editor template needs {' and '.join(missing)}"
+    try:
+        spec.format(file="/x", line=1)
+    except (KeyError, IndexError, ValueError) as exc:
+        return f"an editor template has an unusable placeholder: {exc}"
+    return None
 
 
 def open_at(path: str, line: int) -> Optional[str]:
@@ -52,23 +100,25 @@ def open_at(path: str, line: int) -> Optional[str]:
 
     The caller shows the reason rather than failing silently: a jump that does
     nothing and says nothing is indistinguishable from a broken feature, and the
-    likely cause -- an editor CLI that was never installed on ``PATH`` -- is
-    something only the human can fix.
+    likely causes -- an editor that was never found, a desktop with no opener --
+    are things only the human can fix.
 
-    Three routes, in order:
-
-    1. A command the human configured. Theirs, always, unmodified.
-    2. The ``vscode://`` URL, wherever the platform has an opener and VS Code is
-       installed -- **fourteen times faster**, measured at ~95 ms against
-       ~1400 ms for the CLI.
-    3. The CLI template.
+    A template the human passed is used as-is and trusted: naming an editor is
+    asserting it exists, so the installed-check that guards the default route
+    would only get in the way. That check is a proxy anyway -- it looks for the
+    ``code`` shim, which the URL route does not need.
     """
-    configured = os.environ.get(COMMAND_ENV)
-    if configured is not None:
-        return _run_template(configured, path, line, configured=True)
-    if _resolve("code", configured=False) is not None and _url_opener() is not None:
-        return _open_url(path, line)
-    return _run_template(_DEFAULT_TEMPLATE, path, line, configured=False)
+    opener = _url_opener()
+    if opener is None:
+        return "no xdg-open on this desktop, so nothing can open the editor URL"
+    if _template is None and not _vscode_installed():
+        logger.warning(
+            "dev: cannot open an editor -- VS Code was not found. Install its "
+            "'Shell Command: Install code command in PATH', or pass "
+            "--editor (e.g. --editor \"cursor://file{file}:{line}:1\").",
+        )
+        return "VS Code was not found"
+    return _open_url(_template or _VSCODE_TEMPLATE, path, line, opener=opener)
 
 
 def _url_opener() -> Optional[str]:
@@ -77,50 +127,48 @@ def _url_opener() -> Optional[str]:
     ``"startfile"`` names the Windows API rather than a command, since there is
     no process to spawn there.
 
-    All three routes were confirmed against a real editor -- the caret lands on
-    the line, and the jump is fast enough to be the URL rather than the CLI. CI
+    All three were confirmed against a real editor (#594) -- the caret lands on
+    the line, and the jump is fast enough to be the URL rather than a CLI. CI
     cannot check any of this: it is headless, and the question is where the
-    cursor ended up. Set ``NUIITIVET_DEV_OPEN_COMMAND`` to fall back to a CLI if
-    one of them misbehaves.
+    cursor ended up.
     """
     if sys.platform == "darwin":
         return "open"
     if sys.platform == "win32":
         return "startfile"
     # xdg-open is the freedesktop standard, but a minimal desktop may not ship
-    # it; without it there is nothing to hand the URL to.
+    # it; without it there is nothing to hand the URL to, and no CLI to fall
+    # back to either -- see the module docstring on why there is no second route.
     return "xdg-open" if shutil.which("xdg-open") is not None else None
 
 
-def _open_url(path: str, line: int) -> Optional[str]:
-    """Hand the location to the running editor as a URL, via LaunchServices.
+def _open_url(template: str, path: str, line: int, *, opener: str) -> Optional[str]:
+    """Hand the location to the running editor as a URL.
 
-    Why this is worth a second route: the ``code`` CLI is a shell script whose
-    last line runs the Electron binary *as Node*, so every jump boots a Node
-    runtime purely to send one IPC message -- ~1400 ms. The URL reaches the same
-    window in ~95 ms.
+    Why the URL and not the editor's CLI: the ``code`` shim is a shell script
+    whose last line runs the Electron binary *as Node*, so every jump boots a
+    Node runtime purely to send one IPC message -- ~1400 ms. The URL reaches the
+    same window in ~95 ms, measured on macOS. That launcher is shared across
+    platforms, which is why no editor gets a CLI route, not even as a fallback:
+    it would hand the slow path to exactly the people who had to configure
+    something.
 
-    An earlier attempt at the same shortcut, ``open -a ... --args --goto``, was
-    rejected because LaunchServices passes ``--args`` only when it actually
-    *launches* the application, so an already-running editor received the file
-    without the line. Here the line is part of the URL, so there is nothing for
-    that rule to drop -- verified by watching the cursor land on it.
-
-    Guarded by VS Code being installed rather than by checking the scheme, since
-    checking would mean waiting on ``open`` and paying its ~95 ms on the UI
-    thread for a result that is almost always the same.
+    An earlier attempt at the same shortcut on macOS, ``open -a ... --args
+    --goto``, was rejected because LaunchServices passes ``--args`` only when it
+    actually *launches* the application, so an already-running editor received
+    the file without the line. Here the line is part of the URL, so there is
+    nothing for that rule to drop.
     """
-    url = _file_url(path, line)
-    opener = _url_opener()
+    url = template.format(file=_url_path(path), line=line)
     try:
         if opener == "startfile":
             # No process to spawn; the shell API raises when nothing is
             # registered, which is the one platform where that is detectable
-            # without waiting.
+            # without waiting on an opener.
             os.startfile(url)  # type: ignore[attr-defined]  # Windows only
         else:
             subprocess.Popen(
-                [str(opener), url],
+                [opener, url],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
@@ -131,81 +179,33 @@ def _open_url(path: str, line: int) -> Optional[str]:
     return None
 
 
-def _file_url(path: str, line: int) -> str:
-    """``vscode://file/...`` for ``path``, in the form the handler expects.
+def _url_path(path: str) -> str:
+    """``path`` in the form a ``file``-style URL wants, encoding and all.
 
-    The path is absolute and slash-separated with a leading slash, which is what
-    turns a Windows ``C:\\dir\\app.py`` into ``/C:/dir/app.py``; POSIX paths
-    already have both. Percent-encoding keeps a space from ending the URL early,
-    while the separators and the drive-letter colon are left intact.
+    Absolute and slash-separated with a leading slash, which is what turns a
+    Windows ``C:\\dir\\app.py`` into ``/C:/dir/app.py``; POSIX paths already have
+    both. Percent-encoding keeps a space from ending the URL early, while the
+    separators and the drive-letter colon are left intact.
+
+    Done here rather than left to whoever writes a template, so nobody has to
+    know any of the above. The encoding suits either position a template can put
+    it in: ``&``, ``=``, ``#`` and ``?`` are all escaped, so a path is as safe in
+    JetBrains' ``?path=`` query as in VS Code's path.
     """
     absolute = os.path.abspath(path).replace(os.sep, "/")
     if not absolute.startswith("/"):
         absolute = "/" + absolute
-    return f"vscode://file{quote(absolute, safe='/:')}:{line}:1"
+    return quote(absolute, safe="/:")
 
 
-def _run_template(template: str, path: str, line: int, *, configured: bool) -> Optional[str]:
-    """Launch an editor CLI from a command template.
+def _vscode_installed() -> bool:
+    """Whether the default route has an editor to reach.
 
-    Never runs through a shell. The template is split into arguments *first* and
-    the path substituted into the resulting tokens, so a path containing spaces
-    stays one argument and a path containing shell metacharacters stays inert.
+    Proxy, not proof: it looks for the ``code`` shim and the macOS app bundle,
+    while what the URL actually needs is a registered scheme handler. A Flatpak
+    or Snap install registers the scheme with no shim on ``PATH`` and so reads
+    as missing here -- ``--editor vscode`` says so and skips the check.
     """
-    try:
-        parts = shlex.split(template)
-    except ValueError as exc:
-        return f"{COMMAND_ENV} is not a valid command: {exc}"
-    if not parts:
-        return f"{COMMAND_ENV} is empty"
-
-    try:
-        argv = [part.format(file=path, line=line) for part in parts]
-    except (KeyError, IndexError) as exc:
-        return f"{COMMAND_ENV} has an unknown placeholder: {exc}"
-
-    executable = _resolve(argv[0], configured=configured)
-    if executable is None:
-        # Short, because this replaces a caption drawn at the widget's own x and
-        # has nowhere to wrap. The actionable half goes to the log.
-        logger.warning(
-            "dev: cannot open an editor -- %r is not on PATH. Install VS Code's "
-            "'Shell Command: Install code command in PATH', or set %s "
-            '(e.g. "pycharm --line {line} {file}").',
-            argv[0],
-            COMMAND_ENV,
-        )
-        return f"{argv[0]} is not on PATH"
-    argv[0] = executable
-
-    try:
-        subprocess.Popen(
-            argv,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            # Detached from the app's stdin so a terminal editor launched by
-            # mistake cannot take over the dev runner's console.
-            stdin=subprocess.DEVNULL,
-        )
-    except OSError as exc:
-        logger.debug("dev: launching the editor failed", exc_info=True)
-        return f"could not run {argv[0]}: {exc}"
-    return None
-
-
-def _resolve(command: str, *, configured: bool) -> Optional[str]:
-    """Return what to actually run for ``command``, or ``None`` if nothing can.
-
-    ``PATH`` first, always -- and unchanged when it hits, so the process list
-    reads the way the template does. The well-known install locations are
-    consulted only for the default command and only after that fails, so a
-    template the human set is never quietly redirected to a different program.
-    """
-    if shutil.which(command) is not None:
-        return command
-    if configured:
-        return None
-    for candidate in _FALLBACKS:
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
-    return None
+    if shutil.which("code") is not None:
+        return True
+    return any(os.path.isfile(c) and os.access(c, os.X_OK) for c in _VSCODE_INSTALLS)

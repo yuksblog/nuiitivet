@@ -5,17 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "dev run: current file",
             "type": "debugpy",
             "request": "launch",
-            // "program": "src/__main__.py",
-            "program": "${file}",
-            // Ensure the package in `src/` is importable when running a single file.
-            // This mirrors pytest's `pythonpath = src` used in the project config.
-            // Use envFile for shared settings; do not duplicate PYTHONPATH in `env`.
+            "module": "nuiitivet.dev",
+            "args": [
+                "run",
+                "${file}",
+                // "--editor",
+                // "vscode"
+            ],
             "envFile": "${workspaceFolder}/.vscode/.env",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": false,
-        }
+        },
     ]
 }
