@@ -143,6 +143,38 @@ class ScrollViewport(Widget):
             return cw > inner_width
         return False
 
+    def _resolve_cross_axis(
+        self,
+        content: Widget,
+        content_w: int,
+        content_h: int,
+        vp_w: int,
+        vp_h: int,
+    ) -> Tuple[int, int]:
+        """Give weight-sized content the viewport's extent on the cross axis.
+
+        A weight is a share of what the parent offers, so it has no intrinsic
+        size to measure -- ``preferred_size`` answers with padding alone. Laying
+        the content out at that answer is what shrink-wraps a ``width="wt"`` card
+        inside a vertical scrollable (#606).
+
+        Only a weight is substituted. ``auto`` content keeps its preferred size
+        and still overflows a narrower viewport, which is what a scrollable is
+        for; the scroll axis is never touched, because being content-driven there
+        is the whole point.
+        """
+        if self.direction is not ScrollDirection.HORIZONTAL:
+            width_sizing = getattr(content, "width_sizing", None)
+            if width_sizing is not None and width_sizing.kind == "weight":
+                content_w = vp_w
+
+        if self.direction is not ScrollDirection.VERTICAL:
+            height_sizing = getattr(content, "height_sizing", None)
+            if height_sizing is not None and height_sizing.kind == "weight":
+                content_h = vp_h
+
+        return (content_w, content_h)
+
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         content = self._content
@@ -162,6 +194,8 @@ class ScrollViewport(Widget):
             content_w, content_h = measure_preferred_size(content, max_height=vp_h)
         else:
             content_w, content_h = measure_preferred_size(content, max_width=vp_w, max_height=vp_h)
+
+        content_w, content_h = self._resolve_cross_axis(content, content_w, content_h, vp_w, vp_h)
 
         # Update metrics during layout phase
         self._update_scroll_metrics(content_w, content_h, vp_w, vp_h)
