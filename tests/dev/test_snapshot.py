@@ -94,3 +94,69 @@ def test_keyed_built_child_state() -> None:
     new.built_child = _Widget(key="body", state=0)
     assert restore_observables(new, snap) == 1
     assert new.built_child.state.value == 7
+
+
+class _NotifyingObs(_Obs):
+    """A mutable observable that runs a callback on write, like a subscriber."""
+
+    def __init__(self, value: Any, on_write: Any = None) -> None:
+        super().__init__(value)
+        self._on_write = on_write
+
+    @property
+    def value(self) -> Any:
+        return self._value
+
+    @value.setter
+    def value(self, v: Any) -> None:
+        self._value = v
+        if self._on_write is not None:
+            self._on_write(v)
+
+
+def test_restore_survives_a_subscriber_adding_an_attribute() -> None:
+    """Writing an observable may install an attribute on the same widget.
+
+    ``__dict__`` is iterated while the writes happen, so it has to be copied
+    first: otherwise the first lazily-derived attribute raises
+    ``RuntimeError: dictionary changed size during iteration`` and the whole
+    reload loses its state.
+    """
+    old = _Widget(state=1)
+    snap = snapshot_observables(old)
+
+    new = _Widget()
+    counter = {"n": 0}
+
+    def install(value: Any) -> None:
+        counter["n"] += 1
+        setattr(new, f"_derived_{counter['n']}", _Obs(value))
+
+    new.state = _NotifyingObs(0, on_write=install)
+
+    assert restore_observables(new, snap) == 1
+    assert new.state.value == 1
+    assert getattr(new, "_derived_1").value == 1
+
+
+def test_snapshot_survives_a_getter_adding_an_attribute() -> None:
+    """The same copy is needed on the way in: a getter may install too."""
+    widget = _Widget()
+    installed: list[str] = []
+
+    class _LazyObs(_Obs):
+        @property
+        def value(self) -> Any:
+            if not installed:
+                installed.append("x")
+                setattr(widget, "_lazy", _Obs(0))
+            return self._value
+
+        @value.setter
+        def value(self, v: Any) -> None:
+            self._value = v
+
+    widget.state = _LazyObs(5)
+
+    snap = snapshot_observables(widget)
+    assert snap[("state",)] == 5

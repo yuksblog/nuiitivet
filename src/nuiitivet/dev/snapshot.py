@@ -106,7 +106,9 @@ def snapshot_observables(root: Any) -> dict[Path, Any]:
         state = getattr(widget, "__dict__", None)
         if not state:
             continue
-        for attr, value in state.items():
+        # A copy, not a view: reading a value can run a getter that lazily
+        # installs an attribute on the same widget. See restore_observables.
+        for attr, value in list(state.items()):
             if isinstance(value, MutableObservableBase):
                 try:
                     snapshot[path + (attr,)] = value.value
@@ -133,7 +135,12 @@ def restore_observables(root: Any, snapshot: dict[Path, Any]) -> int:
         state = getattr(widget, "__dict__", None)
         if not state:
             continue
-        for attr, value in state.items():
+        # A copy, not a view. Writing an observable notifies its subscribers
+        # synchronously, and a subscriber that installs an attribute on this
+        # same widget would otherwise mutate the dict mid-iteration and abort
+        # the whole restore -- which is every reload of a screen whose derived
+        # state is built lazily.
+        for attr, value in list(state.items()):
             if not isinstance(value, MutableObservableBase):
                 continue
             key = path + (attr,)
