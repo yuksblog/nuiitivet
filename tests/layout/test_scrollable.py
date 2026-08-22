@@ -415,3 +415,54 @@ def test_scrollable_horizontal_scroll_wheel_direction():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_vertical_scrollable_gives_weight_content_the_viewport_width():
+    """A weight has no intrinsic size, so the viewport must supply it (#606).
+
+    Measured alone, ``width="wt"`` answers with padding only. Laying the content
+    out at that answer is what shrink-wraps a full-width card inside a list.
+    """
+    child = Column([Text("Item")], width="wt")
+    scrollable = VerticalScrollable(child=child)
+
+    scrollable.layout(300, 200)
+
+    assert child.layout_rect is not None
+    assert int(child.layout_rect[2]) == 300
+
+
+def test_horizontal_scrollable_gives_weight_content_the_viewport_height():
+    child = Row([Text("Item")], height="wt")
+    scrollable = HorizontalScrollable(child=child)
+
+    scrollable.layout(300, 200)
+
+    assert child.layout_rect is not None
+    assert int(child.layout_rect[3]) == 200
+
+
+def test_scrollable_leaves_the_scroll_axis_content_driven():
+    """The cross axis is substituted; the scroll axis never is.
+
+    Content taller than the viewport must stay tall, or there is nothing to
+    scroll.
+    """
+    child = Column([Text("Item") for _ in range(40)], width="wt")
+    scrollable = VerticalScrollable(child=child)
+
+    scrollable.layout(300, 100)
+
+    assert child.layout_rect is not None
+    assert int(child.layout_rect[3]) > 100
+
+
+def test_scrollable_does_not_stretch_auto_sized_content():
+    """``auto`` keeps its preferred size, and may still overflow the cross axis."""
+    child = Column([Text("Item")], width=500)
+    scrollable = VerticalScrollable(child=child)
+
+    scrollable.layout(300, 200)
+
+    assert child.layout_rect is not None
+    assert int(child.layout_rect[2]) == 500
