@@ -31,7 +31,7 @@ the running window updates **while `Observable` state survives**. Launch for
 development with the dev runner:
 
 ```
-python -m nuiitivet.dev path/to/app.py      # or: --module pkg.app
+python -m nuiitivet.dev run path/to/app.py  # or: run --module pkg.app
 ```
 
 Production launch (`App.run()`) is unchanged; hot reload is a development-time

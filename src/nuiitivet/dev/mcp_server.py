@@ -13,7 +13,7 @@ explain (see its docstring).
 
 The server holds no app logic. Every tool is a thin forward to a freshly
 discovered :class:`~nuiitivet.dev.client.BridgeClient`, which talks to the
-running ``python -m nuiitivet.dev <app.py>`` process over localhost. It inherits
+running ``python -m nuiitivet.dev run <app.py>`` process over localhost. It inherits
 that bridge's dev-session gate, so it is never a path into a production app.
 
 The ``mcp`` SDK is an optional dependency; install it with
@@ -98,7 +98,7 @@ _INCOMPATIBLE_HINT = (
 # `status`/`describe_tree`.
 _SERVER_INSTRUCTIONS = (
     "Tools to drive a running nuiitivet dev app (started with "
-    "'python -m nuiitivet.dev <app.py>'). To confirm the app is up and healthy "
+    "'python -m nuiitivet.dev run <app.py>'). To confirm the app is up and healthy "
     "-- after starting it, or after an edit -- call `status`: it is the cheapest "
     "check and returns liveness, the current title, the last hot-reload outcome, "
     "an error count, and a `blank` flag for a white/blank screen, all without the "

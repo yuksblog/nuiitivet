@@ -2,8 +2,8 @@
 
 Launch an app with hot reload via::
 
-    python -m nuiitivet.dev path/to/app.py
-    python -m nuiitivet.dev --module yourpkg.app
+    python -m nuiitivet.dev run path/to/app.py
+    python -m nuiitivet.dev run --module yourpkg.app
 
 Editing and saving a user module rebuilds the widget tree in place while the
 window, the debugger session, and ``Observable`` state survive. See

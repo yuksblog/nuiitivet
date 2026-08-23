@@ -8,7 +8,7 @@ root factory to the session and returns. Control returns to the runner, which
 owns the real event loop, the file watcher, and the reload sequence.
 
 This inversion is what lets a single ``app.py`` serve both ``python -m yourapp``
-(normal, blocking run) and ``python -m nuiitivet.dev yourapp/app.py`` (hot
+(normal, blocking run) and ``python -m nuiitivet.dev run yourapp/app.py`` (hot
 reload) with no dev/prod branching in user code. See ``docs/design/HOT_RELOAD.md``.
 """
 
