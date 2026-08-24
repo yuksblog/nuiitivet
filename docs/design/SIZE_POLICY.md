@@ -98,6 +98,26 @@ To size a widget to a genuine fraction of its parent, use a number (`height=300`
 
 > A percentage spelling (`"50%"`) existed until #510. It was never a fraction of the parent — it parsed to a weight and the `%` was discarded — and reading it as a percentage was the most common misunderstanding of this system. It now raises `ValueError`.
 
+## 1.2 Composable Wrappers Are Transparent to Layout Metadata
+
+For the layout metadata a parent reads from a child — `width_sizing` /
+`height_sizing` and the alignment hints `layout_align` / `cross_align` — a
+`ComposableWidget` resolves each value by one rule:
+
+> **A declared value wins; an undeclared one is derived from the widget that
+> `build()` returned.**
+
+So extracting a subtree into a composable does not change how the tree lays out.
+
+* Sizing tracks declaration explicitly: an explicit `"auto"` is a declaration
+  and pins the intrinsic size — the opt-out from derivation. For the alignment
+  hints, `None` is "undeclared".
+* Before `build()` has run (pre-mount intrinsic measurement), the wrapper
+  reports its own defaults; `preferred_size` measures the built subtree
+  directly, so intrinsic sizes stay correct.
+* Scope fragments (`render_scope`) never declare metadata of their own, so they
+  are always fully transparent.
+
 ## 2. Content Policy (Paint)
 
 Once the Allocated Rect is determined, the widget decides how to draw its content. This is conceptually controlled by a **Content Mode** (often called `fit`).

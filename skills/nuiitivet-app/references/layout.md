@@ -84,6 +84,13 @@ A weight claims a share of the space **left over** after the `fixed` and `auto`
 siblings — it is never a fraction of the parent, and there is no percentage
 spelling. `"50%"` raises `ValueError`; a lone `"wt"` child fills its axis.
 
+A `ComposableWidget` is transparent to sizing: a wrapper that declares no
+`width` / `height` reports the sizing of what its `build()` returns, so a
+`"wt"` inside keeps filling through the wrapper. A size passed to
+`super().__init__()` wins, and an explicit `"auto"` is a declaration — it pins
+the intrinsic size. Alignment hints (`CrossAligned`, `layout_align`) pass
+through the same way.
+
 ## Adaptive layout with `on_size_changed`
 
 To reflow on how much space a widget actually has, attach
