@@ -100,8 +100,8 @@ python -m yourapp
 Development / hot reload:
 
 ```
-python -m nuiitivet.dev yourapp/app.py        # file path
-python -m nuiitivet.dev --module yourapp.app  # or a dotted module name
+python -m nuiitivet.dev run yourapp/app.py        # file path
+python -m nuiitivet.dev run --module yourapp.app  # or a dotted module name
 ```
 
 VSCode `launch.json`:
@@ -134,7 +134,7 @@ python -m yourapp
 **Hot reload run:**
 
 ```
-python -m nuiitivet.dev yourapp/app.py
+python -m nuiitivet.dev run yourapp/app.py
   → runner installs a dev session (process-global)
   → runner imports the user module under its real name (main() does NOT run)
   → runner calls main() exactly once
@@ -695,7 +695,7 @@ python -m nuiitivet.dev mcp        # serve the running app's bridge as MCP tools
 ```
 
 MCP host config (the app itself is launched separately with
-`python -m nuiitivet.dev yourapp/app.py`):
+`python -m nuiitivet.dev run yourapp/app.py`):
 
 ```json
 {

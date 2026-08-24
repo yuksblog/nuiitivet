@@ -4,7 +4,7 @@ Subcommands::
 
     python -m nuiitivet.dev run path/to/app.py     # launch with hot reload
     python -m nuiitivet.dev path/to/app.py          # same (run is the default)
-    python -m nuiitivet.dev --module yourpkg.app    # dotted module name
+    python -m nuiitivet.dev run --module yourpkg.app  # dotted module name
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state

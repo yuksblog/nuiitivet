@@ -1,55 +1,157 @@
 # Nuiitivet
 
-![Nuiitivet showcase](docs/assets/readme_hero_showcase.gif)
+![Nuiitivet overview](docs/assets/readme_overview.png)
 
-An intuitive UI framework for Python.
+**AI friendly Desktop UI framework for Python.**
 
 [![PyPI version](https://img.shields.io/pypi/v/nuiitivet)](https://pypi.org/project/nuiitivet/)
 [![Python versions](https://img.shields.io/pypi/pyversions/nuiitivet)](https://pypi.org/project/nuiitivet/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-## 1. Why Nuiitivet?
+---
 
-I have just one thing to say: I want to write UI intuitively.
+## What Nuiitivet is
 
-### 1.1 Declarative UI
+Large language models lowered the bar for building an app. Nuiitivet is a
+framework built for the case that follows from it: **making a desktop app
+together with an AI.**
 
-Nuiitivet offers a declarative UI that blends the best parts of frameworks like Flutter, SwiftUI, and WPF.
+Not just having the model write code, but a development loop the two of you
+share: **what gets written becomes a screen immediately, you and the assistant
+can talk about that screen, and it gets fixed on the spot.** And when you would
+rather fix it yourself, the screen takes you straight to the code that built
+it.
 
-At its core, you build UIs by composing widgets, just like in Flutter.
+The code itself is written in a grammar you already know — the intuitive
+parts of Flutter, SwiftUI, CSS and WPF — without the nesting.
 
-```python
-login_form = Column(
-    [
-        # Username and Password fields
-        TextField(
-            value="",
-            label="Username",
-            width=300,
-        ),
-        TextField(
-            value="",
-            label="Password",
-            width=300,
-        ),
-        # Login Button
-        Button(
-            "Login",
-            on_click=lambda: print("Login clicked"),
-            width=300,
-        )
-    ],
-    gap=20,
-    padding=20,
-)
+And because the desktop is the premise, the problems only desktop apps run
+into already have answers: **ReactiveProperty-style state management**,
+**worker threads that dispatch onto the UI thread**, and **shipping an
+executable**. Not everything a desktop app needs is here yet — what is missing
+is listed plainly in [5. Current limitations](#5-current-limitations).
+
+---
+
+## 1. Building with an AI
+
+Getting an AI to write code is something any framework can do. What Nuiitivet
+has is the loop that comes after. Here it is, piece by piece.
+
+All of it turns on when you launch through the dev runner.
+
+```bash
+python -m nuiitivet.dev run app.py
 ```
 
-![Login form](docs/assets/readme_login_form.png)
+### 1.1 Hot reload, state intact
 
-What sets Nuiitivet apart from Flutter is that size, alignment, and spacing are specified as widget parameters. Treating them as parameters of a widget — rather than as widgets in their own right — feels more natural, and it lets you avoid the deep nesting hell that Flutter tends to fall into.
+Every save **hot reloads** the app: the window is rebuilt **in place**, no
+restart. And the state your `Observable`s hold **survives** — the screen you
+reached with twelve clicks is not thrown away because you saved a file.
+
+Reloads also go through with a VS Code **F5** debug session attached. Your
+breakpoints stay.
+
+And when a save does not compile, the reload is skipped and the old screen
+stays alive — the assistant can tell, so it never mistakes a stale screen for
+your latest code.
+
+### 1.2 The assistant can see it, and drive it
+
+The dev runner also starts the **dev bridge** — an MCP server alongside your
+app. Through it, the assistant can:
+
+- **See** — the widget tree, the live `Observable` values behind it, a screenshot
+- **Act** — click, type, scroll, send keys. Targets are named by `key` / `label`
+  rather than coordinates, so they survive a layout change
+- **Wait** — for async work to settle, instead of racing it
+
+Together, that is an E2E test the assistant runs for you. Ask it to use the
+app like a user would — below, it drives the app, checks the result, and finds
+a bug on the way.
+
+![See & drive](docs/assets/readme_1.2.gif)
+
+One tool is left, and it points the other way — at what already *happened*:
+
+- **Read** — the app's logs, the exceptions swallowed to keep the app alive,
+  and the UI actions **you** took
+
+That last one closes a gap prose cannot. You report what went wrong; **what
+you did to get there is already in the log**. Even "it works sometimes and not
+others" is enough: the log holds each attempt, so the assistant diffs them and
+finds the one step that differed — without you ever putting your steps into
+words.
+
+![Read](docs/assets/readme_1.2.png)
+
+### 1.3 You point at something
+
+Naming a location in prose is the weak link. An inner widget with no `key`
+and no distinctive text is hard; **a gap, where nothing was painted at all**,
+is nearly impossible.
+
+`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters inspect mode. **Click to
+designate a widget, drag to designate an area.** Each designation gets a
+numbered badge, and the assistant sees the same numbers — so "fix the second
+one" simply works.
+
+![Point at something](docs/assets/readme_1.3.gif)
+
+### 1.4 Skills keep it idiomatic
+
+Plainly: **the assistant does not know Nuiitivet.** There is not enough of it in
+the training data. Worse, it looks like Flutter / SwiftUI / Compose / Rx — on purpose, as
+[1.6](#16-intuitive-to-write-intuitive-to-read) explains — so left alone the
+assistant **imports habits from elsewhere** — wrapping things in a
+`SizedBox`, hunting for `setState`.
+
+The two bundled skills exist for that.
+
+- **`nuiitivet-app`** — keeps the code idiomatic. Ships with a linter
+- **`nuiitivet-debug`** — teaches launching the app and working the dev bridge,
+  down to checking the tree before spending a screenshot
+
+Both live under [skills/](skills/). Copy the ones you want into your
+assistant's skills directory — for Claude Code, `.claude/skills/` in your
+project.
+
+Even so, you will get results you do not like. That is what the next part is
+for.
+
+### 1.5 You take over
+
+**`Ctrl+Click`** in inspect mode **opens the code that built that widget, in
+your editor.**
+
+![Take over](docs/assets/readme_1.5.gif)
+
+VS Code works as installed. For another editor, pass its URL scheme:
+
+```bash
+python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
+```
+
+Which only works if what you land on is readable.
+
+### 1.6 Intuitive to write, intuitive to read
+
+Nuiitivet looks like other frameworks on purpose. The parts that were already
+intuitive elsewhere are kept, so you write in a grammar you know:
+
+- **Flutter** — the widget tree and `build()`; a screen is a value you assemble
+- **SwiftUI / Compose** — modifiers that chain
+- **CSS** — `padding`, `gap`, `width` as short parameters
+- **WPF** — `Grid` layout, `*`-style weight sizing (`"wt"` here), and
+  ReactiveProperty for state (that one is a desktop matter, so it waits for
+  [2.1 ReactiveProperty-style state](#21-reactiveproperty-style-state))
+
+Where it departs from them, it is to keep the code readable. The clearest
+case is nesting. Written Flutter-style, decoration piles up as wrappers.
 
 ```python
-# Writing in Flutter style often leads to deep nesting
+# the nesting grows
 Padding(
     padding=EdgeInsets.all(12),
     child=SizedBox(
@@ -59,230 +161,218 @@ Padding(
 )
 ```
 
+In Nuiitivet, those are parameters.
+
 ```python
-# With Nuiitivet, you can specify them directly
-Text(
-    "Hello",
-    padding=12,
-    width=200,
+nv.Text("Hello", padding=12, width=200)
+```
+
+Decoration and behavior are attached as **modifiers** rather than wrapped
+around, and they chain with `|`.
+
+```python
+nv.Button("OK").modifier(
+    nv.tooltip("Submit") | nv.clickable(...) | nv.background("#2196F3")
 )
 ```
 
-Nuiitivet also adopts modifiers from SwiftUI and Jetpack Compose.
-Instead of wrapping a widget, you attach decoration and behavior so they feel like they grow out of the widget — and they chain together naturally with `|`.
+![Modifier](docs/assets/readme_modifier.png)
+
+Event handlers like `on_click()` are written **imperatively**, not
+declaratively. Read a value, change it, branch on the result — that is a
+procedure, and it reads best as one.
 
 ```python
-Button("OK").modifier(
-    tooltip("Submit") | clickable(...) | background("#2196F3")
-)
+def handle_increment(self):
+    print(f"Current count: {self.count.value}")
+    self.count.value += 1
+    if self.count.value % 10 == 0:
+        print("Milestone reached!")
 ```
 
-For why modifiers exist and what kinds are available, see [docs/guide/modifiers/index.md](docs/guide/modifiers/index.md).
+**Logic to UI declaratively. UI to logic imperatively.** Each half is written
+the way a person already thinks about it — that is what intuitive means here.
 
-### 1.2 Data Binding
+---
 
-Dynamic UIs need state management.
-With **data binding**, you declare *what the UI shows* in terms of your state — once — and that link stays live. Change the state, and every bound part of the UI follows on its own. You never write the code that pushes a value into a widget, and the UI can't drift out of sync with your state, because your state *is* the UI's single source of truth.
+## 2. Built for the desktop
 
-That mechanism is `Observable`. It binds directly to the UI, and it also carries operators like `throttle()` and `debounce()` like Rx — the best of both worlds. (It's inspired by WPF's ReactiveProperty.)
+The honest version first. **Nuiitivet is aiming at being desktop-specialised,
+and it is not there yet.** There are no file dialogs, no menu bar, no tray icon
+(all of it is listed in [5. Current limitations](#5-current-limitations)).
 
-Let me walk you through three things I like about it.
+What is here, though, is enough to say the specialisation is real:
 
-#### 1. Complete separation of state and UI
+- **ReactiveProperty-style state management** — MVVM from WPF, as-is
+- **Worker threads, dispatched onto the UI thread** — the answer to running
+  heavy work locally, which is a desktop-only problem
+- **Shipping an executable**
 
-When you set a value on an `Observable`, the bound UI updates automatically. Inside build(), all you ever write is the UI declaration.
+### 2.1 ReactiveProperty-style state
+
+If you built desktop apps on WPF with ReactiveProperty, this is the part that
+makes the move easy.
+
+Set a value on an `Observable` and the UI bound to it **follows on its own**.
+You never write the code that pushes a value into a widget.
 
 ```python
-class CounterApp(ComposableWidget):
+class CounterApp(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.count = Observable(0)
+        self.count = nv.Observable(0)
 
     def increment(self):
         self.count.value += 1
 
     def build(self):
-        return Column(
+        return nv.Column(
             [
-                # Count display
-                Text(self.count),
-                # Increment button
-                Button(
-                    "Increment",
-                    on_click=self.increment,
-                )
+                nv.Text(self.count),          # bound directly
+                nv.Button("Increment", on_click=self.increment),
             ]
         )
 ```
 
 ![Counter](docs/assets/readme_counter.png)
 
-With the ViewModel pattern, you can take this even further — separating cleanly at the class level rather than the method level.
+All that goes inside `build()` is the UI declaration. State and UI cannot drift
+apart, because **the state is the UI's single source of truth.** With the
+ViewModel pattern you separate at the class level rather than the method level.
+**MVVM carries over.**
 
-#### 2. Declarative data flow
-
-State derived from multiple values can be declared as a formula. Below, `total` is defined as the sum of `count_a` and `count_b`; whenever either one changes, it's recalculated automatically. On the UI side, you just drop in `total` as is.
+State derived from several values is declared as a formula — the equivalent of
+WPF's `ReadOnlyReactiveProperty`.
 
 ```python
-self.count_a = Observable(0)
-self.count_b = Observable(0)
-
-# total is declared as a + b; it recalculates automatically when a or b changes
+# total is declared as a + b; it recalculates whenever either one changes
 self.total = self.count_a.combine(self.count_b).compute(lambda a, b: a + b)
 ```
 
-![Multi counter](docs/assets/readme_multi_counter.png)
-
-#### 3. Async in the same style
-
-This is where the ReactiveProperty heritage really shines. You can slot in an Rx-style operator like `debounce()` and then bind the result straight to the UI. Even something like a search box — "thin out the keystrokes, then process" — is a single line.
+And Rx-style operators slot in, with the result bound straight to the UI.
 
 ```python
-self.query = Observable("")
-
-# debounce like Rx, then bind the result straight to the UI
-self.results = self.query.debounce(0.3).map(search_api)
+# search 0.3 s after typing stops; if they type again, the earlier answer is dropped
+self.results = self.query.debounce(0.3).switch_map(self._search, initial=[])
 ```
 
-The full guide to Observable is in [docs/guide/state-management/index.md](docs/guide/state-management/index.md).
+The function handed to `switch_map` runs **off the UI thread**, so the window
+keeps painting while it searches. The `build()` side never learns it was async;
+it binds an ordinary `Observable`.
 
-### 1.3 Event Handlers
+`map` / `combine` / `compute` / `debounce` / `throttle` / `filter` /
+`switch_map`, along with the async and threading details, are covered in the
+[State Management guide](docs/guide/state-management/index.md).
 
-Event handlers like on_click() are written imperatively.
-A handler does procedural things — popping up a dialog, branching on its result — so writing it imperatively feels natural.
+### 2.2 Heavy work runs on your machine
 
-```python
-class CounterApp(ComposableWidget):
-    count = Observable(0)
+This is a desktop-only problem. In a web app the heavy work sits inside the
+server, so it never comes up. Importing a 100,000-row CSV freezes the screen if
+you run it on the UI thread — and if you run it on a worker, you now have to get
+the result back onto the UI thread.
 
-    # Write procedures in event handler
-    def handle_increment(self):
-        # 1. Output log
-        print(f"Current count: {self.count.value}")
-        # 2. Increment count
-        self.count.value += 1
-        # 3. Milestone check
-        if self.count.value % 10 == 0:
-            print("Milestone reached!")
-        
-    def build(self):
-        return Column(
-            [
-                Text(f"count: {self.count.value}"),
-                Button(
-                    "Increment",
-                    on_click=self.handle_increment,  # Execute on click
-                )
-            ]
-        )
-```
+In Nuiitivet, **a write to an `Observable` from a worker thread is marshalled
+onto the UI thread for you.** You never hand-write that code.
 
-Logic → UI declaratively, UI → logic imperatively. What matters in both directions is that it stays intuitive to write — and that's the one thing Nuiitivet stands for.
+Reporting progress, staying indeterminate until the total is known, cancelling
+with a `CancelToken`, leaving the screen mid-run, and a worker that raises — all
+of them have an answer ([Background Work](docs/guide/state-management/background_work.md)).
 
-## 2. First Steps
+### 2.3 Ship an executable
 
-### 2.1. Requirements
+There are recipes for PyInstaller and Nuitka ([Packaging](docs/guide/packaging.md)).
+One executable, onto a machine with no Python on it.
+
+---
+
+## 3. Getting started
+
+### 3.1 Requirements
 
 - Python 3.10 or higher
 - macOS / Windows / Linux
 
-Main internal libraries used (drawing/rendering):
+Main libraries used for drawing and rendering: pyglet, PyOpenGL, skia-python,
+materialyoucolor. See [LICENSES/](LICENSES/) for third-party licenses.
 
-- pyglet
-- PyOpenGL
-- skia-python
-- materialyoucolor
-
-See [LICENSES/](LICENSES/) for third-party licenses.
-
-### 2.2. Installation
-
-You can install it easily with pip.
+### 3.2 Installation
 
 ```bash
-pip install nuiitivet
+pip install 'nuiitivet[mcp]'
 ```
 
-### 2.3. Your First App
+With uv, `[mcp]` is only needed while developing, so keep it in the dev group:
 
-To create an application with Nuiitivet, follow these steps:
+```bash
+uv add nuiitivet
+uv add --dev 'nuiitivet[mcp]'
+```
 
-- Import your UI design system with `import nuiitivet.material as nv`
-- Inherit from `ComposableWidget` to create a UI component
-- Pass the UI component to `App` and start the application
+`[mcp]` is the extra the [dev bridge](docs/guide/ai_pair_programming/dev_bridge_mcp.md)'s
+MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
+an AI effectively requires the extra — install it up front.
+
+### 3.3 Your first app
+
+- Pull in the design system with `import nuiitivet.material as nv`
+- Subclass `ComposableWidget` to build a UI component
+- Hand it to `App` and run
+
+The counter from [2.1](#21-reactiveproperty-style-state), complete and runnable:
 
 ```python
 import nuiitivet.material as nv
+
 
 class CounterApp(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
         self.count = nv.Observable(0)
 
-    def handle_increment(self):
-        # 1. Output log
-        print(f"Current count: {self.count.value}")
-        # 2. Increment count
+    def increment(self):
         self.count.value += 1
-        # 3. Milestone check
-        if self.count.value % 10 == 0:
-            print("Milestone reached!")
-        
+
     def build(self):
         return nv.Column(
             [
                 nv.Text(self.count),
-                nv.Button(
-                    "Increment",
-                    on_click=self.handle_increment,
-                )
+                nv.Button("Increment", on_click=self.increment),
             ],
             gap=20,
             padding=20,
         )
 
+
 def main():
-    # Start with App (pass the class as a factory so hot reload can rebuild it)
+    # pass the class itself — it is a factory, so hot reload can rebuild it
     app = nv.App(content=CounterApp)
     app.run()
+
 
 if __name__ == "__main__":
     main()
 ```
 
-### 2.4 AI pair-programming
+### 3.4 Into the loop
 
-Once your app runs, you develop it in a live loop built for pairing with an AI
-assistant. Launch with the dev runner instead of running the module directly:
+`python app.py` works, but during development, use the dev runner. Everything
+described above — hot reload, the dev bridge, inspect mode, the jump to source
+— turns on here.
 
 ```bash
-python -m nuiitivet.dev path/to/app.py
+python -m nuiitivet.dev run app.py
 ```
 
-Now you and the assistant work on the same running window:
+See [AI pair-programming](docs/guide/ai_pair_programming/index.md) for the full
+workflow.
 
-- **You watch the assistant work in real time.** Every edit it makes and every
-  screen it drives shows up live — the window rebuilds in place on each save and
-  your `Observable` state survives, and even a screen you are stepping through
-  under the VSCode **F5** debugger keeps updating. No restart, no lost state.
-- **Your turn is hands-on too.** You direct the assistant, but you can just as
-  well edit code and manually test the screen yourself in the same session.
-- **The assistant sees what *you* did.** Beyond your instructions, it can read
-  which files you changed and which UI actions you took, so you stay on the same
-  page and the conversation gets sharper.
+---
 
-Three pieces make this work:
-
-- **Hot reload**: real-time screen updates.
-- **MCP Dev Bridge**: lets the assistant read and drive the running app, and read your edit/interaction logs.
-- **`nuiitivet-app` skill**: an AI skill that keeps the assistant's code idiomatic.
-
-See [AI pair-programming](docs/guide/ai_pair_programming/index.md) for the full workflow.
-
-## 3. Documentation
+## 4. Documentation
 
 For a deep dive into Nuiitivet's design, visit the **[docs site](https://yuksblog.github.io/nuiitivet/)**.
-Browse runnable examples in **[samples/](samples/)** — every snippet in this README lives there as a runnable module under [samples/readme/](samples/readme/).
+Browse runnable examples in **[samples/](samples/)** — the apps shown in this
+README live there as runnable modules under [samples/readme/](samples/readme/).
 
 ### Core Concepts
 
@@ -314,23 +404,43 @@ Browse runnable examples in **[samples/](samples/)** — every snippet in this R
 | Guide | Summary |
 | ----- | ------- |
 | [Concurrency](docs/guide/concurrency.md) | Choosing a concurrency tool, and safe UI updates from background work. |
-| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Live edit-save-see, the MCP dev bridge, and the `nuiitivet-app` skill. |
+| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | The development loop, the MCP dev bridge, and the skills. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
-## 4. Known Limitations
+---
 
-- **No OS accessibility integration.** Everything is drawn with Skia, so the app
-  does not participate in the OS accessibility tree — screen readers and
-  VoiceOver cannot inspect the UI. This is a real constraint for domains that
-  require assistive-technology support.
-- **A GPU is recommended, not required.** Live rendering goes through pyglet +
-  PyOpenGL + skia, and by default it uses an OpenGL/GPU context. On GPU-less,
-  software-OpenGL (llvmpipe), or remote setups it falls back to CPU/raster
-  rendering, which you can also select explicitly — see
-  [Renderer Selection](docs/guide/window/renderer_selection.md).
-- **A display is required.** `App.run()` opens an OS window, so truly headless
-  environments (no display at all) are not supported in any renderer mode.
+## 5. Current limitations
 
-## 5. License
+There are two kinds. **Constraints rooted in the design**, which will not change
+easily, and **things simply not built yet**. They mean different things when you
+are deciding whether to adopt this, so they are listed separately.
 
-Nuiitivet is licensed under the Apache License 2.0. See the LICENSE file for more info.
+### Rooted in the design
+
+- **A display is required.** `App.run()` opens an OS window, so a truly headless
+  environment — no display at all — is not supported.
+- **A GPU is recommended, not required.** By default rendering goes through an
+  OpenGL/GPU context; on GPU-less or remote setups it falls back to CPU raster
+  rendering, which you can also select explicitly
+  ([Renderer Selection](docs/guide/window/renderer_selection.md)).
+
+### Not built yet
+
+This is what is missing before the desktop specialisation is complete. None of
+it is technically out of reach — it just has not been built. All of it is
+tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
+
+- File dialogs (open / save)
+- File drop from the OS
+- Menu bar
+- Desktop notifications
+- Tray icon
+- Multiple windows
+- OS accessibility — screen readers and VoiceOver cannot inspect the UI
+
+---
+
+## 6. License
+
+Nuiitivet is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for
+more info.

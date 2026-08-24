@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user refers to a "selection" (e.g. "selection 1", "the selected widget"), it means widgets picked in the running app — read it with `describe_selection` first. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -26,13 +26,16 @@ Two one-time steps get you into the loop; you then cycle without repeating them.
 
 ### Launch under hot reload
 
-Nuiitivet apps are developed under in-process hot reload: edit a widget, save, and
-the running window updates **while `Observable` state survives**. Launch for
-development with the dev runner:
+**Call `status` first.** The human usually has the app open already; `running:
+true` means use that process (check `title`), and a second launch would put a
+second window on their screen. Launch only on a "no running app" error:
 
 ```
-python -m nuiitivet.dev path/to/app.py      # or: --module pkg.app
+python -m nuiitivet.dev run path/to/app.py  # or: run --module pkg.app
 ```
+
+Under the dev runner, saving a widget edit updates the running window **while
+`Observable` state survives**.
 
 Production launch (`App.run()`) is unchanged; hot reload is a development-time
 wrapper.

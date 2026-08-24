@@ -21,7 +21,7 @@ Set these up in your project. They are ordinary development tooling and work
 whether or not an assistant is involved.
 
 - **[Hot Reload](hot_reload.md)** — *write.* Launch your app with the dev runner
-  (`python -m nuiitivet.dev path/to/app.py`) so every save rebuilds the running
+  (`python -m nuiitivet.dev run path/to/app.py`) so every save rebuilds the running
   window in place, with your `Observable` state and VSCode **F5** debug session
   intact.
 - **[Dev Bridge MCP](dev_bridge_mcp.md)** — *see and act.* A localhost server the

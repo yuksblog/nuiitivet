@@ -57,13 +57,13 @@ that needs arguments closes over them: `App(content=lambda: Home(config))`.
 ### 2. Launch with the dev runner
 
 ```bash
-python -m nuiitivet.dev path/to/app.py
+python -m nuiitivet.dev run path/to/app.py
 ```
 
 or, for a package module:
 
 ```bash
-python -m nuiitivet.dev --module yourpkg.app
+python -m nuiitivet.dev run --module yourpkg.app
 ```
 
 Normal (production) launch is unchanged — `python -m yourpkg` runs `main()` and

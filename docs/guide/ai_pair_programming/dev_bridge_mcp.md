@@ -44,7 +44,7 @@ stdio. Register that command:
 ### 3. Launch your app under the dev runner
 
 ```bash
-python -m nuiitivet.dev path/to/app.py
+python -m nuiitivet.dev run path/to/app.py
 ```
 
 The bridge starts with the app. This is a separate process from step 2 — that
@@ -220,7 +220,7 @@ python -m nuiitivet.dev wait-for --label Done
 python -m nuiitivet.dev wait-for --key spinner --absent --timeout 5
 ```
 
-Each subcommand talks to an already-running `python -m nuiitivet.dev <app.py>`
+Each subcommand talks to an already-running `python -m nuiitivet.dev run <app.py>`
 process over localhost. If none is found, it says so and exits.
 
 ## Safety

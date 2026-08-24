@@ -37,7 +37,7 @@ class BridgeNotFoundError(RuntimeError):
 
 _NOT_RUNNING_HINT = (
     "No running nuiitivet dev app found. Start one with "
-    "'python -m nuiitivet.dev <app.py>' first."
+    "'python -m nuiitivet.dev run <app.py>' first."
 )
 
 
@@ -186,7 +186,7 @@ class BridgeClient:
             _unlink_quietly(path)
             raise BridgeNotFoundError(
                 f"The dev app (pid {pid}) that wrote {path} is no longer running. "
-                "Start one with 'python -m nuiitivet.dev <app.py>'."
+                "Start one with 'python -m nuiitivet.dev run <app.py>'."
             )
 
         return cls(host, port, timeout=timeout, discovery_path=path)

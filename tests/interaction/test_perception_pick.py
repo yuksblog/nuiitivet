@@ -342,9 +342,9 @@ def test_no_enclosing_container_for_a_region_outside_the_tree() -> None:
 def _clipped_tile() -> tuple[Any, Any, Any]:
     """The gradient idiom: an oversized shape trimmed to a small box.
 
-    ``samples/readme/readme_hero_showcase.py`` fakes a gradient this way -- a
-    circle far larger than its parent, anchored to one corner and clipped, so
-    only a soft wedge of it shows. The child's *layout* rect therefore extends
+    A showcase-style card fakes a gradient this way -- a circle far larger
+    than its parent, anchored to one corner and clipped, so only a soft wedge
+    of it shows. The child's *layout* rect therefore extends
     well outside anything painted, and here reaches negative coordinates.
     """
     bubble = Container(width=200, height=200)
