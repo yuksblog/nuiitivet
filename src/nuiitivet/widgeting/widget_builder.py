@@ -57,42 +57,9 @@ def _get_scoped_fragment_class():
                 return child
             return None
 
-        def _sync_layout_metadata(self) -> None:
-            child = self._current_child()
-            if child is None:
-                return
-            try:
-                self.width_sizing = getattr(child, "width_sizing", self.width_sizing)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "widget_builder_scoped_fragment_sync_width_sizing_exc",
-                    "Failed to sync width_sizing from built child",
-                )
-            try:
-                self.height_sizing = getattr(child, "height_sizing", self.height_sizing)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "widget_builder_scoped_fragment_sync_height_sizing_exc",
-                    "Failed to sync height_sizing from built child",
-                )
-            try:
-                self.layout_align = getattr(child, "layout_align", None)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "widget_builder_scoped_fragment_sync_layout_align_exc",
-                    "Failed to sync layout_align from built child",
-                )
-            try:
-                self.cross_align = getattr(child, "cross_align", None)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "widget_builder_scoped_fragment_sync_cross_align_exc",
-                    "Failed to sync cross_align from built child",
-                )
+        # Layout metadata (sizing / alignment) needs no syncing here: the
+        # fragment derives undeclared metadata from its built child, like any
+        # ComposableWidget (SIZE_POLICY.md §1.2), and it never declares its own.
 
         def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
             child = self._current_child()
@@ -113,15 +80,6 @@ def _get_scoped_fragment_class():
                 if hit is not None:
                     return hit
             return super().hit_test(x, y)
-
-        def rebuild(self) -> None:
-            super().rebuild()
-            if getattr(self, "_app", None) is None:
-                self._sync_layout_metadata()
-
-        def _mount_built(self, built: Optional["Widget"]) -> None:
-            super()._mount_built(built)
-            self._sync_layout_metadata()
 
     _SCOPED_FRAGMENT_CLASS = ScopedFragment
     return ScopedFragment

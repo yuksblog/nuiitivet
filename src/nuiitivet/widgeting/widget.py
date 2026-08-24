@@ -6,11 +6,11 @@ import logging
 from typing import Iterable, Optional, Tuple, Type, TypeVar, Union
 
 from ..rendering.padding import PaddingLike
-from ..rendering.sizing import SizingLike
+from ..rendering.sizing import Sizing, SizingLike
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.events import FocusEvent
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ObservableBase, ReadOnlyObservableProtocol
 from .modifier import Modifier, ModifierElement
 from .widget_binding import BindingHostMixin
 from .widget_builder import BuilderHostMixin
@@ -245,7 +245,78 @@ class ComposableWidget(BuilderHostMixin, Widget):
 
     Composition widgets can override `build()` and use `scope()` /
     `render_scope()` for fine-grained recomposition.
+
+    Layout metadata is transparent (see docs/design/SIZE_POLICY.md §1.2): a
+    value declared on this widget wins, and an undeclared one is derived from
+    the widget its `build()` returned — so extracting a subtree into a
+    composable does not change how the tree lays out.
     """
+
+    # Class-level defaults so the derivation getters are safe before
+    # ``__init__`` has run the sizing setters.
+    _width_declared: bool = False
+    _height_declared: bool = False
+
+    def _derived_metadata_source(self) -> Optional[Widget]:
+        """The built child that undeclared layout metadata derives from."""
+        built = getattr(self, "_built", None)
+        if built is None or built is self:
+            return None
+        return built
+
+    @property
+    def width_sizing(self) -> Sizing:
+        if not self._width_declared:
+            built = self._derived_metadata_source()
+            if built is not None:
+                return built.width_sizing
+        return self._width_sizing
+
+    @width_sizing.setter
+    def width_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+        # ``None`` is the "undeclared" marker; an explicit "auto" is a
+        # declaration and pins the intrinsic size (the opt-out from derivation).
+        self._width_declared = value is not None
+        WidgetKernel.width_sizing.fset(self, value)  # type: ignore[attr-defined]
+
+    @property
+    def height_sizing(self) -> Sizing:
+        if not self._height_declared:
+            built = self._derived_metadata_source()
+            if built is not None:
+                return built.height_sizing
+        return self._height_sizing
+
+    @height_sizing.setter
+    def height_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+        self._height_declared = value is not None
+        WidgetKernel.height_sizing.fset(self, value)  # type: ignore[attr-defined]
+
+    @property
+    def layout_align(self) -> Optional[Union[str, Tuple[str, str]]]:
+        own = self._layout_align
+        if own is None:
+            built = self._derived_metadata_source()
+            if built is not None:
+                return getattr(built, "layout_align", None)
+        return own
+
+    @layout_align.setter
+    def layout_align(self, value: Optional[Union[str, Tuple[str, str]]]) -> None:
+        WidgetKernel.layout_align.fset(self, value)  # type: ignore[attr-defined]
+
+    @property
+    def cross_align(self) -> Optional[str]:
+        own = self._cross_align
+        if own is None:
+            built = self._derived_metadata_source()
+            if built is not None:
+                return getattr(built, "cross_align", None)
+        return own
+
+    @cross_align.setter
+    def cross_align(self, value: Optional[str]) -> None:
+        WidgetKernel.cross_align.fset(self, value)  # type: ignore[attr-defined]
 
 
 def _normalize_dependencies(names: Iterable[Optional[str]]) -> Tuple[str, ...]:
