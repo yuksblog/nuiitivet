@@ -145,6 +145,9 @@ from nuiitivet.modifiers import (
     will_pop,
 )
 
+# Platform services
+from nuiitivet.platform.file_dialog import FileDialog, FileDialogError
+
 # Window / runtime
 from nuiitivet.runtime.app import AppScope
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
@@ -271,6 +274,9 @@ __all__: list[str] = [
     "Shortcut",
     "ShortcutBinding",
     "ShortcutScope",
+    # Platform services
+    "FileDialog",
+    "FileDialogError",
     # Window / runtime
     "AppScope",
     "OSChrome",
