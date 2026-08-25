@@ -43,6 +43,7 @@ All `Widget`s adhere to the following protocol:
 2. **`preferred_size()` Method**
     * Reports the Widget's intrinsic size so the parent can allocate room during `layout()`.
     * **Forbidden (measure purity)**: `preferred_size()` must be free of side effects, the same constraint that applies to `layout()`. In particular, measuring a mounted composable must **not** call `build()` and unmount/rebuild the live subtree — doing so discards focus, scroll position, animation state, and pointer capture, and cancels in-progress gestures. Measurement reads the existing subtree only.
+    * **Required (constraint monotonicity)**: measurement must behave greedily with respect to its max constraints: shrinking a constraint down to (but not below) the measured result must not change the result. Text wrapping, min/max clamping, and every other fit-then-report strategy satisfy this naturally; what it rules out is a result computed as a *function* of the constraint while staying strictly inside it (e.g. "half the available width"). The measure cache relies on this to reuse a measurement across a constraint animation.
 
 3. **`_layout_rect` Property**
     * Holds the relative position and size `(x, y, w, h)` as seen from the parent Widget, calculated during `layout()`.
@@ -57,6 +58,8 @@ All `Widget`s adhere to the following protocol:
 
 * **Sizing Cache**: `parse_sizing()` is memoized, so repeated width/height literals are converted to `Sizing` objects without additional allocations.
 * **Layout Engine Cache**: `LayoutEngine` caches preferred sizes, internal rects, and child placement results. Cache keys include padding, border width, container `_layout_cache_token`, child tokens, etc.
+* **Measure Cache**: `layout.measure.preferred_size()` memoizes each widget's measurement, keyed on the max constraints it was asked about (`_measure_cache`). `mark_needs_layout()` drops the widget's cache, and its upward propagation drops every ancestor's — so any change routed through the normal invalidation path (content, style, theme, children) re-measures exactly the dirtied path while untouched siblings stay O(1). Constraint monotonicity (above) additionally lets a cached result answer a *shrunk* constraint it still fits, which is what keeps a width animation from re-measuring the static subtrees beside it.
+* **Arrange Skip**: `Row`/`Column` skip a child's `layout()` recursion entirely when the child is clean (`needs_layout` is false) and its allocated size is unchanged — position is applied via `set_layout_rect` and is not an input to `layout()`. Together with the measure cache this makes a frame's layout cost proportional to what changed, not to the tree size.
 * **Invalidation**: Widgets that change padding or border width increment their `_layout_cache_token` to invalidate the cache.
 * **Profiling**: Using `enable_layout_cache_profiling()`, developers can inspect hit rates to optimize complex trees.
 
