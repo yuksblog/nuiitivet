@@ -6,7 +6,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, layout_child_if_needed
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
@@ -211,7 +211,7 @@ class Column(Widget):
             rel_y = cy + (row_offsets[idx] if idx < len(row_offsets) else 0)
 
             # Layout child and store geometry
-            child.layout(resolved_width, h)
+            layout_child_if_needed(child, resolved_width, h)
             child.set_layout_rect(rel_x, rel_y, resolved_width, h)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):

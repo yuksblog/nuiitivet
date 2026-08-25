@@ -46,3 +46,25 @@ def expand_layout_children(children: Sequence["Widget"]) -> List["Widget"]:
                 continue
         materialized.append(child)
     return materialized
+
+
+def layout_child_if_needed(child: "Widget", width: int, height: int) -> None:
+    """Run ``child.layout`` unless it would recompute an unchanged result.
+
+    A clean child — nothing in its subtree called ``mark_needs_layout`` since
+    its last pass — laid out again at the same size produces the same subtree
+    geometry, because ``layout()`` is a pure function of the widget's state and
+    its allocated size (see RENDERING_PIPELINE.md). Skipping the recursion
+    makes re-arranging an unchanged sibling O(1). The caller still positions
+    the child with ``set_layout_rect``; position is not an input to ``layout``.
+    """
+
+    rect = getattr(child, "layout_rect", None)
+    if (
+        rect is not None
+        and not getattr(child, "needs_layout", True)
+        and rect[2] == int(width)
+        and rect[3] == int(height)
+    ):
+        return
+    child.layout(width, height)

@@ -7,7 +7,7 @@ from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, layout_child_if_needed
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
@@ -206,7 +206,7 @@ class Row(Widget):
             rel_x = cx + (col_offsets[idx] if idx < len(col_offsets) else 0)
 
             # Layout child and store geometry
-            child.layout(w, resolved_height)
+            layout_child_if_needed(child, w, resolved_height)
             child.set_layout_rect(rel_x, rel_y, w, resolved_height)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):

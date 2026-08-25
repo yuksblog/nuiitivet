@@ -75,6 +75,7 @@ class Widget(
         """Mark this widget as needing layout recalculation."""
         already_dirty = self._needs_layout
         self._needs_layout = True
+        self._measure_cache = None
         parent = getattr(self, "_parent", None)
         if isinstance(parent, Widget):
             # Always propagate to root.  An early-return guard ("if already

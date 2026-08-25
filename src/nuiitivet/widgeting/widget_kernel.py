@@ -29,6 +29,10 @@ class WidgetKernel:
     # the common case must not allocate a list.
     _size_callbacks: Optional[List[SizeCallback]]
     _reported_size: Optional[Size]
+    # Memoized preferred_size results, owned by ``layout.measure``; ``None``
+    # until first measured. Dropped by ``mark_needs_layout()`` so any change
+    # that dirties layout also re-measures.
+    _measure_cache: Optional[List[Tuple[Optional[int], Optional[int], int, int]]] = None
 
     def __init__(
         self,
@@ -251,6 +255,7 @@ class WidgetKernel:
     def mark_needs_layout(self) -> None:
         """Mark this widget as needing layout and propagate up the tree."""
         self._needs_layout = True
+        self._measure_cache = None
         if self._parent:
             marker = getattr(self._parent, "mark_needs_layout", None)
             if callable(marker):
