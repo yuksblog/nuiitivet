@@ -324,7 +324,7 @@ def test_missing_mcp_dependency_is_a_helpful_error() -> None:
                 mcp_server.MissingMCPDependencyError, match=r"optional dependency"
             ) as excinfo:
                 mcp_server.build_server()
-    assert "nuiitivet[mcp]" in str(excinfo.value)
+    assert "nuiitivet[dev]" in str(excinfo.value)
 
 
 def test_incompatible_mcp_version_is_reported_as_such() -> None:
@@ -353,4 +353,4 @@ def test_run_returns_1_when_mcp_missing(capsys: pytest.CaptureFixture[str]) -> N
     with mock.patch.object(mcp_server, "_MCP_IMPORT_ERROR", ImportError("no mcp")):
         with mock.patch.object(mcp_server, "_mcp_is_installed", return_value=False):
             assert mcp_server.run() == 1
-    assert "nuiitivet[mcp]" in capsys.readouterr().err
+    assert "nuiitivet[dev]" in capsys.readouterr().err

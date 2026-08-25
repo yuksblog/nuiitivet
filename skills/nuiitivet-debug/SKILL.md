@@ -62,7 +62,7 @@ The dev bridge lets an assistant inspect and drive the running app. Register it
 once in your MCP host:
 
 ```
-python -m nuiitivet.dev mcp        # needs: pip install 'nuiitivet[mcp]'
+python -m nuiitivet.dev mcp        # needs: pip install 'nuiitivet[dev]'
 ```
 
 It is **development-only** and forwards to the running dev process (the one

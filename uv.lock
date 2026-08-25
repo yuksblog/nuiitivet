@@ -998,7 +998,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-mcp = [
+dev = [
     { name = "mcp" },
 ]
 
@@ -1020,12 +1020,12 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "materialyoucolor", specifier = ">=3.0.3" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.2.0" },
+    { name = "mcp", marker = "extra == 'dev'", specifier = ">=1.2.0" },
     { name = "pyglet", specifier = ">=2.1.14" },
     { name = "pyopengl", specifier = ">=3.1.10" },
     { name = "skia-python", specifier = ">=138.0" },
 ]
-provides-extras = ["mcp"]
+provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -679,9 +679,9 @@ exposes `describe_tree`, `describe_state`, `describe_selection`, `reload_log`,
 `click`, `type`, and `key` as MCP tools so any host (Claude Desktop, IDE integrations, other agents) — not
 just a shell with the CLI — can drive a running app. It holds no app logic; each tool forwards to a
 freshly discovered `BridgeClient`, inheriting the bridge's dev-session gate. The
-`mcp` SDK is an optional dependency (the `[mcp]` extra); importing the module
+`mcp` SDK is an optional dependency (the `[dev]` extra); importing the module
 without it raises a `MissingMCPDependencyError` pointing at
-`pip install 'nuiitivet[mcp]'`.
+`pip install 'nuiitivet[dev]'`.
 
 **Usage guidance is part of the surface.** The server and tool descriptions steer
 the model to default to `describe_tree` for reasoning and target resolution (a
