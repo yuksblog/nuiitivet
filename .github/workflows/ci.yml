@@ -53,11 +53,11 @@ jobs:
             libgl1-mesa-dri \
             libglvnd0
 
-      # The 'mcp' extra is included so the MCP server tests actually run: they
+      # The 'dev' extra is included so the MCP server tests actually run: they
       # start with importorskip('mcp'), so without it the whole module was
       # silently skipped and #489 reached users unseen.
       - name: Sync locked dependencies
-        run: uv sync --locked --dev --extra mcp
+        run: uv sync --locked --dev --extra dev
 
       - name: Run mypy
         run: uv run mypy
@@ -100,7 +100,7 @@ jobs:
             libglvnd0
 
       - name: Sync locked dependencies
-        run: uv sync --locked --dev --extra mcp
+        run: uv sync --locked --dev --extra dev
 
       - name: Uninstall pytest-asyncio
         run: uv pip uninstall pytest-asyncio

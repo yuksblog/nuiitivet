@@ -298,17 +298,17 @@ materialyoucolor. See [LICENSES/](LICENSES/) for third-party licenses.
 ### 3.2 Installation
 
 ```bash
-pip install 'nuiitivet[mcp]'
+pip install 'nuiitivet[dev]'
 ```
 
-With uv, `[mcp]` is only needed while developing, so keep it in the dev group:
+With uv, `[dev]` is only needed while developing, so keep it in the dev group:
 
 ```bash
 uv add nuiitivet
-uv add --dev 'nuiitivet[mcp]'
+uv add --dev 'nuiitivet[dev]'
 ```
 
-`[mcp]` is the extra the [dev bridge](docs/guide/ai_pair_programming/dev_bridge_mcp.md)'s
+`[dev]` is the extra the [dev bridge](docs/guide/ai_pair_programming/dev_bridge_mcp.md)'s
 MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
 an AI effectively requires the extra — install it up front.
 

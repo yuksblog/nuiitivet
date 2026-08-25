@@ -17,7 +17,7 @@ running ``python -m nuiitivet.dev run <app.py>`` process over localhost. It inhe
 that bridge's dev-session gate, so it is never a path into a production app.
 
 The ``mcp`` SDK is an optional dependency; install it with
-``pip install 'nuiitivet[mcp]'``. Both SDK majors are supported (1.x and 2.x,
+``pip install 'nuiitivet[dev]'``. Both SDK majors are supported (1.x and 2.x,
 which renamed the server class). Importing this module without a usable SDK
 raises a :class:`MissingMCPDependencyError` -- saying which of the two cases it
 is -- rather than a bare ``ImportError``.
@@ -36,7 +36,7 @@ from typing import Any, Optional
 
 from .client import BridgeClient, BridgeNotFoundError
 
-# The 'mcp' SDK is an optional dependency (the ``[mcp]`` extra). Import it at
+# The 'mcp' SDK is an optional dependency (the ``[dev]`` extra). Import it at
 # module scope so type annotations on the tool functions resolve -- the server
 # evaluates them against these module globals -- but tolerate its absence so
 # merely importing this module (e.g. to probe availability) never hard-fails.
@@ -69,7 +69,7 @@ class MissingMCPDependencyError(RuntimeError):
 
 _INSTALL_HINT = (
     "The MCP server needs the 'mcp' package, which is an optional dependency. "
-    "Install it with: pip install 'nuiitivet[mcp]'"
+    "Install it with: pip install 'nuiitivet[dev]'"
 )
 
 # Telling someone to install a package they already have is the worst possible
@@ -79,7 +79,7 @@ _INCOMPATIBLE_HINT = (
     "The MCP server found an 'mcp' package (version {version}) it cannot use: "
     "neither 'mcp.server.mcpserver' (SDK 2.x) nor 'mcp.server.fastmcp' "
     "(SDK 1.x) could be imported from it. Try: "
-    "pip install --upgrade 'nuiitivet[mcp]'"
+    "pip install --upgrade 'nuiitivet[dev]'"
 )
 
 # Guidance surfaced to the calling model. Two ways to "check the app": `status`

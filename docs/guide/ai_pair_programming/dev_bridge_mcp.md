@@ -17,12 +17,12 @@ opened in a production build.
 
 ## Quick start
 
-### 1. Install the MCP extra
+### 1. Install the dev extra
 
 The MCP server ships as an optional dependency:
 
 ```bash
-pip install 'nuiitivet[mcp]'
+pip install 'nuiitivet[dev]'
 ```
 
 ### 2. Register the server in your MCP host
@@ -197,7 +197,7 @@ must never be confusable.
 
 Some environments have no MCP host. The same primitives are available as one-shot
 CLI subcommands that discover the running app and issue plain HTTP — dependency
-free (standard-library `urllib` only), no `[mcp]` extra required:
+free (standard-library `urllib` only), no `[dev]` extra required:
 
 ```bash
 python -m nuiitivet.dev status
