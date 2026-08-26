@@ -26,7 +26,7 @@ It's similar to Modifiers in SwiftUI or Jetpack Compose, but Nuiitivet does not 
 Modifiers are categorized into the following types:
 
 - **[Decoration](decoration.md)**: Add visual decorations like background, border, corner radius, clip, and shadow.
-- **[Interaction](interaction.md)**: Add interaction capabilities like clickable, hoverable, focusable, and keyboard shortcuts.
+- **[Interaction](interaction.md)**: Add interaction capabilities like clickable, hoverable, focusable, file drops, and keyboard shortcuts.
 - **[Pointer Participation](pointer_participation.md)**: Control which overlapping widget catches a click — `defer_pointer`, `block_pointer`, `absorb_pointer`, and `passthrough_pointer`.
 - **[Transform](transform.md)**: Apply paint-only transformations like opacity, rotate, scale, and translate.
 - **[Popup](popup.md)**: Attach anchored transient overlays like menus, dropdowns, and tooltips.

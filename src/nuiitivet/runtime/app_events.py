@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Sequence
 
 from .pointer import PointerCaptureManager
 from nuiitivet.input.codes import is_primary_button
+from nuiitivet.input.events import FileDropEvent
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.common.logging_once import exception_once
 
@@ -330,3 +332,61 @@ def dispatch_mouse_scroll(app: Any, x: int, y: int, scroll_x: float, scroll_y: f
     pointer_id = _primary_pointer_id(app)
     scroll_event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y)
     return _deliver_pointer_event(app, target, scroll_event)
+
+
+def dispatch_file_drop(app: Any, x: int, y: int, paths: Sequence[str]) -> Optional[Any]:
+    """Dispatch an OS file drop to the widget under the drop point.
+
+    Hit-tests the drop point and bubbles from the innermost target toward the
+    root, delivering to the first widget that consumes the drop (a widget with
+    the ``drop_target`` modifier). Returns the consuming widget, or ``None``
+    when nothing under the point accepts drops -- the drop is then discarded.
+    """
+    if app.root is None:
+        return None
+
+    target = None
+    try:
+        target = app.root.hit_test(x, y)
+    except Exception:
+        exception_once(logger, "app_events_hit_test_exc", "hit_test raised")
+        target = None
+
+    if target is None:
+        return None
+
+    event = FileDropEvent(paths=tuple(Path(p) for p in paths), x=float(x), y=float(y))
+
+    current = target
+    visited = set()
+    while current is not None and current not in visited:
+        visited.add(current)
+        handled = False
+        dispatcher = getattr(current, "dispatch_file_drop_event", None)
+        if callable(dispatcher):
+            try:
+                handled = bool(dispatcher(event))
+            except Exception:
+                exception_once(
+                    logger,
+                    "app_events_dispatch_file_drop_exc",
+                    "dispatch_file_drop_event raised (target=%s)",
+                    type(current).__name__,
+                )
+        if handled:
+            try:
+                app.invalidate()
+            except Exception:
+                exception_once(logger, "app_events_invalidate_exc", "app.invalidate raised")
+            return current
+        try:
+            current = getattr(current, "_parent", None)
+        except Exception:
+            exception_once(
+                logger,
+                "app_events_get_parent_exc",
+                "Failed to access _parent during file drop bubbling (current=%s)",
+                type(current).__name__,
+            )
+            current = None
+    return None

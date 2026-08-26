@@ -8,6 +8,7 @@ from .clip import clip
 from .context_menu import context_menu
 from .corner_radius import corner_radius
 from .defer_pointer import defer_pointer
+from .drop_target import drop_target
 from .focus import focusable
 from .hover import hoverable
 from .key_shortcut import key_shortcut
@@ -35,6 +36,7 @@ __all__ = [
     "context_menu",
     "corner_radius",
     "defer_pointer",
+    "drop_target",
     "focusable",
     "hoverable",
     "key_shortcut",

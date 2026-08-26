@@ -180,6 +180,7 @@ and spacing stay widget *parameters*, not modifiers.
 | Focus + key handling | `focusable` | `focusable(on_key=handler)` |
 | Hover handling | `hoverable` | `hoverable(on_hover)` |
 | Tooltip on hover | `tooltip` | `tooltip("Submit")` |
+| Receive OS file drops | `drop_target` | `drop_target(on_drop)` — `on_drop(e: nv.FileDropEvent)`; `e.paths` is `tuple[Path, ...]`, delivered to the innermost accepting widget under the drop point |
 
 **Pointer participation**
 which widget catches a click when layers overlap (default is `auto`; each takes `bool` / `Observable[bool]`)

@@ -8,7 +8,7 @@ import traceback
 import warnings
 import weakref
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Sequence, Tuple
 
 from ..widgeting.callbacks import spawn_task
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
@@ -36,6 +36,7 @@ from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope, produces_te
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
+    dispatch_file_drop as _dispatch_file_drop_fn,
     dispatch_mouse_motion as _dispatch_mouse_motion_fn,
     dispatch_mouse_press as _dispatch_mouse_press_fn,
     dispatch_mouse_release as _dispatch_mouse_release_fn,
@@ -1730,6 +1731,10 @@ class App:
     def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Optional[Widget]:
         """Deliver a wheel event; return the widget that consumed it, if any."""
         return _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y)
+
+    def _dispatch_file_drop(self, x: int, y: int, paths: Sequence[str]) -> Optional[Widget]:
+        """Deliver an OS file drop; return the widget that consumed it, if any."""
+        return _dispatch_file_drop_fn(self, x, y, paths)
 
     def _handle_pointer_cancel(
         self,
