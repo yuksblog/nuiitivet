@@ -464,3 +464,98 @@ def test_mouse_scroll_bubbles_to_parent_widget():
 
     assert len(parent.scroll_events) == 1
     assert app._dirty is True
+
+
+def test_file_drop_delivered_to_innermost_acceptor():
+    """A drop lands on the widget under the point, not on its ancestors (#599)."""
+    from pathlib import Path
+
+    from nuiitivet.input.events import FileDropEvent
+
+    class DropWidget(Widget):
+        def __init__(self):
+            super().__init__()
+            self.drops = []
+
+        # Override so hit_test treats the widget as interactive.
+        def on_pointer_event(self, event: PointerEvent) -> bool:
+            return False
+
+        def on_file_drop_event(self, event: FileDropEvent) -> bool:
+            self.drops.append(event)
+            return True
+
+    app = DummyApp()
+    parent = DropWidget()
+    child = DropWidget()
+    parent.add_child(child)
+    parent.set_layout_rect(0, 0, 100, 100)
+    child.set_layout_rect(0, 0, 100, 100)
+    app.root = parent
+    app._dirty = False
+
+    handler = app_events.dispatch_file_drop(app, 10, 10, ["/tmp/a.txt", "/tmp/b.txt"])
+
+    assert handler is child
+    assert parent.drops == []
+    assert len(child.drops) == 1
+    event = child.drops[0]
+    assert event.paths == (Path("/tmp/a.txt"), Path("/tmp/b.txt"))
+    assert (event.x, event.y) == (10.0, 10.0)
+    assert app._dirty is True
+
+
+def test_file_drop_bubbles_to_accepting_ancestor():
+    from nuiitivet.input.events import FileDropEvent
+
+    class AcceptingParent(Widget):
+        def __init__(self):
+            super().__init__()
+            self.drops = []
+
+        def on_file_drop_event(self, event: FileDropEvent) -> bool:
+            self.drops.append(event)
+            return True
+
+    class InertChild(Widget):
+        # Interactive for hit-testing but does not accept drops.
+        def on_pointer_event(self, event: PointerEvent) -> bool:
+            return False
+
+    app = DummyApp()
+    parent = AcceptingParent()
+    child = InertChild()
+    parent.add_child(child)
+    parent.set_layout_rect(0, 0, 100, 100)
+    child.set_layout_rect(0, 0, 100, 100)
+    app.root = parent
+
+    handler = app_events.dispatch_file_drop(app, 10, 10, ["/tmp/a.txt"])
+
+    assert handler is parent
+    assert len(parent.drops) == 1
+
+
+def test_file_drop_without_acceptor_is_discarded():
+    class InertWidget(Widget):
+        def on_pointer_event(self, event: PointerEvent) -> bool:
+            return False
+
+    app = DummyApp()
+    root = InertWidget()
+    root.set_layout_rect(0, 0, 100, 100)
+    app.root = root
+    app._dirty = False
+
+    handler = app_events.dispatch_file_drop(app, 10, 10, ["/tmp/a.txt"])
+
+    assert handler is None
+    assert app._dirty is False
+
+
+def test_file_drop_outside_any_widget_returns_none():
+    app = DummyApp()  # FakeRoot.hit_test returns None
+
+    handler = app_events.dispatch_file_drop(app, 10, 10, ["/tmp/a.txt"])
+
+    assert handler is None

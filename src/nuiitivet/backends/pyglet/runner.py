@@ -186,6 +186,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             style=style,
             vsync=False,
             resizable=getattr(app, "resizable", True),
+            file_drops=True,
         )
     except Exception:
         logger.error(
@@ -940,6 +941,14 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 recorder.on_mouse_scroll(handler, scroll_x_n, scroll_y_n)
             except Exception:
                 exception_once(logger, "pyglet_on_mouse_scroll_record_exc", "Interaction record raised")
+
+    @window.event
+    def on_file_drop(x, y, paths):
+        x_log, y_conv = _to_logical(x, y)
+        try:
+            app._dispatch_file_drop(x_log, y_conv, paths)
+        except Exception:
+            exception_once(logger, "pyglet_on_file_drop_dispatch_exc", "File drop dispatch raised")
 
     @window.event
     def on_key_press(symbol, modifiers):

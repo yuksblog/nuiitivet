@@ -219,6 +219,48 @@ and modifier-key mask — as it arrives.
 `pointer_input` composes with `clickable` on the same widget without either
 clobbering the other, so you can keep a semantic click alongside the raw stream.
 
+## Receiving file drops
+
+The `drop_target` modifier opts a widget into receiving files dragged in from
+the OS (Finder, Explorer, a file manager). The drop is routed to the **innermost
+widget under the drop point** that accepts drops — not broadcast globally — and
+bubbles to an accepting ancestor only when no descendant consumed it. A drop
+that lands where nothing accepts is silently discarded.
+
+The callback may be sync or async and receives a `FileDropEvent`:
+
+```python
+import nuiitivet.material as nv
+
+def on_drop(e: nv.FileDropEvent) -> None:
+    for path in e.paths:          # tuple[pathlib.Path, ...]
+        open_document(path)
+
+drop_zone = nv.Container(
+    width=320,
+    height=240,
+    child=nv.Text("Drop files here"),
+    alignment="center",
+).modifier(
+    nv.background("#E3F2FD")
+    | nv.corner_radius(8)
+    | nv.drop_target(on_drop=on_drop)
+)
+```
+
+`FileDropEvent.paths` holds the dropped files as `pathlib.Path` objects (a
+multi-file drop delivers them all in one event). Like `PointerEvent`, the event
+carries two coordinate pairs: `local_x` / `local_y` are relative to the widget's
+top-left, `x` / `y` are window coordinates of the drop point.
+
+Two platform notes:
+
+- The OS reports only the final drop — there is no drag-enter / drag-over
+  stream — so a "highlight while hovering with a file" affordance cannot be
+  built today.
+- Delivery depends on the windowing backend's drop support (macOS, Windows and
+  X11); on Wayland it may not fire.
+
 ## Keyboard shortcuts
 
 `focusable(on_key=...)` delivers *raw keys to the focused widget*. A **shortcut**

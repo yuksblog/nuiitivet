@@ -8,6 +8,7 @@ from collections.abc import Awaitable
 from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
 from ..input.codes import is_primary_button
+from ..input.events import FileDropEvent
 from ..input.pointer import PointerEvent, PointerEventType
 from ..input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 from ..widgeting.widget import Widget
@@ -23,6 +24,10 @@ PointerEventCallback = Union[
 DragUpdateCallback = Union[
     Callable[[PointerEvent, float, float], None],
     Callable[[PointerEvent, float, float], Awaitable[None]],
+]
+FileDropCallback = Union[
+    Callable[[FileDropEvent], None],
+    Callable[[FileDropEvent], Awaitable[None]],
 ]
 
 
@@ -106,6 +111,10 @@ class InteractionNode:
         Delivered by the :class:`Application` whenever the held modifier-key mask
         changes while a pointer is inside or captured. Returns True if consumed.
         """
+        return False
+
+    def handle_file_drop(self, event: FileDropEvent, bounds: Optional[Sequence[float]] = None) -> bool:
+        """Handle OS files dropped on the owner. Return True if consumed."""
         return False
 
 
@@ -645,6 +654,52 @@ class PointerListenerNode(InteractionNode):
             self._with_local(event, bounds),
             error_key="pointer_listener_modifier_keys_change",
             error_msg="pointer_input on_modifier_keys_change raised",
+        )
+        return True
+
+
+class FileDropNode(InteractionNode):
+    """File-drop node backing the ``drop_target()`` modifier.
+
+    Receives OS file drops routed through the window (pyglet ``on_file_drop``).
+    The dispatch hit-tests the drop point against the tree and bubbles from the
+    innermost target, so the node fires only when the drop lands on its owner
+    (or a descendant) and no descendant consumed it first.
+    """
+
+    def __init__(self, *, on_drop: Optional[FileDropCallback] = None) -> None:
+        super().__init__()
+        self.configure(on_drop=on_drop)
+
+    def configure(self, *, on_drop: Optional[FileDropCallback] = None) -> None:
+        """Replace the callback (setter semantics).
+
+        Recomposition re-applies the modifier; replacing rather than appending
+        keeps a single handler instead of accumulating N copies.
+        """
+        self._on_drop = on_drop
+
+    def _resolve_rect(self, bounds: Optional[Sequence[float]]) -> Optional[Sequence[float]]:
+        rect = bounds
+        if rect is None and self.owner:
+            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+        return rect
+
+    def handle_file_drop(self, event: FileDropEvent, bounds: Optional[Sequence[float]] = None) -> bool:
+        if self.state.disabled:
+            return False
+        if self._on_drop is None:
+            return False
+        rect = self._resolve_rect(bounds)
+        if rect is not None:
+            event = replace(event, local_x=event.x - rect[0], local_y=event.y - rect[1])
+        owner_name = type(self.owner).__name__ if self.owner is not None else "<none>"
+        invoke_event_handler(
+            self._on_drop,
+            event,
+            error_key="file_drop_node_on_drop_exc",
+            error_msg="on_drop raised",
+            owner_name=owner_name,
         )
         return True
 
@@ -1347,6 +1402,13 @@ class InteractionHostMixin:
             any_button=any_button,
         )
 
+    def enable_file_drop(self, *, on_drop: Optional[FileDropCallback] = None) -> None:
+        node = self.get_node(FileDropNode)
+        if isinstance(node, FileDropNode):
+            node.configure(on_drop=on_drop)
+        else:
+            self.add_node(FileDropNode(on_drop=on_drop))
+
     def add_hover_listener(self, callback: BoolCallback) -> None:
         """Add a hover listener without replacing existing ones."""
         self._pointer_node.add_hover_listener(callback)
@@ -1385,6 +1447,13 @@ class InteractionHostMixin:
         bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
         for node in self._nodes:
             consumed = node.handle_pointer_event(event, bounds) or consumed
+        return consumed
+
+    def on_file_drop_event(self, event: FileDropEvent) -> bool:
+        consumed = False
+        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
+        for node in self._nodes:
+            consumed = node.handle_file_drop(event, bounds) or consumed
         return consumed
 
     def dispatch_modifier_keys_change(self, event: PointerEvent) -> bool:

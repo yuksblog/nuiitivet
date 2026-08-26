@@ -82,6 +82,7 @@ from nuiitivet.input.codes import (
     MOD_META,
     MOD_SHIFT,
 )
+from nuiitivet.input.events import FileDropEvent
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 
@@ -124,6 +125,7 @@ from nuiitivet.modifiers import (
     context_menu,
     corner_radius,
     defer_pointer,
+    drop_target,
     focusable,
     hoverable,
     key_shortcut,
@@ -240,6 +242,7 @@ __all__: list[str] = [
     "context_menu",
     "corner_radius",
     "defer_pointer",
+    "drop_target",
     "focusable",
     "hoverable",
     "key_shortcut",
@@ -268,6 +271,7 @@ __all__: list[str] = [
     "BUTTON_LEFT",
     "BUTTON_MIDDLE",
     "BUTTON_RIGHT",
+    "FileDropEvent",
     "FocusSource",
     "PointerEvent",
     "PointerEventType",

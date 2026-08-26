@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import batch
-from nuiitivet.input.events import FocusEvent, InputHandler, InputKind, KeyInputEvent
+from nuiitivet.input.events import FileDropEvent, FocusEvent, InputHandler, InputKind, KeyInputEvent
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 
 
@@ -67,6 +67,14 @@ class InputHubMixin:
         return False
 
     def on_scroll_event(self, event: PointerEvent) -> bool:  # pragma: no cover - default no-op
+        return False
+
+    # --- File-drop delivery -------------------------------------------------
+    def dispatch_file_drop_event(self, event: FileDropEvent) -> bool:
+        with batch():
+            return bool(self.on_file_drop_event(event))
+
+    def on_file_drop_event(self, event: FileDropEvent) -> bool:  # pragma: no cover - default no-op
         return False
 
     def capture_pointer(self, event: PointerEvent, *, passive: bool = False) -> bool:
