@@ -21,6 +21,7 @@ from nuiitivet.runtime.intents import (
     FullScreenIntent,
     MaximizeWindowIntent,
     MinimizeWindowIntent,
+    RestoreWindowIntent,
 )
 
 from .model import MenuBar, MenuBarItem, MenuBarRole
@@ -41,6 +42,7 @@ _ROLE_INTENTS = {
     MenuBarRole.CLOSE_WINDOW: CloseWindowIntent,
     MenuBarRole.MINIMIZE: MinimizeWindowIntent,
     MenuBarRole.MAXIMIZE: MaximizeWindowIntent,
+    MenuBarRole.RESTORE: RestoreWindowIntent,
     MenuBarRole.FULL_SCREEN: FullScreenIntent,
 }
 

@@ -67,6 +67,7 @@ def test_standard_factories_set_roles() -> None:
     assert MenuBarItem.close_window().role is MenuBarRole.CLOSE_WINDOW
     assert MenuBarItem.minimize().role is MenuBarRole.MINIMIZE
     assert MenuBarItem.maximize().role is MenuBarRole.MAXIMIZE
+    assert MenuBarItem.restore().role is MenuBarRole.RESTORE
     assert MenuBarItem.full_screen().role is MenuBarRole.FULL_SCREEN
 
 

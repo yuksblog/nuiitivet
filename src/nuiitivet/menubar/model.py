@@ -48,6 +48,7 @@ class MenuBarRole(Enum):
     CLOSE_WINDOW = "close_window"
     MINIMIZE = "minimize"
     MAXIMIZE = "maximize"
+    RESTORE = "restore"
     FULL_SCREEN = "full_screen"
 
 
@@ -224,6 +225,22 @@ class MenuBarItem:
         if label is None:
             label = "Zoom" if sys.platform == "darwin" else "Maximize"
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuBarRole.MAXIMIZE)
+
+    @classmethod
+    def restore(
+        cls,
+        *,
+        label: ObservableStr = "Restore",
+        shortcut: Optional[ShortcutLike] = None,
+        enabled: ObservableBool = True,
+    ) -> "MenuBarItem":
+        """Restore the window (dispatches ``RestoreWindowIntent``).
+
+        The way back from :meth:`full_screen`, :meth:`maximize`, and
+        :meth:`minimize`: exits full screen, or restores the pre-maximize
+        size, or brings a minimized window back.
+        """
+        return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuBarRole.RESTORE)
 
     @classmethod
     def full_screen(

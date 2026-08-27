@@ -206,6 +206,18 @@ def test_outside_click_closes_and_next_click_reopens(nuiitivet_app) -> None:
     assert app.get(label="Open...") is not None
 
 
+def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
+    from nuiitivet.runtime.intents import RestoreWindowIntent
+
+    model = MenuBar([MenuBarItem("Window", submenu=[MenuBarItem.restore()])])
+    app = nuiitivet_app(Text("content"), size=(800, 600), menu=model)
+    seen: List[object] = []
+    app._app.dispatch = seen.append  # type: ignore[method-assign]
+    app.click(label="Window")
+    app.click(label="Restore")
+    assert [type(intent) for intent in seen] == [RestoreWindowIntent]
+
+
 def test_top_level_label_updates_live(nuiitivet_app) -> None:
     label = Observable("File")
     model = MenuBar(

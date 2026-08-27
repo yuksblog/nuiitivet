@@ -65,7 +65,10 @@ and "Exit" elsewhere):
 - `nv.MenuBarItem.quit()` — exit the application
 - `nv.MenuBarItem.close_window()`
 - `nv.MenuBarItem.minimize()` / `nv.MenuBarItem.maximize()`
-- `nv.MenuBarItem.full_screen()`
+- `nv.MenuBarItem.full_screen()` — enters full screen; pair it with
+  `restore()` to offer the way back
+- `nv.MenuBarItem.restore()` — exit full screen / restore the pre-maximize
+  size / bring a minimized window back
 
 `label`, `shortcut` and `enabled` are overridable on each factory.
 

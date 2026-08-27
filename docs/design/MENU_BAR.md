@@ -122,6 +122,9 @@ and app exit stay on the one dispatch path:
 - `MenuBarItem.close_window()` → `CloseWindowIntent`
 - `MenuBarItem.minimize()` → `MinimizeWindowIntent`
 - `MenuBarItem.maximize()` → `MaximizeWindowIntent`
+- `MenuBarItem.restore()` → `RestoreWindowIntent` — the way back from
+  `full_screen()` / `maximize()` / `minimize()`; `FullScreenIntent` itself
+  only enters full screen
 - `MenuBarItem.full_screen()` → `FullScreenIntent`
 
 Standard items absorb platform conventions: labels ("Exit" vs "Quit",
