@@ -331,24 +331,31 @@ class NSMenuBridge:
 
 
 _MENU_TARGET_CLASS: Any = None
+# The implementation class MUST stay referenced for the lifetime of the
+# process: the ObjCSubclass it holds owns the ctypes trampolines behind the
+# registered IMPs, and letting it be collected leaves the Objective-C class
+# pointing at freed function pointers (a segfault on the first menu click).
+_MENU_TARGET_IMPLEMENTATION: Any = None
 
 
 def _menu_target_class() -> Any:
     """Define (once) the Objective-C class receiving menu item actions."""
-    global _MENU_TARGET_CLASS
+    global _MENU_TARGET_CLASS, _MENU_TARGET_IMPLEMENTATION
     if _MENU_TARGET_CLASS is not None:
         return _MENU_TARGET_CLASS
 
-    from pyglet.libs.darwin.cocoapy import ObjCClass, ObjCInstance, ObjCSubclass
+    from pyglet.libs.darwin.cocoapy import ObjCClass, ObjCSubclass
 
     class _Implementation:
         NuiitivetMenuTarget = ObjCSubclass("NSObject", "NuiitivetMenuTarget")
 
         @NuiitivetMenuTarget.method("v@")
         def nuiitivetMenuAction_(self, sender: Any) -> None:
+            # cocoapy hands '@' arguments in as ObjCInstance already.
             bridge: Optional[NSMenuBridge] = getattr(self, "_bridge", None)
             if bridge is not None:
-                bridge._activated(int(ObjCInstance(sender).tag()))
+                bridge._activated(int(sender.tag()))
 
+    _MENU_TARGET_IMPLEMENTATION = _Implementation
     _MENU_TARGET_CLASS = ObjCClass("NuiitivetMenuTarget")
     return _MENU_TARGET_CLASS
