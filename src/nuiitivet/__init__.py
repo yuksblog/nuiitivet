@@ -32,6 +32,14 @@ from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.scrolling import ScrollbarBehavior
+from nuiitivet.menubar import (
+    MenuBar,
+    MenuBarArea,
+    MenuBarItem,
+    MenuBarRole,
+    MenuBarStyle,
+    MenuBarThemeData,
+)
 
 # Primitives / Widgets
 from nuiitivet.rendering.sizing import Sizing, SizingKind, SizingLike
@@ -176,6 +184,12 @@ __all__: list[str] = [
     "VerticalScrollable",
     "HorizontalScrollable",
     "ScrollbarBehavior",
+    "MenuBar",
+    "MenuBarArea",
+    "MenuBarItem",
+    "MenuBarRole",
+    "MenuBarStyle",
+    "MenuBarThemeData",
     "ForEach",
     # Primitives / Widgets
     "Sizing",

@@ -17,6 +17,7 @@ from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
+    from nuiitivet.menubar.model import MenuBar
     from nuiitivet.observable.protocols import ObservableBase
     from nuiitivet.runtime.chrome import CustomChrome, OSChrome
 
@@ -54,6 +55,7 @@ class MaterialApp(App):
         chrome: OSChrome | CustomChrome | None = _UNSET,  # type: ignore[assignment]
         window_position: WindowPosition | None = None,
         resizable: bool = True,
+        menu: "MenuBar | None" = None,
     ) -> None:
         """Initialize a MaterialApp.
 
@@ -77,6 +79,9 @@ class MaterialApp(App):
                 ``None`` for bare borderless). Omitting defaults to ``OSChrome()``.
             window_position: Initial window position.
             resizable: Whether the window can be resized. Defaults to True.
+            menu: The application menu bar model
+                (:class:`~nuiitivet.menubar.MenuBar`), or ``None`` for no menu
+                bar. See ``docs/design/MENU_BAR.md``.
         """
         if theme is None:
             theme = MaterialThemeFactory.light("#6750A4")
@@ -95,4 +100,5 @@ class MaterialApp(App):
             overlay_factory=_overlay_factory,
             window_position=window_position,
             resizable=resizable,
+            menu=menu,
         )

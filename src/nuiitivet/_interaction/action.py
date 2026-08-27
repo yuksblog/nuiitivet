@@ -153,7 +153,12 @@ def resolve_modifiers(modifiers: Any) -> int:
         except KeyError as exc:
             known = ", ".join(sorted(_MODIFIER_NAMES))
             raise ValueError(f"unknown modifier {name!r}; expected one of: {known}") from exc
-    return mask
+    # Synthesized input stands in for a backend, and backends never emit the
+    # logical ``MOD_ACCEL`` bit — resolve it to the platform's physical mask so
+    # ``"accel"`` actually matches ``Shortcut`` bindings.
+    from nuiitivet.input.codes import resolve_modifiers as _resolve_accel
+
+    return _resolve_accel(mask)
 
 
 def _target_point(app: Any, node: Any, *, verb: str) -> tuple[float, float]:

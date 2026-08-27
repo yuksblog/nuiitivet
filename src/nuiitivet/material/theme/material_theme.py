@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
+from nuiitivet.menubar.theme_data import MenuBarThemeData
 from nuiitivet.scrolling import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
@@ -14,6 +15,29 @@ from nuiitivet.material.theme.scheme_variant import (
     DEFAULT_VARIANT,
     SchemeVariant,
 )
+
+
+def _material_menubar_theme_data() -> MenuBarThemeData:
+    """Default menu bar palette mapped onto Material color roles.
+
+    Colors are stored as tokens (not resolved RGBA), so the same instance
+    resolves to the correct light/dark values against whichever theme is
+    active. Under a Material theme these roles make the menubar popups match
+    the MD3 ``Menu`` widgets (see ``docs/design/MENU_BAR.md``, Section 8.4).
+    """
+    return MenuBarThemeData(
+        bar_background=ColorRole.SURFACE_CONTAINER,
+        bar_foreground=ColorRole.ON_SURFACE,
+        bar_disabled_foreground=(ColorRole.ON_SURFACE, 0.38),
+        bar_open_background=ColorRole.SECONDARY_CONTAINER,
+        bar_state_layer=ColorRole.ON_SURFACE,
+        popup_background=ColorRole.SURFACE,
+        popup_foreground=ColorRole.ON_SURFACE,
+        popup_accelerator=ColorRole.ON_SURFACE_VARIANT,
+        popup_disabled_foreground=ColorRole.ON_SURFACE,
+        popup_state_layer=ColorRole.ON_SURFACE,
+        popup_divider=ColorRole.OUTLINE_VARIANT,
+    )
 
 
 def _material_scrollbar_theme_data() -> ScrollbarThemeData:
@@ -54,7 +78,11 @@ class MaterialThemeFactory:
         material_data = MaterialThemeData(roles=roles)
         return Theme(
             mode=mode,
-            extensions=[material_data, _material_scrollbar_theme_data()],
+            extensions=[
+                material_data,
+                _material_scrollbar_theme_data(),
+                _material_menubar_theme_data(),
+            ],
             name=name,
         )
 
