@@ -52,17 +52,17 @@ One type, `nv.MenuBarItem`, covers every role:
 | Separator | `nv.MenuBarItem.separator()` |
 | Standard item | `nv.MenuBarItem.quit()` and friends |
 
-A non-separator item takes exactly one of `on_select` or `submenu`; the
-constructor raises on any other combination. `on_select` is called with no
-arguments and may be sync or async.
+An item is exactly one of these; the constructor raises on any other
+combination (e.g. `on_select` together with `submenu`). `on_select` is
+called with no arguments and may be sync or async.
 
 ### Standard items
 
-Standard items are prebuilt commands the framework owns — activation
-dispatches the matching built-in intent, and labels and accelerators follow
-platform conventions (`quit()` is "Quit ⌘Q" on macOS and "Exit" elsewhere):
+Standard items are prebuilt commands — no `on_select` needed — whose labels
+and accelerators follow platform conventions (`quit()` is "Quit ⌘Q" on macOS
+and "Exit" elsewhere):
 
-- `nv.MenuBarItem.quit()`
+- `nv.MenuBarItem.quit()` — exit the application
 - `nv.MenuBarItem.close_window()`
 - `nv.MenuBarItem.minimize()` / `nv.MenuBarItem.maximize()`
 - `nv.MenuBarItem.full_screen()`
@@ -77,8 +77,8 @@ platform conventions (`quit()` is "Quit ⌘Q" on macOS and "Exit" elsewhere):
 
 - The accelerator is **displayed** next to the item, in the platform's form
   (`⌘S` on macOS, `Ctrl+S` elsewhere).
-- The gesture is **registered** and fires the item app-wide while the menu
-  bar is mounted, without opening the menu. A disabled item does not fire.
+- The gesture **fires the item app-wide**, without opening the menu. A
+  disabled item does not fire.
 
 Do not also register the same gesture with `key_shortcut()` — the menu item
 *is* the registration.
@@ -132,10 +132,10 @@ model:
 nv.MenuBar(items, style=nv.MenuBarStyle(bar_height=40))
 ```
 
-The app-wide palette comes from the active theme (`MenuBarThemeData`,
-registered by both the Material and Plain design systems), so the bar and
-its popups follow light/dark switching automatically. `MenuBarStyle`'s
-nullable color fields override single palette slots per instance.
+Colors come from the active theme, so the bar and its popups follow
+light/dark switching automatically. To override individual colors for one
+menu bar, set the corresponding `MenuBarStyle` fields (`bar_background`,
+`popup_background`, ...); a field left `None` follows the theme.
 
 ## Platform notes
 

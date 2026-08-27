@@ -151,7 +151,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Transient message | `Snackbar` via `Overlay` | `nv.Overlay.of(self).snackbar("Saved")` |
 | Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
 | Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
-| Application menu bar | `MenuBar` / `MenuBarItem` (model, not widgets) | `nv.App(content=..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — `enabled=`/`checked=` take Observables; replace whole model via `app.menu = ...`; `nv.MenuBarArea()` in a `CustomChrome` header moves where it renders |
+| Application menu bar | `MenuBar` / `MenuBarItem` | `nv.App(..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — App-level model, never in `build()`; `label`/`enabled`/`checked` take Observables; `shortcut` also fires app-wide (never duplicate it with `key_shortcut`); replace via `app.menu = ...`; `nv.MenuBarArea()` relocates the bar |
 
 When a widget's exact parameters aren't covered here, the topical references
 below carry the day-to-day set.
