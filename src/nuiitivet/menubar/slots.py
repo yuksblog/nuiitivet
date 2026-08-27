@@ -92,9 +92,9 @@ class MenuBarArea(MenuBarSlotBase):
     If several ``MenuBarArea`` widgets are mounted at once, only the first one
     renders (a warning is logged).
 
-    On macOS, once the NSMenu bridge exists, the area collapses to zero size
-    and the menu goes to the global menu bar — a chrome written around a
-    ``MenuBarArea`` degrades to a plain title bar with no platform branching.
+    On macOS the menu goes to the global menu bar (``NSMenu``) and the area
+    collapses to zero size — a chrome written around a ``MenuBarArea``
+    degrades to a plain title bar with no platform branching.
     """
 
     is_user_area = True

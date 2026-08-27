@@ -215,6 +215,16 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     setattr(app, "_window", window)
 
+    # The window (and on macOS the NSApplication) now exists: give the App a
+    # chance to attach platform integrations that need it (the menu bar's
+    # NSMenu bridge).
+    try:
+        notify_window_created = getattr(app, "_on_window_created", None)
+        if callable(notify_window_created):
+            notify_window_created()
+    except Exception:
+        exception_once(logger, "pyglet_on_window_created_exc", "App._on_window_created raised")
+
     # Apply Observable title now that the window exists
     try:
         title_val = getattr(app, "_title_value", None)

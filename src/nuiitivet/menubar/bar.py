@@ -31,12 +31,11 @@ from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScaleToken
-from nuiitivet.widgeting.callbacks import invoke_event_handler
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
 from .controller import MenuBarController
-from .model import MenuBar, MenuBarItem, MenuBarRole
+from .model import MenuBar, MenuBarItem
 from .style import MenuBarStyle
 from .theme_data import MenuBarThemeData
 
@@ -143,21 +142,15 @@ class MenuBarWidget(ComposableWidget):
     # ---- Activation ----------------------------------------------------------
 
     def activate(self, item: MenuBarItem) -> None:
-        """Activate an action item: toggle ``checked``, then run its command."""
+        """Activate an action item: close the menu, then run its command.
+
+        The command itself (checked toggling, standard-item intents,
+        ``on_select``) is the controller's shared activation path.
+        """
         self.close_menu()
-        if item.checked is not None:
-            item.checked.value = not bool(item.checked.value)
-        if item.role is not MenuBarRole.NONE:
-            controller = self._controller()
-            if controller is not None:
-                controller.dispatch_role(item.role)
-        elif item.on_select is not None:
-            invoke_event_handler(
-                item.on_select,
-                error_key="menubar_on_select",
-                error_msg="MenuBarItem on_select raised",
-                owner_name="MenuBarItem",
-            )
+        controller = self._controller()
+        if controller is not None:
+            controller.activate(item)
 
     def _controller(self) -> Optional[MenuBarController]:
         from nuiitivet.widgeting.context_lookup import find_app

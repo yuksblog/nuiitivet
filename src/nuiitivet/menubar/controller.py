@@ -14,7 +14,7 @@ import logging
 import weakref
 from typing import TYPE_CHECKING, List, Optional
 
-from nuiitivet.common.logging_once import warning_once
+from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.runtime.intents import (
     CloseWindowIntent,
     ExitAppIntent,
@@ -23,11 +23,12 @@ from nuiitivet.runtime.intents import (
     MinimizeWindowIntent,
 )
 
-from .model import MenuBar, MenuBarRole
+from .model import MenuBar, MenuBarItem, MenuBarRole
 
 if TYPE_CHECKING:
     from nuiitivet.runtime.app import App
 
+    from .nsmenu import NSMenuBridge
     from .slots import MenuBarSlotBase
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,8 @@ class MenuBarController:
         self._model = model
         self._areas: List["MenuBarSlotBase"] = []
         self._defaults: List["MenuBarSlotBase"] = []
+        # NSMenuBridge on macOS; None everywhere else.
+        self._bridge: Optional["NSMenuBridge"] = None
 
     # ---- Model -----------------------------------------------------------
 
@@ -65,11 +68,54 @@ class MenuBarController:
         return self._model
 
     def set_model(self, model: Optional[MenuBar]) -> None:
-        """Replace the model wholesale and rebuild the active slot."""
+        """Replace the model wholesale and rebuild the active surface."""
         if model is not None and not isinstance(model, MenuBar):
             raise TypeError("app.menu must be a MenuBar or None.")
         self._model = model
+        if self._bridge is not None:
+            try:
+                self._bridge.install(model)
+            except Exception:
+                exception_once(logger, "menubar_bridge_reinstall_exc", "NSMenu bridge reinstall raised")
         self._notify()
+
+    # ---- Platform bridge -----------------------------------------------------
+
+    def install_platform_bridge(self) -> None:
+        """Hand the menu to the platform's native surface where one exists.
+
+        Called by the App once the backend window is up. On macOS this
+        installs the :class:`~nuiitivet.menubar.nsmenu.NSMenuBridge` (the
+        global menu bar) and the in-app slots collapse; elsewhere it is a
+        no-op and the in-app bar keeps rendering.
+        """
+        if self._bridge is not None or self._model is None:
+            return
+        from .nsmenu import NSMenuBridge
+
+        if not NSMenuBridge.is_supported():
+            return
+        app = self._app()
+        app_name = None
+        if app is not None:
+            title = getattr(app, "_title_value", None)
+            value = getattr(title, "value", title)
+            if value:
+                app_name = str(value)
+        try:
+            bridge = NSMenuBridge(self, app_name=app_name or "App")
+            bridge.install(self._model)
+        except Exception:
+            exception_once(logger, "menubar_bridge_install_exc", "NSMenu bridge install raised")
+            return
+        self._bridge = bridge
+        # The native bar took over: every in-app slot collapses.
+        self._notify()
+
+    @property
+    def native(self) -> bool:
+        """True while a platform bridge renders the menu (no in-app bar)."""
+        return self._bridge is not None
 
     # ---- Slot registry -----------------------------------------------------
 
@@ -100,7 +146,10 @@ class MenuBarController:
     def active_slot(self) -> Optional["MenuBarSlotBase"]:
         """The slot that should render the bar: the first mounted user area,
         else the most recently mounted default slot (hot reload mounts the new
-        tree's slot while the old one is torn down)."""
+        tree's slot while the old one is torn down). ``None`` while a platform
+        bridge renders the menu natively."""
+        if self._bridge is not None:
+            return None
         if self._areas:
             return self._areas[0]
         if self._defaults:
@@ -114,6 +163,28 @@ class MenuBarController:
                 slot.menubar_changed(active=slot is active, model=self._model)
 
     # ---- Activation ---------------------------------------------------------
+
+    def activate(self, item: "MenuBarItem") -> None:
+        """Run an action item's command: toggle ``checked``, then act.
+
+        The single activation path shared by every rendering surface — the
+        in-app bar's popups and shortcuts, and the macOS ``NSMenu`` bridge —
+        so checkable toggling and standard-item dispatch behave identically
+        everywhere.
+        """
+        if item.checked is not None:
+            item.checked.value = not bool(item.checked.value)
+        if item.role is not MenuBarRole.NONE:
+            self.dispatch_role(item.role)
+        elif item.on_select is not None:
+            from nuiitivet.widgeting.callbacks import invoke_event_handler
+
+            invoke_event_handler(
+                item.on_select,
+                error_key="menubar_on_select",
+                error_msg="MenuBarItem on_select raised",
+                owner_name="MenuBarItem",
+            )
 
     def dispatch_role(self, role: MenuBarRole) -> None:
         """Dispatch the built-in intent mapped to a standard-item role."""

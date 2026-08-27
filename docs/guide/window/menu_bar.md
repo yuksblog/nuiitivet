@@ -139,7 +139,11 @@ nullable color fields override single palette slots per instance.
 
 ## Platform notes
 
-The menu bar is currently drawn in-app on every platform. On macOS this is
-visibly non-native; bridging the same model to the global menu bar
-(`NSMenu`) is planned, and requires no change to app code — the model,
-standard items and shortcuts are designed to translate as-is.
+- **Windows / Linux** — the bar is drawn in-app, below the chrome (or at a
+  `MenuBarArea`), as described above.
+- **macOS** — the same model goes to the **global menu bar** (`NSMenu`);
+  nothing is drawn in the window and a mounted `MenuBarArea` collapses to
+  zero size. An application menu is synthesized automatically — a
+  `MenuBarItem.quit()` found in one of your menus is relocated into it, and
+  one is added if you have none. Accelerators become native key equivalents
+  (`⌘S`). No platform branching is needed in app code.

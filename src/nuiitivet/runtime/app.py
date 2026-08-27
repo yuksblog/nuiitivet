@@ -219,6 +219,14 @@ class App:
     def menu(self, model: "MenuBar | None") -> None:
         self._menubar_controller.set_model(model)
 
+    def _on_window_created(self) -> None:
+        """Backend hook: the OS window exists now.
+
+        Attaches platform integrations that need a live window — today the
+        menu bar's platform bridge (the macOS global menu bar).
+        """
+        self._menubar_controller.install_platform_bridge()
+
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
         sizing = parse_window_sizing(spec)

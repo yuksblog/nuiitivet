@@ -1,6 +1,6 @@
 # Menu Bar Design
 
-Status: designed, not yet implemented.
+Status: implemented (both stages: the in-app bar and the macOS NSMenu bridge).
 
 ## 1. Purpose and Scope
 

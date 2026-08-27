@@ -26,8 +26,8 @@ class MenuBarStyle:
     fields here override it per instance. A ``None`` color falls back to the
     theme. Attach it to the model root: ``MenuBar(items, style=...)``.
 
-    On macOS (once the NSMenu bridge exists) none of this applies — the global
-    menu bar is rendered by the OS.
+    On macOS none of this applies — the global menu bar is rendered by the OS
+    (see :mod:`nuiitivet.menubar.nsmenu`).
 
     Attributes:
         bar_height: Height of the horizontal bar in pixels.
