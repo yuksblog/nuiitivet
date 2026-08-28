@@ -1,14 +1,36 @@
 # Window Operations
 
-Nuiitivet provides APIs to perform basic window operations programmatically. These operations allow you to control the window state from within your application logic using the Intent system.
+Window operations address exactly one window, so they live on the
+`Window` object — as imperative methods, and as **window-scoped intents**
+dispatched through `Window.of(context)`. Exiting the whole application is
+app-scoped and dispatches through `App.of(context)` instead. See
+[Multiple Windows](multi_window.md) for the App / Window split.
 
-You can dispatch these intents using `App.of(context).dispatch(intent)`.
+## Imperative methods
 
-## Available Intents
+For app logic that already holds a window (its own via `Window.of(self)`,
+or one it opened):
 
-The following intents are available in `nuiitivet.runtime.intents` for window management:
+```python
+window = nv.Window.of(self)
+window.maximize()
+window.minimize()
+window.restore()      # exit full screen / restore size / bring back
+window.full_screen()  # enters full screen; restore() is the way back
+window.center()
+window.move_to(100, 80)
+window.resize(1024, 768)
+window.close()
+```
 
-- **`CloseWindowIntent`**: Closes the application window.
+## Window-scoped intents
+
+The same operations as intents, for declarative wiring (menu items,
+accelerators, or handlers that should not know which method runs). They are
+defined in `nuiitivet.runtime.window_intents` and dispatch through the
+window of the dispatching context:
+
+- **`CloseWindowIntent`**: Closes the window.
 - **`MaximizeWindowIntent`**: Maximizes the window to fill the screen.
 - **`MinimizeWindowIntent`**: Minimizes the window to the taskbar or dock.
 - **`RestoreWindowIntent`**: Restores the window from a minimized or maximized state.
@@ -16,49 +38,51 @@ The following intents are available in `nuiitivet.runtime.intents` for window ma
 - **`CenterWindowIntent`**: Centers the window on the current screen.
 - **`MoveWindowIntent(x, y)`**: Moves the window to the specified coordinates.
 - **`ResizeWindowIntent(width, height)`**: Resizes the window to the specified dimensions.
-- **`ExitAppIntent(exit_code)`**: Exits the entire application with the given exit code.
+
+App-scoped, through `App.of(context).dispatch(...)`:
+
+- **`ExitAppIntent(exit_code)`**: Closes every window and exits the
+  application with the given exit code.
+
+The scoping is strict: dispatching a window intent through `App.of` (or an
+app intent through `Window.of`) raises a `TypeError` instead of being
+silently misdelivered, so the call site always tells you where an intent
+lands.
 
 ## Example Usage
 
-Here is an example of how to use these intents with buttons to control the window:
-
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.intents import CenterWindowIntent, CloseWindowIntent, MaximizeWindowIntent, MinimizeWindowIntent, RestoreWindowIntent
-
-def build_window_controls():
-    return nv.Column(
-        children=[
-            nv.Text("Window Controls"),
-            nv.Button(
-                child=nv.Text("Maximize"),
-                on_click=lambda ctx: nv.App.of(ctx).dispatch(MaximizeWindowIntent())
-            ),
-            nv.Button(
-                child=nv.Text("Minimize"),
-                on_click=lambda ctx: nv.App.of(ctx).dispatch(nv.MinimizeWindowIntent())
-            ),
-            nv.Button(
-                child=nv.Text("Restore"),
-                on_click=lambda ctx: nv.App.of(ctx).dispatch(RestoreWindowIntent())
-            ),
-            nv.Button(
-                child=nv.Text("Center"),
-                on_click=lambda ctx: nv.App.of(ctx).dispatch(CenterWindowIntent())
-            ),
-            nv.Button(
-                child=nv.Text("Close"),
-                on_click=lambda ctx: nv.App.of(ctx).dispatch(nv.CloseWindowIntent())
-            ),
-        ],
-        spacing=10,
-        padding=20
-    )
-
-app = nv.App(
-    root=build_window_controls(),
-    width=400,
-    height=400
+from nuiitivet.runtime.intents import ExitAppIntent
+from nuiitivet.runtime.window_intents import (
+    CenterWindowIntent,
+    CloseWindowIntent,
+    MaximizeWindowIntent,
+    MinimizeWindowIntent,
+    RestoreWindowIntent,
 )
+
+
+class WindowControls(nv.ComposableWidget):
+    def _dispatch(self, intent) -> None:
+        nv.Window.of(self).dispatch(intent)
+
+    def build(self):
+        return nv.Column(
+            children=[
+                nv.Text("Window Controls"),
+                nv.Button("Maximize", on_click=lambda: self._dispatch(MaximizeWindowIntent())),
+                nv.Button("Minimize", on_click=lambda: self._dispatch(MinimizeWindowIntent())),
+                nv.Button("Restore", on_click=lambda: self._dispatch(RestoreWindowIntent())),
+                nv.Button("Center", on_click=lambda: self._dispatch(CenterWindowIntent())),
+                nv.Button("Close", on_click=lambda: self._dispatch(CloseWindowIntent())),
+                nv.Button("Quit", on_click=lambda: nv.App.of(self).dispatch(ExitAppIntent())),
+            ],
+            gap=10,
+            padding=20,
+        )
+
+
+app = nv.App(nv.Window(content=WindowControls, width=400, height=400))
 app.run()
 ```

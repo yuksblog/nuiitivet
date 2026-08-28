@@ -6,8 +6,8 @@ pointer so ``pointer_input(on_modifier_keys_change=...)`` fires even while the
 pointer is stationary. The mask is cleared on window deactivation.
 """
 
-from nuiitivet.runtime.app import App
 from nuiitivet.runtime.pointer import PointerCaptureManager
+from nuiitivet.runtime.window import Window
 from nuiitivet.input.codes import BUTTON_LEFT, MOD_ALT
 from nuiitivet.input.pointer import PointerEvent, PointerEventType as T
 from nuiitivet.modifiers.pointer_input import pointer_input
@@ -19,9 +19,9 @@ from nuiitivet.widgets.interaction import InteractionRegion
 class _FakeApp:
     """Minimal host that borrows the real modifier-key routing methods."""
 
-    _set_modifier_keys = App._set_modifier_keys
-    _clear_modifier_keys = App._clear_modifier_keys
-    _dispatch_modifier_keys_change = App._dispatch_modifier_keys_change
+    _set_modifier_keys = Window._set_modifier_keys
+    _clear_modifier_keys = Window._clear_modifier_keys
+    _dispatch_modifier_keys_change = Window._dispatch_modifier_keys_change
 
     def __init__(self, hover_target=None):
         self._modifier_keys = 0

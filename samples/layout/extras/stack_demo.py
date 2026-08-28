@@ -37,7 +37,7 @@ def main(png: str = ""):
         style=nv.CardStyle(background=None, border_radius=0),
     )
 
-    app = nv.App(content=root, title="nv.Stack Demo")
+    app = nv.App(nv.Window(content=root, title="nv.Stack Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

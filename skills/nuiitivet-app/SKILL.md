@@ -36,14 +36,17 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
    `nv.Button("OK").modifier(tooltip("Submit") | background("#2196F3"))`. Do not
    wrap a widget to decorate it. (See the **Modifier catalog** for the set.)
 
-6. **The app root is a factory, not an instance.** Pass a zero-arg callable or a
-   `Widget` subclass to `nv.App(content=...)` **without calling it** —
-   `App(content=build_root)` or `App(content=Counter)`, never
-   `App(content=build_root())` (which silently disables live development); pass
-   arguments through a closure (`App(content=lambda: Home(cfg))`). Put per-tree
-   state and side effects in the factory / widget `__init__`, not `main()` (which
-   runs **once**, never on reload). The *why* and *how to run* live in the
-   **nuiitivet-debug** skill.
+6. **`App` takes its main `Window`; the root is a factory, not an instance.**
+   The entry point is `nv.App(nv.Window(content=...))` — every window keyword
+   (`title`, `width`, `menu`, ...) lives on `nv.Window`; `nv.App` takes only the
+   window plus `theme=` and `exit_policy=`. There is no `App(content=...)` form.
+   Pass a zero-arg callable or a `Widget` subclass as `content` **without
+   calling it** — `Window(content=build_root)` or `Window(content=Counter)`,
+   never `Window(content=build_root())` (which silently disables live
+   development); pass arguments through a closure
+   (`Window(content=lambda: Home(cfg))`). Put per-tree state and side effects in
+   the factory / widget `__init__`, not `main()` (which runs **once**, never on
+   reload). The *why* and *how to run* live in the **nuiitivet-debug** skill.
 
 7. **The one-line mental model:** Logic → UI is declarative (`Observable`
    binding); UI → logic is imperative (event handlers).
@@ -74,7 +77,7 @@ def build_root() -> nv.Widget:                     # <- the factory (rule 6)
     return Counter()
 
 def main() -> None:
-    nv.App(content=build_root, title="Counter").run()   # pass build_root, NOT build_root()
+    nv.App(nv.Window(content=build_root, title="Counter")).run()   # pass build_root, NOT build_root()
 
 if __name__ == "__main__":
     main()
@@ -151,7 +154,8 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Transient message | `Snackbar` via `Overlay` | `nv.Overlay.of(self).snackbar("Saved")` |
 | Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
 | Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
-| Application menu bar | `MenuBar` / `MenuBarItem` | `nv.App(..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — App-level model, never in `build()`; `label`/`enabled`/`checked` take Observables; `shortcut` also fires app-wide (never duplicate it with `key_shortcut`); replace via `app.menu = ...`; `nv.MenuBarArea()` relocates the bar |
+| Application menu bar | `MenuBar` / `MenuBarItem` | `nv.Window(..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — a window-level model, never in `build()`; `label`/`enabled`/`checked` take Observables; `shortcut` also fires window-wide (never duplicate it with `key_shortcut`); replace via `window.menu = ...`; `nv.MenuBarArea()` relocates the bar |
+| Secondary / modal window | `Window` | `nv.Window(content=lambda: Palette(state), title="Palette").open()` — a model until `open()`; `close()` destroys it (construct a new one to reopen; state that must survive lives in app-layer Observables). Modal child: `nv.Window(content=..., parent=nv.Window.of(self), modal=True).open()`; content closes its own window via `nv.Window.of(self).close()`. Exit timing: `nv.App(win, exit_policy=nv.ExitPolicy...)` |
 
 When a widget's exact parameters aren't covered here, the topical references
 below carry the day-to-day set.

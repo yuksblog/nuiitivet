@@ -86,14 +86,16 @@ def main(png_path: str = "") -> nv.App:
             ).modifier(nv.corner_radius((16.0, 0.0, 0.0, 16.0))),
         )
         app = nv.App(
-            content=nv.Stack(width=640, height=400, children=[background, scrim, sheet_overlay]),
-            width=640,
-            height=400,
+            nv.Window(
+                content=nv.Stack(width=640, height=400, children=[background, scrim, sheet_overlay]),
+                width=640,
+                height=400,
+            )
         )
         app.render_to_png(png_path)
         return app
 
-    return nv.App(content=SideSheetDemo(), width=640, height=400)
+    return nv.App(nv.Window(content=SideSheetDemo(), width=640, height=400))
 
 
 if __name__ == "__main__":

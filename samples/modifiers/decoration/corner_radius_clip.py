@@ -21,7 +21,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = nv.App(content=content, title="Corner Radius & Clip", width=400)
+    app = nv.App(nv.Window(content=content, title="Corner Radius & Clip", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

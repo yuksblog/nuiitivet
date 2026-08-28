@@ -78,12 +78,7 @@ class Booking(nv.ComposableWidget):
 
 
 def main(png_path: str = "") -> None:
-    app = nv.App(
-        content=Booking(),
-        title="Derived date value",
-        width=460,
-        height=600,
-    )
+    app = nv.App(nv.Window(content=Booking(), title="Derived date value", width=460, height=600))
     if png_path:
         app.render_to_png(png_path)
     else:

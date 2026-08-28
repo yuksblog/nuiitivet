@@ -149,7 +149,7 @@ class CsvImportScreen(nv.ComposableWidget):
 
 if __name__ == "__main__":
     widget = CsvImportScreen()
-    app = nv.App(content=widget)
+    app = nv.App(nv.Window(content=widget))
     try:
         app.run()
     except Exception:

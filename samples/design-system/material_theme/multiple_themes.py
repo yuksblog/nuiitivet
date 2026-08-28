@@ -35,13 +35,7 @@ class HomeScreen(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(
-        content=HomeScreen(),
-        title="Multiple Themes",
-        theme=ocean_light,
-        width=400,
-        height=340,
-    )
+    app = nv.App(nv.Window(content=HomeScreen(), title="Multiple Themes", width=400, height=340), theme=ocean_light)
     app.dispatch(
         nv.ThemeRegistryIntent(
             themes={

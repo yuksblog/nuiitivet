@@ -27,11 +27,8 @@ class HomeScreen(nv.ComposableWidget):
 
 def main(png_path: str = "") -> None:
     app = nv.App(
-        content=HomeScreen(),
-        title="Seed Color",
+        nv.Window(content=HomeScreen(), title="Seed Color", width=400, height=280),
         theme=nv.ThemeFactory.light("#00639B"),
-        width=400,
-        height=280,
     )
     if png_path:
         app.render_to_png(png_path)

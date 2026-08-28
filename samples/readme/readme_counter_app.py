@@ -28,11 +28,7 @@ def main(png: str = "") -> None:
     app_widget = CounterApp()
     if png:
         app_widget.count.value = 3
-    app = nv.App(
-        content=app_widget,
-        title="Counter Demo",
-        width=250,
-    )
+    app = nv.App(nv.Window(content=app_widget, title="Counter Demo", width=250))
 
     if png:
         app.render_to_png(png)

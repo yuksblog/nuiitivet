@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.runtime.renderer import (
     VALID_RENDERER_MODES,
     parse_renderer_mode,
@@ -19,7 +20,7 @@ class MockWidget(Widget):
 
 @pytest.fixture
 def app():
-    return App(content=MockWidget())
+    return App(Window(content=MockWidget()))
 
 
 def test_valid_modes():

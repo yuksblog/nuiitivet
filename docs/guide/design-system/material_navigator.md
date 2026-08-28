@@ -21,7 +21,7 @@ Passing a plain `Widget` to `App` is all that is needed. `App` wraps it in a `Ma
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen()).run()
+nv.App(nv.Window(content=HomeScreen())).run()
 ```
 
 ## Accessing

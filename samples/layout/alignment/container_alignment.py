@@ -33,12 +33,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", padding=24, child=grid)
 
-    app = nv.App(
-        content=root,
-        title="nv.Container Alignment",
-        width="auto",
-        height="auto",
-    )
+    app = nv.App(nv.Window(content=root, title="nv.Container Alignment", width="auto", height="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

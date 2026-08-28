@@ -18,7 +18,7 @@ class BasicDialogDemo(nv.ComposableWidget):
     result_text: nv.Observable[str] = nv.Observable("Ready")
 
     async def _show_dialog(self):
-        # No Overlay is nested above this screen, so this resolves to the App's.
+        # No Overlay is nested above this screen, so this resolves to the window's.
         overlay = nv.Overlay.of(self)
 
         # Create the dialog widget
@@ -65,7 +65,7 @@ class BasicDialogDemo(nv.ComposableWidget):
 
 ### Key Points
 
-- `Overlay.of(self)`: Resolves the overlay to show in — the nearest nested one, otherwise the App's.
+- `Overlay.of(self)`: Resolves the overlay to show in — the nearest nested one, otherwise the window's.
 - `overlay.dialog(widget)`: Displays the widget as a modal dialog with a scrim.
 - `overlay.close(value, target)`: Closes the dialog associated with `target`. The `value` is wrapped in an `OverlayResult` and returned to the caller of `await overlay.dialog()`.
 
@@ -299,10 +299,12 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
    class IntentDemoApp(nv.ComposableWidget):
        def build(self) -> nv.Widget:
            return nv.App(
-               content=HomeView(),
-               overlay_routes={
-                   CounterIntent: create_counter_dialog
-               }
+               nv.Window(
+                   content=HomeView(),
+                   overlay_routes={
+                       CounterIntent: create_counter_dialog
+                   },
+               ),
            )
    ```
 

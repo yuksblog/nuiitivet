@@ -93,7 +93,7 @@ def main(png: str = ""):
     print("     the focus ring disappears: focus is released, not stranded.")
     print("=" * 68)
 
-    app = nv.App(content=BlockFocusTraversalDemo(), title="block_focus_traversal Modifier")
+    app = nv.App(nv.Window(content=BlockFocusTraversalDemo(), title="block_focus_traversal Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

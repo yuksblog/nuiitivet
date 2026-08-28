@@ -233,17 +233,19 @@ class ConfirmIntent:
 
 
 nv.App(
-    HomeScreen(),
-    overlay_routes={
-        ConfirmIntent: lambda intent: nv.BasicDialog(
-            title="Confirm",
-            message=intent.message,
-            actions=[
-                nv.Button("Cancel", on_click=lambda: nv.Overlay.of(self).close(False), style=nv.ButtonStyle.text()),
-                nv.Button("OK", on_click=lambda: nv.Overlay.of(self).close(True), style=nv.ButtonStyle.text()),
-            ],
-        ),
-    },
+    nv.Window(
+        content=HomeScreen(),
+        overlay_routes={
+            ConfirmIntent: lambda intent: nv.BasicDialog(
+                title="Confirm",
+                message=intent.message,
+                actions=[
+                    nv.Button("Cancel", on_click=lambda: nv.Overlay.of(self).close(False), style=nv.ButtonStyle.text()),
+                    nv.Button("OK", on_click=lambda: nv.Overlay.of(self).close(True), style=nv.ButtonStyle.text()),
+                ],
+            ),
+        },
+    ),
 ).run()
 ```
 

@@ -845,3 +845,64 @@ def test_status_selection_is_null_without_one(tmp_path: Path, dev_run: None) -> 
             assert client.status()["selection"] is None
     finally:
         bridge.shutdown()
+
+
+# --- window addressing (#604) -------------------------------------------------
+
+
+class _FakeWindow:
+    def __init__(self, wid: int, title: str, main: bool = False) -> None:
+        self.id = wid
+        self.title = title
+        self.is_main = main
+        self._os_active = False
+        self.root = _FakeNode(key=f"root-{wid}")
+
+
+class _FakeMultiWindowApp:
+    """Stand-in App: exposes ``main_window`` / ``windows`` for addressing."""
+
+    def __init__(self) -> None:
+        self._main = _FakeWindow(1, "Main", main=True)
+        self._palette = _FakeWindow(2, "Palette")
+        self.windows = (self._main, self._palette)
+        self.main_window = self._main
+
+
+def test_resolve_window_defaults_to_main() -> None:
+    from nuiitivet.dev.bridge import _resolve_window
+
+    app = _FakeMultiWindowApp()
+    assert _resolve_window(app, None) is app.main_window
+    assert _resolve_window(app, "main") is app.main_window
+    assert _resolve_window(app, "2") is app._palette
+    assert _resolve_window(app, 2) is app._palette
+
+
+def test_resolve_window_rejects_unknown_and_invalid_ids() -> None:
+    from nuiitivet._interaction.action import TargetNotFoundError
+    from nuiitivet.dev.bridge import _resolve_window
+
+    app = _FakeMultiWindowApp()
+    with pytest.raises(TargetNotFoundError):
+        _resolve_window(app, 99)
+    with pytest.raises(ValueError):
+        _resolve_window(app, "palette")
+
+
+def test_resolve_window_treats_a_bare_host_as_the_window() -> None:
+    from nuiitivet.dev.bridge import _resolve_window
+
+    host = _FakeApp()
+    assert _resolve_window(host, None) is host
+
+
+def test_list_windows_reports_identity_and_flags() -> None:
+    from nuiitivet.dev.bridge import _list_windows
+
+    app = _FakeMultiWindowApp()
+    assert _list_windows(app) == [
+        {"id": 1, "title": "Main", "main": True, "focused": False},
+        {"id": 2, "title": "Palette", "main": False, "focused": False},
+    ]
+    assert _list_windows(_FakeApp()) is None

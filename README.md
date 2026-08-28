@@ -345,7 +345,7 @@ class CounterApp(nv.ComposableWidget):
 
 def main():
     # pass the class itself — it is a factory, so hot reload can rebuild it
-    app = nv.App(content=CounterApp)
+    app = nv.App(nv.Window(content=CounterApp))
     app.run()
 
 

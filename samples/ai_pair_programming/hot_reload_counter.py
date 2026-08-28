@@ -48,12 +48,12 @@ class Counter(nv.ComposableWidget):
 
 def build_root() -> nv.Widget:
     # A root *factory*: the dev runner re-invokes this to rebuild the tree on
-    # every save. Pass the function itself to App(content=...), not its result.
+    # every save. Pass the function itself to Window(content=...), not its result.
     return nv.Container(alignment="center", child=Counter())
 
 
 def main(png: str = ""):
-    app = nv.App(content=build_root, title="Hot Reload: counter", width=360, height=240)
+    app = nv.App(nv.Window(content=build_root, title="Hot Reload: counter", width=360, height=240))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

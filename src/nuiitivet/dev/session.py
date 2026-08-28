@@ -17,7 +17,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from nuiitivet.runtime.app import App, RootFactory
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import RootFactory
     from nuiitivet.runtime.renderer import RendererMode
 
 

@@ -5,6 +5,7 @@ import pytest
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import runtime
 from nuiitivet.material.app import MaterialApp
+from nuiitivet.material.window import MaterialWindow
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.styles.snackbar_style import SnackbarStyle
 from nuiitivet.material.snackbar import Snackbar
@@ -187,7 +188,7 @@ def test_overlay_toast_creates_entry():
 def test_overlay_app_toast():
     """Test toast() resolved against the App's overlay."""
     content = Container()
-    app = MaterialApp(content=content)
+    app = MaterialApp(MaterialWindow(content=content)).main_window
 
     MaterialOverlay.of(content).snackbar("App toast")
 

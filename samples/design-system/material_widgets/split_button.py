@@ -193,20 +193,10 @@ def main(png_path: str = "") -> None:
             opening the interactive window.
     """
     if png_path:
-        app = nv.App(
-            content=_build_png_content(),
-            title="SplitButton",
-            width=760,
-            height=600,
-        )
+        app = nv.App(nv.Window(content=_build_png_content(), title="SplitButton", width=760, height=600))
         app.render_to_png(png_path)
     else:
-        app = nv.App(
-            content=_build_interactive_content(),
-            title="SplitButton",
-            width=760,
-            height=420,
-        )
+        app = nv.App(nv.Window(content=_build_interactive_content(), title="SplitButton", width=760, height=420))
         app.run()
 
 

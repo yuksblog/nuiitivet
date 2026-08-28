@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from nuiitivet.dev.navigation_snapshot import restore_navigation, snapshot_navigation
 from nuiitivet.navigation import Navigator
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -48,7 +49,7 @@ def test_restore_without_a_navigator_returns_zero() -> None:
 
 
 def test_round_trip_replays_stack_onto_the_rebuilt_navigator() -> None:
-    app = App(content=_intent_navigator())
+    app = App(Window(content=_intent_navigator())).main_window
     app.navigator.push(_GoIntent("a"))
     app.navigator.push(_GoIntent("b"))
 

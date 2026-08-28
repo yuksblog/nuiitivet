@@ -47,7 +47,7 @@ def main(png: str = "") -> None:
         child=_VisibleToggleDemo(),
     )
 
-    app = nv.App(content=content, title="visible() Animated", width=480, height=280)
+    app = nv.App(nv.Window(content=content, title="visible() Animated", width=480, height=280))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

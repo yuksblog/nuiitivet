@@ -23,9 +23,13 @@ class _StubApp:
 
 
 def _scope(box: Box, theme: Theme) -> ThemeManager:
+    from nuiitivet.theme.dependency import invalidate_theme_readers
+
     manager = ThemeManager(theme)
     app = _StubApp(manager)
     scope = AppScope(app, box)  # type: ignore[arg-type]
+    # The real App fans a theme change out to each window's tree; mimic it.
+    manager.on_change = lambda _theme: invalidate_theme_readers(scope)
     scope.mount(app)
     box._test_scope = scope  # type: ignore[attr-defined]
     return manager

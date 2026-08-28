@@ -101,16 +101,18 @@ class CustomIntentDemo(nv.ComposableWidget):
 def main(png_path: str = ""):
     if png_path:
         content = CustomDialogContent(initial=5)
-        app = nv.App(content=nv.Container(alignment="center", child=content), width=400, height=300)
+        app = nv.App(nv.Window(content=nv.Container(alignment="center", child=content), width=400, height=300))
         app.render_to_png(png_path)
         return app
 
     # 3. Register the Mapping in App
     return nv.App(
-        content=CustomIntentDemo(),
-        overlay_routes={CounterIntent: create_counter_dialog},
-        width=400,
-        height=300,
+        nv.Window(
+            content=CustomIntentDemo(),
+            overlay_routes={CounterIntent: create_counter_dialog},
+            width=400,
+            height=300,
+        )
     )
 
 

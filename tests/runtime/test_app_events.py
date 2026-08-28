@@ -232,12 +232,13 @@ def test_gpu_frame_repaints_when_size_changes():
 
 def test_invalidate_content_flag_controls_paint_dirty():
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
     class LeafWidget(Widget):
         def paint(self, canvas, x, y, w, h):
             pass
 
-    app = App(LeafWidget(), title="t")
+    app = App(Window(content=LeafWidget(), title="t")).main_window
     app._paint_dirty = False
     app.invalidate(content=False)
     assert app._paint_dirty is False  # surface-loss redraw leaves content clean

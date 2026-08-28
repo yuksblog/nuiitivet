@@ -23,7 +23,7 @@ def main(png: str = ""):
 
     root = nv.Container(padding=50, child=widget)
 
-    app = nv.App(content=root, title="Expanded Cell")
+    app = nv.App(nv.Window(content=root, title="Expanded Cell"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

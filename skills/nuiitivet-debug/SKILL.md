@@ -40,15 +40,16 @@ Under the dev runner, saving a widget edit updates the running window **while
 Production launch (`App.run()`) is unchanged; hot reload is a development-time
 wrapper.
 
-**Hot reload requires a factory root.** It works **only if the app root is a
-factory** — a zero-argument callable returning the root widget — passed to
-`App(content=...)` *without* calling it. What depends on it:
+**Hot reload requires a factory root.** It works **only if the window's root is
+a factory** — a zero-argument callable returning the root widget — passed to
+`Window(content=...)` *without* calling it (the entry point is
+`nv.App(nv.Window(content=...))`). What depends on it:
 
-- **Pass a factory, not an instance.** `App(content=build_root())` (with the call)
-  yields a widget instance the reloader cannot rebuild, so hot reload stops
+- **Pass a factory, not an instance.** `Window(content=build_root())` (with the
+  call) yields a widget instance the reloader cannot rebuild, so hot reload stops
   applying your edits. A `Widget` *subclass* works directly
-  (`App(content=Counter)`); a factory needing arguments closes over them
-  (`App(content=lambda: Home(cfg))`).
+  (`Window(content=Counter)`); a factory needing arguments closes over them
+  (`Window(content=lambda: Home(cfg))`).
 - **Per-tree init goes in the factory / widget `__init__`, not `main()`.**
   `main()` runs **once** at startup and never again on reload; side effects and
   module-level state created there are not restored.
@@ -93,6 +94,17 @@ top to bottom.
 | The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
 | `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
+
+**Multiple windows.** `status` lists every open window (`id`, `title`,
+`main`/`focused` flags). Every tree/state/action tool takes `window=<id>`;
+omitted, it targets the **main** window — not the focused one — so a secondary
+window is only reached by passing its id explicitly. An action on a window
+blocked by a modal child fails with an error naming the blocking window; drive
+the modal child (or close it) instead of retrying. Window ids are never reused,
+so an id from an earlier `status` stays valid for that window's lifetime.
+Inspect mode and the interaction log cover every window, and a designated
+node's `describe_selection` payload names its window (`"window": <id>`) — use
+that id for the follow-up `describe_tree` / action calls.
 
 ### Reading a designation
 

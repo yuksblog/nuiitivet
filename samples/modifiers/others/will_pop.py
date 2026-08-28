@@ -79,12 +79,7 @@ class EditScreen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = nv.App(
-        HomeScreen(),
-        width=400,
-        height=200,
-        title="Will Pop Modifier",
-    )
+    app = nv.App(nv.Window(content=HomeScreen(), width=400, height=200, title="Will Pop Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

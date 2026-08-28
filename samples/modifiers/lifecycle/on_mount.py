@@ -84,7 +84,7 @@ class HomeScreen(nv.ComposableWidget):
 
 
 def main(png: str = "") -> None:
-    app = nv.App(content=HomeScreen(), title="on_mount() / on_unmount()", width=420, height=320)
+    app = nv.App(nv.Window(content=HomeScreen(), title="on_mount() / on_unmount()", width=420, height=320))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

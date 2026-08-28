@@ -345,14 +345,18 @@ that also has text fields.
 navigation route another route now covers, or that is behind a modal dialog. In
 each case the user cannot act on it, so its commands must not fire.
 
-`MOUNT` is how an **app-wide** command is expressed. `App(content=X)` keeps `X`
+`MOUNT` is how an **app-wide** command is expressed. `App(Window(content=X))` keeps `X`
 mounted for the life of the app — a route push covers it but does not unmount it
 — so binding there survives navigation:
 
 ```python
-nv.App(content=home.modifier(
-    nv.key_shortcut("Accel+Q", on_trigger=quit, scope=nv.ShortcutScope.MOUNT)
-))
+nv.App(
+    nv.Window(
+        content=home.modifier(
+            nv.key_shortcut("Accel+Q", on_trigger=quit, scope=nv.ShortcutScope.MOUNT)
+        ),
+    ),
+)
 ```
 
 ### When two panes want the same gesture

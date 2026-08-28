@@ -19,12 +19,12 @@ from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
     from nuiitivet.navigation.navigator import _PushDescriptor
-    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
 logger = logging.getLogger(__name__)
 
 
-def snapshot_navigation(app: "App") -> list["_PushDescriptor | None"]:
+def snapshot_navigation(app: "Window") -> list["_PushDescriptor | None"]:
     """Capture the App navigator's pushed-route descriptors, or ``[]`` if none.
 
     Args:
@@ -46,7 +46,7 @@ def snapshot_navigation(app: "App") -> list["_PushDescriptor | None"]:
         return []
 
 
-def restore_navigation(app: "App", descriptors: Sequence["_PushDescriptor | None"]) -> int:
+def restore_navigation(app: "Window", descriptors: Sequence["_PushDescriptor | None"]) -> int:
     """Replay pushed-route descriptors onto the freshly committed navigator.
 
     Args:

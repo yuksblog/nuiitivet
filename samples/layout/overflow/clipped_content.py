@@ -18,7 +18,7 @@ def main(png: str = ""):
 
     root = nv.Container(padding=100, child=widget)
 
-    app = nv.App(content=root, title="Clipped Content", width=400)
+    app = nv.App(nv.Window(content=root, title="Clipped Content", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

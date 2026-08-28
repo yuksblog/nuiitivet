@@ -18,15 +18,17 @@ Use the `title=` parameter to set the text shown in the OS title bar. It accepts
 import nuiitivet.material as nv
 
 app = nv.App(
-    content=nv.Container(
-        alignment="center",
-        width="wt",
-        height="wt",
-        child=nv.Text("Hello, World!"),
+    nv.Window(
+        content=nv.Container(
+            alignment="center",
+            width="wt",
+            height="wt",
+            child=nv.Text("Hello, World!"),
+        ),
+        title="My Application",
+        width=400,
+        height=240,
     ),
-    title="My Application",
-    width=400,
-    height=240,
 )
 app.run()
 ```
@@ -67,19 +69,21 @@ header = nv.Row(
 ).modifier(nv.background("#1a237e"))
 
 app = nv.App(
-    content=nv.Container(
-        alignment="center",
-        width="wt",
-        height="wt",
-        child=nv.Text("Custom Chrome"),
+    nv.Window(
+        content=nv.Container(
+            alignment="center",
+            width="wt",
+            height="wt",
+            child=nv.Text("Custom Chrome"),
+        ),
+        title="My App",
+        chrome=nv.CustomChrome(
+            header=header,
+            corner_radius=8,
+        ),
+        width=400,
+        height=240,
     ),
-    title="My App",
-    chrome=nv.CustomChrome(
-        header=header,
-        corner_radius=8,
-    ),
-    width=400,
-    height=240,
 )
 app.run()
 ```
@@ -96,16 +100,18 @@ Pass `chrome=None` for a completely bare borderless window with no OS decoration
 import nuiitivet.material as nv
 
 app = nv.App(
-    content=nv.Container(
-        alignment="center",
-        width="wt",
-        height="wt",
-        child=nv.Text("Borderless Window"),
+    nv.Window(
+        content=nv.Container(
+            alignment="center",
+            width="wt",
+            height="wt",
+            child=nv.Text("Borderless Window"),
+        ),
+        title="Borderless",
+        chrome=None,
+        width=400,
+        height=240,
     ),
-    title="Borderless",
-    chrome=None,
-    width=400,
-    height=240,
 )
 app.run()
 ```

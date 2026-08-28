@@ -32,7 +32,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = nv.App(content=widget, title="Basic nv.Grid")
+    app = nv.App(nv.Window(content=widget, title="Basic nv.Grid"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

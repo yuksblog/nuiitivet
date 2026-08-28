@@ -25,14 +25,15 @@ import nuiitivet.material as nv
 overlay = nv.Overlay.of(self)
 ```
 
-It returns the nearest ancestor `Overlay`, and falls back to the one your `App`
-owns when there is no nested `Overlay` above you — which is the usual case, since
-the App composes its overlay as a sibling layer of the `Navigator` rather than as
-a wrapper around your screens. So a screen gets the App's overlay, and a widget
-inside an intentionally nested `Overlay` gets that inner one.
+It returns the nearest ancestor `Overlay`, and falls back to the one your
+window owns when there is no nested `Overlay` above you — which is the usual
+case, since the window composes its overlay as a sibling layer of the
+`Navigator` rather than as a wrapper around your screens. So a screen gets its
+window's overlay, and a widget inside an intentionally nested `Overlay` gets
+that inner one.
 
-To reach the App's overlay from inside a nested one — to show something above
-everything — pass `root=True`:
+To reach the window's overlay from inside a nested one — to show something
+above everything in that window — pass `root=True`:
 
 ```python
 overlay = nv.Overlay.of(self, root=True)

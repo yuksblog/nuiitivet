@@ -238,7 +238,7 @@ class PatternsApp(nv.ComposableWidget):
 
 def main() -> None:
     # The class, not an instance: hot reload rebuilds the root by calling it.
-    nv.App(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=900).run()
+    nv.App(nv.Window(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=900)).run()
 
 
 if __name__ == "__main__":

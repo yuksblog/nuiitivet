@@ -302,9 +302,10 @@ def _layout_in_row(sheet: StandardSideSheet, width: int = 800, height: int = 600
     unmounted sheet would leave the inner widgets without a layout rect.
     """
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
     row = LayoutRow([Box(width="wt", height="wt"), sheet], width=width, height=height)
-    app = App(content=row, width=width, height=height)
+    app = App(Window(content=row, width=width, height=height)).main_window
     app.root.mount(app)
     app.root.layout(width, height)
     rect = sheet.layout_rect

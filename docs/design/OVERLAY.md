@@ -292,26 +292,32 @@ Scenario-specific APIs are moved to subclasses.
 
 ### 2.7 Swapping the Root Overlay: `overlay_factory`
 
-To allow Material apps to use `MaterialOverlay` as the root overlay, `App` allows for overlay injection.
+To allow Material apps to use `MaterialOverlay` as the root overlay, `Window` allows for overlay injection.
 
-- `App` accepts `overlay_factory: Callable[[], Overlay]`.
-- If omitted, `App` defaults to creating a standard `Overlay`.
+- `Window` accepts `overlay_factory: Callable[[], Overlay]`.
+- If omitted, `Window` defaults to creating a standard `Overlay`.
 
 Example:
 
 ```python
 app = App(
-    overlay_factory=lambda: Overlay(),
+    Window(
+        content=Home,
+        overlay_factory=lambda: Overlay(),
+    ),
 )
 ```
 
 ```python
 app = MaterialApp(
-    overlay_factory=lambda: MaterialOverlay(),
+    MaterialWindow(
+        content=Home,
+        overlay_factory=lambda: MaterialOverlay(),
+    ),
 )
 ```
 
-In the Material implementation, `MaterialApp` sets `overlay_factory` internally and passes `overlay_routes` to `MaterialOverlay(intents=...)` as needed.
+In the Material implementation, `MaterialWindow` sets `overlay_factory` internally and passes `overlay_routes` to `MaterialOverlay(intents=...)` as needed.
 
 ### 2.8 Note: Scope of core APIs
 

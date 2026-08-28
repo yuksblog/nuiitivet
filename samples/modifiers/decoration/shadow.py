@@ -23,7 +23,7 @@ def main(png: str = ""):
         padding=32,
     )
 
-    app = nv.App(content=content, title="Shadow Modifier", width=400)
+    app = nv.App(nv.Window(content=content, title="Shadow Modifier", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

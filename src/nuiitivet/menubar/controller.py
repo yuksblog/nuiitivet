@@ -1,6 +1,6 @@
-"""Per-App menu bar state: the registered model and the rendering slots.
+"""Per-window menu bar state: the registered model and the rendering slots.
 
-The :class:`MenuBarController` is created by ``App`` and is the single place
+The :class:`MenuBarController` is created by ``Window`` and is the single place
 that knows which model is registered and which slot widget currently renders
 it. Slot widgets (the default one the App inserts below the chrome, and any
 user-placed :class:`~nuiitivet.menubar.MenuBarArea`) register themselves on
@@ -15,9 +15,9 @@ import weakref
 from typing import TYPE_CHECKING, List, Optional
 
 from nuiitivet.common.logging_once import exception_once, warning_once
-from nuiitivet.runtime.intents import (
+from nuiitivet.runtime.intents import ExitAppIntent
+from nuiitivet.runtime.window_intents import (
     CloseWindowIntent,
-    ExitAppIntent,
     FullScreenIntent,
     MaximizeWindowIntent,
     MinimizeWindowIntent,
@@ -27,16 +27,17 @@ from nuiitivet.runtime.intents import (
 from .model import MenuBar, MenuBarItem, MenuBarRole
 
 if TYPE_CHECKING:
-    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
     from .nsmenu import NSMenuBridge
     from .slots import MenuBarSlotBase
 
 logger = logging.getLogger(__name__)
 
-#: Intent factory per standard-item role. Activation goes through
-#: ``App.dispatch`` even where the OS could act directly (Stage 2: NSMenu),
-#: so app exit paths and window management stay on the one code path.
+#: Intent factory per standard-item role. Activation dispatches through the
+#: owning window (app-scoped roles through its App) even where the OS could
+#: act directly (Stage 2: NSMenu), so app exit paths and window management
+#: stay on the one code path.
 _ROLE_INTENTS = {
     MenuBarRole.QUIT: ExitAppIntent,
     MenuBarRole.CLOSE_WINDOW: CloseWindowIntent,
@@ -50,12 +51,12 @@ _ROLE_INTENTS = {
 class MenuBarController:
     """Owns the registered :class:`MenuBar` model and the slot registry.
 
-    Framework-internal: apps interact through ``App(menu=...)`` and
-    ``app.menu``; slot widgets register here on mount.
+    Framework-internal: apps interact through ``Window(menu=...)`` and
+    ``window.menu``; slot widgets register here on mount.
     """
 
-    def __init__(self, app: "App", model: Optional[MenuBar] = None) -> None:
-        self._app = weakref.ref(app)
+    def __init__(self, window: "Window", model: Optional[MenuBar] = None) -> None:
+        self._window = weakref.ref(window)
         self._model = model
         self._areas: List["MenuBarSlotBase"] = []
         self._defaults: List["MenuBarSlotBase"] = []
@@ -72,7 +73,7 @@ class MenuBarController:
     def set_model(self, model: Optional[MenuBar]) -> None:
         """Replace the model wholesale and rebuild the active surface."""
         if model is not None and not isinstance(model, MenuBar):
-            raise TypeError("app.menu must be a MenuBar or None.")
+            raise TypeError("window.menu must be a MenuBar or None.")
         self._model = model
         if self._bridge is not None:
             try:
@@ -86,7 +87,7 @@ class MenuBarController:
     def install_platform_bridge(self) -> None:
         """Hand the menu to the platform's native surface where one exists.
 
-        Called by the App once the backend window is up. On macOS this
+        Called by the Window once the backend window is up. On macOS this
         installs the :class:`~nuiitivet.menubar.nsmenu.NSMenuBridge` (the
         global menu bar) and the in-app slots collapse; elsewhere it is a
         no-op and the in-app bar keeps rendering.
@@ -97,10 +98,10 @@ class MenuBarController:
 
         if not NSMenuBridge.is_supported():
             return
-        app = self._app()
+        window = self._window()
         app_name = None
-        if app is not None:
-            title = getattr(app, "_title_value", None)
+        if window is not None:
+            title = getattr(window, "_title_value", None)
             value = getattr(title, "value", title)
             if value:
                 app_name = str(value)
@@ -189,10 +190,22 @@ class MenuBarController:
             )
 
     def dispatch_role(self, role: MenuBarRole) -> None:
-        """Dispatch the built-in intent mapped to a standard-item role."""
+        """Dispatch the built-in intent mapped to a standard-item role.
+
+        Window-scoped roles dispatch through the owning window; the app-scoped
+        ``QUIT`` role dispatches through that window's App.
+        """
         factory = _ROLE_INTENTS.get(role)
         if factory is None:
             return
-        app = self._app()
-        if app is not None:
-            app.dispatch(factory())
+        window = self._window()
+        if window is None:
+            return
+        intent = factory()
+        if isinstance(intent, ExitAppIntent):
+            try:
+                window.app.dispatch(intent)
+            except Exception:
+                exception_once(logger, "menubar_dispatch_exit_exc", "ExitAppIntent dispatch raised")
+            return
+        window.dispatch(intent)

@@ -91,12 +91,7 @@ class MainScreen(nv.ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = nv.App(
-        content=MainScreen(),
-        title="Nested Navigation",
-        width=400,
-        height=300,
-    )
+    app = nv.App(nv.Window(content=MainScreen(), title="Nested Navigation", width=400, height=300))
     if png_path:
         app.render_to_png(png_path)
     else:

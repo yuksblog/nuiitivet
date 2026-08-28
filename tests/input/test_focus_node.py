@@ -1,4 +1,5 @@
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.modifiers.focus import focusable
 from nuiitivet.widgets.box import Box
@@ -24,7 +25,7 @@ def test_focus_request_and_state():
     child = TestWidget().modifier(focusable())
     root.add_child(child)
 
-    app = App(root)
+    app = App(Window(content=root)).main_window
     # Mount the App root to ensure focus traversal sees the full tree.
     app.root.mount(app)
 
@@ -45,7 +46,7 @@ def test_focus_traversal():
     root.add_child(child1)
     root.add_child(child2)
 
-    app = App(root)
+    app = App(Window(content=root)).main_window
     app.root.mount(app)
 
     node1 = child1.get_node(FocusNode)
@@ -84,7 +85,7 @@ def test_key_event_routing():
     root = Box()
     root.add_child(child)
 
-    app = App(root)
+    app = App(Window(content=root)).main_window
     app.root.mount(app)
 
     node = child.get_node(FocusNode)
@@ -116,7 +117,7 @@ def test_key_event_bubbling():
     parent = Box().modifier(focusable(on_key=on_parent_key))
     parent.add_child(child)
 
-    app = App(parent)
+    app = App(Window(content=parent)).main_window
     app.root.mount(app)
 
     child_node = child.get_node(FocusNode)

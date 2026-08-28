@@ -8,7 +8,7 @@ from typing import Any, Callable, Literal, Mapping, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.callbacks import spawn_task
-from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.context_lookup import find_provider, find_window, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
@@ -213,20 +213,20 @@ class Navigator(ComposableWidget):
             if navigator is not None:
                 return navigator
 
-        app = find_app(context)
-        app_navigator = app._navigator if app is not None else None
-        if app_navigator is None:
+        window = find_window(context)
+        window_navigator = window._navigator if window is not None else None
+        if window_navigator is None:
             raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError(
                 f"No {cls.__name__} found for {context.__class__.__name__}: it has no "
-                f"{cls.__name__} ancestor and is not attached to an App."
+                f"{cls.__name__} ancestor and is not attached to a Window."
             )
-        if not isinstance(app_navigator, cls):
+        if not isinstance(window_navigator, cls):
             raise RuntimeError(
-                f"The App's navigator is a {type(app_navigator).__name__}, not a {cls.__name__}. "
-                f"Pass a {cls.__name__} as the App's content, or nest one in the subtree."
+                f"The Window's navigator is a {type(window_navigator).__name__}, not a {cls.__name__}. "
+                f"Pass a {cls.__name__} as the window's content, or nest one in the subtree."
             )
-        return app_navigator
+        return window_navigator
 
     def can_pop(self) -> bool:
         return self._stack.can_pop(min_routes=1)

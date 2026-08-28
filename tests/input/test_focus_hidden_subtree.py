@@ -11,6 +11,7 @@ from nuiitivet.modifiers.visible import visible
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, FocusSource, FocusTraversalBlocker
@@ -24,8 +25,8 @@ def _focus_node(widget: Clickable) -> FocusNode:
     return node
 
 
-def _mounted_app(root) -> App:
-    app = App(root)
+def _mounted_app(root) -> Window:
+    app = App(Window(content=root)).main_window
     root.mount(app)
     return app
 

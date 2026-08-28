@@ -173,7 +173,7 @@ def test_menu_replacement_rebuilds_bar(nuiitivet_app) -> None:
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=_simple_model(record))
     assert app.get(label="File") is not None
 
-    app._app.menu = MenuBar(
+    app.window.menu = MenuBar(
         [MenuBarItem("View", submenu=[MenuBarItem("Zoom", on_select=lambda: None)])]
     )
     app.settle()
@@ -232,7 +232,7 @@ def test_popup_opens_flush_below_the_bar(nuiitivet_app) -> None:
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=_simple_model(record))
     app.click(label="File")
     app.settle()
-    bar = _find_bar(app._app.root)
+    bar = _find_bar(app.window.root)
     popup = bar._popup
     assert popup is not None
     rect = popup.global_layout_rect
@@ -241,12 +241,12 @@ def test_popup_opens_flush_below_the_bar(nuiitivet_app) -> None:
 
 
 def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
-    from nuiitivet.runtime.intents import RestoreWindowIntent
+    from nuiitivet.runtime.window_intents import RestoreWindowIntent
 
     model = MenuBar([MenuBarItem("Window", submenu=[MenuBarItem.restore()])])
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=model)
     seen: List[object] = []
-    app._app.dispatch = seen.append  # type: ignore[method-assign]
+    app.window.dispatch = seen.append  # type: ignore[method-assign]
     app.click(label="Window")
     app.click(label="Restore")
     assert [type(intent) for intent in seen] == [RestoreWindowIntent]

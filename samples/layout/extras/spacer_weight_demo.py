@@ -14,7 +14,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = nv.App(content=widget, title="nv.Spacer Flex Demo")
+    app = nv.App(nv.Window(content=widget, title="nv.Spacer Flex Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

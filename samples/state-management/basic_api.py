@@ -150,7 +150,7 @@ class BasicApiApp(nv.ComposableWidget):
 
 if __name__ == "__main__":
     widget = BasicApiApp()
-    app = nv.App(content=widget)
+    app = nv.App(nv.Window(content=widget))
     try:
         app.run()
     except Exception:

@@ -245,3 +245,29 @@ def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     leaf = Text("AAA")
 
     assert "·" not in so._describe(leaf)
+
+
+def test_a_node_mark_paints_only_in_its_own_window() -> None:
+    """The selection is shared across windows; the rect must not ghost into
+    windows that do not contain the node."""
+    from nuiitivet.layout.container import Container
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    main_content = Container(width=50, height=40)
+    app = App(Window(content=main_content, width=300, height=200))
+    second = Window(content=Container(), width=300, height=200).open()
+    main_win = app.main_window
+    main_win.root.layout(300, 200)
+
+    selection = Selection()
+    selection.toggle(main_content, root=main_win.root)
+    main_win._inspect_mode = InspectMode(selection)
+    second._inspect_mode = InspectMode(selection)
+
+    own_canvas, foreign_canvas = _Canvas(), _Canvas()
+    so.paint_selection(main_win, own_canvas, 300, 200)
+    so.paint_selection(second, foreign_canvas, 300, 200)
+
+    assert own_canvas.calls
+    assert foreign_canvas.calls == []

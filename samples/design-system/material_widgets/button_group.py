@@ -123,10 +123,7 @@ def main(png_path: str = "") -> None:
     )
 
     content = nv.Container(padding=32, child=page)
-    app = nv.App(
-        content=content,
-        title="ButtonGroup",
-    )
+    app = nv.App(nv.Window(content=content, title="ButtonGroup"))
     if png_path:
         app.render_to_png(png_path)
     else:

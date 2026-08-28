@@ -38,7 +38,7 @@ from .snapshot import restore_observables, snapshot_observables
 from .watcher import FileWatcher
 
 if TYPE_CHECKING:
-    from nuiitivet.runtime.app import App, RootFactory
+    from nuiitivet.runtime.window import RootFactory, Window
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class HotReloadController:
 
     def __init__(
         self,
-        app: "App",
+        app: "Window",
         project_root: Path,
         initial_factory: "RootFactory",
         *,
@@ -144,6 +144,7 @@ class HotReloadController:
         self._factory = new_factory
         clear_reload_error(app)
         app.invalidate()
+        self._reload_secondary_windows(changed)
         if self._journal is not None:
             self._journal.record_success(result.reloaded, changed=changed)
         print(
@@ -152,6 +153,36 @@ class HotReloadController:
             file=sys.stderr,
             flush=True,
         )
+
+    def _reload_secondary_windows(self, changed: list[str]) -> None:
+        """Rebuild every other open window's tree from its own root factory.
+
+        The main window's rebuild re-resolves its factory from the reloaded
+        entry module; a secondary window keeps the factory it was constructed
+        with, re-invoked here so its content picks up the reloaded modules.
+        Observable state is snapshotted and restored per window, like the main
+        one. A window whose rebuild fails shows the reload error overlay in
+        that window and does not abort the others.
+        """
+        try:
+            owner = self._app.app
+        except Exception:
+            return
+        for window in list(getattr(owner, "windows", ()) or ()):
+            if window is self._app:
+                continue
+            snapshot = snapshot_observables(window.root)
+            try:
+                content = window._rebuild_content_root()
+                window._commit_content_root(content)
+                restore_observables(window.root, snapshot)
+            except Exception:
+                tb = traceback.format_exc()
+                self._record_error(tb, changed)
+                show_reload_error(window, tb)
+                continue
+            clear_reload_error(window)
+            window.invalidate()
 
     def _record_error(self, traceback_text: str, changed: list[str]) -> None:
         """Record a failed reload into the journal, if one is attached."""

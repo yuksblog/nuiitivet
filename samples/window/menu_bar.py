@@ -93,7 +93,7 @@ class Screen(nv.ComposableWidget):
 
 def main(png: str = ""):
     screen = Screen()
-    app = nv.App(content=screen, title="menu_bar", width=560, height=320, menu=screen.menu())
+    app = nv.App(nv.Window(content=screen, title="menu_bar", width=560, height=320, menu=screen.menu()))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -31,7 +31,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    app = nv.App(content=build_modifier_demo(), title="Modifier Demo")
+    app = nv.App(nv.Window(content=build_modifier_demo(), title="Modifier Demo"))
 
     if args.png:
         app.render_to_png(args.png)

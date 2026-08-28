@@ -67,12 +67,7 @@ class DeckDemo(nv.ComposableWidget):
 
 def main(png: str = ""):
 
-    app = nv.App(
-        content=DeckDemo(),
-        title="nv.Deck Demo",
-        width=520,
-        height=300,
-    )
+    app = nv.App(nv.Window(content=DeckDemo(), title="nv.Deck Demo", width=520, height=300))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

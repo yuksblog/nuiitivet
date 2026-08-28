@@ -107,7 +107,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = ""):
-    app = nv.App(content=build_root, width=760, height=460, title="Adaptive Toolbar Placement")
+    app = nv.App(nv.Window(content=build_root, width=760, height=460, title="Adaptive Toolbar Placement"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -9,8 +9,10 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
 from nuiitivet.material.app import MaterialApp
+from nuiitivet.material.window import MaterialWindow
 from nuiitivet.navigation import Navigator
 from nuiitivet.runtime.app import App, AppScope
+from nuiitivet.runtime.window import Window, WindowScope
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -29,10 +31,12 @@ class _ComposableFixedBox(ComposableWidget):
 
 
 def test_app_content_is_wrapped_in_a_navigator_and_overlay_stack() -> None:
-    app = App(content=_FlagWidget(label="content"))
+    app = App(Window(content=_FlagWidget(label="content"))).main_window
 
     assert isinstance(app.root, AppScope)
-    geometry = app.root.children_snapshot()[0]
+    window_scope = app.root.children_snapshot()[0]
+    assert isinstance(window_scope, WindowScope)
+    geometry = window_scope.children_snapshot()[0]
     assert isinstance(geometry, Geometry)
     stack = geometry.children_snapshot()[0]
     assert isinstance(stack, Stack)
@@ -42,9 +46,9 @@ def test_app_content_is_wrapped_in_a_navigator_and_overlay_stack() -> None:
 
 def test_app_installs_root_geometry_provider() -> None:
     content = _FlagWidget(label="content")
-    app = App(content=content)
+    app = App(Window(content=content)).main_window
 
-    geometry = app.root.children_snapshot()[0]
+    geometry = app.root.children_snapshot()[0].children_snapshot()[0]
     assert isinstance(geometry, Geometry)
 
     # The root Geometry measures the window through the normal layout pass:
@@ -62,16 +66,20 @@ class _HomeIntent:
 
 def test_app_with_intents_navigator_becomes_the_app_navigator() -> None:
     app = App(
-        Navigator.intents(
-            initial_route=_HomeIntent(label="home"),
-            routes={
-                _HomeIntent: lambda i: _FlagWidget(label=i.label),
-            },
+        Window(
+            content=Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={
+                    _HomeIntent: lambda i: _FlagWidget(label=i.label),
+                },
+            ),
         ),
-    )
+    ).main_window
 
     assert isinstance(app.root, AppScope)
-    geometry = app.root.children_snapshot()[0]
+    window_scope = app.root.children_snapshot()[0]
+    assert isinstance(window_scope, WindowScope)
+    geometry = window_scope.children_snapshot()[0]
     assert isinstance(geometry, Geometry)
     stack = geometry.children_snapshot()[0]
     assert isinstance(stack, Stack)
@@ -81,8 +89,8 @@ def test_app_with_intents_navigator_becomes_the_app_navigator() -> None:
 
 def test_two_apps_resolve_their_own_navigator_and_overlay() -> None:
     """The point of #518: no process-global root to collide over."""
-    first = App(content=_FlagWidget(label="first"))
-    second = App(content=_FlagWidget(label="second"))
+    first = App(Window(content=_FlagWidget(label="first"))).main_window
+    second = App(Window(content=_FlagWidget(label="second"))).main_window
 
     assert first.navigator is not second.navigator
     assert first.overlay is not second.overlay
@@ -90,7 +98,7 @@ def test_two_apps_resolve_their_own_navigator_and_overlay() -> None:
 
 def test_a_rebuild_is_adopted_only_once_committed() -> None:
     """Building must not touch the App; only the commit hands over (#518)."""
-    app = App(content=_FlagWidget(label="first"))
+    app = App(Window(content=_FlagWidget(label="first"))).main_window
     original_navigator = app.navigator
     original_overlay = app.overlay
 
@@ -113,7 +121,7 @@ def test_a_reload_that_fails_to_commit_leaves_the_live_tree_addressable() -> Non
     Otherwise the reload error banner is shown on an unmounted overlay and back
     handling drives a navigator the user cannot see.
     """
-    app = App(content=_FlagWidget(label="first"))
+    app = App(Window(content=_FlagWidget(label="first"))).main_window
     original_navigator = app.navigator
     original_overlay = app.overlay
 
@@ -136,54 +144,58 @@ def test_app_auto_window_size_measures_unmounted_composable_children() -> None:
         padding=16,
     )
 
-    app = App(content=content, width="auto", height="auto")
+    app = App(Window(content=content, width="auto", height="auto")).main_window
 
     assert app.width == 232
     assert app.height == 82
 
 
 def test_app_resizable_default_true() -> None:
-    app = App(content=_FlagWidget())
+    app = App(Window(content=_FlagWidget())).main_window
 
     assert app.resizable is True
 
 
 def test_app_resizable_explicit_false() -> None:
-    app = App(content=_FlagWidget(), resizable=False)
+    app = App(Window(content=_FlagWidget(), resizable=False)).main_window
 
     assert app.resizable is False
 
 
 def test_app_with_intents_navigator_resizable_default_true() -> None:
     app = App(
-        Navigator.intents(
-            initial_route=_HomeIntent(label="home"),
-            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+        Window(
+            content=Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            ),
         ),
-    )
+    ).main_window
 
     assert app.resizable is True
 
 
 def test_app_with_intents_navigator_resizable_explicit_false() -> None:
     app = App(
-        Navigator.intents(
-            initial_route=_HomeIntent(label="home"),
-            routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+        Window(
+            content=Navigator.intents(
+                initial_route=_HomeIntent(label="home"),
+                routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
+            ),
+            resizable=False,
         ),
-        resizable=False,
-    )
+    ).main_window
 
     assert app.resizable is False
 
 
 def test_material_app_resizable_default_true() -> None:
-    app = MaterialApp(content=_FlagWidget())
+    app = MaterialApp(MaterialWindow(content=_FlagWidget())).main_window
 
     assert app.resizable is True
 
 
 def test_material_app_resizable_explicit_false() -> None:
-    app = MaterialApp(content=_FlagWidget(), resizable=False)
+    app = MaterialApp(MaterialWindow(content=_FlagWidget(), resizable=False)).main_window
 
     assert app.resizable is False

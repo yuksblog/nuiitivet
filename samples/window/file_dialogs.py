@@ -73,7 +73,7 @@ class FileDialogApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    nv.App(content=FileDialogApp, title="File dialogs").run()
+    nv.App(nv.Window(content=FileDialogApp, title="File dialogs")).run()
 
 
 if __name__ == "__main__":

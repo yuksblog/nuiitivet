@@ -17,13 +17,14 @@ from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.sheet import BottomSheet, SideSheet
 from nuiitivet.modifiers import will_pop
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 
 
 @pytest.mark.asyncio
 async def test_overlay_async_close_topmost_respects_will_pop_cancel() -> None:
     """async_request_close_topmost returns True (handled) but does not remove the entry
     when will_pop returns False."""
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     overlay = app.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
@@ -34,7 +35,7 @@ async def test_overlay_async_close_topmost_respects_will_pop_cancel() -> None:
 
 @pytest.mark.asyncio
 async def test_overlay_async_close_topmost_proceeds_when_will_pop_allows() -> None:
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     overlay = app.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: True)), backdrop=True)
 
@@ -49,7 +50,7 @@ async def test_overlay_async_close_topmost_respects_async_will_pop_cancel() -> N
         await asyncio.sleep(0)
         return False
 
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     overlay = app.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=deny)), backdrop=True)
 
@@ -61,7 +62,7 @@ async def test_overlay_async_close_topmost_respects_async_will_pop_cancel() -> N
 async def test_app_escape_overlay_will_pop_cancels_close(nuiitivet_app) -> None:
     """ESC routed through App.handle_back_event respects will_pop on the top overlay entry."""
     app = nuiitivet_app(Container(), size=(400, 300))
-    overlay = app.app.overlay
+    overlay = app.window.overlay
     overlay.show(Container(width=100, height=100).modifier(will_pop(on_will_pop=lambda: False)), backdrop=True)
 
     assert app.key("escape")["handled"] is True

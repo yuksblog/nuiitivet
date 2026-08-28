@@ -84,14 +84,16 @@ def main(png_path: str = "") -> nv.App:
             ),
         )
         app = nv.App(
-            content=nv.Stack(width=480, height=400, children=[background, scrim, sheet_overlay]),
-            width=480,
-            height=400,
+            nv.Window(
+                content=nv.Stack(width=480, height=400, children=[background, scrim, sheet_overlay]),
+                width=480,
+                height=400,
+            )
         )
         app.render_to_png(png_path)
         return app
 
-    return nv.App(content=BottomSheetDemo(), width=480, height=400)
+    return nv.App(nv.Window(content=BottomSheetDemo(), width=480, height=400))
 
 
 if __name__ == "__main__":

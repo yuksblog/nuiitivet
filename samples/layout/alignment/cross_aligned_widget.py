@@ -24,12 +24,7 @@ def main(png: str = "") -> None:
         ],
     )
 
-    app = nv.App(
-        content=content,
-        title="nv.CrossAligned",
-        width="auto",
-        height="auto",
-    )
+    app = nv.App(nv.Window(content=content, title="nv.CrossAligned", width="auto", height="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

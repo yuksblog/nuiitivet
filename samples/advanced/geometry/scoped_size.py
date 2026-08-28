@@ -81,7 +81,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = ""):
-    app = nv.App(content=build_root, width=720, height=420, title="Geometry: one box, many readers")
+    app = nv.App(nv.Window(content=build_root, width=720, height=420, title="Geometry: one box, many readers"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -53,14 +53,16 @@ def main(png_path: str = "") -> nv.App:
             child=nv.Snackbar("Item deleted"),
         )
         app = nv.App(
-            content=nv.Stack(width=480, height=320, children=[background, snackbar_overlay]),
-            width=480,
-            height=320,
+            nv.Window(
+                content=nv.Stack(width=480, height=320, children=[background, snackbar_overlay]),
+                width=480,
+                height=320,
+            )
         )
         app.render_to_png(png_path)
         return app
 
-    return nv.App(content=SnackbarDemo(), width=480, height=320)
+    return nv.App(nv.Window(content=SnackbarDemo(), width=480, height=320))
 
 
 if __name__ == "__main__":

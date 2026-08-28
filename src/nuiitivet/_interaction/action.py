@@ -299,6 +299,26 @@ def _describe_target(node: Any) -> dict[str, Any]:
     return info
 
 
+def _require_not_modal_blocked(app: Any, *, verb: str) -> None:
+    """Refuse an action on a window blocked by an open modal child.
+
+    The window would swallow the synthesized input (framework modal), so the
+    verb must fail loudly instead of reporting success on an event that never
+    reached a widget. See ``docs/design/APP_WINDOW.md``.
+    """
+    probe = getattr(app, "_modal_blocked", None)
+    if callable(probe) and probe():
+        blocker = None
+        child = getattr(app, "_modal_child", None)
+        if callable(child):
+            blocker = child()
+        name = f'window {getattr(blocker, "id", "?")} ("{getattr(blocker, "title", None)}")'
+        raise ValueError(
+            f"{verb}: this window is blocked by modal {name}; "
+            f"act on that window (window={getattr(blocker, 'id', '?')}) or close it first."
+        )
+
+
 def settle(
     app: Any,
     *,
@@ -476,6 +496,7 @@ def click(
         TargetNotFoundError: If the identifier matched nothing (or it has no rect).
         TargetNotVisibleError: If the target is scrolled out of view or covered.
     """
+    _require_not_modal_blocked(app, verb="click")
     px, py, target_info = _resolve_point(app, key=key, label=label, x=x, y=y, verb="click")
 
     ix, iy = int(round(px)), int(round(py))
@@ -527,6 +548,7 @@ def scroll(
         TargetNotFoundError: If the identifier matched nothing.
         TargetNotVisibleError: If the region is scrolled out of view or covered.
     """
+    _require_not_modal_blocked(app, verb="scroll")
     ddx, ddy = float(dx), float(dy)
     if ddx == 0.0 and ddy == 0.0:
         raise ValueError("scroll needs a non-zero 'dx' or 'dy' (in wheel notches)")
@@ -689,6 +711,7 @@ def type_text(
     A widget must be focused first (e.g. ``click`` a text field); with nothing
     focused the app has nowhere to route the text and ``handled`` is ``False``.
     """
+    _require_not_modal_blocked(app, verb="type")
     handled = bool(app._dispatch_text(str(text)))
     if on_action is not None:
         on_action.on_type(app)
@@ -704,6 +727,7 @@ def press_key(
     ``modifiers`` is an int mask or an iterable of names (``["accel", "shift"]``);
     it drives shortcut and focus-traversal behavior just like a real key event.
     """
+    _require_not_modal_blocked(app, verb="key")
     mask = resolve_modifiers(modifiers)
     name = str(key)
     handled = bool(app._dispatch_key_press(name, mask))

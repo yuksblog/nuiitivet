@@ -54,12 +54,7 @@ def main(png: str = ""):
         cross_alignment="start",
     )
 
-    app = nv.App(
-        content=content,
-        title="nv.Column cross_alignment",
-        width="auto",
-        height="auto",
-    )
+    app = nv.App(nv.Window(content=content, title="nv.Column cross_alignment", width="auto", height="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

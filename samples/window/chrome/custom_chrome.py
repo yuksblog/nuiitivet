@@ -17,20 +17,22 @@ def main(png_path: str = "") -> None:
     ).modifier(nv.background("#1a237e"))
 
     app = nv.App(
-        content=nv.Container(
-            alignment="center",
-            width="wt",
-            height="wt",
-            child=nv.Text("Custom Chrome"),
+        nv.Window(
+            content=nv.Container(
+                alignment="center",
+                width="wt",
+                height="wt",
+                child=nv.Text("Custom Chrome"),
+            ),
+            title="My App",
+            chrome=nv.CustomChrome(
+                header=header,
+                corner_radius=8,
+            ),
+            width=400,
+            height=240,
+            background="#e3f2fd",
         ),
-        title="My App",
-        chrome=nv.CustomChrome(
-            header=header,
-            corner_radius=8,
-        ),
-        width=400,
-        height=240,
-        background="#e3f2fd",
     )
     if png_path:
         app.render_to_png(png_path)

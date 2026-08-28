@@ -19,8 +19,9 @@ to write the left column, write the right column instead.
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
 | `from nuiitivet.widgets import Column, Text` (scattered imports) | `import nuiitivet.material as nv`, then `nv.Column`, `nv.Text` — one import root |
-| `runApp(MyApp())` (Flutter) | `nv.App(content=build_root).run()` — pass a **factory** for hot reload |
-| `MaterialApp(home=...)` (Flutter) | `nv.App(content=...)`; theming via `nv.ThemeFactory` |
+| `runApp(MyApp())` (Flutter) | `nv.App(nv.Window(content=build_root)).run()` — pass a **factory** for hot reload |
+| `MaterialApp(home=...)` (Flutter) | `nv.App(nv.Window(content=...))`; theming via `nv.App(win, theme=nv.ThemeFactory...)` |
+| `nv.App(content=..., title=...)` (older nuiitivet) | `nv.App(nv.Window(content=..., title=...))` — `App` takes its main `Window`; window keywords (`title`, `width`, `menu`, ...) live on `Window`, and `App` keeps only `theme=` / `exit_policy=` |
 
 ```python
 # Correct — a root factory keeps hot reload working (don't call it)
@@ -30,7 +31,7 @@ def build_root() -> nv.Widget:
     return CounterApp()
 
 def main() -> None:
-    nv.App(content=build_root, title="Counter").run()
+    nv.App(nv.Window(content=build_root, title="Counter")).run()
 ```
 
 ## Component definition

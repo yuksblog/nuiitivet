@@ -172,7 +172,7 @@ def test_describe_tree_forwards_to_client() -> None:
         server = mcp_server.build_server()
         result = _call(server, "describe_tree", {})
     assert result == {"type": "Root", "label": "increment"}
-    client.describe_tree.assert_called_once_with()
+    client.describe_tree.assert_called_once_with(window=None)
 
 
 def test_describe_state_forwards_to_client() -> None:
@@ -183,7 +183,7 @@ def test_describe_state_forwards_to_client() -> None:
     assert result["state"]["count"] == 3
     assert result["state"]["doubled"] == {"value": 6, "kind": "computed"}
     # Animation channels are opt-in, so the default call must forward False.
-    client.describe_state.assert_called_once_with(include_animations=False)
+    client.describe_state.assert_called_once_with(include_animations=False, window=None)
 
 
 def test_describe_state_forwards_the_animation_opt_in() -> None:
@@ -191,7 +191,7 @@ def test_describe_state_forwards_the_animation_opt_in() -> None:
     with mock.patch.object(BridgeClient, "discover", return_value=client):
         server = mcp_server.build_server()
         _call(server, "describe_state", {"include_animations": True})
-    client.describe_state.assert_called_once_with(include_animations=True)
+    client.describe_state.assert_called_once_with(include_animations=True, window=None)
 
 
 def test_reload_log_forwards_to_client() -> None:
@@ -240,7 +240,7 @@ def test_screenshot_returns_png_image_content() -> None:
     block = content[0]
     assert block.type == "image"
     assert _mime_type(block) == "image/png"
-    client.screenshot.assert_called_once_with()
+    client.screenshot.assert_called_once_with(window=None)
 
 
 def test_click_forwards_target_identifiers() -> None:
@@ -249,7 +249,7 @@ def test_click_forwards_target_identifiers() -> None:
         server = mcp_server.build_server()
         result = _call(server, "click", {"key": "submit"})
     assert result["clicked"]["key"] == "submit"
-    client.click.assert_called_once_with(key="submit", label=None, x=None, y=None)
+    client.click.assert_called_once_with(key="submit", label=None, x=None, y=None, window=None)
 
 
 def test_scroll_forwards_target_and_deltas() -> None:
@@ -259,7 +259,7 @@ def test_scroll_forwards_target_and_deltas() -> None:
         result = _call(server, "scroll", {"key": "feed", "dy": 5.0})
     assert result["handled"] is True
     assert result["offset"] == 100.0
-    client.scroll.assert_called_once_with(key="feed", label=None, x=None, y=None, dx=0.0, dy=5.0)
+    client.scroll.assert_called_once_with(key="feed", label=None, x=None, y=None, dx=0.0, dy=5.0, window=None)
 
 
 def test_scroll_into_view_forwards_target_and_alignment() -> None:
@@ -268,7 +268,7 @@ def test_scroll_into_view_forwards_target_and_alignment() -> None:
         server = mcp_server.build_server()
         result = _call(server, "scroll_into_view", {"key": "row-42", "align": "center"})
     assert result["already_visible"] is False
-    client.scroll_into_view.assert_called_once_with(key="row-42", label=None, align="center")
+    client.scroll_into_view.assert_called_once_with(key="row-42", label=None, align="center", window=None)
 
 
 def test_type_forwards_text() -> None:
@@ -277,7 +277,7 @@ def test_type_forwards_text() -> None:
         server = mcp_server.build_server()
         result = _call(server, "type", {"text": "hi"})
     assert result == {"typed": "hi", "handled": True}
-    client.type_text.assert_called_once_with("hi")
+    client.type_text.assert_called_once_with("hi", window=None)
 
 
 def test_key_forwards_name_and_modifiers() -> None:
@@ -286,7 +286,7 @@ def test_key_forwards_name_and_modifiers() -> None:
         server = mcp_server.build_server()
         result = _call(server, "key", {"name": "enter", "modifiers": ["accel"]})
     assert result["handled"] is True
-    client.key.assert_called_once_with("enter", modifiers=["accel"])
+    client.key.assert_called_once_with("enter", modifiers=["accel"], window=None)
 
 
 def test_wait_for_forwards_condition() -> None:
@@ -298,7 +298,7 @@ def test_wait_for_forwards_condition() -> None:
         )
     assert result["satisfied"] is True
     client.wait_for.assert_called_once_with(
-        key=None, label="Saved", text=None, present=False, timeout=2.0
+        key=None, label="Saved", text=None, present=False, timeout=2.0, window=None
     )
 
 

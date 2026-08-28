@@ -103,7 +103,7 @@ def test_native_bridge_collapses_in_app_slots(nuiitivet_app) -> None:
     app = nuiitivet_app(Column(children=[Text("content")]), size=(800, 600), menu=model)
     assert app.get(label="File") is not None
 
-    controller: MenuBarController = app._app._menubar_controller
+    controller: MenuBarController = app.window._menubar_controller
     stub = _StubBridge()
     controller._bridge = cast(Any, stub)
     controller._notify()
@@ -112,7 +112,7 @@ def test_native_bridge_collapses_in_app_slots(nuiitivet_app) -> None:
 
     # Replacement reaches the bridge instead of any slot.
     new_model = MenuBar([MenuBarItem("View", submenu=[MenuBarItem("Zoom", on_select=lambda: None)])])
-    app._app.menu = new_model
+    app.window.menu = new_model
     app.settle()
     assert stub.installed == [new_model]
     assert app.query(label="View") is None

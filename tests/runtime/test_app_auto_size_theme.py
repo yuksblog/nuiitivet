@@ -15,6 +15,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.theme.theme import Theme
 from nuiitivet.widgeting.widget import Widget
 
@@ -26,13 +27,13 @@ def _theme_with(**theme_data_fields) -> Theme:
 
 
 def _auto_app(content: Widget, theme: Theme) -> App:
-    return App(content=content, theme=theme, width="auto", height="auto")
+    return App(Window(content=content, width="auto", height="auto"), theme=theme)
 
 
 def test_root_is_mounted_by_the_time_construction_returns() -> None:
     app = _auto_app(Container(child=Text(_PROBE)), _theme_with())
 
-    assert app.root._mounted is True
+    assert app.main_window.root._mounted is True
 
 
 def test_auto_size_follows_the_themes_typography() -> None:
@@ -45,7 +46,7 @@ def test_auto_size_follows_the_themes_typography() -> None:
 
     # The two fonts do not measure the same, so a window sized against the real
     # theme cannot come out identical to one sized against the default.
-    assert monospace.width != default.width
+    assert monospace.main_window.width != default.main_window.width
 
 
 def test_auto_size_sees_styles_adopted_at_mount() -> None:
@@ -59,13 +60,13 @@ def test_auto_size_sees_styles_adopted_at_mount() -> None:
     app = _auto_app(Container(child=card), _theme_with(_filled_card_style=bordered))
 
     assert card.border_width == 12
-    assert (app.width, app.height) == card.preferred_size()
+    assert (app.main_window.width, app.main_window.height) == card.preferred_size()
 
 
 def test_explicit_window_size_is_not_measured() -> None:
-    app = App(content=Container(child=Text(_PROBE)), theme=_theme_with(), width=321, height=234)
+    app = App(Window(content=Container(child=Text(_PROBE)), width=321, height=234), theme=_theme_with())
 
-    assert (app.width, app.height) == (321, 234)
+    assert (app.main_window.width, app.main_window.height) == (321, 234)
 
 
 def test_on_mount_can_call_back_into_the_app(caplog) -> None:

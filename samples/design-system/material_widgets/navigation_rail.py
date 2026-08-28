@@ -31,11 +31,7 @@ def main(png_path: str = "") -> None:
         width="wt",
         height="wt",
     )
-    app = nv.App(
-        content=nv.Row([rail, body], width="wt", height="wt"),
-        title="NavigationRail",
-        width=560,
-    )
+    app = nv.App(nv.Window(content=nv.Row([rail, body], width="wt", height="wt"), title="NavigationRail", width=560))
     if png_path:
         app.render_to_png(png_path)
     else:

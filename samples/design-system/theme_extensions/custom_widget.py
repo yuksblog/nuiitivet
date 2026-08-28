@@ -104,11 +104,8 @@ class HomeScreen(nv.ComposableWidget):
 
 def main(png_path: str = "") -> None:
     app = nv.App(
-        content=HomeScreen(),
-        title="Theme Extensions - Custom Widget",
+        nv.Window(content=HomeScreen(), title="Theme Extensions - Custom Widget", width=400, height=320),
         theme=make_theme(),
-        width=400,
-        height=320,
     )
     if png_path:
         app.render_to_png(png_path)

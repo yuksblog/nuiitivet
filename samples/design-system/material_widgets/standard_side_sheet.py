@@ -52,12 +52,7 @@ class StandardSideSheetDemo(nv.ComposableWidget):
 
 
 def main(png_path: str = "") -> None:
-    app = nv.App(
-        content=StandardSideSheetDemo(),
-        title="StandardSideSheet",
-        width=600,
-        height=300,
-    )
+    app = nv.App(nv.Window(content=StandardSideSheetDemo(), title="StandardSideSheet", width=600, height=300))
     if png_path:
         app.render_to_png(png_path)
     else:

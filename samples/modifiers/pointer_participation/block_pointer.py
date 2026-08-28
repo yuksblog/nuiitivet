@@ -113,7 +113,7 @@ class BlockPointerDemo(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = nv.App(content=BlockPointerDemo(), title="block_pointer Modifier", width=500)
+    app = nv.App(nv.Window(content=BlockPointerDemo(), title="block_pointer Modifier", width=500))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

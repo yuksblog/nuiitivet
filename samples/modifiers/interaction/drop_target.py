@@ -60,7 +60,7 @@ def main(png: str = ""):
         gap=24,
         padding=24,
     )
-    app = nv.App(content=content, title="drop_target — file drop zones", width=560)
+    app = nv.App(nv.Window(content=content, title="drop_target — file drop zones", width=560))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

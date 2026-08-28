@@ -39,13 +39,7 @@ class HomeScreen(nv.ComposableWidget):
 
 
 def main() -> None:
-    nv.App(
-        content=HomeScreen(),
-        title="Light / Dark Toggle",
-        theme=light,
-        width=400,
-        height=320,
-    ).run()
+    nv.App(nv.Window(content=HomeScreen(), title="Light / Dark Toggle", width=400, height=320), theme=light).run()
 
 
 if __name__ == "__main__":

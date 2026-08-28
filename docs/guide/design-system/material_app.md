@@ -1,6 +1,6 @@
 # Material App
 
-`Material App` is the entry point for a Material Design application. It sets up Material Theme, Overlay, and Navigator with sensible defaults so you can focus on building your UI.
+`nv.App(nv.Window(content=...))` is the entry point for a Material Design application: the `Window` sets up the Material Overlay and Navigator, and the `App` supplies the Material Theme — all with sensible defaults so you can focus on building your UI.
 
 ## Basic Usage
 
@@ -24,7 +24,7 @@ class HomeScreen(nv.ComposableWidget):
         )
 
 
-nv.App(HomeScreen(), title="Material App").run()
+nv.App(nv.Window(content=HomeScreen(), title="Material App")).run()
 ```
 
 ![Material App Basic Usage](../../assets/material_app_basic_usage.png)
@@ -35,14 +35,16 @@ Control the window size, position, and resize behavior:
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window import WindowPosition
+from nuiitivet.runtime.window_sizing import WindowPosition
 
 nv.App(
-    HomeScreen(),
-    width=1280,
-    height=800,
-    window_position=WindowPosition("center"),
-    resizable=False,
+    nv.Window(
+        content=HomeScreen(),
+        width=1280,
+        height=800,
+        window_position=WindowPosition("center"),
+        resizable=False,
+    ),
 ).run()
 ```
 
@@ -50,12 +52,12 @@ See [Window](../window/index.md) for detailed usage.
 
 ## Window Chrome
 
-By default `App` uses OS-managed chrome (`OSChrome`), which draws the standard OS title bar. Set its text with the `title=` parameter:
+By default `Window` uses OS-managed chrome (`OSChrome`), which draws the standard OS title bar. Set its text with the `title=` parameter:
 
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen(), title="My App").run()
+nv.App(nv.Window(content=HomeScreen(), title="My App")).run()
 ```
 
 ### Custom Chrome
@@ -74,9 +76,11 @@ header = nv.Row(
 ).modifier(nv.background("#1a237e"))
 
 nv.App(
-    HomeScreen(),
-    title="My App",
-    chrome=nv.CustomChrome(header=header, corner_radius=8),
+    nv.Window(
+        content=HomeScreen(),
+        title="My App",
+        chrome=nv.CustomChrome(header=header, corner_radius=8),
+    ),
 ).run()
 ```
 
@@ -89,7 +93,7 @@ Pass a `ThemeFactory` to change the seed color or switch to dark mode:
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen(), theme=nv.ThemeFactory.dark("#00639B")).run()
+nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.dark("#00639B")).run()
 ```
 
 See [Material Theme](material_theme.md) for detailed usage.
@@ -102,10 +106,12 @@ Register custom overlay intents that can be dispatched from anywhere in the widg
 import nuiitivet.material as nv
 
 nv.App(
-    HomeScreen(),
-    overlay_routes={
-        MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
-    },
+    nv.Window(
+        content=HomeScreen(),
+        overlay_routes={
+            MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
+        },
+    ),
 ).run()
 ```
 

@@ -46,7 +46,7 @@ def main(png: str = "") -> None:
         cross_alignment="start",
     )
 
-    app = nv.App(content=content, title="context_menu Modifier", width=440, height=320)
+    app = nv.App(nv.Window(content=content, title="context_menu Modifier", width=440, height=320))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

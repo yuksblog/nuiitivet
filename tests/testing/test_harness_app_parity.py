@@ -48,8 +48,8 @@ def test_the_default_app_matches_the_one_the_author_runs() -> None:
     screen = Screen()
     with AppHarness(screen, size=SIZE) as app:
         assert isinstance(app.app, MaterialApp)
-        assert isinstance(app.app.overlay, MaterialOverlay)
-        assert isinstance(app.app.navigator, MaterialNavigator)
+        assert isinstance(app.window.overlay, MaterialOverlay)
+        assert isinstance(app.window.navigator, MaterialNavigator)
         assert Theme.of(screen).extension(MaterialThemeData) is not None
 
 
@@ -57,8 +57,8 @@ def test_app_selects_the_class_to_build() -> None:
     """``app=App`` is the same downgrade the app itself would be making."""
     with AppHarness(Screen(), size=SIZE, app=App) as app:
         assert not isinstance(app.app, MaterialApp)
-        assert isinstance(app.app.overlay, Overlay)
-        assert not isinstance(app.app.overlay, MaterialOverlay)
+        assert isinstance(app.window.overlay, Overlay)
+        assert not isinstance(app.window.overlay, MaterialOverlay)
 
 
 def test_app_kwargs_reach_the_selected_class() -> None:
@@ -69,4 +69,4 @@ def test_app_kwargs_reach_the_selected_class() -> None:
         app=App,
         overlay_factory=lambda: MaterialOverlay(intents={}),
     ) as app:
-        assert isinstance(app.app.overlay, MaterialOverlay)
+        assert isinstance(app.window.overlay, MaterialOverlay)

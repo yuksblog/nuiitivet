@@ -18,6 +18,7 @@ from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.focus import focusable
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import FocusNode, InteractionHostMixin
 from nuiitivet.widgeting.widget import Widget
@@ -34,8 +35,8 @@ def _record(sink: list[Any], value: Any, result: bool) -> bool:
     return result
 
 
-def _mounted_app(root: Widget) -> App:
-    app = App(root)
+def _mounted_app(root: Widget) -> Window:
+    app = App(Window(content=root)).main_window
     app.root.mount(app)
     return app
 
@@ -165,12 +166,12 @@ def test_release_bubbling_stops_on_truthy_return() -> None:
 
 async def test_escape_release_triggers_back_navigation(nuiitivet_app) -> None:
     app = nuiitivet_app(Container(), size=(400, 300))
-    navigator = app.app.navigator
+    navigator = app.window.navigator
     navigator.push(Container())
 
     assert navigator.can_pop() is True
 
-    handled = app.app._dispatch_key_release("escape")
+    handled = app.window._dispatch_key_release("escape")
     assert handled is True
     await app.idle()  # the back event runs as a task
     # The depth drops when the exit transition finalizes, not when the key was
@@ -188,7 +189,7 @@ async def test_escape_release_does_not_reach_focus_node(nuiitivet_app) -> None:
     app = nuiitivet_app(root, size=(400, 300))
     _focus(child)
 
-    app.app._dispatch_key_release("escape")
+    app.window._dispatch_key_release("escape")
     await app.idle()  # escape starts a back event; let it finish
 
     assert releases == []
@@ -200,7 +201,7 @@ async def test_escape_release_does_not_reach_focus_node(nuiitivet_app) -> None:
 
 
 def test_modifier_key_mask_is_exposed_and_read_only_default() -> None:
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     assert app.modifier_keys == 0
 
     app._set_modifier_keys(MOD_CTRL | MOD_SHIFT)
@@ -209,7 +210,7 @@ def test_modifier_key_mask_is_exposed_and_read_only_default() -> None:
 
 def test_modifier_key_mask_cleared_on_deactivate() -> None:
     """Mimics on_deactivate: a modifier held when focus is lost must not stick."""
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     app._set_modifier_keys(MOD_CTRL)
     assert app.modifier_keys == MOD_CTRL
 

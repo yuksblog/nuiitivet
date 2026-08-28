@@ -20,12 +20,7 @@ class HomeScreen(nv.ComposableWidget):
 
 
 def main(png_path: str = "") -> None:
-    app = nv.App(
-        content=HomeScreen(),
-        title="Material App",
-        width=400,
-        height=240,
-    )
+    app = nv.App(nv.Window(content=HomeScreen(), title="Material App", width=400, height=240))
     if png_path:
         app.render_to_png(png_path)
     else:

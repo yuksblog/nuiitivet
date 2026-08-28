@@ -20,12 +20,7 @@ def main(png_path: str = "") -> None:
             on_change=lambda value: print(f"Selected: {value}"),
         ),
     )
-    app = nv.App(
-        content=content,
-        title="DatePicker",
-        width=460,
-        height=560,
-    )
+    app = nv.App(nv.Window(content=content, title="DatePicker", width=460, height=560))
     if png_path:
         app.render_to_png(png_path)
     else:

@@ -254,9 +254,14 @@ class BridgeClient:
         body, _ = self._get("/status")
         return json.loads(body.decode("utf-8"))
 
-    def describe_tree(self) -> dict[str, Any]:
-        """Fetch the structural tree description from the running app."""
-        body, _ = self._get("/describe_tree")
+    def describe_tree(self, *, window: Optional[int] = None) -> dict[str, Any]:
+        """Fetch the structural tree description from the running app.
+
+        ``window`` selects an open window by id (see ``status``'s ``windows``
+        listing); ``None`` addresses the main window.
+        """
+        endpoint = "/describe_tree" if window is None else f"/describe_tree?window={int(window)}"
+        body, _ = self._get(endpoint)
         payload = json.loads(body.decode("utf-8"))
         return payload.get("tree", {})
 
@@ -272,7 +277,9 @@ class BridgeClient:
         payload: dict[str, Any] = json.loads(body.decode("utf-8"))
         return payload
 
-    def describe_state(self, include_animations: bool = False) -> dict[str, Any]:
+    def describe_state(
+        self, include_animations: bool = False, *, window: Optional[int] = None
+    ) -> dict[str, Any]:
         """Fetch the reactive ``Observable`` state of the running app (#410).
 
         Complements :meth:`describe_tree`: it returns the live observable values
@@ -286,8 +293,13 @@ class BridgeClient:
         ``include_animations=True`` when the animation itself is the subject.
         """
         endpoint = "/describe_state"
+        params = []
         if include_animations:
-            endpoint += "?include_animations=1"
+            params.append("include_animations=1")
+        if window is not None:
+            params.append(f"window={int(window)}")
+        if params:
+            endpoint += "?" + "&".join(params)
         body, _ = self._get(endpoint)
         payload = json.loads(body.decode("utf-8"))
         return payload.get("state", {})
@@ -357,13 +369,15 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return bool(payload.get("verbose", False))
 
-    def screenshot(self) -> bytes:
+    def screenshot(self, *, window: Optional[int] = None) -> bytes:
         """Fetch a PNG of the running app's widget tree, re-rendered offscreen.
 
         It can come back clean while the screen is visibly broken (GPU path,
-        swap chain).
+        swap chain). ``window`` selects an open window by id; ``None`` is the
+        main window.
         """
-        body, content_type = self._get("/screenshot")
+        endpoint = "/screenshot" if window is None else f"/screenshot?window={int(window)}"
+        body, content_type = self._get(endpoint)
         if "image/png" not in content_type:
             raise RuntimeError(f"expected image/png, got {content_type!r}: {body[:200]!r}")
         return body
@@ -376,9 +390,15 @@ class BridgeClient:
         x: Optional[float] = None,
         y: Optional[float] = None,
         button: Optional[int] = None,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
-        """Click a widget by ``key`` / ``label`` (or raw ``x`` / ``y``)."""
+        """Click a widget by ``key`` / ``label`` (or raw ``x`` / ``y``).
+
+        ``window`` selects an open window by id; ``None`` is the main window.
+        """
         payload: dict[str, Any] = {}
+        if window is not None:
+            payload["window"] = int(window)
         if key is not None:
             payload["key"] = key
         if label is not None:
@@ -400,6 +420,7 @@ class BridgeClient:
         y: Optional[float] = None,
         dx: float = 0.0,
         dy: float = 0.0,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Scroll a region by wheel notches, named by ``key`` / ``label`` or ``x`` / ``y``.
 
@@ -414,7 +435,7 @@ class BridgeClient:
         "it moved" is distinguishable from "it was already at the end".
         """
         payload: dict[str, Any] = {"dx": dx, "dy": dy}
-        for name, value in (("key", key), ("label", label), ("x", x), ("y", y)):
+        for name, value in (("key", key), ("label", label), ("x", x), ("y", y), ("window", window)):
             if value is not None:
                 payload[name] = value
         return self._post("/scroll", payload)
@@ -425,23 +446,35 @@ class BridgeClient:
         key: Optional[str] = None,
         label: Optional[str] = None,
         align: str = "nearest",
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Scroll a widget's region(s) until the widget is on screen and clickable."""
         payload: dict[str, Any] = {"align": align}
-        for name, value in (("key", key), ("label", label)):
+        for name, value in (("key", key), ("label", label), ("window", window)):
             if value is not None:
                 payload[name] = value
         return self._post("/scroll_into_view", payload)
 
-    def type_text(self, text: str) -> dict[str, Any]:
-        """Type ``text`` into the running app's focused widget."""
-        return self._post("/type", {"text": text})
+    def type_text(self, text: str, *, window: Optional[int] = None) -> dict[str, Any]:
+        """Type ``text`` into the addressed window's focused widget."""
+        payload: dict[str, Any] = {"text": text}
+        if window is not None:
+            payload["window"] = int(window)
+        return self._post("/type", payload)
 
-    def key(self, name: str, modifiers: Optional[list[str]] = None) -> dict[str, Any]:
+    def key(
+        self,
+        name: str,
+        modifiers: Optional[list[str]] = None,
+        *,
+        window: Optional[int] = None,
+    ) -> dict[str, Any]:
         """Press a key ``name`` with optional modifier names (e.g. ``["accel"]``)."""
         payload: dict[str, Any] = {"key": name}
         if modifiers:
             payload["modifiers"] = modifiers
+        if window is not None:
+            payload["window"] = int(window)
         return self._post("/key", payload)
 
     def wait_for(
@@ -453,6 +486,7 @@ class BridgeClient:
         present: bool = True,
         timeout: Optional[float] = None,
         min_interval: Optional[float] = None,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Wait until a tree condition holds (or absent, with ``present=False``).
 
@@ -469,7 +503,7 @@ class BridgeClient:
                 tree is slow and shrinks when it is not.
         """
         payload: dict[str, Any] = {"present": present}
-        for name, value in (("key", key), ("label", label), ("text", text)):
+        for name, value in (("key", key), ("label", label), ("text", text), ("window", window)):
             if value is not None:
                 payload[name] = value
         if timeout is not None:

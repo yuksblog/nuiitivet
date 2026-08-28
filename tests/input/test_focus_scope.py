@@ -10,6 +10,7 @@ from nuiitivet.material.button_group import ConnectedButtonGroup, GroupButton, S
 from nuiitivet.material.selection_controls import RadioButton, RadioGroup
 from nuiitivet.material.slider import HorizontalRangeSlider, HorizontalSlider
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
 from tests.helpers.pointer import send_pointer_event_for_test
@@ -23,8 +24,8 @@ def _focus_node(widget) -> FocusNode:
     return node
 
 
-def _mounted_app(root) -> App:
-    app = App(root)
+def _mounted_app(root) -> Window:
+    app = App(Window(content=root)).main_window
     root.mount(app)
     return app
 
@@ -37,7 +38,7 @@ def test_non_traversable_node_is_not_a_tab_stop() -> None:
     a = Clickable()
     b = Clickable(traversable=False)
     c = Clickable()
-    app = App(Column([a, b, c]))
+    app = App(Window(content=Column([a, b, c]))).main_window
 
     nodes = app._collect_focus_nodes()
 
@@ -55,7 +56,7 @@ def test_non_traversable_node_still_focuses_and_receives_keys() -> None:
     widget = Clickable(traversable=False)
     node = _focus_node(widget)
     node._on_key = _on_key
-    app = App(Column([widget]))
+    app = App(Window(content=Column([widget]))).main_window
 
     app.request_focus(node, FocusSource.KEYBOARD)
     app._dispatch_key_press("enter")
@@ -68,7 +69,7 @@ def test_unrelated_widgets_keep_one_tab_stop_each() -> None:
     """Regression: ordinary widgets are one Tab stop each, in tree order."""
     button = Checkbox()
     slider = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0)
-    app = App(Column([button, slider]))
+    app = App(Window(content=Column([button, slider]))).main_window
 
     nodes = app._collect_focus_nodes()
 
@@ -85,9 +86,10 @@ def _menu(**kwargs) -> Menu:
     )
 
 
-def _menu_in_overlay(menu: Menu) -> App:
+def _menu_in_overlay(menu: Menu) -> Window:
     """Show ``menu`` the way it is really used: as a laid-out overlay entry."""
-    app = App(content=Container(width=400, height=400))
+    app = App(Window(content=Container(width=400, height=400))).main_window
+    assert app.root is not None
     app.root.mount(app)
     app.overlay.show(menu, passthrough=True)
     app.root.layout(400, 400)
@@ -168,9 +170,10 @@ def test_focused_item_is_not_marked_selected() -> None:
     assert first._get_active_state_layer_opacity() == first._FOCUS_OPACITY
 
 
-def _popup_menu_opened_with(menu: Menu, source: FocusSource) -> App:
+def _popup_menu_opened_with(menu: Menu, source: FocusSource) -> Window:
     """Open ``menu`` as a popup as if the user had opened it with ``source``."""
-    app = App(content=Container(width=400, height=400))
+    app = App(Window(content=Container(width=400, height=400))).main_window
+    assert app.root is not None
     app.root.mount(app)
     app._last_input_source = source
     app.overlay.show(menu, passthrough=True)

@@ -32,6 +32,7 @@ from nuiitivet.material.styles.date_picker_style import (
 from nuiitivet.modifiers.popup import PopupBox
 from nuiitivet.observable import Observable
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text import TextBase
 
@@ -618,7 +619,7 @@ def picker_in_app():
 
     def _make(obs: "Observable[str]", **kwargs):
         picker = DockedDatePicker(value=obs, **kwargs)
-        app = App(content=picker, width=800, height=600)
+        app = App(Window(content=picker, width=800, height=600)).main_window
         app.root.mount(app)
         app.root.layout(800, 600)
         popup = picker.built_child

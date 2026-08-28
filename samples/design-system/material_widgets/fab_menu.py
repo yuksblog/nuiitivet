@@ -55,10 +55,10 @@ def _build_png_content() -> nv.Container:
 
 def main(png_path: str = "") -> None:
     if png_path:
-        app = nv.App(content=_build_png_content(), title="FabMenu", width=420, height=520)
+        app = nv.App(nv.Window(content=_build_png_content(), title="FabMenu", width=420, height=520))
         app.render_to_png(png_path)
     else:
-        app = nv.App(content=_build_interactive_content(), title="FabMenu", width=420, height=520)
+        app = nv.App(nv.Window(content=_build_interactive_content(), title="FabMenu", width=420, height=520))
         app.run()
 
 

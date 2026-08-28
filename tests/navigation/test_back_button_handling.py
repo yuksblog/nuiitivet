@@ -8,6 +8,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import will_pop
 from nuiitivet.navigation import Navigator
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 
 
 def _force_finish_all_pop_transitions(navigator: Navigator) -> None:
@@ -21,8 +22,8 @@ def _force_finish_all_pop_transitions(navigator: Navigator) -> None:
 
 async def test_escape_closes_overlay_before_navigator_pop(nuiitivet_app) -> None:
     app = nuiitivet_app(Container(), size=(400, 300))
-    overlay = app.app.overlay
-    navigator = app.app.navigator
+    overlay = app.window.overlay
+    navigator = app.window.navigator
     navigator.push(Container())
     overlay.show(Container(width=100, height=100), backdrop=True)
 
@@ -37,8 +38,8 @@ async def test_escape_closes_overlay_before_navigator_pop(nuiitivet_app) -> None
 
 async def test_escape_pops_navigator_when_no_overlay_entries(nuiitivet_app) -> None:
     app = nuiitivet_app(Container(), size=(400, 300))
-    overlay = app.app.overlay
-    navigator = app.app.navigator
+    overlay = app.window.overlay
+    navigator = app.window.navigator
     navigator.push(Container())
 
     assert overlay.has_entries() is False
@@ -53,7 +54,7 @@ async def test_escape_pops_navigator_when_no_overlay_entries(nuiitivet_app) -> N
 
 @pytest.mark.asyncio
 async def test_back_event_is_unhandled_when_nothing_to_pop_or_close() -> None:
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     overlay = app.overlay
     navigator = app.navigator
 
@@ -72,7 +73,7 @@ async def test_escape_verb_pops_exactly_one_route(nuiitivet_app) -> None:
     every synthetic Escape popped two routes while a human's popped one.
     """
     app = nuiitivet_app(Container(), size=(400, 300))
-    navigator = app.app.navigator
+    navigator = app.window.navigator
     for _ in range(3):
         navigator.push(Container())
     await app.idle()
@@ -88,8 +89,8 @@ async def test_escape_verb_pops_exactly_one_route(nuiitivet_app) -> None:
 async def test_escape_verb_closes_the_overlay_without_popping_behind_it(nuiitivet_app) -> None:
     """The dev-bridge symptom: closing a dialog must leave the screen behind."""
     app = nuiitivet_app(Container(), size=(400, 300))
-    overlay = app.app.overlay
-    navigator = app.app.navigator
+    overlay = app.window.overlay
+    navigator = app.window.navigator
     navigator.push(Container())
     await app.idle()
     overlay.show(Container(width=100, height=100), backdrop=True)
@@ -105,8 +106,8 @@ async def test_escape_verb_closes_the_overlay_without_popping_behind_it(nuiitive
 async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
     app = nuiitivet_app(Container(), size=(400, 300))
-    overlay = app.app.overlay
-    navigator = app.app.navigator
+    overlay = app.window.overlay
+    navigator = app.window.navigator
     navigator.push(Container().modifier(cancel_pop))
 
     assert overlay.has_entries() is False
@@ -119,7 +120,7 @@ async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
 
 @pytest.mark.asyncio
 async def test_back_queue_pops_multiple_routes_even_during_transition() -> None:
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container())
     navigator.push(Container())
@@ -138,7 +139,7 @@ async def test_back_queue_pops_multiple_routes_even_during_transition() -> None:
 @pytest.mark.asyncio
 async def test_back_queue_is_cleared_when_will_pop_cancels_midway() -> None:
     cancel_pop = will_pop(on_will_pop=lambda: False)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container())
     navigator.push(Container().modifier(cancel_pop))
@@ -173,7 +174,7 @@ async def test_async_on_will_pop_allow() -> None:
         return True
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
@@ -191,7 +192,7 @@ async def test_async_on_will_pop_cancel() -> None:
         return False
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
@@ -208,7 +209,7 @@ async def test_async_on_will_pop_exception_fails_open() -> None:
         raise RuntimeError("dialog error")
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
@@ -226,7 +227,7 @@ async def test_async_on_will_pop_handling_flag_released_on_exception() -> None:
         raise RuntimeError("boom")
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
     navigator.push(Container())
@@ -254,7 +255,7 @@ async def test_sync_on_will_pop_still_works() -> None:
         return True
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     navigator = app.navigator
     navigator.push(Container().modifier(scope_mod))
 
@@ -276,12 +277,12 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop(
 
     scope_mod = will_pop(on_will_pop=on_will_pop)
     app = nuiitivet_app(Container(), size=(400, 300))
-    navigator = app.app.navigator
+    navigator = app.window.navigator
     navigator.push(Container().modifier(scope_mod))
 
     # Start the first back event and let it park on gate.wait(): idle() returns
     # when the loop is at rest, which is exactly the state this test needs.
-    task = asyncio.create_task(app.app.handle_back_event())
+    task = asyncio.create_task(app.window.handle_back_event())
     await app.idle()
 
     # WillPopScope._handling should be True while suspended in on_will_pop
@@ -290,7 +291,7 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop(
     assert getattr(outgoing_widget, "_handling", None) is True
 
     # A second back event while the first is suspended should be blocked
-    second_result = await app.app.handle_back_event()
+    second_result = await app.window.handle_back_event()
     assert second_result is True  # handled (navigator.can_pop is True)
     # But pop was blocked by _handling — route still present
     assert navigator.can_pop() is True

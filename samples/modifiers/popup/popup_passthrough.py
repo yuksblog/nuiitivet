@@ -70,19 +70,23 @@ def main(png: str = "") -> None:
             style=nv.CardStyle.elevated(),
         )
         app = nv.App(
-            content=nv.Column(children=[_anchor, _panel], gap=4, padding=16),
-            title="popup Modifier (passthrough)",
-            width=300,
-            height=350,
+            nv.Window(
+                content=nv.Column(children=[_anchor, _panel], gap=4, padding=16),
+                title="popup Modifier (passthrough)",
+                width=300,
+                height=350,
+            )
         )
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
     app = nv.App(
-        content=nv.Column(children=[anchor], gap=8, padding=16),
-        title="popup Modifier (passthrough)",
-        width=300,
-        height=250,
+        nv.Window(
+            content=nv.Column(children=[anchor], gap=8, padding=16),
+            title="popup Modifier (passthrough)",
+            width=300,
+            height=250,
+        )
     )
     app.run()
 

@@ -5,6 +5,7 @@ from typing import List
 import pytest
 
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.colors.utils import hex_to_rgba
@@ -30,10 +31,10 @@ def test_app_background_uses_resolve_color(monkeypatch):
         captured.append((value, default))
         return sentinel_rgba
 
-    monkeypatch.setattr("nuiitivet.runtime.app.resolve_color_to_rgba", fake_resolve)
+    monkeypatch.setattr("nuiitivet.runtime.window.resolve_color_to_rgba", fake_resolve)
 
     widget = _DummyWidget()
-    app = App(content=widget, background="#123456")
+    app = App(Window(content=widget, background="#123456")).main_window
 
     assert app._background_clear_color() == sentinel_rgba
     assert captured[-1] == ("#123456", None)
@@ -59,17 +60,17 @@ def test_app_background_updates_on_theme_change(monkeypatch):
             hexv = mat.roles.get(ColorRole.SURFACE)
             return hex_to_rgba(hexv)
 
-        monkeypatch.setattr("nuiitivet.runtime.app.resolve_color_to_rgba", fake_resolve)
+        monkeypatch.setattr("nuiitivet.runtime.window.resolve_color_to_rgba", fake_resolve)
 
         widget = _DummyWidget()
-        app = App(content=widget, theme=initial_theme)
+        app = App(Window(content=widget), theme=initial_theme).main_window
         app._dirty = False
         initial_color = app._background_clear_color()
 
         new_roles = {role: "#EEEEEE" for role in ColorRole}
         new_roles[ColorRole.SURFACE] = "#101010"
         new_theme = Theme(mode="dark", extensions=[MaterialThemeData(roles=new_roles)])
-        app.dispatch(ThemeModeIntent(theme=new_theme))
+        app.app.dispatch(ThemeModeIntent(theme=new_theme))
 
         expected_initial = hex_to_rgba("#222222")
         expected_after = hex_to_rgba("#101010")
@@ -87,4 +88,4 @@ def test_app_background_updates_on_theme_change(monkeypatch):
 def test_app_background_raises_when_unresolved():
     widget = _DummyWidget()
     with pytest.raises(ValueError):
-        App(content=widget, background=None)
+        App(Window(content=widget, background=None))

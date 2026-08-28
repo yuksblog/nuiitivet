@@ -2,6 +2,7 @@
 
 import pytest
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollPhysics
 from nuiitivet.widgeting.widget import Widget
@@ -318,7 +319,7 @@ def test_scrollable_mount_unmount():
     child = Column([Text("Item")])
     scrollable = VerticalScrollable(child=child, controller=controller)
     assert scrollable._scroll_unsubscribe is None
-    app = App(scrollable, width=400, height=300)
+    app = App(Window(content=scrollable, width=400, height=300))
     scrollable.mount(app)
     assert scrollable._scroll_unsubscribe is not None
     scrollable.unmount()

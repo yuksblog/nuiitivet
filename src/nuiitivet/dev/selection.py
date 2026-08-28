@@ -454,6 +454,14 @@ def _node_payload(index: int, widget: Any) -> dict[str, Any]:
     info: dict[str, Any] = {"index": index}
     own = own_identity(widget)
     info.update(own)
+    # Which window the node lives in — the selection spans windows, so a
+    # follow-up describe_tree/action needs the ``window=`` selector this names.
+    # Absent for a tree no Window owns (bare test mounts).
+    from nuiitivet.widgeting.context_lookup import find_window
+
+    owner = find_window(widget)
+    if owner is not None:
+        info["window"] = getattr(owner, "id", None)
     info["path"] = _type_path(widget)
     rect = _rect_payload(widget)
     if rect is not None:

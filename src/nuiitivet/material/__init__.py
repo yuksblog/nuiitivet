@@ -125,6 +125,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "App",
+    "Window",
+    "ExitPolicy",
     "ThemeFactory",
     "SmallBadge",
     "LargeBadge",
@@ -246,6 +248,8 @@ __all__ = [
 
 _EXPORTS: dict[str, tuple[str, str]] = {
     "App": ("app", "MaterialApp"),
+    "Window": ("window", "MaterialWindow"),
+    "ExitPolicy": ("app", "ExitPolicy"),
     "ThemeFactory": ("theme", "MaterialThemeFactory"),
     "SmallBadge": ("badge", "SmallBadge"),
     "LargeBadge": ("badge", "LargeBadge"),

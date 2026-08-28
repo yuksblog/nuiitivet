@@ -44,7 +44,7 @@ def mounted_app(nuiitivet_app):
 
 
 def _owners(app: AppHarness) -> list:
-    return [node.owner for node in app.app._collect_focus_nodes()]
+    return [node.owner for node in app.window._collect_focus_nodes()]
 
 
 # --- Deck -----------------------------------------------------------------------
@@ -69,11 +69,11 @@ def test_deck_shift_tab_walks_back_through_the_selected_page_only(mounted_app) -
     root = Column([before, Deck(children=[page0, page1], index=1), after])
     app = mounted_app(root)
 
-    app.app.request_focus(_focus_node(after), FocusSource.KEYBOARD)
-    app.app._dispatch_key_press("tab", SHIFT)
+    app.window.request_focus(_focus_node(after), FocusSource.KEYBOARD)
+    app.window._dispatch_key_press("tab", SHIFT)
     assert page1.state.focused
 
-    app.app._dispatch_key_press("tab", SHIFT)
+    app.window._dispatch_key_press("tab", SHIFT)
     assert before.state.focused
     assert not page0.state.focused
 
@@ -84,12 +84,12 @@ def test_switching_deck_page_releases_the_focus_it_held(mounted_app) -> None:
     root = Column([Deck(children=[page0, page1], index=index)])
     app = mounted_app(root)
 
-    app.app.request_focus(_focus_node(page0), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(page0), FocusSource.KEYBOARD)
     index.value = 1
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     assert not page0.state.focused
-    assert app.app._focused_node is None
+    assert app.window._focused_node is None
 
 
 def test_deck_over_a_for_each_follows_the_live_expanded_list(mounted_app) -> None:
@@ -149,12 +149,12 @@ def test_pushing_a_route_releases_the_focus_the_covered_one_held(mounted_app) ->
     app = mounted_app(Column([navigator]))
     navigator.rebuild()
 
-    app.app.request_focus(_focus_node(home), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(home), FocusSource.KEYBOARD)
     navigator.push(Column([pushed]))
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     assert not home.state.focused
-    assert app.app._focused_node is None
+    assert app.window._focused_node is None
 
 
 async def test_popping_a_route_makes_the_uncovered_one_traversable_again(mounted_app) -> None:
@@ -179,14 +179,14 @@ async def test_tab_stays_inside_a_blocking_overlay_entry(mounted_app) -> None:
     root = Column([background])
     app = mounted_app(root)
 
-    app.app.overlay.show(Column([dialog_a, dialog_b]), backdrop=True)
+    app.window.overlay.show(Column([dialog_a, dialog_b]), backdrop=True)
     await app.idle()
 
     assert _owners(app) == [dialog_a, dialog_b]
 
     # Tab wraps within the dialog instead of crossing back to the background.
-    app.app.request_focus(_focus_node(dialog_b), FocusSource.KEYBOARD)
-    app.app._dispatch_key_press("tab")
+    app.window.request_focus(_focus_node(dialog_b), FocusSource.KEYBOARD)
+    app.window._dispatch_key_press("tab")
     assert dialog_a.state.focused
     assert not background.state.focused
 
@@ -195,11 +195,11 @@ async def test_opening_a_modal_moves_focus_into_it(mounted_app) -> None:
     background, dialog = Clickable(), Clickable()
     root = Column([background])
     app = mounted_app(root)
-    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    app.app.overlay.show(Column([dialog]), backdrop=True)
+    app.window.overlay.show(Column([dialog]), backdrop=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     assert not background.state.focused
     assert dialog.state.focused
@@ -209,37 +209,37 @@ async def test_closing_a_modal_restores_focus_to_the_invoker(mounted_app) -> Non
     background, dialog = Clickable(), Clickable()
     root = Column([background])
     app = mounted_app(root)
-    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = app.app.overlay.show(Column([dialog]), backdrop=True)
+    handle = app.window.overlay.show(Column([dialog]), backdrop=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     handle.close()
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     assert not dialog._mounted
     assert background.state.focused
-    assert app.app._focused_node is _focus_node(background)
+    assert app.window._focused_node is _focus_node(background)
 
 
 async def test_closing_a_modal_clears_focus_when_the_invoker_is_gone(mounted_app) -> None:
     background, dialog = Clickable(), Clickable()
     root = Column([background])
     app = mounted_app(root)
-    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    handle = app.app.overlay.show(Column([dialog]), backdrop=True)
+    handle = app.window.overlay.show(Column([dialog]), backdrop=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     root.remove_child(background)
     handle.close()
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
-    assert app.app._focused_node is None
+    assert app.window._focused_node is None
     assert not background.state.focused
 
 
@@ -247,11 +247,11 @@ async def test_a_passthrough_entry_does_not_trap_focus(mounted_app) -> None:
     background, toast = Clickable(), Clickable()
     root = Column([background])
     app = mounted_app(root)
-    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    app.app.overlay.show(Column([toast]), passthrough=True)
+    app.window.overlay.show(Column([toast]), passthrough=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
 
     assert background.state.focused
     assert _owners(app) == [background, toast]
@@ -261,25 +261,25 @@ async def test_nested_modals_hand_focus_back_one_layer_at_a_time(mounted_app) ->
     background, outer, inner = Clickable(), Clickable(), Clickable()
     root = Column([background])
     app = mounted_app(root)
-    app.app.request_focus(_focus_node(background), FocusSource.KEYBOARD)
+    app.window.request_focus(_focus_node(background), FocusSource.KEYBOARD)
 
-    outer_handle = app.app.overlay.show(Column([outer]), backdrop=True)
+    outer_handle = app.window.overlay.show(Column([outer]), backdrop=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
     assert outer.state.focused
 
-    inner_handle = app.app.overlay.show(Column([inner]), backdrop=True)
+    inner_handle = app.window.overlay.show(Column([inner]), backdrop=True)
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
     assert inner.state.focused
     assert _owners(app) == [inner]
 
     inner_handle.close()
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
     assert outer.state.focused
 
     outer_handle.close()
     await app.idle()
-    app.app._release_focus_if_blocked()
+    app.window._release_focus_if_blocked()
     assert background.state.focused

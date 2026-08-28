@@ -83,20 +83,6 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     raster). See :class:`nuiitivet.runtime.renderer.RendererMode`.
     """
 
-    debug_keys = _env_flag("NUIITIVET_DEBUG_KEYS", default=False)
-    debug_keys_filter_raw = os.environ.get("NUIITIVET_DEBUG_KEYS_FILTER", "").strip().lower()
-    debug_keys_filter = {k.strip() for k in debug_keys_filter_raw.split(",") if k.strip()}
-
-    esc_down = False
-    gl_viewport_ok = True
-    auto_force_gl_viewport = False
-    auto_recreate_always = False
-    auto_recreate_probe_used = False
-    last_resize_raw = None
-    last_resize_logical = None
-    auto_recreate_on_draw_used = False
-    auto_recreate_on_draw_hits = 0
-
     # Import here so unit tests can monkeypatch a minimal `pyglet` module
     # for raster-frame helpers without needing `pyglet.app.EventLoop`.
     from .event_loop import ResponsiveEventLoop
@@ -122,29 +108,123 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     except Exception:
         exception_once(logger, "pyglet_set_clock_exc", "set_clock(pyglet.clock) failed")
 
+    _patch_pyglet_cocoa_view()
+
+    if draw_fps is not None:
+        try:
+            app.set_draw_fps(draw_fps)
+        except Exception:
+            exception_once(logger, "pyglet_set_draw_fps_exc", "app.set_draw_fps raised")
+
+    effective_draw_fps = getattr(app, "_preferred_draw_fps", None)
+
+    def _draw_windows(dt: float) -> None:
+        for win in list(getattr(app, "windows", ()) or ()):
+            render = getattr(win, "_render_frame", None)
+            if callable(render):
+                try:
+                    render(dt)
+                except Exception:
+                    exception_once(logger, "pyglet_draw_window_exc", "Window._render_frame raised")
+
+    def _keep_running_without_windows() -> bool:
+        from nuiitivet.runtime.app import ExitPolicy
+
+        return getattr(app, "exit_policy", None) is ExitPolicy.EXPLICIT
+
+    previous_loop = getattr(pyglet.app, "event_loop", None)
+    event_loop = ResponsiveEventLoop(
+        _draw_windows,
+        effective_draw_fps,
+        keep_running_without_windows=_keep_running_without_windows,
+    )
+    setattr(app, "_event_loop", event_loop)
+
+    # IMPORTANT: align observable runtime clock with the actual event-loop clock
+    # that is ticked in ResponsiveEventLoop.run()/run_async().
+    try:
+        set_clock(event_loop.clock)
+    except Exception:
+        exception_once(logger, "pyglet_set_event_loop_clock_exc", "set_clock(event_loop.clock) failed")
+
+    def _realize(win: Any) -> None:
+        _realize_window(app, win, event_loop, renderer)
+
+    # Windows opened while the loop runs are realized immediately through this
+    # hook; the ones already open (the main window, and any opened before
+    # run()) are realized here, in open order.
+    setattr(app, "_realize_window_hook", _realize)
+    for win in list(getattr(app, "windows", ()) or ()):
+        _realize(win)
+
+    try:
+        event_loop.run()
+    finally:
+        try:
+            setattr(app, "_realize_window_hook", None)
+            setattr(app, "_event_loop", None)
+            for win in list(getattr(app, "windows", ()) or ()):
+                setattr(win, "_event_loop", None)
+                setattr(win, "_window", None)
+        except Exception:
+            exception_once(logger, "pyglet_cleanup_app_state_exc", "Failed to clear event-loop/window state")
+
+        try:
+            if previous_loop is not None and previous_loop is not event_loop:
+                pyglet.app.event_loop = previous_loop
+            else:
+                from pyglet.app.base import EventLoop as _DefaultEventLoop
+
+                pyglet.app.event_loop = _DefaultEventLoop()
+        except Exception:
+            exception_once(logger, "pyglet_restore_event_loop_exc", "Failed to restore pyglet.app.event_loop")
+
+
+def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: RendererMode = "auto") -> None:
+    """Create and wire the OS window for one open ``Window``.
+
+    Everything window-scoped lives here: the pyglet window and its event
+    handlers, the per-window GPU state, HiDPI tracking, and the IME patch.
+    Called once per ``Window`` — for windows already open when ``run_app``
+    starts, and through ``app._realize_window_hook`` for windows opened while
+    the loop is running.
+    """
+    debug_keys = _env_flag("NUIITIVET_DEBUG_KEYS", default=False)
+    debug_keys_filter_raw = os.environ.get("NUIITIVET_DEBUG_KEYS_FILTER", "").strip().lower()
+    debug_keys_filter = {k.strip() for k in debug_keys_filter_raw.split(",") if k.strip()}
+
+    esc_down = False
+    gl_viewport_ok = True
+    auto_force_gl_viewport = False
+    auto_recreate_always = False
+    auto_recreate_probe_used = False
+    last_resize_raw = None
+    last_resize_logical = None
+    auto_recreate_on_draw_used = False
+    auto_recreate_on_draw_hits = 0
     # Normalize root if available
     try:
-        root = getattr(app, "root", None)
+        root = getattr(win, "root", None)
         if root is not None:
             from nuiitivet.widgeting.widget import ComposableWidget
 
             if isinstance(root, ComposableWidget):
                 built = root.evaluate_build()
                 if built is not None:
-                    setattr(app, "root", built)
+                    setattr(win, "root", built)
     except Exception:
-        exception_once(logger, "pyglet_normalize_root_exc", "Failed to normalize app.root via evaluate_build")
+        exception_once(logger, "pyglet_normalize_root_exc", "Failed to normalize win.root via evaluate_build")
 
     try:
-        setattr(app, "_dirty", True)
-        setattr(app, "_last_image", None)
+        setattr(win, "_dirty", True)
+        setattr(win, "_last_image", None)
     except Exception:
-        exception_once(logger, "pyglet_init_app_state_exc", "Failed to initialize app state (_dirty/_last_image)")
+        exception_once(logger, "pyglet_init_app_state_exc", "Failed to initialize win state (_dirty/_last_image)")
 
     caption = None
     style = None
     try:
-        title_val = getattr(app, "_title_value", None)
+        title_val = getattr(win, "_title_value", None)
         if isinstance(title_val, str):
             caption = title_val
         elif title_val is not None and hasattr(title_val, "value"):
@@ -155,7 +235,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         exception_once(logger, "pyglet_get_title_exc", "Failed to get window title")
 
     try:
-        chrome = getattr(app, "chrome", None)
+        chrome = getattr(win, "chrome", None)
         if chrome is None:
             # chrome=None → bare borderless
             style = pyglet.window.Window.WINDOW_STYLE_BORDERLESS
@@ -180,12 +260,12 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     try:
         window = pyglet.window.Window(
-            width=getattr(app, "width", 0),
-            height=getattr(app, "height", 0),
+            width=getattr(win, "width", 0),
+            height=getattr(win, "height", 0),
             caption=caption,
             style=style,
             vsync=False,
-            resizable=getattr(app, "resizable", True),
+            resizable=getattr(win, "resizable", True),
             file_drops=True,
         )
     except Exception:
@@ -201,25 +281,26 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     try:
         scale = float(window.get_pixel_ratio())
         if scale > 1.0:
-            log_w = getattr(app, "width", 800)
-            log_h = getattr(app, "height", 600)
+            log_w = getattr(win, "width", 800)
+            log_h = getattr(win, "height", 600)
             phys_w = int(log_w * scale)
             phys_h = int(log_h * scale)
 
             if phys_w > window.width:
                 window.set_size(phys_w, phys_h)
 
-            setattr(app, "_scale", max(1.0, scale))
+            setattr(win, "_scale", max(1.0, scale))
     except Exception:
         exception_once(logger, "pyglet_initial_resize_exc", "Failed to adjust initial window size for HiDPI")
 
-    setattr(app, "_window", window)
+    setattr(win, "_window", window)
+    setattr(win, "_event_loop", event_loop)
 
     # The window (and on macOS the NSApplication) now exists: give the App a
     # chance to attach platform integrations that need it (the menu bar's
     # NSMenu bridge).
     try:
-        notify_window_created = getattr(app, "_on_window_created", None)
+        notify_window_created = getattr(win, "_on_window_created", None)
         if callable(notify_window_created):
             notify_window_created()
     except Exception:
@@ -227,7 +308,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     # Apply Observable title now that the window exists
     try:
-        title_val = getattr(app, "_title_value", None)
+        title_val = getattr(win, "_title_value", None)
         if title_val is not None and hasattr(title_val, "value"):
             v = title_val.value
             window.set_caption(str(v) if v is not None else "")
@@ -236,7 +317,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     # Initial window positioning.
     try:
-        pos = getattr(app, "window_position", None)
+        pos = getattr(win, "window_position", None)
         if pos is not None:
             screens = None
             try:
@@ -298,22 +379,6 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 window.set_location(int(x), int(y))
     except Exception:
         exception_once(logger, "pyglet_window_position_exc", "Failed to apply initial window position")
-
-    if draw_fps is not None:
-        try:
-            app.set_draw_fps(draw_fps)
-        except Exception:
-            exception_once(logger, "pyglet_set_draw_fps_exc", "app.set_draw_fps raised")
-
-    effective_draw_fps = getattr(app, "_preferred_draw_fps", None)
-
-    # Mount root
-    try:
-        root = getattr(app, "root", None)
-        if root is not None:
-            root.mount(app)
-    except Exception:
-        exception_once(logger, "pyglet_root_mount_exc", "root.mount(app) raised")
 
     # Skia / GL setup
     gpu_enabled = False
@@ -379,9 +444,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             # The cached full frame is a GPU image bound to the old context; it is
             # invalid on the new one. Drop it and force a fresh full paint so the
             # next frame re-snapshots against the recreated context.
-            setattr(app, "_gpu_frame_cache", None)
-            setattr(app, "_gpu_frame_cache_size", None)
-            setattr(app, "_paint_dirty", True)
+            setattr(win, "_gpu_frame_cache", None)
+            setattr(win, "_gpu_frame_cache_size", None)
+            setattr(win, "_paint_dirty", True)
         except Exception:
             gpu_enabled = False
             exception_once(logger, "pyglet_recreate_gl_context_exc", "Failed to recreate GL context")
@@ -412,11 +477,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         debug_once(logger, "pyglet_window_pixel_ratio_exc", "window.get_pixel_ratio() failed")
         scale = 1.0
     try:
-        setattr(app, "_scale", max(1.0, scale))
+        setattr(win, "_scale", max(1.0, scale))
     except Exception:
-        exception_once(logger, "pyglet_set_app_scale_exc", "Failed to set app._scale")
+        exception_once(logger, "pyglet_set_app_scale_exc", "Failed to set win._scale")
 
-    _patch_pyglet_cocoa_view()
     _install_ime_patch(window)
 
     def _get_windows_dpi_scale() -> float:
@@ -557,8 +621,8 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                     logical_w = div_w
                     logical_h = div_h
             elif sys.platform == "win32" and scale > 1.0:
-                prev_w = int(getattr(app, "width", 0) or 0)
-                prev_h = int(getattr(app, "height", 0) or 0)
+                prev_w = int(getattr(win, "width", 0) or 0)
+                prev_h = int(getattr(win, "height", 0) or 0)
                 if prev_w > 0 and prev_h > 0:
                     raw_delta = abs(raw_w - prev_w) + abs(raw_h - prev_h)
                     div_delta = abs(div_w - prev_w) + abs(div_h - prev_h)
@@ -568,10 +632,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 logical_w = raw_w if use_raw else div_w
                 logical_h = raw_h if use_raw else div_h
 
-            # Update app state
-            app.width = int(max(1, logical_w))
-            app.height = int(max(1, logical_h))
-            setattr(app, "_scale", scale)
+            # Update win state
+            win.width = int(max(1, logical_w))
+            win.height = int(max(1, logical_h))
+            setattr(win, "_scale", scale)
 
             if (
                 not auto_recreate_always
@@ -585,23 +649,27 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 _recreate_gl_context("auto-resize")
 
             last_resize_raw = (raw_w, raw_h)
-            last_resize_logical = (app.width, app.height)
+            last_resize_logical = (win.width, win.height)
 
         except Exception:
-            exception_once(logger, "pyglet_on_resize_set_size_exc", "Failed to set app.width/app.height")
+            exception_once(logger, "pyglet_on_resize_set_size_exc", "Failed to set win.width/win.height")
 
         try:
-            app.invalidate(immediate=True)
+            win.invalidate(immediate=True)
         except Exception:
-            exception_once(logger, "pyglet_on_resize_invalidate_exc", "app.invalidate raised")
+            exception_once(logger, "pyglet_on_resize_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_draw():
         nonlocal gpu_enabled, auto_force_gl_viewport
         nonlocal auto_recreate_on_draw_used, auto_recreate_on_draw_hits, auto_recreate_always
         try:
-            wx, wy = window.get_location()
-            IMEManager.get().update_window_info(wx, wy, window.width, window.height)
+            # The IME manager is process-wide; with several windows only the
+            # OS-focused one may publish its geometry (single-window apps keep
+            # updating unconditionally, in case activate never fired).
+            if getattr(win, "_os_active", False) or len(getattr(owner_app, "windows", ()) or ()) <= 1:
+                wx, wy = window.get_location()
+                IMEManager.get().update_window_info(wx, wy, window.width, window.height)
         except Exception:
             exception_once(logger, "pyglet_on_draw_ime_update_exc", "IME window info update raised")
 
@@ -612,7 +680,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             win_w = 0
             win_h = 0
         try:
-            cur_scale = float(getattr(app, "_scale", 1.0))
+            cur_scale = float(getattr(win, "_scale", 1.0))
         except Exception:
             cur_scale = 1.0
         scale_changed = False
@@ -624,7 +692,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             scale_changed = False
 
         if (win_w and win_h) and (
-            win_w != int(getattr(app, "width", 0)) or win_h != int(getattr(app, "height", 0)) or scale_changed
+            win_w != int(getattr(win, "width", 0)) or win_h != int(getattr(win, "height", 0)) or scale_changed
         ):
             _update_app_size_from_window("on_draw", win_w, win_h)
 
@@ -725,20 +793,20 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                                     logical_w = int(max(1, round(win_w / scale_from_vp)))
                                     logical_h = int(max(1, round(win_h / scale_from_vp)))
                         try:
-                            if logical_w != int(getattr(app, "width", 0)) or logical_h != int(
-                                getattr(app, "height", 0)
+                            if logical_w != int(getattr(win, "width", 0)) or logical_h != int(
+                                getattr(win, "height", 0)
                             ):
-                                app.width = int(logical_w)
-                                app.height = int(logical_h)
-                            if abs(float(getattr(app, "_scale", 1.0)) - scale_from_vp) >= 0.01:
-                                setattr(app, "_scale", max(1.0, scale_from_vp))
+                                win.width = int(logical_w)
+                                win.height = int(logical_h)
+                            if abs(float(getattr(win, "_scale", 1.0)) - scale_from_vp) >= 0.01:
+                                setattr(win, "_scale", max(1.0, scale_from_vp))
                         except Exception:
                             exception_once(
                                 logger, "pyglet_on_draw_gpu_viewport_sync_exc", "Failed to sync from viewport"
                             )
 
                 try:
-                    ok = bool(draw_gpu_frame(app, gr_context, GL, skia))
+                    ok = bool(draw_gpu_frame(win, gr_context, GL, skia))
                 except Exception:
                     exception_once(logger, "pyglet_on_draw_gpu_frame_exc", "draw_gpu_frame raised")
                     ok = False
@@ -749,9 +817,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                     raise RuntimeError("renderer='gpu' was requested but GPU frame rendering failed.")
                 gpu_enabled = False
 
-        if getattr(app, "_dirty", False) or getattr(app, "_last_image", None) is None:
-            ok = _draw_raster_frame(app, skia)
-            if not ok and getattr(app, "_last_image", None) is None:
+        if getattr(win, "_dirty", False) or getattr(win, "_last_image", None) is None:
+            ok = _draw_raster_frame(win, skia)
+            if not ok and getattr(win, "_last_image", None) is None:
                 return
 
         try:
@@ -759,7 +827,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         except Exception:
             exception_once(logger, "pyglet_on_draw_window_clear_exc", "window.clear raised")
 
-        img = getattr(app, "_last_image", None)
+        img = getattr(win, "_last_image", None)
         if img is not None:
             try:
                 img.blit(0, 0)
@@ -769,7 +837,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     @window.event
     def on_show():
         try:
-            setattr(app, "_last_image", None)
+            setattr(win, "_last_image", None)
         except Exception:
             pass
         try:
@@ -782,9 +850,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # The tree content is unchanged, so the GPU path may re-blit its cached
         # full frame (content=False) instead of re-walking the tree.
         try:
-            app.invalidate(immediate=True, content=False)
+            win.invalidate(immediate=True, content=False)
         except Exception:
-            exception_once(logger, "pyglet_on_show_invalidate_exc", "app.invalidate raised")
+            exception_once(logger, "pyglet_on_show_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_hide():
@@ -792,8 +860,20 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
     @window.event
     def on_activate():
+        setattr(win, "_os_active", True)
+        # Best-effort keep-above: a parent activated while a modal child is
+        # open hands the OS focus back to the child (the parent's input is
+        # blocked anyway).
         try:
-            setattr(app, "_last_image", None)
+            modal_child = win._modal_child()
+            if modal_child is not None:
+                child_os = getattr(modal_child, "_window", None)
+                if child_os is not None and hasattr(child_os, "activate"):
+                    child_os.activate()
+        except Exception:
+            exception_once(logger, "pyglet_on_activate_modal_child_exc", "Modal child activate raised")
+        try:
+            setattr(win, "_last_image", None)
         except Exception:
             pass
         try:
@@ -805,20 +885,21 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # The tree content is unchanged, so the GPU path may re-blit its cached
         # full frame (content=False) instead of re-walking the tree.
         try:
-            app.invalidate(immediate=True, content=False)
+            win.invalidate(immediate=True, content=False)
         except Exception:
-            exception_once(logger, "pyglet_on_activate_invalidate_exc", "app.invalidate raised")
+            exception_once(logger, "pyglet_on_activate_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_deactivate():
         # Focus left the window, so key-up events for anything currently held
-        # will be delivered to another app and never reach us. Clear the
+        # will be delivered to another win and never reach us. Clear the
         # authoritative modifier-key mask and the Escape latch so a key released
         # while inactive cannot leave permanently-wrong state behind.
         nonlocal esc_down
         esc_down = False
+        setattr(win, "_os_active", False)
         try:
-            app._clear_modifier_keys()
+            win._clear_modifier_keys()
         except Exception:
             exception_once(logger, "pyglet_on_deactivate_clear_modifier_keys_exc", "Failed to clear modifier-key mask")
 
@@ -840,28 +921,28 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         _update_app_size_from_window("on_resize", width, height)
 
     def _to_logical(x: int, y: int) -> tuple[int, int]:
-        scale = max(1.0, float(getattr(app, "_scale", 1.0)))
+        scale = max(1.0, float(getattr(win, "_scale", 1.0)))
         x_log = int(x / scale)
         y_log = int(y / scale)
-        y_conv = int(getattr(app, "height", 0)) - y_log
+        y_conv = int(getattr(win, "height", 0)) - y_log
         return x_log, y_conv
 
     def _normalize_scroll_delta(scroll_x: float, scroll_y: float) -> tuple[float, float]:
-        """Normalize Pyglet raw scroll values to the app convention.
+        """Normalize Pyglet raw scroll values to the win convention.
 
         Convention: positive scroll_y = move content downward (offset increases),
         positive scroll_x = move content rightward (offset increases).
 
         On macOS, Pyglet negates AppKit's ``deltaY`` so vertical values already
-        match the app convention, but ``deltaX`` is passed through with AppKit's
-        native sign, which is opposite to the app convention.  Negate scroll_x to
+        match the win convention, but ``deltaX`` is passed through with AppKit's
+        native sign, which is opposite to the win convention.  Negate scroll_x to
         compensate while leaving scroll_y unchanged.  On Windows and Linux,
         Pyglet reports scroll_y > 0 for wheel-forward (up), which is opposite to
-        the app convention, so both axes are negated.
+        the win convention, so both axes are negated.
         """
         if sys.platform == "darwin":
             return -scroll_x, scroll_y
-        # Windows and Linux: negate to match app convention
+        # Windows and Linux: negate to match win convention
         return -scroll_x, -scroll_y
 
     @window.event
@@ -873,19 +954,19 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # designation, not an interaction. It is consumed *before* dispatch --
         # letting it through would fire the button they were merely pointing at
         # (#591).
-        if _inspect_consumed(app, "on_mouse_press", app, x_log, y_conv, modifier_keys):
+        if _inspect_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
             return True
         try:
-            app._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
+            win._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
         # Dev-only: record the human's click for the interaction journal (#390).
         # Only the real input path reaches here; the assistant's synthesized
         # clicks enter below at ``_dispatch_*``, so this captures the human alone.
-        recorder = getattr(app, "_interaction_recorder", None)
+        recorder = getattr(win, "_interaction_recorder", None)
         if recorder is not None:
             try:
-                recorder.on_mouse_press(app, x_log, y_conv)
+                recorder.on_mouse_press(win, x_log, y_conv)
             except Exception:
                 exception_once(logger, "pyglet_on_mouse_press_record_exc", "Interaction record raised")
 
@@ -899,10 +980,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # turns the click into a jump to the widget's source instead (#593).
         # Modifiers are read here, not on press, so the two decisions are made at
         # the same moment from the same event.
-        if _inspect_consumed(app, "on_mouse_release", app, x_log, y_conv, modifier_keys):
+        if _inspect_consumed(win, "on_mouse_release", win, x_log, y_conv, modifier_keys):
             return True
         try:
-            app._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
+            win._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_release_dispatch_exc", "Mouse release dispatch raised")
 
@@ -911,10 +992,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         x_log, y_conv = _to_logical(x, y)
         # Dev-only: tracks the pick candidate under the cursor for the overlay's
         # hover highlight (#591).
-        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv):
+        if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv):
             return True
         try:
-            app._dispatch_mouse_motion(x_log, y_conv)
+            win._dispatch_mouse_motion(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_motion_dispatch_exc", "Mouse motion dispatch raised")
 
@@ -926,10 +1007,10 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # Dev-only: a drag mid-designation is the human sweeping out a region.
         # Routed to the same hook as a plain move, which tells the two apart by
         # whether a press is outstanding (#591).
-        if _inspect_consumed(app, "on_mouse_motion", app, x_log, y_conv, modifier_keys):
+        if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv, modifier_keys):
             return True
         try:
-            app._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
+            win._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_drag_dispatch_exc", "Mouse drag dispatch raised")
 
@@ -939,13 +1020,13 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         scroll_x_n, scroll_y_n = _normalize_scroll_delta(scroll_x, scroll_y)
         handler = None
         try:
-            handler = app._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
+            handler = win._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_scroll_dispatch_exc", "Mouse scroll dispatch raised")
         # Dev-only: record the human's scroll for the interaction journal (#498).
         # The recorder takes the *consuming region* the dispatch returned, so a
         # wheel event no region took is dropped -- nothing moved to report.
-        recorder = getattr(app, "_interaction_recorder", None)
+        recorder = getattr(win, "_interaction_recorder", None)
         if recorder is not None:
             try:
                 recorder.on_mouse_scroll(handler, scroll_x_n, scroll_y_n)
@@ -956,7 +1037,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     def on_file_drop(x, y, paths):
         x_log, y_conv = _to_logical(x, y)
         try:
-            app._dispatch_file_drop(x_log, y_conv, paths)
+            win._dispatch_file_drop(x_log, y_conv, paths)
         except Exception:
             exception_once(logger, "pyglet_on_file_drop_dispatch_exc", "File drop dispatch raised")
 
@@ -965,7 +1046,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
         try:
-            app._set_modifier_keys(modifier_keys)
+            win._set_modifier_keys(modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
@@ -977,15 +1058,15 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # return as "not handled" and runs the next handler in the stack, whose
         # default ESC behaviour closes the window -- exactly what the latch below
         # relies on with its explicit ``return False``. Falling out of here
-        # without a value would quit the app on the mode's own exit key.
-        if _inspect_consumed(app, "on_key_press", app, key_name, modifier_keys):
+        # without a value would quit the win on the mode's own exit key.
+        if _inspect_consumed(win, "on_key_press", win, key_name, modifier_keys):
             return True
 
         # Dev-only: record semantic keys (shortcuts / navigation) for the
         # interaction journal (#390). Recorded here -- before the escape latch and
         # dispatch -- so escape is captured too; bare typing is dropped inside the
         # recorder so field content never enters the journal.
-        recorder = getattr(app, "_interaction_recorder", None)
+        recorder = getattr(win, "_interaction_recorder", None)
         if recorder is not None:
             try:
                 recorder.on_key_press(key_name, modifier_keys)
@@ -995,7 +1076,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         nonlocal esc_down
         if str(key_name).strip().lower() == "escape":
             can_handle = False
-            probe = getattr(app, "can_handle_back_event", None)
+            probe = getattr(win, "can_handle_back_event", None)
             if callable(probe):
                 try:
                     can_handle = bool(probe())
@@ -1024,7 +1105,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             return True
 
         try:
-            handled = bool(app._dispatch_key_press(key_name, modifier_keys))
+            handled = bool(win._dispatch_key_press(key_name, modifier_keys))
         except Exception:
             exception_once(logger, "pyglet_on_key_press_dispatch_exc", "Key press dispatch raised")
             handled = False
@@ -1037,9 +1118,9 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_key_press_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_key_press_invalidate_exc", "win.invalidate raised")
             # Tell pyglet the event was handled so default handlers (e.g. ESC-to-exit)
             # do not run.
             return True
@@ -1050,13 +1131,13 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         key_name, modifier_keys = _normalize_key(symbol, modifiers)
 
         try:
-            app._set_modifier_keys(modifier_keys)
+            win._set_modifier_keys(modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
         # Dev-only: inspect mode consumed the press, so its release must not
         # reach the focused widget on its own (#591).
-        if _inspect_consumed(app, "on_key_release", app, key_name, modifier_keys):
+        if _inspect_consumed(win, "on_key_release", win, key_name, modifier_keys):
             return True
 
         nonlocal esc_down
@@ -1072,7 +1153,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             # Escape is routed to handle_back_event inside _dispatch_key_release;
             # every other key is delivered to the focused node as a release. No
             # press is ever synthesized from a release.
-            handled = bool(app._dispatch_key_release(key_name, modifier_keys))
+            handled = bool(win._dispatch_key_release(key_name, modifier_keys))
         except Exception:
             exception_once(logger, "pyglet_on_key_release_dispatch_exc", "Key release dispatch raised")
             handled = False
@@ -1085,16 +1166,16 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
 
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_key_release_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_key_release_invalidate_exc", "win.invalidate raised")
             return True
         return False
 
     @window.event
     def on_text(text):
         try:
-            handled = bool(app._dispatch_text(text))
+            handled = bool(win._dispatch_text(text))
         except Exception:
             exception_once(logger, "pyglet_on_text_dispatch_exc", "Text dispatch raised")
             handled = False
@@ -1104,7 +1185,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         # a phantom "text" marker beside every commit. The text itself is never
         # passed to the recorder, so field values never leak; we branch on it only
         # to tell real typing from a control key.
-        recorder = getattr(app, "_interaction_recorder", None)
+        recorder = getattr(win, "_interaction_recorder", None)
         if recorder is not None and any(ch.isprintable() for ch in text):
             try:
                 recorder.on_text()
@@ -1112,91 +1193,60 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 exception_once(logger, "pyglet_on_text_record_exc", "Interaction record raised")
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_text_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_text_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_text_motion(motion):
         motion_code = _normalize_text_motion(motion)
         try:
-            handled = bool(app._dispatch_text_motion(motion_code, select=False))
+            handled = bool(win._dispatch_text_motion(motion_code, select=False))
         except Exception:
             exception_once(logger, "pyglet_on_text_motion_dispatch_exc", "Text motion dispatch raised")
             handled = False
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_text_motion_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_text_motion_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_text_motion_select(motion):
         motion_code = _normalize_text_motion(motion)
         try:
-            handled = bool(app._dispatch_text_motion(motion_code, select=True))
+            handled = bool(win._dispatch_text_motion(motion_code, select=True))
         except Exception:
             exception_once(logger, "pyglet_on_text_motion_select_dispatch_exc", "Text motion select dispatch raised")
             handled = False
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_text_motion_select_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_text_motion_select_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_ime_composition(text, start, length):
         try:
-            handled = bool(app._dispatch_ime_composition(text, start, length))
+            handled = bool(win._dispatch_ime_composition(text, start, length))
         except Exception:
             exception_once(logger, "pyglet_on_ime_composition_dispatch_exc", "IME composition dispatch raised")
             handled = False
         if handled:
             try:
-                app.invalidate()
+                win.invalidate()
             except Exception:
-                exception_once(logger, "pyglet_on_ime_composition_invalidate_exc", "app.invalidate raised")
+                exception_once(logger, "pyglet_on_ime_composition_invalidate_exc", "win.invalidate raised")
 
     @window.event
     def on_close():
+        # The OS close button is equivalent to Window.close(): destroy this
+        # window and let the App's exit policy decide whether the win exits.
         try:
-            app._dispatch_close()
+            win.close()
         except Exception:
-            exception_once(logger, "pyglet_on_close_dispatch_exc", "app._dispatch_close raised")
-        try:
-            pyglet.app.exit()
-        except Exception:
-            exception_once(logger, "pyglet_on_close_exit_exc", "pyglet.app.exit raised")
-
-    previous_loop = getattr(pyglet.app, "event_loop", None)
-    event_loop = ResponsiveEventLoop(window, app._render_frame, effective_draw_fps)
-    setattr(app, "_event_loop", event_loop)
-
-    # IMPORTANT: align observable runtime clock with the actual event-loop clock
-    # that is ticked in ResponsiveEventLoop.run()/run_async().
-    try:
-        set_clock(event_loop.clock)
-    except Exception:
-        exception_once(logger, "pyglet_set_event_loop_clock_exc", "set_clock(event_loop.clock) failed")
-
-    try:
-        event_loop.run()
-    finally:
-        try:
-            setattr(app, "_event_loop", None)
-            setattr(app, "_window", None)
-        except Exception:
-            exception_once(logger, "pyglet_cleanup_app_state_exc", "Failed to clear app._event_loop/_window")
-
-        try:
-            if previous_loop is not None and previous_loop is not event_loop:
-                pyglet.app.event_loop = previous_loop
-            else:
-                from pyglet.app.base import EventLoop as _DefaultEventLoop
-
-                pyglet.app.event_loop = _DefaultEventLoop()
-        except Exception:
-            exception_once(logger, "pyglet_restore_event_loop_exc", "Failed to restore pyglet.app.event_loop")
+            exception_once(logger, "pyglet_on_close_exc", "Window.close raised")
+        return True
 
 
 def _draw_raster_frame(app: Any, skia: Any) -> bool:

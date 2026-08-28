@@ -62,12 +62,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(
-        content=content,
-        title="Selection Controls",
-        width=520,
-        height=360,
-    )
+    app = nv.App(nv.Window(content=content, title="Selection Controls", width=520, height=360))
     if png_path:
         app.render_to_png(png_path)
     else:

@@ -79,10 +79,23 @@ class WidgetHost(_HarnessBase):
         else:
             self.root = widget
 
+        # The real App fans a theme change out to each open window's tree
+        # (invalidate the marked readers, request a repaint); the host mimics
+        # that so pushing a theme through :attr:`theme_manager` behaves the way
+        # it does in an app.
+        if scope:
+            self._theme_manager.on_change = self._on_theme_changed
+
         # Registered before the mount, so a widget whose ``on_mount`` raises is
         # still unmounted at teardown rather than left attached.
         self._register()
         self.root.mount(self)
+
+    def _on_theme_changed(self, _theme: Any) -> None:
+        from nuiitivet.theme.dependency import invalidate_theme_readers
+
+        invalidate_theme_readers(self.root)
+        self.invalidate()
 
     # -- the host contract -------------------------------------------------
 
