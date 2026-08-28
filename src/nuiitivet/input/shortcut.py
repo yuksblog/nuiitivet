@@ -52,6 +52,24 @@ _KEY_ALIASES: dict[str, str] = {
 #: Keys that yield text without being a single character.
 _TEXT_KEY_NAMES: frozenset[str] = frozenset({"space"})
 
+#: Non-letter keys whose display form is not just ``capitalize()``.
+_DISPLAY_KEY_NAMES: dict[str, str] = {
+    "escape": "Esc",
+    "delete": "Del",
+    "insert": "Ins",
+    "pageup": "Page Up",
+    "pagedown": "Page Down",
+}
+
+
+def _display_key_name(key: str) -> str:
+    """Return the display form of a normalized key name (``"s"`` → ``"S"``)."""
+    if len(key) == 1:
+        return key.upper()
+    if key.startswith("f") and key[1:].isdigit():
+        return key.upper()
+    return _DISPLAY_KEY_NAMES.get(key, key.capitalize())
+
 
 def normalize_key_name(key: str) -> str:
     """Normalize a key name to the form shortcuts are matched in.
@@ -159,6 +177,44 @@ class Shortcut:
         ``Accel+Shift+S``.
         """
         return normalize_key_name(key) == self.key and modifier_keys == resolve_modifiers(self.modifiers)
+
+    @property
+    def display(self) -> str:
+        """Human-readable accelerator label for this gesture, per platform.
+
+        macOS uses the compact symbol form in Apple's canonical modifier order
+        (``⌃⌥⇧⌘S``); other platforms use the ``Ctrl+Shift+S`` form.
+        ``MOD_ACCEL`` renders as its resolved physical modifier (⌘ on macOS,
+        ``Ctrl`` elsewhere), so one :class:`Shortcut` yields the right label
+        everywhere — this is what menu items show next to their command.
+        """
+        import sys
+
+        mods = resolve_modifiers(self.modifiers)
+        key_label = _display_key_name(self.key)
+        if sys.platform == "darwin":
+            parts = []
+            if mods & MOD_CTRL:
+                parts.append("⌃")
+            if mods & MOD_ALT:
+                parts.append("⌥")
+            if mods & MOD_SHIFT:
+                parts.append("⇧")
+            if mods & MOD_META:
+                parts.append("⌘")
+            parts.append(key_label)
+            return "".join(parts)
+        parts = []
+        if mods & MOD_CTRL:
+            parts.append("Ctrl")
+        if mods & MOD_ALT:
+            parts.append("Alt")
+        if mods & MOD_SHIFT:
+            parts.append("Shift")
+        if mods & MOD_META:
+            parts.append("Meta")
+        parts.append(key_label)
+        return "+".join(parts)
 
     @property
     def conflicts_with_text_input(self) -> bool:

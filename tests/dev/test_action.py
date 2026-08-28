@@ -15,7 +15,7 @@ from nuiitivet.dev.action import (
     settle,
     type_text,
 )
-from nuiitivet.input.codes import MOD_ACCEL, MOD_SHIFT
+from nuiitivet.input.codes import MOD_SHIFT, accel_mask
 
 
 class _Node:
@@ -75,7 +75,9 @@ class _App:
 def test_resolve_modifiers_int_and_names() -> None:
     assert resolve_modifiers(0) == 0
     assert resolve_modifiers(5) == 5
-    assert resolve_modifiers(["accel", "shift"]) == MOD_ACCEL | MOD_SHIFT
+    # Names stand in for backend input, and backends emit physical masks:
+    # "accel" resolves to the platform's Ctrl/Cmd, never the logical bit.
+    assert resolve_modifiers(["accel", "shift"]) == accel_mask() | MOD_SHIFT
     assert resolve_modifiers(None) == 0
 
 
@@ -143,10 +145,10 @@ def test_type_text_routes_to_focused() -> None:
 def test_press_key_with_modifiers() -> None:
     app = _App(_Node())
     result = press_key(app, "s", ["accel"])
-    assert app.key_presses == [("s", MOD_ACCEL)]
-    assert app.key_releases == [("s", MOD_ACCEL)]
+    assert app.key_presses == [("s", accel_mask())]
+    assert app.key_releases == [("s", accel_mask())]
     assert result["handled"] is True
-    assert result["modifiers"] == MOD_ACCEL
+    assert result["modifiers"] == accel_mask()
 
 
 def test_settle_lays_out_and_invalidates() -> None:

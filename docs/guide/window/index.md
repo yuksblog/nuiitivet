@@ -8,3 +8,4 @@ Please refer to the following sections for detailed information:
 - [Size and Position](size_position.md): Understand how to control the dimensions and screen placement of your application window.
 - [Operations](operations.md): Discover APIs for programmatically controlling the window state (close, maximize, minimize, etc.).
 - [File Dialogs](file_dialogs.md): Show the OS-native open / save / folder dialogs and read the result.
+- [Menu Bar](menu_bar.md): Register an application menu bar with `App(menu=...)` — items, shortcuts, checkable state, and placement.

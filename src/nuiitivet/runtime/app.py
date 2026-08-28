@@ -51,6 +51,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 
 if TYPE_CHECKING:
+    from nuiitivet.menubar.model import MenuBar
     from nuiitivet.navigation.navigator import Navigator
     from nuiitivet.overlay.overlay import Overlay
     from nuiitivet.theme.theme import Theme
@@ -204,6 +205,28 @@ class App:
             raise RuntimeError("App has no overlay yet; its content root is not built.")
         return self._overlay
 
+    @property
+    def menu(self) -> "MenuBar | None":
+        """The registered application menu bar model, or ``None``.
+
+        Assigning replaces the model wholesale and rebuilds the rendered bar;
+        item *properties* (label / enabled / checked) may be Observables and
+        propagate live without replacement. See ``docs/design/MENU_BAR.md``.
+        """
+        return self._menubar_controller.model
+
+    @menu.setter
+    def menu(self, model: "MenuBar | None") -> None:
+        self._menubar_controller.set_model(model)
+
+    def _on_window_created(self) -> None:
+        """Backend hook: the OS window exists now.
+
+        Attaches platform integrations that need a live window — today the
+        menu bar's platform bridge (the macOS global menu bar).
+        """
+        self._menubar_controller.install_platform_bridge()
+
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
         sizing = parse_window_sizing(spec)
@@ -300,6 +323,16 @@ class App:
         Returns:
             The wrapped root widget.
         """
+        # Default menu bar placement: a slot at the top of the content area,
+        # below the chrome. Inserted only when a menu was registered at App
+        # construction; the slot itself stays empty whenever a user-placed
+        # MenuBarArea is mounted (see nuiitivet/menubar/slots.py).
+        menubar_slot: Widget | None = None
+        if getattr(self, "_menubar_controller", None) is not None and self._menubar_controller.model is not None:
+            from nuiitivet.menubar.slots import DefaultMenuBarSlot
+
+            menubar_slot = DefaultMenuBarSlot()
+
         if isinstance(self.chrome, CustomChrome):
 
             def on_drag(dx: float, dy: float) -> None:
@@ -323,9 +356,15 @@ class App:
                 width="wt",
             )
 
+            chrome_children: list[Widget] = [self._window_drag_area]
+            if menubar_slot is not None:
+                chrome_children.append(menubar_slot)
+            chrome_children.append(Container(child=root, width="wt", height="wt"))
+            root = Column(children=chrome_children, width="wt", height="wt")
+        elif menubar_slot is not None:
             root = Column(
                 children=[
-                    self._window_drag_area,
+                    menubar_slot,
                     Container(child=root, width="wt", height="wt"),
                 ],
                 width="wt",
@@ -355,6 +394,7 @@ class App:
         window_position: WindowPosition | None = None,
         window_auto_size_target: Widget | None = None,
         resizable: bool = True,
+        menu: "MenuBar | None" = None,
     ) -> None:
         if not isinstance(root, Widget):
             raise TypeError("App.root must be a Widget instance.")
@@ -370,6 +410,14 @@ class App:
         # Reset the drag-area reference (class default is None); a CustomChrome
         # rebuilds it in :meth:`_wrap_with_chrome_and_scope`.
         self._window_drag_area = None
+
+        # Menu bar: the controller owns the registered model and the slots
+        # rendering it. The default slot is inserted below the chrome (see
+        # :meth:`_wrap_with_chrome_and_scope`) only when a menu was registered
+        # at construction; a MenuBarArea in the tree takes over regardless.
+        from nuiitivet.menubar.controller import MenuBarController
+
+        self._menubar_controller = MenuBarController(self, menu)
 
         # Apply the chrome decoration and AppScope wrapping. This is factored out
         # so hot reload can re-wrap a freshly rebuilt content subtree with the
@@ -616,6 +664,7 @@ class App:
         theme: Optional[Any] = None,
         window_position: WindowPosition | None = None,
         resizable: bool = True,
+        menu: "MenuBar | None" = None,
     ):
         """Initialize the App.
 
@@ -652,6 +701,12 @@ class App:
             theme: Theme to install.
             window_position: Initial window position.
             resizable: Whether the window can be resized.
+            menu: The application menu bar model
+                (:class:`~nuiitivet.menubar.MenuBar`), or ``None`` for no menu
+                bar. Rendered below the chrome by default, or at a
+                :class:`~nuiitivet.menubar.MenuBarArea` placed in the tree.
+                Replace it wholesale via ``app.menu = ...``; see
+                ``docs/design/MENU_BAR.md``.
         """
         # Normalize ``content`` to a root factory. A Widget instance is wrapped in
         # a factory that always returns that same instance (so hot reload is a
@@ -701,6 +756,7 @@ class App:
             window_position=window_position,
             window_auto_size_target=built.initial_route_widget,
             resizable=resizable,
+            menu=menu,
         )
 
     def _debug_record_invalidate(self) -> None:

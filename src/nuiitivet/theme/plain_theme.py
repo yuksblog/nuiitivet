@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from nuiitivet.menubar.theme_data import MenuBarThemeData
 from nuiitivet.scrolling.scrollbar_theme_data import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
 
@@ -58,6 +59,28 @@ class PlainColorRole(Enum):
         return None
 
 
+def _plain_menubar_theme_data() -> MenuBarThemeData:
+    """Default menu bar palette for the Plain design system.
+
+    Every slot maps onto Plain roles as tokens, so resolving at paint time
+    keeps the menu bar in sync when switching between the light and dark
+    Plain themes.
+    """
+    return MenuBarThemeData(
+        bar_background=(PlainColorRole.ON_SURFACE, 0.04),
+        bar_foreground=(PlainColorRole.ON_SURFACE, 0.87),
+        bar_disabled_foreground=(PlainColorRole.ON_SURFACE, 0.38),
+        bar_open_background=(PlainColorRole.ON_SURFACE, 0.12),
+        bar_state_layer=PlainColorRole.ON_SURFACE,
+        popup_background=PlainColorRole.SURFACE,
+        popup_foreground=PlainColorRole.ON_SURFACE,
+        popup_accelerator=(PlainColorRole.ON_SURFACE, 0.60),
+        popup_disabled_foreground=PlainColorRole.ON_SURFACE,
+        popup_state_layer=PlainColorRole.ON_SURFACE,
+        popup_divider=(PlainColorRole.OUTLINE, 0.60),
+    )
+
+
 def _plain_scrollbar_theme_data() -> ScrollbarThemeData:
     """Default scrollbar palette for the Plain design system.
 
@@ -88,7 +111,7 @@ class PlainTheme:
         )
         return Theme(
             mode="light",
-            extensions=[data, _plain_scrollbar_theme_data()],
+            extensions=[data, _plain_scrollbar_theme_data(), _plain_menubar_theme_data()],
             name="plain-light",
         )
 
@@ -103,6 +126,6 @@ class PlainTheme:
         )
         return Theme(
             mode="dark",
-            extensions=[data, _plain_scrollbar_theme_data()],
+            extensions=[data, _plain_scrollbar_theme_data(), _plain_menubar_theme_data()],
             name="plain-dark",
         )
