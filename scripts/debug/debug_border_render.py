@@ -13,6 +13,7 @@ def main():
         sys.exit(1)
 
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
     from nuiitivet.layout.column import Column
     from nuiitivet.modifiers import border, corner_radius
     from nuiitivet.widgets.text import Text
@@ -24,7 +25,7 @@ def main():
 
     root = Column(children=[Text("Title", padding=10), widget2], padding=20, gap=10)
 
-    app = App(root=root, width=300, height=300, background="white")
+    app = App(Window(root=root, width=300, height=300, background="white"))
     app.render_to_png("debug_border_render_step5.png")
     print("Saved debug_border_render_step5.png")
 

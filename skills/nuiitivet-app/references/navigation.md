@@ -115,14 +115,16 @@ class HomeScreen(nv.ComposableWidget):
 def main():
     # rule 6: pass a factory, not an already-built Navigator, so live development works
     app = nv.App(
-        content=lambda: nv.Navigator.intents(
-            initial_route=HomeIntent(),
-            routes={
-                HomeIntent:    lambda _: HomeScreen(),
-                DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
-            },
+        nv.Window(
+            content=lambda: nv.Navigator.intents(
+                initial_route=HomeIntent(),
+                routes={
+                    HomeIntent:    lambda _: HomeScreen(),
+                    DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
+                },
+            ),
+            title="Navigation Intent",
         ),
-        title="Navigation Intent",
     )
     app.run()
 ```

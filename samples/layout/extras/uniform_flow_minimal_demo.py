@@ -18,7 +18,7 @@ def main(png: str = ""):
 
     root = nv.Container(alignment="center", child=widget)
 
-    app = nv.App(content=root, title="nv.UniformFlow Demo")
+    app = nv.App(nv.Window(content=root, title="nv.UniformFlow Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

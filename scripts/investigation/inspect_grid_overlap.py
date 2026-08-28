@@ -32,6 +32,7 @@ def inspect_for_n(n):
 
     from samples.my_widget import MyWidgetModel, MyWidget
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
     model = MyWidgetModel()
     # prefill grid items
@@ -39,7 +40,7 @@ def inspect_for_n(n):
     model.grid_items.set(items)
     widget = MyWidget(model)
 
-    app = App(widget, width=480, height=600)
+    app = App(Window(content=widget, width=480, height=600))
 
     # Normalize root as App.run would
     built = app.root.evaluate_build()

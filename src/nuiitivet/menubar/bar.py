@@ -153,10 +153,10 @@ class MenuBarWidget(ComposableWidget):
             controller.activate(item)
 
     def _controller(self) -> Optional[MenuBarController]:
-        from nuiitivet.widgeting.context_lookup import find_app
+        from nuiitivet.widgeting.context_lookup import find_window
 
-        app = find_app(self)
-        return getattr(app, "_menubar_controller", None)
+        window = find_window(self)
+        return getattr(window, "_menubar_controller", None)
 
     # ---- Popup management ------------------------------------------------------
 

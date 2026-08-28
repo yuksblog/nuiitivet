@@ -174,7 +174,7 @@ class PracticalControlsApp(nv.ComposableWidget):
 
 if __name__ == "__main__":
     widget = PracticalControlsApp()
-    app = nv.App(content=widget)
+    app = nv.App(nv.Window(content=widget))
     try:
         app.run()
     except Exception:

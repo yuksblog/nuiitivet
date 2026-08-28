@@ -41,11 +41,11 @@ class _GoIntent:
 
 def test_navigator_of_not_found_raises() -> None:
     # Attached, so the failure really is a missing provider; a bare unattached
-    # Widget would (correctly) report the pre-mount case instead. With no App
+    # Widget would (correctly) report the pre-mount case instead. With no Window
     # above it either, there is no fallback to reach for.
     w = Widget()
     Container().add_child(w)
-    with pytest.raises(RuntimeError, match="not attached to an App"):
+    with pytest.raises(RuntimeError, match="not attached to a Window"):
         Navigator.of(w)
 
 

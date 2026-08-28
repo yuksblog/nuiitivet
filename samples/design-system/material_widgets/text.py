@@ -140,12 +140,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(
-        content=content,
-        title="Text",
-        width=420,
-        height=760,
-    )
+    app = nv.App(nv.Window(content=content, title="Text", width=420, height=760))
     if png_path:
         app.render_to_png(png_path)
     else:

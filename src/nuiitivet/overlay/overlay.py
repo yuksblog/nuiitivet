@@ -8,7 +8,7 @@ import logging
 from typing import Any, Callable, Dict, TypeVar
 
 from nuiitivet.widgeting.callbacks import spawn_task
-from nuiitivet.widgeting.context_lookup import find_app, find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.context_lookup import find_provider, find_window, raise_if_premature_lookup
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
@@ -940,17 +940,17 @@ class Overlay(ComposableWidget):
             if overlay is not None:
                 return overlay
 
-        app = find_app(context)
-        app_overlay = app._overlay if app is not None else None
-        if app_overlay is None:
+        window = find_window(context)
+        window_overlay = window._overlay if window is not None else None
+        if window_overlay is None:
             raise_if_premature_lookup(f"{cls.__name__}.of", context)
             raise RuntimeError(
                 f"No {cls.__name__} found for {context.__class__.__name__}: it has no "
-                f"{cls.__name__} ancestor and is not attached to an App."
+                f"{cls.__name__} ancestor and is not attached to a Window."
             )
-        if not isinstance(app_overlay, cls):
+        if not isinstance(window_overlay, cls):
             raise RuntimeError(
-                f"The App's overlay is a {type(app_overlay).__name__}, not a {cls.__name__}. "
-                f"Pass overlay_factory={cls.__name__} to App(...), or wrap the subtree in one."
+                f"The Window's overlay is a {type(window_overlay).__name__}, not a {cls.__name__}. "
+                f"Pass overlay_factory={cls.__name__} to the Window (or App), or wrap the subtree in one."
             )
-        return app_overlay
+        return window_overlay

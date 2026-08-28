@@ -55,15 +55,16 @@ class FrameCounterApp(nv.ComposableWidget):
 
 
 def _install_frame_counter(app: nv.App) -> None:
-    """Wrap ``app._render_frame`` to count frames and log fps every second."""
-    original_render_frame = app._render_frame
+    """Wrap the main window's ``_render_frame`` to count frames and log fps."""
+    window = app.main_window
+    original_render_frame = window._render_frame
     state = {"frames": 0, "last_report": time.perf_counter()}
 
     def counting_render_frame(dt: float) -> None:
         state["frames"] += 1
         original_render_frame(dt)
 
-    app._render_frame = counting_render_frame  # type: ignore[method-assign]
+    window._render_frame = counting_render_frame  # type: ignore[method-assign]
 
     # Report from a background daemon thread rather than a scheduled clock
     # callback: reporting must never invalidate the tree, or it would keep the
@@ -90,12 +91,7 @@ def main(png_path: str = "") -> None:
         except ValueError:
             draw_fps = None
 
-    app = nv.App(
-        content=FrameCounterApp(),
-        title="On-demand Frame Counter",
-        width=360,
-        height=220,
-    )
+    app = nv.App(nv.Window(content=FrameCounterApp(), title="On-demand Frame Counter", width=360, height=220))
 
     if png_path:
         app.render_to_png(png_path)

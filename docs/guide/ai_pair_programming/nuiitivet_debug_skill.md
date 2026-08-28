@@ -60,7 +60,7 @@ assistant would otherwise get wrong:
 
 - **Setup — the factory contract.** Launching with the dev runner and registering
   the bridge, plus the rule that keeps reload working: pass
-  `App(content=build_root)`, never `App(content=build_root())`, and put per-tree
+  `App(Window(content=build_root))`, never `App(Window(content=build_root()))`, and put per-tree
   init in the factory or `__init__`, not `main()`. A stray call is the first thing
   to suspect when reload seems inert. → [Hot Reload](hot_reload.md)
 - **See — choose the tool by question, not by habit.** `status` answers "is it

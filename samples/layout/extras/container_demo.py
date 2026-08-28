@@ -10,7 +10,7 @@ def main(png: str = ""):
         padding=16,
     )
 
-    app = nv.App(content=widget, title="nv.Container Demo")
+    app = nv.App(nv.Window(content=widget, title="nv.Container Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

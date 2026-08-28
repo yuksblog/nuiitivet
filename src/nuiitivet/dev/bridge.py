@@ -188,26 +188,70 @@ def _parse_flag(query: str, name: str) -> bool:
     return values[0].strip().lower() in ("", "1", "true", "yes", "on")
 
 
+def _resolve_window(app: Any, spec: Any) -> Any:
+    """Return the Window a request addresses; the main window by default.
+
+    ``spec`` is a window id from ``status``'s ``windows`` listing (or ``None``
+    / ``"main"`` for the main window — a deterministic default, since an
+    agent-launched app does not reliably hold OS focus). An object without a
+    ``main_window`` (a bare host in tests) is treated as the window itself.
+    """
+    main = getattr(app, "main_window", None)
+    if main is None:
+        if spec not in (None, "", "main"):
+            raise TargetNotFoundError(f"no window addressing on this host (window={spec!r})")
+        return app
+    if spec in (None, "", "main"):
+        return main
+    try:
+        wid = int(spec)
+    except (TypeError, ValueError):
+        raise ValueError(f"invalid window id: {spec!r}") from None
+    for win in getattr(app, "windows", ()) or ():
+        if getattr(win, "id", None) == wid:
+            return win
+    raise TargetNotFoundError(f"no open window with id {wid}")
+
+
+def _list_windows(app: Any) -> Optional[list[dict[str, Any]]]:
+    """Summarize the open windows for ``status``, or ``None`` on a bare host."""
+    if getattr(app, "main_window", None) is None:
+        return None
+    windows: list[dict[str, Any]] = []
+    for win in getattr(app, "windows", ()) or ():
+        windows.append(
+            {
+                "id": getattr(win, "id", None),
+                "title": getattr(win, "title", None),
+                "main": bool(getattr(win, "is_main", False)),
+                "focused": bool(getattr(win, "_os_active", False)),
+            }
+        )
+    return windows
+
+
 # Runtime-log levels that count as a real failure for ``status``'s error_count,
 # so ordinary WARNING noise does not read as "the app died".
 _STATUS_ERROR_LEVELS = frozenset({"ERROR", "CRITICAL"})
 
 
-def _probe_app(app: "App") -> tuple[Optional[str], bool]:
-    """Read the two live signals ``status`` needs off the app (UI thread).
+def _probe_app(app: "App") -> tuple[Optional[str], bool, Optional[list[dict[str, Any]]]]:
+    """Read the live signals ``status`` needs off the app (UI thread).
 
-    Returns ``(title, blank)``: the resolved window title and whether the
-    current frame is a single uniform color (see :meth:`App._frame_is_blank`).
-    The blank probe renders, so it is defended -- a render failure reports
+    Returns ``(title, blank, windows)``: the main window's title, whether its
+    current frame is a single uniform color (see ``Window._frame_is_blank``),
+    and the open-windows listing (``None`` on a bare single-host). The blank
+    probe renders, so it is defended -- a render failure reports
     ``blank=False`` (do not claim blank) rather than aborting the status call.
     """
-    title = app.title
+    host = _resolve_window(app, None)
+    title = host.title
     try:
-        blank = bool(app._frame_is_blank())
+        blank = bool(host._frame_is_blank())
     except Exception:
         logger.debug("dev bridge: blank-frame probe raised", exc_info=True)
         blank = False
-    return title, blank
+    return title, blank, _list_windows(app)
 
 
 def _latest_reload(journal: Optional[ReloadJournal]) -> Optional[dict[str, Any]]:
@@ -255,11 +299,12 @@ def _build_status(
     this code at all means the bridge is up, so ``running`` is always ``True``;
     a *stopped* app surfaces earlier as a failed discovery on the client.
     """
-    title, blank = marshaller.call_on_ui_thread(_probe_app)
+    title, blank, windows = marshaller.call_on_ui_thread(_probe_app)
     return {
         "running": True,
         "title": title,
         "blank": blank,
+        "windows": windows,
         "last_reload": _latest_reload(journal),
         "error_count": _error_count(runtime_journal),
         # A pull-only surface nobody calls does not exist. ``status`` is the
@@ -291,6 +336,7 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
     key = body.get("key")
     label = body.get("label")
     text = body.get("text")
+    window_spec = body.get("window")
     present = bool(body.get("present", True))
     if key is None and label is None and text is None:
         raise ValueError("wait_for needs one of: key, label, text")
@@ -311,7 +357,11 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
         satisfied = bool(
             marshaller.call_on_ui_thread(
                 lambda app: check_condition(
-                    app, key=key, label=label, text=text, present=present
+                    _resolve_window(app, window_spec),
+                    key=key,
+                    label=label,
+                    text=text,
+                    present=present,
                 )
             )
         )
@@ -407,7 +457,7 @@ def _make_handler(
                 if path == "/click":
                     result = marshaller.call_on_ui_thread(
                         lambda app: click(
-                            app,
+                            _resolve_window(app, body.get("window")),
                             key=body.get("key"),
                             label=body.get("label"),
                             x=body.get("x"),
@@ -418,7 +468,7 @@ def _make_handler(
                 elif path == "/scroll":
                     result = marshaller.call_on_ui_thread(
                         lambda app: scroll(
-                            app,
+                            _resolve_window(app, body.get("window")),
                             key=body.get("key"),
                             label=body.get("label"),
                             x=body.get("x"),
@@ -430,7 +480,7 @@ def _make_handler(
                 elif path == "/scroll_into_view":
                     result = marshaller.call_on_ui_thread(
                         lambda app: scroll_into_view(
-                            app,
+                            _resolve_window(app, body.get("window")),
                             key=body.get("key"),
                             label=body.get("label"),
                             align=body.get("align", "nearest"),
@@ -438,11 +488,17 @@ def _make_handler(
                     )
                 elif path == "/type":
                     result = marshaller.call_on_ui_thread(
-                        lambda app: type_text(app, body.get("text", ""))
+                        lambda app: type_text(
+                            _resolve_window(app, body.get("window")), body.get("text", "")
+                        )
                     )
                 elif path == "/key":
                     result = marshaller.call_on_ui_thread(
-                        lambda app: press_key(app, body.get("key", ""), body.get("modifiers", 0))
+                        lambda app: press_key(
+                            _resolve_window(app, body.get("window")),
+                            body.get("key", ""),
+                            body.get("modifiers", 0),
+                        )
                     )
                 elif path == "/wait_for":
                     # Its own worker-thread poll loop; it marshals each poll onto
@@ -474,8 +530,12 @@ def _make_handler(
                 self._send_json(200, result)
 
         def do_GET(self) -> None:  # noqa: N802 (http.server API)
+            from urllib.parse import parse_qs
+
             raw_path, _, query = self.path.partition("?")
             path = raw_path.rstrip("/")
+            window_values = parse_qs(query).get("window")
+            window_spec = window_values[0] if window_values else None
             try:
                 if path in ("", "/health"):
                     self._send_json(200, {"status": "ok"})
@@ -488,7 +548,9 @@ def _make_handler(
                         200, _build_status(marshaller, journal, runtime_journal, selection)
                     )
                 elif path == "/describe_tree":
-                    tree = marshaller.call_on_ui_thread(lambda app: describe_tree(app.root))
+                    tree = marshaller.call_on_ui_thread(
+                        lambda app: describe_tree(_resolve_window(app, window_spec).root)
+                    )
                     self._send_json(200, {"tree": tree})
                 elif path == "/describe_state":
                     # ``include_animations`` opts the per-frame ``Animatable``
@@ -497,7 +559,8 @@ def _make_handler(
                     include_animations = _parse_flag(query, "include_animations")
                     state = marshaller.call_on_ui_thread(
                         lambda app: describe_state(
-                            app.root, include_animations=include_animations
+                            _resolve_window(app, window_spec).root,
+                            include_animations=include_animations,
                         )
                     )
                     self._send_json(200, {"state": state})
@@ -509,11 +572,15 @@ def _make_handler(
                     self._send_json(
                         200,
                         marshaller.call_on_ui_thread(
-                            lambda app: describe_selection(app.root, selection)
+                            lambda app: describe_selection(
+                                _resolve_window(app, window_spec).root, selection
+                            )
                         ),
                     )
                 elif path == "/screenshot":
-                    png = marshaller.call_on_ui_thread(lambda app: app._render_to_png_bytes())
+                    png = marshaller.call_on_ui_thread(
+                        lambda app: _resolve_window(app, window_spec)._render_to_png_bytes()
+                    )
                     self._send_png(png)
                 elif path == "/reload_log":
                     # A plain buffer read -- no UI-thread hop needed; the journal
@@ -552,6 +619,10 @@ def _make_handler(
                     self._fail(404, f"unknown endpoint: {path}")
             except TimeoutError as exc:
                 self._fail(504, str(exc))
+            except TargetNotFoundError as exc:
+                self._fail(404, str(exc))
+            except ValueError as exc:
+                self._fail(400, f"{type(exc).__name__}: {exc}")
             except Exception as exc:
                 logger.debug("dev bridge: request failed", exc_info=True)
                 self._fail(500, f"{type(exc).__name__}: {exc}")

@@ -66,12 +66,7 @@ def build_root() -> nv.Widget:
 def main(png_path: str = "") -> None:
     # A factory root, not an instance: that is what keeps hot reload working
     # under `python -m nuiitivet.dev`.
-    app = nv.App(
-        content=build_root,
-        title="SearchBar",
-        width=520,
-        height=360,
-    )
+    app = nv.App(nv.Window(content=build_root, title="SearchBar", width=520, height=360))
     if png_path:
         app.render_to_png(png_path)
     else:

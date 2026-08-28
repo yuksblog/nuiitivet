@@ -44,12 +44,7 @@ def main(png: str = ""):
         ],
     )
 
-    app = nv.App(
-        content=widget,
-        title="Step 4: Expansion",
-        width=400,
-        height=400,
-    )
+    app = nv.App(nv.Window(content=widget, title="Step 4: Expansion", width=400, height=400))
     if png:
         app.render_to_png(png)
         return

@@ -104,12 +104,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = "") -> None:
-    app = nv.App(
-        content=build_root,
-        title="Hot Reload: navigation restore",
-        width=420,
-        height=320,
-    )
+    app = nv.App(nv.Window(content=build_root, title="Hot Reload: navigation restore", width=420, height=320))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

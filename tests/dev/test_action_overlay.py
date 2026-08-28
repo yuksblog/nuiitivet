@@ -374,6 +374,7 @@ def test_render_snapshot_paints_overlay_only_for_display(monkeypatch: pytest.Mon
     """The overlay is drawn on live frames (``for_display=True``) but excluded
     from the ``screenshot`` render (``for_display=False``)."""
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
     from nuiitivet.widgeting.widget import Widget
 
     class _Dummy(Widget):
@@ -388,7 +389,7 @@ def test_render_snapshot_paints_overlay_only_for_display(monkeypatch: pytest.Mon
         ao, "paint_markers", lambda **kw: calls.append("painted")
     )
 
-    app = App(content=_Dummy(), background="#123456")
+    app = App(Window(content=_Dummy(), background="#123456")).main_window
 
     # Screenshot path: overlay excluded.
     app._render_snapshot(scale=1.0)

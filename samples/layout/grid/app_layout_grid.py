@@ -33,12 +33,7 @@ def main(png: str = ""):
 
     # 400x400 as requested
     # title_bar argument included so render_layout_images.py can extract the title string
-    app = nv.App(
-        content=widget,
-        title="nv.Grid Layout",
-        width=400,
-        height=400,
-    )
+    app = nv.App(nv.Window(content=widget, title="nv.Grid Layout", width=400, height=400))
 
     if png:
         app.render_to_png(png)

@@ -83,11 +83,11 @@ def main(png_path: str = ""):
         # Mock overlay for screenshot
         content = CustomDialogContent(overlay=cast(nv.Overlay, None))
         content.counter.value = 5
-        app = nv.App(content=nv.Container(alignment="center", child=content), width=400, height=300)
+        app = nv.App(nv.Window(content=nv.Container(alignment="center", child=content), width=400, height=300))
         app.render_to_png(png_path)
         return app
 
-    return nv.App(content=CustomDialogDemo(), width=400, height=300)
+    return nv.App(nv.Window(content=CustomDialogDemo(), width=400, height=300))
 
 
 if __name__ == "__main__":

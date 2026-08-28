@@ -61,8 +61,8 @@ code — no per-session setup.
    layout box; background/border/clipping are modifiers, not its job.)
 5. **Decoration and behavior attach via `.modifier(...)` chained with `|`** — do
    not wrap a widget to decorate it.
-6. **The app root is a factory, not an instance** — pass `App(content=build_root)`,
-   never `App(content=build_root())`; per-tree init goes in the factory or
+6. **The app root is a factory, not an instance** — pass `App(Window(content=build_root))`,
+   never `App(Window(content=build_root()))`; per-tree init goes in the factory or
    `__init__`, not `main()`.
 7. **The one-line mental model** — logic → UI is declarative (`Observable`
    binding); UI → logic is imperative (event handlers).

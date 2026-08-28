@@ -118,7 +118,7 @@ class AbsorbPointerDemo(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = nv.App(content=AbsorbPointerDemo(), title="absorb_pointer Modifier", width=500)
+    app = nv.App(nv.Window(content=AbsorbPointerDemo(), title="absorb_pointer Modifier", width=500))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

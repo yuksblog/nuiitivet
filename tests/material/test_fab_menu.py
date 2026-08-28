@@ -106,11 +106,12 @@ def test_toggle_flips_is_open():
 def test_fab_click_toggles_open():
     """Clicking the morphing FAB flips the single source-of-truth observable."""
     from nuiitivet.material.app import MaterialApp as App
+    from nuiitivet.material.window import MaterialWindow as Window
     from nuiitivet.layout.container import Container
     from nuiitivet.runtime.app_events import dispatch_mouse_press, dispatch_mouse_release
 
     menu = _menu()
-    app = App(content=Container(padding=24, child=menu), title="t", width=300, height=300)
+    app = App(Window(content=Container(padding=24, child=menu), title="t", width=300, height=300)).main_window
     app.root.mount(app)
     try:
         app.root.layout(300, 300)
@@ -294,10 +295,11 @@ def test_fab_corner_radius_tracks_shape_morph():
     after mount to win.
     """
     from nuiitivet.material.app import MaterialApp as App
+    from nuiitivet.material.window import MaterialWindow as Window
     from nuiitivet.layout.container import Container
 
     menu = _menu(style=FabStyle.primary("s"))
-    app = App(content=Container(padding=8, child=menu), title="t", width=200, height=200)
+    app = App(Window(content=Container(padding=8, child=menu), title="t", width=200, height=200)).main_window
     app.root.mount(app)
     try:
         app.root.layout(200, 200)

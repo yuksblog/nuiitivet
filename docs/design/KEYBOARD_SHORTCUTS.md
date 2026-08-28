@@ -78,18 +78,18 @@ displayed, so `FOREGROUND` already disambiguates it.
 
 ### `MOUNT` is how an app-wide command is expressed
 
-`App(content=X)` makes `X` the initial route of the default navigator, and it
+`App(Window(content=X))` makes `X` the initial route of the default navigator, and it
 stays mounted for the life of the app. So an app-wide command is a `MOUNT`-scoped
 binding on the content root:
 
 ```python
-App(content=home.modifier(key_shortcut("Accel+Q", on_trigger=quit, scope=MOUNT)))
+App(Window(content=home.modifier(key_shortcut("Accel+Q", on_trigger=quit, scope=MOUNT))))
 ```
 
 This keeps working after a route push, which occludes `home` but does not unmount
 it.
 
-### Why there is no `APPLICATION` scope, and no `App(shortcuts=...)`
+### Why there is no `APPLICATION` scope, and no app-level `shortcuts=`
 
 An earlier design proposed an app-level registry outside the widget tree (the
 SwiftUI `.commands` shape). It is not needed, and the reason is structural:

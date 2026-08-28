@@ -36,7 +36,7 @@ def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
         ]
     )
     app = nuiitivet_app(Text("content"), size=(400, 300), menu=model)
-    controller = app._app._menubar_controller
+    controller = app.window._menubar_controller
     controller.install_platform_bridge()
     assert controller.native
 
@@ -80,7 +80,7 @@ def test_main_menu_structure_matches_plan(nuiitivet_app) -> None:
         ]
     )
     app = nuiitivet_app(Text("content"), size=(400, 300), menu=model)
-    controller = app._app._menubar_controller
+    controller = app.window._menubar_controller
     controller.install_platform_bridge()
 
     from pyglet.libs.darwin.cocoapy import ObjCClass, cfstring_to_string

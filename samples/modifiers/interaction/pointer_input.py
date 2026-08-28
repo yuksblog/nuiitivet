@@ -136,7 +136,7 @@ class PointerInspector(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = nv.App(content=PointerInspector(), title="pointer_input — event inspector", width=550)
+    app = nv.App(nv.Window(content=PointerInspector(), title="pointer_input — event inspector", width=550))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

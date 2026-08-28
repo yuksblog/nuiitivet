@@ -7,6 +7,7 @@ from nuiitivet.modifiers import on_size_changed
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 import pytest
@@ -36,8 +37,8 @@ class _Panel(ComposableWidget):
         return Container(width=Sizing.weight(1), height=Sizing.weight(1)).modifier(on_size_changed(self._on_size))
 
 
-def _mounted_app(panel: Widget, width: int = 800, height: int = 600) -> App:
-    app = App(content=panel, width=width, height=height)
+def _mounted_app(panel: Widget, width: int = 800, height: int = 600) -> Window:
+    app = App(Window(content=panel, width=width, height=height)).main_window
     app.root.mount(app)
     return app
 
@@ -135,4 +136,4 @@ def test_snapshot_settling_is_bounded_when_a_callback_keeps_resizing() -> None:
     app.root.layout(800, 600)
     app._settle_pending_size_changes(800, 600)
 
-    assert 0 < len(calls) <= App._MAX_SNAPSHOT_SETTLE_PASSES
+    assert 0 < len(calls) <= Window._MAX_SNAPSHOT_SETTLE_PASSES

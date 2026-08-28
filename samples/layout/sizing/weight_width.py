@@ -9,7 +9,7 @@ def main(png: str = ""):
         alignment="center",
     )
 
-    app = nv.App(content=widget, title="Full Width Box", width=400)
+    app = nv.App(nv.Window(content=widget, title="Full Width Box", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

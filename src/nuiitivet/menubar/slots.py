@@ -48,12 +48,12 @@ class MenuBarSlotBase(ComposableWidget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        from nuiitivet.widgeting.context_lookup import find_app
+        from nuiitivet.widgeting.context_lookup import find_window
 
-        app = find_app(self)
-        controller = getattr(app, "_menubar_controller", None)
+        window = find_window(self)
+        controller = getattr(window, "_menubar_controller", None)
         if controller is None:
-            logger.warning("MenuBar slot mounted outside an App; it will render nothing.")
+            logger.warning("MenuBar slot mounted outside a Window; it will render nothing.")
             return
         self._controller = controller
         controller.register_slot(self)

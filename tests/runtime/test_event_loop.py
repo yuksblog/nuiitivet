@@ -20,8 +20,7 @@ def test_request_draw_inside_callback_is_preserved():
         recorded.append(dt)
         loop.request_draw()
 
-    window = _DummyWindow()
-    loop = ResponsiveEventLoop(window, _draw, draw_fps=None)
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
 
     # Pretend a draw was requested by user code.
     loop._draw_pending = True
@@ -43,7 +42,7 @@ def _noop_draw(dt: float) -> None:
 
 def test_should_draw_on_demand_only_when_pending():
     """With no cadence, draw exactly when a request is pending."""
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=None)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=None)
     now = time.perf_counter()
 
     loop._draw_pending = False
@@ -55,7 +54,7 @@ def test_should_draw_on_demand_only_when_pending():
 
 def test_should_draw_cadence_is_a_throttle_not_a_trigger():
     """With a cadence, a clean tree never draws even past the deadline."""
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=30.0)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=30.0)
     now = time.perf_counter()
 
     # Deadline already elapsed, but nothing is pending -> no frame.
@@ -66,7 +65,7 @@ def test_should_draw_cadence_is_a_throttle_not_a_trigger():
 
 def test_should_draw_cadence_throttles_pending_requests():
     """A pending request waits for the throttle deadline before drawing."""
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=30.0)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=30.0)
     now = time.perf_counter()
     loop._draw_pending = True
 
@@ -99,7 +98,7 @@ def _timeout_with_clock(loop, sleep_time, now):
 
 def test_compute_sleep_timeout_idle_cadence_does_not_wake_for_draw():
     """A clean tree with a cadence must sleep on the clock, not the deadline."""
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=30.0)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=30.0)
     now = time.perf_counter()
     loop._draw_pending = False
     loop._next_draw_deadline = now  # deadline reached, but nothing pending
@@ -109,7 +108,7 @@ def test_compute_sleep_timeout_idle_cadence_does_not_wake_for_draw():
 
 
 def test_compute_sleep_timeout_pending_cadence_wakes_at_deadline():
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=30.0)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=30.0)
     now = time.perf_counter()
     loop._draw_pending = True
     loop._next_draw_deadline = now + 0.02
@@ -120,7 +119,7 @@ def test_compute_sleep_timeout_pending_cadence_wakes_at_deadline():
 
 
 def test_compute_sleep_timeout_pending_on_demand_wakes_immediately():
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=None)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=None)
     now = time.perf_counter()
     loop._draw_pending = True
 
@@ -129,7 +128,7 @@ def test_compute_sleep_timeout_pending_on_demand_wakes_immediately():
 
 def test_compute_sleep_timeout_idle_on_demand_uses_clock():
     """Idle on-demand loop wakes for scheduled clock events (e.g. animations)."""
-    loop = ResponsiveEventLoop(_DummyWindow(), _noop_draw, draw_fps=None)
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=None)
     now = time.perf_counter()
     loop._draw_pending = False
 

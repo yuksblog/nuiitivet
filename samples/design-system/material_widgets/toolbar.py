@@ -37,12 +37,7 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(
-        content=content,
-        title="Toolbar",
-        width=560,
-        height=300,
-    )
+    app = nv.App(nv.Window(content=content, title="Toolbar", width=560, height=300))
     if png_path:
         app.render_to_png(png_path)
     else:

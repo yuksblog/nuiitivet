@@ -8,12 +8,14 @@ fails for a reason that has nothing to do with a missing provider, and the
 Every ``of()`` funnels its failure path through :func:`raise_if_premature_lookup`
 so that the premature case is reported as such, consistently and without drift.
 
-:func:`find_app` is the second half: some providers are owned by the ``App``
-rather than placed in the tree by the author, and the App's own ``Overlay`` is
-not even an ancestor of the content (it is a sibling layer of the ``Navigator``).
-Those ``of()`` implementations fall back to the App reached through
-:class:`~nuiitivet.runtime.app.AppScope`, which keeps the answer scoped to *this*
-App instead of a process-wide global.
+:func:`find_window` is the second half: some providers are owned by the
+``Window`` rather than placed in the tree by the author, and the Window's own
+``Overlay`` is not even an ancestor of the content (it is a sibling layer of
+the ``Navigator``). Those ``of()`` implementations fall back to the Window
+reached through :class:`~nuiitivet.runtime.window.WindowScope`, which keeps
+the answer scoped to *this* window instead of a process-wide global.
+:func:`find_app` resolves the app-wide half through
+:class:`~nuiitivet.runtime.app.AppScope`.
 """
 
 from __future__ import annotations
@@ -22,10 +24,12 @@ from typing import TYPE_CHECKING, Any, Final, Optional, Type, TypeVar
 
 if TYPE_CHECKING:
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
 
 __all__ = [
     "find_app",
     "find_provider",
+    "find_window",
     "is_premature_lookup",
     "is_uninitialized_context",
     "premature_lookup_message",
@@ -78,6 +82,27 @@ def find_app(context: Any) -> Optional["App"]:
     if scope is None:
         return None
     return scope.app
+
+
+def find_window(context: Any) -> Optional["Window"]:
+    """Return the :class:`~nuiitivet.runtime.window.Window` owning ``context``.
+
+    Resolved through the ``WindowScope`` that wraps every window root, so each
+    window in one process sees its own. Returns ``None`` for a widget tree
+    that no Window owns — a bare tree in a test, or a widget not attached yet.
+
+    Args:
+        context: The widget to search upward from.
+
+    Returns:
+        The owning Window, or ``None`` if there is none to be found.
+    """
+    from nuiitivet.runtime.window import WindowScope
+
+    scope = find_provider(context, WindowScope)
+    if scope is None:
+        return None
+    return scope.window
 
 
 def is_premature_lookup(context: Any) -> bool:

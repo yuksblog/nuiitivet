@@ -29,11 +29,7 @@ def main(png: str = ""):
         cross_alignment="center",
     )
 
-    app = nv.App(
-        content=form,
-        title="nv.Row/nv.Column Combination",
-        width="auto",
-    )
+    app = nv.App(nv.Window(content=form, title="nv.Row/nv.Column Combination", width="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

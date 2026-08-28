@@ -106,7 +106,11 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "No push_replacement / pop_until in Nuiitivet: push a widget or Intent with "
      "Navigator.of(self).push(...); go back with Navigator.of(self).pop()."),
     (re.compile(r"\brunApp\s*\(|\bMaterialApp\s*\("), "Flutter",
-     "nv.App(content=build_root).run() — pass a factory for hot reload."),
+     "nv.App(nv.Window(content=build_root)).run() — pass a factory for hot reload."),
+    (re.compile(r"\bApp\(\s*content\s*="), "nuiitivet (old API)",
+     "App takes its main Window: nv.App(nv.Window(content=..., title=...)). Window "
+     "keywords (title, width, menu, ...) live on nv.Window; App keeps theme= and "
+     "exit_policy= only."),
     (re.compile(r"\bBuildContext\b"), "Flutter",
      "No BuildContext type; context is passed where needed without annotation."),
     (re.compile(r"@Composable\b"), "Jetpack Compose",

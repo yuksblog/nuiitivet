@@ -201,6 +201,10 @@ def build_server() -> "FastMCP":
           white/blank screen where nothing painted (a build that produced no
           content, or a paint that raised). A heuristic: an intentionally solid
           screen also reads blank.
+        - ``windows`` -- the open windows as ``[{"id", "title", "main",
+          "focused"}]`` (or ``null`` on a single-host build). Pass an ``id`` as
+          the ``window`` argument of the tree/state/screenshot/action tools to
+          address that window; omitting it addresses the main window.
         - ``selection`` -- ``{"seq", "active", "nodes", "regions"}`` (or ``null``):
           what the human has pointed at in inspect mode. A ``seq`` you have not
           seen before means they designated something for you since your last
@@ -212,7 +216,7 @@ def build_server() -> "FastMCP":
         return _client().status()
 
     @server.tool()
-    def describe_tree() -> dict[str, Any]:
+    def describe_tree(window: Optional[int] = None) -> dict[str, Any]:
         """Return the running app's widget tree as compact structural JSON.
 
         This is the token-cheap default for reasoning about the UI and for
@@ -220,11 +224,16 @@ def build_server() -> "FastMCP":
         ``{"type", optional "key"/"label"/"text"/"title", optional "rect",
         optional "children"}`` where ``rect`` is ``[x, y, w, h]`` in root
         coordinates. This is the default for reading what is on screen.
+
+        ``window`` selects an open window by id (from `status`'s ``windows``
+        listing); omit it for the main window.
         """
-        return _client().describe_tree()
+        return _client().describe_tree(window=window)
 
     @server.tool()
-    def describe_state(include_animations: bool = False) -> dict[str, Any]:
+    def describe_state(
+        include_animations: bool = False, window: Optional[int] = None
+    ) -> dict[str, Any]:
         """Return the running app's reactive `Observable` state as structural JSON.
 
         The complement to `describe_tree`: where that gives the UI *output*
@@ -249,7 +258,7 @@ def build_server() -> "FastMCP":
         the animation itself is the bug ("the button never returns to its rest
         state").
         """
-        return _client().describe_state(include_animations=include_animations)
+        return _client().describe_state(include_animations=include_animations, window=window)
 
     @server.tool()
     def describe_selection() -> dict[str, Any]:
@@ -389,7 +398,7 @@ def build_server() -> "FastMCP":
         return {"verbose": _client().set_runtime_log_verbose(enabled)}
 
     @server.tool()
-    def screenshot() -> Image:
+    def screenshot(window: Optional[int] = None) -> Image:
         """Return a PNG of the widget tree, re-rendered offscreen.
 
         Use it for one job: investigating a *human-reported* visual or layout
@@ -404,7 +413,7 @@ def build_server() -> "FastMCP":
         swap chain), so never dismiss a human's visual report on that basis --
         ask them for their own screenshot.
         """
-        return Image(data=_client().screenshot(), format="png")
+        return Image(data=_client().screenshot(window=window), format="png")
 
     @server.tool()
     def click(
@@ -412,6 +421,7 @@ def build_server() -> "FastMCP":
         label: Optional[str] = None,
         x: Optional[float] = None,
         y: Optional[float] = None,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Click a widget in the running app.
 
@@ -420,7 +430,7 @@ def build_server() -> "FastMCP":
         changes. Raw ``x`` / ``y`` root coordinates are a fallback. Find valid
         identifiers with `describe_tree`.
         """
-        return _client().click(key=key, label=label, x=x, y=y)
+        return _client().click(key=key, label=label, x=x, y=y, window=window)
 
     @server.tool()
     def scroll(
@@ -430,6 +440,7 @@ def build_server() -> "FastMCP":
         y: Optional[float] = None,
         dx: float = 0.0,
         dy: float = 0.0,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Send a mouse wheel event to a scrollable region in the running app.
 
@@ -460,13 +471,14 @@ def build_server() -> "FastMCP":
         To bring a specific widget on screen, prefer `scroll_into_view` -- it
         computes the offset in one shot instead of stepping by notches.
         """
-        return _client().scroll(key=key, label=label, x=x, y=y, dx=dx, dy=dy)
+        return _client().scroll(key=key, label=label, x=x, y=y, dx=dx, dy=dy, window=window)
 
     @server.tool()
     def scroll_into_view(
         key: Optional[str] = None,
         label: Optional[str] = None,
         align: str = "nearest",
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Scroll a widget's region(s) until that widget is on screen.
 
@@ -483,26 +495,32 @@ def build_server() -> "FastMCP":
         region's resulting ``offset`` / ``max_extent``. A target in no
         scrollable region at all is an error, not a silent success.
         """
-        return _client().scroll_into_view(key=key, label=label, align=align)
+        return _client().scroll_into_view(key=key, label=label, align=align, window=window)
 
     @server.tool()
-    def type(text: str) -> dict[str, Any]:  # noqa: A001 (MCP tool name is intentional)
+    def type(  # noqa: A001 (MCP tool name is intentional)
+        text: str, window: Optional[int] = None
+    ) -> dict[str, Any]:
         """Type ``text`` into the app's focused widget.
 
         Focus a target first (e.g. `click` a text field); with nothing focused
         the app has nowhere to route the text and ``handled`` is ``False``.
         """
-        return _client().type_text(text)
+        return _client().type_text(text, window=window)
 
     @server.tool()
-    def key(name: str, modifiers: Optional[list[str]] = None) -> dict[str, Any]:
+    def key(
+        name: str,
+        modifiers: Optional[list[str]] = None,
+        window: Optional[int] = None,
+    ) -> dict[str, Any]:
         """Press a key (e.g. ``enter``, ``tab``, ``a``) in the running app.
 
         ``modifiers`` is an optional list of names to hold -- ``shift``,
         ``ctrl``, ``alt``, ``meta``, or ``accel`` (the platform Ctrl/Cmd) -- so
         shortcuts and focus traversal behave like real key events.
         """
-        return _client().key(name, modifiers=modifiers)
+        return _client().key(name, modifiers=modifiers, window=window)
 
     @server.tool()
     def wait_for(
@@ -511,6 +529,7 @@ def build_server() -> "FastMCP":
         text: Optional[str] = None,
         present: bool = True,
         timeout: Optional[float] = None,
+        window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Wait for a tree condition after an action that starts async work.
 
@@ -530,7 +549,7 @@ def build_server() -> "FastMCP":
         follow up with `describe_tree` to see what state the app is actually in.
         """
         return _client().wait_for(
-            key=key, label=label, text=text, present=present, timeout=timeout
+            key=key, label=label, text=text, present=present, timeout=timeout, window=window
         )
 
     return server

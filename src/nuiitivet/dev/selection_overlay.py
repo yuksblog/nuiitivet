@@ -102,9 +102,21 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
         if skia is None:
             return
 
+        from nuiitivet.widgeting.context_lookup import find_window
+
         font, typeface = _font(skia)
         newest_index = marks[-1][0] if marks else None
         for index, kind, mark in marks:
+            if kind != "region":
+                # The selection is shared across windows; paint a node's mark
+                # only in the window that owns it, or its rect would show as a
+                # ghost at the same coordinates in every other window. An
+                # unresolvable owner (a bare test tree) paints as before.
+                # Regions carry no owner and still paint everywhere — a known
+                # multi-window limitation.
+                owner = find_window(mark)
+                if owner is not None and owner is not app:
+                    continue
             rect = mark if kind == "region" else visible_rect(mark)
             if rect is None:
                 continue

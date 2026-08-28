@@ -63,7 +63,7 @@ def test_route_stack_reports_the_screen_widgets_bottom_to_top() -> None:
         assert isinstance(app.current_screen, ListScreen)
         assert len(app.route_stack) == 1
 
-        app.app.navigator.push(DetailScreen())
+        app.window.navigator.push(DetailScreen())
         app.settle()
 
         assert len(app.route_stack) == 2
@@ -74,7 +74,7 @@ def test_route_stack_reports_the_screen_widgets_bottom_to_top() -> None:
 def test_a_push_is_visible_immediately() -> None:
     """Push is synchronous, so a push assertion needs no wait."""
     with AppHarness(ListScreen(), size=SIZE) as app:
-        app.app.navigator.push(_animated(DetailScreen()))
+        app.window.navigator.push(_animated(DetailScreen()))
 
         # No settle, no await: the stack has already moved.
         assert len(app.route_stack) == 2
@@ -89,7 +89,7 @@ async def test_a_pop_changes_the_depth_only_when_the_exit_animation_finalizes() 
     test go green on a transition that has not happened.
     """
     with AppHarness(ListScreen(), size=SIZE) as app:
-        nav = app.app.navigator
+        nav = app.window.navigator
         nav.push(_animated(DetailScreen()))
         app.settle()
         assert len(app.route_stack) == 2
@@ -145,7 +145,7 @@ async def test_in_transition_covers_the_window_before_the_pop_task_runs() -> Non
     waited for nothing.
     """
     with AppHarness(ListScreen(), size=SIZE) as app:
-        nav = app.app.navigator
+        nav = app.window.navigator
         nav.push(_animated(DetailScreen()))
         # The push animates, and `settle()` elapses no time, so the enter
         # transition is genuinely still running here -- the narrow reading is
@@ -171,7 +171,7 @@ def test_in_transition_does_not_stick_when_the_pop_could_not_be_scheduled() -> N
     from nuiitivet.testing import UnschedulableAsyncWork
 
     with AppHarness(ListScreen(), size=SIZE) as app:
-        nav = app.app.navigator
+        nav = app.window.navigator
         nav.push(_instant(DetailScreen()))
         app.settle()
         assert app.in_transition is False
@@ -190,7 +190,7 @@ def test_in_transition_does_not_stick_when_the_pop_could_not_be_scheduled() -> N
 async def test_in_transition_is_false_once_a_pop_is_refused() -> None:
     """A back request that pops nothing still has to release the flag."""
     with AppHarness(ListScreen(), size=SIZE) as app:
-        app.app.navigator.pop()  # nothing to pop
+        app.window.navigator.pop()  # nothing to pop
         assert app.in_transition is True
 
         await app.idle()
@@ -204,7 +204,7 @@ async def test_in_transition_is_false_once_a_pop_is_refused() -> None:
 def test_open_overlays_reports_the_content_not_the_composed_layer() -> None:
     with AppHarness(ListScreen(), size=SIZE) as app:
         dialog = ConfirmDialog()
-        app.app.overlay.show(dialog, backdrop=True)
+        app.window.overlay.show(dialog, backdrop=True)
 
         assert app.open_overlays == (dialog,)
         assert app.top_overlay is dialog
@@ -221,8 +221,8 @@ def test_open_overlays_is_bottom_to_top() -> None:
     with AppHarness(ListScreen(), size=SIZE) as app:
         first = ConfirmDialog()
         second = ConfirmDialog()
-        app.app.overlay.show(first)
-        app.app.overlay.show(second)
+        app.window.overlay.show(first)
+        app.window.overlay.show(second)
 
         assert app.open_overlays == (first, second)
         assert app.top_overlay is second
@@ -230,9 +230,9 @@ def test_open_overlays_is_bottom_to_top() -> None:
 
 def test_reading_open_overlays_builds_nothing() -> None:
     with AppHarness(ListScreen(), size=SIZE) as app:
-        entry_widgets_before = [e._widget for e in app.app.overlay.open_entries]
+        entry_widgets_before = [e._widget for e in app.window.overlay.open_entries]
         dialog = ConfirmDialog()
-        app.app.overlay.show(dialog)
+        app.window.overlay.show(dialog)
 
         for _ in range(3):
             app.open_overlays
@@ -310,7 +310,7 @@ async def test_escape_during_the_exit_animation_is_a_no_op() -> None:
     content = Container(width="wt", height="wt")
     with AppHarness(content, size=SIZE) as app:
         overlay = MaterialOverlay.of(content)
-        nav = app.app.navigator
+        nav = app.window.navigator
         nav.push(_animated(DetailScreen()))
         await app.wait_for(lambda: not app.in_transition)
         assert len(app.route_stack) == 2
@@ -385,7 +385,7 @@ def test_a_nested_navigator_is_reached_through_its_own_stack() -> None:
         nested = app.get(key="tabs").widget
 
         assert isinstance(nested, Navigator)
-        assert nested is not app.app.navigator
+        assert nested is not app.window.navigator
         assert len(nested.stack) == 1
 
         nested.push(DetailScreen())
@@ -396,12 +396,12 @@ def test_a_nested_navigator_is_reached_through_its_own_stack() -> None:
         assert len(app.route_stack) == 1
 
         # The wrong turn: `.of()` walks up, not down.
-        assert Navigator.of(nested) is app.app.navigator
+        assert Navigator.of(nested) is app.window.navigator
 
 
 def test_overlay_open_entries_skips_the_pinned_base_route() -> None:
     with AppHarness(ListScreen(), size=SIZE) as app:
-        overlay = app.app.overlay
+        overlay = app.window.overlay
         assert overlay.open_entries == ()
 
         dialog = ConfirmDialog()

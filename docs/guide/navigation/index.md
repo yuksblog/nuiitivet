@@ -6,7 +6,7 @@ Nuiitivet provides a robust navigation system for managing screen transitions an
 
 The `Navigator` is a widget that manages a set of child widgets with a stack discipline. It allows you to transition between different screens (or "pages") in your application.
 
-When you create an `App`, a root `Navigator` is automatically set up for you. If you pass a plain `Widget` as content (e.g. `App(HomeScreen())`), it is wrapped in an implicit root `Navigator`. If you pass a `Navigator` explicitly (e.g. `App(Navigator.intents(...))`), that instance is used as the root. In all cases you reach it from a mounted widget with `Navigator.of(self)`, which returns the nearest enclosing `Navigator` and falls back to the App's when there is no nested one.
+When you create an `App`, a root `Navigator` is automatically set up for you. If you pass a plain `Widget` as content (e.g. `App(Window(content=HomeScreen()))`), it is wrapped in an implicit root `Navigator`. If you pass a `Navigator` explicitly (e.g. `App(Window(content=Navigator.intents(...)))`), that instance is used as the root. In all cases you reach it from a mounted widget with `Navigator.of(self)`, which returns the nearest enclosing `Navigator` and falls back to the window's when there is no nested one.
 
 ## Basic Navigation: Push and Pop
 

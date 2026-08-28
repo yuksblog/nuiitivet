@@ -3,13 +3,13 @@
 ## 1. Purpose and Scope
 
 This document defines the design of the application menu bar: the declarative
-menu model registered on `App`, its rendering on Windows/Linux as an in-app
+menu model registered on `Window`, its rendering on Windows/Linux as an in-app
 widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 ### In scope
 
 - The menu model (`MenuBar`, `MenuBarItem`) and its reactivity contract
-- Registration on `App` and activation dispatch
+- Registration on `Window` and activation dispatch
 - Placement rules, including free placement inside a `CustomChrome`
 - Platform split: in-app rendering vs. the macOS `NSMenu` bridge
 - Integration with the keyboard-shortcut system
@@ -26,7 +26,7 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 ## 2. Terminology
 
 - **menu model**: The plain declarative data tree (`MenuBar` and its items)
-  registered on `App`. Not widgets.
+  registered on `Window`. Not widgets.
 - **in-app bar**: The Nuiitivet-drawn horizontal bar rendering the menu model
   on Windows/Linux.
 - **global menu bar**: The macOS system menu bar at the top of the screen,
@@ -38,14 +38,14 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 ## 3. Design Decisions
 
-1. **The menu is a model registered on `App`, not a widget in the tree.**
+1. **The menu is a model registered on `Window`, not a widget in the tree.**
    On macOS the menu lives outside the window, so a widget-tree API cannot be
-   truthful on both platforms. `App(menu=...)` sits beside `title=` and
+   truthful on both platforms. `Window(menu=...)` sits beside `title=` and
    `chrome=`.
 2. **One activation path: `on_select` callbacks.** Built-in commands are
    covered by standard items (Section 4.4); there is no `intent=` parameter.
 3. **Item properties are `Observable`-bindable**, following the `title=`
-   precedent on `App`. Structural changes are wholesale replacement, not
+   precedent on `Window`. Structural changes are wholesale replacement, not
    diffing (Section 4.3).
 4. **Accelerators are declared on the item and registered by the menu
    system.** One definition drives display, activation, and per-platform
@@ -108,7 +108,7 @@ marks — not arbitrary widget subtrees.
   surface is rendering the model — repaint for the in-app bar, `setTitle:` /
   `setEnabled:` / `setState:` calls for `NSMenu`.
 - **Structure is not observable.** Adding or removing items (e.g. "Open
-  Recent") is done by assigning a new model to `app.menu`, which rebuilds the
+  Recent") is done by assigning a new model to `window.menu`, which rebuilds the
   rendered surface wholesale.
 
 ### 4.4 Standard items
@@ -138,30 +138,32 @@ placement (on macOS, `quit()` relocates to the application menu — Section
 
 ```python
 app = nv.App(
-    content=Home,
-    title="MyEditor",
-    menu=nv.MenuBar([
-        nv.MenuBarItem("File", submenu=[
-            nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=open_file),
-            nv.MenuBarItem("Save", shortcut="Accel+S",
-                           on_select=save, enabled=can_save),
-            nv.MenuBarItem.separator(),
-            nv.MenuBarItem.quit(),
+    nv.Window(
+        content=Home,
+        title="MyEditor",
+        menu=nv.MenuBar([
+            nv.MenuBarItem("File", submenu=[
+                nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=open_file),
+                nv.MenuBarItem("Save", shortcut="Accel+S",
+                               on_select=save, enabled=can_save),
+                nv.MenuBarItem.separator(),
+                nv.MenuBarItem.quit(),
+            ]),
         ]),
-    ]),
+    ),
 )
 ```
 
-`App` takes a `menu: MenuBar | None = None` keyword and a settable
-`app.menu` property for wholesale replacement (Section 4.3). Per App, a
-`MenuBarController` (`nuiitivet/menubar/controller.py`) owns the registered
-model, the rendering surfaces, and the shared activation path.
+`Window` takes a `menu: MenuBar | None = None` keyword and a settable
+`window.menu` property for wholesale replacement (Section 4.3). Per
+window, a `MenuBarController` (`nuiitivet/menubar/controller.py`) owns the
+registered model, the rendering surfaces, and the shared activation path.
 
-Callbacks needing the `App` (e.g. to dispatch a built-in intent not covered
-by a standard item) reference the app object through an ordinary
-late-binding closure: `on_select=lambda: app.dispatch(...)` resolves `app`
-at activation time. The model is data outside the widget tree, so
-`App.of(context)` does not apply.
+Callbacks needing the window or the app (e.g. to dispatch a built-in
+intent not covered by a standard item) reference the object through an
+ordinary late-binding closure: `on_select=lambda: window.dispatch(...)`
+resolves `window` at activation time. The model is data outside the
+widget tree, so `.of(context)` does not apply.
 
 ### 5.2 Activation
 
@@ -198,11 +200,11 @@ renders as `⌘` on macOS and `Ctrl` elsewhere.
 
 ### 6.1 Default
 
-With no explicit placement, `App` inserts the in-app bar at the top of the
+With no explicit placement, the `Window` inserts the in-app bar at the top of the
 content area, below the chrome — for both `OSChrome` and `CustomChrome`.
 The bar participates in normal layout; content shrinks accordingly. The
-default slot is inserted only when a menu is registered at App
-construction; a menu-less App carries no extra widgets.
+default slot is inserted only when a menu is registered at `Window`
+construction; a menu-less window carries no extra widgets.
 
 ### 6.2 Free placement: `MenuBarArea`
 
@@ -217,7 +219,7 @@ render — e.g. inside a `CustomChrome` header row:
 - A `MenuBarArea` with no registered menu renders nothing (zero size), so
   conditional menus are allowed.
 
-The model stays on `App` in all cases; `MenuBarArea` moves only the pixels.
+The model stays on `Window` in all cases; `MenuBarArea` moves only the pixels.
 Menu definitions, callbacks, and shortcuts are unaffected by placement.
 
 ### 6.3 macOS
@@ -261,7 +263,7 @@ platform branching in app code.
   `ObjCSubclass`), imported lazily and only on macOS. No new dependency;
   specifically, pyobjc is not added.
 - The controller installs the bridge when the backend window exists
-  (`App._on_window_created`, called by the pyglet runner). While the bridge
+  (`Window._on_window_created`, called by the pyglet runner). While the bridge
   is installed, `active_slot()` is `None` and every in-app slot collapses.
 - The bridge is a one-way translator: model → `NSMenu` tree on registration
   or replacement; observable property changes → targeted setter calls

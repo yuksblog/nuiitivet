@@ -14,7 +14,7 @@ def main(png: str = ""):
         ),
     )
 
-    app = nv.App(content=widget, title="Scrollable List", width=400)
+    app = nv.App(nv.Window(content=widget, title="Scrollable List", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

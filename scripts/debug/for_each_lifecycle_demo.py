@@ -210,7 +210,7 @@ if __name__ == "__main__":
         raise SystemExit(0)
 
     model = LifecycleDemoModel()
-    app = nv.App(content=LifecycleDemo(model), title="ForEach Lifecycle Demo (#365)")
+    app = nv.App(nv.Window(content=LifecycleDemo(model), title="ForEach Lifecycle Demo (#365)"))
     try:
         app.run()
     except Exception:

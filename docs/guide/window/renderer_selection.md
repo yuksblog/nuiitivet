@@ -7,7 +7,7 @@ unavailable. You can control this with the `renderer` argument.
 ```python
 import nuiitivet.material as nv
 
-app = nv.App(content=MyScreen())
+app = nv.App(nv.Window(content=MyScreen()))
 
 app.run(renderer="auto")  # default
 app.run(renderer="gpu")   # require the GPU

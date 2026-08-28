@@ -1,6 +1,7 @@
 import sys
 import types
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.layout.column import Column
 from nuiitivet.material import Checkbox
 
@@ -10,7 +11,7 @@ def test_focus_traversal_and_shift_tab():
     cb2 = Checkbox(disabled=True)
     cb3 = Checkbox()
     root = Column([cb1, cb2, cb3])
-    app = App(root)
+    app = App(Window(content=root)).main_window
     assert getattr(app, "_focused_target", None) is None
     handled = app._dispatch_key_press("tab")
     assert handled is True

@@ -43,7 +43,7 @@ def main(png: str = "") -> None:
         padding=24,
     )
 
-    app = nv.App(content=content, title="stick Modifier", width=400)
+    app = nv.App(nv.Window(content=content, title="stick Modifier", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

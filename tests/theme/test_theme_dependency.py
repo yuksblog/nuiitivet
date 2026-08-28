@@ -29,10 +29,17 @@ class _StubApp:
 
 
 def _scope(root: Widget, theme: Theme | None = None) -> ThemeManager:
-    """Attach ``root`` under an ``AppScope`` and return the scope's manager."""
+    """Attach ``root`` under an ``AppScope`` and return the scope's manager.
+
+    Wires ``on_change`` to invalidate the scope's readers, the way the real
+    ``App`` fans a theme change out to each open window's tree.
+    """
+    from nuiitivet.theme.dependency import invalidate_theme_readers
+
     manager = ThemeManager(theme or Theme(mode="light", extensions=[]))
     app = _StubApp(manager)
     scope = AppScope(app, root)  # type: ignore[arg-type]
+    manager.on_change = lambda _theme: invalidate_theme_readers(scope)
     scope.mount(app)
     root._test_scope = scope  # type: ignore[attr-defined]
     return manager

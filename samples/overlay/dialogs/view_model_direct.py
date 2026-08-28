@@ -62,11 +62,11 @@ def main(png_path: str = ""):
             icon="check_circle",
             actions=[nv.Button("OK", style=nv.ButtonStyle.text())],
         )
-        app = nv.App(content=nv.Container(alignment="center", child=dialog), width=400, height=300)
+        app = nv.App(nv.Window(content=nv.Container(alignment="center", child=dialog), width=400, height=300))
         app.render_to_png(png_path)
         return app
 
-    return nv.App(content=DirectViewModelDemo(), width=400, height=300)
+    return nv.App(nv.Window(content=DirectViewModelDemo(), width=400, height=300))
 
 
 if __name__ == "__main__":

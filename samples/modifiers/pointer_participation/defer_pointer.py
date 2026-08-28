@@ -116,7 +116,7 @@ class DeferPointerDemo(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    app = nv.App(content=DeferPointerDemo(), title="defer_pointer Modifier", width=500)
+    app = nv.App(nv.Window(content=DeferPointerDemo(), title="defer_pointer Modifier", width=500))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

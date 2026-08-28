@@ -50,7 +50,7 @@ def build_root() -> nv.Widget:
 def main() -> None:
     # Non-App side effects (init, DI, logging) may go here; they run once at
     # startup and never again on reload (§3.3).
-    nv.App(content=build_root).run()
+    nv.App(nv.Window(content=build_root)).run()
 ```
 
 `__main__.py`:
@@ -64,20 +64,20 @@ if __name__ == "__main__":
 
 ### 3.2 Pass a factory, not an instance
 
-`App(content=...)` takes a **root factory** — a zero-argument callable returning
+`Window(content=...)` takes a **root factory** — a zero-argument callable returning
 the root widget:
 
 ```python
-nv.App(content=build_root)                                  # function (preferred)
-nv.App(content=MyRootWidget)                                # a Widget subclass is a factory
-nv.App(content=lambda: MyRootWidget(config, theme=dark))    # args via a closure
+nv.App(nv.Window(content=build_root))                                  # function (preferred)
+nv.App(nv.Window(content=MyRootWidget))                                # a Widget subclass is a factory
+nv.App(nv.Window(content=lambda: MyRootWidget(config, theme=dark)))    # args via a closure
 ```
 
 Passing a `Widget` instance still works for backward compatibility, but the tree
 cannot be rebuilt from an instance, so hot reload is inert for that root; under
 the dev runner this emits a one-time warning.
 
-> Do not pass `App(content=build_root())` — the parentheses call the factory and
+> Do not pass `Window(content=build_root())` — the parentheses call the factory and
 > hand over an instance.
 
 A factory that needs arguments should use `lambda:`.
@@ -127,7 +127,7 @@ dev/prod branch.
 ```
 python -m yourapp
   → __main__.py: main()
-      → App(content=build_root)   # App retains the factory
+      → App(Window(content=build_root))   # the window retains the factory
       → App.run()                 # no dev session → run_app() blocks
 ```
 
@@ -138,7 +138,7 @@ python -m nuiitivet.dev run yourapp/app.py
   → runner installs a dev session (process-global)
   → runner imports the user module under its real name (main() does NOT run)
   → runner calls main() exactly once
-      → App(content=build_root)   # App retains the factory
+      → App(Window(content=build_root))   # the window retains the factory
       → App.run()                 # dev session present → hands the App + factory
                                   #   to the session and returns without blocking
   → runner drives the real event loop, file watching, and reloads

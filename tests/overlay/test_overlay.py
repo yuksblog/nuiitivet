@@ -4,6 +4,7 @@ import pytest
 from nuiitivet.overlay import Overlay, OverlayEntry
 from nuiitivet.overlay.overlay import _OverlayEntryRoute
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.container import Container
 
@@ -131,7 +132,7 @@ def test_overlay_of_falls_back_to_the_app_overlay():
     reaches it -- the fallback is what makes ``Overlay.of(self)`` work from a
     screen at all (#518)."""
     content = Container()
-    app = App(content=content)
+    app = App(Window(content=content)).main_window
     app.root.mount(app)
 
     assert Overlay.of(content) is app.overlay
@@ -142,7 +143,7 @@ def test_overlay_of_prefers_a_nested_overlay_over_the_app_one():
     nested = Overlay()
     widget = DummyWidget()
     nested.add_child(widget)
-    app = App(content=nested)
+    app = App(Window(content=nested)).main_window
     app.root.mount(app)
 
     assert Overlay.of(widget) is nested
@@ -168,7 +169,7 @@ def test_overlay_of_finds_ancestor():
 def test_overlay_of_root_flag():
     """Test that Overlay.of() with root=True returns the App's overlay."""
     content = Container()
-    app = App(content=content)
+    app = App(Window(content=content)).main_window
     app.root.mount(app)
 
     found = Overlay.of(content, root=True)
@@ -183,7 +184,7 @@ def test_overlay_of_not_found():
     # rather than for the pre-mount reason, which has its own message.
     Container().add_child(widget)
 
-    with pytest.raises(RuntimeError, match="not attached to an App"):
+    with pytest.raises(RuntimeError, match="not attached to a Window"):
         Overlay.of(widget)
 
 

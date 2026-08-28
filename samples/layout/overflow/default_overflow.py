@@ -19,7 +19,7 @@ def main(png: str = ""):
     # Center it so we can see the overflow clearly
     root = nv.Container(padding=100, child=widget)
 
-    app = nv.App(content=root, title="Default Overflow", width=400)
+    app = nv.App(nv.Window(content=root, title="Default Overflow", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

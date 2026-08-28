@@ -45,12 +45,7 @@ def main(png_path: str = "") -> None:
     if len(sys.argv) > 1 and sys.argv[1] in ("auto", "gpu", "cpu"):
         renderer = sys.argv[1]  # type: ignore[assignment]
 
-    app = nv.App(
-        content=HomeScreen(renderer),
-        title="Renderer Selection",
-        width=400,
-        height=240,
-    )
+    app = nv.App(nv.Window(content=HomeScreen(renderer), title="Renderer Selection", width=400, height=240))
     if png_path:
         app.render_to_png(png_path)
     else:

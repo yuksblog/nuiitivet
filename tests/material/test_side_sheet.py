@@ -131,8 +131,9 @@ def _find_box_with_corner_radius(widget, radius):
 
 def _side_sheet_overlay():
     from nuiitivet.material.app import MaterialApp
+    from nuiitivet.material.window import MaterialWindow
 
-    app = MaterialApp(content=Box())
+    app = MaterialApp(MaterialWindow(content=Box())).main_window
     return app.overlay
 
 

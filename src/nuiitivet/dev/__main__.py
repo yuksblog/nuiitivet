@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
@@ -317,6 +317,10 @@ def _run(args: argparse.Namespace) -> int:
             return 1
 
         app = session.app
+        # The controller anchors on the main window's tree (secondary windows
+        # are reloaded through app.windows); the bridge addresses any window
+        # via its ``window=`` selector.
+        host = app.main_window
         # One journal shared by both: the controller records reload outcomes
         # into it, the bridge serves them at ``/reload_log`` so an AI pair can
         # notice the code changed between its turns (#388).
@@ -327,7 +331,7 @@ def _run(args: argparse.Namespace) -> int:
         # the bridge serves them at ``/describe_selection``.
         selection = Selection()
         controller = HotReloadController(
-            app,
+            host,
             loaded.project_root,
             session.root_factory,
             poll_interval=args.poll_interval,
@@ -337,10 +341,19 @@ def _run(args: argparse.Namespace) -> int:
         # The complementary surface (#390): the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
         # at ``/interaction_log`` so an AI pair can see how the human drove the
-        # app between its turns.
+        # app between its turns. Instrumented per window — the journal and the
+        # selection are shared, but each window carries its own recorder and
+        # inspect mode so hover/gesture state stays window-local and the
+        # Ctrl+Shift+C latch works in every window, not just the main one.
         interaction_journal = InteractionJournal()
-        app._interaction_recorder = InteractionRecorder(interaction_journal)
-        app._inspect_mode = InspectMode(selection, journal=interaction_journal)
+
+        def _instrument_window(win: Any) -> None:
+            win._interaction_recorder = InteractionRecorder(interaction_journal)
+            win._inspect_mode = InspectMode(selection, journal=interaction_journal)
+
+        app._instrument_window_hook = _instrument_window
+        for win in app.windows:
+            _instrument_window(win)
         # The runtime log (#409): capture taps route the app's log output and
         # uncaught exceptions (UI, background threads, asyncio) into this journal,
         # which the bridge serves at ``/runtime_log`` so an AI pair can see *why*

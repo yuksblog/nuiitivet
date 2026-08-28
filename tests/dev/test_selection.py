@@ -447,3 +447,35 @@ def test_the_payload_omits_source_when_nothing_is_recording() -> None:
         (node,) = describe_selection(host.root, selection)["nodes"]
 
     assert "source" not in node
+
+
+def test_a_node_payload_names_the_owning_window() -> None:
+    """The selection spans windows; each node names its own for ``window=``."""
+    from nuiitivet.layout.container import Container
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    main_content = Container()
+    app = App(Window(content=main_content))
+    second_content = Container()
+    second = Window(content=second_content).open()
+
+    selection = Selection()
+    selection.toggle(main_content, root=app.main_window.root)
+    selection.toggle(second_content, root=second.root)
+
+    nodes = describe_selection(app.main_window.root, selection)["nodes"]
+
+    assert [node["window"] for node in nodes] == [app.main_window.id, second.id]
+
+
+def test_a_bare_tree_payload_carries_no_window() -> None:
+    tree = _tree("BODY")
+    with mount(tree) as host:
+        host.layout(300, 200)
+        selection = Selection()
+        selection.toggle(tree.children[1], root=host.root)
+
+        (node,) = describe_selection(host.root, selection)["nodes"]
+
+    assert "window" not in node

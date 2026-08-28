@@ -3,6 +3,7 @@
 from nuiitivet.layout.container import Container
 from nuiitivet.navigation import Navigator, Route
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -25,7 +26,7 @@ def test_navigator_of_falls_back_to_the_app_navigator() -> None:
     So there is no ancestor to walk to, and the App-scoped fallback is the only
     thing that makes ``Navigator.of`` work from inside a dialog.
     """
-    app = App(content=Container())
+    app = App(Window(content=Container())).main_window
     app.root.mount(app)
     dialog = Container()
     app.overlay.show(dialog)

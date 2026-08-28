@@ -1,6 +1,6 @@
 # Window Size and Position
 
-You can control how the window is sized and where it appears on the screen using `WindowSizing` and `WindowPosition`. These are configured when initializing your `App` or `App`.
+You can control how the window is sized and where it appears on the screen using `WindowSizing` and `WindowPosition`. These are configured when constructing your `Window`.
 
 ## WindowSizing
 
@@ -13,12 +13,14 @@ You can control how the window is sized and where it appears on the screen using
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window import WindowSizing
+from nuiitivet.runtime.window_sizing import WindowSizing
 
 app = nv.App(
-    root=nv.Text("Fixed Size Window"),
-    width=WindowSizing.fixed(800), # Or simply width=800
-    height=WindowSizing.fixed(600) # Or simply height=600
+    nv.Window(
+        content=nv.Text("Fixed Size Window"),
+        width=WindowSizing.fixed(800),   # Or simply width=800
+        height=WindowSizing.fixed(600),  # Or simply height=600
+    ),
 )
 app.run()
 ```
@@ -29,22 +31,24 @@ When using `"auto"`, the window will calculate its size based on the preferred s
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window import WindowSizing
+from nuiitivet.runtime.window_sizing import WindowSizing
 
 app = nv.App(
-    root=nv.Container(
-        child=nv.Text("Auto Sized Window"),
-        padding=50
+    nv.Window(
+        content=nv.Container(
+            child=nv.Text("Auto Sized Window"),
+            padding=50,
+        ),
+        width=WindowSizing.auto(),   # Or simply width="auto"
+        height=WindowSizing.auto(),  # Or simply height="auto"
     ),
-    width=WindowSizing.auto(), # Or simply width="auto"
-    height=WindowSizing.auto() # Or simply height="auto"
 )
 app.run()
 ```
 
 ## WindowPosition
 
-`WindowPosition` allows you to specify the exact location of the window on the screen. You can pass a `WindowPosition` object to the `window_position` parameter of your application.
+`WindowPosition` allows you to specify the exact location of the window on the screen. You can pass a `WindowPosition` object to the `window_position` parameter of your `Window`.
 
 - **Alignment**: You can align the window to specific parts of the screen (e.g., center, top-left, bottom-right).
 - **Offset**: You can apply an X and Y offset from the chosen alignment.
@@ -54,17 +58,19 @@ app.run()
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window import WindowPosition
+from nuiitivet.runtime.window_sizing import WindowPosition
 
 app = nv.App(
-    root=nv.Text("Positioned Window"),
-    width=400,
-    height=300,
-    window_position=WindowPosition.alignment(
-        alignment="top-right",
-        offset=(-20, 20), # 20 pixels left, 20 pixels down from top-right corner
-        screen_index=0    # Primary monitor
-    )
+    nv.Window(
+        content=nv.Text("Positioned Window"),
+        width=400,
+        height=300,
+        window_position=WindowPosition.alignment(
+            alignment="top-right",
+            offset=(-20, 20),  # 20 pixels left, 20 pixels down from top-right corner
+            screen_index=0,    # Primary monitor
+        ),
+    ),
 )
 app.run()
 ```

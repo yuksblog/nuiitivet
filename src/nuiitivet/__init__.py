@@ -159,9 +159,10 @@ from nuiitivet.modifiers import (
 from nuiitivet.platform.file_dialog import FileDialog, FileDialogError
 
 # Window / runtime
-from nuiitivet.runtime.app import AppScope
+from nuiitivet.runtime.app import AppScope, ExitPolicy
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
-from nuiitivet.runtime.intents import CloseWindowIntent, MinimizeWindowIntent
+from nuiitivet.runtime.window import Window, WindowScope
+from nuiitivet.runtime.window_intents import CloseWindowIntent, MinimizeWindowIntent
 
 # Configuration
 from nuiitivet.rendering.skia.font import set_default_font_family, register_font
@@ -297,6 +298,9 @@ __all__: list[str] = [
     "FileDialogError",
     # Window / runtime
     "AppScope",
+    "ExitPolicy",
+    "Window",
+    "WindowScope",
     "OSChrome",
     "CustomChrome",
     "Border",

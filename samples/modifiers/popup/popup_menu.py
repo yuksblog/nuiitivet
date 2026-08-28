@@ -58,19 +58,23 @@ def main(png: str = "") -> None:
             ],
         )
         app = nv.App(
-            content=nv.Column(children=[_anchor, _menu], gap=4, padding=16),
-            title="popup Modifier (menu)",
-            width=400,
-            height=400,
+            nv.Window(
+                content=nv.Column(children=[_anchor, _menu], gap=4, padding=16),
+                title="popup Modifier (menu)",
+                width=400,
+                height=400,
+            )
         )
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
     app = nv.App(
-        content=nv.Column(children=[anchor], gap=8, padding=16),
-        title="popup Modifier (menu)",
-        width=400,
-        height=400,
+        nv.Window(
+            content=nv.Column(children=[anchor], gap=8, padding=16),
+            title="popup Modifier (menu)",
+            width=400,
+            height=400,
+        )
     )
     app.run()
 

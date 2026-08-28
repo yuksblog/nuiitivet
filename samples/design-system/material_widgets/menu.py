@@ -22,12 +22,7 @@ def main(png_path: str = "") -> None:
         ],
     )
 
-    app = nv.App(
-        content=nv.Container(padding=24, child=menu),
-        title="Menu",
-        width=460,
-        height=380,
-    )
+    app = nv.App(nv.Window(content=nv.Container(padding=24, child=menu), title="Menu", width=460, height=380))
     if png_path:
         app.render_to_png(png_path)
     else:

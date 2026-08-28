@@ -145,6 +145,7 @@ def test_click_fires_when_offset_inside_layout():
     a padded Row must route pointer clicks to ``on_click``.
     """
     from nuiitivet.material.app import MaterialApp as App
+    from nuiitivet.material.window import MaterialWindow as Window
     from nuiitivet.layout.row import Row
     from nuiitivet.layout.container import Container
     from nuiitivet.runtime.app_events import dispatch_mouse_press, dispatch_mouse_release
@@ -158,7 +159,9 @@ def test_click_fires_when_offset_inside_layout():
 
     clicks: list[int] = []
     fab = ExtendedFab("Compose", icon="edit", on_click=lambda: clicks.append(1))
-    app = App(content=Container(padding=24, child=Row(children=[fab])), title="t", width=400, height=120)
+    app = App(
+        Window(content=Container(padding=24, child=Row(children=[fab])), title="t", width=400, height=120)
+    ).main_window
     app.root.mount(app)
     try:
         app.root.layout(400, 120)

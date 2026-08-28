@@ -32,7 +32,7 @@ def main(png_path: str = "") -> None:
             gap=int(style.dropdown_gap),
             padding=24,
         )
-        app = nv.App(content=content, title="DockedDatePicker", width=460, height=600)
+        app = nv.App(nv.Window(content=content, title="DockedDatePicker", width=460, height=600))
         app.render_to_png(png_path)
         return
 
@@ -51,12 +51,7 @@ def main(png_path: str = "") -> None:
     )
     # Tall enough for the anchored dropdown: the calendar hangs ~460dp below the
     # field, and the overlay is clipped to the window.
-    app = nv.App(
-        content=content,
-        title="DockedDatePicker",
-        width=460,
-        height=600,
-    )
+    app = nv.App(nv.Window(content=content, title="DockedDatePicker", width=460, height=600))
     app.run()
 
 

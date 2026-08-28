@@ -1,8 +1,8 @@
 # Menu Bar
 
-`App(menu=...)` gives the application a menu bar. The menu is a **declarative
-model** registered on the App — not widgets in the tree — and renders as a bar
-at the top of the content area, below the window chrome:
+`nv.Window(menu=...)` gives a window a menu bar. The menu is a **declarative
+model** registered on the window — not widgets in the tree — and renders as a
+bar at the top of the content area, below the window chrome:
 
 ```python
 import nuiitivet.material as nv
@@ -19,21 +19,23 @@ class Editor(nv.ComposableWidget):
 
 editor = Editor()
 app = nv.App(
-    content=editor,
-    title="Editor",
-    menu=nv.MenuBar([
-        nv.MenuBarItem("File", submenu=[
-            nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=editor.open),
-            nv.MenuBarItem("Save", shortcut="Accel+S",
-                           on_select=editor.save, enabled=editor.can_save),
-            nv.MenuBarItem.separator(),
-            nv.MenuBarItem.quit(),
+    nv.Window(
+        content=editor,
+        title="Editor",
+        menu=nv.MenuBar([
+            nv.MenuBarItem("File", submenu=[
+                nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=editor.open),
+                nv.MenuBarItem("Save", shortcut="Accel+S",
+                               on_select=editor.save, enabled=editor.can_save),
+                nv.MenuBarItem.separator(),
+                nv.MenuBarItem.quit(),
+            ]),
+            nv.MenuBarItem("View", submenu=[
+                nv.MenuBarItem("Word Wrap", on_select=editor.wrap_changed,
+                               checked=editor.word_wrap),
+            ]),
         ]),
-        nv.MenuBarItem("View", submenu=[
-            nv.MenuBarItem("Word Wrap", on_select=editor.wrap_changed,
-                           checked=editor.word_wrap),
-        ]),
-    ]),
+    ),
 )
 app.run()
 ```
@@ -116,7 +118,7 @@ chrome = nv.CustomChrome(
 ```
 
 A mounted `MenuBarArea` suppresses the automatic insertion; the model stays
-on the App either way, so menus, callbacks and shortcuts are unaffected by
+on the window either way, so menus, callbacks and shortcuts are unaffected by
 placement. An area with no registered menu renders nothing.
 
 ## Keyboard

@@ -161,7 +161,7 @@ def build_root() -> nv.Widget:
 
 
 def main() -> None:
-    nv.App(content=build_root, title="Calendar", width=570, height="auto").run()
+    nv.App(nv.Window(content=build_root, title="Calendar", width=570, height="auto")).run()
 
 
 if __name__ == "__main__":

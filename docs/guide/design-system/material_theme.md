@@ -23,7 +23,7 @@ When `theme` is omitted, `App` applies the default M3 light theme (`#6750A4`).
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen()).run()
+nv.App(nv.Window(content=HomeScreen())).run()
 ```
 
 ![No Theme](../../assets/material_theme_no_theme.png)
@@ -35,7 +35,7 @@ Pass a different seed color to generate a distinct M3 palette:
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#00639B")).run()
+nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.light("#00639B")).run()
 ```
 
 ![Seed Color](../../assets/material_theme_seed_color.png)
@@ -43,7 +43,7 @@ nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#00639B")).run()
 ### Dark mode
 
 ```python
-nv.App(HomeScreen(), theme=nv.ThemeFactory.dark("#00639B")).run()
+nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.dark("#00639B")).run()
 ```
 
 ![Dark Mode](../../assets/material_theme_dark_mode.png)
@@ -61,7 +61,7 @@ A seed color does not fully determine the palette. Two further inputs shape how 
 ```python
 import nuiitivet.material as nv
 
-nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#6750A4", variant=nv.SchemeVariant.VIBRANT)).run()
+nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.light("#6750A4", variant=nv.SchemeVariant.VIBRANT)).run()
 ```
 
 | Variant | Character |
@@ -79,7 +79,7 @@ nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#6750A4", variant=nv.SchemeVar
 `contrast_level` accepts a value in `[-1.0, 1.0]` and defaults to `0.0`. Higher values push foreground roles further from their backgrounds, which helps meet accessibility requirements.
 
 ```python
-nv.App(HomeScreen(), theme=nv.ThemeFactory.light("#6750A4", contrast_level=0.5)).run()
+nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.light("#6750A4", contrast_level=0.5)).run()
 ```
 
 Both options are accepted by `ThemeFactory.light`, `dark`, `from_seed`, and `from_seed_pair`.
@@ -106,7 +106,7 @@ class HomeScreen(nv.ComposableWidget):
         next_theme = light if self._is_dark else dark
         nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
 
-nv.App(HomeScreen(), theme=light).run()
+nv.App(nv.Window(content=HomeScreen()), theme=light).run()
 ```
 
 See the full runnable demo: `samples/design-system/material_theme/light_dark_toggle.py`
@@ -121,7 +121,7 @@ import nuiitivet.material as nv
 ocean_light, ocean_dark   = nv.ThemeFactory.from_seed_pair("#00639B")
 forest_light, forest_dark = nv.ThemeFactory.from_seed_pair("#386A20")
 
-app = nv.App(HomeScreen(), theme=ocean_light)
+app = nv.App(nv.Window(content=HomeScreen()), theme=ocean_light)
 
 # Register before run() — app.dispatch() is safe before the event loop starts
 app.dispatch(nv.ThemeRegistryIntent(themes={

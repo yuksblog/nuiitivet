@@ -37,11 +37,11 @@ Internally, the `Navigator` acts as a stack managing `Route` objects, while the 
 
 ### 1.2 Root Navigator Design
 
-Fullscreen transitions are a common pattern, making an App-level Navigator essentially mandatory. `App` provides one by default, reached through the same context lookup as a nested one.
+Fullscreen transitions are a common pattern, making a window-level Navigator essentially mandatory. Every `Window` provides one by default, reached through the same context lookup as a nested one.
 
 ```python
-Navigator.of(context).push(...)              # Nearest Navigator, else the App's
-Navigator.of(context, root=True).push(...)   # Always the App's
+Navigator.of(context).push(...)              # Nearest Navigator, else the window's
+Navigator.of(context, root=True).push(...)   # Always the window's
 ```
 
 ### 1.3 Context Lookup Pattern
@@ -49,7 +49,7 @@ Navigator.of(context, root=True).push(...)   # Always the App's
 To support independent Navigators (transition histories) per tab, we implement `Navigator.of(context)`.
 
 - Implementation traverses up the parent chain.
-- With no `Navigator` ancestor it falls back to the navigator owned by the `App` that the context belongs to, found through the `AppScope` wrapping every App-built root. That keeps the common case a single short call **and** keeps the answer scoped to one App — there is no process-global root, so two Apps in one process never collide (#518).
+- With no `Navigator` ancestor it falls back to the navigator owned by the `Window` that the context belongs to, found through the window scope wrapping every window root. That keeps the common case a single short call **and** keeps the answer scoped to one window — there is no process-global root, so two windows (or two Apps in one process) never collide (#518).
 
 ```python
 class Widget:
@@ -191,35 +191,37 @@ Navigator.of(self).push(UnknownIntent())
 
 ### 2.5 `Navigator.intents(...)` Initialization Pattern
 
-To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, `Navigator.intents(...)` is provided as an Intent-based factory. It is passed directly to `App(...)` so the resulting Navigator becomes the root Navigator.
+To enable ViewModels to request screen transitions based on Intents without depending on View (Widget) details, `Navigator.intents(...)` is provided as an Intent-based factory. It is passed directly to `App(Window(...))` so the resulting Navigator becomes the root Navigator.
 
 ```python
 # App with intent-based navigation
 App(
-    Navigator.intents(
-        initial_route=HomeIntent(),
-        routes={
-            HomeIntent: lambda intent: Route(builder=...),
-            DetailIntent: lambda intent: Route(builder=...),
-            SettingsIntent: lambda intent: Route(builder=...),
-        },
+    Window(
+        content=Navigator.intents(
+            initial_route=HomeIntent(),
+            routes={
+                HomeIntent: lambda intent: Route(builder=...),
+                DetailIntent: lambda intent: Route(builder=...),
+                SettingsIntent: lambda intent: Route(builder=...),
+            },
+        ),
+        title="My App",
     ),
-    title="My App",
 )
 ```
 
-For the most common case of starting from a single screen, simply pass the screen to `App(...)`:
+For the most common case of starting from a single screen, simply pass the screen to `App(Window(...))`:
 
 ```python
 # App wraps the Widget in an implicit root Navigator
-App(HomeScreen())
+App(Window(content=HomeScreen()))
 # Navigator.of(self).push(...) works anywhere.
 ```
 
 Use `Navigator.routes([...])` when the navigator must start with a pre-populated stack (e.g. deep linking, state restoration):
 
 ```python
-App(Navigator.routes([HomeScreen(), DetailsScreen()]))
+App(Window(content=Navigator.routes([HomeScreen(), DetailsScreen()])))
 ```
 
 ## 3. Back Button Handling

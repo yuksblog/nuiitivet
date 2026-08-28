@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import Callable, Optional
 
 import pyglet
 
@@ -16,21 +16,22 @@ from nuiitivet.common.logging_once import exception_once
 logger = logging.getLogger(__name__)
 
 
-if TYPE_CHECKING:
-    from pyglet.window import Window
-
-
 class ResponsiveEventLoop(pyglet.app.EventLoop):
-    """Event loop that dispatches queued events immediately and manages draw cadence."""
+    """Event loop that dispatches queued events immediately and manages draw cadence.
+
+    Window-agnostic: the draw callback is expected to render every open
+    window, and event dispatch iterates ``pyglet.app.windows``.
+    """
 
     def __init__(
         self,
-        window: "Window",
         draw_callback: Callable[[float], None],
         draw_fps: Optional[float] = 30.0,
+        *,
+        keep_running_without_windows: Optional[Callable[[], bool]] = None,
     ) -> None:
         super().__init__()
-        self._window = window
+        self._keep_running_without_windows = keep_running_without_windows
         self._draw_callback = draw_callback
         self._draw_interval = self._normalise_interval(draw_fps)
         self._next_draw_deadline: Optional[float] = None
@@ -270,7 +271,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 self._drain_events(platform_loop)
                 self._last_events_ts = time.perf_counter()
 
-                if not pyglet.app.windows:
+                if not pyglet.app.windows and not self._keep_alive_without_windows():
                     self.exit()
                     break
 
@@ -355,7 +356,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 dt = self.clock.tick(poll=False)
                 self._drain_events(platform_loop)
 
-                if not pyglet.app.windows:
+                if not pyglet.app.windows and not self._keep_alive_without_windows():
                     self.exit()
                     break
 
@@ -399,12 +400,27 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
             return None
         return 1.0 / fps_value
 
+    def _keep_alive_without_windows(self) -> bool:
+        """Whether the loop should keep running with zero open windows.
+
+        ``ExitPolicy.EXPLICIT`` apps keep running until ``ExitAppIntent``; every
+        other policy exits when the last window is gone.
+        """
+        probe = self._keep_running_without_windows
+        if probe is None:
+            return False
+        try:
+            return bool(probe())
+        except Exception:
+            exception_once(logger, "pyglet_keep_alive_probe_exc", "keep_running_without_windows probe raised")
+            return False
+
     def _dispatch_window_events(self) -> None:
+        # A window mid-close (``has_exit``) is left alone here: closing removes
+        # it from ``pyglet.app.windows``, and whether the *app* exits is the
+        # App's exit policy, not this loop's call.
         for window in list(pyglet.app.windows):
             window.dispatch_events()
-            if getattr(window, "has_exit", False):
-                self.exit()
-                break
 
     def _drain_events(self, platform_loop) -> None:
         platform_loop.dispatch_posted_events()

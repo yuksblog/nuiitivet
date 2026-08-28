@@ -19,6 +19,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.modifiers.key_shortcut import key_shortcut
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
+from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusNode, InteractionRegion
@@ -34,26 +35,26 @@ def _plain_focusable() -> InteractionRegion:
     return box
 
 
-def _focus(app: App, region: InteractionRegion) -> None:
+def _focus(app: Window, region: InteractionRegion) -> None:
     node = region.get_node(FocusNode)
     assert isinstance(node, FocusNode)
     app.request_focus(node)
 
 
-def _focus_widget(app: App, field: EditableText) -> None:
+def _focus_widget(app: Window, field: EditableText) -> None:
     node = field.get_node(FocusNode)
     assert isinstance(node, FocusNode)
     app.request_focus(node)
 
 
-def _focus_material_field(app: App, field: mv.TextField) -> None:
+def _focus_material_field(app: Window, field: mv.TextField) -> None:
     # The focus subject of a Material TextField is the EditableText it hosts.
     node = field._editable.get_node(FocusNode)
     assert isinstance(node, FocusNode)
     app.request_focus(node)
 
 
-def _type(app: App, text: str, modifier_keys: int = 0) -> None:
+def _type(app: Window, text: str, modifier_keys: int = 0) -> None:
     """Drive a keystroke the way a backend does: the key press, then the text."""
     for ch in text:
         app._dispatch_key_press(ch.lower(), modifier_keys)
@@ -64,7 +65,7 @@ def test_bare_letter_shortcut_is_withheld_while_a_field_has_focus() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("b", on_trigger=lambda: fired.append("brush")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     _type(app, "brush")
@@ -78,7 +79,7 @@ def test_shift_letter_shortcut_is_withheld_too() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("Shift+B", on_trigger=lambda: fired.append("brush")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     _type(app, "B", MOD_SHIFT)
@@ -90,7 +91,7 @@ def test_shift_letter_shortcut_is_withheld_too() -> None:
 def test_bare_letter_shortcut_fires_with_nothing_focused() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("b", on_trigger=lambda: fired.append("brush")))
-    app = App(Column([canvas, EditableText()]))
+    app = App(Window(content=Column([canvas, EditableText()]))).main_window
 
     assert app._focused_node is None
     assert app._dispatch_key_press("b", 0) is True
@@ -103,7 +104,7 @@ def test_bare_letter_shortcut_fires_while_a_non_text_widget_has_focus() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("b", on_trigger=lambda: fired.append("brush")))
     other = _plain_focusable()
-    app = App(Column([canvas, other]))
+    app = App(Window(content=Column([canvas, other]))).main_window
 
     _focus(app, other)
     assert app._dispatch_key_press("b", 0) is True
@@ -115,7 +116,7 @@ def test_accel_shortcut_still_reaches_the_tier_through_a_focused_field() -> None
     saved: list[str] = []
     canvas = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: saved.append("save")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
 
@@ -128,7 +129,7 @@ def test_function_key_shortcut_still_reaches_the_tier_through_a_focused_field() 
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("F5", on_trigger=lambda: fired.append("refresh")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     assert app._dispatch_key_press("f5", 0) is True
@@ -141,7 +142,7 @@ def test_field_keeps_owning_its_editing_combos() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("Accel+A", on_trigger=lambda: fired.append("all")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     _type(app, "ab")
@@ -157,7 +158,7 @@ def test_alt_shortcut_is_withheld_while_a_field_has_focus() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("Alt+B", on_trigger=lambda: fired.append("brush")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     app._dispatch_key_press("b", MOD_ALT)
@@ -175,7 +176,7 @@ def test_altgr_spelling_is_withheld_while_a_field_has_focus() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("Ctrl+Alt+Q", on_trigger=lambda: fired.append("q")))
     field = EditableText()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_widget(app, field)
     app._dispatch_key_press("q", MOD_CTRL | MOD_ALT)
@@ -189,7 +190,7 @@ def test_text_field_without_on_submit_lets_enter_reach_a_shortcut() -> None:
     fired: list[str] = []
     canvas = _box().modifier(key_shortcut("Enter", on_trigger=lambda: fired.append("default action")))
     field = mv.TextField()
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_material_field(app, field)
     app._dispatch_key_press("enter", 0)
@@ -202,7 +203,7 @@ def test_text_field_with_on_submit_keeps_enter_for_itself() -> None:
     submitted: list[str] = []
     canvas = _box().modifier(key_shortcut("Enter", on_trigger=lambda: fired.append("default action")))
     field = mv.TextField(on_submit=submitted.append)
-    app = App(Column([canvas, field]))
+    app = App(Window(content=Column([canvas, field]))).main_window
 
     _focus_material_field(app, field)
     _type(app, "hi")

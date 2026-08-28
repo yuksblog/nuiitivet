@@ -78,8 +78,8 @@ class AppHarness(_HarnessBase):
             callback_errors: ``"error"``, ``"warn"`` or ``"off"`` for the check
                 that a callback the framework contained fails the test, scoped
                 and overridden the same way.
-            **app_kwargs: Passed through to the App class (``overlay_routes``,
-                ``background``, ...).
+            **app_kwargs: Passed through to the main window's constructor
+                (``overlay_routes``, ``background``, ...).
         """
         # Defaulting to the Material App is what keeps the harness standing in
         # for the app rather than for a stripped-down cousin of it: the overlay,
@@ -92,6 +92,14 @@ class AppHarness(_HarnessBase):
 
             app = MaterialApp
 
+        # The window class follows the app class: the core App hosts a core
+        # Window; anything else (MaterialApp and its subclasses) hosts a
+        # MaterialWindow, keeping the Material overlay/navigator defaults.
+        if app.__module__ == "nuiitivet.runtime.app":
+            from nuiitivet.runtime.window import Window as window_cls
+        else:
+            from nuiitivet.material.window import MaterialWindow as window_cls
+
         width, height = size
         super().__init__(leak_check=leak_check, callback_errors=callback_errors)
         # Before the App exists: constructing one mounts the whole tree, and
@@ -100,19 +108,24 @@ class AppHarness(_HarnessBase):
         self._ensure_clock()
         try:
             self._app = app(
-                content,
-                width=int(width),
-                height=int(height),
-                title=None,
-                chrome=None,
+                window_cls(
+                    content=content,
+                    width=int(width),
+                    height=int(height),
+                    title=None,
+                    chrome=None,
+                    **app_kwargs,
+                ),
                 theme=theme,
-                **app_kwargs,
             )
         except BaseException:
             # Nothing else will: the harness never reached the open-harness
             # registry, so no teardown sweep knows about its task observer.
             self._stop_observing()
             raise
+        # The host surface (tree, size, dispatch) lives on the main window;
+        # the App keeps only the runtime (theme, exit policy, dispatch).
+        self._host = self._app.main_window
         # Registered as soon as there is a mounted tree to tear down, so a
         # screen whose first settle raises is still cleaned up.
         self._register()
@@ -127,17 +140,23 @@ class AppHarness(_HarnessBase):
         return self._app
 
     @property
+    def window(self) -> Any:
+        """The underlying main ``Window`` (the host the tree mounts against)."""
+        self._require_open()
+        return self._host
+
+    @property
     def _settle_target(self) -> Any:
-        return self._app
+        return self._host
 
     @property
     def _query_root(self) -> Any:
-        return self._app.root
+        return self._host.root
 
     @property
     def size(self) -> Tuple[float, float]:
         """The size the tree is laid out at."""
-        return (self._app.width, self._app.height)
+        return (self._host.width, self._host.height)
 
     # -- action verbs ------------------------------------------------------
     #
@@ -166,7 +185,7 @@ class AppHarness(_HarnessBase):
         """
         return self._act(
             "click",
-            lambda: _action.click(self._app, key=key, label=label, x=x, y=y, button=button),
+            lambda: _action.click(self._host, key=key, label=label, x=x, y=y, button=button),
             key=key,
             label=label,
         )
@@ -187,7 +206,7 @@ class AppHarness(_HarnessBase):
         """
         return self._act(
             "scroll",
-            lambda: _action.scroll(self._app, key=key, label=label, dx=dx, dy=dy),
+            lambda: _action.scroll(self._host, key=key, label=label, dx=dx, dy=dy),
             key=key,
             label=label,
         )
@@ -203,7 +222,7 @@ class AppHarness(_HarnessBase):
         :attr:`~nuiitivet.testing.node.Node.is_reachable`."""
         return self._act(
             "scroll_into_view",
-            lambda: _action.scroll_into_view(self._app, key=key, label=label, align=align),
+            lambda: _action.scroll_into_view(self._host, key=key, label=label, align=align),
             key=key,
             label=label,
         )
@@ -232,7 +251,7 @@ class AppHarness(_HarnessBase):
             self.click(key=key, label=label)
         return self._act(
             "type",
-            lambda: _action.type_text(self._app, text),
+            lambda: _action.type_text(self._host, text),
             require_handled=require_handled,
             what=f"type({text!r})",
         )
@@ -255,7 +274,7 @@ class AppHarness(_HarnessBase):
         """
         return self._act(
             "key",
-            lambda: _action.press_key(self._app, name, modifiers),
+            lambda: _action.press_key(self._host, name, modifiers),
             require_handled=require_handled,
             what=f"key({name!r})",
         )
@@ -268,8 +287,8 @@ class AppHarness(_HarnessBase):
         window and dragging its edge.
         """
         self._require_open()
-        self._app.width = int(width)
-        self._app.height = int(height)
+        self._host.width = int(width)
+        self._host.height = int(height)
         self._last_action.description = f"resize({int(width)}, {int(height)})"
         self.settle()
 
@@ -408,15 +427,15 @@ class AppHarness(_HarnessBase):
         its own stack, and guessing which one the test meant is worse than making
         it say: ``Navigator.of(app.get(key="tabs").widget).stack``.
         """
-        return self._app.navigator
+        return self._host.navigator
 
     @property
     def _overlay(self) -> Any:
         """The App's root overlay, for the same reason as :attr:`_navigator`."""
-        return self._app.overlay
+        return self._host.overlay
 
     def _teardown(self) -> None:
-        root = getattr(self._app, "root", None)
+        root = getattr(self._host, "root", None)
         if root is not None:
             root.unmount()
 

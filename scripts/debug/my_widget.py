@@ -329,12 +329,7 @@ def main() -> None:
     model = MyWidgetModel()
     widget = MyWidget(model)
 
-    app = nv.App(
-        content=widget,
-        # width=750,
-        # height=850,
-        title="MyWidget Demo",
-    )
+    app = nv.App(nv.Window(content=widget, title="MyWidget Demo"))
     try:
         app.run()
     except Exception:

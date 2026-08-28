@@ -14,7 +14,7 @@ custom adapter and no extension — breakpoints keep firing in the reloaded code
 ### 1. Write a root factory, not a root instance
 
 Hot reload rebuilds the tree by re-invoking a **factory** — a zero-argument
-callable returning the root widget. Pass that callable to `App(content=...)`
+callable returning the root widget. Pass that callable to `Window(content=...)`
 (don't call it):
 
 ```python
@@ -41,16 +41,16 @@ def build_root() -> nv.Widget:
     return Counter()
 
 def main() -> None:
-    nv.App(content=build_root).run()
+    nv.App(nv.Window(content=build_root)).run()
 
 if __name__ == "__main__":
     main()
 ```
 
-A `Widget` subclass works directly too — `App(content=Counter)` — and a factory
-that needs arguments closes over them: `App(content=lambda: Home(config))`.
+A `Widget` subclass works directly too — `Window(content=Counter)` — and a factory
+that needs arguments closes over them: `Window(content=lambda: Home(config))`.
 
-> Pass a factory, **not** `App(content=build_root())`. Calling it yields a widget
+> Pass a factory, **not** `Window(content=build_root())`. Calling it yields a widget
 > *instance*, which the reloader cannot rebuild — hot reload becomes inert for
 > that root (a warning is emitted under the dev runner).
 
