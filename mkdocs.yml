@@ -172,6 +172,7 @@ nav:
           - Operations: guide/window/operations.md
           - Renderer Selection: guide/window/renderer_selection.md
           - File Dialogs: guide/window/file_dialogs.md
+          - Menu Bar: guide/window/menu_bar.md
       - Modifiers:
           - guide/modifiers/index.md
           - Decoration: guide/modifiers/decoration.md
