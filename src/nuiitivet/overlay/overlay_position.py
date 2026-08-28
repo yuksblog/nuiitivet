@@ -373,6 +373,14 @@ class _AnchoredPositionedContent(Widget):
             child.set_layout_rect(0, 0, cw, ch)
             return
 
+        # The anchor rect is in root (global) coordinates, but the child is
+        # placed in coordinates local to this wrapper — and the wrapper does
+        # not necessarily sit at the window origin: the overlay stack starts
+        # below an app menu bar or a CustomChrome header. Convert.
+        origin = self.global_layout_rect
+        if origin is not None:
+            rect = (rect[0] - origin[0], rect[1] - origin[1], rect[2], rect[3])
+
         # ``width``/``height`` are the overlay root's extent, i.e. the viewport.
         side = _placement_side(self._target_anchor, self._content_anchor)
         if rect[2] == 0 and rect[3] == 0:

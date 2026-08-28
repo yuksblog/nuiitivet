@@ -7,9 +7,28 @@ from typing import List
 from nuiitivet.input.shortcut import Shortcut
 from nuiitivet.layout.column import Column
 from nuiitivet.material.text import Text
+from nuiitivet.menubar.bar import MenuBarWidget
 from nuiitivet.menubar.model import MenuBar, MenuBarItem
 from nuiitivet.menubar.slots import MenuBarArea
+from nuiitivet.menubar.style import MenuBarStyle
 from nuiitivet.observable import Observable
+
+
+def _find_bar(root) -> MenuBarWidget:
+    found: List[MenuBarWidget] = []
+
+    def walk(widget) -> None:
+        if isinstance(widget, MenuBarWidget):
+            found.append(widget)
+        for child in widget.children_snapshot():
+            walk(child)
+        built = getattr(widget, "built_child", None)
+        if built is not None and built is not widget:
+            walk(built)
+
+    walk(root)
+    assert found, "no MenuBarWidget in the tree"
+    return found[0]
 
 
 def _simple_model(record: List[str], *, save_enabled=True) -> MenuBar:
@@ -204,6 +223,21 @@ def test_outside_click_closes_and_next_click_reopens(nuiitivet_app) -> None:
     # The bar state was reconciled, so one click reopens.
     app.click(label="File")
     assert app.get(label="Open...") is not None
+
+
+def test_popup_opens_flush_below_the_bar(nuiitivet_app) -> None:
+    # The anchor rect is global but the overlay starts below the bar; a
+    # popup must not inherit that offset as a gap (seen on Windows/Linux).
+    record: List[str] = []
+    app = nuiitivet_app(Text("content"), size=(800, 600), menu=_simple_model(record))
+    app.click(label="File")
+    app.settle()
+    bar = _find_bar(app._app.root)
+    popup = bar._popup
+    assert popup is not None
+    rect = popup.global_layout_rect
+    assert rect is not None
+    assert rect[1] == MenuBarStyle().bar_height
 
 
 def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
