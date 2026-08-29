@@ -300,7 +300,7 @@ def test_manual_clock_drives_a_marshalled_write(monkeypatch) -> None:
 
     clock: Clock = ManualClock()
     monkeypatch.setattr(runtime, "clock", clock)
-    assert nv.get_clock() is clock, "get_clock must report the installed clock, not an import-time snapshot"
+    assert nv.Clocks.get() is clock, "Clocks.get must report the installed clock, not an import-time snapshot"
 
     obs: Observable[int] = Observable(0)
 

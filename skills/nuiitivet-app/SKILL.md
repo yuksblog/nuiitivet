@@ -115,6 +115,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Image | `Image` | `nv.Image(path_or_source)` |
 | Progress / loading | `CircularProgressIndicator` / `LinearProgressIndicator` / `LoadingIndicator` | `nv.LinearProgressIndicator(value=obs)` |
 | Status badge | `SmallBadge` / `LargeBadge` | `nv.SmallBadge()` |
+| Bundled / custom font | `Fonts` | `nv.Fonts.register("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")` once at startup, before any widget renders; then `font_family="NotoSansJP"` wherever a `font_family` is accepted (`nv.TextStyle`; icon fonts via `nv.IconStyle(custom_font_family=...)`). App-wide default family: `nv.Fonts.set_default_family("Hiragino Sans")` (`None` restores locale-based detection) |
 
 **Actions**
 
