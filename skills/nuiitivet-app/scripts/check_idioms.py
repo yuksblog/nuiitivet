@@ -103,6 +103,17 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Native dialogs are built in: path = await nv.FileDialog.open_file(file_types=[...]) "
      "— coroutine, call from an async handler. Cancel is None (open_files: []); also "
      "save_file / open_directory. nv.FileDialogError when the dialog cannot be shown."),
+    (re.compile(r"\bQFontDatabase\b|\baddApplicationFont\b|\btkinter\.font\b"),
+     "foreign font loading",
+     "Bundled fonts are built in: nv.Fonts.register(\"assets/fonts/X.ttf\", "
+     "family_name=\"X\") once at startup, then font_family=\"X\" wherever a "
+     "font_family is accepted. Default family: nv.Fonts.set_default_family(...)."),
+    (re.compile(r"\bnv\.(?:register_font|set_default_font_family)\s*\("), "nuiitivet (old API)",
+     "Font configuration lives on the nv.Fonts namespace: nv.Fonts.register(path, "
+     "family_name=...) / nv.Fonts.set_default_family(...)."),
+    (re.compile(r"\bnv\.(?:get_clock|set_clock)\s*\("), "nuiitivet (old API)",
+     "The clock seam lives on the nv.Clocks namespace: nv.Clocks.get() / "
+     "nv.Clocks.set(clock)."),
     (re.compile(r"\bTextEditingController\b"), "Flutter",
      "No controller object: bind an Observable as the field's value, "
      "nv.TextField(value=obs). Set the text with obs.value = ..."),

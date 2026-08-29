@@ -6,10 +6,10 @@ queued. This page is for the case where the plugin is not in play — a test sui
 that does not use it, or a test whose subject *is* a clock — and you have to
 control delivery yourself.
 
-The indirection point is `nv.set_clock()`, not pyglet: nuiitivet schedules every
-deferred notification through the installed clock, and the backend installs
-pyglet's at startup. Anything satisfying the `nv.Clock` protocol can take its
-place.
+The indirection point is `nv.Clocks.set()`, not pyglet: nuiitivet schedules
+every deferred notification through the installed clock, and the backend
+installs pyglet's at startup. Anything satisfying the `nv.Clock` protocol can
+take its place.
 
 ```python
 import threading
@@ -46,9 +46,9 @@ class ManualClock:
 
 
 def test_worker_update_reaches_subscribers():
-    previous = nv.get_clock()
+    previous = nv.Clocks.get()
     manual = ManualClock()
-    nv.set_clock(manual)
+    nv.Clocks.set(manual)
     try:
         vm = CsvPreview()
         received = []
@@ -62,12 +62,13 @@ def test_worker_update_reaches_subscribers():
         manual.tick()
         assert received == [expected]
     finally:
-        nv.set_clock(previous)
+        nv.Clocks.set(previous)
 ```
 
-Read the current clock with `nv.get_clock()`, never `nv.clock`: the latter is
-bound when nuiitivet is imported, so it does not follow `nv.set_clock()` and
-still points at the startup fallback long after the backend installed its own.
+Read the current clock with `nv.Clocks.get()` at the moment you need it, and
+never keep the returned reference around: the backend installs its own clock
+during `App.run()`, so a reference saved earlier still points at the startup
+fallback.
 
 Two rules for a hand-rolled clock:
 

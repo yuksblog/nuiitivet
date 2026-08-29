@@ -74,9 +74,8 @@ from nuiitivet.observable import (
     Observable,
     batch,
     combine,
-    get_clock,
-    set_clock,
 )
+from nuiitivet.observable.clocks import Clocks
 
 # Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers and
 # backend-neutral pointer button codes for ``PointerEvent.button``)
@@ -166,7 +165,7 @@ from nuiitivet.runtime.window import Window, WindowScope
 from nuiitivet.runtime.window_intents import CloseWindowIntent, MinimizeWindowIntent
 
 # Configuration
-from nuiitivet.rendering.skia.font import set_default_font_family, register_font
+from nuiitivet.fonts import Fonts
 from nuiitivet.runtime.renderer import RendererMode
 
 __all__: list[str] = [
@@ -226,8 +225,7 @@ __all__: list[str] = [
     "combine",
     "Clock",
     "ClockCallback",
-    "get_clock",
-    "set_clock",
+    "Clocks",
     # Theme
     "Theme",
     "TypeScale",
@@ -309,7 +307,6 @@ __all__: list[str] = [
     "CloseWindowIntent",
     "MinimizeWindowIntent",
     # Configuration
-    "set_default_font_family",
-    "register_font",
+    "Fonts",
     "RendererMode",
 ]

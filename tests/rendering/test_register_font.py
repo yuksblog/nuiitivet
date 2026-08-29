@@ -87,13 +87,30 @@ class TestRegisterFontRegistry:
     def test_top_level_api_available(self) -> None:
         import nuiitivet
 
-        assert hasattr(nuiitivet, "register_font")
-        assert callable(nuiitivet.register_font)
+        assert hasattr(nuiitivet, "Fonts")
+        assert callable(nuiitivet.Fonts.register)
+        assert callable(nuiitivet.Fonts.set_default_family)
 
-    def test_register_font_in_all(self) -> None:
+    def test_fonts_in_all(self) -> None:
         import nuiitivet
 
-        assert "register_font" in nuiitivet.__all__
+        assert "Fonts" in nuiitivet.__all__
+
+    def test_fonts_namespace_delegates_to_registry(self) -> None:
+        from nuiitivet.fonts import Fonts
+        from nuiitivet.rendering.skia.font import _FONT_REGISTRY
+
+        Fonts.register("/path/to/NsFont.ttf", "NsFont")
+        assert _FONT_REGISTRY["NsFont"] == "/path/to/NsFont.ttf"
+
+    def test_fonts_namespace_sets_default_family(self) -> None:
+        from nuiitivet.fonts import Fonts
+        from nuiitivet.rendering.skia import font as skia_font
+
+        Fonts.set_default_family("NsDefault")
+        assert skia_font._USER_DEFAULT_FONT_FAMILY == "NsDefault"
+        Fonts.set_default_family(None)
+        assert skia_font._USER_DEFAULT_FONT_FAMILY is None
 
 
 # ---------------------------------------------------------------------------
