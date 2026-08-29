@@ -171,6 +171,7 @@ static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor (#518)
 | `ScaffoldMessenger.of(context).showSnackBar(...)` | `nv.Overlay.of(self).snackbar("Saved")` |
 | `showSearch(context:, delegate: SearchDelegate())` (Flutter) — a full-screen search route | There is **no full-screen search widget**. Put `nv.SearchBar(...)` in a screen you lay out yourself, and push that screen like any other; or use `nv.DockedSearchBar(..., content=...)` for a dropdown. The bar animates its own 24dp → 12dp inset either way |
 | routing tables of string paths only | Intent-based `nv.Navigator.intents(initial_route=..., routes={Intent: lambda i: Screen()})` |
+| `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
 
 ```python
 # Correct

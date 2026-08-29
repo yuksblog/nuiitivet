@@ -54,6 +54,14 @@ when driving it from a ViewModel — see the Intent section below.
 nv.Overlay.of(self).snackbar("Saved successfully!")          # optional: duration=5.0
 ```
 
+A snackbar lives *inside* the window. To tell the user something finished while
+they are in **another window**, raise an OS notification instead — no external
+library, safe from any thread:
+
+```python
+nv.Desktop.notify("Import done", "1,000 rows written")   # fire-and-forget, never raises
+```
+
 ## Tooltips — fully declarative (a modifier)
 
 ```python

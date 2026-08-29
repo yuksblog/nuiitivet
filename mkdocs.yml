@@ -174,6 +174,7 @@ nav:
           - File Dialogs: guide/window/file_dialogs.md
           - Menu Bar: guide/window/menu_bar.md
           - Multiple Windows: guide/window/multi_window.md
+          - Desktop Notifications: guide/window/notifications.md
       - Modifiers:
           - guide/modifiers/index.md
           - Decoration: guide/modifiers/decoration.md

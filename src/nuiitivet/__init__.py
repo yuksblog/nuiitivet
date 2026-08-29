@@ -156,6 +156,7 @@ from nuiitivet.modifiers import (
 )
 
 # Platform services
+from nuiitivet.platform.desktop import Desktop
 from nuiitivet.platform.file_dialog import FileDialog, FileDialogError
 
 # Window / runtime
@@ -294,6 +295,7 @@ __all__: list[str] = [
     "ShortcutBinding",
     "ShortcutScope",
     # Platform services
+    "Desktop",
     "FileDialog",
     "FileDialogError",
     # Window / runtime
