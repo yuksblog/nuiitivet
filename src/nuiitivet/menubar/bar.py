@@ -35,7 +35,9 @@ from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
 from .controller import MenuBarController
-from .model import MenuBar, MenuBarItem
+from nuiitivet.menus import MenuEntry
+
+from .model import MenuBar
 from .style import MenuBarStyle
 from .theme_data import MenuBarThemeData
 
@@ -115,7 +117,7 @@ class MenuBarWidget(ComposableWidget):
             bar = KeyShortcutModifier(binding).apply(bar)
         return bar
 
-    def _collect_bindings(self, items: Sequence[MenuBarItem]) -> List[ShortcutBinding]:
+    def _collect_bindings(self, items: Sequence[MenuEntry]) -> List[ShortcutBinding]:
         bindings: List[ShortcutBinding] = []
         for item in items:
             if item.is_separator:
@@ -128,7 +130,7 @@ class MenuBarWidget(ComposableWidget):
                 )
         return bindings
 
-    def _make_trigger(self, item: MenuBarItem):
+    def _make_trigger(self, item: MenuEntry):
         def fire() -> None:
             if item.resolved_enabled():
                 self.activate(item)
@@ -141,7 +143,7 @@ class MenuBarWidget(ComposableWidget):
 
     # ---- Activation ----------------------------------------------------------
 
-    def activate(self, item: MenuBarItem) -> None:
+    def activate(self, item: MenuEntry) -> None:
         """Activate an action item: close the menu, then run its command.
 
         The command itself (checked toggling, standard-item intents,
@@ -255,13 +257,13 @@ class MenuBarWidget(ComposableWidget):
 
     # ---- Live updates while open -------------------------------------------------
 
-    def _subscribe_open_items(self, items: Sequence[MenuBarItem]) -> None:
+    def _subscribe_open_items(self, items: Sequence[MenuEntry]) -> None:
         """Refresh the open popup when a visible item's property changes."""
 
         def on_change(_value) -> None:
             self._refresh_open_menu()
 
-        def walk(entries: Sequence[MenuBarItem]) -> None:
+        def walk(entries: Sequence[MenuEntry]) -> None:
             for entry in entries:
                 for prop in (entry.label, entry.enabled, entry.checked):
                     if isinstance(prop, ObservableBase):
@@ -284,7 +286,7 @@ class MenuBarWidget(ComposableWidget):
 
     # ---- Popup adapter ----------------------------------------------------------
 
-    def _build_popup_entries(self, items: Sequence[MenuBarItem]) -> list:
+    def _build_popup_entries(self, items: Sequence[MenuEntry]) -> list:
         """Translate model items into Material Menu widgets.
 
         The Material widgets' public API is unchanged; only their colors are
@@ -315,7 +317,7 @@ class MenuBarWidget(ComposableWidget):
                 )
         return entries
 
-    def _make_popup_activate(self, item: MenuBarItem):
+    def _make_popup_activate(self, item: MenuEntry):
         def on_click() -> None:
             self.activate(item)
 
@@ -344,7 +346,7 @@ class _MenuBarTopItem(InteractiveWidget):
         self,
         bar: MenuBarWidget,
         index: int,
-        item: MenuBarItem,
+        item: MenuEntry,
         palette: MenuBarThemeData,
         style: MenuBarStyle,
     ) -> None:

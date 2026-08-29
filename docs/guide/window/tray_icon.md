@@ -13,9 +13,9 @@ tray = nv.TrayIcon(
     icon="assets/tray.png",
     tooltip="My Sync App",
     menu=[
-        nv.MenuBarItem("Open", on_select=lambda: window.show()),
-        nv.MenuBarItem.separator(),
-        nv.MenuBarItem.quit(),
+        nv.MenuEntry("Open", on_select=lambda: window.show()),
+        nv.MenuEntry.separator(),
+        nv.MenuEntry.quit(),
     ],
 )
 app = nv.App(window, tray=tray)
@@ -29,12 +29,12 @@ Runnable demos:
 
 ## The menu is the same model as the menu bar
 
-`menu=` takes the same `MenuBarItem` entries as
+`menu=` takes the same `MenuEntry` entries as
 [the menu bar](menu_bar.md): actions, separators, nested submenus, checkable
 items, and Observable `label` / `enabled` / `checked` that update the native
 menu live. Two differences:
 
-- **Include `MenuBarItem.quit()`.** For a resident app the tray menu is the
+- **Include `MenuEntry.quit()`.** For a resident app the tray menu is the
   only exit path while no window is visible; nothing is injected for you.
 - **Window-scoped standard items** (`close_window()`, `minimize()`, ...) have
   no target window in a tray menu and are ignored with a warning. `quit()`
@@ -65,9 +65,9 @@ tray = nv.TrayIcon(
     tooltip="My Sync App",
     dock_visibility="auto",
     menu=[
-        nv.MenuBarItem("Open", on_select=lambda: window.show()),
-        nv.MenuBarItem.separator(),
-        nv.MenuBarItem.quit(),
+        nv.MenuEntry("Open", on_select=lambda: window.show()),
+        nv.MenuEntry.separator(),
+        nv.MenuEntry.quit(),
     ],
 )
 window = nv.Window(
@@ -77,7 +77,7 @@ window = nv.Window(
 app = nv.App(window, tray=tray, exit_policy=nv.ExitPolicy.EXPLICIT)
 ```
 
-- **`exit_policy=EXPLICIT`** — only `MenuBarItem.quit()` / `ExitAppIntent` /
+- **`exit_policy=EXPLICIT`** — only `MenuEntry.quit()` / `ExitAppIntent` /
   `app.exit()` ends the app. See
   [Multiple Windows](multi_window.md) for the exit policies; the tray never
   overrides them.

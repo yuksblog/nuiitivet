@@ -20,7 +20,7 @@ make a tray-resident app possible (`Window.hide()` / `show()`,
 ### Out of scope
 
 - Desktop notifications (`Desktop.notify`) and other shell services
-- The menu model itself — the tray reuses the menu bar's model; see
+- The menu model itself — the tray shares the surface-neutral `MenuEntry`; see
   `docs/design/MENU_BAR.md`
 - Global hotkeys and other summon mechanisms beyond the tray
 
@@ -44,7 +44,7 @@ make a tray-resident app possible (`Window.hide()` / `show()`,
 1. **The tray icon is a model registered on `App`, not a widget.** It must
    exist while no window does, so a widget-tree API cannot be truthful.
    `App(tray=...)` sits beside `exit_policy=`, mirroring `Window(menu=...)`.
-2. **The tray menu reuses `MenuBarItem`.** One declarative menu model serves
+2. **The tray menu reuses `MenuEntry`.** One declarative menu model serves
    every native menu surface; Observable `label` / `enabled` / `checked`
    flow through the same live-sync machinery. Window-scoped standard items
    have no target window in a tray menu and are ignored with a warning;
@@ -97,7 +97,7 @@ make a tray-resident app possible (`Window.hide()` / `show()`,
 tray = nv.TrayIcon(
     icon="assets/trayTemplate.png",   # optional; macOS *Template = template image
     tooltip="My Sync App",            # str | Observable[str]
-    menu=[MenuBarItem(...), ...],     # the menu bar's model, reused
+    menu=[MenuEntry(...), ...],     # the shared menu model
     on_activate=...,                  # platform-conventional icon activation
     dock_visibility="always",         # "always" | "auto" | "never"; macOS only
 )

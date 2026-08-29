@@ -7,7 +7,7 @@ exits — the icon lives exactly as long as the app runs and has no lifecycle
 or policy of its own. It never affects the App's exit policy; a resident app
 declares ``ExitPolicy.EXPLICIT`` itself.
 
-The menu reuses :class:`~nuiitivet.menubar.model.MenuBarItem`, so Observable
+The menu reuses :class:`~nuiitivet.menubar.model.MenuEntry`, so Observable
 ``label`` / ``enabled`` / ``checked`` propagate live to the native menu, the
 same as the menu bar. Install success is queryable through
 :attr:`TrayIcon.installed`; a failure never takes the app down (the
@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once, warning_once
-from nuiitivet.menubar.model import MenuBarItem, MenuBarRole, ObservableStr
+from nuiitivet.menus import MenuEntry, MenuRole, ObservableStr
 from nuiitivet.observable import Observable, ObservableBase
 from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 
@@ -46,9 +46,9 @@ class TrayIcon:
             Without an icon the tray shows the tooltip text (macOS) or a
             neutral placeholder — real apps should always ship an icon.
         tooltip: Hover text; a plain string or an Observable one.
-        menu: The tray menu as :class:`MenuBarItem` entries — actions,
+        menu: The tray menu as :class:`MenuEntry` entries — actions,
             separators, submenus and checkable items, exactly as in the menu
-            bar. ``MenuBarItem.quit()`` works (a resident app should include
+            bar. ``MenuEntry.quit()`` works (a resident app should include
             it: while no window is visible the tray menu is the only exit
             path). Window-scoped standard items (close/minimize/...) have no
             target window here and are ignored with a warning.
@@ -71,14 +71,14 @@ class TrayIcon:
         *,
         icon: Optional[Union[str, Path]] = None,
         tooltip: ObservableStr = "",
-        menu: Optional[Sequence[MenuBarItem]] = None,
+        menu: Optional[Sequence[MenuEntry]] = None,
         on_activate: Optional[VoidCallback] = None,
         dock_visibility: str = "always",
     ) -> None:
-        entries: Tuple[MenuBarItem, ...] = tuple(menu) if menu is not None else ()
+        entries: Tuple[MenuEntry, ...] = tuple(menu) if menu is not None else ()
         for entry in entries:
-            if not isinstance(entry, MenuBarItem):
-                raise TypeError("TrayIcon menu entries must be MenuBarItem instances.")
+            if not isinstance(entry, MenuEntry):
+                raise TypeError("TrayIcon menu entries must be MenuEntry instances.")
         if dock_visibility not in _DOCK_VISIBILITIES:
             raise ValueError(
                 f"dock_visibility must be one of {_DOCK_VISIBILITIES}, got {dock_visibility!r}."
@@ -105,7 +105,7 @@ class TrayIcon:
         return self._tooltip
 
     @property
-    def menu(self) -> Tuple[MenuBarItem, ...]:
+    def menu(self) -> Tuple[MenuEntry, ...]:
         """The tray menu entries (empty when no menu was given)."""
         return self._menu
 
@@ -186,7 +186,7 @@ class TrayIcon:
 
     # ---- Framework-internal: activation ------------------------------------
 
-    def _activate_item(self, item: MenuBarItem) -> None:
+    def _activate_item(self, item: MenuEntry) -> None:
         """Run a tray menu item's command; the bridges call this on the UI thread.
 
         Mirrors ``MenuBarController.activate`` minus the window scope: toggle
@@ -194,7 +194,7 @@ class TrayIcon:
         """
         if item.checked is not None:
             item.checked.value = not bool(item.checked.value)
-        if item.role is MenuBarRole.QUIT:
+        if item.role is MenuRole.QUIT:
             app = self._app_ref() if self._app_ref is not None else None
             if app is not None:
                 from nuiitivet.runtime.intents import ExitAppIntent
@@ -204,7 +204,7 @@ class TrayIcon:
                 except Exception:
                     exception_once(logger, "tray_dispatch_exit_exc", "ExitAppIntent dispatch raised")
             return
-        if item.role is not MenuBarRole.NONE:
+        if item.role is not MenuRole.NONE:
             warning_once(
                 logger,
                 "tray_window_scoped_role",

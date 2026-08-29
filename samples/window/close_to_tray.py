@@ -52,9 +52,9 @@ def main(png: str = ""):
         tooltip="Close to Tray",
         dock_visibility="auto",
         menu=[
-            nv.MenuBarItem("Open", on_select=lambda: window.show()),
-            nv.MenuBarItem.separator(),
-            nv.MenuBarItem.quit(),
+            nv.MenuEntry("Open", on_select=lambda: window.show()),
+            nv.MenuEntry.separator(),
+            nv.MenuEntry.quit(),
         ],
     )
     window = nv.Window(

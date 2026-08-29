@@ -35,11 +35,10 @@ from nuiitivet.scrolling import ScrollbarBehavior
 from nuiitivet.menubar import (
     MenuBar,
     MenuBarArea,
-    MenuBarItem,
-    MenuBarRole,
     MenuBarStyle,
     MenuBarThemeData,
 )
+from nuiitivet.menus import MenuEntry, MenuRole
 
 # Primitives / Widgets
 from nuiitivet.rendering.sizing import Sizing, SizingKind, SizingLike
@@ -193,8 +192,8 @@ __all__: list[str] = [
     "ScrollbarBehavior",
     "MenuBar",
     "MenuBarArea",
-    "MenuBarItem",
-    "MenuBarRole",
+    "MenuEntry",
+    "MenuRole",
     "MenuBarStyle",
     "MenuBarThemeData",
     "ForEach",

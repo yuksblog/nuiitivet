@@ -106,7 +106,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\b(?:from|import)\s+(?:pystray|infi\.systray)\b|\bpystray\.Icon\b"),
      "external tray-icon libs",
      "The system tray is built in: nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., "
-     "menu=[nv.MenuBarItem(...)])) — the menu reuses MenuBarItem, and tray.installed "
+     "menu=[nv.MenuEntry(...)])) — the menu reuses MenuEntry, and tray.installed "
      "(Observable[bool]) reports whether the icon actually shows. Resident app: "
      "exit_policy=nv.ExitPolicy.EXPLICIT + Window(close_action=tray.installed.map(...)) "
      "+ win.hide()/show(). Never import pystray directly."),

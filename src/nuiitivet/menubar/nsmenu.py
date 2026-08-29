@@ -26,7 +26,9 @@ from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, resolv
 from nuiitivet.input.shortcut import Shortcut
 from nuiitivet.observable import ObservableBase, runtime
 
-from .model import MenuBar, MenuBarItem, MenuBarRole
+from nuiitivet.menus import MenuEntry, MenuRole
+
+from .model import MenuBar
 
 if TYPE_CHECKING:
     from .controller import MenuBarController
@@ -103,12 +105,12 @@ class PlanMenu:
     """One top-level menu of the translated bar: a title and its entries."""
 
     title: str
-    entries: Tuple[MenuBarItem, ...]
+    entries: Tuple[MenuEntry, ...]
 
 
-def _strip_dangling_separators(entries: Sequence[MenuBarItem]) -> Tuple[MenuBarItem, ...]:
+def _strip_dangling_separators(entries: Sequence[MenuEntry]) -> Tuple[MenuEntry, ...]:
     """Drop leading/trailing separators and collapse runs left by removals."""
-    result: List[MenuBarItem] = []
+    result: List[MenuEntry] = []
     for entry in entries:
         if entry.is_separator and (not result or result[-1].is_separator):
             continue
@@ -128,52 +130,52 @@ def plan_menus(model: MenuBar, app_name: str) -> List[PlanMenu]:
     item (no submenu) degrades to a menu holding that single entry, since the
     global bar has no direct-action titles.
     """
-    quit_item: Optional[MenuBarItem] = None
+    quit_item: Optional[MenuEntry] = None
     menus: List[PlanMenu] = []
 
     for top in model.items:
         if top.is_separator:
             continue
         if top.submenu is not None:
-            entries: List[MenuBarItem] = []
+            entries: List[MenuEntry] = []
             for entry in top.submenu:
-                if quit_item is None and entry.role is MenuBarRole.QUIT:
+                if quit_item is None and entry.role is MenuRole.QUIT:
                     quit_item = entry
                     continue
                 entries.append(entry)
             menus.append(PlanMenu(top.resolved_label(), _strip_dangling_separators(entries)))
         else:
-            if quit_item is None and top.role is MenuBarRole.QUIT:
+            if quit_item is None and top.role is MenuRole.QUIT:
                 quit_item = top
                 continue
             menus.append(PlanMenu(top.resolved_label(), (top,)))
 
-    app_entries = (quit_item if quit_item is not None else MenuBarItem.quit(),)
+    app_entries = (quit_item if quit_item is not None else MenuEntry.quit(),)
     return [PlanMenu(app_name, app_entries), *menus]
 
 
 class NSMenuBuilder:
-    """Builds native ``NSMenu`` trees from :class:`MenuBarItem` entries.
+    """Builds native ``NSMenu`` trees from :class:`MenuEntry` entries.
 
     Owns everything a native menu needs beyond the model: the Objective-C
     action target, Python-side references keeping AppKit objects alive, and
     the subscriptions syncing Observable ``label`` / ``enabled`` / ``checked``
     changes into the items. Shared by the global menu bar bridge and the tray
     icon so every native surface renders the model identically. ``activate``
-    receives the :class:`MenuBarItem` whose ``NSMenuItem`` fired, on the main
+    receives the :class:`MenuEntry` whose ``NSMenuItem`` fired, on the main
     thread.
     """
 
-    def __init__(self, activate: Callable[[MenuBarItem], None]) -> None:
+    def __init__(self, activate: Callable[[MenuEntry], None]) -> None:
         self._activate = activate
-        self._actions: List[MenuBarItem] = []
+        self._actions: List[MenuEntry] = []
         self._subscriptions: List[Any] = []
         #: Python-side references to every ObjC object we created, so nothing
         #: is collected while AppKit still points at it.
         self._retained: List[Any] = []
         self._target: Any = None
 
-    def new_menu(self, title: str, entries: Sequence[MenuBarItem]) -> Any:
+    def new_menu(self, title: str, entries: Sequence[MenuEntry]) -> Any:
         """Create an ``NSMenu`` titled ``title`` holding ``entries``."""
         from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString
 
@@ -204,7 +206,7 @@ class NSMenuBuilder:
         if 0 <= tag < len(self._actions):
             self._activate(self._actions[tag])
 
-    def fill_menu(self, ns_menu: Any, entries: Sequence[MenuBarItem]) -> None:
+    def fill_menu(self, ns_menu: Any, entries: Sequence[MenuEntry]) -> None:
         """Append ``entries`` (actions, separators, nested submenus) to ``ns_menu``."""
         from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString, get_selector
 
@@ -250,7 +252,7 @@ class NSMenuBuilder:
             ns_menu.addItem_(ns_item)
             self._observe(entry, ns_item)
 
-    def _observe(self, entry: MenuBarItem, ns_item: Any) -> None:
+    def _observe(self, entry: MenuEntry, ns_item: Any) -> None:
         """Wire the entry's Observable properties to the NSMenuItem's setters.
 
         Observables may fire off the UI thread; the setter is applied on the

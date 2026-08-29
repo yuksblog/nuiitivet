@@ -16,7 +16,8 @@ from nuiitivet.input.shortcut import Shortcut
 from nuiitivet.layout.column import Column
 from nuiitivet.material.text import Text
 from nuiitivet.menubar.controller import MenuBarController
-from nuiitivet.menubar.model import MenuBar, MenuBarItem, MenuBarRole
+from nuiitivet.menubar.model import MenuBar
+from nuiitivet.menus import MenuEntry, MenuRole
 from nuiitivet.menubar.nsmenu import (
     _NS_COMMAND,
     _NS_CONTROL,
@@ -54,18 +55,18 @@ def _labels(entries) -> List[str]:
 
 
 def test_plan_relocates_quit_into_app_menu(darwin) -> None:
-    quit_item = MenuBarItem.quit()
+    quit_item = MenuEntry.quit()
     model = MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "File",
                 submenu=[
-                    MenuBarItem("Open", on_select=lambda: None),
-                    MenuBarItem.separator(),
+                    MenuEntry("Open", on_select=lambda: None),
+                    MenuEntry.separator(),
                     quit_item,
                 ],
             ),
-            MenuBarItem("Edit", submenu=[MenuBarItem("Undo", on_select=lambda: None)]),
+            MenuEntry("Edit", submenu=[MenuEntry("Undo", on_select=lambda: None)]),
         ]
     )
     plans = plan_menus(model, "MyApp")
@@ -76,15 +77,15 @@ def test_plan_relocates_quit_into_app_menu(darwin) -> None:
 
 
 def test_plan_synthesizes_quit_when_model_has_none(darwin) -> None:
-    model = MenuBar([MenuBarItem("File", submenu=[MenuBarItem("Open", on_select=lambda: None)])])
+    model = MenuBar([MenuEntry("File", submenu=[MenuEntry("Open", on_select=lambda: None)])])
     plans = plan_menus(model, "MyApp")
     assert plans[0].title == "MyApp"
     assert len(plans[0].entries) == 1
-    assert plans[0].entries[0].role is MenuBarRole.QUIT
+    assert plans[0].entries[0].role is MenuRole.QUIT
 
 
 def test_plan_wraps_top_level_action_item(darwin) -> None:
-    direct = MenuBarItem("About", on_select=lambda: None)
+    direct = MenuEntry("About", on_select=lambda: None)
     plans = plan_menus(MenuBar([direct]), "MyApp")
     assert plans[1].title == "About"
     assert plans[1].entries == (direct,)
@@ -99,7 +100,7 @@ class _StubBridge:
 
 
 def test_native_bridge_collapses_in_app_slots(nuiitivet_app) -> None:
-    model = MenuBar([MenuBarItem("File", submenu=[MenuBarItem("Open", on_select=lambda: None)])])
+    model = MenuBar([MenuEntry("File", submenu=[MenuEntry("Open", on_select=lambda: None)])])
     app = nuiitivet_app(Column(children=[Text("content")]), size=(800, 600), menu=model)
     assert app.get(label="File") is not None
 
@@ -111,7 +112,7 @@ def test_native_bridge_collapses_in_app_slots(nuiitivet_app) -> None:
     assert app.query(label="File") is None
 
     # Replacement reaches the bridge instead of any slot.
-    new_model = MenuBar([MenuBarItem("View", submenu=[MenuBarItem("Zoom", on_select=lambda: None)])])
+    new_model = MenuBar([MenuEntry("View", submenu=[MenuEntry("Zoom", on_select=lambda: None)])])
     app.window.menu = new_model
     app.settle()
     assert stub.installed == [new_model]

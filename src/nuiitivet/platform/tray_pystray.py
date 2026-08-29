@@ -21,7 +21,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 from nuiitivet.common.logging_once import warning_once
-from nuiitivet.menubar.model import MenuBarItem, read_value
+from nuiitivet.menus import MenuEntry, read_value
 from nuiitivet.observable import ObservableBase, runtime
 
 if TYPE_CHECKING:
@@ -159,14 +159,14 @@ class TrayPystrayBridge:
 
         walk(self._tray.menu)
 
-    def _to_pystray(self, pystray: Any, entry: MenuBarItem) -> Any:
+    def _to_pystray(self, pystray: Any, entry: MenuEntry) -> Any:
         if entry.is_separator:
             return pystray.Menu.SEPARATOR
 
-        def text(_item: Any, entry: MenuBarItem = entry) -> str:
+        def text(_item: Any, entry: MenuEntry = entry) -> str:
             return str(entry.resolved_label())
 
-        def enabled(_item: Any, entry: MenuBarItem = entry) -> bool:
+        def enabled(_item: Any, entry: MenuEntry = entry) -> bool:
             return bool(entry.resolved_enabled())
 
         if entry.submenu is not None:
@@ -176,7 +176,7 @@ class TrayPystrayBridge:
         checked: Optional[Callable[[Any], bool]] = None
         if entry.checked is not None:
 
-            def is_checked(_item: Any, entry: MenuBarItem = entry) -> bool:
+            def is_checked(_item: Any, entry: MenuEntry = entry) -> bool:
                 assert entry.checked is not None
                 return bool(entry.checked.value)
 
@@ -184,7 +184,7 @@ class TrayPystrayBridge:
 
         tray = self._tray
 
-        def run(entry: MenuBarItem = entry) -> None:
+        def run(entry: MenuEntry = entry) -> None:
             tray._activate_item(entry)
 
         return pystray.MenuItem(text, self._marshal(run), checked=checked, enabled=enabled)

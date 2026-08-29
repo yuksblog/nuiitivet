@@ -15,7 +15,7 @@ from typing import Any, List
 
 import pytest
 
-from nuiitivet.menubar.model import MenuBarItem
+from nuiitivet.menus import MenuEntry
 from nuiitivet.observable import Observable
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.platform.tray_pystray import TrayPystrayBridge
@@ -91,10 +91,10 @@ def test_menu_translation_structure(monkeypatch: pytest.MonkeyPatch) -> None:
     checked = Observable(True)
     tray = TrayIcon(
         menu=[
-            MenuBarItem("Open", on_select=lambda: None),
-            MenuBarItem.separator(),
-            MenuBarItem("Muted", on_select=lambda: None, checked=checked),
-            MenuBarItem("More", submenu=[MenuBarItem("Child", on_select=lambda: None)]),
+            MenuEntry("Open", on_select=lambda: None),
+            MenuEntry.separator(),
+            MenuEntry("Muted", on_select=lambda: None, checked=checked),
+            MenuEntry("More", submenu=[MenuEntry("Child", on_select=lambda: None)]),
         ]
     )
     bridge = TrayPystrayBridge(tray)
@@ -113,7 +113,7 @@ def test_menu_translation_structure(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_observable_change_triggers_update_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     pystray = _fake_pystray(monkeypatch)
     label = Observable("Ping (0)")
-    tray = TrayIcon(menu=[MenuBarItem(label, on_select=lambda: None)])
+    tray = TrayIcon(menu=[MenuEntry(label, on_select=lambda: None)])
     bridge = TrayPystrayBridge(tray)
     bridge.install()
 
@@ -131,7 +131,7 @@ def test_observable_change_triggers_update_menu(monkeypatch: pytest.MonkeyPatch)
 def test_menu_without_backend_menu_support_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     pystray = _fake_pystray(monkeypatch)
     monkeypatch.setattr(pystray.Icon, "HAS_MENU", False)
-    tray = TrayIcon(menu=[MenuBarItem.quit()])
+    tray = TrayIcon(menu=[MenuEntry.quit()])
     with pytest.raises(RuntimeError):
         TrayPystrayBridge(tray).install()
     # Through the model the failure is a logged no-op with installed False.
@@ -140,7 +140,7 @@ def test_menu_without_backend_menu_support_fails(monkeypatch: pytest.MonkeyPatch
     class _App:  # weakref-able stand-in; only used for QUIT dispatch
         pass
 
-    tray2 = TrayIcon(menu=[MenuBarItem.quit()])
+    tray2 = TrayIcon(menu=[MenuEntry.quit()])
     tray2._install(_App())  # type: ignore[arg-type]
     assert tray2.installed.value is False
 
@@ -150,7 +150,7 @@ def test_on_activate_without_default_action_is_dropped(
 ) -> None:
     pystray = _fake_pystray(monkeypatch)
     monkeypatch.setattr(pystray.Icon, "HAS_DEFAULT", False)
-    tray = TrayIcon(menu=[MenuBarItem.quit()], on_activate=lambda: None)
+    tray = TrayIcon(menu=[MenuEntry.quit()], on_activate=lambda: None)
     TrayPystrayBridge(tray).install()
 
     icon = pystray.Icon.instances[-1]
@@ -159,7 +159,7 @@ def test_on_activate_without_default_action_is_dropped(
 
 def test_on_activate_becomes_invisible_default_item(monkeypatch: pytest.MonkeyPatch) -> None:
     pystray = _fake_pystray(monkeypatch)
-    tray = TrayIcon(menu=[MenuBarItem.quit()], on_activate=lambda: None)
+    tray = TrayIcon(menu=[MenuEntry.quit()], on_activate=lambda: None)
     TrayPystrayBridge(tray).install()
 
     icon = pystray.Icon.instances[-1]

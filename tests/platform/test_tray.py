@@ -12,7 +12,7 @@ from typing import Any, List
 
 import pytest
 
-from nuiitivet.menubar.model import MenuBarItem
+from nuiitivet.menus import MenuEntry
 from nuiitivet.observable import Observable
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.runtime.app import App
@@ -127,7 +127,7 @@ def _installed_tray(
 def test_activate_toggles_checked(monkeypatch: pytest.MonkeyPatch) -> None:
     tray = _installed_tray(monkeypatch, _app())
     checked = Observable(False)
-    item = MenuBarItem("Wrap", on_select=lambda: None, checked=checked)
+    item = MenuEntry("Wrap", on_select=lambda: None, checked=checked)
     tray._activate_item(item)
     assert checked.value is True
 
@@ -135,7 +135,7 @@ def test_activate_toggles_checked(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_activate_runs_on_select(monkeypatch: pytest.MonkeyPatch) -> None:
     tray = _installed_tray(monkeypatch, _app())
     record: List[str] = []
-    tray._activate_item(MenuBarItem("Open", on_select=lambda: record.append("open")))
+    tray._activate_item(MenuEntry("Open", on_select=lambda: record.append("open")))
     assert record == ["open"]
 
 
@@ -144,7 +144,7 @@ def test_activate_quit_dispatches_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     dispatched: List[Any] = []
     monkeypatch.setattr(app, "dispatch", dispatched.append)
     tray = _installed_tray(monkeypatch, app)
-    tray._activate_item(MenuBarItem.quit())
+    tray._activate_item(MenuEntry.quit())
     assert len(dispatched) == 1
     assert isinstance(dispatched[0], ExitAppIntent)
 
@@ -157,7 +157,7 @@ def test_activate_window_scoped_role_is_ignored(
     monkeypatch.setattr(app, "dispatch", dispatched.append)
     tray = _installed_tray(monkeypatch, app)
     with caplog.at_level(logging.WARNING):
-        tray._activate_item(MenuBarItem.minimize())
+        tray._activate_item(MenuEntry.minimize())
     assert dispatched == []
     assert any("tray menu" in message for message in caplog.messages)
 
