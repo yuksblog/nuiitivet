@@ -380,6 +380,7 @@ class Window:
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
+        close_action: "str | ObservableBase[str]" = "close",
     ):
         """Initialize the Window model. :meth:`open` realizes it.
 
@@ -413,6 +414,13 @@ class Window:
                 A child stacks with its parent and closes when it closes.
             modal: Whether this window blocks input to its parent chain
                 while open (framework modal). Requires ``parent``.
+            close_action: What the OS close button does: ``"close"`` (default)
+                destroys the window; ``"hide"`` parks it — :meth:`hide` —
+                so a tray-resident app can be summoned back. Accepts an
+                Observable so the choice can follow live state; the resident
+                recipe binds it to ``TrayIcon.installed`` (hide only while
+                the tray is actually showing). Programmatic :meth:`close`
+                is unaffected.
         """
         # Normalize ``content`` to a root factory. A Widget instance is wrapped
         # in a factory that always returns that same instance (so hot reload is
@@ -442,10 +450,17 @@ class Window:
         # window selector) and useful in logs. Never reused within a process.
         self.id: int = next(_window_ids)
 
-        # Lifecycle: created -> open -> closed, one way.
+        if not isinstance(close_action, ObservableBase) and close_action not in ("close", "hide"):
+            raise ValueError('close_action must be "close", "hide", or an Observable of one.')
+        self._close_action: "str | ObservableBase[str]" = close_action
+
+        # Lifecycle: created -> open -> closed, one way. Visibility is
+        # orthogonal: a hidden window is still open (and still counts for the
+        # App's exit policy).
         self._app_ref: Any = None
         self._lifecycle_state: str = "created"
         self._is_open_obs: Observable[bool] = Observable(False)
+        self._visible_obs: Observable[bool] = Observable(True)
         self._closed_event: Any = None
         # Whether this OS window currently holds the OS focus; maintained by
         # the backend (on_activate / on_deactivate).
@@ -807,6 +822,7 @@ class Window:
             )
 
         app._register_window(self)
+        self._notify_visibility_changed()
         return self
 
     def close(self) -> None:
@@ -858,6 +874,104 @@ class Window:
 
         if app is not None:
             app._unregister_window(self)
+        self._notify_visibility_changed()
+
+    # --- Visibility ------------------------------------------------------
+
+    @property
+    def is_visible(self) -> "ObservableBase[bool]":
+        """Whether the window is visible (or will be, once realized).
+
+        Hidden is not closed: the object, its widget tree, and its geometry
+        stay alive, and the window still counts for the App's exit policy.
+        On Windows/Linux the taskbar entry follows this by itself.
+        """
+        return self._visible_obs
+
+    def hide(self) -> None:
+        """Hide the window, keeping the object and its widget tree alive.
+
+        The counterpart of :meth:`show` — the pair a tray-resident app parks
+        and summons its window with. Before the backend realizes the OS
+        window this just records the desired state (so a window can start
+        hidden); hiding a window that is not open is a no-op.
+        """
+        if self._lifecycle_state != "open" or not self._visible_obs.value:
+            return
+        self._visible_obs.value = False
+        window = self._window
+        if window is not None:
+            try:
+                window.set_visible(False)
+            except Exception:
+                exception_once(logger, "window_hide_exc", "Window.hide failed")
+        self._notify_visibility_changed()
+
+    def show(self) -> None:
+        """Make the window visible and bring it to the front, focused.
+
+        Also the "summon" action for an already-visible window: it raises
+        and refocuses. Showing a window that is not open is a no-op (a
+        closed Window is finished — construct a new one).
+        """
+        if self._lifecycle_state != "open":
+            return
+        was_hidden = not self._visible_obs.value
+        self._visible_obs.value = True
+        if was_hidden:
+            # Before the OS window reappears, so a dock_visibility="auto"
+            # tray restores the regular activation policy first.
+            self._notify_visibility_changed()
+        window = self._window
+        if window is not None:
+            try:
+                window.set_visible(True)
+                window.activate()
+            except Exception:
+                exception_once(logger, "window_show_exc", "Window.show failed")
+            if was_hidden:
+                self.invalidate(immediate=True)
+
+    def _notify_visibility_changed(self) -> None:
+        app = self._app_ref() if self._app_ref is not None else None
+        if app is None:
+            return
+        try:
+            app._window_visibility_changed()
+        except Exception:
+            exception_once(logger, "window_visibility_notify_exc", "visibility change notify raised")
+
+    def _handle_close_request(self) -> None:
+        """Act on the OS close button per ``close_action`` (``"close"`` | ``"hide"``).
+
+        Called by the backend. Hiding the last visible window while no tray
+        icon is showing leaves the user no way back to the app; that is
+        almost certainly an app bug, so it logs a warning — but behaves as
+        written (bind ``close_action`` to ``TrayIcon.installed`` instead).
+        """
+        action = self._close_action
+        if isinstance(action, ObservableBase):
+            action = action.value
+        if action != "hide":
+            self.close()
+            return
+        app = self._app_ref() if self._app_ref is not None else None
+        if app is not None and self._visible_obs.value:
+            others_visible = any(
+                w is not self and w._lifecycle_state == "open" and w._visible_obs.value
+                for w in app.windows
+            )
+            tray = getattr(app, "tray", None)
+            tray_showing = tray is not None and bool(tray.installed.value)
+            if not others_visible and not tray_showing:
+                warning_once(
+                    logger,
+                    "window_hide_no_way_back",
+                    'close_action="hide" hid the last visible window with no tray icon '
+                    "showing; the user may have no way back to the app. Bind "
+                    "close_action to TrayIcon.installed so it falls back to closing.",
+                )
+        self.hide()
 
     def _modal_blocked(self) -> bool:
         """Whether an open modal child (transitively) blocks this window's input."""
@@ -1986,6 +2100,10 @@ class Window:
         window = self._window
         if window is None or getattr(window, "has_exit", False):
             return
+        # A hidden window produces no frames; :meth:`show` invalidates, so the
+        # first frame after reappearing repaints everything that changed.
+        if not self._visible_obs.value:
+            return
         # Size callbacks queued by the previous frame's layout run first, so the
         # Observables they write are picked up by the build flush below and land
         # in this frame. Between frames is the only safe point for them: they are
@@ -2136,11 +2254,13 @@ class Window:
             CenterWindowIntent,
             CloseWindowIntent,
             FullScreenIntent,
+            HideWindowIntent,
             MaximizeWindowIntent,
             MinimizeWindowIntent,
             MoveWindowIntent,
             ResizeWindowIntent,
             RestoreWindowIntent,
+            ShowWindowIntent,
         )
 
         if isinstance(intent, CenterWindowIntent):
@@ -2160,6 +2280,12 @@ class Window:
             return
         if isinstance(intent, CloseWindowIntent):
             self.close()
+            return
+        if isinstance(intent, HideWindowIntent):
+            self.hide()
+            return
+        if isinstance(intent, ShowWindowIntent):
+            self.show()
             return
         if isinstance(intent, MoveWindowIntent):
             self.move_to(intent.x, intent.y)

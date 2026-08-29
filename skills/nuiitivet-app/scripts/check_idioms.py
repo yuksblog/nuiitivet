@@ -103,6 +103,13 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Native dialogs are built in: path = await nv.FileDialog.open_file(file_types=[...]) "
      "— coroutine, call from an async handler. Cancel is None (open_files: []); also "
      "save_file / open_directory. nv.FileDialogError when the dialog cannot be shown."),
+    (re.compile(r"\b(?:from|import)\s+(?:pystray|infi\.systray)\b|\bpystray\.Icon\b"),
+     "external tray-icon libs",
+     "The system tray is built in: nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., "
+     "menu=[nv.MenuBarItem(...)])) — the menu reuses MenuBarItem, and tray.installed "
+     "(Observable[bool]) reports whether the icon actually shows. Resident app: "
+     "exit_policy=nv.ExitPolicy.EXPLICIT + Window(close_action=tray.installed.map(...)) "
+     "+ win.hide()/show(). Never import pystray directly."),
     (re.compile(r"\bQFontDatabase\b|\baddApplicationFont\b|\btkinter\.font\b"),
      "foreign font loading",
      "Bundled fonts are built in: nv.Fonts.register(\"assets/fonts/X.ttf\", "

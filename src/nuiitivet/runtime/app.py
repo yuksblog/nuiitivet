@@ -17,6 +17,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainTheme
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
@@ -113,6 +114,7 @@ class App:
         *,
         theme: Optional[Any] = None,
         exit_policy: ExitPolicy = ExitPolicy.LAST_WINDOW_CLOSED,
+        tray: Optional[TrayIcon] = None,
     ):
         """Initialize the App (and open its main window).
 
@@ -120,6 +122,10 @@ class App:
             window: The main :class:`Window`.
             theme: Theme to install, app-wide.
             exit_policy: When :meth:`run` returns; see :class:`ExitPolicy`.
+            tray: A :class:`~nuiitivet.platform.tray.TrayIcon` to show while
+                the app runs. Installed when :meth:`run` starts, removed when
+                it returns; see :attr:`TrayIcon.installed` for whether the
+                platform actually showed it.
         """
         if not isinstance(window, Window):
             raise TypeError(
@@ -134,6 +140,9 @@ class App:
         self._theme_registry: dict[str, Any] = {}
 
         self.exit_policy = exit_policy
+        if tray is not None and not isinstance(tray, TrayIcon):
+            raise TypeError("App(tray=...) takes a TrayIcon.")
+        self._tray = tray
         self._windows: list[Window] = []
         self._main_window: Window | None = None
         # Set by the running backend so a Window opened mid-run gets its OS
@@ -339,6 +348,38 @@ class App:
                     exception_once(logger, "app_exit_close_window_exc", "Closing a window on exit raised")
         finally:
             self._stop_loop()
+
+    @property
+    def tray(self) -> Optional[TrayIcon]:
+        """The registered tray icon, or ``None``."""
+        return self._tray
+
+    def _install_tray(self) -> None:
+        """Backend hook: install the tray icon once the loop is up."""
+        if self._tray is not None:
+            self._tray._install(self)
+
+    def _uninstall_tray(self) -> None:
+        """Backend hook: remove the tray icon when the loop stops."""
+        if self._tray is not None:
+            self._tray._uninstall()
+
+    def _visible_window_count(self) -> int:
+        """How many open windows are currently visible (hidden ones excluded)."""
+        return sum(
+            1
+            for w in self._windows
+            if w._lifecycle_state == "open" and bool(w.is_visible.value)
+        )
+
+    def _window_visibility_changed(self) -> None:
+        """A window was shown, hidden, opened, or closed.
+
+        Feeds the tray's ``dock_visibility="auto"`` policy (macOS: Dock icon
+        only while some window is visible).
+        """
+        if self._tray is not None:
+            self._tray._refresh_dock(self._visible_window_count())
 
     def _stop_loop(self) -> None:
         import sys

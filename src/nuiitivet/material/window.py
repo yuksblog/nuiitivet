@@ -55,6 +55,7 @@ class MaterialWindow(Window):
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
+        close_action: "str | ObservableBase[str]" = "close",
     ) -> None:
         """Initialize a MaterialWindow.
 
@@ -77,6 +78,8 @@ class MaterialWindow(Window):
             parent: The parent window, or ``None`` for a top-level window.
             modal: Whether this window blocks input to its parent chain while
                 open (framework modal). Requires ``parent``.
+            close_action: What the OS close button does — ``"close"`` (default)
+                or ``"hide"``; see :class:`~nuiitivet.runtime.window.Window`.
         """
         if overlay_factory is None:
 
@@ -99,4 +102,5 @@ class MaterialWindow(Window):
             menu=menu,
             parent=parent,
             modal=modal,
+            close_action=close_action,
         )

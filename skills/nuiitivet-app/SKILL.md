@@ -39,7 +39,8 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
 6. **`App` takes its main `Window`; the root is a factory, not an instance.**
    The entry point is `nv.App(nv.Window(content=...))` — every window keyword
    (`title`, `width`, `menu`, ...) lives on `nv.Window`; `nv.App` takes only the
-   window plus `theme=` and `exit_policy=`. There is no `App(content=...)` form.
+   window plus `theme=`, `exit_policy=`, and `tray=`. There is no
+   `App(content=...)` form.
    Pass a zero-arg callable or a `Widget` subclass as `content` **without
    calling it** — `Window(content=build_root)` or `Window(content=Counter)`,
    never `Window(content=build_root())` (which silently disables live
@@ -158,7 +159,8 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
 | Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
 | Application menu bar | `MenuBar` / `MenuBarItem` | `nv.Window(..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — a window-level model, never in `build()`; `label`/`enabled`/`checked` take Observables; `shortcut` also fires window-wide (never duplicate it with `key_shortcut`); replace via `window.menu = ...`; `nv.MenuBarArea()` relocates the bar |
-| Secondary / modal window | `Window` | `nv.Window(content=lambda: Palette(state), title="Palette").open()` — a model until `open()`; `close()` destroys it (construct a new one to reopen; state that must survive lives in app-layer Observables). Modal child: `nv.Window(content=..., parent=nv.Window.of(self), modal=True).open()`; content closes its own window via `nv.Window.of(self).close()`. Exit timing: `nv.App(win, exit_policy=nv.ExitPolicy...)` |
+| Secondary / modal window | `Window` | `nv.Window(content=lambda: Palette(state), title="Palette").open()` — a model until `open()`; `close()` destroys it (construct a new one to reopen; state that must survive lives in app-layer Observables). Hiding is different: `window.hide()` parks an open window (tree, state, and geometry survive; no frames; still counts for the exit policy) and `window.show()` summons it back focused — `window.is_visible` is the matching Observable; intents: `nv.HideWindowIntent` / `nv.ShowWindowIntent`. Modal child: `nv.Window(content=..., parent=nv.Window.of(self), modal=True).open()`; content closes its own window via `nv.Window.of(self).close()`. Exit timing: `nv.App(win, exit_policy=nv.ExitPolicy...)` |
+| System tray icon / resident app | `TrayIcon` | `nv.App(win, tray=nv.TrayIcon(icon="tray.png", tooltip="Sync", menu=[nv.MenuBarItem("Open", on_select=lambda: win.show()), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()]))` — App-owned, lives exactly as long as the app runs; the menu reuses `MenuBarItem` (Observable `label`/`enabled`/`checked` update live; window-scoped roles are ignored; **always include `quit()`**). `tray.installed` (`Observable[bool]`) says whether the icon actually shows — install can fail (Linux desktops) without raising. Resident (close-to-tray) recipe, three independent parts: `exit_policy=nv.ExitPolicy.EXPLICIT` + `nv.Window(..., close_action=tray.installed.map(lambda ok: "hide" if ok else "close"))` + the tray; `win.hide()` before `run()` starts in the tray. macOS Dock: `dock_visibility="always" \| "auto" \| "never"` (ignored elsewhere) |
 
 When a widget's exact parameters aren't covered here, the topical references
 below carry the day-to-day set.

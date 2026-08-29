@@ -158,8 +158,21 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         _realize(win)
 
     try:
+        install_tray = getattr(app, "_install_tray", None)
+        if callable(install_tray):
+            install_tray()
+    except Exception:
+        exception_once(logger, "pyglet_install_tray_exc", "Tray icon install raised")
+
+    try:
         event_loop.run()
     finally:
+        try:
+            uninstall_tray = getattr(app, "_uninstall_tray", None)
+            if callable(uninstall_tray):
+                uninstall_tray()
+        except Exception:
+            exception_once(logger, "pyglet_uninstall_tray_exc", "Tray icon uninstall raised")
         try:
             setattr(app, "_realize_window_hook", None)
             setattr(app, "_event_loop", None)
@@ -259,6 +272,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         exception_once(logger, "pyglet_get_chrome_exc", "Failed to determine window style from chrome")
 
     try:
+        visible_obs = getattr(win, "_visible_obs", None)
         window = pyglet.window.Window(
             width=getattr(win, "width", 0),
             height=getattr(win, "height", 0),
@@ -267,6 +281,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             vsync=False,
             resizable=getattr(win, "resizable", True),
             file_drops=True,
+            # A window hidden before realization starts hidden (start-in-tray)
+            # instead of flashing on screen.
+            visible=True if visible_obs is None else bool(visible_obs.value),
         )
     except Exception:
         logger.error(
@@ -1240,12 +1257,13 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_close():
-        # The OS close button is equivalent to Window.close(): destroy this
-        # window and let the App's exit policy decide whether the win exits.
+        # The OS close button routes through the Window's close_action policy
+        # ("close" | "hide"); the App's exit policy decides whether the app
+        # exits after an actual close.
         try:
-            win.close()
+            win._handle_close_request()
         except Exception:
-            exception_once(logger, "pyglet_on_close_exc", "Window.close raised")
+            exception_once(logger, "pyglet_on_close_exc", "Window close request raised")
         return True
 
 

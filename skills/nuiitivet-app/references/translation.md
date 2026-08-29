@@ -21,7 +21,7 @@ to write the left column, write the right column instead.
 | `from nuiitivet.widgets import Column, Text` (scattered imports) | `import nuiitivet.material as nv`, then `nv.Column`, `nv.Text` — one import root |
 | `runApp(MyApp())` (Flutter) | `nv.App(nv.Window(content=build_root)).run()` — pass a **factory** for hot reload |
 | `MaterialApp(home=...)` (Flutter) | `nv.App(nv.Window(content=...))`; theming via `nv.App(win, theme=nv.ThemeFactory...)` |
-| `nv.App(content=..., title=...)` (older nuiitivet) | `nv.App(nv.Window(content=..., title=...))` — `App` takes its main `Window`; window keywords (`title`, `width`, `menu`, ...) live on `Window`, and `App` keeps only `theme=` / `exit_policy=` |
+| `nv.App(content=..., title=...)` (older nuiitivet) | `nv.App(nv.Window(content=..., title=...))` — `App` takes its main `Window`; window keywords (`title`, `width`, `menu`, ...) live on `Window`, and `App` keeps only `theme=` / `exit_policy=` / `tray=` |
 
 ```python
 # Correct — a root factory keeps hot reload working (don't call it)
@@ -173,6 +173,7 @@ static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor (#518)
 | routing tables of string paths only | Intent-based `nv.Navigator.intents(initial_route=..., routes={Intent: lambda i: Screen()})` |
 | `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
 | `tkinter.filedialog.askopenfilename()` / `file_picker` (Flutter) / `NSOpenPanel` / a hand-rolled path `TextField` | `path = await nv.FileDialog.open_file(file_types=["txt"])` — coroutine, call from an `async` handler. Cancel is `None` (`open_files`: `[]`); also `save_file(default_name=...)` / `open_directory()`; `nv.FileDialogError` when the dialog cannot be shown (Linux without `zenity`/`kdialog`). Never import tkinter: its mainloop cannot coexist with the pyglet-owned event loop |
+| `pystray.Icon(...).run()` / `run_detached()` / `infi.systray` (external tray-icon libs) | `nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., menu=[nv.MenuBarItem(...)]))` — built in; the menu reuses `MenuBarItem` and `tray.installed` (`Observable[bool]`) reports whether the icon actually shows. Never import pystray directly: on macOS it fights the pyglet-owned loop, and nuiitivet already wraps it where it is used. Close-to-tray is `close_action=tray.installed.map(...)` on the `Window`, plus `exit_policy=nv.ExitPolicy.EXPLICIT` |
 | `QFontDatabase.addApplicationFont(...)` (Qt) / `pubspec.yaml` font assets (Flutter) / `tkinter.font.Font(...)` | `nv.Fonts.register("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")` once at startup, before any widget renders; then `font_family="NotoSansJP"` wherever a `font_family` is accepted. App-wide default: `nv.Fonts.set_default_family("Hiragino Sans")` |
 | `nv.register_font(...)` / `nv.set_default_font_family(...)` / `nv.get_clock()` / `nv.set_clock(...)` (pre-namespace nuiitivet) | Configuration lives on namespace classes, not flat on the root: `nv.Fonts.register(...)`, `nv.Fonts.set_default_family(...)`, `nv.Clocks.get()`, `nv.Clocks.set(...)` |
 

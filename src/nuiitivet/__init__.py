@@ -157,12 +157,18 @@ from nuiitivet.modifiers import (
 # Platform services
 from nuiitivet.platform.desktop import Desktop
 from nuiitivet.platform.file_dialog import FileDialog, FileDialogError
+from nuiitivet.platform.tray import TrayIcon
 
 # Window / runtime
 from nuiitivet.runtime.app import AppScope, ExitPolicy
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
 from nuiitivet.runtime.window import Window, WindowScope
-from nuiitivet.runtime.window_intents import CloseWindowIntent, MinimizeWindowIntent
+from nuiitivet.runtime.window_intents import (
+    CloseWindowIntent,
+    HideWindowIntent,
+    MinimizeWindowIntent,
+    ShowWindowIntent,
+)
 
 # Configuration
 from nuiitivet.fonts import Fonts
@@ -296,6 +302,7 @@ __all__: list[str] = [
     "Desktop",
     "FileDialog",
     "FileDialogError",
+    "TrayIcon",
     # Window / runtime
     "AppScope",
     "ExitPolicy",
@@ -305,7 +312,9 @@ __all__: list[str] = [
     "CustomChrome",
     "Border",
     "CloseWindowIntent",
+    "HideWindowIntent",
     "MinimizeWindowIntent",
+    "ShowWindowIntent",
     # Configuration
     "Fonts",
     "RendererMode",
