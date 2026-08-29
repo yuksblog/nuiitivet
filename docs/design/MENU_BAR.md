@@ -8,7 +8,7 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 ### In scope
 
-- The menu model (`MenuBar`, `MenuBarItem`) and its reactivity contract
+- The menu model (`MenuBar`, `MenuEntry`) and its reactivity contract
 - Registration on `Window` and activation dispatch
 - Placement rules, including free placement inside a `CustomChrome`
 - Platform split: in-app rendering vs. the macOS `NSMenu` bridge
@@ -32,7 +32,7 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
   on Windows/Linux.
 - **global menu bar**: The macOS system menu bar at the top of the screen,
   driven through `NSMenu`.
-- **standard item**: A prebuilt `MenuBarItem` factory (e.g. `quit()`) whose
+- **standard item**: A prebuilt `MenuEntry` factory (e.g. `quit()`) whose
   behavior and per-platform placement the framework owns.
 - **accelerator**: The keyboard shortcut displayed next to an item and able to
   activate it while the menu is closed.
@@ -66,18 +66,19 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 ### 4.1 Types
 
-The model consists of two public types, defined in the framework-common
-`nuiitivet/menubar/` package (Section 8.1) and re-exported through the
-public surface:
+The model consists of two public types, re-exported through the public
+surface. `MenuEntry` is surface-neutral data shared with the tray icon and
+lives in `nuiitivet/menus.py`; `MenuBar` is genuinely bar-specific and lives
+in the framework-common `nuiitivet/menubar/` package (Section 8.1):
 
-- `MenuBar(items: Sequence[MenuBarItem], *, style: MenuBarStyle | None)` —
+- `MenuBar(items: Sequence[MenuEntry], *, style: MenuBarStyle | None)` —
   the root.
-- `MenuBarItem` — a single entry. One type covers all roles:
-  - **Action**: `MenuBarItem(label, on_select=..., shortcut=..., enabled=...,
+- `MenuEntry` — a single entry. One type covers all roles:
+  - **Action**: `MenuEntry(label, on_select=..., shortcut=..., enabled=...,
     checked=...)`
-  - **Submenu**: `MenuBarItem(label, submenu=[...])` — top-level bar entries
+  - **Submenu**: `MenuEntry(label, submenu=[...])` — top-level bar entries
     ("File", "Edit") are simply items with a `submenu`. Nesting is unlimited.
-  - **Separator**: `MenuBarItem.separator()`.
+  - **Separator**: `MenuEntry.separator()`.
 
 Construction-time validation: a non-separator item must have exactly one of
 `on_select`, `submenu`, or a standard-item role, and `submenu` is mutually
@@ -101,7 +102,7 @@ marks — not arbitrary widget subtrees.
 | `shortcut` | `ShortcutLike \| None` | A spec string (`"Accel+S"`) or `Shortcut`; parsed via `to_shortcut()`. |
 | `enabled` | `bool \| ObservableBase[bool]` | Default `True`. |
 | `checked` | `Observable[bool] \| None` | Presence makes the item checkable. Must be writable: activation toggles it (Section 5.2). |
-| `submenu` | `Sequence[MenuBarItem] \| None` | |
+| `submenu` | `Sequence[MenuEntry] \| None` | |
 
 ### 4.3 Reactivity contract
 
@@ -114,19 +115,19 @@ marks — not arbitrary widget subtrees.
 
 ### 4.4 Standard items
 
-Prebuilt factories on `MenuBarItem` carrying a role
-(`MenuBarRole`); activation dispatches the mapped built-in intent
+Prebuilt factories on `MenuEntry` carrying a role
+(`MenuRole`); activation dispatches the mapped built-in intent
 (`src/nuiitivet/runtime/intents.py`) on every platform, so window management
 and app exit stay on the one dispatch path:
 
-- `MenuBarItem.quit()` → `ExitAppIntent`
-- `MenuBarItem.close_window()` → `CloseWindowIntent`
-- `MenuBarItem.minimize()` → `MinimizeWindowIntent`
-- `MenuBarItem.maximize()` → `MaximizeWindowIntent`
-- `MenuBarItem.restore()` → `RestoreWindowIntent` — the way back from
+- `MenuEntry.quit()` → `ExitAppIntent`
+- `MenuEntry.close_window()` → `CloseWindowIntent`
+- `MenuEntry.minimize()` → `MinimizeWindowIntent`
+- `MenuEntry.maximize()` → `MaximizeWindowIntent`
+- `MenuEntry.restore()` → `RestoreWindowIntent` — the way back from
   `full_screen()` / `maximize()` / `minimize()`; `FullScreenIntent` itself
   only enters full screen
-- `MenuBarItem.full_screen()` → `FullScreenIntent`
+- `MenuEntry.full_screen()` → `FullScreenIntent`
 
 Standard items absorb platform conventions: labels ("Exit" vs "Quit",
 "Maximize" vs "Zoom"), default accelerators (⌘Q / ⌘W / ⌘M on macOS), and
@@ -143,12 +144,12 @@ app = nv.App(
         content=Home,
         title="MyEditor",
         menu=nv.MenuBar([
-            nv.MenuBarItem("File", submenu=[
-                nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=open_file),
-                nv.MenuBarItem("Save", shortcut="Accel+S",
+            nv.MenuEntry("File", submenu=[
+                nv.MenuEntry("Open...", shortcut="Accel+O", on_select=open_file),
+                nv.MenuEntry("Save", shortcut="Accel+S",
                                on_select=save, enabled=can_save),
-                nv.MenuBarItem.separator(),
-                nv.MenuBarItem.quit(),
+                nv.MenuEntry.separator(),
+                nv.MenuEntry.quit(),
             ]),
         ]),
     ),
@@ -241,7 +242,7 @@ platform branching in app code.
 - Open menus are popups going through the unified overlay anchoring, reusing
   the MD3 `Menu` widget machinery (`src/nuiitivet/material/menu.py`) —
   popup surfaces, keyboard traversal, submenu expansion — through an
-  internal adapter from `MenuBarItem` data to those widgets. The MD3
+  internal adapter from `MenuEntry` data to those widgets. The MD3
   widgets' public API is unchanged; their colors are supplied from the
   menubar's own palette (Section 8.4).
 - Keyboard behavior: `Left`/`Right` move across top-level menus (wrapping),
@@ -286,9 +287,11 @@ platform branching in app code.
 The menu bar is not a Material Design component — m3.material.io defines
 popup Menus, but no desktop menu bar. Like the scrollbar, it is a generic
 framework widget, so its styling follows the scrollbar precedent
-(`src/nuiitivet/scrolling/scrollbar_theme_data.py`): the model, style, and
-theme-data types live in a framework-common package (`nuiitivet/menubar/`),
-not under `material/`, and the palette arrives through the generic
+(`src/nuiitivet/scrolling/scrollbar_theme_data.py`): the bar model, style,
+and theme-data types live in a framework-common package
+(`nuiitivet/menubar/`), not under `material/` — the surface-neutral
+`MenuEntry` sits one level up in `nuiitivet/menus.py` — and the palette
+arrives through the generic
 `ThemeExtension` seam rather than by reading Material color roles directly.
 
 ### 8.2 `MenuBarThemeData` (app-wide palette)

@@ -24,7 +24,9 @@ from nuiitivet.runtime.window_intents import (
     RestoreWindowIntent,
 )
 
-from .model import MenuBar, MenuBarItem, MenuBarRole
+from nuiitivet.menus import MenuEntry, MenuRole
+
+from .model import MenuBar
 
 if TYPE_CHECKING:
     from nuiitivet.runtime.window import Window
@@ -39,12 +41,12 @@ logger = logging.getLogger(__name__)
 #: act directly (Stage 2: NSMenu), so app exit paths and window management
 #: stay on the one code path.
 _ROLE_INTENTS = {
-    MenuBarRole.QUIT: ExitAppIntent,
-    MenuBarRole.CLOSE_WINDOW: CloseWindowIntent,
-    MenuBarRole.MINIMIZE: MinimizeWindowIntent,
-    MenuBarRole.MAXIMIZE: MaximizeWindowIntent,
-    MenuBarRole.RESTORE: RestoreWindowIntent,
-    MenuBarRole.FULL_SCREEN: FullScreenIntent,
+    MenuRole.QUIT: ExitAppIntent,
+    MenuRole.CLOSE_WINDOW: CloseWindowIntent,
+    MenuRole.MINIMIZE: MinimizeWindowIntent,
+    MenuRole.MAXIMIZE: MaximizeWindowIntent,
+    MenuRole.RESTORE: RestoreWindowIntent,
+    MenuRole.FULL_SCREEN: FullScreenIntent,
 }
 
 
@@ -167,7 +169,7 @@ class MenuBarController:
 
     # ---- Activation ---------------------------------------------------------
 
-    def activate(self, item: "MenuBarItem") -> None:
+    def activate(self, item: "MenuEntry") -> None:
         """Run an action item's command: toggle ``checked``, then act.
 
         The single activation path shared by every rendering surface — the
@@ -177,7 +179,7 @@ class MenuBarController:
         """
         if item.checked is not None:
             item.checked.value = not bool(item.checked.value)
-        if item.role is not MenuBarRole.NONE:
+        if item.role is not MenuRole.NONE:
             self.dispatch_role(item.role)
         elif item.on_select is not None:
             from nuiitivet.widgeting.callbacks import invoke_event_handler
@@ -185,11 +187,11 @@ class MenuBarController:
             invoke_event_handler(
                 item.on_select,
                 error_key="menubar_on_select",
-                error_msg="MenuBarItem on_select raised",
-                owner_name="MenuBarItem",
+                error_msg="MenuEntry on_select raised",
+                owner_name="MenuEntry",
             )
 
-    def dispatch_role(self, role: MenuBarRole) -> None:
+    def dispatch_role(self, role: MenuRole) -> None:
         """Dispatch the built-in intent mapped to a standard-item role.
 
         Window-scoped roles dispatch through the owning window; the app-scoped

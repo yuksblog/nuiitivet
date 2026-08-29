@@ -15,7 +15,8 @@ from typing import List
 import pytest
 
 from nuiitivet.material.text import Text
-from nuiitivet.menubar.model import MenuBar, MenuBarItem
+from nuiitivet.menubar.model import MenuBar
+from nuiitivet.menus import MenuEntry
 from nuiitivet.observable import Observable
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="NSMenu bridge is macOS-only")
@@ -26,11 +27,11 @@ def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
     checked = Observable(False)
     model = MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "File",
                 submenu=[
-                    MenuBarItem("Open", on_select=lambda: record.append("open"), shortcut="Accel+O"),
-                    MenuBarItem("Wrap", on_select=lambda: record.append("wrap"), checked=checked),
+                    MenuEntry("Open", on_select=lambda: record.append("open"), shortcut="Accel+O"),
+                    MenuEntry("Wrap", on_select=lambda: record.append("wrap"), checked=checked),
                 ],
             )
         ]
@@ -70,15 +71,15 @@ def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
 def test_main_menu_structure_matches_plan(nuiitivet_app) -> None:
     model = MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "File",
                 submenu=[
-                    MenuBarItem("Open", on_select=lambda: None),
-                    MenuBarItem.separator(),
-                    MenuBarItem.quit(),
+                    MenuEntry("Open", on_select=lambda: None),
+                    MenuEntry.separator(),
+                    MenuEntry.quit(),
                 ],
             ),
-            MenuBarItem("Edit", submenu=[MenuBarItem("Undo", on_select=lambda: None)]),
+            MenuEntry("Edit", submenu=[MenuEntry("Undo", on_select=lambda: None)]),
         ]
     )
     app = nuiitivet_app(Text("content"), size=(400, 300), menu=model)

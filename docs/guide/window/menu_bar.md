@@ -23,15 +23,15 @@ app = nv.App(
         content=editor,
         title="Editor",
         menu=nv.MenuBar([
-            nv.MenuBarItem("File", submenu=[
-                nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=editor.open),
-                nv.MenuBarItem("Save", shortcut="Accel+S",
+            nv.MenuEntry("File", submenu=[
+                nv.MenuEntry("Open...", shortcut="Accel+O", on_select=editor.open),
+                nv.MenuEntry("Save", shortcut="Accel+S",
                                on_select=editor.save, enabled=editor.can_save),
-                nv.MenuBarItem.separator(),
-                nv.MenuBarItem.quit(),
+                nv.MenuEntry.separator(),
+                nv.MenuEntry.quit(),
             ]),
-            nv.MenuBarItem("View", submenu=[
-                nv.MenuBarItem("Word Wrap", on_select=editor.wrap_changed,
+            nv.MenuEntry("View", submenu=[
+                nv.MenuEntry("Word Wrap", on_select=editor.wrap_changed,
                                checked=editor.word_wrap),
             ]),
         ]),
@@ -45,14 +45,14 @@ A runnable demo is at
 
 ## Items
 
-One type, `nv.MenuBarItem`, covers every role:
+One type, `nv.MenuEntry`, covers every role:
 
 | Role | Construction |
 | --- | --- |
-| Action | `nv.MenuBarItem("Open...", on_select=..., shortcut="Accel+O")` |
-| Submenu | `nv.MenuBarItem("File", submenu=[...])` — nesting is unlimited |
-| Separator | `nv.MenuBarItem.separator()` |
-| Standard item | `nv.MenuBarItem.quit()` and friends |
+| Action | `nv.MenuEntry("Open...", on_select=..., shortcut="Accel+O")` |
+| Submenu | `nv.MenuEntry("File", submenu=[...])` — nesting is unlimited |
+| Separator | `nv.MenuEntry.separator()` |
+| Standard item | `nv.MenuEntry.quit()` and friends |
 
 An item is exactly one of these; the constructor raises on any other
 combination (e.g. `on_select` together with `submenu`). `on_select` is
@@ -64,12 +64,12 @@ Standard items are prebuilt commands — no `on_select` needed — whose labels
 and accelerators follow platform conventions (`quit()` is "Quit ⌘Q" on macOS
 and "Exit" elsewhere):
 
-- `nv.MenuBarItem.quit()` — exit the application
-- `nv.MenuBarItem.close_window()`
-- `nv.MenuBarItem.minimize()` / `nv.MenuBarItem.maximize()`
-- `nv.MenuBarItem.full_screen()` — enters full screen; pair it with
+- `nv.MenuEntry.quit()` — exit the application
+- `nv.MenuEntry.close_window()`
+- `nv.MenuEntry.minimize()` / `nv.MenuEntry.maximize()`
+- `nv.MenuEntry.full_screen()` — enters full screen; pair it with
   `restore()` to offer the way back
-- `nv.MenuBarItem.restore()` — exit full screen / restore the pre-maximize
+- `nv.MenuEntry.restore()` — exit full screen / restore the pre-maximize
   size / bring a minimized window back
 
 `label`, `shortcut` and `enabled` are overridable on each factory.
@@ -149,6 +149,6 @@ menu bar, set the corresponding `MenuBarStyle` fields (`bar_background`,
 - **macOS** — the same model goes to the **global menu bar** (`NSMenu`);
   nothing is drawn in the window and a mounted `MenuBarArea` collapses to
   zero size. An application menu is synthesized automatically — a
-  `MenuBarItem.quit()` found in one of your menus is relocated into it, and
+  `MenuEntry.quit()` found in one of your menus is relocated into it, and
   one is added if you have none. Accelerators become native key equivalents
   (`⌘S`). No platform branching is needed in app code.

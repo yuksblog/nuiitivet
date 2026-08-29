@@ -4,7 +4,7 @@ The menu is a declarative model registered on the App — not widgets in the
 tree. It renders as a bar below the chrome, popups included; items carry
 accelerators (displayed and registered from the same declaration), Observable
 ``enabled`` / ``checked`` state, nested submenus, and standard items like
-``MenuBarItem.quit()``.
+``MenuEntry.quit()``.
 
 Interactions:
     - Click File / Edit / View, or open a menu and switch with Left / Right.
@@ -30,43 +30,43 @@ class Screen(nv.ComposableWidget):
     def menu(self) -> nv.MenuBar:
         return nv.MenuBar(
             [
-                nv.MenuBarItem(
+                nv.MenuEntry(
                     "File",
                     submenu=[
-                        nv.MenuBarItem("Open...", shortcut="Accel+O", on_select=self._open),
-                        nv.MenuBarItem(
+                        nv.MenuEntry("Open...", shortcut="Accel+O", on_select=self._open),
+                        nv.MenuEntry(
                             "Save",
                             shortcut="Accel+S",
                             on_select=lambda: self._say("Saved."),
                             enabled=self.can_save,
                         ),
-                        nv.MenuBarItem.separator(),
-                        nv.MenuBarItem.quit(),
+                        nv.MenuEntry.separator(),
+                        nv.MenuEntry.quit(),
                     ],
                 ),
-                nv.MenuBarItem(
+                nv.MenuEntry(
                     "Edit",
                     submenu=[
-                        nv.MenuBarItem("Undo", shortcut="Accel+Z", on_select=lambda: self._say("Undo.")),
-                        nv.MenuBarItem("Redo", shortcut="Accel+Shift+Z", on_select=lambda: self._say("Redo.")),
-                        nv.MenuBarItem.separator(),
-                        nv.MenuBarItem(
+                        nv.MenuEntry("Undo", shortcut="Accel+Z", on_select=lambda: self._say("Undo.")),
+                        nv.MenuEntry("Redo", shortcut="Accel+Shift+Z", on_select=lambda: self._say("Redo.")),
+                        nv.MenuEntry.separator(),
+                        nv.MenuEntry(
                             "Advanced",
                             submenu=[
-                                nv.MenuBarItem("Sort Lines", on_select=lambda: self._say("Sorted.")),
+                                nv.MenuEntry("Sort Lines", on_select=lambda: self._say("Sorted.")),
                             ],
                         ),
                     ],
                 ),
-                nv.MenuBarItem(
+                nv.MenuEntry(
                     "View",
                     submenu=[
-                        nv.MenuBarItem(
+                        nv.MenuEntry(
                             "Word Wrap",
                             on_select=lambda: self._say(f"Word wrap: {self.word_wrap.value}"),
                             checked=self.word_wrap,
                         ),
-                        nv.MenuBarItem.full_screen(),
+                        nv.MenuEntry.full_screen(),
                     ],
                 ),
             ]

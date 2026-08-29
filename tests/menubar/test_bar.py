@@ -8,7 +8,8 @@ from nuiitivet.input.shortcut import Shortcut
 from nuiitivet.layout.column import Column
 from nuiitivet.material.text import Text
 from nuiitivet.menubar.bar import MenuBarWidget
-from nuiitivet.menubar.model import MenuBar, MenuBarItem
+from nuiitivet.menubar.model import MenuBar
+from nuiitivet.menus import MenuEntry
 from nuiitivet.menubar.slots import MenuBarArea
 from nuiitivet.menubar.style import MenuBarStyle
 from nuiitivet.observable import Observable
@@ -34,12 +35,12 @@ def _find_bar(root) -> MenuBarWidget:
 def _simple_model(record: List[str], *, save_enabled=True) -> MenuBar:
     return MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "File",
                 submenu=[
-                    MenuBarItem("Open...", on_select=lambda: record.append("open")),
-                    MenuBarItem.separator(),
-                    MenuBarItem(
+                    MenuEntry("Open...", on_select=lambda: record.append("open")),
+                    MenuEntry.separator(),
+                    MenuEntry(
                         "Save",
                         on_select=lambda: record.append("save"),
                         shortcut="Accel+S",
@@ -47,9 +48,9 @@ def _simple_model(record: List[str], *, save_enabled=True) -> MenuBar:
                     ),
                 ],
             ),
-            MenuBarItem(
+            MenuEntry(
                 "Edit",
-                submenu=[MenuBarItem("Undo", on_select=lambda: record.append("undo"))],
+                submenu=[MenuEntry("Undo", on_select=lambda: record.append("undo"))],
             ),
         ]
     )
@@ -138,10 +139,10 @@ def test_checked_item_toggles_before_on_select(nuiitivet_app) -> None:
     seen: List[bool] = []
     model = MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "View",
                 submenu=[
-                    MenuBarItem(
+                    MenuEntry(
                         "Word Wrap",
                         on_select=lambda: seen.append(checked.value),
                         checked=checked,
@@ -174,7 +175,7 @@ def test_menu_replacement_rebuilds_bar(nuiitivet_app) -> None:
     assert app.get(label="File") is not None
 
     app.window.menu = MenuBar(
-        [MenuBarItem("View", submenu=[MenuBarItem("Zoom", on_select=lambda: None)])]
+        [MenuEntry("View", submenu=[MenuEntry("Zoom", on_select=lambda: None)])]
     )
     app.settle()
     assert app.query(label="File") is None
@@ -188,13 +189,13 @@ def test_submenu_survives_overlay_restack(nuiitivet_app) -> None:
     record: List[str] = []
     model = MenuBar(
         [
-            MenuBarItem(
+            MenuEntry(
                 "Edit",
                 submenu=[
-                    MenuBarItem("Undo", on_select=lambda: record.append("undo")),
-                    MenuBarItem(
+                    MenuEntry("Undo", on_select=lambda: record.append("undo")),
+                    MenuEntry(
                         "Advanced",
-                        submenu=[MenuBarItem("Sort", on_select=lambda: record.append("sort"))],
+                        submenu=[MenuEntry("Sort", on_select=lambda: record.append("sort"))],
                     ),
                 ],
             )
@@ -243,7 +244,7 @@ def test_popup_opens_flush_below_the_bar(nuiitivet_app) -> None:
 def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
     from nuiitivet.runtime.window_intents import RestoreWindowIntent
 
-    model = MenuBar([MenuBarItem("Window", submenu=[MenuBarItem.restore()])])
+    model = MenuBar([MenuEntry("Window", submenu=[MenuEntry.restore()])])
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=model)
     seen: List[object] = []
     app.window.dispatch = seen.append  # type: ignore[method-assign]
@@ -255,7 +256,7 @@ def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
 def test_top_level_label_updates_live(nuiitivet_app) -> None:
     label = Observable("File")
     model = MenuBar(
-        [MenuBarItem(label, submenu=[MenuBarItem("Open", on_select=lambda: None)])]
+        [MenuEntry(label, submenu=[MenuEntry("Open", on_select=lambda: None)])]
     )
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=model)
     assert app.get(label="File") is not None

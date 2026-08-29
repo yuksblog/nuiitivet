@@ -1,7 +1,7 @@
 """System tray icon with ``App(tray=...)``.
 
 The tray icon is declarative data registered on the App, like the menu bar:
-a ``TrayIcon`` with a tooltip and a menu of ``MenuBarItem`` entries. It is
+a ``TrayIcon`` with a tooltip and a menu of ``MenuEntry`` entries. It is
 installed while the app runs and removed when the app exits; whether the
 platform actually showed it is readable from ``tray.installed``.
 
@@ -31,13 +31,13 @@ class Screen(nv.ComposableWidget):
         return nv.TrayIcon(
             tooltip="Nuiitivet Tray",
             menu=[
-                nv.MenuBarItem(
+                nv.MenuEntry(
                     self.pings.map(lambda n: f"Ping ({n})"),
                     on_select=self._ping,
                 ),
-                nv.MenuBarItem("Muted", on_select=lambda: None, checked=self.muted),
-                nv.MenuBarItem.separator(),
-                nv.MenuBarItem.quit(),
+                nv.MenuEntry("Muted", on_select=lambda: None, checked=self.muted),
+                nv.MenuEntry.separator(),
+                nv.MenuEntry.quit(),
             ],
         )
 

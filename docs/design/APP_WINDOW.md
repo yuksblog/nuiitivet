@@ -260,8 +260,8 @@ Two dispatch entry points, split by what the intent is about:
   an established `Overlay`-scoped path with its own `IntentResolver` and
   never passed through `App.dispatch`. Per-window overlays make it
   window-correct automatically.
-- Menu-bar standard items (`MenuBarItem.quit()`,
-  `MenuBarItem.close_window()`, ...) keep dispatching their mapped
+- Menu-bar standard items (`MenuEntry.quit()`,
+  `MenuEntry.close_window()`, ...) keep dispatching their mapped
   intents; each menu bar belongs to a window, so its controller
   dispatches window intents through that window and app intents through
   the app.

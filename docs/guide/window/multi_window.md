@@ -112,7 +112,7 @@ App-scoped intents — `ExitAppIntent`, the theme intents — dispatch through
 `App.of(context).dispatch(...)` instead. The split is strict: dispatching an
 intent at the wrong scope raises rather than being silently misdelivered, so
 the call site always tells you where an intent lands. Menu-bar standard
-items (`MenuBarItem.close_window()`, `MenuBarItem.quit()`, ...) route
+items (`MenuEntry.close_window()`, `MenuEntry.quit()`, ...) route
 themselves correctly.
 
 ## When the app exits
