@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, resolve_modifiers
 from nuiitivet.input.shortcut import Shortcut
@@ -152,30 +152,20 @@ def plan_menus(model: MenuBar, app_name: str) -> List[PlanMenu]:
     return [PlanMenu(app_name, app_entries), *menus]
 
 
-class NSMenuBridge:
-    """Installs the menu model as the macOS global menu bar.
+class NSMenuBuilder:
+    """Builds native ``NSMenu`` trees from :class:`MenuBarItem` entries.
 
-    Created by the :class:`~nuiitivet.menubar.controller.MenuBarController`
-    once the pyglet window exists; framework-internal. ``install()`` rebuilds
-    the whole ``NSMenu`` tree (structure is replaced wholesale, matching the
-    model contract), while Observable ``label`` / ``enabled`` / ``checked``
-    changes flow through targeted setters without a rebuild.
+    Owns everything a native menu needs beyond the model: the Objective-C
+    action target, Python-side references keeping AppKit objects alive, and
+    the subscriptions syncing Observable ``label`` / ``enabled`` / ``checked``
+    changes into the items. Shared by the global menu bar bridge and the tray
+    icon so every native surface renders the model identically. ``activate``
+    receives the :class:`MenuBarItem` whose ``NSMenuItem`` fired, on the main
+    thread.
     """
 
-    @staticmethod
-    def is_supported() -> bool:
-        """True when the platform can host the bridge (macOS with cocoapy)."""
-        if sys.platform != "darwin":
-            return False
-        try:
-            import pyglet.libs.darwin.cocoapy  # noqa: F401
-        except Exception:
-            return False
-        return True
-
-    def __init__(self, controller: "MenuBarController", *, app_name: str) -> None:
-        self._controller = controller
-        self._app_name = app_name
+    def __init__(self, activate: Callable[[MenuBarItem], None]) -> None:
+        self._activate = activate
         self._actions: List[MenuBarItem] = []
         self._subscriptions: List[Any] = []
         #: Python-side references to every ObjC object we created, so nothing
@@ -183,64 +173,39 @@ class NSMenuBridge:
         self._retained: List[Any] = []
         self._target: Any = None
 
-    # ---- Install / teardown ----------------------------------------------
-
-    def install(self, model: Optional[MenuBar]) -> None:
-        """Replace the global menu bar with ``model`` (``None`` → app menu only)."""
+    def new_menu(self, title: str, entries: Sequence[MenuBarItem]) -> Any:
+        """Create an ``NSMenu`` titled ``title`` holding ``entries``."""
         from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString
 
-        self._dispose_subscriptions()
-        self._actions = []
-        self._retained = []
-
-        NSApplication = ObjCClass("NSApplication")
         NSMenu = ObjCClass("NSMenu")
+        menu = NSMenu.alloc().initWithTitle_(get_NSString(title))
+        menu.setAutoenablesItems_(False)
+        self._retained.append(menu)
+        self.fill_menu(menu, entries)
+        return menu
 
-        main_menu = NSMenu.alloc().initWithTitle_(get_NSString("MainMenu"))
-        self._retained.append(main_menu)
+    def retain(self, *objs: Any) -> None:
+        """Keep Python-side references alive for the builder's lifetime."""
+        self._retained.extend(objs)
 
-        plans = plan_menus(model, self._app_name) if model is not None else plan_menus(
-            MenuBar([]), self._app_name
-        )
-        for plan in plans:
-            self._add_top_menu(main_menu, plan)
-
-        NSApplication.sharedApplication().setMainMenu_(main_menu)
-        logger.debug("NSMenu bridge installed %d top-level menus", len(plans))
-
-    def uninstall(self) -> None:
-        """Drop subscriptions and references; the menu itself stays until replaced."""
-        self._dispose_subscriptions()
+    def dispose(self) -> None:
+        """Drop subscriptions and references; menus stay until replaced."""
+        subscriptions, self._subscriptions = self._subscriptions, []
+        for subscription in subscriptions:
+            dispose = getattr(subscription, "dispose", None)
+            if callable(dispose):
+                dispose()
         self._actions = []
         self._retained = []
         self._target = None
 
-    # ---- Activation ---------------------------------------------------------
-
     def _activated(self, tag: int) -> None:
         """An ``NSMenuItem`` fired (click or key equivalent)."""
         if 0 <= tag < len(self._actions):
-            self._controller.activate(self._actions[tag])
+            self._activate(self._actions[tag])
 
-    # ---- Translation ---------------------------------------------------------
-
-    def _add_top_menu(self, main_menu: Any, plan: PlanMenu) -> None:
-        from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString
-
-        NSMenu = ObjCClass("NSMenu")
-        NSMenuItem = ObjCClass("NSMenuItem")
-
-        holder = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            get_NSString(plan.title), None, get_NSString("")
-        )
-        submenu = NSMenu.alloc().initWithTitle_(get_NSString(plan.title))
-        submenu.setAutoenablesItems_(False)
-        self._retained.extend((holder, submenu))
-        self._fill_menu(submenu, plan.entries)
-        holder.setSubmenu_(submenu)
-        main_menu.addItem_(holder)
-
-    def _fill_menu(self, ns_menu: Any, entries: Sequence[MenuBarItem]) -> None:
+    def fill_menu(self, ns_menu: Any, entries: Sequence[MenuBarItem]) -> None:
+        """Append ``entries`` (actions, separators, nested submenus) to ``ns_menu``."""
         from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString, get_selector
 
         NSMenu = ObjCClass("NSMenu")
@@ -259,7 +224,7 @@ class NSMenuBridge:
                 nested.setAutoenablesItems_(False)
                 self._retained.extend((holder, nested))
                 holder.setEnabled_(entry.resolved_enabled())
-                self._fill_menu(nested, entry.submenu)
+                self.fill_menu(nested, entry.submenu)
                 holder.setSubmenu_(nested)
                 ns_menu.addItem_(holder)
                 self._observe(entry, holder)
@@ -284,8 +249,6 @@ class NSMenuBridge:
                 ns_item.setState_(1 if bool(entry.checked.value) else 0)
             ns_menu.addItem_(ns_item)
             self._observe(entry, ns_item)
-
-    # ---- Live property sync ----------------------------------------------------
 
     def _observe(self, entry: MenuBarItem, ns_item: Any) -> None:
         """Wire the entry's Observable properties to the NSMenuItem's setters.
@@ -312,22 +275,87 @@ class NSMenuBridge:
             if isinstance(prop, ObservableBase):
                 self._subscriptions.append(prop.subscribe(on_change))
 
-    def _dispose_subscriptions(self) -> None:
-        subscriptions, self._subscriptions = self._subscriptions, []
-        for subscription in subscriptions:
-            dispose = getattr(subscription, "dispose", None)
-            if callable(dispose):
-                dispose()
-
-    # ---- Objective-C target -------------------------------------------------
-
     def _ensure_target(self) -> Any:
         if self._target is None:
             target_class = _menu_target_class()
             self._target = target_class.alloc().init()
-            self._target._bridge = self  # read by nuiitivetMenuAction_
+            self._target._builder = self  # read by nuiitivetMenuAction_
             self._retained.append(self._target)
         return self._target
+
+
+class NSMenuBridge:
+    """Installs the menu model as the macOS global menu bar.
+
+    Created by the :class:`~nuiitivet.menubar.controller.MenuBarController`
+    once the pyglet window exists; framework-internal. ``install()`` rebuilds
+    the whole ``NSMenu`` tree (structure is replaced wholesale, matching the
+    model contract), while Observable ``label`` / ``enabled`` / ``checked``
+    changes flow through targeted setters without a rebuild.
+    """
+
+    @staticmethod
+    def is_supported() -> bool:
+        """True when the platform can host the bridge (macOS with cocoapy)."""
+        if sys.platform != "darwin":
+            return False
+        try:
+            import pyglet.libs.darwin.cocoapy  # noqa: F401
+        except Exception:
+            return False
+        return True
+
+    def __init__(self, controller: "MenuBarController", *, app_name: str) -> None:
+        self._controller = controller
+        self._app_name = app_name
+        self._builder: Optional[NSMenuBuilder] = None
+
+    # ---- Install / teardown ----------------------------------------------
+
+    def install(self, model: Optional[MenuBar]) -> None:
+        """Replace the global menu bar with ``model`` (``None`` → app menu only)."""
+        from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString
+
+        if self._builder is not None:
+            self._builder.dispose()
+        self._builder = NSMenuBuilder(self._controller.activate)
+
+        NSApplication = ObjCClass("NSApplication")
+        NSMenu = ObjCClass("NSMenu")
+
+        main_menu = NSMenu.alloc().initWithTitle_(get_NSString("MainMenu"))
+        self._builder.retain(main_menu)
+
+        plans = plan_menus(model, self._app_name) if model is not None else plan_menus(
+            MenuBar([]), self._app_name
+        )
+        for plan in plans:
+            self._add_top_menu(main_menu, plan)
+
+        NSApplication.sharedApplication().setMainMenu_(main_menu)
+        logger.debug("NSMenu bridge installed %d top-level menus", len(plans))
+
+    def uninstall(self) -> None:
+        """Drop subscriptions and references; the menu itself stays until replaced."""
+        if self._builder is not None:
+            self._builder.dispose()
+            self._builder = None
+
+    # ---- Translation ---------------------------------------------------------
+
+    def _add_top_menu(self, main_menu: Any, plan: PlanMenu) -> None:
+        from pyglet.libs.darwin.cocoapy import ObjCClass, get_NSString
+
+        NSMenuItem = ObjCClass("NSMenuItem")
+
+        assert self._builder is not None
+        holder = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            get_NSString(plan.title), None, get_NSString("")
+        )
+        submenu = self._builder.new_menu(plan.title, plan.entries)
+        self._builder.retain(holder)
+        holder.setSubmenu_(submenu)
+        main_menu.addItem_(holder)
 
 
 _MENU_TARGET_CLASS: Any = None
@@ -352,9 +380,9 @@ def _menu_target_class() -> Any:
         @NuiitivetMenuTarget.method("v@")
         def nuiitivetMenuAction_(self, sender: Any) -> None:
             # cocoapy hands '@' arguments in as ObjCInstance already.
-            bridge: Optional[NSMenuBridge] = getattr(self, "_bridge", None)
-            if bridge is not None:
-                bridge._activated(int(sender.tag()))
+            builder: Optional[NSMenuBuilder] = getattr(self, "_builder", None)
+            if builder is not None:
+                builder._activated(int(sender.tag()))
 
     _MENU_TARGET_IMPLEMENTATION = _Implementation
     _MENU_TARGET_CLASS = ObjCClass("NuiitivetMenuTarget")

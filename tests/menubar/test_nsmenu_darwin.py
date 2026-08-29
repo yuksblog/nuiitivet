@@ -44,19 +44,21 @@ def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
 
     bridge = controller._bridge
     assert bridge is not None
+    builder = bridge._builder
+    assert builder is not None
     ns_items = {}
-    for obj in bridge._retained:
+    for obj in builder._retained:
         if hasattr(obj, "tag") and obj.action() is not None:
             ns_items[int(obj.tag())] = obj
-    by_label = {action.resolved_label(): tag for tag, action in enumerate(bridge._actions)}
+    by_label = {action.resolved_label(): tag for tag, action in enumerate(builder._actions)}
 
     ns_app = ObjCClass("NSApplication").sharedApplication()
     selector = get_selector("nuiitivetMenuAction:")
 
-    assert ns_app.sendAction_to_from_(selector, bridge._target, ns_items[by_label["Open"]])
+    assert ns_app.sendAction_to_from_(selector, builder._target, ns_items[by_label["Open"]])
     assert record == ["open"]
 
-    assert ns_app.sendAction_to_from_(selector, bridge._target, ns_items[by_label["Wrap"]])
+    assert ns_app.sendAction_to_from_(selector, builder._target, ns_items[by_label["Wrap"]])
     assert record == ["open", "wrap"]
     assert checked.value is True
     # Pump the clock so the scheduled NSMenuItem state sync runs; it must

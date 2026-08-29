@@ -19,6 +19,9 @@ dependencies = [
   "pyglet>=2.1.14",
   "pyopengl>=3.1.10",
   "skia-python>=138.0",
+  # Tray icon backend. macOS is excluded deliberately: the tray goes through
+  # a direct NSStatusItem there, and pystray would drag pyobjc in for nothing.
+  'pystray>=0.19.0; sys_platform == "win32" or sys_platform == "linux"',
 ]
 description = "Intuitive UI framework for Python"
 keywords = ["ui", "desktop", "framework", "graphics", "opengl", "skia", "material design"]

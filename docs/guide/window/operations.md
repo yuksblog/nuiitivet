@@ -20,8 +20,15 @@ window.full_screen()  # enters full screen; restore() is the way back
 window.center()
 window.move_to(100, 80)
 window.resize(1024, 768)
+window.hide()         # park the window; tree, state, and geometry survive
+window.show()         # bring it back, focused — or raise an already-visible one
 window.close()
 ```
+
+`hide()` is not a close: the window stays open (and keeps counting for the
+App's exit policy), renders no frames while parked, and `show()` restores it
+instantly. `window.is_visible` is the matching `Observable[bool]`. This pair
+is what a tray-resident app is built on — see [Tray Icon](tray_icon.md).
 
 ## Window-scoped intents
 
@@ -31,6 +38,9 @@ defined in `nuiitivet.runtime.window_intents` and dispatch through the
 window of the dispatching context:
 
 - **`CloseWindowIntent`**: Closes the window.
+- **`HideWindowIntent`**: Hides the window — not a close; the tree and state
+  stay alive (see [Tray Icon](tray_icon.md)).
+- **`ShowWindowIntent`**: Shows the window and brings it to the front, focused.
 - **`MaximizeWindowIntent`**: Maximizes the window to fill the screen.
 - **`MinimizeWindowIntent`**: Minimizes the window to the taskbar or dock.
 - **`RestoreWindowIntent`**: Restores the window from a minimized or maximized state.

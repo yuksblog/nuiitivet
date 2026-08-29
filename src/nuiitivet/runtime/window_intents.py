@@ -43,6 +43,16 @@ class CloseWindowIntent:
 
 
 @dataclass(frozen=True, slots=True)
+class HideWindowIntent:
+    """Intent to hide the window (see :meth:`Window.hide` — not a close)."""
+
+
+@dataclass(frozen=True, slots=True)
+class ShowWindowIntent:
+    """Intent to show the window and bring it to the front, focused."""
+
+
+@dataclass(frozen=True, slots=True)
 class MoveWindowIntent:
     """Intent to move the window to a specific position."""
 

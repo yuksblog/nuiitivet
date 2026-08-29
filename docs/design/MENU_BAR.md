@@ -20,7 +20,8 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 - Context menus and dropdown menus attached to widgets — those are the
   existing MD3 `Menu` / `MenuItem` widgets (`src/nuiitivet/material/menu.py`)
-- Tray icons and other desktop integration
+- Tray icons and other desktop integration — the tray reuses this menu
+  model; see `docs/design/TRAY_ICON.md`
 - A general user-extensible command/intent system
 
 ## 2. Terminology

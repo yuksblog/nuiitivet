@@ -11,3 +11,4 @@ Please refer to the following sections for detailed information:
 - [Menu Bar](menu_bar.md): Register a menu bar with `Window(menu=...)` — items, shortcuts, checkable state, and placement.
 - [Multiple Windows](multi_window.md): Open secondary windows with `nv.Window` — lifecycle, parent/modal windows, and the app exit policy.
 - [Desktop Notifications](notifications.md): Raise an OS notification with `nv.Desktop.notify` — from an event handler or a worker thread.
+- [Tray Icon](tray_icon.md): Put the app in the system tray with `App(tray=nv.TrayIcon(...))` — menus, close-to-tray, and hide/show.
