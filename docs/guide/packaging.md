@@ -60,6 +60,7 @@ uv run pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 | Option | Required? | Description |
 | :--- | :--- | :--- |
 | `--windowed` (alias `--noconsole`) | No | Recommended for GUI apps; combine freely with `--onedir` or `--onefile`. **Windows:** hide the console window. **macOS:** hide the console *and* build a `.app` bundle. **Linux:** ignored, so you can omit it. |
+| `--osx-bundle-identifier com.example.myapp` | No | **macOS only.** Set the bundle identifier of the `.app`. Needed for OS features keyed to app identity — see [macOS App Identity](#macos-app-identity). |
 
 ### 3. Result
 
@@ -106,7 +107,7 @@ python -m nuitka main.py \
 | :--- | :--- | :--- |
 | `--standalone` | **YES** | Make the executable standalone (includes Python runtime). Produces a directory (recommended for faster startup). |
 | `--include-package=nuiitivet` | **YES** | Must be set to `nuiitivet`. Forces inclusion of the package to handle lazy imports. |
-| `--include-package-data=nuiitivet`| **YES** | Must be set to `nuiitivet`. Bundles assets like fonts and icons. |
+| `--include-package-data=nuiitivet` | **YES** | Must be set to `nuiitivet`. Bundles assets like fonts and icons. |
 | `--onefile` | No | Bundle into a single executable. Easier to distribute, but slower to start (unpacks to a temp dir). |
 | `--output-dir` | No | Directory to put the result in (e.g., `dist`). |
 | `--enable-plugin` | No | `anti-bloat` is recommended to reduce file size. |
@@ -118,7 +119,33 @@ python -m nuitka main.py \
 | `--windows-console-mode=disable` | No | **Windows only.** Hide the console window for GUI apps. Ignored on macOS/Linux — no need to write it there. |
 | `--macos-create-app-bundle` | No | **macOS only.** Build a `.app` bundle. A `.app` is a directory, so pair it with the recommended `--standalone` build (not with `--onefile`). |
 | `--macos-app-icon=icon` / `--windows-icon-from-ico=icon` | No | Set the app icon on macOS / Windows. Nuitka has no Linux icon flag — on Linux, the icon is set via a `.desktop` file, not embedded in the binary. |
+| `--macos-signed-app-name=com.example.myapp` | No | **macOS only.** Set the bundle identifier the `.app` is signed under — see [macOS App Identity](#macos-app-identity). |
 
 ### 3. Result
 
 The executable will be created in the `dist/` directory.
+
+## macOS App Identity
+
+Some OS features only work for an app the system can identify — concretely,
+[desktop notifications](window/notifications.md) (`nv.Desktop.notify`) are only
+delivered natively, under your app's own name and icon, when the process runs
+from a `.app` bundle that has a **bundle identifier** and a code signature.
+A build without them still runs; notifications just stay on the fallback path
+with borrowed attribution.
+
+To give your app an identity:
+
+1. **Set a bundle identifier** — a reverse-DNS string that is yours, e.g.
+   `com.example.myapp`. Pass `--osx-bundle-identifier` (PyInstaller) or
+   `--macos-signed-app-name` (Nuitka), as in the tables above. Keep it stable
+   across releases: the OS keys the user's notification permission (and their
+   per-app settings row in System Settings → Notifications) to this string.
+2. **Sign the bundle.** PyInstaller applies an *ad-hoc* signature by default,
+   which is enough for the app to work on the machine that built it. To
+   distribute to other machines you need a Developer ID certificate and
+   notarization either way — that general macOS distribution setup is beyond
+   this guide.
+
+Windows and Linux need nothing here: no notification feature in nuiitivet
+requires a registered app identity on those platforms.

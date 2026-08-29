@@ -92,6 +92,11 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "await nv.Overlay.of(self).dialog(nv.BasicDialog(...)); close with overlay.close(v)."),
     (re.compile(r"\bScaffoldMessenger\b"), "Flutter",
      "nv.Overlay.of(self).snackbar(\"...\")."),
+    (re.compile(r"\b(?:from|import)\s+(?:plyer|win10toast|win11toast|notify2|desktop_notifier|pync)\b"),
+     "external notification libs",
+     "OS notifications are built in: nv.Desktop.notify(title, body) — fire-and-forget, "
+     "never raises, safe from any thread. In-window feedback is "
+     "nv.Overlay.of(self).snackbar(...)."),
     (re.compile(r"\bTextEditingController\b"), "Flutter",
      "No controller object: bind an Observable as the field's value, "
      "nv.TextField(value=obs). Set the text with obs.value = ..."),

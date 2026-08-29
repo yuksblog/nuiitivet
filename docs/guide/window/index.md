@@ -10,3 +10,4 @@ Please refer to the following sections for detailed information:
 - [File Dialogs](file_dialogs.md): Show the OS-native open / save / folder dialogs and read the result.
 - [Menu Bar](menu_bar.md): Register a menu bar with `Window(menu=...)` — items, shortcuts, checkable state, and placement.
 - [Multiple Windows](multi_window.md): Open secondary windows with `nv.Window` — lifecycle, parent/modal windows, and the app exit policy.
+- [Desktop Notifications](notifications.md): Raise an OS notification with `nv.Desktop.notify` — from an event handler or a worker thread.

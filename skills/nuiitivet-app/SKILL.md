@@ -152,6 +152,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Sheets | `BottomSheet` / `SideSheet` / `StandardSideSheet` | `nv.Overlay.of(self).bottom_sheet(...)` |
 | Dialog | `BasicDialog` via `Overlay` | `await nv.Overlay.of(self).dialog(nv.BasicDialog(...))` |
 | Transient message | `Snackbar` via `Overlay` | `nv.Overlay.of(self).snackbar("Saved")` |
+| OS desktop notification (a job finished while the user is in another window) | `Desktop.notify` | `nv.Desktop.notify("Import done", "1,000 rows written")` — fire-and-forget: never blocks, never raises, safe from any thread (the natural last line of a worker job). Delivery is best-effort (the OS may suppress it), so keep the result visible in-app too — in-app feedback is `Snackbar`, not this |
 | Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
 | Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
 | Application menu bar | `MenuBar` / `MenuBarItem` | `nv.Window(..., menu=nv.MenuBar([nv.MenuBarItem("File", submenu=[nv.MenuBarItem("Open", shortcut="Accel+O", on_select=fn), nv.MenuBarItem.separator(), nv.MenuBarItem.quit()])]))` — a window-level model, never in `build()`; `label`/`enabled`/`checked` take Observables; `shortcut` also fires window-wide (never duplicate it with `key_shortcut`); replace via `window.menu = ...`; `nv.MenuBarArea()` relocates the bar |
