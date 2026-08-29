@@ -97,6 +97,12 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "OS notifications are built in: nv.Desktop.notify(title, body) — fire-and-forget, "
      "never raises, safe from any thread. In-window feedback is "
      "nv.Overlay.of(self).snackbar(...)."),
+    (re.compile(r"\bfiledialog\b|\bask(?:openfilename|openfilenames|saveasfilename|directory)\s*\(|"
+                r"\bQFileDialog\b|\bNS(?:Open|Save)Panel\b"),
+     "foreign file-dialog toolkits",
+     "Native dialogs are built in: path = await nv.FileDialog.open_file(file_types=[...]) "
+     "— coroutine, call from an async handler. Cancel is None (open_files: []); also "
+     "save_file / open_directory. nv.FileDialogError when the dialog cannot be shown."),
     (re.compile(r"\bTextEditingController\b"), "Flutter",
      "No controller object: bind an Observable as the field's value, "
      "nv.TextField(value=obs). Set the text with obs.value = ..."),

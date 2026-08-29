@@ -172,6 +172,7 @@ static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor (#518)
 | `showSearch(context:, delegate: SearchDelegate())` (Flutter) — a full-screen search route | There is **no full-screen search widget**. Put `nv.SearchBar(...)` in a screen you lay out yourself, and push that screen like any other; or use `nv.DockedSearchBar(..., content=...)` for a dropdown. The bar animates its own 24dp → 12dp inset either way |
 | routing tables of string paths only | Intent-based `nv.Navigator.intents(initial_route=..., routes={Intent: lambda i: Screen()})` |
 | `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
+| `tkinter.filedialog.askopenfilename()` / `file_picker` (Flutter) / `NSOpenPanel` / a hand-rolled path `TextField` | `path = await nv.FileDialog.open_file(file_types=["txt"])` — coroutine, call from an `async` handler. Cancel is `None` (`open_files`: `[]`); also `save_file(default_name=...)` / `open_directory()`; `nv.FileDialogError` when the dialog cannot be shown (Linux without `zenity`/`kdialog`). Never import tkinter: its mainloop cannot coexist with the pyglet-owned event loop |
 
 ```python
 # Correct
