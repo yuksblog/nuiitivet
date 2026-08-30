@@ -57,7 +57,8 @@ from nuiitivet.widgets.input_filter import (
 )
 
 # Geometry (container-scoped measured size)
-from nuiitivet.geometry import Geometry, Size
+from nuiitivet.layout.geometry import Geometry
+from nuiitivet.rendering.size import Size
 
 # Navigation
 from nuiitivet.navigation import Navigator, NavigatorProtocol, Route, Transitions
@@ -170,7 +171,7 @@ from nuiitivet.runtime.window_intents import (
 )
 
 # Configuration
-from nuiitivet.fonts import Fonts
+from nuiitivet.rendering.fonts import Fonts
 from nuiitivet.runtime.renderer import RendererMode
 
 __all__: list[str] = [

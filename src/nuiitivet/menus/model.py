@@ -4,8 +4,9 @@
 action, shortcut, check state, submenu — without prescribing how it is
 rendered. The application menu bar (``nuiitivet.menubar``) and the system
 tray icon (``nuiitivet.platform.tray``) both consume this model; the bar
-draws framework widgets (or bridges to ``NSMenu`` on macOS) while the tray
-menu is native on every platform. See ``docs/design/MENU_BAR.md`` and
+draws framework widgets (or bridges to ``NSMenu`` on macOS via the shared
+:mod:`nuiitivet.menus.nsmenu` translation) while the tray menu is native on
+every platform. See ``docs/design/MENU_BAR.md`` and
 ``docs/design/TRAY_ICON.md``.
 """
 

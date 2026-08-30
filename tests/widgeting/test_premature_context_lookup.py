@@ -10,7 +10,7 @@ import logging
 
 import pytest
 
-from nuiitivet.geometry import Geometry
+from nuiitivet.layout.geometry import Geometry
 from nuiitivet.layout.container import Container
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.overlay.overlay import Overlay
