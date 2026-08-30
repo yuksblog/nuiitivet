@@ -490,6 +490,7 @@ class TextBase(Widget):
         return str(lbl)
 
     def on_mount(self) -> None:
+        super().on_mount()
         lbl = self.label
         if lbl is None:
             return
@@ -536,3 +537,4 @@ class TextBase(Widget):
 
         self._paint_cache_key = None
         self._paint_cache_lines = None
+        super().on_unmount()

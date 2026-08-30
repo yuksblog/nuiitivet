@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 from ..common.logging_once import exception_once
 from ..runtime.threading import assert_ui_thread
@@ -16,6 +16,12 @@ _logger = logging.getLogger(__name__)
 
 class LifecycleHostMixin:
     """Manages app association and lifecycle hooks."""
+
+    # The base hooks below end both super() chains, so a flag set there tells
+    # ``mount``/``unmount`` whether an override chained -- it is silent otherwise.
+    _requires_on_mount_chain: bool = False
+    _on_mount_chained: bool = False
+    _on_unmount_chained: bool = False
 
     _app: Any
     _mount_callbacks: List[VoidCallback]
@@ -48,11 +54,22 @@ class LifecycleHostMixin:
         self._unmounted = False
         self._mounted = True
         self._app = app
-        self._safe_call(self.on_mount)
+        if __debug__:
+            # Per mount, not per instance: a re-mount is checked again.
+            self._on_mount_chained = False
+        ran_clean = self._call_contained(self.on_mount)[0]
         for callback in list(self._mount_callbacks):
             self._invoke_mount_callback(callback)
         for child in self._safe_children_snapshot():
             self._safe_call(child.mount, app)
+        # After the mount, so the widget is not left half-mounted. ``ran_clean``
+        # excludes an override that raised before it could reach ``super()``.
+        if __debug__ and ran_clean and self._requires_on_mount_chain and not self._on_mount_chained:
+            self._raise_missing_super(
+                "on_mount",
+                "The base implementation is what runs build(), so the widget "
+                "mounted with no children -- a blank screen.",
+            )
 
     def unmount(self) -> None:
         if __debug__:
@@ -60,7 +77,9 @@ class LifecycleHostMixin:
         if self._unmounted:
             return
         # Call parent's on_unmount first
-        self._safe_call(self.on_unmount)
+        if __debug__:
+            self._on_unmount_chained = False
+        ran_clean = self._call_contained(self.on_unmount)[0]
         # Then the registered unmount callbacks. Unlike dispose callbacks these
         # persist, so they fire again if the widget is re-mounted and unmounted.
         for callback in list(self._unmount_callbacks):
@@ -105,12 +124,22 @@ class LifecycleHostMixin:
         self._app = None
         self._unmounted = True
         self._mounted = False
+        # As in ``mount``: after the teardown, and only if the override ran clean.
+        if __debug__ and ran_clean and not self._on_unmount_chained:
+            self._raise_missing_super(
+                "on_unmount",
+                "The base implementation disposes the widget's bindings, so "
+                "every observe()/bind() subscription leaks and accumulates on "
+                "each re-mount.",
+            )
 
-    def on_mount(self) -> None:  # pragma: no cover - default no-op
-        return None
+    def on_mount(self) -> None:
+        if __debug__:
+            self._on_mount_chained = True
 
-    def on_unmount(self) -> None:  # pragma: no cover - default no-op
-        return None
+    def on_unmount(self) -> None:
+        if __debug__:
+            self._on_unmount_chained = True
 
     # --- Callback registration ---------------------------------------------
     def add_mount_callback(self, callback: VoidCallback) -> None:
@@ -187,9 +216,24 @@ class LifecycleHostMixin:
                 task.cancel()
         self._mount_tasks.clear()
 
+    def _raise_missing_super(self, hook: str, consequence: str) -> None:
+        """Report a lifecycle override that never chained to its base."""
+        raise RuntimeError(
+            f"{type(self).__name__}.{hook}() did not call super().{hook}(). "
+            f"{consequence} Add super().{hook}() to the override -- first or "
+            "last, whichever the body needs."
+        )
+
     def _safe_call(self, func, *args, **kwargs) -> Optional[Any]:
+        return self._call_contained(func, *args, **kwargs)[1]
+
+    def _call_contained(self, func, *args, **kwargs) -> Tuple[bool, Optional[Any]]:
+        """Like :meth:`_safe_call`, but returns ``(ran_clean, result)``.
+
+        ``_safe_call`` cannot tell "returned None" from "raised"; the checks do.
+        """
         try:
-            return func(*args, **kwargs)
+            return True, func(*args, **kwargs)
         except Exception as exc:
             name = getattr(func, "__name__", "<unknown>")
             exception_once(
@@ -208,7 +252,7 @@ class LifecycleHostMixin:
                 owner=type(self).__name__,
                 site=f"lifecycle hook {name}",
             )
-            return None
+            return False, None
 
     def _safe_children_snapshot(self):
         snapshot_fn = getattr(self, "children_snapshot", None)

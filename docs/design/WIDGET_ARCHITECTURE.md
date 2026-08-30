@@ -76,6 +76,12 @@ class ComposableWidget(
     - Delegates higher-level events targeting the composed subtree to `_built` when present (e.g., back navigation via `handle_back_event`).
   - Synchronizes the lifecycle of `_built` during `on_mount` and `on_unmount`.
 
+A subclass that overrides `on_mount` **must** call `super().on_mount()` — it is
+what runs `build()`, and omitting it mounts the widget with no children. Put it
+anywhere in the body: first usually, last when `build()` reads what the override
+computes (`samples/advanced/geometry/scoped_size.py`). Checked at runtime; see
+[Lifecycle chain checks](#lifecycle-chain-checks).
+
 ### 4. LifecycleHostMixin (Lifecycle)
 
 - **Role**: Manages application connection and lifecycle events.
@@ -83,6 +89,38 @@ class ComposableWidget(
   - Implements the driver for `mount(app)` and `unmount()` (the entry point for recursive calls).
   - Provides `on_mount` and `on_unmount` hooks.
   - Manages `on_dispose` callbacks.
+  - Verifies that lifecycle overrides called `super()` (below).
+
+#### Lifecycle chain checks
+
+An override that forgets `super()` fails silently — the body completes, so
+nothing raises and nothing is logged; the widget just never builds (§3) or never
+releases its bindings (§5). The base implementations here end both chains, so
+each sets a flag that `mount`/`unmount` read back, raising a `RuntimeError`
+naming the widget, the hook, and what was lost.
+
+| Hook | Checked on | What is lost |
+| --- | --- | --- |
+| `on_mount` | Build hosts only (`_requires_on_mount_chain`) | `build()` never runs |
+| `on_unmount` | Every widget | Bindings are never disposed |
+
+The scopes differ because the damage does: `LifecycleHostMixin.on_mount` is a
+no-op, so a plain `Widget` skipping it loses nothing, while binding disposal is
+universal.
+
+Two limits are part of the contract. The check runs under `if __debug__` only,
+like the `assert_ui_thread` beside it, so `python -O` never reports. And it
+stays silent when the override itself raised: `_call_contained` has already
+reported that failure, and a missing-`super()` message on top of it would point
+at the wrong line.
+
+Nested in the tree, the raise is contained by the parent's `_safe_call` and
+forwarded to `report_contained`: visible in `runtime_log`, fatal to a test, but
+not to the frame. Only a root widget stops the app.
+
+`find_missing_super_on_mount` in `skills/nuiitivet-app/scripts/check_idioms.py`
+is the static counterpart, catching the same mistake in code being written
+rather than code being run.
 
 ### 5. BindingHostMixin (Reactivity)
 
@@ -141,7 +179,8 @@ clears every registered disposable, then delegates to `super().on_unmount()`.
 A subclass that overrides `on_unmount` **must** call `super().on_unmount()`.
 Omitting it skips `_dispose_bindings()` entirely, and because remounting
 (navigation, hot reload) re-runs `on_mount`, subscriptions accumulate: one
-source event then invokes N callbacks against N detached widgets.
+source event then invokes N callbacks against N detached widgets. This is
+checked at runtime — see [Lifecycle chain checks](#lifecycle-chain-checks).
 
 See [OBSERVABLE.md](OBSERVABLE.md) for `Observable` itself; this section covers
 only how a widget takes ownership of a subscription to one.
@@ -183,9 +222,10 @@ LifecycleHostMixin.mount()  # 1. Driver starts. Retains app and calls on_mount.
   ↓ self.on_mount()
 ComposableWidget (BuilderHostMixin).on_mount() # 2. (Composable only) Executes build, generates _built, and mounts it.
   ↓ super().on_mount()
-LifecycleHostMixin.on_mount() # 3. User-defined hook (does nothing by default).
+LifecycleHostMixin.on_mount() # 3. End of the chain. Records that it was reached.
   ↓
-(Return to LifecycleHostMixin.mount and recursively execute mount for children)
+(Return to LifecycleHostMixin.mount and recursively execute mount for children,
+ then verify step 3 was reached -- see "Lifecycle chain checks" in §4)
 ```
 
 ### Execution flow for layout()

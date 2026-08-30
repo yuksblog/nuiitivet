@@ -282,7 +282,8 @@ _SUPER_ON_MOUNT = re.compile(r"\bsuper\s*\(\s*\)\s*\.\s*on_mount\s*\(")
 
 _MISSING_SUPER_FIX = (
     "Call super().on_mount() in the override. The base implementation is what runs build(), "
-    "so without it the widget mounts with no children -- a blank screen that raises nothing. "
+    "so without it the widget mounts with no children -- a blank screen. A debug build raises "
+    "on it at mount time; under python -O it stays silent. "
     "Place it before your setup, or after it if build() reads what the setup produces."
 )
 

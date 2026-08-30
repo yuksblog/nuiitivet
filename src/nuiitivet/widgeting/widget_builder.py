@@ -316,6 +316,9 @@ def flush_scope_recompositions() -> None:
 class BuilderHostMixin:
     """Provides build()/rebuild() lifecycle for Widget subclasses."""
 
+    # :meth:`on_mount` below runs ``build()``, so a skipped ``super()`` costs the subtree.
+    _requires_on_mount_chain: bool = True
+
     _built: Optional["Widget"]
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[override]

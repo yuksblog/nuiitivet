@@ -299,6 +299,7 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             exception_once(logger, "scrollbar_update_hover_visuals_exc", "Scrollbar hover visuals update raised")
 
     def on_mount(self) -> None:
+        super().on_mount()
         try:
             if not self.auto_hide:
                 self._last_interaction = time.time()
@@ -356,6 +357,7 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             exception_once(logger, "scrollbar_visibility_stop_exc", "Scrollbar visibility stop raised")
 
         self._cancel_hide_timer()
+        super().on_unmount()
 
     def _on_hide_timer_thread(self) -> None:
         try:
