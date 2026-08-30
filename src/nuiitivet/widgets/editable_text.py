@@ -18,7 +18,8 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_RIGHT,
 )
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
-from nuiitivet.platform import IMEManager, get_system_clipboard
+from nuiitivet.platform import get_system_clipboard
+from nuiitivet.widgeting.context_lookup import find_window
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.interaction import (
     InteractionHostMixin,
@@ -170,6 +171,7 @@ class EditableText(InteractionHostMixin, Widget):
                 on_text=self._handle_text,
                 on_text_motion=self._handle_text_motion,
                 on_ime_composition=self._handle_ime_composition,
+                on_ime_commit=self._commit_composition,
             )
         )
 
@@ -587,11 +589,47 @@ class EditableText(InteractionHostMixin, Widget):
             return True
         return False
 
+    def _commit_composition(self) -> bool:
+        """Commit a pending composition, keeping its text as committed text.
+
+        Called through the focus node when the window loses the OS focus (the
+        backend separately discards the OS-side conversation): clearing the
+        composing range ends the composition, which also lets ``_announce``
+        reconcile the text the application sees. The IME-commit marker is
+        dropped either way — after a focus switch, the next Enter in this
+        field is a genuine submit.
+        """
+        self._ime_just_committed = False
+        current_value = self._state_internal.value
+        if not current_value.is_composing:
+            return False
+        self._update_value(current_value.copy_with(composing=TextRange(-1, -1)))
+        return True
+
     def _handle_ime_composition(self, text: str, start: int, length: int) -> bool:
         text = _strip_control_chars(text)
 
         current_value = self._state_internal.value
         full_text = current_value.text
+
+        # An empty update ends the composition rather than leaving an empty
+        # composing range active (which would keep holding back announcements
+        # and Enter handling): the IME cancelled, or echoed the discard that
+        # follows a focus-loss commit. With no composition open there is
+        # nothing to do at all.
+        if not text:
+            if not current_value.is_composing:
+                return False
+            range_to_replace = current_value.composing
+            caret = range_to_replace.min
+            self._update_value(
+                current_value.copy_with(
+                    text=range_to_replace.text_before(full_text) + range_to_replace.text_after(full_text),
+                    selection=TextRange(caret, caret),
+                    composing=TextRange(-1, -1),
+                )
+            )
+            return True
 
         if current_value.is_composing:
             range_to_replace = current_value.composing
@@ -876,12 +914,17 @@ class EditableText(InteractionHostMixin, Widget):
                 cursor_top = ty + font_metrics.fAscent
                 cursor_bottom = ty + font_metrics.fDescent
 
-                IMEManager.get().update_cursor_rect(
-                    x + cursor_x,
-                    cursor_top,
-                    2,
-                    cursor_bottom - cursor_top,
-                )
+                # Into this window's IME state, so a focused field in another
+                # window cannot race the candidate-window position. A bare
+                # tree (offscreen measurement, tests) has no window: skip.
+                window = find_window(self)
+                if window is not None:
+                    window.ime.update_cursor_rect(
+                        x + cursor_x,
+                        cursor_top,
+                        2,
+                        cursor_bottom - cursor_top,
+                    )
 
                 cursor_color = resolve_color_to_rgba(self.cursor_color, theme=_theme)
                 paint_cursor = make_paint(color=cursor_color, style="stroke", stroke_width=2)

@@ -75,7 +75,7 @@ def test_original_ic_kept_when_the_im_rejects_the_callback_style(
     monkeypatch.setattr(ime_linux, "xlib", xlib)
     window = _fake_window()
 
-    ime_linux.install_patch(window)
+    ime_linux.install_patch(window, None)
 
     # Never None -- that is the pointer pyglet hands to XUnsetICFocus on FocusOut.
     assert window._x_ic == ORIGINAL_IC
@@ -89,7 +89,7 @@ def test_original_ic_destroyed_only_after_the_replacement_exists(
     monkeypatch.setattr(ime_linux, "xlib", xlib)
     window = _fake_window()
 
-    ime_linux.install_patch(window)
+    ime_linux.install_patch(window, None)
 
     assert window._x_ic == NEW_IC
     assert xlib.destroyed == [ORIGINAL_IC]
@@ -102,7 +102,7 @@ def test_callback_trampolines_are_not_retained_on_failure(
     xlib = _FakeXlib(created_ic=0)
     monkeypatch.setattr(ime_linux, "xlib", xlib)
 
-    ime_linux.install_patch(_fake_window())
+    ime_linux.install_patch(_fake_window(), None)
 
     # A failed patch has nothing to invoke them; anchoring them would leak.
     assert _ime._callbacks == []
@@ -114,7 +114,7 @@ def test_callback_trampolines_are_retained_on_success(
     xlib = _FakeXlib(created_ic=NEW_IC)
     monkeypatch.setattr(ime_linux, "xlib", xlib)
 
-    ime_linux.install_patch(_fake_window())
+    ime_linux.install_patch(_fake_window(), None)
 
     # The IM calls these from C; dropping the references would crash later.
     assert len(_ime._callbacks) == 4

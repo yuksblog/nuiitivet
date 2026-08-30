@@ -23,6 +23,9 @@ if sys.platform == "win32":
     GCS_COMPSTR = 0x0008
     GCS_CURSORPOS = 0x0080
 
+    NI_COMPOSITIONSTR = 0x0015
+    CPS_CANCEL = 0x0004
+
     # WNDPROC type
     # LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM)
     # LRESULT is LONG_PTR (long long on 64-bit)
@@ -95,7 +98,26 @@ if sys.platform == "win32":
     # Keep reference to the hook to prevent GC
     _hook_proto = WNDPROC(_wnd_proc_hook)
 
-    def install_patch(window):
+    def discard_conversation(window):
+        """Cancel the IME's pending composition string for ``window``.
+
+        Called when the window loses the OS focus, after the model side
+        committed the composition. ``CPS_CANCEL`` (not ``CPS_COMPLETE``)
+        because a complete would deliver the result string as new input on
+        top of the already-committed text.
+        """
+        hwnd = getattr(window, "_hwnd", None)
+        if not hwnd:
+            return
+        himc = imm32.ImmGetContext(hwnd)
+        if not himc:
+            return
+        try:
+            imm32.ImmNotifyIME(himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0)
+        finally:
+            imm32.ImmReleaseContext(hwnd, himc)
+
+    def install_patch(window, win):
         if not hasattr(window, "_hwnd"):
             return
 
@@ -135,5 +157,8 @@ if sys.platform == "win32":
 
 else:
 
-    def install_patch(window):
+    def install_patch(window, win):
+        pass
+
+    def discard_conversation(window):
         pass

@@ -16,7 +16,6 @@ from typing import Any, Optional
 import ctypes
 import pyglet
 
-from nuiitivet.platform import IMEManager
 from nuiitivet.rendering.skia import get_skia
 
 from nuiitivet.input.codes import (
@@ -498,7 +497,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     except Exception:
         exception_once(logger, "pyglet_set_app_scale_exc", "Failed to set win._scale")
 
-    _install_ime_patch(window)
+    _install_ime_patch(window, win)
     _install_first_mouse_patch(window, win)
 
     def _get_windows_dpi_scale() -> float:
@@ -682,12 +681,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         nonlocal gpu_enabled, auto_force_gl_viewport
         nonlocal auto_recreate_on_draw_used, auto_recreate_on_draw_hits, auto_recreate_always
         try:
-            # The IME manager is process-wide; with several windows only the
-            # OS-focused one may publish its geometry (single-window apps keep
-            # updating unconditionally, in case activate never fired).
-            if getattr(win, "_os_active", False) or len(getattr(owner_app, "windows", ()) or ()) <= 1:
-                wx, wy = window.get_location()
-                IMEManager.get().update_window_info(wx, wy, window.width, window.height)
+            # IME state is per window: each window publishes its own geometry
+            # into its own IMEManager, focused or not.
+            wx, wy = window.get_location()
+            win.ime.update_window_info(wx, wy, window.width, window.height)
         except Exception:
             exception_once(logger, "pyglet_on_draw_ime_update_exc", "IME window info update raised")
 
@@ -922,6 +919,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             win._set_os_active(False)
         except Exception:
             exception_once(logger, "pyglet_on_deactivate_os_active_exc", "OS-active focus hook raised")
+        # After the model committed its pending composition (in _set_os_active):
+        # drop the OS input method's conversation for this window, so refocusing
+        # it later cannot resume marked text the widget no longer holds.
+        _discard_ime_conversation(window)
         try:
             win._clear_modifier_keys()
         except Exception:
@@ -1307,24 +1308,52 @@ def _draw_raster_frame(app: Any, skia: Any) -> bool:
         return False
 
 
-def _install_ime_patch(window: object) -> None:
+def _install_ime_patch(window: object, win: object) -> None:
+    """Install the platform IME hook for one OS window.
+
+    ``window`` is the pyglet window, ``win`` the nuiitivet Window model whose
+    per-window :class:`~nuiitivet.platform.ime.IMEManager` the hook reads.
+    """
     try:
         import sys
 
         if sys.platform == "darwin":
             from .ime.macos import install_patch
 
-            install_patch(window)
+            install_patch(window, win)
         elif sys.platform == "win32":
             from .ime.windows import install_patch
 
-            install_patch(window)
+            install_patch(window, win)
         elif sys.platform == "linux":
             from .ime.linux import install_patch
 
-            install_patch(window)
+            install_patch(window, win)
     except Exception:
         exception_once(logger, "pyglet_install_ime_patch_exc", "Failed to install IME patch")
+
+
+def _discard_ime_conversation(window: object) -> None:
+    """Drop the OS input method's pending conversation for ``window``.
+
+    Called on OS focus loss, after the model side committed the composition:
+    without this, refocusing the window can resume marked text that the
+    widget already turned into committed text. No-op on platforms without an
+    implementation.
+    """
+    try:
+        import sys
+
+        if sys.platform == "darwin":
+            from .ime.macos import discard_conversation
+
+            discard_conversation(window)
+        elif sys.platform == "win32":
+            from .ime.windows import discard_conversation
+
+            discard_conversation(window)
+    except Exception:
+        exception_once(logger, "pyglet_discard_ime_conversation_exc", "Failed to discard IME conversation")
 
 
 def _install_first_mouse_patch(window: object, win: object) -> None:
