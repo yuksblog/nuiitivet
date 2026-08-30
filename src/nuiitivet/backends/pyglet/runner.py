@@ -878,7 +878,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_activate():
-        setattr(win, "_os_active", True)
+        try:
+            win._set_os_active(True)
+        except Exception:
+            exception_once(logger, "pyglet_on_activate_os_active_exc", "OS-active focus hook raised")
         # Best-effort keep-above: a parent activated while a modal child is
         # open hands the OS focus back to the child (the parent's input is
         # blocked anyway).
@@ -915,7 +918,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         # while inactive cannot leave permanently-wrong state behind.
         nonlocal esc_down
         esc_down = False
-        setattr(win, "_os_active", False)
+        try:
+            win._set_os_active(False)
+        except Exception:
+            exception_once(logger, "pyglet_on_deactivate_os_active_exc", "OS-active focus hook raised")
         try:
             win._clear_modifier_keys()
         except Exception:

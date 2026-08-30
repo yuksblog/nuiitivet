@@ -43,7 +43,7 @@ def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
 
     from pyglet.libs.darwin.cocoapy import ObjCClass, get_selector
 
-    bridge = controller._bridge
+    bridge = app.app._menubar_focus_coordinator._bridge
     assert bridge is not None
     builder = bridge._builder
     assert builder is not None

@@ -319,11 +319,12 @@ already per-window in the current design. On macOS the global bar
 follows the focused window (the AppKit convention): the `NSMenu` bridge
 installs the focused window's model, and a window with `menu=None` shows
 the main window's menu, so single-menu apps keep today's behavior
-without per-window declarations. *Implementation status*: the initial
-multi-window release installs only the main window's menu on the global
-bar (secondary-window menus render nowhere on macOS); the focused-window
-switch is a follow-up, since swapping `NSMenu` ownership on focus is its
-own piece of Cocoa work.
+without per-window declarations. The per-App `MenuBarFocusCoordinator`
+(`nuiitivet/menubar/focus.py`) owns the bridge and swaps it on OS focus
+changes, coalesced onto the clock tick; activation and accelerators
+dispatch through the installed model's owning window. On macOS a
+secondary window's own menu never renders in-app — it waits for focus
+and then takes the global bar.
 
 ### 8.5 Theme
 

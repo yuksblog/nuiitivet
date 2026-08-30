@@ -268,9 +268,19 @@ platform branching in app code.
   bar-specific part: `plan_menus` (application-menu synthesis and item
   arrangement; every-platform) and `NSMenuBridge` (installs the model as
   the global menu bar).
-- The controller installs the bridge when the backend window exists
-  (`Window._on_window_created`, called by the pyglet runner). While the bridge
-  is installed, `active_slot()` is `None` and every in-app slot collapses.
+- Every window attaches to the per-App `MenuBarFocusCoordinator`
+  (`nuiitivet/menubar/focus.py`) when its backend window exists
+  (`Window._on_window_created`, called by the pyglet runner). The
+  coordinator owns the one bridge and keeps the global bar on the
+  **focused** window's model — the main window's standing in for
+  `menu=None` windows — reinstalling on OS focus changes, model
+  replacement, and window close, coalesced onto the next clock tick (a
+  focus change that leaves the effective model unchanged reinstalls
+  nothing). The bridge binds the owning window's controller, so
+  activation and accelerators dispatch through the installed model's
+  window. While a window is attached, `active_slot()` is `None` and
+  every in-app slot collapses — on macOS an unfocused window's menu
+  waits for focus rather than rendering in-app.
 - The bridge is a one-way translator: model → `NSMenu` tree on registration
   or replacement; observable property changes → targeted setter calls
   (Section 4.3), applied on the next clock tick so off-thread writes land

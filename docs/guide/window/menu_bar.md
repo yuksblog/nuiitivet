@@ -148,7 +148,9 @@ menu bar, set the corresponding `MenuBarStyle` fields (`bar_background`,
   `MenuBarArea`), as described above.
 - **macOS** — the same model goes to the **global menu bar** (`NSMenu`);
   nothing is drawn in the window and a mounted `MenuBarArea` collapses to
-  zero size. An application menu is synthesized automatically — a
-  `MenuEntry.quit()` found in one of your menus is relocated into it, and
-  one is added if you have none. Accelerators become native key equivalents
-  (`⌘S`). No platform branching is needed in app code.
+  zero size. With several windows the bar follows the **focused** window's
+  menu; a window with `menu=None` shows the main window's. An application
+  menu is synthesized automatically — a `MenuEntry.quit()` found in one of
+  your menus is relocated into it, and one is added if you have none.
+  Accelerators become native key equivalents (`⌘S`). No platform branching
+  is needed in app code.

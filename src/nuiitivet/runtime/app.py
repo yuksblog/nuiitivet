@@ -26,6 +26,7 @@ from .renderer import RendererMode, parse_renderer_mode
 from .window import Window
 
 if TYPE_CHECKING:
+    from nuiitivet.menubar.focus import MenuBarFocusCoordinator
     from nuiitivet.theme.theme import Theme
 
 
@@ -157,6 +158,10 @@ class App:
         # once for every tracked window as it unregisters, whatever the close
         # path (OS close, ``close()``, parent cascade). ``None`` in production.
         self._unregister_window_hook: Optional[Callable[[Window], None]] = None
+        # macOS only: the global menu bar's focus coordinator
+        # (``nuiitivet.menubar.focus``), created lazily by the first window
+        # whose backend window comes up. ``None`` on other platforms.
+        self._menubar_focus_coordinator: Optional["MenuBarFocusCoordinator"] = None
         self._event_loop: Any = None
         self._preferred_draw_fps: Optional[float] = None
         self._exiting = False
