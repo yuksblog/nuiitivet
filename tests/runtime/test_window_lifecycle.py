@@ -55,6 +55,13 @@ def test_construction_builds_no_tree() -> None:
     assert window.is_open.value is False
 
 
+def test_accepts_first_mouse_defaults_on_with_opt_out() -> None:
+    # macOS-only in effect (the Cocoa acceptsFirstMouse: patch reads it),
+    # but the model attribute exists on every platform.
+    assert Window(content=Container()).accepts_first_mouse is True
+    assert Window(content=Container(), accepts_first_mouse=False).accepts_first_mouse is False
+
+
 # --- open / close ----------------------------------------------------------
 
 

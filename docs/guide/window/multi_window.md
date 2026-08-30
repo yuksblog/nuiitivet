@@ -96,6 +96,22 @@ Modality is enforced by the framework (the OS backend has no cross-platform
 window modality): sibling top-level windows stay interactive, and activating
 a blocked parent hands focus back to its modal child.
 
+## The first click into an inactive window
+
+By default, an inactive window is clickable on the first click: the click
+activates the window **and** acts — a tool palette does not cost two clicks
+per swatch.
+
+Under the classic macOS convention, the first click into an inactive window
+only activated it; the click itself was not delivered. If you want that
+classic behavior, set the flag to `False` per window:
+
+```python
+nv.Window(content=..., accepts_first_mouse=False)
+```
+
+This is a macOS-only parameter — other platforms always deliver the click.
+
 ## Window operations and intents
 
 The window-management verbs are imperative methods on the window:

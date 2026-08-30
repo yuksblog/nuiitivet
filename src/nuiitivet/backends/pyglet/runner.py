@@ -499,6 +499,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         exception_once(logger, "pyglet_set_app_scale_exc", "Failed to set win._scale")
 
     _install_ime_patch(window)
+    _install_first_mouse_patch(window, win)
 
     def _get_windows_dpi_scale() -> float:
         if sys.platform != "win32":
@@ -1318,6 +1319,25 @@ def _install_ime_patch(window: object) -> None:
             install_patch(window)
     except Exception:
         exception_once(logger, "pyglet_install_ime_patch_exc", "Failed to install IME patch")
+
+
+def _install_first_mouse_patch(window: object, win: object) -> None:
+    """macOS: patch ``acceptsFirstMouse:`` so the activating click is delivered.
+
+    ``window`` is the pyglet window, ``win`` the nuiitivet Window model whose
+    ``accepts_first_mouse`` decides the answer. No-op off macOS.
+    """
+    try:
+        if sys.platform == "darwin":
+            from .first_mouse_macos import install_patch
+
+            install_patch(window, bool(getattr(win, "accepts_first_mouse", True)))
+    except Exception:
+        exception_once(
+            logger,
+            "pyglet_install_first_mouse_patch_exc",
+            "Failed to install acceptsFirstMouse patch",
+        )
 
 
 def _patch_pyglet_cocoa_view() -> None:
