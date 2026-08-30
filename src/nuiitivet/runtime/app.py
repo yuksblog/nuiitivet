@@ -153,6 +153,10 @@ class App:
         # (inspect mode, interaction recorder) through this; it runs once for
         # every window as it registers. ``None`` in production.
         self._instrument_window_hook: Optional[Callable[[Window], None]] = None
+        # Dev-only seam, the counterpart of ``_instrument_window_hook``: runs
+        # once for every tracked window as it unregisters, whatever the close
+        # path (OS close, ``close()``, parent cascade). ``None`` in production.
+        self._unregister_window_hook: Optional[Callable[[Window], None]] = None
         self._event_loop: Any = None
         self._preferred_draw_fps: Optional[float] = None
         self._exiting = False
@@ -203,6 +207,13 @@ class App:
             self._windows.remove(window)
         except ValueError:
             pass
+        else:
+            hook = self._unregister_window_hook
+            if hook is not None:
+                try:
+                    hook(window)
+                except Exception:
+                    exception_once(logger, "app_unregister_window_exc", "Window unregistration hook raised")
         if self._exiting:
             return
         if self.exit_policy is ExitPolicy.MAIN_WINDOW_CLOSED and window is self._main_window:

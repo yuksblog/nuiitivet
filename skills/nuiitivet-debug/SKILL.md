@@ -90,7 +90,7 @@ top to bottom.
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
-| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, so you re-sync instead of acting on a stale screen |
+| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
 | The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
 | `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
@@ -105,6 +105,11 @@ so an id from an earlier `status` stays valid for that window's lifetime.
 Inspect mode and the interaction log cover every window, and a designated
 node's `describe_selection` payload names its window (`"window": <id>`) — use
 that id for the follow-up `describe_tree` / action calls.
+`interaction_log` also records window lifecycle: `window_opened` /
+`window_closed` events carry `window` (`{"id", "title", "main"}`) and cover
+every path — an OS-title-bar close or a parent-cascade close appears there even
+though no click does. A `window_closed` for an id you remembered means that id
+is stale; re-run `status` before addressing it.
 
 ### Reading a designation
 

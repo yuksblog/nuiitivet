@@ -13,6 +13,7 @@ from nuiitivet.dev.interaction import (
     InteractionJournal,
     InteractionRecorder,
     resolve_target,
+    window_identity,
 )
 from nuiitivet.input.codes import MOD_CTRL, MOD_META, MOD_SHIFT
 
@@ -107,6 +108,54 @@ def test_to_dict_key_includes_modifiers_only_when_present() -> None:
 def test_to_dict_text_is_bare_marker() -> None:
     event = InteractionEvent(seq=1, timestamp=1.0, kind="text")
     assert event.to_dict() == {"seq": 1, "timestamp": 1.0, "kind": "text"}
+
+
+def test_record_window_opened_and_closed_interleave_with_inputs() -> None:
+    """Lifecycle events share the input events' one seq order (#622)."""
+    journal = InteractionJournal()
+    opened = journal.record_window_opened({"id": 5, "title": "Palette", "main": False})
+    click = journal.record_click({"type": "Button", "label": "close"})
+    closed = journal.record_window_closed({"id": 5, "title": "Palette", "main": False})
+
+    assert opened.kind == "window_opened"
+    assert closed.kind == "window_closed"
+    assert opened.window == {"id": 5, "title": "Palette", "main": False}
+    assert [opened.seq, click.seq, closed.seq] == [1, 2, 3]
+    assert [e.kind for e in journal.recent()] == ["window_opened", "click", "window_closed"]
+
+
+def test_to_dict_window_event_carries_window_only() -> None:
+    event = InteractionEvent(
+        seq=1, timestamp=1.0, kind="window_closed", window={"id": 3, "title": "Settings", "main": False}
+    )
+    assert event.to_dict() == {
+        "seq": 1,
+        "timestamp": 1.0,
+        "kind": "window_closed",
+        "window": {"id": 3, "title": "Settings", "main": False},
+    }
+
+
+def test_to_dict_input_events_omit_window() -> None:
+    event = InteractionEvent(seq=1, timestamp=1.0, kind="click", target={"type": "Button"})
+    assert "window" not in event.to_dict()
+
+
+class _WindowStub:
+    def __init__(self, id: int, title: Any, is_main: bool) -> None:
+        self.id = id
+        self.title = title
+        self.is_main = is_main
+
+
+def test_window_identity_reports_id_title_and_main() -> None:
+    info = window_identity(_WindowStub(7, "Palette", False))
+    assert info == {"id": 7, "title": "Palette", "main": False}
+
+
+def test_window_identity_omits_unset_title() -> None:
+    info = window_identity(_WindowStub(2, None, True))
+    assert info == {"id": 2, "main": True}
 
 
 def test_concurrent_records_keep_unique_seq() -> None:
@@ -312,3 +361,44 @@ def test_select_marker_is_content_free() -> None:
         "timestamp": event.timestamp,
         "kind": "select",
     }
+
+
+# --- window lifecycle wiring (#622) ----------------------------------------
+
+
+def test_app_hooks_feed_window_lifecycle_events() -> None:
+    """The dev runner's wiring end-to-end: App choke points -> journal.
+
+    Mirrors ``nuiitivet.dev.__main__``: the register hook records opens, the
+    unregister hook records closes, and the back-fill loop covers windows opened
+    before the hooks existed (the main window, or any opened before ``run()``).
+    """
+    from nuiitivet.layout.container import Container
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    app = App(Window(content=Container(), title="Main"))
+    journal = InteractionJournal()
+
+    def _record_opened(w: Window) -> None:
+        journal.record_window_opened(window_identity(w))
+
+    def _record_closed(w: Window) -> None:
+        journal.record_window_closed(window_identity(w))
+
+    app._instrument_window_hook = _record_opened
+    app._unregister_window_hook = _record_closed
+    for win in app.windows:
+        journal.record_window_opened(window_identity(win))
+
+    palette = Window(content=Container(), title="Palette").open()
+    journal.record_click({"type": "Button", "label": "close palette"})
+    palette.close()
+
+    events = [(e.kind, e.window) for e in journal.recent()]
+    assert events == [
+        ("window_opened", {"id": app.main_window.id, "title": "Main", "main": True}),
+        ("window_opened", {"id": palette.id, "title": "Palette", "main": False}),
+        ("click", None),
+        ("window_closed", {"id": palette.id, "title": "Palette", "main": False}),
+    ]
