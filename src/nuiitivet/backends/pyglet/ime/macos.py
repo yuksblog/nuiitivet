@@ -11,7 +11,10 @@ _logger = logging.getLogger(__name__)
 # Only run on macOS
 if sys.platform != "darwin":
 
-    def install_patch(window: Any) -> None:
+    def install_patch(window: Any, win: Any) -> None:
+        pass
+
+    def discard_conversation(window: Any) -> None:
         pass
 
 else:
@@ -33,8 +36,11 @@ else:
     class NSRect(ctypes.Structure):
         _fields_ = [("origin", NSPoint), ("size", NSSize)]
 
-    # Global map to store window references keyed by PygletTextView pointer
+    # Maps keyed by PygletTextView pointer: the pyglet window composition
+    # events are dispatched to, and the per-window IMEManager the candidate
+    # window is positioned from. One entry per OS window.
     _ptr_to_window: dict[int, Any] = {}
+    _ptr_to_ime: dict[int, Any] = {}
 
     # Callback function for setMarkedText:selectedRange:replacementRange:
     # void (*IMP)(id, SEL, id, NSRange, NSRange)
@@ -64,12 +70,16 @@ else:
             exception_once(_logger, "ime_macos_dispatch_on_ime_composition_exc", "IME composition dispatch raised")
 
     def firstRectForCharacterRange_impl(result_ptr, self, cmd, range, actualRange):
-        from nuiitivet.platform import IMEManager
-
-        ime = IMEManager.get()
-
         # Default rect (0,0,0,0)
         rect = NSRect(NSPoint(0, 0), NSSize(0, 0))
+
+        # This view's window owns the geometry being asked about, so read that
+        # window's IMEManager — never another window's.
+        ime = _ptr_to_ime.get(self)
+        if ime is None:
+            if result_ptr:
+                ctypes.memmove(result_ptr, ctypes.byref(rect), ctypes.sizeof(NSRect))
+            return
 
         # Get window info
         wx, wy = ime.window_location
@@ -133,7 +143,31 @@ else:
 
     _patch_installed = False
 
-    def install_patch(window: Any) -> None:
+    def _find_text_view(window: Any) -> Any:
+        """Return the PygletTextView instance of ``window``, or ``None``.
+
+        pyglet keeps its text view in a Python-side associated-objects dict
+        that cannot be reached from a fresh ObjCInstance wrapper, so the view
+        is found by scanning the content view's subviews instead.
+        """
+        PygletTextView = ObjCClass("PygletTextView")
+        ns_window = window._nswindow
+        content_view = ns_window.contentView()
+        subviews = content_view.subviews()
+        count = subviews.count()
+        for i in range(count):
+            view = subviews.objectAtIndex_(i)
+            if view.isKindOfClass_(PygletTextView):
+                return view
+        return None
+
+    def install_patch(window: Any, win: Any) -> None:
+        """Install the IME hook on ``window``'s text view.
+
+        ``window`` is the pyglet window (composition events are dispatched to
+        it), ``win`` the nuiitivet Window model whose per-window ``ime`` state
+        positions the candidate window.
+        """
         global _patch_installed
 
         # Register event type
@@ -159,49 +193,29 @@ else:
 
             _patch_installed = True
 
-        # Find the PygletTextView instance for this window
-        # window._nswindow is PygletWindow (NSWindow)
-        # window._nswindow.contentView() is PygletView
-        # PygletView has _textview
-
         try:
-            ns_window = window._nswindow
-            content_view = ns_window.contentView()
-            # content_view is a PygletView instance (ObjCInstance)
-            # We need to get the associated _textview.
-            # In pyglet_view.py: self.associate("_textview", textview)
-            # We can use ObjCInstance helper or just get ivar?
-            # associate uses objc_setAssociatedObject.
-            # We can use get_associated_object if exposed, or just access the python wrapper if available.
+            view = _find_text_view(window)
+            if view is not None:
+                ptr = view.ptr.value if hasattr(view, "ptr") else view.value
+                _ptr_to_window[ptr] = window
+                _ptr_to_ime[ptr] = win.ime
+        except Exception:
+            exception_once(_logger, "ime_macos_install_patch_exc", "Failed to install IME patch")
 
-            # Accessing ._textview on the ObjCInstance wrapper in Python should work if it was set in Python.
-            # But content_view here is a *new* wrapper created from the pointer returned by contentView().
-            # It won't have the _textview attribute set in Python __init__.
+    def discard_conversation(window: Any) -> None:
+        """Drop the input method's conversation for ``window``.
 
-            # We need to use objc_getAssociatedObject.
-            # Key is "_textview".
-            # But pyglet uses a specific key?
-            # In runtime.py:
-            # def associate(self, name, value):
-            #     _associated_objects.setdefault(self, {})[name] = value
-            # It uses a Python dictionary `_associated_objects`!
-
-            # So we need to find the original Python object for content_view.
-            # pyglet doesn't seem to expose a way to look up Python object from pointer easily.
-
-            # However, we can traverse subviews.
-            # [contentView subviews] -> NSArray of subviews.
-            # One of them is PygletTextView.
-
-            subviews = content_view.subviews()
-            count = subviews.count()
-            for i in range(count):
-                view = subviews.objectAtIndex_(i)
-                if view.isKindOfClass_(PygletTextView):
-                    # Found it!
-                    ptr = view.ptr.value if hasattr(view, "ptr") else view.value
-                    _ptr_to_window[ptr] = window
-                    break
-
-        except Exception as e:
-            print(f"Failed to install IME patch: {e}")
+        Called when the window loses the OS focus, after the model side
+        committed the pending composition: ``discardMarkedText`` resets the
+        input context without inserting or removing any text, so refocusing
+        the window later starts a clean composition.
+        """
+        try:
+            view = _find_text_view(window)
+            if view is None:
+                return
+            input_context = view.inputContext()
+            if input_context is not None:
+                input_context.discardMarkedText()
+        except Exception:
+            exception_once(_logger, "ime_macos_discard_conversation_exc", "discardMarkedText raised")

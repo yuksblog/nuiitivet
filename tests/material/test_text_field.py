@@ -96,10 +96,9 @@ def test_text_field_paints_cursor_when_focused() -> None:
         with patch("nuiitivet.widgets.editable_text.make_paint", return_value=MagicMock()):
             with patch("nuiitivet.widgets.editable_text.resolve_color_to_rgba", return_value=(0, 0, 0, 255)):
                 with patch("nuiitivet.widgets.editable_text.make_text_blob", return_value=None):
-                    ime = MagicMock()
-                    ime.update_cursor_rect = MagicMock()
-                    with patch("nuiitivet.widgets.editable_text.IMEManager.get", return_value=ime):
-                        tf._editable.paint(canvas, 0, 0, 200, 56)
+                    # A bare (windowless) tree writes no IME cursor rect; the
+                    # cursor itself still paints.
+                    tf._editable.paint(canvas, 0, 0, 200, 56)
     assert canvas.drawLine.called is True
 
 

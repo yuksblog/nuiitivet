@@ -194,7 +194,7 @@ if sys.platform == "linux":
             except Exception:
                 exception_once(_logger, "ime_linux_preedit_caret_dispatch_exc", "IME composition dispatch raised")
 
-        def install_patch(window):
+        def install_patch(window, win):
             if not xlib:
                 return
             if not hasattr(window, "_x_display"):
@@ -295,10 +295,10 @@ if sys.platform == "linux":
 
     else:
 
-        def install_patch(window):
+        def install_patch(window, win):
             pass
 
 else:
 
-    def install_patch(window):
+    def install_patch(window, win):
         pass

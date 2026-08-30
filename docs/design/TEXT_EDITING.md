@@ -119,9 +119,10 @@ To intercept IME events before the OS handles them (or to force inline behavior)
 
 To ensure the IME candidate window appears near the cursor:
 
-1. **IMEManager**: A singleton that stores the current window geometry and the local cursor rectangle.
-2. **Update Loop**: `TextField` updates `IMEManager` with the cursor position during its `paint` phase. `App` updates `IMEManager` with the window position during the draw loop.
-3. **OS Query**: When the OS asks for the cursor position (e.g., `firstRectForCharacterRange:` on macOS), the patch retrieves the data from `IMEManager` and returns the screen coordinates.
+1. **IMEManager**: Per-window state (`Window.ime`) holding that window's geometry and the local cursor rectangle. See `APP_WINDOW.md` Section 8.6.
+2. **Update Loop**: `TextField` updates its window's `IMEManager` with the cursor position during its `paint` phase. The backend updates it with the window position during the draw loop.
+3. **OS Query**: When the OS asks for the cursor position (e.g., `firstRectForCharacterRange:` on macOS), the patch reads the queried window's `IMEManager` and returns the screen coordinates.
+4. **Focus Loss**: When a window loses the OS focus, a pending composition is committed on the focused field (its provisional text stays) and the OS-side conversation is discarded, so another window's typing starts clean.
 
 ## Clipboard
 

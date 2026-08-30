@@ -336,15 +336,18 @@ app-scoped.
 
 ### 8.6 IME
 
-The process-wide `IMEManager` singleton (one cursor rect, one window
-location) is re-keyed per window: composition state, cursor tracking, and
-window location become per-window, owned by the window's platform half
-and switched with OS focus. The platform-module split is unchanged.
-*Implementation status*: the platform IME patch installs per OS window,
-and the singleton's window geometry is published only by the OS-focused
-window (a single-window app keeps publishing unconditionally). The cursor
-rect already follows the focused text field, which lives in the focused
-window; a fully per-window manager remains follow-up work.
+IME state is per window. Each `Window` owns an `IMEManager` (`Window.ime`)
+holding that window's cursor rect and screen geometry: the window's focused
+text field publishes the rect, the backend publishes the geometry, and the
+platform IME hook — installed per OS window — reads them back to position
+the candidate window, so two windows never race each other's geometry. The
+platform-module split (macOS / Windows / Linux behind one interface) is
+unchanged.
+
+On OS focus loss a pending composition is committed for that window — the
+provisional text stays, as in native fields — and the OS-side conversation
+is discarded, so the field is settled while another window types and
+refocusing starts a clean composition.
 
 ## 9. Tooling
 

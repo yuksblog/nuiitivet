@@ -43,6 +43,7 @@ from ..widgets.interaction import (
     ShortcutNode,
 )
 from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope, produces_text
+from nuiitivet.platform.ime import IMEManager
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
@@ -205,18 +206,53 @@ class Window:
         """
         self._menubar_controller.install_platform_bridge()
 
+    @property
+    def ime(self) -> IMEManager:
+        """This window's IME geometry (cursor rect and window location).
+
+        One instance per window, so two windows never race each other's
+        candidate-window positioning. See ``docs/design/APP_WINDOW.md`` 8.6.
+        """
+        return self._ime
+
     def _set_os_active(self, active: bool) -> None:
         """Backend hook: this OS window gained or lost the OS focus.
 
         Maintains :attr:`_os_active` and lets the macOS menu bar coordinator
-        follow the focus. Called from the backend's activate/deactivate
-        events, on the UI thread.
+        follow the focus. On focus loss a pending IME composition is committed
+        (the backend separately discards the OS-side conversation), so the
+        window's text field is settled while another window types. Called from
+        the backend's activate/deactivate events, on the UI thread.
         """
         active = bool(active)
         if self._os_active == active:
             return
         self._os_active = active
+        if not active:
+            self._commit_ime_composition()
         self._menubar_controller.os_focus_changed(active)
+
+    def _commit_ime_composition(self) -> None:
+        """Commit a pending IME composition on the focused node, if any.
+
+        The provisional text of a half-converted composition is kept as
+        committed text — matching what native fields do when their window
+        loses focus — rather than dropped.
+        """
+        node = self._focused_node
+        if node is None:
+            return
+        handler = getattr(node, "handle_ime_commit_event", None)
+        if handler is None:
+            return
+        try:
+            handler()
+        except Exception:
+            exception_once(
+                logger,
+                "app_focused_node_ime_commit_exc",
+                "Focused node IME commit raised",
+            )
 
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
@@ -487,6 +523,10 @@ class Window:
         self._visible_obs: Observable[bool] = Observable(True)
         self._closed_event: Any = None
         self._os_active = False
+        # Per-window IME geometry (cursor rect, window location). Written by
+        # this window's focused text field and its backend window, read by the
+        # platform IME hook installed on this OS window. See design doc 8.6.
+        self._ime = IMEManager()
 
         self._width_spec: WindowSizingLike = width
         self._height_spec: WindowSizingLike = height

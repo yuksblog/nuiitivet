@@ -943,6 +943,7 @@ class FocusNode(InteractionNode):
         on_text: Optional[Callable[[str], bool]] = None,
         on_text_motion: Optional[Callable[[int, bool], bool]] = None,
         on_ime_composition: Optional[Callable[[str, int, int], bool]] = None,
+        on_ime_commit: Optional[Callable[[], bool]] = None,
     ) -> None:
         super().__init__()
         self.traversable = bool(traversable)
@@ -952,6 +953,7 @@ class FocusNode(InteractionNode):
         self._on_text = on_text
         self._on_text_motion = on_text_motion
         self._on_ime_composition = on_ime_composition
+        self._on_ime_commit = on_ime_commit
         self._children: list["FocusNode"] = []
         self._parent: Optional["FocusNode"] = None
 
@@ -1102,6 +1104,18 @@ class FocusNode(InteractionNode):
         p = self.parent
         if p:
             return p.handle_ime_composition_event(text, start, length)
+        return False
+
+    def handle_ime_commit_event(self) -> bool:
+        """Commit a pending IME composition (the window lost the OS focus)."""
+        if self._on_ime_commit:
+            if self._on_ime_commit():
+                return True
+
+        # Bubbling: Try parent
+        p = self.parent
+        if p:
+            return p.handle_ime_commit_event()
         return False
 
 
