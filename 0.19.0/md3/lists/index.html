@@ -1,0 +1,5226 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A declarative, reactive Python UI framework.">
+      
+      
+        <meta name="author" content="yuksblog">
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.19.0/md3/lists/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Lists - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#lists-md3-specs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Lists
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/adaptive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/overlay/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlay
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overlay
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/navigation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/route/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Route & Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/nested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/window/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/chrome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window Chrome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/renderer_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/file_dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/menu_bar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Menu Bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/multi_window/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multiple Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/notifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Desktop Notifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/tray_icon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tray Icon
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/modifiers/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/pointer_participation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pointer Participation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/popup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Popup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/state-management/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/basic_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/practical_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/thread_safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/async_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/background_work/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/patterns_and_recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/concurrency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/design-system/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design System
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_overlay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Overlay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_navigator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Navigator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/theme_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theme Extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/font_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Font Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/ai_pair_programming/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI pair-programming
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI pair-programming
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/hot_reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot Reload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/dev_bridge_mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Bridge MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/nuiitivet_app_skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The nuiitivet-app skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/nuiitivet_debug_skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The nuiitivet-debug skill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/testing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Testing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a widget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a screen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/async/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing async flows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/clock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing outside the harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction Region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_13" id="__nav_2_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packaging
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tokens-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tokens &amp; Specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tokens &amp; Specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-sets-discovered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token sets discovered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-common" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List - Common
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-expand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List - Expand
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/yuksblog/nuiitivet/edit/main/docs/md3/lists.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!-- markdownlint-disable MD060 -->
+
+<h1 id="lists-md3-specs">Lists MD3 Specs<a class="headerlink" href="#lists-md3-specs" title="Permanent link">&para;</a></h1>
+<p>Source: <a href="https://m3.material.io/components/lists/specs">https://m3.material.io/components/lists/specs</a>
+Collected: 2026-05-25</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The live Lists token viewer exposes two UI-selectable token sets: <code>List - Common</code> and <code>List - Expand</code>, both shown in the <code>Default, Light</code> context.</li>
+<li><code>List - Common</code> carries the main implementation surface: enabled, selected, disabled, hover, focus, pressed, and dragged state colors plus shared spacing, shape, and typography tokens.</li>
+<li>Core container heights are 56dp for one-line items, 72dp for two-line items, and 88dp for three-line items; expressive icon slots shrink to 20dp while baseline icon slots remain 24dp.</li>
+<li>The baseline layout table adds concrete alignment constraints: 16dp leading padding, 24dp trailing padding, 48dp minimum targets, and 16dp/24dp divider insets.</li>
+<li>The embedded payload also contains hidden <code>List - Reveal</code> and <code>List - Reorder</code> token-set records, but they are not selectable in the visible spec viewer, so this document follows the UI-visible sets only.</li>
+</ul>
+<h2 id="tokens-specs">Tokens &amp; Specs<a class="headerlink" href="#tokens-specs" title="Permanent link">&para;</a></h2>
+<h3 id="token-sets-discovered">Token sets discovered<a class="headerlink" href="#token-sets-discovered" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>List - Common</td>
+<td>Active</td>
+<td>Visible selector option. Context shown in the viewer: <code>Default, Light</code>. Groups: Color, Spacing, Shape, Size and typography. The viewer also duplicates one-line/two-line/three-line heights under <code>Color / Enabled</code> with malformed token IDs; those duplicates are normalized to the canonical size rows below and omitted from the table.</td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Active</td>
+<td>Visible selector option. Context shown in the viewer: <code>Default, Light</code>. Groups: Color, Shape. Covers the expand interaction's collapsed and expanded trailing-icon treatment.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="list-common">List - Common<a class="headerlink" href="#list-common" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Group</th>
+<th>Label</th>
+<th>Token</th>
+<th>Source token</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item container color</td>
+<td><code>md.comp.list.list-item.container.color</code></td>
+<td><code>md.sys.color.surface</code></td>
+<td><code>#FEF7FF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item segmented container color</td>
+<td><code>md.comp.list.list-item.segmented.container.color</code></td>
+<td><code>md.sys.color.surface</code></td>
+<td><code>#FEF7FF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item label text color</td>
+<td><code>md.comp.list.list-item.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item supporting text color</td>
+<td><code>md.comp.list.list-item.supporting-text.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item overline color</td>
+<td><code>md.comp.list.list-item.overline.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item divider color</td>
+<td><code>md.comp.list.divider.color</code></td>
+<td><code>md.sys.color.outline</code></td>
+<td><code>#79747E</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item divider height</td>
+<td><code>md.comp.list.divider.height</code></td>
+<td></td>
+<td><code>1dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item container height</td>
+<td><code>md.comp.list.list-item.container.height</code></td>
+<td></td>
+<td><code>56dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item leading icon color</td>
+<td><code>md.comp.list.list-item.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item trailing icon color</td>
+<td><code>md.comp.list.list-item.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item unselected trailing icon color</td>
+<td><code>md.comp.list.list-item.unselected.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item trailing supporting text color</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item leading avatar color</td>
+<td><code>md.comp.list.list-item.leading-avatar.color</code></td>
+<td><code>md.sys.color.primary-container</code></td>
+<td><code>#EADDFF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item leading avatar label color</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.color</code></td>
+<td><code>md.sys.color.on-primary-container</code></td>
+<td><code>#4F378B</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled</td>
+<td>List list item container elevation</td>
+<td><code>md.comp.list.list-item.container.elevation</code></td>
+<td><code>md.sys.elevation.level0</code></td>
+<td><code>0dp</code></td>
+<td>Normalized from level0 source token; viewer renders elevation as a preview only.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected container color</td>
+<td><code>md.comp.list.list-item.selected.container.color</code></td>
+<td><code>md.sys.color.secondary-container</code></td>
+<td><code>#E8DEF8</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected label text color</td>
+<td><code>md.comp.list.list-item.selected.label-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected supporting text color</td>
+<td><code>md.comp.list.list-item.selected.supporting-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected trailing supporting text color</td>
+<td><code>md.comp.list.list-item.selected.trailing-supporting-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected leading icon color</td>
+<td><code>md.comp.list.list-item.selected.leading-icon.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Enabled - Selected</td>
+<td>List list item selected overline color</td>
+<td><code>md.comp.list.list-item.selected.overline.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled state layer color</td>
+<td><code>md.comp.list.list-item.disabled.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled state layer opacity</td>
+<td><code>md.comp.list.list-item.disabled.state-layer.opacity</code></td>
+<td></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled label text color</td>
+<td><code>md.comp.list.list-item.disabled.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled label text opacity</td>
+<td><code>md.comp.list.list-item.disabled.label-text.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled supporting text color</td>
+<td><code>md.comp.list.list-item.disabled.supporting-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled supporting text opacity</td>
+<td><code>md.comp.list.list-item.disabled.supporting-text.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled overline color</td>
+<td><code>md.comp.list.list-item.disabled.overline.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled overline opacity</td>
+<td><code>md.comp.list.list-item.disabled.overline.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled leading icon color</td>
+<td><code>md.comp.list.list-item.disabled.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled leading icon opacity</td>
+<td><code>md.comp.list.list-item.disabled.leading-icon.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled trailing icon color</td>
+<td><code>md.comp.list.list-item.disabled.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled</td>
+<td>List list item disabled trailing icon opacity</td>
+<td><code>md.comp.list.list-item.disabled.trailing-icon.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled container color</td>
+<td><code>md.comp.list.list-item.selected.disabled.container.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled container opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.container.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled label text color</td>
+<td><code>md.comp.list.list-item.selected.disabled.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled label text opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.label-text.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled supporting text color</td>
+<td><code>md.comp.list.list-item.selected.disabled.supporting-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled supporting text opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.supporting-text.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled trailing supporting text color</td>
+<td><code>md.comp.list.list-item.selected.disabled.trailing-supporting-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled trailing supporting text opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.trailing-supporting-text.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled overline color</td>
+<td><code>md.comp.list.list-item.selected.disabled.overline.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled overline opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.overline.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled state layer color</td>
+<td><code>md.comp.list.list-item.selected.disabled.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled state layer opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.state-layer.opacity</code></td>
+<td></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled leading icon color</td>
+<td><code>md.comp.list.list-item.selected.disabled.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled leading icon opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.leading-icon.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.disabled.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Disabled - Selected</td>
+<td>List list item selected disabled trailing icon opacity</td>
+<td><code>md.comp.list.list-item.selected.disabled.trailing-icon.opacity</code></td>
+<td></td>
+<td><code>0.38</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered</td>
+<td>List list item hover state layer color</td>
+<td><code>md.comp.list.list-item.hover.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered</td>
+<td>List list item hover state layer opacity</td>
+<td><code>md.comp.list.list-item.hover.state-layer.opacity</code></td>
+<td><code>md.sys.state.hover.state-layer-opacity</code></td>
+<td><code>0.08</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered</td>
+<td>List list item hover label text color</td>
+<td><code>md.comp.list.list-item.hover.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered</td>
+<td>List list item hover leading icon color</td>
+<td><code>md.comp.list.list-item.hover.leading-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered</td>
+<td>List list item hover trailing icon color</td>
+<td><code>md.comp.list.list-item.hover.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered - Selected</td>
+<td>List list item selected hover state layer color</td>
+<td><code>md.comp.list.list-item.selected.hover.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered - Selected</td>
+<td>List list item selected hover state layer opacity</td>
+<td><code>md.comp.list.list-item.selected.hover.state-layer.opacity</code></td>
+<td><code>md.sys.state.hover.state-layer-opacity</code></td>
+<td><code>0.08</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered - Selected</td>
+<td>List list item selected hover label text color</td>
+<td><code>md.comp.list.list-item.selected.hover.label-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered - Selected</td>
+<td>List list item selected hover leading icon color</td>
+<td><code>md.comp.list.list-item.selected.hover.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Hovered - Selected</td>
+<td>List list item selected hover trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.hover.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused</td>
+<td>List list item focus state layer color</td>
+<td><code>md.comp.list.list-item.focus.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused</td>
+<td>List list item focus state layer opacity</td>
+<td><code>md.comp.list.list-item.focus.state-layer.opacity</code></td>
+<td><code>md.sys.state.focus.state-layer-opacity</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused</td>
+<td>List list item focus label text color</td>
+<td><code>md.comp.list.list-item.focus.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused</td>
+<td>List list item focus leading icon color</td>
+<td><code>md.comp.list.list-item.focus.leading-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused</td>
+<td>List list item focus trailing icon color</td>
+<td><code>md.comp.list.list-item.focus.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused / Focus indicator</td>
+<td>List list item focus indicator color</td>
+<td><code>md.comp.list.focus.indicator.color</code></td>
+<td><code>md.sys.color.secondary</code></td>
+<td><code>#625B71</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused / Focus indicator</td>
+<td>List list item focus indicator thickness</td>
+<td><code>md.comp.list.focus.indicator.thickness</code></td>
+<td><code>md.sys.state.focus-indicator.thickness</code></td>
+<td><code>3dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused / Focus indicator</td>
+<td>List list item focus indicator offset</td>
+<td><code>md.comp.list.focus.indicator.outline.offset</code></td>
+<td><code>md.sys.state.focus-indicator.inner-offset</code></td>
+<td><code>-3dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused - Selected</td>
+<td>List list item selected focus state layer color</td>
+<td><code>md.comp.list.list-item.selected.focus.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused - Selected</td>
+<td>List list item selected focus state layer opacity</td>
+<td><code>md.comp.list.list-item.selected.focus.state-layer.opacity</code></td>
+<td><code>md.sys.state.focus.state-layer-opacity</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused - Selected</td>
+<td>List list item selected focus label text color</td>
+<td><code>md.comp.list.list-item.selected.focus.label-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused - Selected</td>
+<td>List list item selected focus leading icon color</td>
+<td><code>md.comp.list.list-item.selected.focus.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Focused - Selected</td>
+<td>List list item selected focus trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.focus.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed (ripple)</td>
+<td>List list item pressed state layer color</td>
+<td><code>md.comp.list.list-item.pressed.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed (ripple)</td>
+<td>List list item pressed state layer opacity</td>
+<td><code>md.comp.list.list-item.pressed.state-layer.opacity</code></td>
+<td><code>md.sys.state.pressed.state-layer-opacity</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed (ripple)</td>
+<td>List list item pressed label text color</td>
+<td><code>md.comp.list.list-item.pressed.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed (ripple)</td>
+<td>List list item pressed leading icon color</td>
+<td><code>md.comp.list.list-item.pressed.leading-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed (ripple)</td>
+<td>List list item pressed trailing icon color</td>
+<td><code>md.comp.list.list-item.pressed.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed - Selected</td>
+<td>List list item selected pressed state layer color</td>
+<td><code>md.comp.list.list-item.selected.pressed.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed - Selected</td>
+<td>List list item selected pressed state layer opacity</td>
+<td><code>md.comp.list.list-item.selected.pressed.state-layer.opacity</code></td>
+<td><code>md.sys.state.pressed.state-layer-opacity</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed - Selected</td>
+<td>List list item selected pressed label text color</td>
+<td><code>md.comp.list.list-item.selected.pressed.label-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed - Selected</td>
+<td>List list item selected pressed trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.pressed.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Pressed - Selected</td>
+<td>List list item selected pressed leading icon color</td>
+<td><code>md.comp.list.list-item.selected.pressed.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged container elevation</td>
+<td><code>md.comp.list.list-item.dragged.container.elevation</code></td>
+<td><code>md.sys.elevation.level4</code></td>
+<td><code>visual-only</code></td>
+<td>Viewer label renders as a container color, but the token/source indicate a dragged elevation preview.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged label text color</td>
+<td><code>md.comp.list.list-item.dragged.label-text.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item selected dragged label text color</td>
+<td><code>md.comp.list.list-item.selected.dragged.label-text.color</code></td>
+<td><code>md.sys.color.on-secondary-container</code></td>
+<td><code>#4A4458</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged state layer color</td>
+<td><code>md.comp.list.list-item.dragged.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged state layer opacity</td>
+<td><code>md.comp.list.list-item.dragged.state-layer.opacity</code></td>
+<td><code>md.sys.state.dragged.state-layer-opacity</code></td>
+<td><code>0.16</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item selected dragged state layer color</td>
+<td><code>md.comp.list.list-item.selected.dragged.state-layer.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item selected dragged state layer opacity</td>
+<td><code>md.comp.list.list-item.selected.dragged.state-layer.opacity</code></td>
+<td><code>md.sys.state.dragged.state-layer-opacity</code></td>
+<td><code>0.16</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged leading icon color</td>
+<td><code>md.comp.list.list-item.dragged.leading-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item selected dragged leading icon color</td>
+<td><code>md.comp.list.list-item.selected.dragged.leading-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item dragged trailing icon color</td>
+<td><code>md.comp.list.list-item.dragged.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface-variant</code></td>
+<td><code>#49454F</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Color / Dragged (baseline only)</td>
+<td>List list item selected dragged trailing icon color</td>
+<td><code>md.comp.list.list-item.selected.dragged.trailing-icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item leading space</td>
+<td><code>md.comp.list.list-item.leading-space</code></td>
+<td></td>
+<td><code>16dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item trailing space</td>
+<td><code>md.comp.list.list-item.trailing-space</code></td>
+<td></td>
+<td><code>16dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item top space</td>
+<td><code>md.comp.list.list-item.top-space</code></td>
+<td></td>
+<td><code>10dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item bottom space</td>
+<td><code>md.comp.list.list-item.bottom-space</code></td>
+<td></td>
+<td><code>10dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item between space</td>
+<td><code>md.comp.list.list-item.between-space</code></td>
+<td></td>
+<td><code>12dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item divider leading space</td>
+<td><code>md.comp.list.divider.leading-space</code></td>
+<td></td>
+<td><code>16dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item divider trailing space</td>
+<td><code>md.comp.list.divider.trailing-space</code></td>
+<td></td>
+<td><code>16dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item divider top space</td>
+<td><code>md.comp.list.divider.top-space</code></td>
+<td></td>
+<td><code>0dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List list item divider bottom space</td>
+<td><code>md.comp.list.divider.bottom-space</code></td>
+<td></td>
+<td><code>0dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Spacing</td>
+<td>List segment gap</td>
+<td><code>md.comp.list.segmented.gap</code></td>
+<td></td>
+<td><code>2dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List container shape</td>
+<td><code>md.comp.list.container.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container shape</td>
+<td><code>md.comp.list.list-item.container.shape</code></td>
+<td><code>md.sys.shape.corner.none</code></td>
+<td><code>No rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container expressive shape</td>
+<td><code>md.comp.list.list-item.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.extra-small</code></td>
+<td><code>Extra small rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container disabled expressive shape</td>
+<td><code>md.comp.list.list-item.disabled.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.extra-small</code></td>
+<td><code>Extra small rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container hovered expressive shape</td>
+<td><code>md.comp.list.list-item.hovered.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.medium</code></td>
+<td><code>Medium rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container focused expressive shape</td>
+<td><code>md.comp.list.list-item.focused.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container pressed expressive shape</td>
+<td><code>md.comp.list.list-item.pressed.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container dragged expressive shape</td>
+<td><code>md.comp.list.list-item.dragged.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected expressive shape</td>
+<td><code>md.comp.list.list-item.selected.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected disabled expressive shape</td>
+<td><code>md.comp.list.list-item.selected.disabled.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected hovered expressive shape</td>
+<td><code>md.comp.list.list-item.selected.hovered.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected focsued expressive shape</td>
+<td><code>md.comp.list.list-item.selected.focused.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td>Viewer label contains MD3's current <code>focsued</code> typo; token name is normalized.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected pressed expressive shape</td>
+<td><code>md.comp.list.list-item.selected.pressed.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item container selected dragged expressive shape</td>
+<td><code>md.comp.list.list-item.selected.dragged.container.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item leading avatar shape</td>
+<td><code>md.comp.list.list-item.leading-avatar.shape</code></td>
+<td><code>md.sys.shape.corner.full</code></td>
+<td><code>Fully rounded</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item leading video shape</td>
+<td><code>md.comp.list.list-item.leading-video.shape</code></td>
+<td><code>md.sys.shape.corner.small</code></td>
+<td><code>Small rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item leading image shape</td>
+<td><code>md.comp.list.list-item.leading-image.shape</code></td>
+<td><code>md.sys.shape.corner.none</code></td>
+<td><code>No rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item leading image expressive shape</td>
+<td><code>md.comp.list.list-item.leading-image.expressive.shape</code></td>
+<td><code>md.sys.shape.corner.small</code></td>
+<td><code>Small rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Shape</td>
+<td>List list item selected container shape</td>
+<td><code>md.comp.list.list-item.selected.container.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label type</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.type</code></td>
+<td><code>md.sys.typescale.title-medium</code></td>
+<td><code>Roboto / 500 / 16pt / 0.15pt / 24pt</code></td>
+<td>Typography shorthand derived from sibling rows.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar size</td>
+<td><code>md.comp.list.list-item.leading-avatar.size</code></td>
+<td></td>
+<td><code>40dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label font</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.font</code></td>
+<td><code>md.sys.typescale.title-medium.font</code></td>
+<td><code>Roboto</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label line height</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.line-height</code></td>
+<td><code>md.sys.typescale.title-medium.line-height</code></td>
+<td><code>24pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label size</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.size</code></td>
+<td><code>md.sys.typescale.title-medium.size</code></td>
+<td><code>16pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label tracking</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.tracking</code></td>
+<td><code>md.sys.typescale.title-medium.tracking</code></td>
+<td><code>0.15pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading avatar label weight</td>
+<td><code>md.comp.list.list-item.leading-avatar-label.weight</code></td>
+<td><code>md.sys.typescale.title-medium.weight</code></td>
+<td><code>500</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading icon size</td>
+<td><code>md.comp.list.list-item.leading-icon.size</code></td>
+<td></td>
+<td><code>24dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading icon expressive size</td>
+<td><code>md.comp.list.list-item.leading-icon.expressive.size</code></td>
+<td></td>
+<td><code>20dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading image width</td>
+<td><code>md.comp.list.list-item.leading-image.width</code></td>
+<td></td>
+<td><code>56dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading image height</td>
+<td><code>md.comp.list.list-item.leading-image.height</code></td>
+<td></td>
+<td><code>56dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item leading video width</td>
+<td><code>md.comp.list.list-item.leading-video.width</code></td>
+<td></td>
+<td><code>100dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item small leading video width</td>
+<td><code>md.comp.list.list-item.small.leading-video.width</code></td>
+<td></td>
+<td><code>100dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item small leading video height</td>
+<td><code>md.comp.list.list-item.small.leading-video.height</code></td>
+<td></td>
+<td><code>56dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item large leading video width</td>
+<td><code>md.comp.list.list-item.large.leading-video.width</code></td>
+<td></td>
+<td><code>114dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item large leading video height</td>
+<td><code>md.comp.list.list-item.large.leading-video.height</code></td>
+<td></td>
+<td><code>64dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>One line list item container height</td>
+<td><code>md.comp.list.list-item.one-line.container.height</code></td>
+<td></td>
+<td><code>56dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>Two lines list item container height</td>
+<td><code>md.comp.list.list-item.two-line.container.height</code></td>
+<td></td>
+<td><code>72dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>Three lines list item container height</td>
+<td><code>md.comp.list.list-item.three-line.container.height</code></td>
+<td></td>
+<td><code>88dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing icon size</td>
+<td><code>md.comp.list.list-item.trailing-icon.size</code></td>
+<td></td>
+<td><code>24dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing icon expressive size</td>
+<td><code>md.comp.list.list-item.trailing-icon.expressive.size</code></td>
+<td></td>
+<td><code>20dp</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text type</td>
+<td><code>md.comp.list.list-item.label-text.type</code></td>
+<td><code>md.sys.typescale.body-large</code></td>
+<td><code>Roboto / 400 / 16pt / 0.5pt / 24pt</code></td>
+<td>Typography shorthand derived from sibling rows.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text font</td>
+<td><code>md.comp.list.list-item.label-text.font</code></td>
+<td><code>md.sys.typescale.body-large.font</code></td>
+<td><code>Roboto</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text line height</td>
+<td><code>md.comp.list.list-item.label-text.line-height</code></td>
+<td><code>md.sys.typescale.body-large.line-height</code></td>
+<td><code>24pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text size</td>
+<td><code>md.comp.list.list-item.label-text.size</code></td>
+<td><code>md.sys.typescale.body-large.size</code></td>
+<td><code>16pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text tracking</td>
+<td><code>md.comp.list.list-item.label-text.tracking</code></td>
+<td><code>md.sys.typescale.body-large.tracking</code></td>
+<td><code>0.5pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item label text weight</td>
+<td><code>md.comp.list.list-item.label-text.weight</code></td>
+<td><code>md.sys.typescale.body-large.weight</code></td>
+<td><code>400</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text type</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.type</code></td>
+<td><code>md.sys.typescale.label-small</code></td>
+<td><code>Roboto / 500 / 11pt / 0.5pt / 16pt</code></td>
+<td>Typography shorthand derived from sibling rows.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text font</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.font</code></td>
+<td><code>md.sys.typescale.label-small.font</code></td>
+<td><code>Roboto</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text line height</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.line-height</code></td>
+<td><code>md.sys.typescale.label-small.line-height</code></td>
+<td><code>16pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text size</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.size</code></td>
+<td><code>md.sys.typescale.label-small.size</code></td>
+<td><code>11pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text tracking</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.tracking</code></td>
+<td><code>md.sys.typescale.label-small.tracking</code></td>
+<td><code>0.5pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item trailing supporting text weight</td>
+<td><code>md.comp.list.list-item.trailing-supporting-text.weight</code></td>
+<td><code>md.sys.typescale.label-small.weight</code></td>
+<td><code>500</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text type</td>
+<td><code>md.comp.list.list-item.supporting-text.type</code></td>
+<td><code>md.sys.typescale.body-medium</code></td>
+<td><code>Roboto / 400 / 14pt / 0.25pt / 20pt</code></td>
+<td>Typography shorthand derived from sibling rows.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text font</td>
+<td><code>md.comp.list.list-item.supporting-text.font</code></td>
+<td><code>md.sys.typescale.body-medium.font</code></td>
+<td><code>Roboto</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text line height</td>
+<td><code>md.comp.list.list-item.supporting-text.line-height</code></td>
+<td><code>md.sys.typescale.body-medium.line-height</code></td>
+<td><code>20pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text size</td>
+<td><code>md.comp.list.list-item.supporting-text.size</code></td>
+<td><code>md.sys.typescale.body-medium.size</code></td>
+<td><code>14pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text tracking</td>
+<td><code>md.comp.list.list-item.supporting-text.tracking</code></td>
+<td><code>md.sys.typescale.body-medium.tracking</code></td>
+<td><code>0.25pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item supporting text weight</td>
+<td><code>md.comp.list.list-item.supporting-text.weight</code></td>
+<td><code>md.sys.typescale.body-medium.weight</code></td>
+<td><code>400</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline type</td>
+<td><code>md.comp.list.list-item.overline.type</code></td>
+<td><code>md.sys.typescale.label-small</code></td>
+<td><code>Roboto / 500 / 11pt / 0.5pt / 16pt</code></td>
+<td>Typography shorthand derived from sibling rows.</td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline font</td>
+<td><code>md.comp.list.list-item.overline.font</code></td>
+<td><code>md.sys.typescale.label-small.font</code></td>
+<td><code>Roboto</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline line height</td>
+<td><code>md.comp.list.list-item.overline.line-height</code></td>
+<td><code>md.sys.typescale.label-small.line-height</code></td>
+<td><code>16pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline size</td>
+<td><code>md.comp.list.list-item.overline.size</code></td>
+<td><code>md.sys.typescale.label-small.size</code></td>
+<td><code>11pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline tracking</td>
+<td><code>md.comp.list.list-item.overline.tracking</code></td>
+<td><code>md.sys.typescale.label-small.tracking</code></td>
+<td><code>0.5pt</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Common</td>
+<td>Size and typography</td>
+<td>List list item overline weight</td>
+<td><code>md.comp.list.list-item.overline.weight</code></td>
+<td><code>md.sys.typescale.label-small.weight</code></td>
+<td><code>500</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="list-expand">List - Expand<a class="headerlink" href="#list-expand" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Token set</th>
+<th>Group</th>
+<th>Label</th>
+<th>Token</th>
+<th>Source token</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand expanded list item container color</td>
+<td><code>md.comp.list.expand.expanded.list-item.container.color</code></td>
+<td><code>md.sys.color.surface</code></td>
+<td><code>#FEF7FF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand expanded list item segmented container color</td>
+<td><code>md.comp.list.expand.expanded.list-item.segmented.container.color</code></td>
+<td><code>md.sys.color.surface</code></td>
+<td><code>#FEF7FF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand collapsed list item trailing icon container color</td>
+<td><code>md.comp.list.expand.collapsed.list-item.trailing-icon.container.color</code></td>
+<td><code>md.sys.color.surface</code></td>
+<td><code>#FEF7FF</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand collapsed list item trailing icon icon color</td>
+<td><code>md.comp.list.expand.collapsed.list-item.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand expanded list item trailing icon container color</td>
+<td><code>md.comp.list.expand.expanded.list-item.trailing-icon.container.color</code></td>
+<td><code>md.sys.color.surface-container</code></td>
+<td><code>#F3EDF7</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Color</td>
+<td>List expand expanded list item trailing icon icon color</td>
+<td><code>md.comp.list.expand.expanded.list-item.trailing-icon.icon.color</code></td>
+<td><code>md.sys.color.on-surface</code></td>
+<td><code>#1D1B20</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Shape</td>
+<td>List expand container shape</td>
+<td><code>md.comp.list.expand.container.shape</code></td>
+<td><code>md.sys.shape.corner.large</code></td>
+<td><code>Large rounding</code></td>
+<td></td>
+</tr>
+<tr>
+<td>List - Expand</td>
+<td>Shape</td>
+<td>List expand trailing icon shape</td>
+<td><code>md.comp.list.expand.trailing-icon.shape</code></td>
+<td><code>md.sys.shape.corner.full</code></td>
+<td><code>Fully rounded</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Item</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accessibility</td>
+<td>Slot target size</td>
+<td><code>48x48dp</code> minimum</td>
+<td>Slot accessibility guidance explicitly requires at least 48x48dp targets.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>One-line list item height</td>
+<td><code>56dp</code></td>
+<td>Shared token and baseline layout alignment.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Two-line list item height</td>
+<td><code>72dp</code></td>
+<td>Shared token and baseline layout alignment.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Three-line list item height</td>
+<td><code>88dp</code></td>
+<td>Shared token and baseline layout alignment.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Label left padding</td>
+<td><code>16dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Leading element left padding</td>
+<td><code>16dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Trailing element left padding</td>
+<td><code>16dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Trailing element right padding</td>
+<td><code>24dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Leading icon top padding</td>
+<td><code>8dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Leading icon top padding at 88dp+ height</td>
+<td><code>12dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Divider full-width</td>
+<td><code>100%</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Divider inset left padding</td>
+<td><code>16dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Divider inset right padding</td>
+<td><code>24dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Padding above/below divider</td>
+<td><code>0dp</code></td>
+<td>Baseline layout table.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Segmented list gap</td>
+<td><code>2dp</code></td>
+<td>Common spacing token <code>md.comp.list.segmented.gap</code>.</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Internal between-space</td>
+<td><code>12dp</code></td>
+<td>Common spacing token <code>md.comp.list.list-item.between-space</code>.</td>
+</tr>
+<tr>
+<td>Slots</td>
+<td>Leading avatar size</td>
+<td><code>40dp</code></td>
+<td>Common size token <code>md.comp.list.list-item.leading-avatar.size</code>.</td>
+</tr>
+<tr>
+<td>Slots</td>
+<td>Leading image size</td>
+<td><code>56 x 56dp</code></td>
+<td>Width and height tokens both resolve to 56dp.</td>
+</tr>
+<tr>
+<td>Slots</td>
+<td>Leading video sizes</td>
+<td><code>100dp</code> default width, <code>100 x 56dp</code> small, <code>114 x 64dp</code> large</td>
+<td>From the common size tokens surfaced in the live viewer.</td>
+</tr>
+<tr>
+<td>Behavior</td>
+<td>Icon button height</td>
+<td>Dynamic</td>
+<td>Measurements prose states the icon button automatically fills the list item height.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-notes">Implementation Notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Prefer the expressive list variant for new work; baseline remains available but the page explicitly recommends expressive lists for current designs.</li>
+<li>Keep selected-state colors wired to <code>secondary-container</code> and <code>on-secondary-container</code>, while hover, focus, pressed, and dragged overlays come from the corresponding <code>md.sys.state.*</code> opacity tokens.</li>
+<li>Treat list layout and list styling separately: the standard and segmented styles do not change behavior, but segmented lists add a 2dp gap and rounded expressive shapes.</li>
+<li>Preserve the baseline alignment contract for mixed-content rows: 16dp leading padding, 24dp trailing padding, and at least 48x48dp interactive targets.</li>
+<li>Model the expand interaction as a separate style surface: it uses its own trailing-icon container colors and a fully rounded trailing-icon shape on top of the large rounded expand container.</li>
+<li>Ignore the payload-only <code>List - Reveal</code> and <code>List - Reorder</code> token sets unless the MD3 spec starts exposing them in the visible selector or the user asks for those hidden sets explicitly.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 yuksblog
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/yuksblog/nuiitivet" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tracking", "navigation.path", "navigation.instant", "navigation.instant.progress", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
