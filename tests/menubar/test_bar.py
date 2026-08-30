@@ -241,16 +241,14 @@ def test_popup_opens_flush_below_the_bar(nuiitivet_app) -> None:
     assert rect[1] == MenuBarStyle().bar_height
 
 
-def test_standard_item_dispatches_role_intent(nuiitivet_app) -> None:
-    from nuiitivet.runtime.window_intents import RestoreWindowIntent
-
+def test_standard_item_calls_role_method(nuiitivet_app) -> None:
     model = MenuBar([MenuEntry("Window", submenu=[MenuEntry.restore()])])
     app = nuiitivet_app(Text("content"), size=(800, 600), menu=model)
-    seen: List[object] = []
-    app.window.dispatch = seen.append  # type: ignore[method-assign]
+    seen: List[str] = []
+    app.window.restore = lambda: seen.append("restore")  # type: ignore[method-assign]
     app.click(label="Window")
     app.click(label="Restore")
-    assert [type(intent) for intent in seen] == [RestoreWindowIntent]
+    assert seen == ["restore"]
 
 
 def test_top_level_label_updates_live(nuiitivet_app) -> None:

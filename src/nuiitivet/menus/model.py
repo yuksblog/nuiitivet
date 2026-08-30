@@ -35,8 +35,8 @@ def read_value(value):
 class MenuRole(Enum):
     """Built-in command a standard :class:`MenuEntry` invokes.
 
-    A role entry needs no ``on_select``: activating it dispatches the mapped
-    built-in intent (see ``nuiitivet.menubar.controller``). Roles are also what
+    A role entry needs no ``on_select``: activating it calls the mapped
+    built-in method (see ``nuiitivet.menubar.controller``). Roles are also what
     the macOS bridge will use to relocate items to their conventional places
     (e.g. Quit into the application menu).
     """
@@ -60,7 +60,7 @@ class MenuEntry:
       entries are simply entries with a ``submenu``; nesting is unlimited.
     - **Separator**: ``MenuEntry.separator()``
     - **Standard item**: ``MenuEntry.quit()`` and friends — prebuilt entries
-      whose activation dispatches a built-in intent.
+      whose activation calls a built-in App/Window method.
 
     ``label`` and ``enabled`` may be Observables and propagate live to
     whichever surface renders the model. ``checked`` (presence makes the entry
@@ -180,7 +180,7 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Exit the application (dispatches ``ExitAppIntent``)."""
+        """Exit the application (calls ``app.exit()``)."""
         if label is None:
             label = "Quit" if sys.platform == "darwin" else "Exit"
         if shortcut is None and sys.platform == "darwin":
@@ -195,7 +195,7 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = "Accel+W",
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Close the window (dispatches ``CloseWindowIntent``)."""
+        """Close the window (calls ``window.close()``)."""
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.CLOSE_WINDOW)
 
     @classmethod
@@ -206,7 +206,7 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Minimize the window (dispatches ``MinimizeWindowIntent``)."""
+        """Minimize the window (calls ``window.minimize()``)."""
         if shortcut is None and sys.platform == "darwin":
             shortcut = "Accel+M"
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.MINIMIZE)
@@ -219,7 +219,7 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Maximize / zoom the window (dispatches ``MaximizeWindowIntent``)."""
+        """Maximize / zoom the window (calls ``window.maximize()``)."""
         if label is None:
             label = "Zoom" if sys.platform == "darwin" else "Maximize"
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.MAXIMIZE)
@@ -232,7 +232,7 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Restore the window (dispatches ``RestoreWindowIntent``).
+        """Restore the window (calls ``window.restore()``).
 
         The way back from :meth:`full_screen`, :meth:`maximize`, and
         :meth:`minimize`: exits full screen, or restores the pre-maximize
@@ -248,5 +248,5 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Toggle full screen (dispatches ``FullScreenIntent``)."""
+        """Toggle full screen (calls ``window.full_screen()``)."""
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.FULL_SCREEN)

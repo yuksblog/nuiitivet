@@ -190,19 +190,17 @@ class TrayIcon:
         """Run a tray menu item's command; the bridges call this on the UI thread.
 
         Mirrors ``MenuBarController.activate`` minus the window scope: toggle
-        ``checked``, dispatch ``QUIT`` through the App, run ``on_select``.
+        ``checked``, route ``QUIT`` to ``app.exit()``, run ``on_select``.
         """
         if item.checked is not None:
             item.checked.value = not bool(item.checked.value)
         if item.role is MenuRole.QUIT:
             app = self._app_ref() if self._app_ref is not None else None
             if app is not None:
-                from nuiitivet.runtime.intents import ExitAppIntent
-
                 try:
-                    app.dispatch(ExitAppIntent())
+                    app.exit()
                 except Exception:
-                    exception_once(logger, "tray_dispatch_exit_exc", "ExitAppIntent dispatch raised")
+                    exception_once(logger, "tray_exit_exc", "app.exit() from the tray menu raised")
             return
         if item.role is not MenuRole.NONE:
             warning_once(

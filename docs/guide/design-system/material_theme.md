@@ -88,7 +88,8 @@ Both options are accepted by `ThemeFactory.light`, `dark`, `from_seed`, and `fro
 
 ## Switching Themes at Runtime
 
-To switch the active theme, dispatch an intent via `App.of(self).dispatch(intent)`.
+To switch the active theme, call `App.of(self).set_theme(...)` with a `Theme`
+instance or a registered name.
 
 ### Light / Dark Toggle
 
@@ -104,7 +105,7 @@ class HomeScreen(nv.ComposableWidget):
 
     def on_toggle() -> None:
         next_theme = light if self._is_dark else dark
-        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).set_theme(next_theme)
 
 nv.App(nv.Window(content=HomeScreen()), theme=light).run()
 ```
@@ -113,7 +114,7 @@ See the full runnable demo: `samples/design-system/material_theme/light_dark_tog
 
 ### Multiple Themes
 
-When themes are too many to hold in local scope everywhere, register them by name with `ThemeRegistryIntent` and switch by string key:
+When themes are too many to hold in local scope everywhere, register them by name with `app.register_themes(...)` and switch by string key:
 
 ```python
 import nuiitivet.material as nv
@@ -123,25 +124,25 @@ forest_light, forest_dark = nv.ThemeFactory.from_seed_pair("#386A20")
 
 app = nv.App(nv.Window(content=HomeScreen()), theme=ocean_light)
 
-# Register before run() — app.dispatch() is safe before the event loop starts
-app.dispatch(nv.ThemeRegistryIntent(themes={
+# Register before run() — safe before the event loop starts
+app.register_themes({
     "ocean-light":  ocean_light,
     "ocean-dark":   ocean_dark,
     "forest-light": forest_light,
     "forest-dark":  forest_dark,
-}))
+})
 
 app.run()
 
 
 # Switch from anywhere in the widget tree
-nv.App.of(self).dispatch(nv.ThemeModeIntent(theme="forest-dark"))
+nv.App.of(self).set_theme("forest-dark")
 ```
 
 See the full runnable demo: `samples/design-system/material_theme/multiple_themes.py`
 
 !!! note "Registry keys and `from_seed_pair` names"
-    `from_seed_pair` accepts an optional `name` argument, but it assigns the **same** label to both the light and dark `Theme` — no `-light` / `-dark` suffix is appended automatically. The dictionary keys in `ThemeRegistryIntent` are the actual lookup keys; choose them freely.
+    `from_seed_pair` accepts an optional `name` argument, but it assigns the **same** label to both the light and dark `Theme` — no `-light` / `-dark` suffix is appended automatically. The dictionary keys passed to `register_themes` are the actual lookup keys; choose them freely.
 
     ```python
     light, dark = nv.ThemeFactory.from_seed_pair("#6750A4", name="brand")
@@ -150,7 +151,7 @@ See the full runnable demo: `samples/design-system/material_theme/multiple_theme
     ```
 
 !!! note "`\"light\"` and `\"dark\"` as built-in fallbacks"
-    `ThemeModeIntent(theme="light")` and `ThemeModeIntent(theme="dark")` are reserved shortcuts. When no theme with that exact name is registered, they fall back to a plain (non-Material) default theme.
+    `set_theme("light")` and `set_theme("dark")` are reserved shortcuts. When no theme with that exact name is registered, they fall back to a plain (non-Material) default theme.
 
     These strings happen to equal the values of `Theme.mode`, but they are separate concepts — one is a registry lookup key, the other is a property of the `Theme` object itself.
 

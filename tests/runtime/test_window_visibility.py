@@ -47,17 +47,6 @@ def test_hide_show_flip_visibility_without_os_window() -> None:
     assert window.is_open.value is False
 
 
-def test_hide_show_intents_dispatch() -> None:
-    from nuiitivet.runtime.window_intents import HideWindowIntent, ShowWindowIntent
-
-    app = App(Window(content=_Root()))
-    window = app.main_window
-    window.dispatch(HideWindowIntent())
-    assert window.is_visible.value is False
-    window.dispatch(ShowWindowIntent())
-    assert window.is_visible.value is True
-
-
 def test_close_request_defaults_to_close() -> None:
     app = App(Window(content=_Root()))
     app.main_window._handle_close_request()

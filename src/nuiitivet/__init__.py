@@ -102,7 +102,6 @@ from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScale, TypeScaleToken
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.types import ThemeExtension
-from nuiitivet.theme.intents import ThemeModeIntent, ThemeRegistryIntent
 
 # Animation
 from nuiitivet.animation import (
@@ -162,13 +161,8 @@ from nuiitivet.platform.tray import TrayIcon
 # Window / runtime
 from nuiitivet.runtime.app import AppScope, ExitPolicy
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
+from nuiitivet.runtime.protocols import AppProtocol, WindowProtocol
 from nuiitivet.runtime.window import Window, WindowScope
-from nuiitivet.runtime.window_intents import (
-    CloseWindowIntent,
-    HideWindowIntent,
-    MinimizeWindowIntent,
-    ShowWindowIntent,
-)
 
 # Configuration
 from nuiitivet.rendering.fonts import Fonts
@@ -238,8 +232,6 @@ __all__: list[str] = [
     "TypeScaleToken",
     "ThemeManager",
     "ThemeExtension",
-    "ThemeModeIntent",
-    "ThemeRegistryIntent",
     # Animation
     "Animatable",
     "Motion",
@@ -304,17 +296,15 @@ __all__: list[str] = [
     "FileDialogError",
     "TrayIcon",
     # Window / runtime
+    "AppProtocol",
     "AppScope",
     "ExitPolicy",
     "Window",
+    "WindowProtocol",
     "WindowScope",
     "OSChrome",
     "CustomChrome",
     "Border",
-    "CloseWindowIntent",
-    "HideWindowIntent",
-    "MinimizeWindowIntent",
-    "ShowWindowIntent",
     # Configuration
     "Fonts",
     "RendererMode",

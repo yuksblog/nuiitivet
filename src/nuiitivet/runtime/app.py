@@ -3,8 +3,8 @@
 ``App`` owns no pixels of its own. Every per-window concern — the widget
 tree, overlay, navigator, focus, rendering, the menu bar — lives on
 :class:`~nuiitivet.runtime.window.Window`; the App is the process-wide
-runtime that runs the loop, supplies the theme, dispatches app-scoped
-intents, and decides when the application exits.
+runtime that runs the loop, supplies the theme, and decides when the
+application exits.
 The window is constructed separately and passed in:
 ``App(Window(content=...))``. See ``docs/design/APP_WINDOW.md``.
 """
@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from nuiitivet.menubar.focus import MenuBarFocusCoordinator
     from nuiitivet.theme.theme import Theme
 
+    from .protocols import AppProtocol
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,7 @@ class ExitPolicy(Enum):
             remains open.
         MAIN_WINDOW_CLOSED: Closing the main window closes every other
             window and exits, regardless of what else is open.
-        EXPLICIT: Only ``ExitAppIntent`` (or ``app.exit()``) exits; the app
+        EXPLICIT: Only ``app.exit()`` exits; the app
             keeps running with zero open windows, so some window must be
             reopenable from app-held state.
     """
@@ -49,23 +51,6 @@ class ExitPolicy(Enum):
     LAST_WINDOW_CLOSED = "last_window_closed"
     MAIN_WINDOW_CLOSED = "main_window_closed"
     EXPLICIT = "explicit"
-
-
-class AppProxy:
-    """Proxy for interacting with the App instance from the widget tree.
-
-    This class provides a restricted interface to the App instance, primarily
-    for dispatching app-scoped intents.
-    """
-
-    def __init__(self, app: "App") -> None:
-        self._app = weakref.ref(app)
-
-    def dispatch(self, intent: Any) -> None:
-        """Dispatch an app-scoped intent to the application."""
-        app = self._app()
-        if app is not None:
-            app.dispatch(intent)
 
 
 class AppScope(Widget):
@@ -78,7 +63,6 @@ class AppScope(Widget):
 
     def __init__(self, app: "App", child: Widget) -> None:
         super().__init__()
-        self.app_proxy = AppProxy(app)
         self.theme_manager = app._theme_manager
         self._app_ref = weakref.ref(app)
         self.add_child(child)
@@ -229,24 +213,30 @@ class App:
     # --- Context lookup ------------------------------------------------
 
     @staticmethod
-    def of(context: Widget) -> AppProxy:
-        """Get the AppProxy for the given context.
+    def of(context: Widget) -> "AppProtocol":
+        """Return the running App, typed as its ViewModel-facing protocol.
+
+        The declared type is :class:`~nuiitivet.runtime.protocols.AppProtocol`
+        so callers in the widget tree depend only on the narrow surface
+        (``exit``, ``set_theme``, ``register_themes``). Valid from
+        ``on_mount``, not from ``__init__``, like every ``.of()`` lookup.
 
         Args:
             context: The widget context.
 
         Returns:
-            The AppProxy instance.
+            The App, as :class:`AppProtocol`.
 
         Raises:
             RuntimeError: If called before ``context`` is mounted (typically from
                 ``__init__``), or if the widget is not attached to an App.
         """
         scope = find_provider(context, AppScope)
-        if scope is None:
+        app = scope.app if scope is not None else None
+        if app is None:
             raise_if_premature_lookup("App.of", context)
             raise RuntimeError("AppScope not found. Is the widget attached to an App?")
-        return scope.app_proxy
+        return app
 
     # --- Theme ---------------------------------------------------------
 
@@ -278,75 +268,37 @@ class App:
             except Exception:
                 exception_once(logger, "app_theme_invalidate_exc", "Window.invalidate raised on theme change")
 
-    # --- Intents -------------------------------------------------------
+    def set_theme(self, theme: "str | Theme") -> None:
+        """Switch the app-wide theme.
 
-    def dispatch(self, intent: Any) -> None:
-        """Dispatch an app-scoped intent.
-
-        Only app-scoped intents are accepted (``ExitAppIntent`` and the theme
-        intents). A window-scoped intent here is a scope error and raises
-        rather than being silently misdelivered; dispatch those through
-        ``Window.of(context).dispatch(...)``. See ``docs/design/APP_WINDOW.md``.
+        Args:
+            theme: A name registered via :meth:`register_themes`, or
+                ``"light"`` / ``"dark"`` as built-in aliases, or a
+                :class:`~nuiitivet.theme.theme.Theme` instance to apply
+                directly without touching the registry.
         """
-        from nuiitivet.theme.intents import ThemeModeIntent, ThemeRegistryIntent
+        from nuiitivet.theme.theme import Theme
 
-        if isinstance(intent, ThemeRegistryIntent):
-            self._theme_registry.update(intent.themes)
+        if isinstance(theme, Theme):
+            self._theme_manager.set_theme(theme)
             return
-
-        if isinstance(intent, ThemeModeIntent):
-            from nuiitivet.theme.theme import Theme
-
-            theme_val = intent.theme
-            if isinstance(theme_val, Theme):
-                self._theme_manager.set_theme(theme_val)
+        # Look up by name; fall back to light/dark built-ins
+        theme_obj = self._theme_registry.get(str(theme))
+        if theme_obj is None:
+            if str(theme) == "dark":
+                theme_obj = PlainTheme.dark()
             else:
-                # Look up by name; fall back to light/dark built-ins
-                theme_obj = self._theme_registry.get(str(theme_val))
-                if theme_obj is None:
-                    if str(theme_val) == "dark":
-                        theme_obj = PlainTheme.dark()
-                    else:
-                        theme_obj = PlainTheme.light()
-                self._theme_manager.set_theme(theme_obj)
-            return
+                theme_obj = PlainTheme.light()
+        self._theme_manager.set_theme(theme_obj)
 
-        from nuiitivet.runtime.intents import ExitAppIntent
+    def register_themes(self, themes: "dict[str, Theme]") -> None:
+        """Register named themes so :meth:`set_theme` can refer to them by name.
 
-        if isinstance(intent, ExitAppIntent):
-            self.exit(intent.exit_code)
-            return
-
-        from nuiitivet.runtime.window_intents import (
-            CenterWindowIntent,
-            CloseWindowIntent,
-            FullScreenIntent,
-            MaximizeWindowIntent,
-            MinimizeWindowIntent,
-            MoveWindowIntent,
-            ResizeWindowIntent,
-            RestoreWindowIntent,
-        )
-
-        if isinstance(
-            intent,
-            (
-                CenterWindowIntent,
-                CloseWindowIntent,
-                FullScreenIntent,
-                MaximizeWindowIntent,
-                MinimizeWindowIntent,
-                MoveWindowIntent,
-                ResizeWindowIntent,
-                RestoreWindowIntent,
-            ),
-        ):
-            raise TypeError(
-                f"{type(intent).__name__} is a window-scoped intent; dispatch it "
-                "through Window.of(context).dispatch(...)."
-            )
-
-        raise TypeError(f"App.dispatch() does not handle {type(intent).__name__}.")
+        Args:
+            themes: Mapping of name → :class:`~nuiitivet.theme.theme.Theme`
+                to add to the registry.
+        """
+        self._theme_registry.update(themes)
 
     # --- Lifecycle -----------------------------------------------------
 

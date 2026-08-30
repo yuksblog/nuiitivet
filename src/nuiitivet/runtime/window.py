@@ -274,8 +274,9 @@ class Window:
         """Return the Window whose tree contains ``context``.
 
         The returned object is the same ``Window`` the opener holds — there is
-        no proxy type. Valid from ``on_mount``, not from ``__init__``, like
-        every ``.of()`` lookup.
+        no proxy type. A ViewModel should receive it typed as
+        :class:`~nuiitivet.runtime.protocols.WindowProtocol`. Valid from
+        ``on_mount``, not from ``__init__``, like every ``.of()`` lookup.
 
         Args:
             context: The widget context.
@@ -2308,67 +2309,9 @@ class Window:
             except Exception:
                 exception_once(logger, "app_reload_capture_release_exc", "pointer capture release raised")
 
-    def dispatch(self, intent: Any) -> None:
-        """Dispatch a window-scoped intent to this window.
-
-        Only the window intents (:mod:`nuiitivet.runtime.window_intents`) are
-        accepted. An app-scoped intent here is a scope error and raises rather
-        than being silently misdelivered; dispatch those through
-        ``App.of(context).dispatch(...)``. See ``docs/design/APP_WINDOW.md``.
-        """
-        from .window_intents import (
-            CenterWindowIntent,
-            CloseWindowIntent,
-            FullScreenIntent,
-            HideWindowIntent,
-            MaximizeWindowIntent,
-            MinimizeWindowIntent,
-            MoveWindowIntent,
-            ResizeWindowIntent,
-            RestoreWindowIntent,
-            ShowWindowIntent,
-        )
-
-        if isinstance(intent, CenterWindowIntent):
-            self.center()
-            return
-        if isinstance(intent, MaximizeWindowIntent):
-            self.maximize()
-            return
-        if isinstance(intent, MinimizeWindowIntent):
-            self.minimize()
-            return
-        if isinstance(intent, RestoreWindowIntent):
-            self.restore()
-            return
-        if isinstance(intent, FullScreenIntent):
-            self.full_screen()
-            return
-        if isinstance(intent, CloseWindowIntent):
-            self.close()
-            return
-        if isinstance(intent, HideWindowIntent):
-            self.hide()
-            return
-        if isinstance(intent, ShowWindowIntent):
-            self.show()
-            return
-        if isinstance(intent, MoveWindowIntent):
-            self.move_to(intent.x, intent.y)
-            return
-        if isinstance(intent, ResizeWindowIntent):
-            self.resize(intent.width, intent.height)
-            return
-
-        raise TypeError(
-            f"{type(intent).__name__} is not a window-scoped intent. App-scoped "
-            "intents (ExitAppIntent, the theme intents) dispatch through "
-            "App.of(context).dispatch(...)."
-        )
-
     # --- Window operations ---------------------------------------------
-    # The imperative counterparts of the window intents. Each is a no-op when
-    # the OS window does not exist (not realized yet, or already closed).
+    # Each is a no-op when the OS window does not exist (not realized yet, or
+    # already closed).
 
     def center(self) -> None:
         """Center the window on its screen."""

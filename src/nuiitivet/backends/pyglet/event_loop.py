@@ -403,7 +403,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
     def _keep_alive_without_windows(self) -> bool:
         """Whether the loop should keep running with zero open windows.
 
-        ``ExitPolicy.EXPLICIT`` apps keep running until ``ExitAppIntent``; every
+        ``ExitPolicy.EXPLICIT`` apps keep running until ``app.exit()``; every
         other policy exits when the last window is gone.
         """
         probe = self._keep_running_without_windows

@@ -1,15 +1,14 @@
 # Window Operations
 
-Window operations address exactly one window, so they live on the
-`Window` object — as imperative methods, and as **window-scoped intents**
-dispatched through `Window.of(context)`. Exiting the whole application is
-app-scoped and dispatches through `App.of(context)` instead. See
-[Multiple Windows](multi_window.md) for the App / Window split.
+Window operations address exactly one window, so they live on the `Window`
+object as plain methods. Exiting the whole application is app-scoped and
+lives on the App. See [Multiple Windows](multi_window.md) for the
+App / Window split.
 
-## Imperative methods
+## Window methods
 
-For app logic that already holds a window (its own via `Window.of(self)`,
-or one it opened):
+For code that holds a window (its own via `Window.of(self)`, or one it
+opened):
 
 ```python
 window = nv.Window.of(self)
@@ -30,63 +29,71 @@ App's exit policy), renders no frames while parked, and `show()` restores it
 instantly. `window.is_visible` is the matching `Observable[bool]`. This pair
 is what a tray-resident app is built on — see [Tray Icon](tray_icon.md).
 
-## Window-scoped intents
+## App methods
 
-The same operations as intents, for declarative wiring (menu items,
-accelerators, or handlers that should not know which method runs). They are
-defined in `nuiitivet.runtime.window_intents` and dispatch through the
-window of the dispatching context:
+`App.of(context)` returns the running app, typed as `nv.AppProtocol`:
 
-- **`CloseWindowIntent`**: Closes the window.
-- **`HideWindowIntent`**: Hides the window — not a close; the tree and state
-  stay alive (see [Tray Icon](tray_icon.md)).
-- **`ShowWindowIntent`**: Shows the window and brings it to the front, focused.
-- **`MaximizeWindowIntent`**: Maximizes the window to fill the screen.
-- **`MinimizeWindowIntent`**: Minimizes the window to the taskbar or dock.
-- **`RestoreWindowIntent`**: Restores the window from a minimized or maximized state.
-- **`FullScreenIntent`**: Puts the window into fullscreen mode.
-- **`CenterWindowIntent`**: Centers the window on the current screen.
-- **`MoveWindowIntent(x, y)`**: Moves the window to the specified coordinates.
-- **`ResizeWindowIntent(width, height)`**: Resizes the window to the specified dimensions.
+```python
+app = nv.App.of(self)
+app.exit()                    # close every window and stop the loop
+app.set_theme("dark")         # a name, "light"/"dark", or a Theme instance
+app.register_themes({...})    # name → Theme, for set_theme by name
+```
 
-App-scoped, through `App.of(context).dispatch(...)`:
+## In a ViewModel
 
-- **`ExitAppIntent(exit_code)`**: Closes every window and exits the
-  application with the given exit code.
+A ViewModel should not depend on the full `Window` or `App` — annotate the
+parameter as `nv.WindowProtocol` / `nv.AppProtocol` instead. Pass it **per
+method call**, not in the constructor: a widget builds its ViewModel in
+`__init__`, and `.of(context)` does not work that early (the widget is not
+mounted yet). So the event handler resolves the object and hands it to the
+ViewModel method:
 
-The scoping is strict: dispatching a window intent through `App.of` (or an
-app intent through `Window.of`) raises a `TypeError` instead of being
-silently misdelivered, so the call site always tells you where an intent
-lands.
+```python
+class ShellViewModel:
+    def send_to_background(self, window: nv.WindowProtocol) -> None:
+        window.hide()
+
+    def quit(self, app: nv.AppProtocol) -> None:
+        app.exit()
+
+
+class Shell(nv.ComposableWidget):
+    def __init__(self) -> None:
+        super().__init__()
+        self._vm = ShellViewModel()
+
+    def build(self):
+        return nv.Column(
+            children=[
+                nv.Button("Hide", on_click=lambda: self._vm.send_to_background(nv.Window.of(self))),
+                nv.Button("Quit", on_click=lambda: self._vm.quit(nv.App.of(self))),
+            ],
+        )
+```
+
+A test calls the ViewModel methods with hand-written fakes — no widget tree
+needed. `WindowProtocol` carries the operation methods above plus `is_open`,
+`is_visible`, and the awaitable `closed`. `AppProtocol` carries `exit`,
+`set_theme`, and `register_themes`.
 
 ## Example Usage
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.intents import ExitAppIntent
-from nuiitivet.runtime.window_intents import (
-    CenterWindowIntent,
-    CloseWindowIntent,
-    MaximizeWindowIntent,
-    MinimizeWindowIntent,
-    RestoreWindowIntent,
-)
 
 
 class WindowControls(nv.ComposableWidget):
-    def _dispatch(self, intent) -> None:
-        nv.Window.of(self).dispatch(intent)
-
     def build(self):
         return nv.Column(
             children=[
                 nv.Text("Window Controls"),
-                nv.Button("Maximize", on_click=lambda: self._dispatch(MaximizeWindowIntent())),
-                nv.Button("Minimize", on_click=lambda: self._dispatch(MinimizeWindowIntent())),
-                nv.Button("Restore", on_click=lambda: self._dispatch(RestoreWindowIntent())),
-                nv.Button("Center", on_click=lambda: self._dispatch(CenterWindowIntent())),
-                nv.Button("Close", on_click=lambda: self._dispatch(CloseWindowIntent())),
-                nv.Button("Quit", on_click=lambda: nv.App.of(self).dispatch(ExitAppIntent())),
+                nv.Button("Maximize", on_click=lambda: nv.Window.of(self).maximize()),
+                nv.Button("Minimize", on_click=lambda: nv.Window.of(self).minimize()),
+                nv.Button("Restore", on_click=lambda: nv.Window.of(self).restore()),
+                nv.Button("Center", on_click=lambda: nv.Window.of(self).center()),
+                nv.Button("Close", on_click=lambda: nv.Window.of(self).close()),
+                nv.Button("Quit", on_click=lambda: nv.App.of(self).exit()),
             ],
             gap=10,
             padding=20,

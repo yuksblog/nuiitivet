@@ -140,7 +140,7 @@ class HomeScreen(nv.ComposableWidget):
         self._is_dark = not self._is_dark
         next_theme = _dark if self._is_dark else _light
         self._toggle_label.value = "Switch to Light" if self._is_dark else "Switch to Dark"
-        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).set_theme(next_theme)
 
 
 def main(png_path: str = "") -> None:

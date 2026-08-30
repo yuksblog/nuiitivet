@@ -43,8 +43,6 @@ def test_app_background_uses_resolve_color(monkeypatch):
 def test_app_background_updates_on_theme_change(monkeypatch):
     from nuiitivet.theme.theme import Theme
     from nuiitivet.material.theme.theme_data import MaterialThemeData
-    from nuiitivet.theme.intents import ThemeModeIntent
-
     app: App | None = None
     try:
         roles = {role: "#FFFFFF" for role in ColorRole}
@@ -70,7 +68,7 @@ def test_app_background_updates_on_theme_change(monkeypatch):
         new_roles = {role: "#EEEEEE" for role in ColorRole}
         new_roles[ColorRole.SURFACE] = "#101010"
         new_theme = Theme(mode="dark", extensions=[MaterialThemeData(roles=new_roles)])
-        app.app.dispatch(ThemeModeIntent(theme=new_theme))
+        app.app.set_theme(new_theme)
 
         expected_initial = hex_to_rgba("#222222")
         expected_after = hex_to_rgba("#101010")

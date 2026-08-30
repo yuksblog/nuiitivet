@@ -1,4 +1,4 @@
-"""The ViewModel-facing Navigator / Overlay protocols (issue #463).
+"""The ViewModel-facing Navigator / Overlay / App / Window protocols (#463, #634).
 
 Two invariants:
 
@@ -11,7 +11,7 @@ Two invariants:
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Literal
+from typing import Any, Awaitable, Literal
 
 import pytest
 
@@ -23,6 +23,9 @@ from nuiitivet.overlay.overlay import Overlay as CoreOverlay
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.result import OverlayDismissReason, OverlayResult
 from nuiitivet.navigation.route import Route
+from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.runtime.app import App as CoreApp
+from nuiitivet.runtime.window import Window as CoreWindow
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -50,6 +53,22 @@ def _material_protocol_widens_to_core(overlay: nv.OverlayProtocol) -> core.Overl
     return overlay
 
 
+def _conforms_core_app(app: CoreApp) -> core.AppProtocol:
+    return app
+
+
+def _conforms_material_app(app: nv.App) -> nv.AppProtocol:
+    return app
+
+
+def _conforms_core_window(window: CoreWindow) -> core.WindowProtocol:
+    return window
+
+
+def _conforms_material_window(window: nv.Window) -> nv.WindowProtocol:
+    return window
+
+
 def test_material_root_aliases_the_material_protocol() -> None:
     """``nv.OverlayProtocol`` names the Material protocol, as ``nv.Overlay`` names MaterialOverlay."""
     from nuiitivet.material.protocols import MaterialOverlayProtocol
@@ -60,6 +79,9 @@ def test_material_root_aliases_the_material_protocol() -> None:
     assert nv.OverlayProtocol is not core.OverlayProtocol
     # Navigator needs no Material-specific half: one protocol serves both layers.
     assert nv.NavigatorProtocol is core.NavigatorProtocol
+    # Neither do App and Window.
+    assert nv.AppProtocol is core.AppProtocol
+    assert nv.WindowProtocol is core.WindowProtocol
 
 
 def test_concrete_classes_expose_every_protocol_member() -> None:
@@ -69,6 +91,23 @@ def test_concrete_classes_expose_every_protocol_member() -> None:
     assert callable(getattr(CoreOverlay, "close"))
     for name in ("dialog", "snackbar", "loading", "while_loading", "side_sheet", "bottom_sheet"):
         assert callable(getattr(MaterialOverlay, name))
+    for name in ("exit", "set_theme", "register_themes"):
+        assert callable(getattr(CoreApp, name))
+    for name in (
+        "close",
+        "hide",
+        "show",
+        "minimize",
+        "maximize",
+        "restore",
+        "full_screen",
+        "center",
+        "move_to",
+        "resize",
+    ):
+        assert callable(getattr(CoreWindow, name))
+    for name in ("is_open", "is_visible", "closed"):
+        assert isinstance(getattr(CoreWindow, name), property)
 
 
 # --- 2. A ViewModel against hand-written fakes ------------------------------
@@ -295,3 +334,143 @@ async def test_view_model_honours_a_declined_dialog() -> None:
 
     assert await task is False
     assert overlay.snackbars == []
+
+
+# --- 3. App / Window fakes ---------------------------------------------------
+
+
+class FakeApp:
+    """Implements ``AppProtocol`` by recording what was requested."""
+
+    def __init__(self) -> None:
+        self.exit_codes: list[int] = []
+        self.themes: list[Any] = []
+        self.registry: dict[str, Any] = {}
+
+    def exit(self, exit_code: int = 0) -> None:
+        self.exit_codes.append(exit_code)
+
+    def set_theme(self, theme: str | core.Theme) -> None:
+        self.themes.append(theme)
+
+    def register_themes(self, themes: dict[str, core.Theme]) -> None:
+        self.registry.update(themes)
+
+
+class FakeWindow:
+    """Implements ``WindowProtocol`` with recorded calls and live observables."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self._is_open: core.Observable[bool] = core.Observable(True)
+        self._is_visible: core.Observable[bool] = core.Observable(True)
+        self._closed_event = asyncio.Event()
+
+    def close(self) -> None:
+        self.calls.append("close")
+        self._is_open.value = False
+        self._is_visible.value = False
+        self._closed_event.set()
+
+    def hide(self) -> None:
+        self.calls.append("hide")
+        self._is_visible.value = False
+
+    def show(self) -> None:
+        self.calls.append("show")
+        self._is_visible.value = True
+
+    def minimize(self) -> None:
+        self.calls.append("minimize")
+
+    def maximize(self) -> None:
+        self.calls.append("maximize")
+
+    def restore(self) -> None:
+        self.calls.append("restore")
+
+    def full_screen(self) -> None:
+        self.calls.append("full_screen")
+
+    def center(self) -> None:
+        self.calls.append("center")
+
+    def move_to(self, x: int, y: int) -> None:
+        self.calls.append(f"move_to({x},{y})")
+
+    def resize(self, width: int, height: int) -> None:
+        self.calls.append(f"resize({width},{height})")
+
+    @property
+    def is_open(self) -> ObservableBase[bool]:
+        return self._is_open
+
+    @property
+    def is_visible(self) -> ObservableBase[bool]:
+        return self._is_visible
+
+    @property
+    def closed(self) -> Awaitable[None]:
+        return self._wait_closed()
+
+    async def _wait_closed(self) -> None:
+        await self._closed_event.wait()
+
+
+def _conforms_fake_app(app: FakeApp) -> nv.AppProtocol:
+    return app
+
+
+def _conforms_fake_window(window: FakeWindow) -> nv.WindowProtocol:
+    return window
+
+
+class ShellViewModel:
+    """Commands window and app through the protocols, received per call.
+
+    Per-call injection is the standard shape: the widget builds its ViewModel
+    in ``__init__``, where ``.of(context)`` cannot resolve yet, so the event
+    handler resolves the object and hands it to the method.
+    """
+
+    def send_to_background(self, window: nv.WindowProtocol) -> None:
+        window.hide()
+
+    def quit(self, app: nv.AppProtocol) -> None:
+        app.exit()
+
+    def apply_dark_mode(self, app: nv.AppProtocol) -> None:
+        app.set_theme("dark")
+
+
+def test_view_model_commands_the_window_without_a_tree() -> None:
+    window = FakeWindow()
+
+    ShellViewModel().send_to_background(window)
+
+    assert window.calls == ["hide"]
+    assert window.is_visible.value is False
+
+
+def test_view_model_commands_the_app_without_a_tree() -> None:
+    app = FakeApp()
+    vm = ShellViewModel()
+
+    vm.apply_dark_mode(app)
+    vm.quit(app)
+
+    assert app.themes == ["dark"]
+    assert app.exit_codes == [0]
+
+
+@pytest.mark.asyncio
+async def test_view_model_awaits_window_closed() -> None:
+    window = FakeWindow()
+
+    task = asyncio.ensure_future(window.closed)
+    await asyncio.sleep(0)
+    assert not task.done()
+
+    window.close()
+    await task
+    assert window.is_open.value is False

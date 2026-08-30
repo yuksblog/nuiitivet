@@ -140,15 +140,20 @@ def main():
 The same Intent approach applies to dialogs from a ViewModel via `nv.Overlay` and
 an intent resolver.
 
-## Typing the injected navigator / overlay
+## Typing the injected navigator / overlay / window / app
 
-Annotate what a ViewModel receives with the protocols, not the concrete widgets:
+Annotate what a ViewModel receives with the protocols, not the concrete objects:
 
 - `nv.NavigatorProtocol` — `push()`, `pop()`, `can_pop()`.
 - `nv.OverlayProtocol` — `dialog()`, `snackbar()`, `loading()`, `while_loading()`,
   `side_sheet()`, `bottom_sheet()`, `close()`.
+- `nv.WindowProtocol` — `close()`, `hide()`, `show()`, `minimize()`, `maximize()`,
+  `restore()`, `full_screen()`, `center()`, `move_to()`, `resize()`, plus
+  `is_open` / `is_visible` (Observables) and the awaitable `closed`.
+- `nv.AppProtocol` — `exit()`, `set_theme()`, `register_themes()`. This is also
+  the declared return type of `nv.App.of(context)`.
 
-`nv.Navigator` / `nv.Overlay` satisfy them structurally, so call sites are unchanged;
+The concrete objects satisfy them structurally, so call sites are unchanged;
 the VM becomes type-checkable and unit-testable against a hand-written fake with no
 widget tree and no `App`. There is no `INavigator` / `IOverlay` — those names do not
 exist.

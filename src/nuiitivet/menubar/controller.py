@@ -12,17 +12,9 @@ from __future__ import annotations
 
 import logging
 import weakref
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from nuiitivet.common.logging_once import exception_once, warning_once
-from nuiitivet.runtime.intents import ExitAppIntent
-from nuiitivet.runtime.window_intents import (
-    CloseWindowIntent,
-    FullScreenIntent,
-    MaximizeWindowIntent,
-    MinimizeWindowIntent,
-    RestoreWindowIntent,
-)
 
 from nuiitivet.menus import MenuEntry, MenuRole
 
@@ -36,17 +28,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: Intent factory per standard-item role. Activation dispatches through the
-#: owning window (app-scoped roles through its App) even where the OS could
-#: act directly (Stage 2: NSMenu), so app exit paths and window management
-#: stay on the one code path.
-_ROLE_INTENTS = {
-    MenuRole.QUIT: ExitAppIntent,
-    MenuRole.CLOSE_WINDOW: CloseWindowIntent,
-    MenuRole.MINIMIZE: MinimizeWindowIntent,
-    MenuRole.MAXIMIZE: MaximizeWindowIntent,
-    MenuRole.RESTORE: RestoreWindowIntent,
-    MenuRole.FULL_SCREEN: FullScreenIntent,
+#: Window method per standard-item role. Activation goes through the owning
+#: window (the app-scoped ``QUIT`` role through its App) even where the OS
+#: could act directly (Stage 2: NSMenu), so app exit paths and window
+#: management stay on the one code path.
+_ROLE_ACTIONS: dict[MenuRole, "Callable[[Window], None]"] = {
+    MenuRole.QUIT: lambda window: window.app.exit(),
+    MenuRole.CLOSE_WINDOW: lambda window: window.close(),
+    MenuRole.MINIMIZE: lambda window: window.minimize(),
+    MenuRole.MAXIMIZE: lambda window: window.maximize(),
+    MenuRole.RESTORE: lambda window: window.restore(),
+    MenuRole.FULL_SCREEN: lambda window: window.full_screen(),
 }
 
 
@@ -211,22 +203,18 @@ class MenuBarController:
             )
 
     def dispatch_role(self, role: MenuRole) -> None:
-        """Dispatch the built-in intent mapped to a standard-item role.
+        """Run the window method mapped to a standard-item role.
 
-        Window-scoped roles dispatch through the owning window; the app-scoped
-        ``QUIT`` role dispatches through that window's App.
+        Window-scoped roles call the owning window; the app-scoped ``QUIT``
+        role calls that window's App.
         """
-        factory = _ROLE_INTENTS.get(role)
-        if factory is None:
+        action = _ROLE_ACTIONS.get(role)
+        if action is None:
             return
         window = self._window()
         if window is None:
             return
-        intent = factory()
-        if isinstance(intent, ExitAppIntent):
-            try:
-                window.app.dispatch(intent)
-            except Exception:
-                exception_once(logger, "menubar_dispatch_exit_exc", "ExitAppIntent dispatch raised")
-            return
-        window.dispatch(intent)
+        try:
+            action(window)
+        except Exception:
+            exception_once(logger, "menubar_role_action_exc", f"Standard-item role {role.name} raised")

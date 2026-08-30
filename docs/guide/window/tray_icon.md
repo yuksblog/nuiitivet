@@ -77,7 +77,7 @@ window = nv.Window(
 app = nv.App(window, tray=tray, exit_policy=nv.ExitPolicy.EXPLICIT)
 ```
 
-- **`exit_policy=EXPLICIT`** — only `MenuEntry.quit()` / `ExitAppIntent` /
+- **`exit_policy=EXPLICIT`** — only `MenuEntry.quit()` /
   `app.exit()` ends the app. See
   [Multiple Windows](multi_window.md) for the exit policies; the tray never
   overrides them.
