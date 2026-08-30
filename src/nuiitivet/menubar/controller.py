@@ -31,7 +31,7 @@ from .model import MenuBar
 if TYPE_CHECKING:
     from nuiitivet.runtime.window import Window
 
-    from .nsmenu import NSMenuBridge
+    from .focus import MenuBarFocusCoordinator
     from .slots import MenuBarSlotBase
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,10 @@ class MenuBarController:
         self._model = model
         self._areas: List["MenuBarSlotBase"] = []
         self._defaults: List["MenuBarSlotBase"] = []
-        # NSMenuBridge on macOS; None everywhere else.
-        self._bridge: Optional["NSMenuBridge"] = None
+        # The App-wide focus coordinator on macOS (owns the NSMenu bridge and
+        # keeps the global bar on the focused window's model); None everywhere
+        # else.
+        self._coordinator: Optional["MenuBarFocusCoordinator"] = None
 
     # ---- Model -----------------------------------------------------------
 
@@ -77,11 +79,10 @@ class MenuBarController:
         if model is not None and not isinstance(model, MenuBar):
             raise TypeError("window.menu must be a MenuBar or None.")
         self._model = model
-        if self._bridge is not None:
-            try:
-                self._bridge.install(model)
-            except Exception:
-                exception_once(logger, "menubar_bridge_reinstall_exc", "NSMenu bridge reinstall raised")
+        if self._coordinator is not None:
+            window = self._window()
+            if window is not None:
+                self._coordinator.model_changed(window)
         self._notify()
 
     # ---- Platform bridge -----------------------------------------------------
@@ -89,38 +90,56 @@ class MenuBarController:
     def install_platform_bridge(self) -> None:
         """Hand the menu to the platform's native surface where one exists.
 
-        Called by the Window once the backend window is up. On macOS this
-        installs the :class:`~nuiitivet.menubar.nsmenu.NSMenuBridge` (the
-        global menu bar) and the in-app slots collapse; elsewhere it is a
-        no-op and the in-app bar keeps rendering.
+        Called by the Window once the backend window is up. On macOS every
+        window — with or without its own menu — attaches to the App-wide
+        :class:`~nuiitivet.menubar.focus.MenuBarFocusCoordinator`, which keeps
+        the global menu bar on the focused window's model (the main window's
+        standing in for ``menu=None``), and the in-app slots collapse.
+        Elsewhere it is a no-op and the in-app bar keeps rendering.
         """
-        if self._bridge is not None or self._model is None:
+        if self._coordinator is not None:
             return
         from .nsmenu import NSMenuBridge
 
         if not NSMenuBridge.is_supported():
             return
         window = self._window()
-        app_name = None
-        if window is not None:
-            title = getattr(window, "_title_value", None)
-            value = getattr(title, "value", title)
-            if value:
-                app_name = str(value)
-        try:
-            bridge = NSMenuBridge(self, app_name=app_name or "App")
-            bridge.install(self._model)
-        except Exception:
-            exception_once(logger, "menubar_bridge_install_exc", "NSMenu bridge install raised")
+        if window is None:
             return
-        self._bridge = bridge
+        from .focus import MenuBarFocusCoordinator
+
+        try:
+            coordinator = MenuBarFocusCoordinator.attach(window.app)
+        except Exception:
+            exception_once(logger, "menubar_bridge_install_exc", "Menu bar coordinator attach raised")
+            return
+        self._coordinator = coordinator
+        coordinator.window_created(window)
         # The native bar took over: every in-app slot collapses.
         self._notify()
 
+    def os_focus_changed(self, active: bool) -> None:
+        """Backend hook: this window gained or lost the OS focus."""
+        if self._coordinator is None:
+            return
+        window = self._window()
+        if window is not None:
+            self._coordinator.focus_changed(window, active)
+
+    def window_closed(self) -> None:
+        """The owning window closed; release the global bar if it holds it."""
+        if self._coordinator is None:
+            return
+        window = self._window()
+        if window is not None:
+            self._coordinator.window_closed(window)
+
     @property
     def native(self) -> bool:
-        """True while a platform bridge renders the menu (no in-app bar)."""
-        return self._bridge is not None
+        """True while the platform's native surface renders the menu (no
+        in-app bar) — on macOS, for every window once attached: an unfocused
+        window's menu waits for focus rather than rendering in-app."""
+        return self._coordinator is not None
 
     # ---- Slot registry -----------------------------------------------------
 
@@ -153,7 +172,7 @@ class MenuBarController:
         else the most recently mounted default slot (hot reload mounts the new
         tree's slot while the old one is torn down). ``None`` while a platform
         bridge renders the menu natively."""
-        if self._bridge is not None:
+        if self._coordinator is not None:
             return None
         if self._areas:
             return self._areas[0]

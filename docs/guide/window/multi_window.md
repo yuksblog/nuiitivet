@@ -72,9 +72,10 @@ nv.Button("Done", on_click=lambda: nv.Window.of(self).close())
 ```
 
 The menu bar is per window too: `Window(menu=...)` (and `window.menu = ...`
-for wholesale replacement). On macOS, where the menu renders on the global bar, currently only
-the **main window's** menu is bridged; following the focused window is
-planned.
+for wholesale replacement). On macOS, where the menu renders on the global
+bar, the bar follows the **focused** window; a window with `menu=None`
+shows the main window's menu, so a single-menu app needs no per-window
+declarations.
 
 ## Parent, child, modal
 

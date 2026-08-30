@@ -98,22 +98,31 @@ class _StubBridge:
     def install(self, model) -> None:
         self.installed.append(model)
 
+    def uninstall(self) -> None:
+        pass
+
 
 def test_native_bridge_collapses_in_app_slots(nuiitivet_app) -> None:
     model = MenuBar([MenuEntry("File", submenu=[MenuEntry("Open", on_select=lambda: None)])])
     app = nuiitivet_app(Column(children=[Text("content")]), size=(800, 600), menu=model)
     assert app.get(label="File") is not None
 
+    from nuiitivet.menubar.focus import MenuBarFocusCoordinator
+
     controller: MenuBarController = app.window._menubar_controller
     stub = _StubBridge()
-    controller._bridge = cast(Any, stub)
+    coordinator = MenuBarFocusCoordinator.attach(app.app)
+    coordinator._bridge_factory = lambda _controller, _app_name: cast(Any, stub)
+    controller._coordinator = coordinator
+    coordinator.window_created(app.window)
     controller._notify()
     app.settle()
     assert app.query(label="File") is None
+    assert stub.installed == [model]
 
     # Replacement reaches the bridge instead of any slot.
     new_model = MenuBar([MenuEntry("View", submenu=[MenuEntry("Zoom", on_select=lambda: None)])])
     app.window.menu = new_model
     app.settle()
-    assert stub.installed == [new_model]
+    assert stub.installed == [model, new_model]
     assert app.query(label="View") is None

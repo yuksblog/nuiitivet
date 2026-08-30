@@ -150,6 +150,10 @@ class Window:
     # Set when a CustomChrome is in use (see :meth:`_wrap_with_chrome_and_scope`).
     _window_drag_area: Optional[WindowDragArea] = None
 
+    # Whether this OS window currently holds the OS focus; maintained by the
+    # backend through :meth:`_set_os_active`.
+    _os_active: bool
+
     # The Window's own navigation layers, adopted in :meth:`_commit_content_root`.
     # These are what ``Navigator.of`` / ``Overlay.of`` fall back to, so they are
     # per-Window state and never a process-wide global.
@@ -196,11 +200,23 @@ class Window:
         """Backend hook: the OS window exists now.
 
         Attaches platform integrations that need a live window — today the
-        menu bar's platform bridge (the macOS global menu bar). The global
-        bar is one per process, so only the main window installs the bridge.
+        menu bar's platform bridge (the macOS global menu bar, which follows
+        the focused window; see ``nuiitivet.menubar.focus``).
         """
-        if self.is_main:
-            self._menubar_controller.install_platform_bridge()
+        self._menubar_controller.install_platform_bridge()
+
+    def _set_os_active(self, active: bool) -> None:
+        """Backend hook: this OS window gained or lost the OS focus.
+
+        Maintains :attr:`_os_active` and lets the macOS menu bar coordinator
+        follow the focus. Called from the backend's activate/deactivate
+        events, on the UI thread.
+        """
+        active = bool(active)
+        if self._os_active == active:
+            return
+        self._os_active = active
+        self._menubar_controller.os_focus_changed(active)
 
     @staticmethod
     def _resolve_window_sizing(spec: WindowSizingLike, *, preferred: int, fallback: int) -> int:
@@ -470,8 +486,6 @@ class Window:
         self._is_open_obs: Observable[bool] = Observable(False)
         self._visible_obs: Observable[bool] = Observable(True)
         self._closed_event: Any = None
-        # Whether this OS window currently holds the OS focus; maintained by
-        # the backend (on_activate / on_deactivate).
         self._os_active = False
 
         self._width_spec: WindowSizingLike = width
@@ -488,7 +502,7 @@ class Window:
         # at construction; a MenuBarArea in the tree takes over regardless.
         from nuiitivet.menubar.controller import MenuBarController
 
-        self._menubar_controller = MenuBarController(self, menu)
+        self._menubar_controller: MenuBarController = MenuBarController(self, menu)
 
         # Provisional window size. An ``auto`` dimension is resolved at the end
         # of :meth:`open`, once the tree is mounted and can be measured against
@@ -883,6 +897,9 @@ class Window:
 
         if app is not None:
             app._unregister_window(self)
+        # After unregistration, so the menu bar coordinator re-resolves
+        # against the open set without this window.
+        self._menubar_controller.window_closed()
         self._notify_visibility_changed()
 
     # --- Visibility ------------------------------------------------------
