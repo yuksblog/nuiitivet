@@ -52,6 +52,7 @@ class MaterialWindow(Window):
         overlay_factory: Callable[[], "Overlay"] | None = None,
         window_position: WindowPosition | None = None,
         resizable: bool = True,
+        accepts_first_mouse: bool = True,
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
@@ -74,6 +75,9 @@ class MaterialWindow(Window):
                 default.
             window_position: Initial window position.
             resizable: Whether the window can be resized.
+            accepts_first_mouse: macOS only — deliver the click that
+                activates this window while inactive; ``False`` restores
+                activate-only. See :class:`~nuiitivet.runtime.window.Window`.
             menu: The window's menu bar model, or ``None``.
             parent: The parent window, or ``None`` for a top-level window.
             modal: Whether this window blocks input to its parent chain while
@@ -99,6 +103,7 @@ class MaterialWindow(Window):
             overlay_factory=overlay_factory,
             window_position=window_position,
             resizable=resizable,
+            accepts_first_mouse=accepts_first_mouse,
             menu=menu,
             parent=parent,
             modal=modal,

@@ -101,6 +101,7 @@ palette = nv.Window(
     chrome=nv.OSChrome(),
     background=...,
     resizable=True,
+    accepts_first_mouse=True,       # macOS: first click into an inactive window acts
     window_position=None,
     overlay_factory=None,
     menu=None,                      # MenuBar model (Section 8.4)
@@ -114,6 +115,14 @@ registration. Every window-flavored keyword formerly on `App` moves here
 with unchanged meaning; `content` keeps the App contract (a `Widget`
 instance or a root factory; the factory form is what enables hot reload,
 Section 9.1). `modal=True` without `parent` raises at construction.
+
+`accepts_first_mouse` is macOS-only: by default the click that activates
+an inactive window is also delivered to the app (a Cocoa
+`acceptsFirstMouse:` patch on the pyglet view), matching Windows/Linux
+and today's platform norm. `False` restores activate-only behavior for
+windows where an accidental first click could commit something. Modality
+is unaffected: a window blocked by a modal child consumes the delivered
+input in its dispatch gates.
 
 ### 4.2 Lifecycle
 

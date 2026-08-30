@@ -377,6 +377,7 @@ class Window:
         overlay_factory: Callable[[], "Overlay"] | None = None,
         window_position: WindowPosition | None = None,
         resizable: bool = True,
+        accepts_first_mouse: bool = True,
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
@@ -407,6 +408,13 @@ class Window:
             overlay_factory: Optional overlay factory.
             window_position: Initial window position.
             resizable: Whether the window can be resized.
+            accepts_first_mouse: macOS only. When ``True`` (default), the
+                click that activates this window while it is inactive is
+                also delivered to the app, matching Windows/Linux and
+                today's platform norm (Finder, Preview). Pass ``False`` to
+                restore activate-only behavior for windows where an
+                accidental first click could commit something. No effect
+                on other platforms — they always deliver the click.
             menu: The menu bar model (:class:`~nuiitivet.menubar.MenuBar`),
                 or ``None`` for no menu bar. Replace it wholesale via
                 ``window.menu = ...``; see ``docs/design/MENU_BAR.md``.
@@ -490,6 +498,7 @@ class Window:
         self.height = self._resolve_window_sizing(height, preferred=0, fallback=480)
         self.window_position = window_position
         self.resizable = resizable
+        self.accepts_first_mouse = bool(accepts_first_mouse)
 
         self._title_value: str | None | ObservableBase[str | None] = title
         self._title_disposable: Optional[Disposable] = None
