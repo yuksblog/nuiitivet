@@ -18,6 +18,16 @@ open-close / submit) are deliberately **not** recorded -- they are states
 derivable from a click sequence plus ``describe_tree``, not primitive inputs
 (#390).
 
+Window lifecycle events (``window_opened`` / ``window_closed``, #622) are the
+one exception, because the derivability argument fails for them: a close can
+happen on the OS title bar, entirely outside the widget tree, so no click
+sequence records it -- the assistant could only reconstruct it by diffing
+``status``'s window list against a remembered snapshot. They are recorded from
+the App's register/unregister choke points (the dev runner wires them in), so
+every open/close path -- in-app button, OS close, parent cascade, programmatic
+-- lands in the same journal, interleaved with the input events in one ``seq``
+order.
+
 Two boundaries are load-bearing:
 
 * **Never raw input.** Only coarse, *identifiable* actions are recorded: a click
@@ -231,6 +241,27 @@ def own_identity(node: Any) -> dict[str, Any]:
     return info
 
 
+def window_identity(window: Any) -> dict[str, Any]:
+    """Summarize ``window`` for a lifecycle event: ``{"id", optional "title", "main"}``.
+
+    The same fields ``status``'s window listing reports (minus the transient
+    ``focused``), so an assistant can join a lifecycle event to that listing --
+    in particular, a ``window_closed`` id marks any remembered ``window=`` id
+    as stale before acting on it. The title goes through the same display
+    coercion as widget identities, so an observable title is unwrapped and an
+    unset one is omitted rather than recorded as ``null``.
+    """
+    info: dict[str, Any] = {"id": getattr(window, "id", None)}
+    title = _coerce_display(getattr(window, "title", None))
+    if title is not None:
+        info["title"] = title
+    try:
+        info["main"] = bool(getattr(window, "is_main", False))
+    except Exception:
+        info["main"] = False
+    return info
+
+
 def resolve_target(node: Any) -> dict[str, Any]:
     """Resolve a hit-tested ``node`` to a stable, coordinate-free identity.
 
@@ -341,10 +372,13 @@ class InteractionEvent:
             is re-issued a fresh one, so an ongoing gesture reads as new activity.
         timestamp: Unix time (seconds) when the event was recorded -- for a
             coalesced ``scroll``, when it was last updated.
-        kind: ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, or ``"select"``.
+        kind: ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"select"``,
+            ``"window_opened"``, or ``"window_closed"``.
         target: For a ``click`` or a ``scroll``, the resolved widget identity
             (``{"type", optional "key"/"label"}``); ``None`` otherwise. Never a
             coordinate.
+        window: For a ``window_opened`` / ``window_closed``, the affected
+            window's identity (see :func:`window_identity`); ``None`` otherwise.
         key: For a ``key``, the key name (e.g. ``"enter"``, ``"s"``); ``None``
             otherwise.
         modifiers: For a ``key``, the held modifier names (e.g. ``("ctrl",)``);
@@ -368,6 +402,7 @@ class InteractionEvent:
     timestamp: float
     kind: str
     target: Optional[dict[str, Any]] = None
+    window: Optional[dict[str, Any]] = None
     key: Optional[str] = None
     modifiers: tuple[str, ...] = ()
     started_at: Optional[float] = None
@@ -386,7 +421,8 @@ class InteractionEvent:
         A ``click`` carries ``target``; a ``key`` carries ``key`` and (when
         non-empty) ``modifiers``; a ``text`` marker carries neither; a ``scroll``
         carries its target, its gesture (``direction`` plus the non-zero delta)
-        and the region's resulting position. The absent fields are omitted so
+        and the region's resulting position; a ``window_opened`` /
+        ``window_closed`` carries ``window``. The absent fields are omitted so
         each event reads as exactly its kind.
         """
         payload: dict[str, Any] = {
@@ -398,6 +434,8 @@ class InteractionEvent:
             payload["started_at"] = self.started_at
         if self.target is not None:
             payload["target"] = self.target
+        if self.window is not None:
+            payload["window"] = self.window
         if self.key is not None:
             payload["key"] = self.key
         if self.modifiers:
@@ -464,6 +502,26 @@ class InteractionJournal:
     def record_text(self) -> InteractionEvent:
         """Record a content-free marker that the human typed, and return the event."""
         return self._record("text")
+
+    def record_window_opened(self, window: dict[str, Any]) -> InteractionEvent:
+        """Record that a window opened (#622) and return the event.
+
+        Args:
+            window: The window's identity (see :func:`window_identity`).
+        """
+        return self._record("window_opened", window=window)
+
+    def record_window_closed(self, window: dict[str, Any]) -> InteractionEvent:
+        """Record that a window closed (#622) and return the event.
+
+        Recorded from the App's unregister choke point, so an OS-button close or
+        a parent-cascade close -- invisible to the input recorders -- appears in
+        the same sequence as the clicks around it.
+
+        Args:
+            window: The window's identity (see :func:`window_identity`).
+        """
+        return self._record("window_closed", window=window)
 
     def record_scroll(
         self,
@@ -544,6 +602,7 @@ class InteractionJournal:
         kind: str,
         *,
         target: Optional[dict[str, Any]] = None,
+        window: Optional[dict[str, Any]] = None,
         key: Optional[str] = None,
         modifiers: tuple[str, ...] = (),
     ) -> InteractionEvent:
@@ -553,6 +612,7 @@ class InteractionJournal:
                 timestamp=time.time(),
                 kind=kind,
                 target=target,
+                window=window,
                 key=key,
                 modifiers=modifiers,
             )
@@ -689,4 +749,5 @@ __all__ = [
     "own_identity",
     "read_scroll_metrics",
     "resolve_target",
+    "window_identity",
 ]

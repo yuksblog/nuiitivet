@@ -40,7 +40,7 @@ from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
 from .inspect import InspectMode
-from .interaction import InteractionJournal, InteractionRecorder
+from .interaction import InteractionJournal, InteractionRecorder, window_identity
 from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
@@ -350,8 +350,17 @@ def _run(args: argparse.Namespace) -> int:
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
             win._inspect_mode = InspectMode(selection, journal=interaction_journal)
+            # Window lifecycle joins the same timeline (#622): the register
+            # hook covers every open path, and the loop below back-fills the
+            # windows opened before the hook existed (the main window, and any
+            # opened before run()).
+            interaction_journal.record_window_opened(window_identity(win))
+
+        def _record_window_closed(win: Any) -> None:
+            interaction_journal.record_window_closed(window_identity(win))
 
         app._instrument_window_hook = _instrument_window
+        app._unregister_window_hook = _record_window_closed
         for win in app.windows:
             _instrument_window(win)
         # The runtime log (#409): capture taps route the app's log output and

@@ -340,7 +340,8 @@ def build_server() -> "FastMCP":
         before acting -- e.g. so you do not dismiss a dialog they just opened.
 
         Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
-        ``"click"``, ``"key"``, ``"text"``, or ``"scroll"``. ``seq`` is monotonic
+        ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"window_opened"``,
+        or ``"window_closed"``. ``seq`` is monotonic
         -- compare it to the last one you saw to tell whether new actions
         happened. A ``click`` carries ``target`` (the resolved widget
         ``{"type", optional "key"/"label"}``, never a coordinate); a ``key``
@@ -360,6 +361,13 @@ def build_server() -> "FastMCP":
         ``started_at`` keeps the start), while a reversal, another region, or any
         click / key / text starts a new entry. Unconsumed scrolling is not
         recorded.
+
+        A ``window_opened`` / ``window_closed`` carries ``window``
+        (``{"id", optional "title", "main"}``, the ids `status` lists and
+        ``window=`` takes) and covers every open/close path, including an
+        OS-title-bar close or a parent-cascade close that no click event shows.
+        A ``window_closed`` for an id you remembered means that id is stale --
+        re-run `status` before addressing it.
         """
         return {"events": _client().interaction_log(limit=limit)}
 

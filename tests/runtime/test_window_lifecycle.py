@@ -24,6 +24,12 @@ class _Probe(Widget):
 
 
 def _app() -> App:
+    """Create an App; the caller must bind the result (``_ = _app()`` at least).
+
+    ``current_app()`` holds only a weakref, and the App/Window reference cycle
+    is collectable -- an unlucky gc pass between a bare ``_app()`` and the
+    ``Window.open()`` that follows would make ``current_app()`` return ``None``.
+    """
     return App(Window(content=Container()))
 
 
@@ -71,7 +77,7 @@ def test_window_ids_are_distinct() -> None:
 
 
 def test_open_twice_raises_and_closed_is_final() -> None:
-    _app()
+    _ = _app()
     window = Window(content=Container()).open()
     with pytest.raises(RuntimeError):
         window.open()
@@ -91,6 +97,48 @@ def test_instrument_window_hook_runs_once_per_new_window() -> None:
     window = Window(content=Container()).open()
 
     assert seen == [window]
+
+
+def test_unregister_window_hook_runs_once_per_close() -> None:
+    """The dev seam's counterpart: every close path reaches the hook (#622)."""
+    app = _app()
+    seen: list[Window] = []
+    app._unregister_window_hook = seen.append
+
+    window = Window(content=Container()).open()
+    window.close()
+    # Closing again is a no-op and must not re-fire the hook.
+    window.close()
+
+    assert seen == [window]
+
+
+def test_unregister_window_hook_covers_parent_cascade() -> None:
+    app = _app()
+    seen: list[Window] = []
+    app._unregister_window_hook = seen.append
+
+    parent = Window(content=Container()).open()
+    child = Window(content=Container(), parent=parent).open()
+
+    parent.close()
+
+    # Children close first, transitively, and each close reaches the hook.
+    assert seen == [child, parent]
+
+
+def test_unregister_window_hook_exception_does_not_break_close() -> None:
+    app = _app()
+
+    def _boom(window: Window) -> None:
+        raise RuntimeError("hook failed")
+
+    app._unregister_window_hook = _boom
+    window = Window(content=Container()).open()
+    window.close()
+
+    assert window not in app.windows
+    assert window.is_open.value is False
 
 
 def test_close_unmounts_and_unregisters() -> None:
@@ -123,7 +171,7 @@ def test_close_cascades_to_children_first() -> None:
 
 
 def test_window_of_resolves_to_the_owning_window() -> None:
-    _app()
+    _ = _app()
     probe = _Probe()
     window = Window(content=probe).open()
 
@@ -139,7 +187,7 @@ def test_each_window_has_its_own_navigator_and_overlay() -> None:
 
 
 def test_root_is_wrapped_appscope_then_windowscope() -> None:
-    _app()
+    _ = _app()
     window = Window(content=Container()).open()
     from nuiitivet.runtime.app import AppScope
 
@@ -166,7 +214,7 @@ def test_modal_child_blocks_the_parent_chain_only() -> None:
 
 
 def test_modal_gate_swallows_input() -> None:
-    _app()
+    _ = _app()
     parent = Window(content=Container()).open()
     Window(content=Container(), parent=parent, modal=True).open()
 
@@ -229,7 +277,7 @@ def test_exit_closes_windows_in_reverse_order() -> None:
 
 
 def test_closed_resolves_when_the_window_closes() -> None:
-    _app()
+    _ = _app()
     window = Window(content=Container()).open()
 
     async def scenario() -> bool:
@@ -244,7 +292,7 @@ def test_closed_resolves_when_the_window_closes() -> None:
 
 
 def test_closed_resolves_immediately_for_a_closed_window() -> None:
-    _app()
+    _ = _app()
     window = Window(content=Container()).open()
     window.close()
 
