@@ -22,14 +22,11 @@ can talk about that screen, and it gets fixed on the spot.** And when you would
 rather fix it yourself, the screen takes you straight to the code that built
 it.
 
-The code itself is written in a grammar you already know — the intuitive
-parts of Flutter, SwiftUI, CSS and WPF — without the nesting.
-
 And because the desktop is the premise, the problems only desktop apps run
-into already have answers: **ReactiveProperty-style state management**,
-**worker threads that dispatch onto the UI thread**, and **shipping an
-executable**. Not everything a desktop app needs is here yet — what is missing
-is listed plainly in [5. Current limitations](#5-current-limitations).
+into already have answers: **worker threads that dispatch onto the UI
+thread**, **OS integration from file dialogs to the tray icon**, and
+**shipping an executable**. What is still missing is listed plainly in
+[5. Current limitations](#5-current-limitations).
 
 ---
 
@@ -76,13 +73,16 @@ a bug on the way.
 One tool is left, and it points the other way — at what already *happened*:
 
 - **Read** — the app's logs, the exceptions swallowed to keep the app alive,
-  and the UI actions **you** took
+  and the UI actions **you** took. That last one keeps your steps out of
+  prose:
+  - **Reporting a bug** — walk into it once by hand; the repro steps are
+    already in the log
+  - **Directing an E2E test** — run the flow once by hand; the demonstration
+    *is* the instruction
 
-That last one closes a gap prose cannot. You report what went wrong; **what
-you did to get there is already in the log**. Even "it works sometimes and not
-others" is enough: the log holds each attempt, so the assistant diffs them and
-finds the one step that differed — without you ever putting your steps into
-words.
+How far that goes: even "it works sometimes and not others" is enough. Below,
+the log holds each attempt, so the assistant diffs them and finds the one
+step that differed — without the user ever putting the steps into words.
 
 ![Read](docs/assets/readme_1.2.png)
 
@@ -191,22 +191,26 @@ def handle_increment(self):
 ```
 
 **Logic to UI declaratively. UI to logic imperatively.** Each half is written
-the way a person already thinks about it — that is what intuitive means here.
+the way a person already thinks about it — that is what makes it intuitive.
 
 ---
 
 ## 2. Built for the desktop
 
-The honest version first. **Nuiitivet is aiming at being desktop-specialised,
-and it is not there yet.** There are no file dialogs, no menu bar, no tray icon
-(all of it is listed in [5. Current limitations](#5-current-limitations)).
+**Nuiitivet is aiming at being desktop-specialised**, and most of what that
+takes has landed. File dialogs, the menu bar, the tray icon — the OS
+integration a desktop app leans on shipped piece by piece, and
+[2.4](#24-the-os-is-part-of-the-app) keeps the checklist. What remains open is
+listed in [5. Current limitations](#5-current-limitations).
 
-What is here, though, is enough to say the specialisation is real:
+What makes the specialisation real:
 
 - **ReactiveProperty-style state management** — MVVM from WPF, as-is
 - **Worker threads, dispatched onto the UI thread** — the answer to running
   heavy work locally, which is a desktop-only problem
 - **Shipping an executable**
+- **OS integration** — file dialogs, OS file drop, menu bar, notifications,
+  tray icon, multiple windows
 
 ### 2.1 ReactiveProperty-style state
 
@@ -282,6 +286,26 @@ of them have an answer ([Background Work](docs/guide/state-management/background
 
 There are recipes for PyInstaller and Nuitka ([Packaging](docs/guide/packaging.md)).
 One executable, onto a machine with no Python on it.
+
+### 2.4 The OS is part of the app
+
+A desktop app is more than its window. It opens the OS file dialog, puts a
+menu in the menu bar and an icon in the tray, raises notifications, accepts a
+file dragged in from Finder or Explorer. That layer is kept here as a
+checklist, so the distance to a complete desktop specialisation stays visible:
+
+- [x] File dialogs (`nv.FileDialog`) — [File Dialogs](docs/guide/window/file_dialogs.md)
+- [x] File drop from the OS (`drop_target` modifier) — [Interaction modifiers](docs/guide/modifiers/interaction.md)
+- [x] Menu bar (`nv.MenuBar`) — [Menu Bar](docs/guide/window/menu_bar.md)
+- [x] Desktop notifications (`nv.Desktop.notify`) — [Notifications](docs/guide/window/notifications.md)
+- [x] Tray icon (`nv.TrayIcon`) — [Tray Icon](docs/guide/window/tray_icon.md)
+- [x] Multiple windows (`nv.App` / `nv.Window`) — [Multi-Window](docs/guide/window/multi_window.md)
+- [x] Window chrome customisation — [Chrome](docs/guide/window/chrome.md)
+- [ ] Mouse cursor shapes
+- [ ] OS accessibility — screen readers and VoiceOver cannot inspect the UI
+
+The unchecked items are tracked in
+[issues](https://github.com/yuksblog/nuiitivet/issues).
 
 ---
 
@@ -389,7 +413,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 | ----- | ------- |
 | [Overlay](docs/guide/overlay/index.md) | Dialogs, loading, and overlays. |
 | [Navigation](docs/guide/navigation/index.md) | Screens, routes, and transitions. |
-| [Window & Chrome](docs/guide/window/index.md) | Window sizing, position, and custom chrome. |
+| [Window & Chrome](docs/guide/window/index.md) | Window sizing, custom chrome, and OS integration — dialogs, menu bar, tray, notifications. |
 
 ### Material Design
 
@@ -413,7 +437,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 
 There are two kinds. **Constraints rooted in the design**, which will not change
 easily, and **things simply not built yet**. They mean different things when you
-are deciding whether to adopt this, so they are listed separately.
+are deciding whether to adopt this, so they are kept separate.
 
 ### Rooted in the design
 
@@ -426,17 +450,11 @@ are deciding whether to adopt this, so they are listed separately.
 
 ### Not built yet
 
-This is what is missing before the desktop specialisation is complete. None of
-it is technically out of reach — it just has not been built. All of it is
-tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
-
-- File dialogs (open / save)
-- File drop from the OS
-- Menu bar
-- Desktop notifications
-- Tray icon
-- Multiple windows
-- OS accessibility — screen readers and VoiceOver cannot inspect the UI
+The OS-integration checklist — what has shipped and what has not — lives in
+[2.4 The OS is part of the app](#24-the-os-is-part-of-the-app). None of the
+open items is technically out of reach — they just have not been built yet,
+and all of them are tracked in
+[issues](https://github.com/yuksblog/nuiitivet/issues).
 
 ---
 
