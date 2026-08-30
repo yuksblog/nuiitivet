@@ -48,9 +48,11 @@ def test_callbacks_fire_after_the_corresponding_override() -> None:
 
     class _HookWidget(Box):
         def on_mount(self) -> None:
+            super().on_mount()
             calls.append("on_mount override")
 
         def on_unmount(self) -> None:
+            super().on_unmount()
             calls.append("on_unmount override")
 
     widget = _HookWidget().modifier(
@@ -74,6 +76,7 @@ def test_mount_callback_runs_before_children_mount() -> None:
 
     class _ChildWidget(Box):
         def on_mount(self) -> None:
+            super().on_mount()
             calls.append("child mounted")
 
     parent = Box(width=Sizing.fixed(100), height=Sizing.fixed(50))

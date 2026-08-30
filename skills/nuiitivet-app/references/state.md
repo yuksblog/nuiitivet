@@ -274,8 +274,11 @@ class DashboardScreen(nv.ComposableWidget):
 ```
 
 **Never omit that `super()` call.** It is what invokes `build()`; without it the
-widget mounts with no children — blank screen, no exception, nothing logged. Put
-it first, or last if `build()` reads what the setup produces.
+widget mounts with no children. Put it first, or last if `build()` reads what the
+setup produces. A debug build raises when it is missing.
+
+`on_unmount` needs `super()` too, on every widget: it disposes the bindings, so
+omitting it leaks each `observe()` on every re-mount.
 
 Inside `build()` it is different: `X.modifier(nv.on_mount(cb))` registers on a
 widget that is rebuilt every time, so guard it with a flag owned by something that

@@ -467,3 +467,32 @@ def test_scrollable_does_not_stretch_auto_sized_content():
 
     assert child.layout_rect is not None
     assert int(child.layout_rect[2]) == 500
+
+
+def test_reactive_scrollbar_visibility_binding_is_disposed_on_unmount():
+    """A re-mounted Scrollable must not accumulate visibility subscriptions.
+
+    ``on_mount`` registers the ``scrollbar_visible`` observer through
+    ``observe()``, and only ``BindingHostMixin.on_unmount`` disposes it -- so
+    an ``on_unmount`` that skipped ``super()`` left one live subscription per
+    mount, each firing a relayout against a detached widget.
+    """
+    from nuiitivet.observable import Observable
+
+    class _CountingApp:
+        def invalidate(self, immediate: bool = False) -> None:
+            del immediate
+
+    visible = Observable(True)
+    scrollable = VerticalScrollable(child=Column([Text("Item")]), scrollbar_visible=visible)
+    app = _CountingApp()
+
+    for _ in range(3):
+        scrollable.mount(app)
+        scrollable.unmount()
+
+    relayouts = []
+    scrollable.mark_needs_layout = lambda: relayouts.append(1)
+    visible.value = False
+
+    assert relayouts == []

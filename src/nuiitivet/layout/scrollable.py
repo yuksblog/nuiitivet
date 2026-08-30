@@ -174,6 +174,7 @@ class _ScrollableBase(Widget):
 
     def on_mount(self) -> None:
         """Listen for scroll changes on mount."""
+        super().on_mount()
 
         # Call App.invalidate() on scroll change (compatible with the tests' MockApp)
         def _offset_cb(_val):
@@ -215,6 +216,7 @@ class _ScrollableBase(Widget):
                         )
             finally:
                 self._scroll_unsubscribe = None
+        super().on_unmount()
 
     # --- Sizing ---
 
