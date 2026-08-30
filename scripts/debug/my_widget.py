@@ -17,9 +17,9 @@ _logger = logging.getLogger(__name__)
 def _update_theme_seed(context, seed: str) -> None:
     current_mode = nv.Theme.of(context).mode
     if current_mode == "dark":
-        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.dark(seed)))
+        nv.App.of(context).set_theme(nv.ThemeFactory.dark(seed))
     else:
-        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.light(seed)))
+        nv.App.of(context).set_theme(nv.ThemeFactory.light(seed))
 
 
 def _toggle_theme_mode(context) -> None:
@@ -27,9 +27,9 @@ def _toggle_theme_mode(context) -> None:
     seed = "#6750A4"
     current_mode = nv.Theme.of(context).mode
     if current_mode == "light":
-        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.dark(seed)))
+        nv.App.of(context).set_theme(nv.ThemeFactory.dark(seed))
     else:
-        nv.App.of(context).dispatch(nv.ThemeModeIntent(nv.ThemeFactory.light(seed)))
+        nv.App.of(context).set_theme(nv.ThemeFactory.light(seed))
 
 
 class MyWidgetModel:

@@ -56,7 +56,9 @@ class WidgetHost(_HarnessBase):
         self.width: Optional[float] = None
         self.height: Optional[float] = None
         self.invalidations: List[Invalidation] = []
-        self.intents: List[Any] = []
+        self.exit_requests: List[int] = []
+        self.theme_requests: List[Any] = []
+        self.theme_registry: dict[str, Any] = {}
 
         self._theme_manager = ThemeManager(initial=theme or PlainTheme.light())
         self._scope_installed = scope
@@ -71,10 +73,11 @@ class WidgetHost(_HarnessBase):
             # widget passes its test against a fallback it never runs against.
             #
             # The cast is the point of this class. AppScope needs a weak-referenceable
-            # object with ``_theme_manager``, ``invalidate`` and ``dispatch`` -- its
-            # own comment says "tests scope a stub app" -- and this host implements
-            # all of them. Casting once here is what spares every author the
-            # ``type: ignore`` they would otherwise write at their own call site.
+            # object with ``_theme_manager``, ``invalidate`` and the ``AppProtocol``
+            # methods -- its own comment says "tests scope a stub app" -- and this
+            # host implements all of them. Casting once here is what spares every
+            # author the ``type: ignore`` they would otherwise write at their own
+            # call site.
             self.root: Any = AppScope(app=cast("App", self), child=Geometry(widget))
         else:
             self.root = widget
@@ -103,15 +106,26 @@ class WidgetHost(_HarnessBase):
         """Record a repaint request. The full signature, so nothing has to guess."""
         self.invalidations.append(Invalidation(immediate=immediate, content=content))
 
-    def dispatch(self, intent: Any) -> None:
-        """Record an intent the widget dispatched.
+    # ``App.of(context)`` resolves to this host, so it answers the
+    # ``AppProtocol`` calls a widget can make. With no real app there is
+    # nothing to act *on*, so the host records each call -- which is also the
+    # assertion a widget test wants: "tapping this exited the app".
 
-        A widget reaches this through ``AppScope``'s ``AppProxy``. With no real
-        app there is nothing to route an intent *to*, so the host records it --
-        which is also the assertion a widget test wants: "tapping this dispatched
-        that". Read :attr:`intents`.
+    def exit(self, exit_code: int = 0) -> None:
+        """Record an exit request. Read :attr:`exit_requests`."""
+        self.exit_requests.append(exit_code)
+
+    def set_theme(self, theme: Any) -> None:
+        """Record a theme switch request. Read :attr:`theme_requests`.
+
+        Recorded, not applied: to actually push a theme through the tree, use
+        :meth:`push_theme`.
         """
-        self.intents.append(intent)
+        self.theme_requests.append(theme)
+
+    def register_themes(self, themes: dict[str, Any]) -> None:
+        """Record registered themes into :attr:`theme_registry`."""
+        self.theme_registry.update(themes)
 
     @property
     def invalidate_count(self) -> int:

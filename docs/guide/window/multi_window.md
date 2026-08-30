@@ -113,24 +113,14 @@ nv.Window(content=..., accepts_first_mouse=False)
 
 This is a macOS-only parameter — other platforms always deliver the click.
 
-## Window operations and intents
+## Window operations
 
-The window-management verbs are imperative methods on the window:
-`maximize()`, `minimize()`, `restore()`, `full_screen()`, `center()`,
-`move_to(x, y)`, `resize(w, h)`, `close()`. For declarative wiring (menu
-items, accelerators) the same operations exist as **window-scoped intents**,
-dispatched through the window of the dispatching context:
-
-```python
-nv.Window.of(context).dispatch(nv.CloseWindowIntent())
-```
-
-App-scoped intents — `ExitAppIntent`, the theme intents — dispatch through
-`App.of(context).dispatch(...)` instead. The split is strict: dispatching an
-intent at the wrong scope raises rather than being silently misdelivered, so
-the call site always tells you where an intent lands. Menu-bar standard
-items (`MenuEntry.close_window()`, `MenuEntry.quit()`, ...) route
-themselves correctly.
+The window-management verbs are methods on the window: `maximize()`,
+`minimize()`, `restore()`, `full_screen()`, `center()`, `move_to(x, y)`,
+`resize(w, h)`, `close()` — see [Window Operations](operations.md). Exiting
+the whole application is `App.of(context).exit()`. Menu-bar standard items
+(`MenuEntry.close_window()`, `MenuEntry.quit()`, ...) call the right method
+on the right scope themselves.
 
 ## When the app exits
 
@@ -140,12 +130,12 @@ themselves correctly.
 | --- | --- |
 | `nv.ExitPolicy.LAST_WINDOW_CLOSED` | Default — exit once no window remains open. |
 | `nv.ExitPolicy.MAIN_WINDOW_CLOSED` | Closing the main window closes every other window and exits. |
-| `nv.ExitPolicy.EXPLICIT` | Only `ExitAppIntent` (or `app.exit()`) exits; the app keeps running with zero windows, so keep some way to reopen one. |
+| `nv.ExitPolicy.EXPLICIT` | Only `app.exit()` exits; the app keeps running with zero windows, so keep some way to reopen one. |
 
-`ExitAppIntent` always closes every window and exits, under any policy.
+`app.exit()` always closes every window and exits, under any policy.
 
 ## Theme
 
-The theme is app-wide: `App(..., theme=...)` supplies every window, and the theme
-intents stay app-scoped. Per-window theme overrides are a planned extension
-(`Window(theme=...)`), not yet implemented.
+The theme is app-wide: `App(..., theme=...)` supplies every window, and
+`app.set_theme(...)` switches it for every window. Per-window theme overrides
+are a planned extension (`Window(theme=...)`), not yet implemented.

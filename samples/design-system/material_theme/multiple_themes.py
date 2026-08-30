@@ -1,7 +1,7 @@
 """Material Theme - Multiple Themes.
 
-Demonstrates switching between multiple named themes using ThemeRegistryIntent
-and ThemeModeIntent. Themes are registered on mount and switched by string key.
+Demonstrates switching between multiple named themes: register them with
+``app.register_themes(...)`` and switch by string key with ``set_theme``.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ forest_light, forest_dark = nv.ThemeFactory.from_seed_pair("#386A20")
 class HomeScreen(nv.ComposableWidget):
     def build(self) -> nv.Widget:
         def switch(name: str):
-            return lambda: nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=name))
+            return lambda: nv.App.of(self).set_theme(name)
 
         return nv.Container(
             alignment="center",
@@ -36,15 +36,13 @@ class HomeScreen(nv.ComposableWidget):
 
 def main() -> None:
     app = nv.App(nv.Window(content=HomeScreen(), title="Multiple Themes", width=400, height=340), theme=ocean_light)
-    app.dispatch(
-        nv.ThemeRegistryIntent(
-            themes={
-                "ocean-light": ocean_light,
-                "ocean-dark": ocean_dark,
-                "forest-light": forest_light,
-                "forest-dark": forest_dark,
-            }
-        )
+    app.register_themes(
+        {
+            "ocean-light": ocean_light,
+            "ocean-dark": ocean_dark,
+            "forest-light": forest_light,
+            "forest-dark": forest_dark,
+        }
     )
     app.run()
 

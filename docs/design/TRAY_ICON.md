@@ -109,8 +109,8 @@ app = nv.App(window, tray=tray)
   a primary affordance: macOS delivers it only without a menu (a menu owns
   the click); Windows on double-click; a Linux AppIndicator host cannot
   deliver it at all. An equivalent menu entry must always exist.
-- Activation dispatch mirrors `MenuBarController.activate` minus the window
-  scope: toggle `checked`, dispatch `QUIT` through the App, run
+- Activation mirrors `MenuBarController.activate` minus the window
+  scope: toggle `checked`, route `QUIT` to `app.exit()`, run
   `on_select` — always on the UI thread (the backends guarantee the hop).
 
 ## 5. Window Visibility and `close_action`
@@ -119,15 +119,13 @@ app = nv.App(window, tray=tray)
   Windows/Linux taskbar entry with it), the widget tree and geometry stay
   alive, no frames are produced. `Window.show()` restores it, focused; on an
   already-visible window it acts as "summon" (raise + refocus).
-  `window.is_visible` is the matching read-only Observable, and
-  `HideWindowIntent` / `ShowWindowIntent` are the intent counterparts.
+  `window.is_visible` is the matching read-only Observable.
 - Hiding **before** the backend realizes the OS window records the desired
   state and the OS window is created invisible — the start-in-tray launch
   shape, with no flash.
 - The OS close button is the only remapped path: the backend routes it to
   `Window._handle_close_request()`, which reads `close_action` and either
-  closes or hides. `CloseWindowIntent`, menu roles, and `close()` always
-  really close.
+  closes or hides. Menu roles and `close()` always really close.
 
 The resident-app recipe is therefore three independent declarations —
 `ExitPolicy.EXPLICIT`, `close_action` bound to `tray.installed`, and the

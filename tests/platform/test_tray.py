@@ -16,7 +16,6 @@ from nuiitivet.menus import MenuEntry
 from nuiitivet.observable import Observable
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.runtime.app import App
-from nuiitivet.runtime.intents import ExitAppIntent
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
 
@@ -139,26 +138,25 @@ def test_activate_runs_on_select(monkeypatch: pytest.MonkeyPatch) -> None:
     assert record == ["open"]
 
 
-def test_activate_quit_dispatches_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_activate_quit_exits_the_app(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app()
-    dispatched: List[Any] = []
-    monkeypatch.setattr(app, "dispatch", dispatched.append)
+    exits: List[int] = []
+    monkeypatch.setattr(app, "exit", lambda exit_code=0: exits.append(exit_code))
     tray = _installed_tray(monkeypatch, app)
     tray._activate_item(MenuEntry.quit())
-    assert len(dispatched) == 1
-    assert isinstance(dispatched[0], ExitAppIntent)
+    assert exits == [0]
 
 
 def test_activate_window_scoped_role_is_ignored(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     app = _app()
-    dispatched: List[Any] = []
-    monkeypatch.setattr(app, "dispatch", dispatched.append)
+    exits: List[int] = []
+    monkeypatch.setattr(app, "exit", lambda exit_code=0: exits.append(exit_code))
     tray = _installed_tray(monkeypatch, app)
     with caplog.at_level(logging.WARNING):
         tray._activate_item(MenuEntry.minimize())
-    assert dispatched == []
+    assert exits == []
     assert any("tray menu" in message for message in caplog.messages)
 
 

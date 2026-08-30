@@ -14,8 +14,8 @@ more than one window.
 - The `Window` lifecycle: construct → `open()` → `close()`
 - Parent/child windows and framework-level modality
 - The exit policy (`ExitPolicy`)
-- Intent scoping: which intents dispatch through `App` and which through
-  `Window`
+- The command surface: App and Window operations as plain methods, typed
+  for ViewModels by `AppProtocol` / `WindowProtocol`
 - Per-window resolution of `.of(context)` services: `Overlay`, `Navigator`,
   focus, shortcuts, IME, menu bar
 - Hot reload and dev-bridge addressing across windows
@@ -34,8 +34,7 @@ more than one window.
 ## 2. Terminology
 
 - **App**: The process-wide runtime — the event loop (`run()`), the theme
-  source, the app-scoped intent dispatcher, and the registry of windows.
-  Owns no pixels of its own.
+  source, and the registry of windows. Owns no pixels of its own.
 - **Window**: A public object representing exactly one OS window and its
   widget tree, overlay, navigator, focus state, and menu bar.
 - **main window**: The window that defines the app's identity for the
@@ -66,7 +65,7 @@ more than one window.
    ready-made `Window` plus the app-level options (`theme`,
    `exit_policy`), and every window-flavored keyword lives on `Window`
    (Section 5.1). `App` itself keeps only `run()`, `theme`,
-   `exit_policy`, and app-scoped dispatch.
+   `exit_policy`, and the app-scoped operations (Section 7).
 4. **Parent and modality are construction-time options** —
    `Window(parent=..., modal=True)`, following Qt / Electron / Tk. Modality
    is framework modal (Section 6.3).
@@ -75,11 +74,13 @@ more than one window.
 6. **The menu bar moves to `Window`.** Its rendering is already
    per-window (`docs/design/MENU_BAR.md`); `Window(menu=...)` declares
    it, on the main window like any other.
-7. **Intent dispatch is scoped by entry point.** Window intents dispatch
-   via `Window.of(context).dispatch(...)`, app intents via
-   `App.of(context).dispatch(...)`. A scope mismatch raises — it is never
-   silently ignored (Section 7). Reading the call site reveals where an
-   intent lands; that explicitness is the point.
+7. **Operations are methods, not intents.** An intent names the *what* —
+   the content the Overlay/Navigator path presents — while the method
+   names the verb. App and window operations carry no content, so they
+   are plain methods on the object: `Window.of(context).close()`,
+   `App.of(context).exit()`. ViewModels depend on the narrow typed
+   surfaces `AppProtocol` / `WindowProtocol` instead of the full objects
+   (Section 7).
 8. **The theme is app-wide.** `App(..., theme=...)` supplies every
    window. `Window(theme=...)` is the reserved override seat
    (Section 8.5).
@@ -136,28 +137,26 @@ input in its dispatch gates.
   unregisters. Closing an unopened or already-closed window is a no-op.
   Children close first (Section 6.2).
 - `closed`: an awaitable that resolves when the window has closed —
-  whether via `close()`, the OS close button, `CloseWindowIntent`, or a
-  parent closing.
+  whether via `close()`, the OS close button, or a parent closing.
 - `is_open`: an `ObservableBase[bool]`.
 
-The OS close button and `CloseWindowIntent` are equivalent to `close()`.
+The OS close button is equivalent to `close()`.
 
 ### 4.3 Operations
 
-The window-manipulation verbs currently buried in `App.dispatch` become
-imperative methods: `maximize()`, `minimize()`, `restore()`,
-`full_screen()`, `center()`, `move_to(x, y)`, `resize(w, h)`, plus the
-`title` property (Observable-bindable) and `menu` property (wholesale
-replacement, as `app.menu` today). The corresponding intents (Section 7)
-are thin declarative wrappers over these methods for menu items and
-accelerators; both paths funnel into the same implementation.
+The window-manipulation verbs are imperative methods: `maximize()`,
+`minimize()`, `restore()`, `full_screen()`, `center()`, `move_to(x, y)`,
+`resize(w, h)`, plus the `title` property (Observable-bindable) and `menu`
+property (wholesale replacement). Menu items and accelerators call these
+same methods; there is no second, declarative path.
 
 ### 4.4 `Window.of(context)`
 
 Returns the `Window` whose tree contains `context`, following the
 established `.of()` convention — including its timing rule: valid from
 `on_mount`, not from `__init__`. There is no proxy type; the returned
-object is the same `Window` the opener holds.
+object is the same `Window` the opener holds. A ViewModel narrows it by
+annotating its parameter as `WindowProtocol` (Section 7).
 
 ## 5. The `App`
 
@@ -182,10 +181,11 @@ runs the loop, and returns when the exit policy says so (Section 6.4).
 
 ### 5.2 Surface
 
-`App` keeps: `run()`, `theme`, `exit_policy`, `App.of(context)` (still
-returning the dispatch-only `AppProxy`, whose handled set shrinks to the
-app-scoped intents, Section 7), and gains `main_window` and `windows`
-(a snapshot tuple of currently open windows). Window-flavored properties
+`App` keeps: `run()`, `theme`, `exit_policy`, the operations `exit()` /
+`set_theme(...)` / `register_themes(...)`, `App.of(context)` — which
+returns the App itself, declared as `AppProtocol` so widget-tree callers
+see only the narrow surface (Section 7) — and gains `main_window` and
+`windows` (a snapshot tuple of currently open windows). Window-flavored properties
 on `App` (`title`, `menu`, `width`, ...) are removed — callers go through
 `app.main_window`. One deliberate exception: `App.render_to_png(path)`
 stays, delegating to the main window, because it is the headless
@@ -207,9 +207,8 @@ class Screen(nv.ComposableWidget):
         ).open()
 ```
 
-There is no `OpenWindowIntent`: opening needs content and configuration,
-which is an imperative concern. A "New Window" menu item simply calls
-this from `on_select`.
+Opening needs content and configuration, which is an imperative concern.
+A "New Window" menu item simply calls this from `on_select`.
 
 ### 6.2 Parent / child
 
@@ -241,43 +240,48 @@ modality, or keep-above cross-platform. Therefore:
 class ExitPolicy(Enum):
     LAST_WINDOW_CLOSED = ...   # default: run() returns when no window remains
     MAIN_WINDOW_CLOSED = ...   # closing the main window closes all windows and exits
-    EXPLICIT = ...             # run() returns only on ExitAppIntent
+    EXPLICIT = ...             # run() returns only on app.exit()
 ```
 
-`App(..., exit_policy=...)`. Under every policy `ExitAppIntent` closes all
+`App(..., exit_policy=...)`. Under every policy `app.exit()` closes all
 windows (children before parents) and exits with its `exit_code`. Under
 `EXPLICIT`, an app with zero open windows keeps running — the policy for
 tray-style or macOS-conventional apps; some window must be reopenable
 from app-held state (a menu callback, a timer, an outside event).
 
-## 7. Intent Scoping
+## 7. Command Surface
 
-Two dispatch entry points, split by what the intent is about:
+App and window operations are plain methods, split by what they address:
 
-| Scope | Entry | Intents |
+| Scope | Entry | Operations |
 | --- | --- | --- |
-| App | `App.of(context).dispatch(...)` | `ExitAppIntent`, `ThemeModeIntent`, `ThemeRegistryIntent` |
-| Window | `Window.of(context).dispatch(...)` | `CloseWindowIntent`, `CenterWindowIntent`, `MaximizeWindowIntent`, `MinimizeWindowIntent`, `RestoreWindowIntent`, `FullScreenIntent`, `MoveWindowIntent`, `ResizeWindowIntent` |
+| App | `App.of(context)` — typed `AppProtocol` | `exit()`, `set_theme(...)`, `register_themes(...)` |
+| Window | `Window.of(context)` | `close()`, `hide()`, `show()`, `minimize()`, `maximize()`, `restore()`, `full_screen()`, `center()`, `move_to(x, y)`, `resize(w, h)` |
 
-- A window intent addresses the window it was dispatched through —
+- **Methods, not intents.** Intents exist where they name the *what* —
+  the content the Overlay/Navigator path presents
+  (`Overlay.of(context).dialog(intent)`,
+  `Navigator.of(context).push(intent)`) — while the method names the
+  verb. App and window operations carry no content; a wrapping intent
+  would only restate the method name as a class. There are no window- or
+  app-scoped intent classes and no `dispatch` entry points.
+- **The ViewModel boundary is typed by protocols.** `AppProtocol`
+  (`exit`, `set_theme`, `register_themes`) and `WindowProtocol` (the
+  window operations above plus `is_open`, `is_visible`, and the
+  awaitable `closed`) live in `runtime/protocols.py` and are exported on
+  the public root beside `NavigatorProtocol` / `OverlayProtocol`. A
+  ViewModel annotated with them runs against hand-written fakes — no
+  tree, no App — and a developer writing one needs to learn only the
+  protocol surface. `App.of` declares `AppProtocol` and returns the App
+  itself (there is no proxy object); `Window.of` returns the full
+  `Window` for the View layer, and the ViewModel narrows it by
+  annotation.
+- An operation addresses the object it was resolved through —
   `Window.of(context)` pins the target to the context's own window.
-- **Scope mismatch raises** (`TypeError`); it is reported through the
-  standard swallowed-callback path when it happens inside a callback.
-  Silent misdelivery would defeat the readability that motivates the
-  split.
-- Dialog intents are unaffected: `Overlay.of(context).dialog(intent)` is
-  an established `Overlay`-scoped path with its own `IntentResolver` and
-  never passed through `App.dispatch`. Per-window overlays make it
-  window-correct automatically.
 - Menu-bar standard items (`MenuEntry.quit()`,
-  `MenuEntry.close_window()`, ...) keep dispatching their mapped
-  intents; each menu bar belongs to a window, so its controller
-  dispatches window intents through that window and app intents through
-  the app.
-- Module placement: the window intents move from
-  `nuiitivet/runtime/intents.py` to `nuiitivet/runtime/window_intents.py`
-  beside the new `nuiitivet/runtime/window.py`; `ExitAppIntent` stays.
-  The public surface (`nv.CloseWindowIntent`, ...) is unchanged.
+  `MenuEntry.close_window()`, ...) call these same methods; each menu
+  bar belongs to a window, so its controller calls window methods on
+  that window and `exit()` on the app.
 
 ## 8. Window-Scoped Services
 
@@ -322,7 +326,7 @@ the main window's menu, so single-menu apps keep today's behavior
 without per-window declarations. The per-App `MenuBarFocusCoordinator`
 (`nuiitivet/menubar/focus.py`) owns the bridge and swaps it on OS focus
 changes, coalesced onto the clock tick; activation and accelerators
-dispatch through the installed model's owning window. On macOS a
+act through the installed model's owning window. On macOS a
 secondary window's own menu never renders in-app — it waits for focus
 and then takes the global bar.
 
@@ -331,8 +335,7 @@ and then takes the global bar.
 `App(..., theme=...)` is the single theme source; every window's tree reads
 it through the app-wide scope. `Window(theme=...)` is reserved: when
 implemented, a window-local theme shadows the app theme for that window's
-tree only, and `ThemeModeIntent` / `ThemeRegistryIntent` remain
-app-scoped.
+tree only, and `set_theme` / `register_themes` remain app-scoped.
 
 ### 8.6 IME
 
@@ -379,8 +382,8 @@ covered-target behavior.
   beside it.
 - `runtime/app.py` — `App` owns the window registry, the
   `ThemeManager`, `run()` (the event-loop handoff), `ExitPolicy`
-  evaluation, and app-scoped dispatch. `AppScope` and `AppProxy` live
-  here.
+  evaluation, and the app-scoped operations. `AppScope` lives here;
+  `AppProtocol` and `WindowProtocol` live in `runtime/protocols.py`.
 - `backends/pyglet/runner.py` — `run_app(app)` owns process-wide setup
   and the loop; `_realize_window(owner_app, win, ...)` turns one open
   `Window` into an OS window (pyglet window, event wiring, per-window

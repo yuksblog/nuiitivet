@@ -9,7 +9,7 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 ### In scope
 
 - The menu model (`MenuBar`, `MenuEntry`) and its reactivity contract
-- Registration on `Window` and activation dispatch
+- Registration on `Window` and the activation path
 - Placement rules, including free placement inside a `CustomChrome`
 - Platform split: in-app rendering vs. the macOS `NSMenu` bridge
 - Integration with the keyboard-shortcut system
@@ -116,25 +116,25 @@ marks — not arbitrary widget subtrees.
 ### 4.4 Standard items
 
 Prebuilt factories on `MenuEntry` carrying a role
-(`MenuRole`); activation dispatches the mapped built-in intent
-(`src/nuiitivet/runtime/intents.py`) on every platform, so window management
-and app exit stay on the one dispatch path:
+(`MenuRole`); activation calls the mapped App/Window method
+(`nuiitivet/menubar/controller.py`) on every platform, so window management
+and app exit stay on the one code path:
 
-- `MenuEntry.quit()` → `ExitAppIntent`
-- `MenuEntry.close_window()` → `CloseWindowIntent`
-- `MenuEntry.minimize()` → `MinimizeWindowIntent`
-- `MenuEntry.maximize()` → `MaximizeWindowIntent`
-- `MenuEntry.restore()` → `RestoreWindowIntent` — the way back from
-  `full_screen()` / `maximize()` / `minimize()`; `FullScreenIntent` itself
+- `MenuEntry.quit()` → `app.exit()`
+- `MenuEntry.close_window()` → `window.close()`
+- `MenuEntry.minimize()` → `window.minimize()`
+- `MenuEntry.maximize()` → `window.maximize()`
+- `MenuEntry.restore()` → `window.restore()` — the way back from
+  `full_screen()` / `maximize()` / `minimize()`; `full_screen()` itself
   only enters full screen
-- `MenuEntry.full_screen()` → `FullScreenIntent`
+- `MenuEntry.full_screen()` → `window.full_screen()`
 
 Standard items absorb platform conventions: labels ("Exit" vs "Quit",
 "Maximize" vs "Zoom"), default accelerators (⌘Q / ⌘W / ⌘M on macOS), and
 placement (on macOS, `quit()` relocates to the application menu — Section
 7.2). Labels, shortcuts, and `enabled` are overridable per factory call.
 
-## 5. Registration and Dispatch
+## 5. Registration and Activation
 
 ### 5.1 Registration
 
@@ -161,11 +161,11 @@ app = nv.App(
 window, a `MenuBarController` (`nuiitivet/menubar/controller.py`) owns the
 registered model, the rendering surfaces, and the shared activation path.
 
-Callbacks needing the window or the app (e.g. to dispatch a built-in
-intent not covered by a standard item) reference the object through an
-ordinary late-binding closure: `on_select=lambda: window.dispatch(...)`
-resolves `window` at activation time. The model is data outside the
-widget tree, so `.of(context)` does not apply.
+Callbacks needing the window or the app (e.g. an operation not covered
+by a standard item) reference the object through an ordinary
+late-binding closure: `on_select=lambda: window.center()` resolves
+`window` at activation time. The model is data outside the widget tree,
+so `.of(context)` does not apply.
 
 ### 5.2 Activation
 
@@ -173,7 +173,7 @@ Every route (click, keyboard navigation, accelerator, native macOS menu)
 funnels into `MenuBarController.activate(item)`:
 
 1. If the item is checkable, `checked` is toggled first.
-2. A standard item dispatches its role's built-in intent; otherwise
+2. A standard item calls its role's mapped method; otherwise
    `on_select` is invoked (zero arguments; async callbacks are scheduled the
    same way `key_shortcut` handles them).
 
@@ -277,7 +277,7 @@ platform branching in app code.
   replacement, and window close, coalesced onto the next clock tick (a
   focus change that leaves the effective model unchanged reinstalls
   nothing). The bridge binds the owning window's controller, so
-  activation and accelerators dispatch through the installed model's
+  activation and accelerators act through the installed model's
   window. While a window is attached, `active_slot()` is `None` and
   every in-app slot collapses — on macOS an unfocused window's menu
   waits for focus rather than rendering in-app.

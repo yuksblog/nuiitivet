@@ -1,7 +1,8 @@
 """Material Theme - Light / Dark Toggle.
 
-Demonstrates real-time theme switching using from_seed_pair and ThemeModeIntent.
-Click the toggle button to switch between light and dark mode.
+Demonstrates real-time theme switching using from_seed_pair and
+``App.of(...).set_theme``. Click the toggle button to switch between light
+and dark mode.
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ class HomeScreen(nv.ComposableWidget):
         self._is_dark = not self._is_dark
         self._toggle_label.value = "Switch to Light" if self._is_dark else "Switch to Dark"
         next_theme = dark if self._is_dark else light
-        nv.App.of(self).dispatch(nv.ThemeModeIntent(theme=next_theme))
+        nv.App.of(self).set_theme(next_theme)
 
 
 def main() -> None:
