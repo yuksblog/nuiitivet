@@ -1640,8 +1640,7 @@ class DockedDatePicker(ComposableWidget):
         supporting_text: Text shown below the field.  Empty by default: the
             widget has nothing of its own to say there, and the slot is where an
             application puts its error message.  For a format hint, pass
-            ``str(date_format)`` -- though a hint belongs in a placeholder,
-            which this widget's text field does not have yet.
+            ``str(date_format)``.
         is_error: Whether to show the field in its error state.  A separate axis
             from *supporting_text*: it recolors the whole field, so a field can
             be flagged without a message and carry one without being flagged.
