@@ -1,6 +1,7 @@
 """Tests for the Geometry widget and its Size value type."""
 
-from nuiitivet.geometry import Geometry, Size
+from nuiitivet.layout.geometry import Geometry
+from nuiitivet.rendering.size import Size
 from nuiitivet.layout.container import Container
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 

@@ -97,14 +97,14 @@ class TestRegisterFontRegistry:
         assert "Fonts" in nuiitivet.__all__
 
     def test_fonts_namespace_delegates_to_registry(self) -> None:
-        from nuiitivet.fonts import Fonts
+        from nuiitivet.rendering.fonts import Fonts
         from nuiitivet.rendering.skia.font import _FONT_REGISTRY
 
         Fonts.register("/path/to/NsFont.ttf", "NsFont")
         assert _FONT_REGISTRY["NsFont"] == "/path/to/NsFont.ttf"
 
     def test_fonts_namespace_sets_default_family(self) -> None:
-        from nuiitivet.fonts import Fonts
+        from nuiitivet.rendering.fonts import Fonts
         from nuiitivet.rendering.skia import font as skia_font
 
         Fonts.set_default_family("NsDefault")

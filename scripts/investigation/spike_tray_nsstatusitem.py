@@ -1,7 +1,7 @@
 """Spike for issue #603: NSStatusItem coexistence with the pumped pyglet loop.
 
 macOS only. Creates a native ``NSStatusItem`` (menu-bar extra) through pyglet's
-bundled cocoapy — the same ctypes bridge ``nuiitivet.menubar.nsmenu`` already
+bundled cocoapy — the same ctypes bridge ``nuiitivet.menus.nsmenu`` already
 uses for the global menu bar — while a normal Nuiitivet window runs and
 repaints. No pystray, no second thread, no loop handover.
 
@@ -39,7 +39,7 @@ _ACTIONS: List[Callable[[], None]] = []
 _RETAINED: List[Any] = []
 
 # The implementation class must stay referenced for the lifetime of the
-# process (see nuiitivet.menubar.nsmenu: collecting it frees the ctypes
+# process (see nuiitivet.menus.nsmenu: collecting it frees the ctypes
 # trampolines behind the registered IMPs — a segfault on the first click).
 _TARGET_IMPLEMENTATION: Any = None
 _TARGET_CLASS: Any = None

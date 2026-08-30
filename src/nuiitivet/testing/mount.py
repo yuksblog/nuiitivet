@@ -63,7 +63,7 @@ class WidgetHost(_HarnessBase):
         self._widget = widget
 
         if scope:
-            from nuiitivet.geometry import Geometry
+            from nuiitivet.layout.geometry import Geometry
             from nuiitivet.runtime.app import AppScope
 
             # The same wrapping the App builds, for the same reason: Theme.of and

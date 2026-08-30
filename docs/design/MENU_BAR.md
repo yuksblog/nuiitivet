@@ -68,7 +68,7 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
 
 The model consists of two public types, re-exported through the public
 surface. `MenuEntry` is surface-neutral data shared with the tray icon and
-lives in `nuiitivet/menus.py`; `MenuBar` is genuinely bar-specific and lives
+lives in the `nuiitivet/menus/` package; `MenuBar` is genuinely bar-specific and lives
 in the framework-common `nuiitivet/menubar/` package (Section 8.1):
 
 - `MenuBar(items: Sequence[MenuEntry], *, style: MenuBarStyle | None)` —
@@ -257,13 +257,17 @@ platform branching in app code.
 
 ### 7.2 macOS: `NSMenu` bridge
 
-- `nuiitivet/menubar/nsmenu.py`, in two halves: a **pure translation**
-  (`key_equivalent` — `Shortcut` → `NSMenuItem` key equivalent and modifier
-  mask; `plan_menus` — application-menu synthesis and item arrangement)
-  that imports and tests on every platform, and a **Cocoa layer**
-  (`NSMenuBridge`) built on `pyglet.libs.darwin.cocoapy` (`ObjCClass`,
-  `ObjCSubclass`), imported lazily and only on macOS. No new dependency;
-  specifically, pyobjc is not added.
+- Two modules, each in two halves of **pure translation** vs **Cocoa
+  layer** built on `pyglet.libs.darwin.cocoapy` (`ObjCClass`,
+  `ObjCSubclass`), imported lazily and only on macOS — no new dependency;
+  specifically, pyobjc is not added. `nuiitivet/menus/nsmenu.py` holds the
+  surface-neutral part shared with the tray icon: `key_equivalent`
+  (`Shortcut` → `NSMenuItem` key equivalent and modifier mask; imports and
+  tests on every platform) and `NSMenuBuilder` (`MenuEntry` → `NSMenu`
+  trees with live Observable sync). `nuiitivet/menubar/nsmenu.py` holds the
+  bar-specific part: `plan_menus` (application-menu synthesis and item
+  arrangement; every-platform) and `NSMenuBridge` (installs the model as
+  the global menu bar).
 - The controller installs the bridge when the backend window exists
   (`Window._on_window_created`, called by the pyglet runner). While the bridge
   is installed, `active_slot()` is `None` and every in-app slot collapses.
@@ -290,7 +294,7 @@ framework widget, so its styling follows the scrollbar precedent
 (`src/nuiitivet/scrolling/scrollbar_theme_data.py`): the bar model, style,
 and theme-data types live in a framework-common package
 (`nuiitivet/menubar/`), not under `material/` — the surface-neutral
-`MenuEntry` sits one level up in `nuiitivet/menus.py` — and the palette
+`MenuEntry` sits one level up in the `nuiitivet/menus/` package — and the palette
 arrives through the generic
 `ThemeExtension` seam rather than by reading Material color roles directly.
 

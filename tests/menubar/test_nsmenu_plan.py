@@ -18,12 +18,12 @@ from nuiitivet.material.text import Text
 from nuiitivet.menubar.controller import MenuBarController
 from nuiitivet.menubar.model import MenuBar
 from nuiitivet.menus import MenuEntry, MenuRole
-from nuiitivet.menubar.nsmenu import (
+from nuiitivet.menubar.nsmenu import plan_menus
+from nuiitivet.menus.nsmenu import (
     _NS_COMMAND,
     _NS_CONTROL,
     _NS_SHIFT,
     key_equivalent,
-    plan_menus,
 )
 
 

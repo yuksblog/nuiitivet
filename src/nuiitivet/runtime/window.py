@@ -357,7 +357,7 @@ class Window:
         # read tracks the window size. The root Geometry needs no special resize
         # plumbing -- it measures the window through the normal layout pass, which
         # the resize path already triggers via ``invalidate`` -> relayout.
-        from nuiitivet.geometry import Geometry
+        from nuiitivet.layout.geometry import Geometry
         from nuiitivet.runtime.app import AppScope
 
         # Two scope layers: the app-wide AppScope (theme provider, App access)
