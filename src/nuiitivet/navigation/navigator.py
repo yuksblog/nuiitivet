@@ -101,6 +101,7 @@ class Navigator(ComposableWidget):
         screen: Route | Widget | None = None,
         *,
         layer_composer: NavigationLayerComposer | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize a Navigator with a single initial screen.
 
@@ -109,8 +110,9 @@ class Navigator(ComposableWidget):
                 the navigator starts with an empty stack (use :meth:`routes` or
                 :meth:`intents` factories for alternative initialization).
             layer_composer: Optional custom layer composer.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = {}
         self._transition: _NavTransition | None = None
         self._transition_handle: TransitionHandle | None = None

@@ -91,6 +91,7 @@ class LoadingIndicator(Widget):
         size: int = 48,
         padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = 0,
         style: Optional[LoadingIndicatorStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the LoadingIndicator.
 
@@ -98,8 +99,9 @@ class LoadingIndicator(Widget):
             size: Outer size of the indicator (default 48).
             padding: Padding around the indicator.
             style: Style configuration for appearance and animation.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=int(size), height=int(size), padding=padding)
+        super().__init__(width=int(size), height=int(size), padding=padding, key=key)
         self._size = int(size)
         self._user_style = style
 

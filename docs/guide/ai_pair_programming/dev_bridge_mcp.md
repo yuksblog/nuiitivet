@@ -80,8 +80,8 @@ in the loop. *When* the assistant should reach for which is the
 
 ### Act — drive it
 
-Targeting is by **stable identifier** (`key` / `label`) — attach one with the
-[`keyed()` modifier](../modifiers/others.md#keyed) — resolved to the widget's
+Targeting is by **stable identifier** (`key` / `label`) — give one with the
+`key=` constructor parameter every widget accepts — resolved to the widget's
 centre *as painted*, so it survives layout changes and scrolling; raw `x` / `y`
 coordinates are a fallback. A verb **refuses an unreachable target**: a widget
 scrolled out of its region or covered by a modal fails with a "not visible"
@@ -143,7 +143,7 @@ matching what the assistant sees — "fix the second one" is unambiguous.
 Hovering names the widget **and the line that built it**, and the assistant is
 given that same line — so it edits the right place instead of hunting for it.
 That is worth most in the apps where naming a widget in prose is hardest: the
-ones with no `keyed()` anywhere.
+ones passing no `key=` anywhere.
 
 VS Code works as installed. For another editor, pass its URL scheme to
 `--editor` — `{file}` and `{line}` are filled in for you, encoding and all:

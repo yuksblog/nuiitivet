@@ -29,6 +29,7 @@ class Tooltip(ComposableWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         style: TooltipStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize Tooltip.
 
@@ -37,8 +38,9 @@ class Tooltip(ComposableWidget):
             width: Optional width sizing.
             height: Optional height sizing.
             style: Optional style token set. Defaults to TooltipStyle.standard().
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height)
+        super().__init__(width=width, height=height, key=key)
         self.message = str(message)
         self._user_style = style
 
@@ -104,6 +106,7 @@ class RichTooltip(ComposableWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         style: RichTooltipStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize RichTooltip.
 
@@ -117,8 +120,9 @@ class RichTooltip(ComposableWidget):
             width: Optional width sizing.
             height: Optional height sizing.
             style: Optional style token set. Defaults to RichTooltipStyle.standard().
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height)
+        super().__init__(width=width, height=height, key=key)
         self.supporting_text = str(supporting_text)
         self.subhead = subhead
         self.action_label = action_label

@@ -107,8 +107,9 @@ class MaterialOverlay(Overlay):
         *,
         intent_resolver: IntentResolver | None = None,
         intents: Mapping[type[Any], Callable[[Any], Widget | Route]] | None = None,
+        key: str | None = None,
     ) -> None:
-        super().__init__(layer_composer=MaterialOverlayLayerComposer())
+        super().__init__(layer_composer=MaterialOverlayLayerComposer(), key=key)
 
         if intent_resolver is not None and intents is not None:
             raise ValueError("Specify only one of intent_resolver or intents")

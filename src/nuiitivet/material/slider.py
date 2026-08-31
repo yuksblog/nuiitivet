@@ -51,6 +51,7 @@ class _SliderBase(InteractiveWidget):
         length: SizingLike,
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int],
         style: Optional["SliderStyle"],
+        key: Optional[str] = None,
     ) -> None:
         """Initialize shared slider state.
 
@@ -64,6 +65,7 @@ class _SliderBase(InteractiveWidget):
             length: Axis length sizing.
             padding: Padding around the slider.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._min_value = float(min_value)
         self._max_value = float(max_value)
@@ -104,6 +106,7 @@ class _SliderBase(InteractiveWidget):
             padding=default_padding,
             disabled=disabled,
             focusable=True,
+            key=key,
         )
 
         self.bind(self._state_layer_anim.subscribe(lambda _v: self.invalidate()))
@@ -725,6 +728,7 @@ class _Slider(_SliderBase):
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize Slider.
 
@@ -740,6 +744,7 @@ class _Slider(_SliderBase):
             length: Axis length sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._on_change = on_change
         self._value_external: ObservableProtocol[float] | None = None
@@ -762,6 +767,7 @@ class _Slider(_SliderBase):
             length=length,
             padding=padding,
             style=style,
+            key=key,
         )
 
     def on_mount(self) -> None:
@@ -834,6 +840,7 @@ class _CenteredSlider(_Slider):
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize CenteredSlider.
 
@@ -849,6 +856,7 @@ class _CenteredSlider(_Slider):
             length: Axis length sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value=value,
@@ -862,6 +870,7 @@ class _CenteredSlider(_Slider):
             length=length,
             padding=padding,
             style=style,
+            key=key,
         )
 
     def _active_range_ratio(self) -> Tuple[float, float]:
@@ -892,6 +901,7 @@ class _RangeSlider(_SliderBase):
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize RangeSlider.
 
@@ -908,6 +918,7 @@ class _RangeSlider(_SliderBase):
             length: Axis length sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._on_change = on_change
 
@@ -941,6 +952,7 @@ class _RangeSlider(_SliderBase):
             length=length,
             padding=padding,
             style=style,
+            key=key,
         )
 
         self._handle_count = 2
@@ -1060,6 +1072,7 @@ class HorizontalSlider(_Slider):
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize HorizontalSlider.
 
@@ -1074,6 +1087,7 @@ class HorizontalSlider(_Slider):
             width: Main-axis (width) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value,
@@ -1087,6 +1101,7 @@ class HorizontalSlider(_Slider):
             length=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -1106,6 +1121,7 @@ class VerticalSlider(_Slider):
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize VerticalSlider.
 
@@ -1120,6 +1136,7 @@ class VerticalSlider(_Slider):
             height: Main-axis (height) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value,
@@ -1133,6 +1150,7 @@ class VerticalSlider(_Slider):
             length=height,
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -1152,6 +1170,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize HorizontalCenteredSlider.
 
@@ -1166,6 +1185,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
             width: Main-axis (width) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value=value,
@@ -1179,6 +1199,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
             length=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -1198,6 +1219,7 @@ class VerticalCenteredSlider(_CenteredSlider):
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize VerticalCenteredSlider.
 
@@ -1212,6 +1234,7 @@ class VerticalCenteredSlider(_CenteredSlider):
             height: Main-axis (height) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value=value,
@@ -1225,6 +1248,7 @@ class VerticalCenteredSlider(_CenteredSlider):
             length=height,
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -1245,6 +1269,7 @@ class HorizontalRangeSlider(_RangeSlider):
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize HorizontalRangeSlider.
 
@@ -1260,6 +1285,7 @@ class HorizontalRangeSlider(_RangeSlider):
             width: Main-axis (width) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value_start,
@@ -1274,6 +1300,7 @@ class HorizontalRangeSlider(_RangeSlider):
             length=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -1294,6 +1321,7 @@ class VerticalRangeSlider(_RangeSlider):
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize VerticalRangeSlider.
 
@@ -1309,6 +1337,7 @@ class VerticalRangeSlider(_RangeSlider):
             height: Main-axis (height) sizing.
             padding: Slider padding.
             style: Optional SliderStyle override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             value_start,
@@ -1323,6 +1352,7 @@ class VerticalRangeSlider(_RangeSlider):
             length=height,
             padding=padding,
             style=style,
+            key=key,
         )
 
 

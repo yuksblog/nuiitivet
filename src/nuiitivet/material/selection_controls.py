@@ -60,6 +60,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         disabled: bool | ObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
+        key: Optional[str] = None,
     ):
         self._checked_external_tri: ObservableProtocol[Optional[bool]] | None = None
         self._checked_external_bool: ObservableProtocol[bool] | None = None
@@ -122,6 +123,7 @@ class Checkbox(Toggleable, InteractiveWidget):
             width=touch_target,
             height=touch_target,
             padding=final_padding,
+            key=key,
         )
 
         # If padding was None and style was None, we might need to update padding from theme later.
@@ -535,6 +537,7 @@ class RadioGroup(InteractionHostMixin, Container):
         *,
         value: object | ObservableProtocol[object | None] | None = None,
         on_change: Optional[Callable[[object | None], None]] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize RadioGroup.
 
@@ -542,10 +545,11 @@ class RadioGroup(InteractionHostMixin, Container):
             child: Root child subtree that contains radio options.
             value: Selected value or external observable selected value.
             on_change: Callback invoked when selection changes.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         if not isinstance(child, Widget):
             raise TypeError(f"child must be Widget, got {type(child)}")
-        super().__init__(child=child)
+        super().__init__(child=child, key=key)
 
         self._value_external: ObservableProtocol[object | None] | None = None
         if hasattr(value, "subscribe") and hasattr(value, "value"):
@@ -677,6 +681,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         disabled: bool | ObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["RadioButtonStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize RadioButton.
 
@@ -685,6 +690,7 @@ class RadioButton(Toggleable, InteractiveWidget):
             disabled: Disable interaction when True.
             padding: Space around the touch target.
             style: Style override. Uses theme style when omitted.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self.option_value = value
         self._style = style
@@ -705,6 +711,7 @@ class RadioButton(Toggleable, InteractiveWidget):
             width=touch_target,
             height=touch_target,
             padding=final_padding,
+            key=key,
         )
 
         self._touch_target_size = touch_target
@@ -929,6 +936,7 @@ class Switch(Toggleable, InteractiveWidget):
         disabled: bool | ObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["SwitchStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize Switch.
 
@@ -938,6 +946,7 @@ class Switch(Toggleable, InteractiveWidget):
             disabled: Disable interaction when True.
             padding: Space around the switch.
             style: Style override. Uses theme style when omitted.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
         self._user_padding = padding
@@ -964,6 +973,7 @@ class Switch(Toggleable, InteractiveWidget):
             width=touch_target,
             height=touch_target,
             padding=final_padding,
+            key=key,
         )
 
         self._touch_target_size = touch_target

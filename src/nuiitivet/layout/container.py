@@ -28,6 +28,7 @@ class Container(Widget):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         alignment: Union[str, Tuple[str, str]] = "start",
+        key: Optional[str] = None,
     ):
         """Initialize the Container.
 
@@ -39,6 +40,7 @@ class Container(Widget):
                 a 2-tuple (horizontal, vertical), or a 4-tuple (left, top, right, bottom).
             alignment: How to align the child within the container. Defaults to "start".
                 Can be a string (e.g., "center") or a tuple (horizontal, vertical).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             width=width,
@@ -46,6 +48,7 @@ class Container(Widget):
             padding=padding,
             max_children=1,
             overflow_policy="replace_last",
+            key=key,
         )
 
         self._align = normalize_alignment(alignment, default=("start", "start"))

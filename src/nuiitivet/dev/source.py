@@ -2,7 +2,7 @@
 
 A designation answers "which widget is this" (#591). It stops one step short of
 the question that follows it every time: *which line of code built this?* In an
-app that uses no ``keyed()`` -- which is most apps -- the alternative is a chain
+app that passes no ``key=`` -- which is most apps -- the alternative is a chain
 of anonymous types twenty levels deep and a grep.
 
 Flutter needs ``--track-widget-creation``, a compile-time transform, because Dart

@@ -27,10 +27,12 @@ class MaterialNavigator(Navigator):
         screen: Route | Widget | None = None,
         *,
         layer_composer: NavigationLayerComposer | None = None,
+        key: str | None = None,
     ) -> None:
         super().__init__(
             screen,
             layer_composer=layer_composer or MaterialNavigationLayerComposer(),
+            key=key,
         )
 
     def _route_from_widget(self, widget: Widget) -> Route:

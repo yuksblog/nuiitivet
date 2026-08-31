@@ -73,6 +73,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         on_back: Optional[Callable[[], None]] = None,
         show_back_button: Union[bool, ObservableBase[bool]] = False,
         style: Optional[SideSheetStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize SideSheet.
 
@@ -84,9 +85,10 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
                 Defaults to ``False``. Rendered only when truthy **and** *on_back*
                 is not ``None``.
             style: Container style. Defaults to :class:`SideSheetStyle`.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else SideSheetStyle()
-        super().__init__(width=_style.width, height=_style.height)
+        super().__init__(width=_style.width, height=_style.height, key=key)
         self._content = content
         self._headline = headline
         self._on_back = on_back
@@ -193,6 +195,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         *,
         headline: Union[str, ObservableBase[str]],
         style: Optional[BottomSheetStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize BottomSheet.
 
@@ -200,9 +203,10 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
             style: Container style. Defaults to :class:`BottomSheetStyle`.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else BottomSheetStyle()
-        super().__init__(width=_style.width, height=_style.height)
+        super().__init__(width=_style.width, height=_style.height, key=key)
         self._content = content
         self._headline = headline
         self._user_style = style
@@ -307,6 +311,7 @@ class StandardSideSheet(ComposableWidget):
         headline: Optional[Union[str, ObservableBase[str]]] = None,
         side: Literal["right", "left"] = "right",
         style: Optional[StandardSideSheetStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize StandardSideSheet.
 
@@ -320,6 +325,7 @@ class StandardSideSheet(ComposableWidget):
             side: Attachment edge (``"right"`` or ``"left"``).
                 Defaults to ``"right"``.
             style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else StandardSideSheetStyle()
         # Only the height is declared on this node: the parent resolves a
@@ -327,7 +333,7 @@ class StandardSideSheet(ComposableWidget):
         # height must be visible there.  The width stays ``auto`` because the
         # open/close animation works by having ``Collapsible`` report an
         # animating preferred width to the parent.
-        super().__init__(height=_style.height)
+        super().__init__(height=_style.height, key=key)
         self._content = content
         self._opened = opened
         self._on_close_click = on_close_click

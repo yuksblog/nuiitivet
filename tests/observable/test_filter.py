@@ -270,9 +270,8 @@ class TestBindingDirectlyIntoAWidget:
     def _screen(bound):
         from nuiitivet.layout.column import Column
         from nuiitivet.material.text import Text
-        from nuiitivet.modifiers.keyed import keyed
 
-        return lambda: Column(children=[Text(bound).modifier(keyed("readout"))])
+        return lambda: Column(children=[Text(bound, key="readout")])
 
     def test_shows_the_seed_before_anything_passes(self, nuiitivet_app):
         source = Observable("")

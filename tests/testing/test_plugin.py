@@ -457,7 +457,7 @@ def test_nuiitivet_app_fixture_closes_what_it_handed_out(pytester: pytest.Pytest
         held = {}
 
         def test_builds(nuiitivet_app):
-            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            screen = nv.Text("hello", key="greeting")
             app = nuiitivet_app(screen, size=(200, 100))
             assert app.get(key="greeting").text == "hello"
             held["screen"] = screen
@@ -478,7 +478,7 @@ def test_nuiitivet_mount_fixture_closes_what_it_handed_out(pytester: pytest.Pyte
         held = {}
 
         def test_builds(nuiitivet_mount):
-            widget = nv.Text("hello").modifier(nv.keyed("greeting"))
+            widget = nv.Text("hello", key="greeting")
             host = nuiitivet_mount(widget)
             host.layout(200, 100)
             assert host.get(key="greeting").text == "hello"
@@ -501,7 +501,7 @@ def test_a_harness_left_open_is_closed_and_reported(pytester: pytest.Pytester):
         held = {}
 
         def test_forgets_to_close():
-            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            screen = nv.Text("hello", key="greeting")
             held["screen"] = screen
             AppHarness(screen, size=(200, 100))   # never closed
 
@@ -521,7 +521,7 @@ def test_a_harness_the_test_closed_itself_is_not_reported(pytester: pytest.Pytes
         from nuiitivet.testing import AppHarness
 
         def test_closes_properly():
-            screen = nv.Text("hello").modifier(nv.keyed("greeting"))
+            screen = nv.Text("hello", key="greeting")
             with AppHarness(screen, size=(200, 100)) as app:
                 assert app.get(key="greeting").text == "hello"
         """

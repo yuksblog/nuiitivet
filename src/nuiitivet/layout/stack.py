@@ -28,6 +28,7 @@ class Stack(Widget):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         alignment: AlignmentLike = "top-left",
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the Stack layout.
 
@@ -38,8 +39,9 @@ class Stack(Widget):
             padding: Padding around the content.
             alignment: Default alignment for children.
                 (horizontal, vertical) tuple or string like "top-left", "center".
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         for c in children:
             self.add_child(c)
         self.alignment = normalize_alignment(alignment, default=("start", "start"))
@@ -54,6 +56,7 @@ class Stack(Widget):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         alignment: AlignmentLike = "center",
+        key: Optional[str] = None,
     ) -> "Stack":
         """Create a Stack that materializes children from items via ForEach.
 
@@ -64,6 +67,7 @@ class Stack(Widget):
             height: Stack height.
             padding: Padding around the content.
             alignment: Default alignment for children.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)
         return cls(
@@ -72,6 +76,7 @@ class Stack(Widget):
             height=height,
             padding=padding,
             alignment=alignment,
+            key=key,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

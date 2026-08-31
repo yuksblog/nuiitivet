@@ -41,7 +41,8 @@ class Counter(nv.ComposableWidget):
                     "increment",
                     on_click=lambda: self._increment(),
                     style=nv.ButtonStyle.filled(),
-                ).modifier(nv.keyed("increment-btn")),
+                    key="increment-btn",
+                ),
             ],
         )
 

@@ -54,6 +54,7 @@ class Geometry(Widget):
         *,
         width: SizingLike = None,
         height: SizingLike = None,
+        key: Optional[str] = None,
     ) -> None:
         """Wrap *child*, publishing this widget's measured size to its subtree.
 
@@ -64,8 +65,9 @@ class Geometry(Widget):
                 offers). Use a filling size to measure the space *available* to a
                 content pane, not just the child's intrinsic size.
             height: Sizing for this widget; see ``width``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, max_children=1, overflow_policy="replace_last")
+        super().__init__(width=width, height=height, max_children=1, overflow_policy="replace_last", key=key)
         # A single atomic Observable[Size]: width and height update together so
         # consumers never read a torn (new width, old height) pair. The
         # Observable de-dupes equal values, so an unchanged size performs no

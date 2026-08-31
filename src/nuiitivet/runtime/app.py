@@ -61,8 +61,8 @@ class AppScope(Widget):
     :class:`ThemeManager`) to every open window; this scope only serves reads.
     """
 
-    def __init__(self, app: "App", child: Widget) -> None:
-        super().__init__()
+    def __init__(self, app: "App", child: Widget, *, key: Optional[str] = None) -> None:
+        super().__init__(key=key)
         self.theme_manager = app._theme_manager
         self._app_ref = weakref.ref(app)
         self.add_child(child)

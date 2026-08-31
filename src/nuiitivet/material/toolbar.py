@@ -98,6 +98,7 @@ class DockedToolbar(_ToolbarBase):
         buttons: Sequence[Widget],
         *,
         style: Optional[ToolbarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize DockedToolbar.
 
@@ -108,6 +109,7 @@ class DockedToolbar(_ToolbarBase):
                 button-sized children and degrades gracefully for larger ones.
             style: Optional toolbar style. Defaults to the theme's toolbar
                 style, which itself falls back to ``ToolbarStyle.standard()``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._user_style = style
         self._applied_style = None
@@ -136,6 +138,7 @@ class DockedToolbar(_ToolbarBase):
             border_width=effective_style.border_width,
             corner_radius=effective_style.corner_radius,
             alignment="center",
+            key=key,
         )
 
     def _apply_toolbar_style(self, style: ToolbarStyle) -> None:
@@ -165,6 +168,7 @@ class _FloatingToolbarBase(_ToolbarBase):
         orientation: _ToolbarOrientation,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize shared floating toolbar state.
 
@@ -177,6 +181,7 @@ class _FloatingToolbarBase(_ToolbarBase):
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to the theme's toolbar
                 style, which itself falls back to ``ToolbarStyle.standard()``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._user_style = style
         self._applied_style = None
@@ -229,6 +234,7 @@ class _FloatingToolbarBase(_ToolbarBase):
             border_width=0.0,
             corner_radius=0,
             alignment="center",
+            key=key,
         )
 
     def _apply_toolbar_style(self, style: ToolbarStyle) -> None:
@@ -265,6 +271,7 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
         *,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize HorizontalFloatingToolbar.
 
@@ -275,8 +282,9 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
                 button-sized children and degrades gracefully for larger ones.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(buttons, orientation="horizontal", padding=padding, style=style)
+        super().__init__(buttons, orientation="horizontal", padding=padding, style=style, key=key)
 
 
 class VerticalFloatingToolbar(_FloatingToolbarBase):
@@ -291,6 +299,7 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
         *,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize VerticalFloatingToolbar.
 
@@ -301,8 +310,9 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
                 button-sized children and degrades gracefully for larger ones.
             padding: External padding around the floating toolbar.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(buttons, orientation="vertical", padding=padding, style=style)
+        super().__init__(buttons, orientation="vertical", padding=padding, style=style, key=key)
 
 
 __all__ = ["DockedToolbar", "HorizontalFloatingToolbar", "VerticalFloatingToolbar"]

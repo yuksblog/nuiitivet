@@ -16,7 +16,6 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
 from nuiitivet.testing import (
@@ -33,7 +32,7 @@ SIZE = (400, 300)
 
 
 def _text(value: object, key: str) -> Widget:
-    return Text(value).modifier(keyed(key))  # type: ignore[arg-type]
+    return Text(value, key=key)  # type: ignore[arg-type]
 
 
 class _Loader(ComposableWidget):
@@ -48,7 +47,7 @@ class _Loader(ComposableWidget):
         return Column(
             children=[
                 _text(self.status, "status"),
-                Button("load", on_click=self._load).modifier(keyed("load")),
+                Button("load", on_click=self._load, key="load"),
             ]
         )
 

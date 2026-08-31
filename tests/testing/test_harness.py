@@ -13,7 +13,6 @@ from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.material.text import Text
 from nuiitivet.material.text_fields import TextField
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.modifiers.size_changed import on_size_changed
 from nuiitivet.observable import Observable
 from nuiitivet.observable.runtime import get_clock, set_clock
@@ -33,8 +32,8 @@ VIEWPORT = 100
 
 
 def _text(value: object, key: str) -> Widget:
-    """A keyed Text. ``modifier()`` returns the widget it decorated."""
-    return Text(value).modifier(keyed(key))  # type: ignore[arg-type]
+    """A keyed Text."""
+    return Text(value, key=key)  # type: ignore[arg-type]
 
 
 class _Counter(ComposableWidget):
@@ -50,7 +49,7 @@ class _Counter(ComposableWidget):
         return Column(
             children=[
                 _text(self.count.map(lambda c: f"Count: {c}"), "count"),
-                Button("increment", on_click=self._increment).modifier(keyed("increment")),
+                Button("increment", on_click=self._increment, key="increment"),
             ]
         )
 
@@ -181,7 +180,7 @@ def test_type_focuses_its_target_first(nuiitivet_app) -> None:
     value = Observable("")
 
     def screen() -> Widget:
-        return Column(children=[TextField(value).modifier(keyed("field"))])
+        return Column(children=[TextField(value, key="field")])
 
     app = nuiitivet_app(screen, size=(800, 600))
     app.type("hi", key="field")
@@ -224,7 +223,8 @@ def _scroll_screen() -> Widget:
     return VerticalScrollable(
         Column(children=rows),
         height=VIEWPORT,
-    ).modifier(keyed("list"))
+        key="list",
+    )
 
 
 def test_scroll_into_view_flips_is_reachable(nuiitivet_app) -> None:

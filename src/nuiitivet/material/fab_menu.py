@@ -454,6 +454,7 @@ class FabMenu(Widget):
         auto_close: bool = True,
         close_icon: Union["Symbol", str] = Symbols.close,
         style: Optional[FabStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize a FabMenu.
 
@@ -470,8 +471,9 @@ class FabMenu(Widget):
             style: FAB style preset selecting the colour family and size.
                 Defaults to :meth:`FabStyle.primary`.  List items use the
                 matching ``*-container`` colour set.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
 
         base_style = style if style is not None else FabStyle.primary()
         self._is_open: Observable[bool] = is_open if is_open is not None else Observable(False)

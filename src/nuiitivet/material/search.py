@@ -673,8 +673,9 @@ class SearchBar(ComposableWidget):
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[SearchBarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(key=key)
         self._width = width
         # Built once and reused across rebuilds so focus and cursor position
         # survive recomposition.
@@ -788,8 +789,9 @@ class DockedSearchBar(ComposableWidget):
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[DockedSearchBarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(key=key)
         self._width = width
         self._style = style if style is not None else DockedSearchBarStyle()
         self._close_on_enter = bool(close_on_enter)

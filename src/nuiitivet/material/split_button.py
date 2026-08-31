@@ -531,6 +531,7 @@ class SplitButton(Box):
         disabled: "bool | MutableObservableBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[SplitButtonStyle]" = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize SplitButton.
 
@@ -549,6 +550,7 @@ class SplitButton(Box):
             disabled: Disables both button halves when ``True``.
             width: Optional width sizing for the overall widget.
             style: Visual style.  Defaults to ``SplitButtonStyle.filled("s")``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         if label is None and icon is None:
             raise ValueError("SplitButton requires at least one of label or icon")
@@ -580,7 +582,7 @@ class SplitButton(Box):
             cross_alignment="center",
         )
 
-        super().__init__(child=row, width=width)
+        super().__init__(child=row, width=width, key=key)
 
     # ------------------------------------------------------------------
     # Content builder (leading button)

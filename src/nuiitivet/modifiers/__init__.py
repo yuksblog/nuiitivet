@@ -12,7 +12,6 @@ from .drop_target import drop_target
 from .focus import focusable
 from .hover import hoverable
 from .key_shortcut import key_shortcut
-from .keyed import keyed
 from .lifecycle import on_mount, on_unmount
 from .passthrough_pointer import passthrough_pointer
 from .pointer_input import pointer_input
@@ -40,7 +39,6 @@ __all__ = [
     "focusable",
     "hoverable",
     "key_shortcut",
-    "keyed",
     "on_mount",
     "on_size_changed",
     "on_unmount",

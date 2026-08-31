@@ -725,6 +725,7 @@ class Button(MaterialButtonBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ButtonStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize Button.
 
@@ -741,6 +742,7 @@ class Button(MaterialButtonBase):
             width: Width specification. Defaults to auto.
             padding: Padding override; ``None`` delegates to ``style.padding``.
             style: Visual style preset. Defaults to ``ButtonStyle.filled("s")``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         effective_style = style if style is not None else ButtonStyle.filled("s")
         self._user_style = effective_style
@@ -764,6 +766,7 @@ class Button(MaterialButtonBase):
             on_click=on_click,
             width=width,
             disabled=disabled,
+            key=key,
             **params,
         )
 
@@ -787,6 +790,7 @@ class IconButton(MaterialButtonBase):
         on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         style: Optional[ButtonStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize IconButton.
 
@@ -798,6 +802,7 @@ class IconButton(MaterialButtonBase):
                 :meth:`IconButtonStyle.standard` (size ``"s"``, 40dp).  Use
                 size-aware factories such as ``IconButtonStyle.filled("m")``
                 to control container/icon sizing.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         effective_style = style if style is not None else IconButtonStyle.standard()
 
@@ -819,6 +824,7 @@ class IconButton(MaterialButtonBase):
             on_click=on_click,
             width=effective_style.container_height,
             disabled=disabled,
+            key=key,
             **params,
         )
 
@@ -874,6 +880,7 @@ class ToggleButtonBase(MaterialButtonBase):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        key: Optional[str] = None,
     ):
         """Initialize the base toggle button.
 
@@ -886,6 +893,7 @@ class ToggleButtonBase(MaterialButtonBase):
             width: Width specification.
             height: Height specification.
             padding: Padding override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._user_padding = padding
         self._user_height = height
@@ -926,6 +934,7 @@ class ToggleButtonBase(MaterialButtonBase):
             on_click=self._handle_toggle,
             width=width,
             disabled=disabled,
+            key=key,
             **params,
         )
 
@@ -1013,6 +1022,7 @@ class ToggleButton(ToggleButtonBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[ToggleButtonStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize ToggleButton.
 
@@ -1031,6 +1041,7 @@ class ToggleButton(ToggleButtonBase):
             padding: Padding override; ``None`` uses ``style.padding``.
             style: Toggle style preset. Defaults to the theme's toggle button
                 style, which itself falls back to ``ToggleButtonStyle.filled("s")``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         #: The style the caller passed, or ``None`` to follow the theme.
         self._user_toggle_style: Optional[ToggleButtonStyle] = style
@@ -1043,6 +1054,7 @@ class ToggleButton(ToggleButtonBase):
             disabled=disabled,
             width=width,
             padding=padding,
+            key=key,
         )
 
     def _toggle_style(self) -> ToggleButtonStyle:
@@ -1070,6 +1082,7 @@ class IconToggleButton(ToggleButtonBase):
         on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         style: Optional[IconToggleButtonStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize IconToggleButton.
 
@@ -1083,6 +1096,7 @@ class IconToggleButton(ToggleButtonBase):
                 falls back to :meth:`IconToggleButtonStyle.standard` (size
                 ``"s"``).  Use size-aware factories such as
                 ``IconToggleButtonStyle.filled("m")`` to control sizing.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         #: The style the caller passed, or ``None`` to follow the theme.
         self._user_toggle_style: Optional[IconToggleButtonStyle] = style
@@ -1101,6 +1115,7 @@ class IconToggleButton(ToggleButtonBase):
             width=self._icon_size,
             height=self._icon_size,
             padding=0,
+            key=key,
         )
 
     def _icon_toggle_style(self) -> IconToggleButtonStyle:
@@ -1278,6 +1293,7 @@ class Fab(_FabBase):
         disabled: bool | ObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[FabStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize Fab.
 
@@ -1292,6 +1308,7 @@ class Fab(_FabBase):
                 56dp).  Use ``FabStyle.primary("m")`` / ``FabStyle.primary("l")``
                 for the 80dp / 96dp variants, or ``FabStyle.secondary`` /
                 ``FabStyle.tertiary`` for alternative tonal colour sets.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         # Held in a local for everything below ``super().__init__()``: reads that
         # run before the widget is attached must not go through ``self.style``,
@@ -1321,6 +1338,7 @@ class Fab(_FabBase):
             on_click=on_click,
             width=size,
             disabled=disabled,
+            key=key,
             **params,
         )
         self._sync_state_tokens(effective_style)
@@ -1386,6 +1404,7 @@ class ExtendedFab(_FabBase):
         expanded: bool | ObservableProtocol[bool] = True,
         disabled: bool | ObservableProtocol[bool] = False,
         style: Optional[FabStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize ExtendedFab.
 
@@ -1401,6 +1420,7 @@ class ExtendedFab(_FabBase):
             style: FAB style preset selecting the colour mapping and size.
                 Defaults to the theme's FAB style, which itself falls back to
                 :meth:`FabStyle.primary` (size ``"s"``, 56dp).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         # See ``Fab.__init__``: the preset stands in until the first measure can
         # reach the theme.
@@ -1440,6 +1460,7 @@ class ExtendedFab(_FabBase):
             on_click=on_click,
             width=None,
             disabled=disabled,
+            key=key,
             **params,
         )
         # Clip the label as the container shrinks toward the circular footprint.

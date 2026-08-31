@@ -103,6 +103,7 @@ class Icon(IconBase):
         size: SizingLike = 24,
         padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = None,
         style: Optional["IconStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Create a Material-like icon by ligature name.
 
@@ -112,6 +113,7 @@ class Icon(IconBase):
             size: Logical pixel size of the icon (font size used for the glyph).
             padding: Space around the icon (M3: "space between UI elements").
             style: IconStyle for customization (defaults to theme style).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         # Store style (use provided or get from theme lazily)
         self._style = style
@@ -127,7 +129,7 @@ class Icon(IconBase):
         # Treat `size` as a SizingLike and use it for layout via the
         # base Widget's width/height. Also compute a pixel fallback stored
         # in self._size for paint-time operations.
-        super().__init__(size=size, padding=final_padding)
+        super().__init__(size=size, padding=final_padding, key=key)
 
         self._user_padding = padding
 

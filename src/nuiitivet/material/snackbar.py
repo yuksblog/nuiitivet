@@ -23,8 +23,9 @@ class Snackbar(ComposableWidget):
         *,
         padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
         style: Optional[SnackbarStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(key=key)
         self.message = str(message)
 
         resolved_style = style if style is not None else SnackbarStyle()

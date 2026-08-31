@@ -39,6 +39,7 @@ class Column(Widget):
         gap: Union[int, ObservableBase] = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
+        key: Optional[str] = None,
     ):
         """Initialize Column and configure layout.
 
@@ -52,8 +53,9 @@ class Column(Widget):
                 'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Horizontal alignment of children.
                 'start', 'center', 'end', 'stretch'.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for c in children:
                 self.add_child(c)
@@ -89,6 +91,7 @@ class Column(Widget):
         gap: int = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
+        key: Optional[str] = None,
     ) -> "Column":
         """Create a Column that materializes children from items via ForEach.
 
@@ -101,6 +104,7 @@ class Column(Widget):
             gap: Space between children.
             main_alignment: Vertical alignment of children.
             cross_alignment: Horizontal alignment of children.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)
         return cls(
@@ -111,6 +115,7 @@ class Column(Widget):
             gap=gap,
             main_alignment=main_alignment,
             cross_alignment=cross_alignment,
+            key=key,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

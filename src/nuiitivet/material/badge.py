@@ -22,6 +22,7 @@ class SmallBadge(Box):
         *,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[SmallBadgeStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize SmallBadge.
 
@@ -32,6 +33,7 @@ class SmallBadge(Box):
         Args:
             padding: External badge padding.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         effective_style = style or SmallBadgeStyle()
 
@@ -42,6 +44,7 @@ class SmallBadge(Box):
             padding=padding,
             background_color=effective_style.background_color,
             corner_radius=effective_style.corner_radius,
+            key=key,
         )
 
     def stick_modifier(self, *, badge: Optional[Widget] = None) -> StickModifier:
@@ -71,6 +74,7 @@ class LargeBadge(Box):
         *,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int], None] = None,
         style: Optional[LargeBadgeStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize LargeBadge.
 
@@ -82,6 +86,7 @@ class LargeBadge(Box):
             text: Badge text to display. Must be non-empty.
             padding: External badge padding. Defaults to style padding.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         if not text:
             raise ValueError("text must be non-empty")
@@ -108,6 +113,7 @@ class LargeBadge(Box):
             background_color=effective_style.background_color,
             corner_radius=effective_style.corner_radius,
             alignment="center",
+            key=key,
         )
 
     def stick_modifier(self, *, badge: Optional[Widget] = None) -> StickModifier:

@@ -801,8 +801,8 @@ class _HarnessBase:
         return (
             f"{query} matched {len(matches)} widgets, and a test cannot choose "
             f"between them: {described}. Give the one you mean a unique key with "
-            "keyed(). (The dev bridge would have taken the first match here; the "
-            "harness refuses on purpose.)"
+            "key=... in its constructor. (The dev bridge would have taken the "
+            "first match here; the harness refuses on purpose.)"
         )
 
     def _node(self, widget: Any) -> Node:

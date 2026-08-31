@@ -24,6 +24,8 @@ class CrossAligned(Widget):
         self,
         child: Optional[Widget],
         alignment: str,
+        *,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the CrossAligned wrapper.
 
@@ -31,6 +33,7 @@ class CrossAligned(Widget):
             child: The child widget to wrap.
             alignment: The cross-axis alignment to apply to this child.
                 Common values: "start", "center", "end", "stretch".
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             width=child.width_sizing if child is not None else None,
@@ -38,6 +41,7 @@ class CrossAligned(Widget):
             padding=0,
             max_children=1,
             overflow_policy="replace_last",
+            key=key,
         )
         self.cross_align = str(alignment)
         if child is not None:

@@ -33,8 +33,8 @@ class MenuBarSlotBase(ComposableWidget):
     #: A user-placed area suppresses the App's default slot.
     is_user_area: bool = False
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *, key: Optional[str] = None) -> None:
+        super().__init__(key=key)
         self._active = False
         self._model: Optional[MenuBar] = None
         self._controller = None

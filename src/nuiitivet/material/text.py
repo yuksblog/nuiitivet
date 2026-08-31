@@ -44,6 +44,7 @@ class Text(TextBase):
         overflow: Literal["visible", "clip", "ellipsis"] = "visible",
         truncation: Literal["tail", "head", "middle"] = "tail",
         soft_wrap: bool = True,
+        key: Optional[str] = None,
     ):
         """Initialize Material Text widget.
 
@@ -61,6 +62,7 @@ class Text(TextBase):
             overflow: Overflow handling: ``"visible"``, ``"clip"`` or ``"ellipsis"``.
             truncation: Ellipsis position: ``"tail"``, ``"head"`` or ``"middle"``.
             soft_wrap: Whether to wrap at soft line breaks when width is bounded.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.text_style import TextStyle
 
@@ -79,6 +81,7 @@ class Text(TextBase):
             overflow=overflow,
             truncation=truncation,
             soft_wrap=soft_wrap,
+            key=key,
         )
 
     @property

@@ -98,8 +98,8 @@ class WindowScope(Widget):
     belongs to, never to a process-wide default.
     """
 
-    def __init__(self, window: "Window", child: Widget) -> None:
-        super().__init__()
+    def __init__(self, window: "Window", child: Widget, *, key: "str | None" = None) -> None:
+        super().__init__(key=key)
         self._window_ref = weakref.ref(window)
         self.add_child(child)
 

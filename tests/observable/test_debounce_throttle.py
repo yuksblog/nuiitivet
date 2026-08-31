@@ -452,9 +452,8 @@ class TestBindingDirectlyIntoAWidget:
     def _screen(bound):
         from nuiitivet.layout.column import Column
         from nuiitivet.material.text import Text
-        from nuiitivet.modifiers.keyed import keyed
 
-        return lambda: Column(children=[Text(bound).modifier(keyed("readout"))])
+        return lambda: Column(children=[Text(bound, key="readout")])
 
     def test_debounce_bound_without_map_is_debounced(self, nuiitivet_app):
         source = Observable("start")
@@ -497,9 +496,8 @@ class TestBindingDirectlyIntoAWidget:
         def screen():
             from nuiitivet.layout.column import Column
             from nuiitivet.material.text import Text
-            from nuiitivet.modifiers.keyed import keyed
 
-            return Column(children=[Text(source.debounce(0.01)).modifier(keyed("readout"))])
+            return Column(children=[Text(source.debounce(0.01), key="readout")])
 
         app = nuiitivet_app(screen, size=(800, 600))
         gc.collect()

@@ -51,7 +51,7 @@ which is the only way to reach that code path without dragging a window edge.
 | `app.get_all(key=…)` | every match, possibly empty |
 | `app.tree()` | a dict, for `print()` when a test fails |
 
-Target by `key` — the stable identity you set with `keyed()`. `label=` is a
+Target by `key` — the stable identity you set with the `key=` constructor parameter. `label=` is a
 shortcut for presence: it resolves to whichever node actually carries the text,
 which for a composite is an inner leaf (a Material button composes its label
 into a `Text`), so `.rect` and `.widget` would describe the text rather than the
