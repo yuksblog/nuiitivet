@@ -173,13 +173,30 @@ re-registration) in hundreds of lines of ctypes, and a direct Linux
 implementation would mean hand-rolling the StatusNotifierItem *and*
 `com.canonical.dbusmenu` DBus protocols on top of a DBus library that would
 itself be a new dependency. The loop-coexistence concern that ruled pystray
-out on macOS does not exist on these platforms: its backends run on their
-own thread by design. The bridge boundary keeps a future swap (e.g. a
-direct Win32 backend) local.
+out on macOS is survivable here: no backend wants `NSApplication` or the
+main thread, and the one that does need loop cooperation asks for a few
+lines rather than the loop itself (below). The bridge boundary keeps a
+future swap (e.g. a direct Win32 backend) local.
 
-pystray runs the icon on its own thread via `run_detached()`; every
-activation hops to the UI thread through the runtime clock before touching
-the model. Item properties are passed as
+The icon is started detached (`run_detached()`), but what that means splits
+by backend family:
+
+- **`win32` / `xorg`** spin their own thread, so their callbacks arrive off
+  the UI thread.
+- **`appindicator` / `gtk`** (Linux, whenever PyGObject and the
+  AppIndicator typelib are present) start no loop at all. They queue every
+  icon operation — the initial show, which is what registers the
+  StatusNotifierItem on DBus, plus menu rebuilds and click callbacks — onto
+  the GLib main context via `GObject.idle_add`, assuming the host already
+  runs a GLib main loop. nuiitivet runs only pyglet's, so the bridge
+  iterates the default GLib context from a 60 Hz clock interval on the UI
+  thread (where GTK wants its calls anyway). Without that pump nothing is
+  ever dispatched and the icon never appears, while `install()` still
+  returns cleanly — a silent failure that would strand the close-to-tray
+  recipe with a hidden window and no icon to restore it.
+
+Either way every activation hops to the UI thread through the runtime clock
+before touching the model. Item properties are passed as
 callables, but not every backend rebuilds the menu on display, so every
 Observable in the menu tree also triggers `Icon.update_menu()`.
 

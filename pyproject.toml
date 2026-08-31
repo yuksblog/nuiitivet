@@ -89,6 +89,14 @@ module = ["tests.*"]
 ignore_missing_imports = true
 module = ["mcp.*"]
 
+# PyGObject ('gi') has no type stubs or py.typed marker. It is used only by the
+# Linux tray's GLib pump (platform/tray_pystray.py) and is present only when a
+# system PyGObject is exposed to the venv; treat its imports as resolvable so
+# the module still type-checks with or without it installed.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["gi.*"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
