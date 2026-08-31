@@ -2,12 +2,14 @@
 
 pystray is a regular dependency on these platforms (platform-marked in
 ``pyproject.toml``; macOS goes through ``tray_cocoa`` instead and never
-installs it). It runs the tray on its own thread (``run_detached()``),
-which coexists with the pyglet loop; its
-callbacks therefore arrive **off** the UI thread, so every activation is
-hopped onto the UI thread through the runtime clock before it touches the
-model — after the hop, checkable toggling, roles, and ``on_select`` behave
-exactly as on macOS.
+installs it). The tray is started detached (``run_detached()``), but what
+that means splits by backend: ``win32`` and ``xorg`` spin their own thread,
+while the GTK-family backends (``appindicator`` / ``gtk``) start no loop and
+need nuiitivet to pump theirs
+(:meth:`TrayPystrayBridge._start_glib_pump`). Either way callbacks are
+hopped onto the UI thread through the runtime clock before they touch the
+model, so checkable toggling, roles, and ``on_select`` behave exactly as on
+macOS.
 
 Best-effort by design, especially on Linux: whether an icon actually shows
 depends on the desktop (SNI/AppIndicator host, GNOME extension, Wayland).
@@ -29,6 +31,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# pystray backend modules that need nuiitivet to pump GLib for them.
+_GLIB_BACKENDS = frozenset({"pystray._appindicator", "pystray._gtk"})
+
+# 60 Hz: no perceptible lag on a tray click, and an idle tick is one cheap check.
+_GLIB_PUMP_INTERVAL = 1 / 60.0
+
 
 class TrayPystrayBridge:
     """Installs a :class:`TrayIcon` through pystray. Framework-internal."""
@@ -37,6 +45,8 @@ class TrayPystrayBridge:
         self._tray = tray
         self._icon: Any = None
         self._subscriptions: List[Any] = []
+        self._glib_context: Any = None
+        self._glib_pump: Optional[Callable[[float], None]] = None
 
     def install(self) -> None:
         """Start the detached pystray icon; raises when pystray is unusable."""
@@ -73,8 +83,10 @@ class TrayPystrayBridge:
             self._subscriptions.append(tooltip.subscribe(on_change))
 
         icon.run_detached()
+        self._start_glib_pump(icon)
 
     def uninstall(self) -> None:
+        self._stop_glib_pump()
         subscriptions, self._subscriptions = self._subscriptions, []
         for subscription in subscriptions:
             dispose = getattr(subscription, "dispose", None)
@@ -86,6 +98,48 @@ class TrayPystrayBridge:
                 icon.stop()
             except Exception:
                 logger.debug("pystray icon stop raised", exc_info=True)
+
+    # ---- GLib pump (Linux GTK-family backends) -----------------------------
+
+    def _start_glib_pump(self, icon: Any) -> None:
+        """Drive pystray's GLib backends from the pyglet clock.
+
+        The ``appindicator`` / ``gtk`` backends queue every icon operation onto
+        the GLib main context via ``GObject.idle_add`` and start no loop of
+        their own: they assume the host runs one. nuiitivet runs only pyglet's,
+        so without this nothing is ever dispatched -- including the initial show
+        that registers the icon on D-Bus, so no icon appears while ``install()``
+        still returns cleanly. Iterating from a clock interval also keeps the
+        calls on the UI thread, where GTK wants them. ``xorg`` / ``win32`` spin
+        their own thread and need none of this.
+        """
+        if type(icon).__module__ not in _GLIB_BACKENDS:
+            return
+        from gi.repository import GLib
+
+        self._glib_context = GLib.MainContext.default()
+
+        def pump(_dt: float) -> None:
+            ctx = self._glib_context
+            # ``iteration(False)`` never blocks, so an idle context is a no-op.
+            while ctx is not None and ctx.pending():
+                ctx.iteration(False)
+
+        try:
+            runtime.clock.schedule_interval(pump, _GLIB_PUMP_INTERVAL)
+            self._glib_pump = pump
+        except Exception:
+            logger.debug("Tray GLib pump failed to schedule", exc_info=True)
+
+    def _stop_glib_pump(self) -> None:
+        pump, self._glib_pump = self._glib_pump, None
+        self._glib_context = None
+        if pump is None:
+            return
+        try:
+            runtime.clock.unschedule(pump)
+        except Exception:
+            logger.debug("Tray GLib pump failed to unschedule", exc_info=True)
 
     # ---- Pieces ------------------------------------------------------------
 

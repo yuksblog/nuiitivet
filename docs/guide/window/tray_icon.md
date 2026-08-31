@@ -143,14 +143,42 @@ convention for menu-bar icons. Without `icon=`, macOS shows the tooltip text
 in the menu bar and the other platforms show a neutral placeholder; ship a
 real icon.
 
-## Linux is best-effort
+## Linux needs two system packages
 
-Nothing to install anywhere — the Windows/Linux backend
-([pystray](https://pystray.readthedocs.io/)) ships with nuiitivet on those
-platforms. But on Linux, whether an icon actually appears depends on the
-desktop: KDE and most
-SNI-capable environments work; GNOME needs the AppIndicator extension; a bare
-XOrg session cannot show a menu at all (a menu-carrying tray refuses to
-install there, so `installed` stays `False` and the recipe above degrades
-cleanly). This is exactly what `installed` is for — the API always works, and
-the app can always tell whether the icon is really there.
+Windows and macOS need nothing. On Linux the icon and its menu are drawn by
+the desktop, and nuiitivet reaches that through two pieces pip cannot supply:
+
+1. **PyGObject** — the binding that lets Python talk to the desktop
+   libraries (the `gi` module).
+2. **The Ayatana AppIndicator typelib** — the description of the tray API
+   itself, named `AyatanaAppIndicator3-0.1` (older systems: `AppIndicator3-0.1`).
+
+Both have to come from the system package manager, so the names differ per
+distribution — search yours for "PyGObject" and "Ayatana AppIndicator". On
+Debian and Ubuntu:
+
+```bash
+sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1
+```
+
+Then let the venv see them, which is not the default:
+
+```bash
+python -m venv .venv --system-site-packages
+```
+
+Without all of this a tray carrying a menu refuses to install. `installed`
+stays `False`, so the recipe above degrades on its own: the close button keeps
+meaning close, and nothing hides into an icon that was never there.
+
+### GNOME needs one more thing
+
+With those packages in place the icon appears on KDE, XFCE and most other
+desktops. GNOME is the exception — it has nowhere to put tray icons until
+the [AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)
+is installed.
+
+This case is quieter, and worth knowing before you go looking for the bug in
+your app: the icon is handed over successfully, so `installed` is `True`, but
+nothing appears. `installed` reports that nuiitivet delivered the icon — not
+that the desktop decided to show it. On GNOME, check the extension first.
