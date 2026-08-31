@@ -34,6 +34,24 @@ def test_material_all_symbols_resolve() -> None:
     assert unresolved == [], f"material.__all__ names that do not resolve: {unresolved}"
 
 
+def test_material_dir_names_resolve() -> None:
+    """Every name in ``dir(md)`` resolves (issue #650).
+
+    ``__dir__`` includes the lazy-export table, whose entries can go stale
+    without appearing in ``__all__`` — so this sweep, not the ``__all__``
+    check above, is what catches a stale entry.
+    """
+    unresolved: list[str] = []
+    for name in dir(md):
+        try:
+            getattr(md, name)
+        except Exception as exc:  # noqa: BLE001 — report all, fail once
+            unresolved.append(f"{name}: {type(exc).__name__}: {exc}")
+    assert unresolved == [], "dir(nuiitivet.material) names that do not resolve:\n" + "\n".join(
+        unresolved
+    )
+
+
 def test_core_all_symbols_resolve() -> None:
     unresolved = [name for name in core.__all__ if not hasattr(core, name)]
     assert unresolved == [], f"nuiitivet.__all__ names that do not resolve: {unresolved}"
