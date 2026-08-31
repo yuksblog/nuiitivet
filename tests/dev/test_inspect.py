@@ -9,7 +9,6 @@ from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.selection import Selection
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.layout.column import Column
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -533,7 +532,7 @@ def test_discarding_outside_a_session_changes_nothing() -> None:
 def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
     """Cancelling after a reload must not restore members whose referents are
     already gone -- the snapshot holds the old objects too."""
-    old = Column(children=[Text("HEADER").modifier(keyed("header"))])
+    old = Column(children=[Text("HEADER", key="header")])
     with mount(old) as host:
         host.layout(300, 200)
         app = _App(host.root)
@@ -543,7 +542,7 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
         mode.on_key_press(app, "enter", 0)
         mode.on_key_press(app, "c", _ENTER)
 
-    rebuilt = Column(children=[Text("HEADER").modifier(keyed("header"))])
+    rebuilt = Column(children=[Text("HEADER", key="header")])
     with mount(rebuilt) as host:
         host.layout(300, 200)
         mode.selection.restore(host.root)

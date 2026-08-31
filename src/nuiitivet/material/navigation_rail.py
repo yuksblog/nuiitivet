@@ -111,6 +111,7 @@ class RailItem(Widget):
         small_badge: Optional[ReadOnlyObservableProtocol[bool]] = None,
         large_badge: Optional[ReadOnlyObservableProtocol[Optional[str]]] = None,
         style: Optional[NavigationRailStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize RailItem.
 
@@ -123,8 +124,9 @@ class RailItem(Widget):
                 When both ``small_badge`` and ``large_badge`` are provided,
                 ``large_badge`` takes precedence.
             style: Optional style override for this item.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
 
         self.icon_spec = icon
         self.label_spec = label
@@ -761,6 +763,7 @@ class NavigationRail(Widget):
         height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[NavigationRailStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize NavigationRail.
 
@@ -786,6 +789,7 @@ class NavigationRail(Widget):
             height: Height specification.
             padding: Padding specification.
             style: Custom NavigationRailStyle.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _reject_readonly_observable(index, "index")
         _reject_readonly_observable(expanded, "expanded")
@@ -820,7 +824,7 @@ class NavigationRail(Widget):
             )
         )
 
-        super().__init__(width=animated_width, height=height, padding=padding)
+        super().__init__(width=animated_width, height=height, padding=padding, key=key)
 
         if width_warning is not None:
             warning_once(logger, width_warning[0], width_warning[1])

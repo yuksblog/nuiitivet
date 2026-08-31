@@ -264,6 +264,7 @@ class _ProgressIndicatorBase(Widget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
+        key: str | None = None,
     ) -> None:
         """Initialize shared progress indicator base state.
 
@@ -272,6 +273,7 @@ class _ProgressIndicatorBase(Widget):
             width: Width sizing.
             height: Height sizing.
             padding: Padding around the indicator.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._disabled_external: ObservableProtocol[bool] | None = None
         if _is_observable(disabled):
@@ -280,7 +282,7 @@ class _ProgressIndicatorBase(Widget):
         else:
             self._disabled = bool(disabled)
 
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
 
     @property
     def disabled(self) -> bool:
@@ -314,6 +316,7 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
+        key: str | None = None,
     ) -> None:
         """Initialize shared determinate progress indicator state.
 
@@ -323,6 +326,7 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
             width: Width sizing.
             height: Height sizing.
             padding: Padding around the indicator.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._value_external: ObservableProtocol[float] | None = None
         if _is_observable(value):
@@ -336,6 +340,7 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
             width=width,
             height=height,
             padding=padding,
+            key=key,
         )
 
     @property
@@ -382,6 +387,7 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
+        key: str | None = None,
     ) -> None:
         """Initialize shared indeterminate progress indicator state.
 
@@ -390,8 +396,9 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
             width: Width sizing.
             height: Height sizing.
             padding: Padding around the indicator.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(disabled=disabled, width=width, height=height, padding=padding)
+        super().__init__(disabled=disabled, width=width, height=height, padding=padding, key=key)
         if not hasattr(self, "_animation_motion"):
             self._animation_motion = LinearMotion(1.0)
         self._phase_anim: Animatable[float] | None = None
@@ -461,6 +468,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize LinearProgressIndicator.
 
@@ -470,6 +478,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
             width: Width sizing.
             padding: Padding around the indicator.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
         style_for_layout = style or LinearProgressIndicatorStyle.default()
@@ -481,6 +490,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
             width=width,
             height=track_h + pad_t + pad_b,
             padding=(pad_l, pad_t, pad_r, pad_b),
+            key=key,
         )
 
     @property
@@ -612,6 +622,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize IndeterminateLinearProgressIndicator.
 
@@ -620,6 +631,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
             width: Width sizing.
             padding: Padding around the indicator.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
         style_for_layout = style or LinearProgressIndicatorStyle.default()
@@ -631,6 +643,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
             width=width,
             height=track_h + pad_t + pad_b,
             padding=(pad_l, pad_t, pad_r, pad_b),
+            key=key,
         )
 
     @property
@@ -734,6 +747,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize CircularProgressIndicator.
 
@@ -743,6 +757,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
             size: Outer indicator size in dp. Uses style default when omitted.
             padding: Padding around the indicator.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
         style_for_layout = style or CircularProgressIndicatorStyle.default()
@@ -754,6 +769,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
             width=self._size + pad_l + pad_r,
             height=self._size + pad_t + pad_b,
             padding=(pad_l, pad_t, pad_r, pad_b),
+            key=key,
         )
 
     @property
@@ -864,6 +880,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize IndeterminateCircularProgressIndicator.
 
@@ -872,6 +889,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
             size: Outer indicator size in dp. Uses style default when omitted.
             padding: Padding around the indicator.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
         style_for_motion = style or CircularProgressIndicatorStyle.default()
@@ -883,6 +901,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
             width=self._size + pad_l + pad_r,
             height=self._size + pad_t + pad_b,
             padding=(pad_l, pad_t, pad_r, pad_b),
+            key=key,
         )
 
     @property

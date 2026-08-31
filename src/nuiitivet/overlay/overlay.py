@@ -333,8 +333,8 @@ class Overlay(ComposableWidget):
         overlay.remove_entry(entry)
     """
 
-    def __init__(self, *, layer_composer: OverlayLayerComposer | None = None) -> None:
-        super().__init__(width="wt", height="wt")
+    def __init__(self, *, layer_composer: OverlayLayerComposer | None = None, key: str | None = None) -> None:
+        super().__init__(width="wt", height="wt", key=key)
 
         # Overlay entries are implemented as routes on a private modal navigator.
         # A base route keeps the navigator mounted even when empty.

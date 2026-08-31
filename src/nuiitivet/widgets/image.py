@@ -36,6 +36,7 @@ class Image(Widget):
         height: SizingLike = None,
         padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
         alignment: AlignmentLike = "center",
+        key: str | None = None,
     ) -> None:
         """Initialize an Image widget.
 
@@ -46,8 +47,9 @@ class Image(Widget):
             height: Height sizing.
             padding: Space around content.
             alignment: Content alignment in the allocated content rect.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self._fit: Fit = self._normalize_fit(fit)
         self._align_raw: AlignmentLike = alignment
         self._alignment: tuple[str, str] = normalize_alignment(alignment, default=("center", "center"))

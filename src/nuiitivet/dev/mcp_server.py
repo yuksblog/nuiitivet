@@ -460,7 +460,7 @@ def build_server() -> "FastMCP":
         encloses it and the coordinates that reach it.
 
         Regions often carry no ``key`` in `describe_tree`. Two ways through:
-        attach one with `keyed()`, or pass the ``x`` / ``y`` centre of the
+        give the region a ``key=`` in its constructor, or pass the ``x`` / ``y`` centre of the
         region's rect -- that rect does not move as the content scrolls, so the
         same coordinates stay valid for the whole loop.
 

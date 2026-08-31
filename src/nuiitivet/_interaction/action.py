@@ -245,7 +245,7 @@ def _enclosing_scroll_region(node: Any) -> Optional[Any]:
     A region is layered -- an app-authored ``VerticalScrollable`` wrapping the
     ``ScrollViewport`` that does the clipping -- so this returns the *outermost*
     of the contiguous run nearest to ``node``: the one the app actually
-    constructed, and therefore the one a ``keyed()`` can be attached to.
+    constructed, and therefore the one a ``key=`` can be given to.
     """
     region: Optional[Any] = None
     for ancestor in ancestors(node):
@@ -284,7 +284,7 @@ def _require_scroll_region(node: Any) -> None:
         where = f" at {tuple(round(v) for v in rect)}"
     raise ValueError(
         f"{what}. It sits inside a {type(region).__name__}{where}: target that region "
-        "instead -- give it a stable key with keyed(), or pass "
+        "instead -- give it a stable key with key=..., or pass "
         + (f"x={cx:.0f} y={cy:.0f}" if rect is not None else "explicit 'x' and 'y'")
         + ". To bring this widget on screen instead, use 'scroll_into_view'."
     )

@@ -34,6 +34,7 @@ class _DividerBase(Widget):
         height: SizingLike,
         padding: PaddingLike,
         style: Optional[DividerStyle],
+        key: Optional[str] = None,
     ) -> None:
         """Initialize shared divider state.
 
@@ -43,9 +44,10 @@ class _DividerBase(Widget):
             height: Resolved height sizing.
             padding: Padding around the divider line.
             style: Resolved divider style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         effective_style = style or DividerStyle()
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self._style = effective_style
         self._orientation = orientation
 
@@ -152,6 +154,7 @@ class HorizontalDivider(_DividerBase):
         width: SizingLike = None,
         padding: PaddingLike = 0,
         style: Optional[DividerStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize HorizontalDivider.
 
@@ -160,6 +163,7 @@ class HorizontalDivider(_DividerBase):
             padding: Padding around the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _pad_l, pad_t, _pad_r, pad_b = parse_padding(padding)
         resolved_width: SizingLike = Sizing.weight() if width is None else width
@@ -169,6 +173,7 @@ class HorizontalDivider(_DividerBase):
             height=_cross_axis_thickness(style, pad_t, pad_b),
             padding=padding,
             style=style,
+            key=key,
         )
 
 
@@ -185,6 +190,7 @@ class VerticalDivider(_DividerBase):
         height: SizingLike = None,
         padding: PaddingLike = 0,
         style: Optional[DividerStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize VerticalDivider.
 
@@ -193,6 +199,7 @@ class VerticalDivider(_DividerBase):
             padding: Padding around the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         pad_l, _pad_t, pad_r, _pad_b = parse_padding(padding)
         resolved_height: SizingLike = Sizing.weight() if height is None else height
@@ -202,6 +209,7 @@ class VerticalDivider(_DividerBase):
             height=resolved_height,
             padding=padding,
             style=style,
+            key=key,
         )
 
 

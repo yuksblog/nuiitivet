@@ -78,8 +78,8 @@ assistant would otherwise get wrong:
   distinct patterns for waiting on async work versus on a *human*. Also which
   target a `scroll` takes — the scroll region, never a row inside it — and when
   `scroll_into_view` replaces it outright. → [Dev Bridge MCP](dev_bridge_mcp.md)
-- **`keyed()` targeting.** Attach a stable `key` so the bridge can drive a widget
-  by name and its state survives a reorder across reloads.
+- **`key=` targeting.** Give a widget a stable `key` in its constructor so the
+  bridge can drive it by name and its state survives a reorder across reloads.
 
 The result is the loop **edit (hot reload) → see → act → verify → edit**.
 

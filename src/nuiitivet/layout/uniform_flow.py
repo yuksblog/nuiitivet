@@ -37,8 +37,9 @@ class UniformFlow(Widget):
         item_alignment: AlignValue = "stretch",
         width: SizingLike = None,
         height: SizingLike = None,
+        key: Optional[str] = None,
     ) -> None:
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for child in children:
                 self.add_child(child)
@@ -69,6 +70,7 @@ class UniformFlow(Widget):
         item_alignment: AlignValue = "stretch",
         width: SizingLike = None,
         height: SizingLike = None,
+        key: Optional[str] = None,
     ) -> "UniformFlow":
         """Create a UniformFlow that materializes children from items via ForEach."""
         provider = ForEach(items, builder)
@@ -85,6 +87,7 @@ class UniformFlow(Widget):
             item_alignment=item_alignment,
             width=width,
             height=height,
+            key=key,
         )
 
     @staticmethod

@@ -86,6 +86,7 @@ class MaterialChipBase(InteractiveWidget):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Initialize base chip.
 
@@ -95,6 +96,7 @@ class MaterialChipBase(InteractiveWidget):
             width: Width sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.chip_style import ChipStyle
 
@@ -119,6 +121,7 @@ class MaterialChipBase(InteractiveWidget):
             border_width=initial_style.border_width,
             corner_radius=initial_style.corner_radius,
             state_layer_color=initial_style.state_layer_color,
+            key=key,
         )
 
         self._HOVER_OPACITY = initial_style.hover_alpha
@@ -239,6 +242,7 @@ class AssistChip(MaterialChipBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Initialize AssistChip.
 
@@ -250,6 +254,7 @@ class AssistChip(MaterialChipBase):
             width: Width sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._label = label
         self._leading_icon = leading_icon
@@ -260,6 +265,7 @@ class AssistChip(MaterialChipBase):
             width=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
     def _build_content(self, style: "ChipStyle") -> Widget:
@@ -295,6 +301,7 @@ class FilterChip(MaterialChipBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Initialize FilterChip.
 
@@ -308,6 +315,7 @@ class FilterChip(MaterialChipBase):
             width: Width sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._selected_external: ObservableProtocol[bool] | None = None
         self._selected = bool(selected)
@@ -326,6 +334,7 @@ class FilterChip(MaterialChipBase):
             width=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
     @property
@@ -407,6 +416,7 @@ class InputChip(MaterialChipBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Initialize InputChip.
 
@@ -420,6 +430,7 @@ class InputChip(MaterialChipBase):
             width: Width sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._label = label
         self._leading_icon = leading_icon
@@ -434,6 +445,7 @@ class InputChip(MaterialChipBase):
             width=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
     def _build_content(self, style: "ChipStyle") -> Widget:
@@ -479,6 +491,7 @@ class SuggestionChip(MaterialChipBase):
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
+        key: Optional[str] = None,
     ):
         """Initialize SuggestionChip.
 
@@ -490,6 +503,7 @@ class SuggestionChip(MaterialChipBase):
             width: Width sizing.
             padding: External insets around chip widget.
             style: Optional chip style.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._label = label
         self._leading_icon = leading_icon
@@ -500,6 +514,7 @@ class SuggestionChip(MaterialChipBase):
             width=width,
             padding=padding,
             style=style,
+            key=key,
         )
 
     def _build_content(self, style: "ChipStyle") -> Widget:

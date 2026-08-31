@@ -1285,6 +1285,7 @@ class DatePicker(ComposableWidget):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["DatePickerStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize DatePicker.
 
@@ -1297,8 +1298,9 @@ class DatePicker(ComposableWidget):
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._value_obs = value
         self._on_change = on_change
         self._on_confirm = on_confirm
@@ -1661,6 +1663,7 @@ class DockedDatePicker(ComposableWidget):
         supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         is_error: bool | ReadOnlyObservableProtocol[bool] = False,
         style: Optional["DockedDatePickerStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize DockedDatePicker.
 
@@ -1676,8 +1679,9 @@ class DockedDatePicker(ComposableWidget):
             supporting_text: Text shown below the field.  Empty by default.
             is_error: Whether to show the field in its error state.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._value_obs = value
         # The one writable cell this widget touches, and only when the calendar
         # commits. A read-only source displays only -- the same rule TextField
@@ -1840,6 +1844,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDatePickerStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDatePicker.
 
@@ -1849,8 +1854,9 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._supporting_text = supporting_text
         self._min_date = min_date
         self._max_date = max_date
@@ -2090,6 +2096,7 @@ class ModalDateRangePicker(
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDateRangePickerStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDateRangePicker.
 
@@ -2099,8 +2106,9 @@ class ModalDateRangePicker(
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._supporting_text = supporting_text
         self._min_date = min_date
         self._max_date = max_date
@@ -2358,6 +2366,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDateInputStyle"] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDateInput.
 
@@ -2369,8 +2378,9 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
             min_date: Minimum acceptable date.
             max_date: Maximum acceptable date.
             style: Optional style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self._init_value = init_value
         self._supporting_text = supporting_text
         self._input_label = input_label

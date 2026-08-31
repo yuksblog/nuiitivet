@@ -57,6 +57,7 @@ class GridItem(Container):
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         alignment: Union[str, Tuple[str, str]] = "start",
+        key: Optional[str] = None,
     ):
         """Initialize the GridItem wrapper.
 
@@ -68,6 +69,7 @@ class GridItem(Container):
             height: Override height.
             padding: Padding around the child within the grid cell.
             alignment: Alignment within the grid cell. Defaults to "start".
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             child=child,
@@ -75,6 +77,7 @@ class GridItem(Container):
             height=height,
             padding=padding,
             alignment=alignment,
+            key=key,
         )
         self._row_spec = row
         self._column_spec = column
@@ -135,6 +138,7 @@ class Grid(Widget):
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         row_gap: int = 0,
         column_gap: int = 0,
+        key: Optional[str] = None,
     ):
         """Initialize the Grid layout.
 
@@ -150,8 +154,9 @@ class Grid(Widget):
             padding: Padding around the grid content.
             row_gap: Vertical gap between rows.
             column_gap: Horizontal gap between columns.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
 
         self._rows: List[Sizing] = [parse_sizing(d) for d in rows] if rows else []
         self._columns: List[Sizing] = [parse_sizing(d) for d in columns] if columns else []

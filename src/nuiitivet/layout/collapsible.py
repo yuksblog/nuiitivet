@@ -97,6 +97,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
         motion_out: Optional[Motion] = None,
         axis: Axis = "both",
         alignment: Union[str, Tuple[str, str]] = "top-left",
+        key: Optional[str] = None,
     ) -> None:
         """Initialize a Collapsible.
 
@@ -112,8 +113,9 @@ class Collapsible(FocusTraversalBlocker, Widget):
                 ``"vertical"``). Axes that are not animated pass the child's
                 natural size through unchanged.
             alignment: Alignment of the child within the animated rectangle.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(max_children=1, overflow_policy="replace_last")
+        super().__init__(max_children=1, overflow_policy="replace_last", key=key)
         self._opened: Union[bool, ObservableBase[bool]] = opened
         self._motion_in = motion
         self._motion_out = motion_out if motion_out is not None else motion

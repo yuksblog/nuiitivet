@@ -20,14 +20,15 @@ class Spacer(Widget):
         height: preferred height (same accepted formats as width)
     """
 
-    def __init__(self, *, width: SizingLike = 0, height: SizingLike = 0):
+    def __init__(self, *, width: SizingLike = 0, height: SizingLike = 0, key: Optional[str] = None):
         """Initialize a Spacer.
 
         Args:
             width: Preferred width. Use Sizing.weight() or 0 for filling space.
             height: Preferred height. Use Sizing.weight() or 0 for filling space.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height)
+        super().__init__(width=width, height=height, key=key)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Return preferred size based on Sizings.

@@ -97,6 +97,7 @@ class MenuItem(InteractiveWidget):
         disabled: bool = False,
         leading_icon: Symbol | str | None = None,
         trailing: Symbol | str | None = None,
+        key: str | None = None,
     ) -> None:
         """Initialize MenuItem.
 
@@ -110,6 +111,7 @@ class MenuItem(InteractiveWidget):
             disabled: Whether this item is disabled.
             leading_icon: Optional leading icon.
             trailing: Optional trailing icon (Symbol) or trailing text (str).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self.label = label
         self.leading_icon = leading_icon
@@ -143,6 +145,7 @@ class MenuItem(InteractiveWidget):
             # The enclosing Menu's FocusScope moves focus between the items; the
             # global Tab sequence must not stop on them (WAI-ARIA menu pattern).
             traversable=False,
+            key=key,
         )
         self._build_content(self._menu_style)
         self._apply_style(self._menu_style)
@@ -334,6 +337,7 @@ class SubMenuItem(MenuItem):
         *,
         leading_icon: Symbol | str | None = None,
         disabled: bool = False,
+        key: str | None = None,
     ) -> None:
         """Initialize SubMenuItem.
 
@@ -342,6 +346,7 @@ class SubMenuItem(MenuItem):
             items: Submenu entries.
             leading_icon: Optional leading icon.
             disabled: Whether this item is disabled.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._submenu_items = list(items)
         self._submenu_handle: OverlayHandle[object] | None = None
@@ -357,6 +362,7 @@ class SubMenuItem(MenuItem):
             disabled=disabled,
             leading_icon=leading_icon,
             trailing=Symbols.chevron_right,
+            key=key,
         )
 
     def _on_self_click(self) -> None:
@@ -513,6 +519,7 @@ class Menu(InteractiveWidget):
         style: MenuStyle | None = None,
         autofocus: bool = True,
         parent_item: "SubMenuItem | None" = None,
+        key: str | None = None,
     ) -> None:
         """Initialize Menu.
 
@@ -522,6 +529,7 @@ class Menu(InteractiveWidget):
             style: Optional menu style override.
             autofocus: Whether opening the menu focuses its first enabled item.
             parent_item: The SubMenuItem this menu expands from, if it is a submenu.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self.items = list(items)
         self.on_dismiss = on_dismiss
@@ -563,6 +571,7 @@ class Menu(InteractiveWidget):
             # The menu is one group, not a row of stops: Tab neither lands on the
             # surface nor on the items, it leaves the menu (see the scope below).
             traversable=False,
+            key=key,
         )
 
         # Tab roves the items like everywhere else in the framework: it is the key

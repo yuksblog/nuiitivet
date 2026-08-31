@@ -276,7 +276,7 @@ def test_scroll_refuses_a_target_that_is_not_a_scroll_region() -> None:
     # app-authored one (not its internal viewport), and coordinates that reach it.
     assert "VerticalScrollable" in message
     assert "x=50 y=50" in message
-    assert "keyed()" in message
+    assert "key=" in message
     assert "scroll_into_view" in message
     assert not any(cell.presses for cell in cells)
 

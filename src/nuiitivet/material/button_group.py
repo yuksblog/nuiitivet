@@ -124,6 +124,7 @@ class GroupButton(InteractiveWidget):
         disabled: "bool | MutableObservableBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[ButtonGroupStyle]" = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize GroupButton.
 
@@ -135,6 +136,7 @@ class GroupButton(InteractiveWidget):
             disabled: Disable interaction.
             width: Width sizing spec.
             style: Visual style override.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
 
@@ -227,6 +229,7 @@ class GroupButton(InteractiveWidget):
             border_width=bw,
             corner_radius=initial_corners,
             state_layer_color=effective_style.overlay_color or ColorRole.ON_SURFACE,
+            key=key,
         )
 
         # Override state-layer opacities from style
@@ -791,6 +794,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         connected_inner_press_only: bool,
         group_width: SizingLike,
         style: "ButtonGroupStyle",
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the shared button group layout.
 
@@ -807,6 +811,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
                 ``Box``.  ``None`` for content-fit; ``"wt"`` for full-width.
             style: The style to build with -- the caller's, or the preset that
                 stands in until the first measure can reach the theme.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _validate_items(items)
 
@@ -827,7 +832,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
             height=style.container_height,
         )
 
-        super().__init__(child=self._row, width=group_width)
+        super().__init__(child=self._row, width=group_width, key=key)
 
         # The group is the Tab stop; its items are not (see on_mount). Tab lands
         # here, the scope hands the focus to the first item, and the arrow keys
@@ -1017,6 +1022,7 @@ class StandardButtonGroup(_ButtonGroupBase):
         items: Sequence[GroupButton],
         *,
         style: "Optional[StandardButtonGroupStyle]" = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize StandardButtonGroup.
 
@@ -1025,6 +1031,7 @@ class StandardButtonGroup(_ButtonGroupBase):
             style: Visual style override.  Defaults to the theme's standard
                 button group style, which itself falls back to
                 ``StandardButtonGroupStyle.filled()`` (size ``"s"``).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import (
             StandardButtonGroupStyle as _Std,
@@ -1039,6 +1046,7 @@ class StandardButtonGroup(_ButtonGroupBase):
             connected_inner_press_only=False,
             group_width=None,  # Fits content
             style=eff_style,
+            key=key,
         )
 
     def _resolve_group_style(self) -> "StandardButtonGroupStyle":
@@ -1082,6 +1090,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         *,
         select_mode: Literal["single", "multi"] = "single",
         style: "Optional[ConnectedButtonGroupStyle]" = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize ConnectedButtonGroup.
 
@@ -1091,6 +1100,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             style: Visual style override.  Defaults to the theme's connected
                 button group style, which itself falls back to
                 ``ConnectedButtonGroupStyle.filled()`` (size ``"s"``).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import (
             ConnectedButtonGroupStyle as _Con,
@@ -1107,6 +1117,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             connected_inner_press_only=True,
             group_width="wt",
             style=eff_style,
+            key=key,
         )
 
     def _resolve_group_style(self) -> "ConnectedButtonGroupStyle":

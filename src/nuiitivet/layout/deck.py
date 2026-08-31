@@ -33,6 +33,7 @@ class Deck(Widget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the Deck layout.
 
@@ -44,8 +45,9 @@ class Deck(Widget):
             width: The preferred width of the container. Defaults to None.
             height: The preferred height of the container. Defaults to None.
             padding: Padding to apply around the visible child. Defaults to 0.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
 
         # Add all children
         if children:

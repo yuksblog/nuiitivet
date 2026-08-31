@@ -7,7 +7,6 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.text import Text
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.observable import Observable
 from nuiitivet.testing import StaleNodeError, TargetNotFoundError, mount
 from nuiitivet.theme.plain_theme import PlainTheme
@@ -15,8 +14,8 @@ from nuiitivet.theme.theme import Theme
 
 
 def _text(value: object, key: str) -> Widget:
-    """A keyed Text. ``modifier()`` returns the widget it decorated."""
-    return Text(value).modifier(keyed(key))  # type: ignore[arg-type]
+    """A keyed Text."""
+    return Text(value, key=key)  # type: ignore[arg-type]
 
 
 def test_layout_then_query() -> None:

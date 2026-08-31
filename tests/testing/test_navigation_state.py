@@ -371,12 +371,11 @@ def test_a_nested_navigator_is_reached_through_its_own_stack() -> None:
     itself.
     """
     from nuiitivet.layout.column import Column
-    from nuiitivet.modifiers.keyed import keyed
 
     class Tabs(ComposableWidget):
         def build(self) -> Widget:
             return Column(
-                children=[Navigator(ListScreen()).modifier(keyed("tabs"))],
+                children=[Navigator(ListScreen(), key="tabs")],
                 width="wt",
                 height="wt",
             )

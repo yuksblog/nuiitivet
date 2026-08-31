@@ -59,6 +59,7 @@ class Card(ComposableWidget, Box):
         padding: PaddingLike = 0,
         alignment: AlignmentLike = "start",
         style: Optional[CardStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize Card.
 
@@ -71,6 +72,7 @@ class Card(ComposableWidget, Box):
             style: Visual style preset. Defaults to the theme's filled card
                 style. Use :meth:`CardStyle.filled`, :meth:`CardStyle.outlined`,
                 or :meth:`CardStyle.elevated` for the standard M3 variants.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._child_spec: ChildSpec = child
         self._user_style: Optional[CardStyle] = style
@@ -98,6 +100,7 @@ class Card(ComposableWidget, Box):
             shadow_color=_shadow.color,
             shadow_offset=_shadow.offset,
             alignment=alignment,
+            key=key,
         )
 
         self._content_scope_id: Optional[str] = None

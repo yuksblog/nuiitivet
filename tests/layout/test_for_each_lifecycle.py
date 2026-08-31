@@ -34,7 +34,7 @@ def _mount_column(items: Observable) -> tuple[Column, List[str]]:
             | on_unmount(lambda item=item: log.append(f"unmount {item}"))
         )
 
-    root = Column(children=[ForEach(items, builder, key=lambda it, i: it)])
+    root = Column(children=[ForEach(items, builder, key_fn=lambda it, i: it)])
     root.mount(_DummyApp())
     return root, log
 

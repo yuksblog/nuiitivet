@@ -118,8 +118,8 @@ what they *meant*, not what the app is.
 
 - Read a node's `tree` / `state` (both scoped to it) instead of dumping the whole
   tree. `key` / `label` drive it; `path` locates it in `describe_tree`.
-- **No `key`, `label`, or `target` on it?** Expected — most apps carry no
-  `keyed()`, and then `resolve_target` has nothing to anchor on. Its scoped
+- **No `key`, `label`, or `target` on it?** Expected — most apps pass no
+  `key=`, and then `resolve_target` has nothing to anchor on. Its scoped
   `tree` is what tells two same-typed nodes apart (two bare `_RailItemButton`s by
   the `Text` inside each), and `path` is how you reach it.
 - A node's `rect` here is what is **on screen** of it, clips applied — unlike
@@ -176,16 +176,16 @@ is on screen*:
 `click`, `scroll`, `scroll_into_view`, `type`, `key` drive the app. Resolve
 targets from `describe_tree`, or by a stable `key`.
 
-**Make a widget targetable — `keyed()`.** Attach a stable `key` with the `keyed()`
-modifier so the bridge can drive the widget by `key`, and so its state survives a
+**Make a widget targetable — `key=`.** Every widget takes a stable `key` in its
+constructor so the bridge can drive it by `key`, and so its state survives a
 reorder across hot reload:
 
 ```python
-widget.modifier(keyed("increment-btn"))
+nv.Button("increment", key="increment-btn")
 ```
 
-Add it on demand and remove it once the need is gone. When chained with wrapping
-modifiers, apply `keyed()` **last**.
+Add it on demand and remove it once the need is gone. For a widget built by a
+helper you do not control, assign the public attribute: `widget.key = "row"`.
 
 A returned node is **not** proof the intended handler fired. `click` resolves the
 first depth-first match, then dispatches at that node's center — so a duplicate
@@ -205,7 +205,7 @@ something else. Not a bad target: the widget exists, it just isn't reachable yet
 - **`scroll` is for exploring** a list you haven't read yet. **Target the region,
   not a row in it**: a row anchor is refused, because the wheel would carry it
   off screen and leave your next call with no target. Regions often have no
-  `key` — attach one with `keyed()`, or use the `x` / `y` centre of the region's
+  `key` — give the region one with `key=`, or use the `x` / `y` centre of the region's
   rect, which stays put as the content scrolls. `dx` / `dy` are **wheel notches,
   ~20 px each**, positive = down / right.
 - **Read the result.** `at_end: true` with an unchanged `offset` is your stop

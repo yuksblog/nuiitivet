@@ -161,6 +161,7 @@ class TextField(InteractiveWidget):
         width: SizingLike = 200,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[TextFieldStyle] = None,
+        key: Optional[str] = None,
     ):
         """Initialize TextField.
 
@@ -202,8 +203,10 @@ class TextField(InteractiveWidget):
             width: Width specification.
             padding: Padding around the text field.
             style: Custom style configuration.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
+            key=key,
             width=width,
             padding=padding,
             state_layer_color=ColorRole.ON_SURFACE,

@@ -12,7 +12,6 @@ from typing import Any
 
 from nuiitivet.dev.selection import Selection, describe_selection
 from nuiitivet.layout.column import Column
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -130,7 +129,7 @@ def test_a_dead_member_disappears_from_the_members_list() -> None:
 
 def _keyed(text: str, key: str) -> Any:
     """A ``Text`` carrying a stable key, which is what anchors a path across a reload."""
-    return Text(text).modifier(keyed(key))
+    return Text(text, key=key)
 
 
 def _tree(label: str) -> Column:
@@ -203,7 +202,7 @@ def test_a_node_is_described_as_itself_not_as_its_keyed_ancestor() -> None:
     beside the picked node's rect, path and tree describes neither node.
     """
     inner = Text("increment")
-    button = Column(children=[inner]).modifier(keyed("increment-btn"))
+    button = Column(children=[inner], key="increment-btn")
     with mount(button) as host:
         host.layout(300, 200)
         selection = Selection()
@@ -414,7 +413,7 @@ def test_a_node_kept_only_for_a_descendant_carries_no_relation() -> None:
 def test_a_designated_node_carries_where_it_was_built() -> None:
     """The step after "which widget is this": which line built it.
 
-    Without it, an app carrying no ``keyed()`` leaves the reader a chain of
+    Without it, an app passing no ``key=`` leaves the reader a chain of
     anonymous types and a grep -- which is how this was found.
     """
     from nuiitivet.dev import source

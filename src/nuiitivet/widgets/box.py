@@ -47,8 +47,10 @@ class Box(CachedPaintMixin, Widget):
         shadow_offset: Tuple[float, float] = (0, 0),
         # Alignment for the child (if present)
         alignment: Union[str, Tuple[str, str]] = "center",
+        *,
+        key: Optional[str] = None,
     ):
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self._theme_state_ready = False
         self._bgcolor: Optional[ColorSpec] = None
         self._border_color: Optional[ColorSpec] = None

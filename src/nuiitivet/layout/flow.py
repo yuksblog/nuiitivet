@@ -32,8 +32,9 @@ class Flow(Widget):
         cross_alignment: str = "start",
         width: SizingLike = None,
         height: SizingLike = None,
+        key: Optional[str] = None,
     ) -> None:
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for child in children:
                 self.add_child(child)
@@ -58,6 +59,7 @@ class Flow(Widget):
         cross_alignment: str = "start",
         width: SizingLike = None,
         height: SizingLike = None,
+        key: Optional[str] = None,
     ) -> "Flow":
         """Create a Flow that materializes children from items via ForEach."""
 
@@ -72,6 +74,7 @@ class Flow(Widget):
             cross_alignment=cross_alignment,
             width=width,
             height=height,
+            key=key,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

@@ -76,7 +76,8 @@ class ForEach(ComposableWidget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
-        key: Optional[Callable[[Any, int], Any]] = None,
+        key_fn: Optional[Callable[[Any, int], Any]] = None,
+        key: Optional[str] = None,
     ):
         """Initialize the ForEach data provider.
 
@@ -84,15 +85,18 @@ class ForEach(ComposableWidget):
             items: The source data collection. Can be an Iterable, an Observable,
                 or an object with a .value attribute (checking value first).
             builder: A function that takes (item, index) and returns a Widget.
-            key: An optional function `(item, index) -> Any` to identify items
+            key_fn: An optional function `(item, index) -> Any` to identify items
                 uniquely. Using keys improves performance by recycling widgets
                 when items are reordered. If None, the index is used as the key.
+            key: Stable widget identity for dev-bridge targeting and hot reload
+                (this ForEach node itself — not the per-item identity, which is
+                ``key_fn``'s job).
         """
-        super().__init__()
+        super().__init__(key=key)
         self.items = items
         self._items_handle = self._capture_items_handle(items)
         self.builder = builder
-        self.key_fn = key
+        self.key_fn = key_fn
         self._items_unsub: Optional[Callable[[], None]] = None
         self._entries_by_token: Dict[str, _ForEachEntry] = {}
         self._ordered_entries: List[_ForEachEntry] = []

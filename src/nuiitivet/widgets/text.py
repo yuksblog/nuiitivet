@@ -77,8 +77,9 @@ class TextBase(Widget):
         overflow: Literal["visible", "clip", "ellipsis"] = "visible",
         truncation: Literal["tail", "head", "middle"] = "tail",
         soft_wrap: bool = True,
+        key: Optional[str] = None,
     ):
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self.label = label
 
         # Use provided style or None (resolved via property)

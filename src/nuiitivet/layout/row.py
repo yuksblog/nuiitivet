@@ -36,6 +36,7 @@ class Row(Widget):
         gap: Union[int, ObservableBase] = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
+        key: Optional[str] = None,
     ):
         """Initialize Row and configure layout.
 
@@ -49,8 +50,9 @@ class Row(Widget):
                 'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Vertical alignment of children.
                 'start', 'center', 'end', 'stretch'.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, padding=padding)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for c in children:
                 self.add_child(c)
@@ -84,6 +86,7 @@ class Row(Widget):
         gap: int = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
+        key: Optional[str] = None,
     ) -> "Row":
         """Create a Row that materializes children from items via ForEach.
 
@@ -96,6 +99,7 @@ class Row(Widget):
             gap: Space between children.
             main_alignment: Horizontal alignment of children.
             cross_alignment: Vertical alignment of children.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)
         return cls(
@@ -106,6 +110,7 @@ class Row(Widget):
             gap=gap,
             main_alignment=main_alignment,
             cross_alignment=cross_alignment,
+            key=key,
         )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

@@ -85,6 +85,7 @@ class _ScrollableBase(Widget):
         scrollbar_behavior: Optional[ScrollbarBehavior] = None,
         scrollbar_style: Optional[ScrollbarStyle] = None,
         style: Optional[ScrollableStyle] = None,
+        key: Optional[str] = None,
     ) -> None:
         """Initialize the scrollable.
 
@@ -105,8 +106,9 @@ class _ScrollableBase(Widget):
                 track clicks…).
             scrollbar_style: Scrollbar appearance (thickness, min thumb length).
             style: Placement (viewport padding, scrollbar padding, overlay).
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height)
+        super().__init__(width=width, height=height, key=key)
 
         if child is None:
             raise ValueError("Scrollable requires a child widget")

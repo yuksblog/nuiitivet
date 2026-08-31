@@ -77,7 +77,7 @@ class Settings(nv.ComposableWidget):
             children=[
                 nv.Text("Settings", type_scale=nv.TypeScale.TITLE_SMALL),
                 nv.Text("Modal: the main window ignores input while this is open.", style=_MUTED),
-                nv.Button("Done", on_click=self._done).modifier(nv.keyed("settings-done")),
+                nv.Button("Done", on_click=self._done, key="settings-done"),
             ],
             gap=12,
             padding=16,
@@ -118,8 +118,8 @@ class Main(nv.ComposableWidget):
                 nv.Text(self.state.log, style=_MUTED),
                 nv.Row(
                     children=[
-                        nv.Button("Open palette", on_click=self._open_palette).modifier(nv.keyed("open-palette")),
-                        nv.Button("Open settings…", on_click=self._open_settings).modifier(nv.keyed("open-settings")),
+                        nv.Button("Open palette", on_click=self._open_palette, key="open-palette"),
+                        nv.Button("Open settings…", on_click=self._open_settings, key="open-settings"),
                     ],
                     gap=8,
                 ),

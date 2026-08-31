@@ -16,7 +16,6 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.modifiers.keyed import keyed
 from nuiitivet.observable import Observable
 from nuiitivet.testing import AppHarness, ContainedCallbackWarning, mount
 from nuiitivet.widgeting import callbacks as _callbacks
@@ -27,7 +26,7 @@ SIZE = (400, 300)
 
 
 def _text(value: object, key: str) -> Widget:
-    return Text(value).modifier(keyed(key))  # type: ignore[arg-type]
+    return Text(value, key=key)  # type: ignore[arg-type]
 
 
 class _Screen(ComposableWidget):
@@ -42,7 +41,7 @@ class _Screen(ComposableWidget):
         return Column(
             children=[
                 _text(self.status, "status"),
-                Button("go", on_click=self._go).modifier(keyed("go")),
+                Button("go", on_click=self._go, key="go"),
             ]
         )
 

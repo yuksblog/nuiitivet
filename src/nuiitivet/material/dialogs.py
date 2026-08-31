@@ -59,6 +59,7 @@ class BasicDialog(ComposableWidget):
         actions: Optional[List[Widget]] = None,
         style: Optional[DialogStyle] = None,
         width: float = 280.0,
+        key: Optional[str] = None,
     ):
         """Initialize BasicDialog.
 
@@ -69,8 +70,9 @@ class BasicDialog(ComposableWidget):
             actions: Optional action widgets (typically buttons).
             style: Optional dialog style override.
             width: Container width in dp (MD3 range: 280-560). Defaults to 280.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__()
+        super().__init__(key=key)
         self.title = title
         self.message = message
         self.icon = icon
