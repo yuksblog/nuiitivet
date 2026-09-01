@@ -14,37 +14,56 @@ front-loads the correct idioms and ships a linter that flags the leaks.
 
 ## Install
 
-The skill lives in the Nuiitivet repository at
-[`skills/nuiitivet-app/`](../../../skills/nuiitivet-app/). It is **not** part of
-the pip package — you copy the directory into your assistant's skills directory.
-It follows the **Agent Skills** open standard (a `SKILL.md` plus its references
-and linter script), so the *same* directory works across assistants — only the
-destination differs.
+The skill follows the **Agent Skills** open standard (a `SKILL.md` plus its
+references and linter script), so the *same* directory works across assistants —
+only the destination differs. Three ways to install it:
 
-### Claude Code
+### Bundled with the package
+
+The pip package carries the skills, so what this installs always matches the
+nuiitivet version you have — re-run it after upgrading nuiitivet. Omit the
+skill name to install both skills. The defaults target Claude's skills
+directories; point `--dest` at any other assistant's.
 
 ```bash
-# project-local (checked in with your repo)
+# project-local (default) — for Claude, .claude/skills/
+python -m nuiitivet.skills install nuiitivet-app
+
+# or personal (available in every project) — for Claude, ~/.claude/skills/
+python -m nuiitivet.skills install --user nuiitivet-app
+
+# or another assistant's skills directory — e.g. GitHub Copilot
+python -m nuiitivet.skills install --dest .github/skills nuiitivet-app
+```
+
+### Copy by hand
+
+The skill lives in the Nuiitivet repository at
+[`skills/nuiitivet-app/`](https://github.com/yuksblog/nuiitivet/tree/main/skills/nuiitivet-app) — copy the directory
+into your assistant's skills directory. The examples below use Claude's
+(`.claude/skills/`); for another assistant only the destination changes, e.g.
+`.github/skills/` for GitHub Copilot:
+
+```bash
+# without a checkout
+npx degit yuksblog/nuiitivet/skills/nuiitivet-app .claude/skills/nuiitivet-app
+
+# from a checkout — project-local (checked in with your repo)
 cp -r path/to/nuiitivet/skills/nuiitivet-app .claude/skills/nuiitivet-app
 
 # or personal (available in every project)
 cp -r path/to/nuiitivet/skills/nuiitivet-app ~/.claude/skills/nuiitivet-app
 ```
 
-### GitHub Copilot
+### Claude Code plugin
 
-```bash
-# project-local (checked in with your repo)
-cp -r path/to/nuiitivet/skills/nuiitivet-app .github/skills/nuiitivet-app
+One command pair installs both skills and wires up the
+[dev bridge](dev_bridge_mcp.md) MCP server:
 
-# or personal (available in every project)
-cp -r path/to/nuiitivet/skills/nuiitivet-app ~/.copilot/skills/nuiitivet-app
+```text
+/plugin marketplace add yuksblog/nuiitivet
+/plugin install nuiitivet
 ```
-
-The skill is self-contained — `SKILL.md`, its topical references, and the linter
-script travel together, so copying the whole directory is all that is needed.
-Once installed, the assistant loads it whenever it writes or reviews Nuiitivet
-code — no per-session setup.
 
 ## What it front-loads
 

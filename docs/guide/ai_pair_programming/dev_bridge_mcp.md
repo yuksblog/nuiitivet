@@ -27,6 +27,10 @@ pip install 'nuiitivet[dev]'
 
 ### 2. Register the server in your MCP host
 
+If you installed the skills through the Claude Code plugin
+([install options](nuiitivet_app_skill.md#install)), skip this step — the
+plugin registers this server for you.
+
 `python -m nuiitivet.dev mcp` serves the bridge's primitives as MCP tools over
 stdio. Register that command:
 
@@ -34,12 +38,18 @@ stdio. Register that command:
 {
   "mcpServers": {
     "nuiitivet-dev": {
-      "command": "python",
+      "command": ".venv/bin/python",
       "args": ["-m", "nuiitivet.dev", "mcp"]
     }
   }
 }
 ```
+
+The project-relative `command` pins the server to your project's environment,
+so it works no matter how the MCP host was launched. It resolves from where
+the host starts the server — the project root, for Claude Code; on Windows the
+path is `.venv\Scripts\python.exe`. A plain `python` also works, but only when
+the host is launched with the right environment already on PATH.
 
 ### 3. Launch your app under the dev runner
 

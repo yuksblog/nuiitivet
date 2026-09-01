@@ -21,34 +21,14 @@ front-loads the cheap, reliable way to work the running app.
 
 ## Install
 
-The skill lives in the Nuiitivet repository at
-[`skills/nuiitivet-debug/`](../../../skills/nuiitivet-debug/). Like
-`nuiitivet-app`, it is **not** part of the pip package — copy the directory into
-your assistant's skills directory. It follows the **Agent Skills** open standard
-(a `SKILL.md`), so the same directory works across assistants; only the
-destination differs.
+Like `nuiitivet-app`, the skill lives in the Nuiitivet repository at
+[`skills/nuiitivet-debug/`](https://github.com/yuksblog/nuiitivet/tree/main/skills/nuiitivet-debug) and follows the
+**Agent Skills** open standard (a `SKILL.md`). It installs the same three ways
+— see the [`nuiitivet-app` install section](nuiitivet_app_skill.md#install)
+and substitute `nuiitivet-debug` for the skill name. The Claude Code plugin
+installs both skills at once, and so does running
+`python -m nuiitivet.skills install` without a skill name.
 
-### Claude Code
-
-```bash
-# project-local (checked in with your repo)
-cp -r path/to/nuiitivet/skills/nuiitivet-debug .claude/skills/nuiitivet-debug
-
-# or personal (available in every project)
-cp -r path/to/nuiitivet/skills/nuiitivet-debug ~/.claude/skills/nuiitivet-debug
-```
-
-### GitHub Copilot
-
-```bash
-# project-local (checked in with your repo)
-cp -r path/to/nuiitivet/skills/nuiitivet-debug .github/skills/nuiitivet-debug
-
-# or personal (available in every project)
-cp -r path/to/nuiitivet/skills/nuiitivet-debug ~/.copilot/skills/nuiitivet-debug
-```
-
-`nuiitivet-app` and `nuiitivet-debug` are independent — install either or both.
 Once installed, the assistant loads this one whenever there is a Nuiitivet app to
 run, verify, or debug — no per-session setup.
 

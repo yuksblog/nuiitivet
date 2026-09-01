@@ -31,10 +31,11 @@ whether or not an assistant is involved.
 
 ### AI skills — what the assistant is told about them
 
-A skill is a bundle of instructions you copy into your assistant's skills
-directory. The features above are usable without them; the skills are what make
-an assistant reach for the right one at the right time instead of guessing.
-Install either or both.
+A skill is a bundle of instructions you install into your assistant's skills
+directory — each skill page shows the ways to do that. The features above are
+usable without them; the skills are what make an assistant reach for the right
+one at the right time instead of guessing. Install both — one covers each leg
+of the loop.
 
 - **[The `nuiitivet-app` skill](nuiitivet_app_skill.md)** — *idioms.* Keeps the
   assistant's edits idiomatic Nuiitivet rather than leaking Flutter/React/Rx
