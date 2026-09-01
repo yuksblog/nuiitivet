@@ -1,0 +1,20 @@
+{
+  "name": "nuiitivet",
+  "displayName": "Nuiitivet",
+  "version": "0.19.0",
+  "description": "Agent skills for building and debugging Nuiitivet apps, plus the dev-bridge MCP server (needs nuiitivet[dev] installed in the active Python environment).",
+  "author": {
+    "name": "yuksblog",
+    "url": "https://github.com/yuksblog"
+  },
+  "homepage": "https://yuksblog.github.io/nuiitivet/",
+  "repository": "https://github.com/yuksblog/nuiitivet",
+  "license": "Apache-2.0",
+  "keywords": ["python", "ui", "desktop", "material-design"],
+  "mcpServers": {
+    "nuiitivet-dev": {
+      "command": "sh",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/dev/plugin_mcp_launcher.sh"]
+    }
+  }
+}

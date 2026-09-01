@@ -113,10 +113,6 @@ The two bundled skills exist for that.
 - **`nuiitivet-debug`** — teaches launching the app and working the dev bridge,
   down to checking the tree before spending a screenshot
 
-Both live under [skills/](skills/). Copy the ones you want into your
-assistant's skills directory — for Claude Code, `.claude/skills/` in your
-project.
-
 Even so, you will get results you do not like. That is what the next part is
 for.
 
@@ -335,6 +331,21 @@ uv add --dev 'nuiitivet[dev]'
 `[dev]` is the extra the [dev bridge](docs/guide/ai_pair_programming/dev_bridge_mcp.md)'s
 MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
 an AI effectively requires the extra — install it up front.
+
+Then install the two skills from
+[1.4](#14-skills-keep-it-idiomatic) into your assistant. The package bundles
+them, so what you install matches the nuiitivet version you have:
+
+```bash
+python -m nuiitivet.skills install
+```
+
+Where skills belong differs by assistant: by default this writes to Claude's
+project skills directory, `.claude/skills/`; point `--dest` at another
+assistant's. Re-run it after upgrading nuiitivet. The other channels — the
+Claude Code plugin (which also wires up the dev bridge MCP server) and copying
+by hand — are covered in the
+[skill pages](docs/guide/ai_pair_programming/nuiitivet_app_skill.md).
 
 ### 3.3 Your first app
 
