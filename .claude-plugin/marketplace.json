@@ -1,0 +1,14 @@
+{
+  "name": "nuiitivet",
+  "owner": {
+    "name": "yuksblog",
+    "url": "https://github.com/yuksblog"
+  },
+  "plugins": [
+    {
+      "name": "nuiitivet",
+      "source": ".",
+      "description": "Skills for building and debugging Nuiitivet apps, plus the dev-bridge MCP server."
+    }
+  ]
+}
