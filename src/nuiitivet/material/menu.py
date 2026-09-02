@@ -368,6 +368,9 @@ class SubMenuItem(MenuItem):
     def _on_self_click(self) -> None:
         if self.disabled:
             return
+        # A click can pin the submenu open with the pointer already inside the
+        # item, so it may be the event that has to start the poll.
+        self._arm_submenu_tick()
         if self._submenu_pinned:
             self._submenu_pinned = False
             self._close_submenu(suppress_reopen=True)
@@ -402,14 +405,56 @@ class SubMenuItem(MenuItem):
             self._submenu._adopt_style(style)
             self._submenu._apply_menu_style(style)
 
-    def on_mount(self) -> None:
-        super().on_mount()
+    def _handle_hover_change(self, hovered: bool) -> None:
+        super()._handle_hover_change(hovered)
+        if hovered:
+            self._arm_submenu_tick()
 
-        def _tick(_dt: float) -> None:
-            self._update_submenu_visibility()
+    def _on_focused(self, focused: bool, source: FocusSource) -> None:
+        super()._on_focused(focused, source)
+        if focused:
+            self._arm_submenu_tick()
 
-        self._submenu_tick = _tick
-        runtime.clock.schedule_interval(_tick, 1.0 / 30.0)
+    def _arm_submenu_tick(self) -> None:
+        """Start polling the interaction state, unless already polling.
+
+        Deliberately *not* called from ``on_mount``: a menu built into the App's
+        widget tree mounts while ``App()`` is still being constructed, before the
+        backend installs a UI clock, so the tick would land on the fallback thread
+        clock and stay there for the life of the process — opening the submenu off
+        the UI thread (#655). Every caller here is a pointer or focus event, which
+        can only arrive once the loop is running.
+        """
+        if self._submenu_tick is not None:
+            return
+        self._submenu_tick = self._tick_submenu_visibility
+        runtime.clock.schedule_interval(self._tick_submenu_visibility, 1.0 / 30.0)
+
+    def _cancel_submenu_tick(self) -> None:
+        """Stop polling. No-op when not armed."""
+        if self._submenu_tick is None:
+            return
+        runtime.clock.unschedule(self._submenu_tick)
+        self._submenu_tick = None
+
+    def _tick_submenu_visibility(self, _dt: float) -> None:
+        self._update_submenu_visibility()
+        if self._is_submenu_idle():
+            self._cancel_submenu_tick()
+
+    def _is_submenu_idle(self) -> bool:
+        """True when nothing can change until a fresh pointer or focus event.
+
+        The poll exists to notice that an interaction *ended* — the pointer left
+        the item and the submenu, say — which no single event reports. Once
+        everything is closed and untouched there is nothing left to notice, and
+        the arming hooks bring the poll back.
+        """
+        if self._submenu_handle is not None or self._submenu_pinned or self._suppress_reopen:
+            return False
+        if self.state.hovered or self._is_submenu_interacting():
+            return False
+        return not self.state.focused
 
     def _update_submenu_visibility(self) -> None:
         if self.disabled:
@@ -424,11 +469,15 @@ class SubMenuItem(MenuItem):
             self._submenu_pinned = False
 
         if self._suppress_reopen:
-            if pointer_interacting:
+            # Suppression outlives whatever still designates the item: walking out
+            # with Left leaves the item keyboard-focused, and a deliberate close
+            # that the very next tick undoes is no close at all. Right re-enters
+            # by clearing the flag itself.
+            if pointer_interacting or keyboard_focused:
                 return
-            # Lift suppression once pointer is away so hover can open again.
+            # Lift suppression once nothing designates the item, so hover can open again.
             self._suppress_reopen = False
-            if not self._submenu_pinned and not keyboard_focused:
+            if not self._submenu_pinned:
                 return
 
         if pointer_interacting or keyboard_focused or self._submenu_pinned:
@@ -437,9 +486,7 @@ class SubMenuItem(MenuItem):
             self._close_submenu()
 
     def on_unmount(self) -> None:
-        if self._submenu_tick is not None:
-            runtime.clock.unschedule(self._submenu_tick)
-            self._submenu_tick = None
+        self._cancel_submenu_tick()
         self._close_submenu()
         super().on_unmount()
 
@@ -869,6 +916,7 @@ class Menu(InteractiveWidget):
             return False
 
         submenu = item._ensure_submenu()
+        item._arm_submenu_tick()
         item._submenu_pinned = True
         item._suppress_reopen = False
         item._open_submenu()

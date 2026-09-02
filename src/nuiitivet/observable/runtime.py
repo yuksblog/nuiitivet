@@ -175,6 +175,39 @@ class _ThreadClock:
         with self._cond:
             return len(self._entries)
 
+    # -- handover ----------------------------------------------------------
+
+    def migrate_to(self, target: Clock) -> None:
+        """Re-arm every pending callback on ``target`` and drop it from here.
+
+        A widget mounted while the ``App`` is still being *constructed* runs its
+        ``on_mount`` before the backend installs a UI clock, so anything it arms
+        lands here and keeps firing on the servicing thread for the life of the
+        process — :func:`set_clock` alone only rebinds the module global. The
+        callback then touches the widget tree off the UI thread and trips
+        :func:`~nuiitivet.runtime.threading.assert_ui_thread`, half-mounting
+        whatever it was building. Handing the schedule over closes that window
+        for every such widget rather than one at a time (see #655).
+
+        One-shots keep their remaining time; intervals keep their period, which
+        restarts the current one. Both are better than firing on the wrong
+        thread.
+        """
+        with self._cond:
+            entries = self._entries
+            self._entries = []
+            self._cond.notify()
+
+        now = time.monotonic()
+        for entry in entries:
+            try:
+                if entry.is_interval:
+                    target.schedule_interval(entry.fn, entry.delay)
+                else:
+                    target.schedule_once(entry.fn, max(0.0, entry.deadline - now))
+            except Exception:
+                exception_once(_logger, "thread_clock_migrate_exc", "Handing a scheduled callback over failed")
+
 
 clock: Clock = _ThreadClock()
 
@@ -191,6 +224,18 @@ def get_clock() -> Clock:
 
 
 def set_clock(new_clock: Clock) -> None:
-    """Install ``new_clock`` as the clock every deferred notification runs on."""
+    """Install ``new_clock`` as the clock every deferred notification runs on.
+
+    Callbacks already armed on the *fallback* clock are handed over to
+    ``new_clock``: they were armed before a UI clock existed, and leaving them
+    on the servicing thread is what #655 was. Handing over from any other clock
+    is not possible -- the :class:`Clock` protocol cannot enumerate a schedule --
+    and not needed, since those callbacks already run on the UI thread.
+    """
     global clock
+    previous = clock
     clock = new_clock
+    if new_clock is previous:
+        return
+    if isinstance(previous, _ThreadClock):
+        previous.migrate_to(new_clock)
