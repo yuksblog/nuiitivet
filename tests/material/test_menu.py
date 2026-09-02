@@ -7,7 +7,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.material import Menu, MenuDivider, MenuItem, SubMenuItem
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.symbols import Symbols
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:
     from nuiitivet.overlay.overlay_handle import OverlayHandle
@@ -15,6 +15,7 @@ from nuiitivet.material.styles.menu_style import MenuStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.observable import runtime
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
 
@@ -392,3 +393,124 @@ def test_submenu_item_detects_submenu_child_interaction() -> None:
     item._submenu = submenu
 
     assert item._is_submenu_interacting() is True
+
+
+class _RecordingClock:
+    """Records what is armed on it. Fires nothing on its own."""
+
+    def __init__(self) -> None:
+        self.armed: list[tuple[Callable[[float], None], float]] = []
+
+    def schedule_once(self, fn: Callable[[float], None], delay: float) -> None:
+        self.armed.append((fn, delay))
+
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:
+        self.armed.append((fn, interval))
+
+    def unschedule(self, fn: Callable[[float], None]) -> None:
+        self.armed = [entry for entry in self.armed if entry[0] != fn]
+
+
+def test_submenu_item_arms_no_clock_callback_at_mount(monkeypatch) -> None:
+    """#655: on_mount runs before the backend installs a UI clock.
+
+    A menu built into the App's widget tree mounts while ``App()`` is still being
+    constructed, so anything armed there lands on the fallback thread clock and
+    opens the submenu off the UI thread for the life of the process.
+    """
+    clock = _RecordingClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+
+    item.mount(None)
+
+    assert clock.armed == []
+    assert item._submenu_tick is None
+
+
+def test_submenu_item_arms_the_tick_on_hover(monkeypatch) -> None:
+    clock = _RecordingClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+
+    item._handle_hover_change(True)
+
+    assert len(clock.armed) == 1
+    assert item._submenu_tick is not None
+
+
+def test_submenu_item_arms_the_tick_once_while_hovering(monkeypatch) -> None:
+    clock = _RecordingClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+
+    item._handle_hover_change(True)
+    item._handle_hover_change(True)
+    item._on_self_click()
+
+    assert len(clock.armed) == 1
+
+
+def test_submenu_tick_stops_once_the_interaction_is_over(monkeypatch) -> None:
+    """The poll only exists to notice an interaction ending; then it costs nothing."""
+    clock = _RecordingClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+    item._handle_hover_change(True)
+    item.state.hovered = False
+
+    item._tick_submenu_visibility(0.0)
+
+    assert clock.armed == []
+    assert item._submenu_tick is None
+
+
+def test_submenu_tick_keeps_running_while_the_submenu_is_open(monkeypatch) -> None:
+    clock = _RecordingClock()
+    monkeypatch.setattr(runtime, "clock", clock)
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+    item._handle_hover_change(True)
+    item.state.hovered = True
+
+    item._tick_submenu_visibility(0.0)
+
+    assert len(clock.armed) == 1
+    assert item._submenu_tick is not None
+
+
+def test_submenu_suppress_reopen_holds_while_the_item_keeps_keyboard_focus() -> None:
+    """Left walks out of the submenu and leaves the item focused.
+
+    The close must survive the next tick: a deliberate walk-out that reopens a
+    frame later is no walk-out at all. Right re-enters by clearing the flag.
+    """
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+    opened = False
+
+    def _open() -> None:
+        nonlocal opened
+        opened = True
+
+    item._open_submenu = _open  # type: ignore[method-assign]
+    item._suppress_reopen = True
+    item.state.focused = True
+    item._focus_from_pointer = False
+    item.state.hovered = False
+
+    item._update_submenu_visibility()
+
+    assert opened is False
+    assert item._suppress_reopen is True
+
+
+def test_submenu_suppress_reopen_clears_once_the_focus_leaves() -> None:
+    item = SubMenuItem("Export", items=[MenuItem("PNG")])
+    item._suppress_reopen = True
+    item.state.focused = True
+    item._focus_from_pointer = False
+
+    item._update_submenu_visibility()
+    item.state.focused = False
+    item._update_submenu_visibility()
+
+    assert item._suppress_reopen is False

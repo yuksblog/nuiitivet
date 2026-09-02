@@ -372,3 +372,108 @@ def test_one_servicing_thread_regardless_of_how_many_callbacks() -> None:
         assert threading.active_count() - before == 1
     finally:
         clock.cancel_all()
+
+
+class _RecordingClock:
+    """Records what is armed on it. Fires nothing on its own."""
+
+    def __init__(self) -> None:
+        self.intervals: List[Tuple[ClockCallback, float]] = []
+        self.onces: List[Tuple[ClockCallback, float]] = []
+
+    def schedule_once(self, fn: ClockCallback, delay: float) -> None:
+        self.onces.append((fn, delay))
+
+    def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
+        self.intervals.append((fn, interval))
+
+    def unschedule(self, fn: ClockCallback) -> None:
+        self.intervals = [e for e in self.intervals if e[0] != fn]
+        self.onces = [e for e in self.onces if e[0] != fn]
+
+
+class TestHandoverToTheInstalledClock:
+    """#655: callbacks armed before a UI clock existed must not stay on the thread.
+
+    A widget mounted while ``App()`` is being constructed arms on the fallback
+    clock, and ``set_clock`` used to only rebind the module global -- leaving the
+    callback firing on the servicing thread for the life of the process.
+    """
+
+    @pytest.fixture
+    def fallback(self, monkeypatch) -> Iterator[_ThreadClock]:
+        clock = _ThreadClock()
+        monkeypatch.setattr(runtime, "clock", clock)
+        try:
+            yield clock
+        finally:
+            clock.cancel_all()
+
+    def test_interval_moves_to_the_new_clock(self, fallback: _ThreadClock) -> None:
+        def tick(dt: float) -> None:
+            return None
+
+        fallback.schedule_interval(tick, _WINDOW)
+        installed = _RecordingClock()
+
+        runtime.set_clock(installed)
+
+        assert installed.intervals == [(tick, _WINDOW)]
+        assert fallback.pending_count() == 0
+
+    def test_one_shot_keeps_its_remaining_time(self, fallback: _ThreadClock) -> None:
+        def fire(dt: float) -> None:
+            return None
+
+        fallback.schedule_once(fire, _TIMEOUT)
+        installed = _RecordingClock()
+
+        runtime.set_clock(installed)
+
+        assert len(installed.onces) == 1
+        moved_fn, remaining = installed.onces[0]
+        assert moved_fn == fire
+        # The deadline travels with the entry rather than restarting.
+        assert 0.0 < remaining <= _TIMEOUT
+        assert installed.intervals == []
+
+    def test_moved_callback_stops_firing_on_the_servicing_thread(self, fallback: _ThreadClock) -> None:
+        fired = threading.Event()
+
+        def tick(dt: float) -> None:
+            fired.set()
+
+        fallback.schedule_interval(tick, _WINDOW)
+        runtime.set_clock(_RecordingClock())
+
+        # The recording clock never fires, so anything arriving here came from
+        # the fallback's worker -- exactly what #655 was.
+        assert not fired.wait(_SETTLE)
+
+    def test_installing_the_same_clock_twice_does_not_re_arm(self, fallback: _ThreadClock) -> None:
+        def tick(dt: float) -> None:
+            return None
+
+        fallback.schedule_interval(tick, _WINDOW)
+        installed = _RecordingClock()
+
+        runtime.set_clock(installed)
+        runtime.set_clock(installed)
+
+        assert installed.intervals == [(tick, _WINDOW)]
+
+    def test_handover_from_a_non_fallback_clock_is_skipped(self, monkeypatch) -> None:
+        """Only the fallback can enumerate a schedule -- and only it needs to."""
+        previous = _RecordingClock()
+
+        def tick(dt: float) -> None:
+            return None
+
+        previous.schedule_interval(tick, _WINDOW)
+        monkeypatch.setattr(runtime, "clock", previous)
+        installed = _RecordingClock()
+
+        runtime.set_clock(installed)
+
+        assert installed.intervals == []
+        assert previous.intervals == [(tick, _WINDOW)]
