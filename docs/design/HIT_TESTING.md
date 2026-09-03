@@ -81,7 +81,13 @@ above exists to keep the rare case well-defined.
 
 All hit participation routes through one shared helper on `WidgetKernel`:
 
-- `_hit_test_children(x, y)` — the **C** axis (reverse Z-order descent).
+- `_hit_test_children(x, y)` — the **C** axis (reverse Z-order descent). A child's
+  `layout_rect` both gates the point and translates it into the child's space. A
+  child with **no rect or a zero-area one** is neither gated nor translated: the
+  point is handed down as-is. That is what makes a size-less provider such as
+  `ForEach` work — it reports `(0, 0)`, paints nothing, and lifts its children
+  into the parent's coordinate space, so it must never act as a bounds gate for
+  a subtree it does not enclose.
 - `_hit_self_opaque()` — resolves **S** for `auto`. Base returns
   `_hit_is_interactive()`; `Box` widens it to include a painted surface;
   `InteractionHostMixin` reports interactive.
