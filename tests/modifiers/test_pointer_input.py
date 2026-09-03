@@ -21,7 +21,7 @@ def _make_child() -> Box:
 
 
 def _press(region: InteractionRegion, x: float, y: float) -> None:
-    region.set_last_rect(0, 0, 100, 50)
+    region.set_layout_rect(0, 0, 100, 50)
     region.on_pointer_event(PointerEvent.mouse_event(1, T.PRESS, x, y, button=BUTTON_LEFT))
 
 
@@ -57,7 +57,7 @@ def test_composes_with_clickable_without_clobbering() -> None:
     assert isinstance(region.get_node(PointerListenerNode), PointerListenerNode)
     assert isinstance(region.get_node(PointerInputNode), PointerInputNode)
 
-    region.set_last_rect(0, 0, 100, 50)
+    region.set_layout_rect(0, 0, 100, 50)
     region.on_pointer_event(PointerEvent.mouse_event(1, T.PRESS, 30, 25, button=BUTTON_LEFT))
     region.on_pointer_event(PointerEvent.mouse_event(1, T.RELEASE, 30, 25, button=BUTTON_LEFT))
 

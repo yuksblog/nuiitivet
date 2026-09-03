@@ -499,9 +499,9 @@ class _ScrollableBase(Widget):
         self._finish_content_drag(cancel=True)
 
     def _point_in_viewport(self, x: float, y: float) -> bool:
-        rect = getattr(self._viewport, "global_layout_rect", None)
+        rect = getattr(self._viewport, "global_visual_rect", None)
         if rect is None:
-            rect = getattr(self, "global_layout_rect", None)
+            rect = getattr(self, "global_visual_rect", None)
         if rect is None:
             return False
         rx, ry, rw, rh = rect

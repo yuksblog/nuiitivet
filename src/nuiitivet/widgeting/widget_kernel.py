@@ -17,6 +17,8 @@ from nuiitivet.observable.protocols import ObservableBase
 _logger = logging.getLogger(__name__)
 
 Rect: TypeAlias = Tuple[int, int, int, int]
+# Root-space rect *as painted*; float because a scroll offset is not pixel-aligned.
+VisualRect: TypeAlias = Tuple[float, float, float, float]
 
 
 class WidgetKernel:
@@ -122,6 +124,49 @@ class WidgetKernel:
             current = getattr(current, "parent", None)
 
         return (int(x), int(y), int(w), int(h))
+
+    @property
+    def global_visual_rect(self) -> Optional[VisualRect]:
+        """Return this widget's rectangle in root coordinates *as painted*.
+
+        :attr:`global_layout_rect` accumulates layout offsets only, so inside a
+        scrolled region it is content space, off by the scroll offset. This adds
+        each ancestor's ``visual_offset()`` -- the displacement a container
+        applies to its painted children (a scroll viewport today) -- giving the
+        coordinates pointer events arrive in. Anything that checks "is this
+        point inside me" after ``hit_test`` has already resolved the target, or
+        anchors an overlay to a widget, must read this one.
+
+        Paint state (``last_rect``) is deliberately not used: it is ``None``
+        until the first paint and stale for one frame after a scroll, and a
+        harness lays the tree out without ever painting it.
+        """
+
+        rect = self.global_layout_rect
+        if rect is None:
+            return None
+        x, y, w, h = rect
+        dx = dy = 0.0
+
+        current = self._parent
+        visited: set[int] = set()
+        while current is not None:
+            ident = id(current)
+            if ident in visited:
+                break
+            visited.add(ident)
+
+            probe = getattr(current, "visual_offset", None)
+            if callable(probe):
+                try:
+                    adx, ady = probe()
+                    dx += float(adx)
+                    dy += float(ady)
+                except Exception:
+                    pass
+            current = getattr(current, "parent", None)
+
+        return (float(x) + dx, float(y) + dy, float(w), float(h))
 
     def set_layout_rect(self, x: int, y: int, width: int, height: int) -> None:
         self._layout_rect = (int(x), int(y), int(width), int(height))

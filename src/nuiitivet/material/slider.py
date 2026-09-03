@@ -207,7 +207,7 @@ class _SliderBase(InteractiveWidget):
         self._drag_node.activate(event)
 
     def _hit_test_track(self, x: float, y: float) -> bool:
-        gx, gy, gw, gh = self.global_layout_rect or (0, 0, 0, 0)
+        gx, gy, gw, gh = self.global_visual_rect or (0, 0, 0, 0)
         self._compute_geometry(float(gx), float(gy), float(gw), float(gh))
         if self._track_w <= 0.0 or self._track_h <= 0.0:
             return False
@@ -216,7 +216,7 @@ class _SliderBase(InteractiveWidget):
         )
 
     def _hit_test_handle(self, x: float, y: float) -> bool:
-        gx, gy, gw, gh = self.global_layout_rect or (0, 0, 0, 0)
+        gx, gy, gw, gh = self.global_visual_rect or (0, 0, 0, 0)
         self._compute_geometry(float(gx), float(gy), float(gw), float(gh))
         centers = self._handle_centers()
         handle_w = self._current_handle_width()

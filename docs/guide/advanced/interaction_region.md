@@ -55,7 +55,7 @@ class FancyControl(nv.Widget):
         self._interaction.enable_click(on_click=self._on_activate)
 
     def on_pointer_event(self, event: nv.PointerEvent) -> bool:
-        return self._interaction.handle_pointer_event(event, getattr(self, "_last_rect", None))
+        return self._interaction.handle_pointer_event(event, self.global_visual_rect)
 ```
 
 Using the controller directly keeps the widget class (and its attributes) visible to the outside world, while still benefiting from the shared pointer logic.

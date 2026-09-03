@@ -378,9 +378,7 @@ class PointerInputNode(InteractionNode):
             return self._hit_test(x, y)
         rect = bounds
         if rect is None and self.owner:
-            # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
-            # over global_layout_rect (layout-time coords, ignores scroll).
-            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+            rect = getattr(self.owner, "global_visual_rect", None)
         if rect is None:
             return False
         rx, ry, rw, rh = rect
@@ -477,7 +475,7 @@ class PointerListenerNode(InteractionNode):
     def _resolve_rect(self, bounds: Optional[Sequence[float]]) -> Optional[Sequence[float]]:
         rect = bounds
         if rect is None and self.owner:
-            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+            rect = getattr(self.owner, "global_visual_rect", None)
         return rect
 
     def _with_local(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> PointerEvent:
@@ -682,7 +680,7 @@ class FileDropNode(InteractionNode):
     def _resolve_rect(self, bounds: Optional[Sequence[float]]) -> Optional[Sequence[float]]:
         rect = bounds
         if rect is None and self.owner:
-            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+            rect = getattr(self.owner, "global_visual_rect", None)
         return rect
 
     def handle_file_drop(self, event: FileDropEvent, bounds: Optional[Sequence[float]] = None) -> bool:
@@ -895,9 +893,7 @@ class DraggableNode(InteractionNode):
             return self._hit_test(x, y)
         rect = bounds
         if rect is None and self.owner:
-            # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
-            # over global_layout_rect (layout-time coords, ignores scroll).
-            rect = getattr(self.owner, "last_rect", None) or getattr(self.owner, "global_layout_rect", None)
+            rect = getattr(self.owner, "global_visual_rect", None)
         if rect is None:
             return False
         rx, ry, rw, rh = rect
@@ -1454,18 +1450,18 @@ class InteractionHostMixin:
             focus_node.request_focus(FocusSource.POINTER)
 
     def on_pointer_event(self, event: PointerEvent) -> bool:
-        # Dispatch to all nodes that can handle pointer events
+        # Dispatch to all nodes that can handle pointer events. Bounds are the
+        # widget's rect as painted (scroll-aware, no paint required) -- the
+        # space the event's coordinates are in.
         consumed = False
-        # Prefer last_rect (paint-time screen coords, accounts for scroll offsets)
-        # over global_layout_rect (layout-time coords, ignores scroll).
-        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
+        bounds = getattr(self, "global_visual_rect", None)
         for node in self._nodes:
             consumed = node.handle_pointer_event(event, bounds) or consumed
         return consumed
 
     def on_file_drop_event(self, event: FileDropEvent) -> bool:
         consumed = False
-        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
+        bounds = getattr(self, "global_visual_rect", None)
         for node in self._nodes:
             consumed = node.handle_file_drop(event, bounds) or consumed
         return consumed
@@ -1478,7 +1474,7 @@ class InteractionHostMixin:
         pointer is inside or captured. Returns True if any node consumed it.
         """
         consumed = False
-        bounds = getattr(self, "last_rect", None) or getattr(self, "global_layout_rect", None)
+        bounds = getattr(self, "global_visual_rect", None)
         for node in self._nodes:
             consumed = node.handle_modifier_keys_change(event, bounds) or consumed
         return consumed

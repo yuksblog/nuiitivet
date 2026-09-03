@@ -517,7 +517,7 @@ class _DockedContainer(Widget):
         content: Widget,
         *,
         style: DockedSearchBarStyle,
-        bar_rect: Callable[[], Optional[Tuple[int, int, int, int]]],
+        bar_rect: Callable[[], Optional[Tuple[float, float, float, float]]],
         viewport_height: Callable[[], Optional[int]],
     ) -> None:
         super().__init__()
@@ -558,7 +558,7 @@ class _DockedContainer(Widget):
 
         bar = self._bar_rect()
         if bar is not None:
-            width = bar[2]
+            width = int(bar[2])
         elif max_width is not None:
             width = min(int(max_width), int(style.bar.max_width))
         else:
@@ -826,7 +826,7 @@ class DockedSearchBar(ComposableWidget):
         self._container = _DockedContainer(
             content,
             style=self._style,
-            bar_rect=lambda: self._core.global_layout_rect,
+            bar_rect=lambda: self._core.global_visual_rect,
             viewport_height=self._viewport_height,
         )
 

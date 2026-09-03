@@ -23,10 +23,14 @@ See also: [WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)
   - External modules must not read/write `_layout_rect`.
   - Use `layout_rect` and `set_layout_rect()`.
 
-- Input bounds (`global_layout_rect`)
-  - Owner: `WidgetKernel` (layout-derived global geometry)
-  - External modules must not derive input bounds from paint state.
-  - Use `global_layout_rect`.
+- Input bounds (`global_visual_rect`)
+  - Owner: `WidgetKernel` (layout-derived global geometry, plus each ancestor's
+    `visual_offset()`)
+  - External modules must not derive input bounds from paint state, and must
+    not use `global_layout_rect` for them: inside a scrolled region it is
+    content space, off by the scroll offset.
+  - Use `global_visual_rect` -- for bounds checks after `hit_test`, and for
+    overlay anchors.
 
 - Paint geometry (`_last_rect`)
   - Owner: `WidgetKernel` (paint state)
@@ -56,7 +60,11 @@ See also: [WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)
   - Sets the layout rectangle.
 
 - `global_layout_rect: tuple[int, int, int, int] | None`
-  - Read-only global layout rectangle for input/hit-testing.
+  - Read-only global layout rectangle (content space).
+
+- `global_visual_rect: tuple[float, float, float, float] | None`
+  - Read-only global rectangle as painted: `global_layout_rect` plus each
+    ancestor's `visual_offset()`. The rect for input bounds and overlay anchors.
 
 - `last_rect: tuple[int, int, int, int] | None`
   - Read-only last painted rectangle (typically absolute coordinates).
@@ -77,7 +85,10 @@ See also: [WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)
 
 - Layout modules must call `set_layout_rect()` instead of assigning `_layout_rect`.
 - Paint routines must call `set_last_rect()` instead of assigning `_last_rect`.
-- Input and hit-testing must use `global_layout_rect` and must not depend on `last_rect`.
+- Input bounds and overlay anchors must use `global_visual_rect` and must not depend on `last_rect`.
+- A container that paints its children off their layout position (a scroll
+  viewport) must expose `visual_offset()`, or `global_visual_rect` is wrong
+  beneath it.
 - Runtime traversal must use `built_child` instead of reading `_built`.
 - `WidgetKernel` must not reach into `BuilderHostMixin` internals.
 - Render loops must use `needs_layout` / `clear_needs_layout()` instead of mutating `_needs_layout`.

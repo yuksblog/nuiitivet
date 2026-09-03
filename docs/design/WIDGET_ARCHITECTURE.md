@@ -272,4 +272,4 @@ To achieve high performance in Python, the framework implements caching and scop
   - `CachedPaintMixin` allows widgets to render their background/content into a reusable Skia surface.
   - `paint_cache()` context manager handles the recording and playback of these surfaces.
   - `_paint_dependencies` or explicit `invalidate_paint_cache()` calls manage cache invalidation.
-  - Hit testing continues to use the authoritative `_last_rect`.
+  - Hit testing continues to read layout state (`layout_rect`, `global_visual_rect`), never `_last_rect`.

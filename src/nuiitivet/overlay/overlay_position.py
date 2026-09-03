@@ -134,7 +134,7 @@ class OverlayPosition:
 
     @staticmethod
     def anchored(
-        rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
+        rect_provider: Callable[[], Optional[Tuple[float, float, float, float]]],
         target_anchor: AlignmentLike = "bottom-left",
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
@@ -339,7 +339,7 @@ class _AnchoredPositionedContent(Widget):
         self,
         child: Widget,
         *,
-        rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
+        rect_provider: Callable[[], Optional[Tuple[float, float, float, float]]],
         target_anchor: Tuple[str, str],
         content_anchor: Tuple[str, str],
         offset: Tuple[float, float],
@@ -420,7 +420,7 @@ class _AnchoredPositionedContent(Widget):
 
     def _place(
         self,
-        rect: Tuple[int, int, int, int],
+        rect: Tuple[float, float, float, float],
         cw: int,
         ch: int,
         target: Tuple[str, str],
@@ -459,7 +459,7 @@ class _AnchoredOverlayPosition(OverlayPosition):
 
     def __init__(
         self,
-        rect_provider: Callable[[], Optional[Tuple[int, int, int, int]]],
+        rect_provider: Callable[[], Optional[Tuple[float, float, float, float]]],
         target_anchor: AlignmentLike,
         content_anchor: AlignmentLike,
         offset: Tuple[float, float],
