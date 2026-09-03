@@ -595,7 +595,7 @@ class Menu(InteractiveWidget):
         self._focus_index = -1
         self._focusable_items: list[MenuItem] = []
 
-        _shadow = md3_elevation_to_shadow(effective_style.elevation)
+        _shadows = md3_elevation_to_shadow(effective_style.elevation)
 
         children = self._materialize_children(effective_style)
         self._column = Column(children=children, width=Sizing.weight(), gap=0, cross_alignment="start")
@@ -612,9 +612,7 @@ class Menu(InteractiveWidget):
             ),
             background_color=effective_style.background,
             corner_radius=effective_style.corner_radius,
-            shadow_blur=_shadow.sigma,
-            shadow_color=_shadow.color,
-            shadow_offset=_shadow.offset,
+            shadows=_shadows,
             # The menu is one group, not a row of stops: Tab neither lands on the
             # surface nor on the items, it leaves the menu (see the scope below).
             traversable=False,
@@ -699,14 +697,11 @@ class Menu(InteractiveWidget):
         # that read must not re-enter this method.
         self._applied_style = style
 
-        shadow = md3_elevation_to_shadow(style.elevation)
         self.state_layer_color = style.state_layer_color
         self.padding = (0, style.container_vertical_padding, 0, style.container_vertical_padding)
         self.bgcolor = style.background
         self.corner_radius = style.corner_radius
-        self.shadow_blur = shadow.sigma
-        self.shadow_color = shadow.color
-        self.shadow_offset = shadow.offset
+        self.shadows = md3_elevation_to_shadow(style.elevation)
         self._rematerialize()
 
     def _focus_surface(self) -> None:

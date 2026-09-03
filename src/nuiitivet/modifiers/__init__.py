@@ -17,7 +17,7 @@ from .passthrough_pointer import passthrough_pointer
 from .pointer_input import pointer_input
 from .popup import popup
 from .tooltip import tooltip
-from .shadow import shadow
+from .shadow import shadow, shadows
 from .size_changed import on_size_changed
 from .stick import stick
 from .transform import opacity, rotate, scale, translate
@@ -50,6 +50,7 @@ __all__ = [
     "rotate",
     "scale",
     "shadow",
+    "shadows",
     "stick",
     "translate",
     "visible",

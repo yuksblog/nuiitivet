@@ -55,10 +55,7 @@ class Tooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        _shadow = md3_elevation_to_shadow(style.elevation)
-        shadow_color = _shadow.color if _shadow.sigma > 0.0 else None
-        shadow_offset = _shadow.offset
-        shadow_blur = _shadow.sigma
+        _shadows = md3_elevation_to_shadow(style.elevation)
         label = Text(
             self.message,
             style=TextStyle(
@@ -85,9 +82,7 @@ class Tooltip(ComposableWidget):
             ),
             background_color=style.container_color,
             corner_radius=style.corner_radius,
-            shadow_color=shadow_color,
-            shadow_offset=shadow_offset,
-            shadow_blur=shadow_blur,
+            shadows=_shadows,
         )
 
 
@@ -157,10 +152,7 @@ class RichTooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        _shadow = md3_elevation_to_shadow(style.elevation)
-        shadow_color = _shadow.color if _shadow.sigma > 0.0 else None
-        shadow_offset = _shadow.offset
-        shadow_blur = _shadow.sigma
+        _shadows = md3_elevation_to_shadow(style.elevation)
 
         children: list[Widget] = []
         if self.subhead is not None:
@@ -223,9 +215,7 @@ class RichTooltip(ComposableWidget):
             padding=(style.horizontal_padding, style.top_padding, style.horizontal_padding, style.bottom_padding),
             background_color=style.container_color,
             corner_radius=style.corner_radius,
-            shadow_color=shadow_color,
-            shadow_offset=shadow_offset,
-            shadow_blur=shadow_blur,
+            shadows=_shadows,
         )
 
 

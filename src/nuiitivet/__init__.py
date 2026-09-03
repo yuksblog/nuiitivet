@@ -59,6 +59,7 @@ from nuiitivet.widgets.input_filter import (
 # Geometry (container-scoped measured size)
 from nuiitivet.layout.geometry import Geometry
 from nuiitivet.rendering.size import Size
+from nuiitivet.rendering.shadow import ShadowParams
 
 # Navigation
 from nuiitivet.navigation import Navigator, NavigatorProtocol, Route, Transitions
@@ -145,6 +146,7 @@ from nuiitivet.modifiers import (
     rotate,
     scale,
     shadow,
+    shadows,
     stick,
     tooltip,
     translate,
@@ -192,6 +194,7 @@ __all__: list[str] = [
     "MenuBarThemeData",
     "ForEach",
     # Primitives / Widgets
+    "ShadowParams",
     "Sizing",
     "SizingKind",
     "SizingLike",
@@ -267,6 +270,7 @@ __all__: list[str] = [
     "rotate",
     "scale",
     "shadow",
+    "shadows",
     "stick",
     "tooltip",
     "translate",

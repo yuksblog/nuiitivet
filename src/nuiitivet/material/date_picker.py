@@ -1461,7 +1461,7 @@ class DatePicker(ComposableWidget):
         """Build the inline calendar container with navigation header and calendar."""
         style = self.style
         selected = getattr(self._value_obs, "value", None)
-        shadow = md3_elevation_to_shadow(style.elevation)
+        shadows = md3_elevation_to_shadow(style.elevation)
 
         nav_header = _MonthYearHeader(
             self._view_year,
@@ -1547,9 +1547,7 @@ class DatePicker(ComposableWidget):
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
-            shadow_blur=shadow.sigma,
-            shadow_color=shadow.color,
-            shadow_offset=shadow.offset,
+            shadows=shadows,
             width=style.container_width,
             height=style.container_height,
             child=Column(
@@ -1965,7 +1963,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
     def build(self) -> Widget:
         """Build the modal picker with header, calendar (or year grid), and action buttons."""
         style = self.style
-        shadow = md3_elevation_to_shadow(style.elevation)
+        shadows = md3_elevation_to_shadow(style.elevation)
 
         nav_header = _MonthYearHeader(
             self._view_year,
@@ -2035,9 +2033,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
-            shadow_blur=shadow.sigma,
-            shadow_color=shadow.color,
-            shadow_offset=shadow.offset,
+            shadows=shadows,
             width=style.container_width,
             child=Column(column_children, gap=0),
         )
@@ -2238,7 +2234,7 @@ class ModalDateRangePicker(
     def build(self) -> Widget:
         """Build the modal range picker with header, calendar (or year grid), and action buttons."""
         style = self.style
-        shadow = md3_elevation_to_shadow(style.elevation)
+        shadows = md3_elevation_to_shadow(style.elevation)
 
         ok_disabled = self._range_start is None or self._range_end is None
 
@@ -2309,9 +2305,7 @@ class ModalDateRangePicker(
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
-            shadow_blur=shadow.sigma,
-            shadow_color=shadow.color,
-            shadow_offset=shadow.offset,
+            shadows=shadows,
             width=style.container_width,
             child=Column(column_children, gap=0),
         )
@@ -2455,7 +2449,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
     def build(self) -> Widget:
         """Build the modal date input with header, text field, and action buttons."""
         style = self.style
-        shadow = md3_elevation_to_shadow(style.elevation)
+        shadows = md3_elevation_to_shadow(style.elevation)
 
         parsed_date = self._date_format.parse(self._text_obs.value)
         date_str = parsed_date.strftime("%b %d, %Y") if parsed_date is not None else "—"
@@ -2531,9 +2525,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
-            shadow_blur=shadow.sigma,
-            shadow_color=shadow.color,
-            shadow_offset=shadow.offset,
+            shadows=shadows,
             width=style.container_width,
             child=Column(
                 [

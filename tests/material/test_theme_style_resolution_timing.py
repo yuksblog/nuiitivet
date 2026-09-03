@@ -123,7 +123,7 @@ def test_card_adopts_the_themes_filled_card_style() -> None:
     assert card.border_width == 3.0
     assert card.bgcolor == ColorRole.TERTIARY_CONTAINER
     # Elevation 4 must reach the Box as a real shadow, not stay in the style.
-    assert card.shadow_blur > 0
+    assert any(layer.sigma > 0 for layer in card.shadows)
 
 
 def test_card_uses_the_preset_before_it_is_mounted() -> None:

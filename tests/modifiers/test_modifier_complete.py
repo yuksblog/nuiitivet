@@ -2,6 +2,7 @@ from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 from nuiitivet.modifiers import background, border, clip, corner_radius, shadow
 from nuiitivet.observable import Observable
+from nuiitivet.rendering.shadow import ShadowParams
 
 
 class MockWidget(Widget):
@@ -76,13 +77,11 @@ def test_border_modifier():
 
 def test_shadow_modifier():
     w = MockWidget()
-    m = shadow(color="black", blur=10, offset=(2, 2))
+    m = shadow(color="black", blur=10, offset=(2, 2), spread=1)
     result = w.modifier(m)
 
     assert isinstance(result, Box)
-    assert result.shadow_color == "black"
-    assert result.shadow_blur == 10
-    assert result.shadow_offset == (2, 2)
+    assert result.shadows == (ShadowParams(sigma=10, offset=(2, 2), color="black", spread=1),)
     assert result.children[0] is w
 
 

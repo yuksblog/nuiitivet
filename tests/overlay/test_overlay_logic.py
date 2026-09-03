@@ -47,24 +47,18 @@ def test_fab_hover_elevation_matches_md3_spec() -> None:
     enabled = md3_elevation_to_shadow(3)
     hovered = md3_elevation_to_shadow(4)
 
-    assert fab.shadow_color == enabled.color
-    assert fab.shadow_offset == enabled.offset
-    assert fab.shadow_blur == enabled.sigma
+    assert fab.shadows == enabled
 
     fab.state.hovered = True
     fab._sync_state_tokens()
 
-    assert fab.shadow_color == hovered.color
-    assert fab.shadow_offset == hovered.offset
-    assert fab.shadow_blur == hovered.sigma
+    assert fab.shadows == hovered
 
     fab.state.hovered = False
     fab.state.focused = True
     fab._sync_state_tokens()
 
-    assert fab.shadow_color == enabled.color
-    assert fab.shadow_offset == enabled.offset
-    assert fab.shadow_blur == enabled.sigma
+    assert fab.shadows == enabled
 
 
 def test_resolve_overlay_with_style_alpha_scaled():

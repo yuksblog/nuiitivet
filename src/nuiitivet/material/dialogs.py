@@ -161,16 +161,14 @@ class BasicDialog(ComposableWidget):
 
         from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
 
-        _shadow = md3_elevation_to_shadow(style.elevation)
+        _shadows = md3_elevation_to_shadow(style.elevation)
 
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
             padding=style.padding,
             width=self.width,
-            shadow_blur=_shadow.sigma,
-            shadow_color=_shadow.color,
-            shadow_offset=_shadow.offset,
+            shadows=_shadows,
             child=Column(
                 children=children,
                 gap=0,

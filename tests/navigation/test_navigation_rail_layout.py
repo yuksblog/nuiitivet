@@ -92,7 +92,7 @@ def test_navigation_rail_layout_common_metrics():
 
     # "Nav rail collapsed container shape md.sys.shape.corner.none"
     assert rail_bg.corner_radius == 0
-    assert rail_bg.shadow_blur == 0  # Elevation 0
+    assert rail_bg.shadows == ()  # Elevation 0
 
 
 def test_navigation_rail_layout_collapsed():
@@ -140,7 +140,7 @@ def test_navigation_rail_layout_expanded():
 
     # "Nav rail expanded container elevation 0"
     rail_bg = rail.children[0]
-    assert rail_bg.shadow_blur == 0
+    assert rail_bg.shadows == ()
 
     item_button = rail._item_buttons[0]
 
