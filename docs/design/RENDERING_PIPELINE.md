@@ -89,7 +89,7 @@ The phase where actual drawing to the screen is performed based on the finalized
 
 * **CachedPaintMixin**: Widgets performing heavy rendering use `CachedPaintMixin` to render background layers to an off-screen Skia surface.
 * **Cache Invalidation**: Caches are discarded if `_paint_dependencies` change, or if property setters or Modifiers call `invalidate_paint_cache()`.
-* **Hit Testing**: Cached layers do not affect hit-testing; `_last_rect` remains the single source of truth.
+* **Hit Testing**: Cached layers do not affect hit-testing, which reads layout state (`layout_rect`, `global_visual_rect`), never `_last_rect`.
 * **Theme Awareness**: Widgets referencing ColorRoles are responsible for subscribing to the `ThemeManager` and invalidating the cache upon theme changes.
 
 ## 4. Frame Scheduling

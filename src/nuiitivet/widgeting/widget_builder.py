@@ -534,6 +534,18 @@ class BuilderHostMixin:
                 return hit
         return super().hit_test(x, y)  # type: ignore
 
+    def _hit_test_children(self, x: int, y: int):
+        # The built subtree *is* this widget's C axis: it fills the host at the
+        # origin, so it is reached with the same coordinates. Without this, a
+        # wrapper that governs the S axis itself and descends only into
+        # ``children`` (``HitParticipationBox``) would never see the content of
+        # a widget with a ``build()``.
+        if self._built:
+            hit = self._built.hit_test(x, y)
+            if hit:
+                return hit
+        return super()._hit_test_children(x, y)  # type: ignore
+
     async def handle_back_event(self) -> bool:
         if self._built is not None:
             handler = getattr(self._built, "handle_back_event", None)

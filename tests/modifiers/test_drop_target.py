@@ -23,7 +23,7 @@ def _make_child() -> Box:
 
 
 def _drop(region: InteractionRegion, x: float, y: float, paths: tuple[Path, ...]) -> bool:
-    region.set_last_rect(10, 20, 100, 50)
+    region.set_layout_rect(10, 20, 100, 50)
     return region.dispatch_file_drop_event(FileDropEvent(paths=paths, x=x, y=y))
 
 

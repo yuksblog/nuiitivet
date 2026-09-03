@@ -503,8 +503,8 @@ class SubMenuItem(MenuItem):
             )
         return self._submenu
 
-    def _rect_provider(self) -> tuple[int, int, int, int] | None:
-        return self.global_layout_rect
+    def _rect_provider(self) -> tuple[float, float, float, float] | None:
+        return self.global_visual_rect
 
     def _open_submenu(self) -> None:
         if self._submenu_handle is not None:

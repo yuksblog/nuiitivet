@@ -40,7 +40,7 @@ class _FakeApp:
 def _region(**kw) -> InteractionRegion:
     region = Box(width=Sizing.fixed(100), height=Sizing.fixed(50)).modifier(pointer_input(**kw))
     assert isinstance(region, InteractionRegion)
-    region.set_last_rect(0, 0, 100, 50)
+    region.set_layout_rect(0, 0, 100, 50)
     return region
 
 

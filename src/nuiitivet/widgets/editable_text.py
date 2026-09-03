@@ -474,8 +474,9 @@ class EditableText(InteractionHostMixin, Widget):
 
     def _index_at_event(self, event: PointerEvent) -> int:
         local_x = event.x
-        if self.global_layout_rect:
-            local_x -= self.global_layout_rect[0]
+        rect = self.global_visual_rect
+        if rect is not None:
+            local_x -= rect[0]
         return self._get_index_at(local_x)
 
     def _get_font(self):

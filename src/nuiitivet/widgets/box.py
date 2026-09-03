@@ -249,15 +249,15 @@ class Box(CachedPaintMixin, Widget):
         return (0.0, 0.0, float(w), float(h))
 
     def hit_test(self, x: int, y: int):
-        if self.clip_content:
-            rect = self.last_rect
-            if rect is None:
-                return None
-            # ``x``/``y`` arrive in this widget's local coordinate space, so the
-            # clip bounds must be evaluated at the local origin (0, 0) using the
-            # widget's own size -- not ``last_rect``'s parent-relative offset.
-            _, _, rw, rh = rect
-            if not (0 <= x < rw and 0 <= y < rh):
+        # ``x``/``y`` arrive in this widget's local coordinate space, so the
+        # clip is the widget's own size at the local origin -- the same answer
+        # :meth:`visual_clip_rect` publishes. Read from layout state, not
+        # ``last_rect``: a box that has been laid out but not yet painted is
+        # still clickable (and a harness never paints at all).
+        clip = self.visual_clip_rect()
+        if clip is not None:
+            cx, cy, cw, ch = clip
+            if not (cx <= x < cx + cw and cy <= y < cy + ch):
                 return None
         return super().hit_test(x, y)
 

@@ -233,7 +233,13 @@ def global_visual_rect(node: Any) -> Optional[tuple[float, float, float, float]]
     Paint state (``last_rect``) is deliberately not used: an action settles the
     tree by laying it out without painting, so ``last_rect`` is stale exactly
     when it would be needed.
+
+    The definition lives on ``WidgetKernel.global_visual_rect`` so that the
+    app's own pointer path and this module agree by construction; this is the
+    duck-typed front door for anything tree-shaped.
     """
+    if hasattr(node, "global_visual_rect"):
+        return node.global_visual_rect
     rect = getattr(node, "global_layout_rect", None)
     if rect is None:
         return None

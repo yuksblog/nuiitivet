@@ -265,9 +265,10 @@ class PopupBox(Widget):
     # Rect provider for OverlayPosition.anchored()
     # ------------------------------------------------------------------
 
-    def _rect_provider(self) -> Optional[Tuple[int, int, int, int]]:
-        """Return the current global layout rect derived from layout state."""
-        return self.global_layout_rect
+    def _rect_provider(self) -> Optional[Tuple[float, float, float, float]]:
+        """Return the anchor's rect as painted, so the popup opens where the
+        anchor is drawn even inside a scrolled region."""
+        return self.global_visual_rect
 
     # ------------------------------------------------------------------
     # Widget overrides

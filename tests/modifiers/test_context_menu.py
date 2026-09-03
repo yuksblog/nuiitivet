@@ -47,7 +47,7 @@ def _press(box: ContextMenuBox, x: float, y: float, button: int) -> None:
     """Press inside the host. The rect spans the viewport so any point lands on it."""
     host = box._child
     assert isinstance(host, InteractionHostMixin)
-    host.set_last_rect(0, 0, 800, 600)
+    host.set_layout_rect(0, 0, 800, 600)
     host.on_pointer_event(PointerEvent.mouse_event(1, T.PRESS, x, y, button=button))
 
 
@@ -118,7 +118,7 @@ def test_uses_screen_coordinates_not_widget_local_ones() -> None:
     box = _wrap(_FixedWidget(120, 90))
     host = box._child
     assert isinstance(host, InteractionHostMixin)
-    host.set_last_rect(50, 80, 100, 50)
+    host.set_layout_rect(50, 80, 100, 50)
     host.on_pointer_event(PointerEvent.mouse_event(1, T.PRESS, 90, 120, button=BUTTON_RIGHT))
 
     # local would be (40, 40); screen is (90, 120).

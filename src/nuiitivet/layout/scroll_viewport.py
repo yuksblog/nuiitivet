@@ -307,7 +307,7 @@ class ScrollViewport(Widget):
             return super().hit_test(x + offset, y)
         return super().hit_test(x, y)
 
-    # --- Visual displacement (read by the dev bridge via ``getattr``) --------
+    # --- Visual displacement (probed by name via ``getattr``) ----------------
 
     def visual_offset(self) -> Tuple[float, float]:
         """Return the displacement this widget applies to its painted content.
@@ -315,10 +315,10 @@ class ScrollViewport(Widget):
         ``paint`` places the content at ``-offset`` along the scroll axis, so a
         descendant's on-screen position is its *layout* position plus this.
         ``WidgetKernel.global_layout_rect`` accumulates layout offsets only, and
-        is therefore content space; anything that must reason about where a
-        widget really is on screen (the dev bridge resolving a click target)
-        adds each ancestor's ``visual_offset``. Probed by name, so any container
-        that paints its children off their layout position can opt in.
+        is therefore content space; ``WidgetKernel.global_visual_rect`` -- what
+        a widget's own bounds check, an overlay anchor and the dev bridge all
+        read -- adds each ancestor's ``visual_offset``. Probed by name, so any
+        container that paints its children off their layout position can opt in.
         """
         offset = float(self._controller.get_offset(self.direction))
         if self.direction is ScrollDirection.HORIZONTAL:

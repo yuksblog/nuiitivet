@@ -187,12 +187,12 @@ class MenuBarWidget(ComposableWidget):
             return
 
         top = self._top_widgets.get(index)
-        if top is None or top.global_layout_rect is None:
+        if top is None or top.global_visual_rect is None:
             return
 
         popup = _MenuBarPopup(self, self._build_popup_entries(item.submenu))
         position = OverlayPosition.anchored(
-            lambda: top.global_layout_rect,
+            lambda: top.global_visual_rect,
             target_anchor="bottom-left",
             content_anchor="top-left",
             offset=(0.0, 0.0),

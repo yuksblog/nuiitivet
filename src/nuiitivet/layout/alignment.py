@@ -54,7 +54,7 @@ def normalize_alignment(value: AlignmentLike, *, default: Tuple[str, str]) -> Tu
     return default
 
 
-def alignment_to_point(alignment: Tuple[str, str], width: int, height: int) -> Tuple[float, float]:
+def alignment_to_point(alignment: Tuple[str, str], width: float, height: float) -> Tuple[float, float]:
     """Compute the ``(x, y)`` point for *alignment* within a box of the given size.
 
     *alignment* is an ``(horizontal, vertical)`` axis tuple as returned by
