@@ -43,6 +43,12 @@ def expand_layout_children(children: Sequence["Widget"]) -> List["Widget"]:
                     child.clear_needs_layout()
                 except Exception:
                     exception_once(_logger, "layout_utils_clear_needs_layout_exc", "clear_needs_layout failed")
+                # An empty provider misses this branch and is laid out as an ordinary
+                # child, so drop the zero-area rect it was stamped with back then.
+                try:
+                    child.clear_layout_rect()
+                except Exception:
+                    exception_once(_logger, "layout_utils_clear_layout_rect_exc", "clear_layout_rect failed")
                 continue
         materialized.append(child)
     return materialized

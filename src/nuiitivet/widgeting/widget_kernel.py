@@ -360,7 +360,10 @@ class WidgetKernel:
             # Try to use layout rect for coordinate translation
             rect = getattr(child, "layout_rect", None)
 
-            if rect:
+            # A zero-area rect cannot gate the point: a size-less provider such as
+            # ForEach lifts its children into this space and would otherwise hide
+            # a subtree it does not enclose.
+            if rect and rect[2] > 0 and rect[3] > 0:
                 rx, ry, rw, rh = rect
                 # Check if point is within child's bounds (in parent's coordinate space)
                 if rx <= x < rx + rw and ry <= y < ry + rh:
@@ -369,9 +372,8 @@ class WidgetKernel:
                     if hit:
                         return hit
             else:
-                # Fallback for non-layout widgets or unlaid-out children
-                # If no layout rect, we assume the child is positioned at (0,0) or handles its own hit testing
-                # without coordinate translation.
+                # Fallback for non-layout widgets, unlaid-out children, and zero-area
+                # providers: with no rect to translate by, the point passes down as-is.
                 hit = child.hit_test(x, y)
                 if hit:
                     return hit
