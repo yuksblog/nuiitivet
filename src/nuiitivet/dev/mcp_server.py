@@ -527,6 +527,11 @@ def build_server() -> "FastMCP":
         ``modifiers`` is an optional list of names to hold -- ``shift``,
         ``ctrl``, ``alt``, ``meta``, or ``accel`` (the platform Ctrl/Cmd) -- so
         shortcuts and focus traversal behave like real key events.
+
+        The editing keys -- ``backspace``, ``delete``, ``left``, ``right``,
+        ``home``, ``end`` -- edit the focused text field, which is how you
+        delete what `type` inserted or move the caret; hold ``shift`` with one
+        to extend the selection instead.
         """
         return _client().key(name, modifiers=modifiers, window=window)
 

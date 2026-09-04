@@ -68,3 +68,29 @@ TEXT_MOTION_LEFT: int = 3
 TEXT_MOTION_RIGHT: int = 4
 TEXT_MOTION_HOME: int = 5
 TEXT_MOTION_END: int = 6
+
+
+#: Key names that a focused text field consumes as an editing motion, mapped to
+#: the code the motion is delivered as. Real backends emit these motions from
+#: their own text-input path (pyglet's ``on_text_motion``) rather than from the
+#: key press, so a driver synthesizing input needs this mapping to reach a text
+#: field at all. Names are the normalized forms
+#: (:func:`nuiitivet.input.normalize_key_name`).
+TEXT_MOTION_KEYS: dict[str, int] = {
+    "backspace": TEXT_MOTION_BACKSPACE,
+    "delete": TEXT_MOTION_DELETE,
+    "left": TEXT_MOTION_LEFT,
+    "right": TEXT_MOTION_RIGHT,
+    "home": TEXT_MOTION_HOME,
+    "end": TEXT_MOTION_END,
+}
+
+
+def text_motion_for_key(key: str) -> Optional[int]:
+    """Return the ``TEXT_MOTION_*`` code ``key`` produces, or None if it is not an editing key.
+
+    A key having a motion does not make it *only* a motion: the same arrow keys
+    steer a slider or a menu through the key-press route, so a caller
+    synthesizing input dispatches both, exactly as a backend does.
+    """
+    return TEXT_MOTION_KEYS.get(key.strip().lower())

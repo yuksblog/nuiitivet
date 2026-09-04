@@ -19,6 +19,7 @@ from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discove
 from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.journal import ReloadJournal
 from nuiitivet.dev.runtime_journal import RuntimeJournal
+from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE, TEXT_MOTION_LEFT
 
 
 class _FakeNode:
@@ -67,6 +68,7 @@ class _FakeApp:
         self.scrolls: list[tuple] = []
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
+        self.text_motions: list[tuple] = []
 
     def _render_to_png_bytes(self) -> bytes:
         return self._PNG
@@ -94,6 +96,10 @@ class _FakeApp:
 
     def _dispatch_key_release(self, key: str, modifiers: int) -> bool:
         return False
+
+    def _dispatch_text_motion(self, motion: int, select: bool = False) -> bool:
+        self.text_motions.append((motion, select))
+        return True
 
     def invalidate(self) -> None:
         pass
@@ -541,6 +547,26 @@ def test_bridge_type_and_key(tmp_path: Path, dev_run: None) -> None:
             assert result["handled"] is True
             assert app.key_presses and app.key_presses[0][0] == "enter"
             assert app.key_presses[0][1] != 0  # a modifier mask was applied
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_key_carries_the_text_motion_of_an_editing_key(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            client.key("backspace")
+            assert app.text_motions == [(TEXT_MOTION_BACKSPACE, False)]
+
+            client.key("left", modifiers=["shift"])
+            assert app.text_motions[-1] == (TEXT_MOTION_LEFT, True)
+
+            client.key("enter")
+            assert len(app.text_motions) == 2  # no motion for a non-editing key
     finally:
         bridge.shutdown()
 

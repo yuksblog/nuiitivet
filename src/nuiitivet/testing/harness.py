@@ -268,6 +268,10 @@ class AppHarness(_HarnessBase):
         ``modifiers`` takes an int mask or names (``["accel", "shift"]``), so
         shortcuts and focus traversal behave as they do under real input.
 
+        The editing keys -- ``"backspace"``, ``"delete"``, ``"left"``,
+        ``"right"``, ``"home"``, ``"end"`` -- also edit a focused text field,
+        and hold ``"shift"`` with one to extend its selection.
+
         Raises:
             ActionNotHandledError: Nothing consumed the keystroke. Pass
                 ``require_handled=False`` to assert on that deliberately.
