@@ -20,6 +20,7 @@ Subcommands::
     python -m nuiitivet.dev type "hello"            # type into the focused widget
     python -m nuiitivet.dev key enter --mod accel   # press a key (with modifiers)
     python -m nuiitivet.dev wait-for --label Done    # wait for a tree condition
+    python -m nuiitivet.dev describe-tree --window 2 # address a secondary window
     python -m nuiitivet.dev mcp                      # serve the bridge as MCP tools
 
 ``run`` imports the user's app module under its real name (never ``__main__``,
@@ -29,8 +30,10 @@ enabled. It also gives the app its own ``sys.argv`` -- its path plus anything
 after a ``--`` separator -- so an entry that parses arguments does not see the
 runner's. ``describe-tree`` / ``screenshot`` (perception) and ``click`` /
 ``scroll`` / ``type`` / ``key`` (action) are bridge clients: they talk to an
-already-running ``run`` process over localhost. ``mcp`` serves those same
-primitives as MCP tools over stdio for MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
+already-running ``run`` process over localhost, and each takes ``--window`` to
+address one of the ids ``status`` lists, so a multi-window app is reachable past
+its main window. ``mcp`` serves those same primitives as MCP tools over stdio for
+MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
 """
 
 from __future__ import annotations
@@ -75,6 +78,20 @@ _SUBCOMMANDS = frozenset(
         "mcp",
     }
 )
+
+
+_WINDOW_HELP = "Address the open window with this id (from 'status'; default: the main window)."
+
+
+def _add_window_arg(parser: argparse.ArgumentParser) -> None:
+    """Give ``parser`` the ``--window`` selector its client method already takes.
+
+    Every layer under the CLI addresses a window by the id ``status`` lists, so
+    the subcommands that reach a window carry the same flag; omitting it keeps
+    the main window, and an id no window answers to fails rather than falling
+    back to it.
+    """
+    parser.add_argument("--window", type=int, default=None, metavar="ID", help=_WINDOW_HELP)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -129,7 +146,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Print a cheap liveness/health snapshot of the running app as JSON.",
     )
 
-    subparsers.add_parser("describe-tree", help="Print the running app's widget tree as JSON.")
+    describe_tree = subparsers.add_parser(
+        "describe-tree", help="Print the running app's widget tree as JSON."
+    )
+    _add_window_arg(describe_tree)
 
     describe_state = subparsers.add_parser(
         "describe-state", help="Print the running app's reactive observable state as JSON."
@@ -139,6 +159,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also report Animatable state, which is filtered out by default.",
     )
+    _add_window_arg(describe_state)
 
     subparsers.add_parser(
         "describe-selection",
@@ -197,6 +218,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default="screenshot.png",
         help="Where to write the PNG (default: screenshot.png; '-' for stdout).",
     )
+    _add_window_arg(shot)
 
     click = subparsers.add_parser("click", help="Click a widget in the running app by key/label.")
     target = click.add_mutually_exclusive_group(required=True)
@@ -209,6 +231,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar=("X", "Y"),
         help="Raw root coordinates (fallback; breaks on layout changes).",
     )
+    _add_window_arg(click)
 
     scroll = subparsers.add_parser(
         "scroll", help="Scroll a region in the running app by wheel notches."
@@ -237,6 +260,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Horizontal wheel notches (~20px each); positive scrolls right.",
     )
+    _add_window_arg(scroll)
 
     into_view = subparsers.add_parser(
         "scroll-into-view", help="Scroll a widget's region(s) until the widget is on screen."
@@ -250,9 +274,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default="nearest",
         help="Where to land the widget in the region (default: nearest).",
     )
+    _add_window_arg(into_view)
 
     typ = subparsers.add_parser("type", help="Type text into the running app's focused widget.")
     typ.add_argument("text", help="The text to type.")
+    _add_window_arg(typ)
 
     key = subparsers.add_parser("key", help="Press a key (e.g. enter, tab, a) in the running app.")
     key.add_argument(
@@ -270,6 +296,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="MODIFIER",
         help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
     )
+    _add_window_arg(key)
 
     wait = subparsers.add_parser(
         "wait-for",
@@ -290,6 +317,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="SECONDS",
         help="How long to poll before giving up (default 3.0).",
     )
+    _add_window_arg(wait)
 
     subparsers.add_parser(
         "mcp",
@@ -476,7 +504,7 @@ def _status(_args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
         status = client.status()
-    except (BridgeNotFoundError, OSError) as exc:
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -485,11 +513,11 @@ def _status(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _describe_tree(_args: argparse.Namespace) -> int:
+def _describe_tree(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
-        tree = client.describe_tree()
-    except (BridgeNotFoundError, OSError) as exc:
+        tree = client.describe_tree(window=args.window)
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -502,7 +530,7 @@ def _describe_selection() -> int:
     try:
         client = BridgeClient.discover()
         payload = client.describe_selection()
-    except (BridgeNotFoundError, OSError) as exc:
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -514,8 +542,10 @@ def _describe_selection() -> int:
 def _describe_state(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
-        state = client.describe_state(include_animations=args.include_animations)
-    except (BridgeNotFoundError, OSError) as exc:
+        state = client.describe_state(
+            include_animations=args.include_animations, window=args.window
+        )
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -528,7 +558,7 @@ def _reload_log(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
         events = client.reload_log(limit=args.limit)
-    except (BridgeNotFoundError, OSError) as exc:
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -541,7 +571,7 @@ def _interaction_log(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
         events = client.interaction_log(limit=args.limit)
-    except (BridgeNotFoundError, OSError) as exc:
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     import json
@@ -560,7 +590,7 @@ def _runtime_log(args: argparse.Namespace) -> int:
             print(json.dumps({"verbose": verbose}, indent=2))
             return 0
         events = client.runtime_log(limit=args.limit)
-    except (BridgeNotFoundError, OSError) as exc:
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
     print(json.dumps(events, indent=2))
@@ -570,8 +600,8 @@ def _runtime_log(args: argparse.Namespace) -> int:
 def _screenshot(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
-        png = client.screenshot()
-    except (BridgeNotFoundError, OSError) as exc:
+        png = client.screenshot(window=args.window)
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
 
@@ -605,33 +635,41 @@ def _run_action(action: str, call) -> int:  # type: ignore[no-untyped-def]
 def _click(args: argparse.Namespace) -> int:
     if args.xy is not None:
         x, y = args.xy
-        return _run_action("click", lambda c: c.click(x=x, y=y))
-    return _run_action("click", lambda c: c.click(key=args.key, label=args.label))
+        return _run_action("click", lambda c: c.click(x=x, y=y, window=args.window))
+    return _run_action(
+        "click", lambda c: c.click(key=args.key, label=args.label, window=args.window)
+    )
 
 
 def _scroll(args: argparse.Namespace) -> int:
     if args.xy is not None:
         x, y = args.xy
-        return _run_action("scroll", lambda c: c.scroll(x=x, y=y, dx=args.dx, dy=args.dy))
+        return _run_action(
+            "scroll", lambda c: c.scroll(x=x, y=y, dx=args.dx, dy=args.dy, window=args.window)
+        )
     return _run_action(
         "scroll",
-        lambda c: c.scroll(key=args.key, label=args.label, dx=args.dx, dy=args.dy),
+        lambda c: c.scroll(
+            key=args.key, label=args.label, dx=args.dx, dy=args.dy, window=args.window
+        ),
     )
 
 
 def _scroll_into_view(args: argparse.Namespace) -> int:
     return _run_action(
         "scroll-into-view",
-        lambda c: c.scroll_into_view(key=args.key, label=args.label, align=args.align),
+        lambda c: c.scroll_into_view(
+            key=args.key, label=args.label, align=args.align, window=args.window
+        ),
     )
 
 
 def _type(args: argparse.Namespace) -> int:
-    return _run_action("type", lambda c: c.type_text(args.text))
+    return _run_action("type", lambda c: c.type_text(args.text, window=args.window))
 
 
 def _key(args: argparse.Namespace) -> int:
-    return _run_action("key", lambda c: c.key(args.name, modifiers=args.mod))
+    return _run_action("key", lambda c: c.key(args.name, modifiers=args.mod, window=args.window))
 
 
 def _wait_for(args: argparse.Namespace) -> int:
@@ -649,6 +687,7 @@ def _wait_for(args: argparse.Namespace) -> int:
             text=args.text,
             present=not args.absent,
             timeout=args.timeout,
+            window=args.window,
         ),
     )
 

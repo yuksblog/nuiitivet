@@ -932,3 +932,19 @@ def test_list_windows_reports_identity_and_flags() -> None:
         {"id": 2, "title": "Palette", "main": False, "focused": False},
     ]
     assert _list_windows(_FakeApp()) is None
+
+
+def test_get_carries_the_bridge_reason_for_an_unknown_window(
+    tmp_path: Path, dev_run: None
+) -> None:
+    """A GET's 404 body names the window, so the CLI can print something useful."""
+    app: Any = _FakeMultiWindowApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="no open window with id 99"):
+                client.describe_tree(window=99)
+    finally:
+        bridge.shutdown()

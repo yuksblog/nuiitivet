@@ -196,7 +196,10 @@ class BridgeClient:
 
         A connection refused means the bridge is gone (crashed without cleanup);
         the stale discovery file is removed and :class:`BridgeNotFoundError` is
-        raised.
+        raised. An error status carries the server's ``{"error": ...}`` message
+        through as a :class:`RuntimeError`, as :meth:`_post` does -- an addressing
+        mistake such as an unknown ``window`` id has to name itself rather than
+        surface as a bare "HTTP Error 404".
         """
         try:
             with urlopen(f"{self._base}{endpoint}", timeout=self._timeout) as response:
@@ -206,7 +209,8 @@ class BridgeClient:
             if isinstance(exc.reason, ConnectionError):
                 _unlink_quietly(self._discovery_path)
                 raise BridgeNotFoundError(_NOT_RUNNING_HINT) from exc
-            raise
+            message = _extract_error(exc)
+            raise RuntimeError(message) from exc
 
     def _post(
         self, endpoint: str, payload: dict[str, Any], *, timeout: Optional[float] = None

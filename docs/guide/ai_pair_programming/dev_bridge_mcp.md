@@ -233,6 +233,23 @@ python -m nuiitivet.dev wait-for --key spinner --absent --timeout 5
 Each subcommand talks to an already-running `python -m nuiitivet.dev run <app.py>`
 process over localhost. If none is found, it says so and exits.
 
+### Addressing a secondary window
+
+Everything above addresses the main window. An app with more than one window
+lists them under `status`, and the subcommands that reach a window —
+`describe-tree`, `describe-state`, `screenshot`, `click`, `scroll`,
+`scroll-into-view`, `type`, `key`, `wait-for` — take `--window <id>` to pick one:
+
+```bash
+python -m nuiitivet.dev status                       # {"windows": [{"id": 1, ...}, {"id": 2, ...}]}
+python -m nuiitivet.dev describe-tree --window 2
+python -m nuiitivet.dev click --key close --window 2
+```
+
+An id no open window answers to fails with that reason rather than quietly
+falling back to the main window. The MCP tools take the same ids as a `window`
+argument.
+
 ## Safety
 
 - **Localhost-only.** The server binds an ephemeral port on localhost and
