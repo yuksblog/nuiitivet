@@ -188,6 +188,60 @@ def test_type_focuses_its_target_first(nuiitivet_app) -> None:
     assert value.value == "hi"
 
 
+def test_key_edits_the_focused_text_field(nuiitivet_app) -> None:
+    value = Observable("")
+
+    def screen() -> Widget:
+        return Column(children=[TextField(value, key="field")])
+
+    app = nuiitivet_app(screen, size=(800, 600))
+    app.type("abc", key="field")
+
+    app.key("backspace")
+    assert value.value == "ab"
+
+    app.key("home")
+    app.type("X")
+    assert value.value == "Xab"
+
+    app.key("delete")
+    assert value.value == "Xb"
+
+
+def test_key_with_shift_extends_the_text_selection(nuiitivet_app) -> None:
+    value = Observable("")
+
+    def screen() -> Widget:
+        return Column(children=[TextField(value, key="field")])
+
+    app = nuiitivet_app(screen, size=(800, 600))
+    app.type("abc", key="field")
+    app.key("home")
+
+    app.key("right", ["shift"])
+    app.type("Z")
+
+    # Shift+Right selected "a", so the next character replaced it.
+    assert value.value == "Zbc"
+
+
+def test_key_still_reaches_a_widget_that_reads_arrows_as_key_presses(nuiitivet_app) -> None:
+    """The arrow keys carry a text motion *and* stay key presses (a slider steps)."""
+    from nuiitivet.material.slider import HorizontalSlider
+
+    slider = HorizontalSlider(value=0.5, min_value=0.0, max_value=1.0, stops=5, key="slider")
+
+    def screen() -> Widget:
+        return Column(children=[slider])
+
+    app = nuiitivet_app(screen, size=(800, 600))
+    app.click(key="slider")
+
+    app.key("left")
+
+    assert abs(slider.value - 0.25) <= 1e-9
+
+
 def test_key_with_nothing_bound_raises(nuiitivet_app) -> None:
     app = nuiitivet_app(_Counter(), size=(800, 600))
 

@@ -15,7 +15,13 @@ from nuiitivet.dev.action import (
     settle,
     type_text,
 )
-from nuiitivet.input.codes import MOD_SHIFT, accel_mask
+from nuiitivet.input.codes import (
+    MOD_SHIFT,
+    TEXT_MOTION_BACKSPACE,
+    TEXT_MOTION_DELETE,
+    TEXT_MOTION_LEFT,
+    accel_mask,
+)
 
 
 class _Node:
@@ -46,9 +52,11 @@ class _App:
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
         self.key_releases: list[tuple] = []
+        self.text_motions: list[tuple] = []
         self.invalidated = 0
         self._text_handled = True
         self._key_handled = True
+        self._motion_handled = False
 
     def _dispatch_mouse_press(self, x: int, y: int, *, button: Any = None) -> None:
         self.presses.append((x, y, button))
@@ -67,6 +75,10 @@ class _App:
     def _dispatch_key_release(self, key: str, modifiers: int) -> bool:
         self.key_releases.append((key, modifiers))
         return False
+
+    def _dispatch_text_motion(self, motion: int, select: bool = False) -> bool:
+        self.text_motions.append((motion, select))
+        return self._motion_handled
 
     def invalidate(self) -> None:
         self.invalidated += 1
@@ -149,6 +161,50 @@ def test_press_key_with_modifiers() -> None:
     assert app.key_releases == [("s", accel_mask())]
     assert result["handled"] is True
     assert result["modifiers"] == accel_mask()
+
+
+def test_press_key_editing_key_also_dispatches_its_text_motion() -> None:
+    app = _App(_Node())
+
+    press_key(app, "backspace")
+
+    # Both routes, as a backend delivers them -- only the motion edits text.
+    assert app.key_presses == [("backspace", 0)]
+    assert app.text_motions == [(TEXT_MOTION_BACKSPACE, False)]
+
+
+def test_press_key_shift_makes_the_motion_extend_the_selection() -> None:
+    app = _App(_Node())
+
+    press_key(app, "left", ["shift"])
+
+    assert app.text_motions == [(TEXT_MOTION_LEFT, True)]
+
+
+def test_press_key_aliased_editing_key_maps_to_its_motion() -> None:
+    app = _App(_Node())
+
+    press_key(app, "Del")
+
+    assert app.text_motions == [(TEXT_MOTION_DELETE, False)]
+
+
+def test_press_key_non_editing_key_dispatches_no_motion() -> None:
+    app = _App(_Node())
+
+    press_key(app, "enter")
+
+    assert app.text_motions == []
+
+
+def test_press_key_reports_handled_when_only_the_motion_consumed_it() -> None:
+    app = _App(_Node())
+    app._key_handled = False
+    app._motion_handled = True
+
+    result = press_key(app, "home")
+
+    assert result["handled"] is True
 
 
 def test_settle_lays_out_and_invalidates() -> None:

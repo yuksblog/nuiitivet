@@ -469,7 +469,12 @@ class BridgeClient:
         *,
         window: Optional[int] = None,
     ) -> dict[str, Any]:
-        """Press a key ``name`` with optional modifier names (e.g. ``["accel"]``)."""
+        """Press a key ``name`` with optional modifier names (e.g. ``["accel"]``).
+
+        Editing keys (``backspace`` / ``delete`` / ``left`` / ``right`` /
+        ``home`` / ``end``) edit the focused text field; ``["shift"]`` with one
+        extends its selection.
+        """
         payload: dict[str, Any] = {"key": name}
         if modifiers:
             payload["modifiers"] = modifiers

@@ -21,8 +21,10 @@ from .codes import (
     TEXT_MOTION_DELETE,
     TEXT_MOTION_END,
     TEXT_MOTION_HOME,
+    TEXT_MOTION_KEYS,
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
+    text_motion_for_key,
 )
 from .shortcut import (
     Shortcut,
@@ -64,6 +66,8 @@ __all__ = [
     "TEXT_MOTION_DELETE",
     "TEXT_MOTION_END",
     "TEXT_MOTION_HOME",
+    "TEXT_MOTION_KEYS",
     "TEXT_MOTION_LEFT",
     "TEXT_MOTION_RIGHT",
+    "text_motion_for_key",
 ]

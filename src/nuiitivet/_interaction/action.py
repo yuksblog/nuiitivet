@@ -14,7 +14,8 @@ loop. Each verb synthesizes the same input the real backend delivers:
 * :func:`scroll_into_view` moves a target's region(s) until it is reachable --
   the answer to the :class:`TargetNotVisibleError` the others raise.
 * :func:`type_text` injects text into the focused widget.
-* :func:`press_key` injects a key press/release (with modifiers -> shortcuts).
+* :func:`press_key` injects a key press/release (with modifiers -> shortcuts), and
+  the text motion an editing key carries, so a focused text field can be edited.
 
 Every pointer verb *verifies* its resolved point reaches the target before
 dispatching. A target that is scrolled out of its region or covered by an
@@ -41,7 +42,9 @@ from nuiitivet.input.codes import (
     MOD_CTRL,
     MOD_META,
     MOD_SHIFT,
+    text_motion_for_key,
 )
+from nuiitivet.input.shortcut import normalize_key_name
 
 logger = logging.getLogger(__name__)
 
@@ -726,11 +729,18 @@ def press_key(
 
     ``modifiers`` is an int mask or an iterable of names (``["accel", "shift"]``);
     it drives shortcut and focus-traversal behavior just like a real key event.
+
+    Editing keys (``backspace``, ``delete``, ``left``, ``right``, ``home``,
+    ``end``) additionally travel the text-motion route a focused text field
+    listens on -- a backend delivers them along *both* routes, and only the
+    motion one edits text. Holding ``shift`` makes the motion extend the
+    selection, as it does under real input.
     """
     _require_not_modal_blocked(app, verb="key")
     mask = resolve_modifiers(modifiers)
     name = str(key)
     handled = bool(app._dispatch_key_press(name, mask))
+    handled = _dispatch_text_motion_for(app, name, mask) or handled
     try:
         app._dispatch_key_release(name, mask)
     except Exception:
@@ -739,6 +749,25 @@ def press_key(
         on_action.on_key(app, name, mask)
     settle(app)
     return {"key": name, "modifiers": mask, "handled": handled}
+
+
+def _dispatch_text_motion_for(app: Any, key: str, mask: int) -> bool:
+    """Deliver ``key``'s text motion, if it has one. Returns True if consumed.
+
+    Dispatched *after* the key press rather than instead of it: the arrow keys
+    steer a slider, a menu, or a segmented button through the key-press route
+    while editing a text field through this one, so routing them exclusively
+    would take one of the two away. Nothing handles both, so the pair cannot
+    act twice on one call.
+    """
+    motion = text_motion_for_key(normalize_key_name(key))
+    if motion is None:
+        return False
+    try:
+        return bool(app._dispatch_text_motion(motion, select=bool(mask & MOD_SHIFT)))
+    except Exception:
+        logger.debug("press_key: text motion dispatch failed", exc_info=True)
+        return False
 
 
 def _no_match_message(key: Optional[str], label: Optional[str]) -> str:

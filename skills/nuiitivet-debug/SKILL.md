@@ -194,6 +194,15 @@ successful while the screen does nothing. Prefer a `key` when a label repeats; i
 there is none, coordinate-target the center of the node's `describe_tree` `rect`.
 Then confirm the effect in **Verify** — never the return alone.
 
+### Editing a text field — `type` inserts, `key` edits
+
+`type` only ever inserts. To delete what it inserted, or to move the caret, use
+`key` with an editing key: `backspace`, `delete`, `left`, `right`, `home`,
+`end`. Pass `modifiers=["shift"]` with one to extend the selection instead of
+moving — then `type` replaces what is selected. To clear a field, select it all
+with `key a modifiers=["accel"]` and then `key backspace`; there is no
+"set the text" verb.
+
 ### Off-screen targets — `scroll_into_view`, then `scroll`
 
 An action on a widget scrolled out of its region — or covered by a modal —

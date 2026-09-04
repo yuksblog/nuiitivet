@@ -242,7 +242,14 @@ def _build_parser() -> argparse.ArgumentParser:
     typ.add_argument("text", help="The text to type.")
 
     key = subparsers.add_parser("key", help="Press a key (e.g. enter, tab, a) in the running app.")
-    key.add_argument("name", help="Key name (e.g. enter, tab, escape, a).")
+    key.add_argument(
+        "name",
+        help=(
+            "Key name (e.g. enter, tab, escape, a). The editing keys -- backspace, delete, "
+            "left, right, home, end -- edit the focused text field; add '--mod shift' to "
+            "extend its selection."
+        ),
+    )
     key.add_argument(
         "--mod",
         action="append",
