@@ -45,9 +45,7 @@ from .surface import (
 )
 
 from .effects import (
-    make_blur_image_filter,
     make_blur_mask_filter,
-    set_paint_image_filter,
     set_paint_mask_filter,
 )
 
@@ -88,8 +86,6 @@ __all__ = [
     "path_line_to",
     "make_raster_surface",
     "save_png",
-    "make_blur_image_filter",
     "make_blur_mask_filter",
-    "set_paint_image_filter",
     "set_paint_mask_filter",
 ]

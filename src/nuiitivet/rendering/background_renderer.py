@@ -1,12 +1,10 @@
 from .skia import (
-    make_blur_image_filter,
     make_blur_mask_filter,
     make_paint,
     make_path,
     make_rect,
     path_add_rrect,
     resolve_rrect,
-    set_paint_image_filter,
     set_paint_mask_filter,
 )
 from .skia.geometry import draw_round_rect
@@ -174,83 +172,6 @@ class BackgroundRenderer:
                 return
         canvas.drawRect(_r, paint)
 
-    def _blur_with_mask_filter(self, canvas, sx, sy, width, height, sc, sb, eff_rad) -> bool:
-        """Blur one shadow by attaching a MaskFilter to the fill paint.
-
-        This is the primary path. Skia blurs a round rect's mask analytically,
-        so it needs no offscreen layer -- for the rects and round rects a
-        shadow is always made of, it measures several times cheaper than
-        blurring through a saved layer, and the two are indistinguishable at
-        the alphas an elevation shadow uses.
-
-        Returns:
-            True when the shadow was drawn.
-        """
-        try:
-            shadow_paint = make_paint(color=sc, style="fill", aa=True)
-            if shadow_paint is None:
-                return False
-            mf = make_blur_mask_filter(float(sb))
-            if mf is None:
-                return False
-            set_paint_mask_filter(shadow_paint, mf)
-            self._draw_shadow_rect(canvas, sx, sy, width, height, shadow_paint, eff_rad)
-            return True
-        except Exception:
-            exception_once(
-                logger,
-                "background_renderer_shadow_maskfilter_exc",
-                "Failed to draw shadow using mask filter; falling back",
-            )
-            return False
-
-    def _blur_with_image_filter(self, canvas, sx, sy, width, height, sc, sb, eff_rad) -> bool:
-        """Blur one shadow through a saved layer carrying a blur ImageFilter.
-
-        The fallback for whatever the MaskFilter path cannot do. It allocates
-        an offscreen layer padded by ``sigma * 3`` on every side, which is the
-        cost the primary path exists to avoid.
-
-        Returns:
-            True when the shadow was drawn.
-        """
-        try:
-            imgf = make_blur_image_filter(float(sb))
-            if imgf is None:
-                return False
-            layer_paint = make_paint(style="fill", aa=True)
-            if layer_paint is None:
-                return False
-            set_paint_image_filter(layer_paint, imgf)
-
-            pad = int(max(4, sb * 3))
-            lb = make_rect(sx - pad, sy - pad, width + pad * 2, height + pad * 2)
-            if lb is None or not hasattr(canvas, "saveLayer"):
-                return False
-            canvas.saveLayer(lb, layer_paint)
-            try:
-                sp = make_paint(color=sc, style="fill", aa=True)
-                if sp is None:
-                    return False
-                self._draw_shadow_rect(canvas, sx, sy, width, height, sp, eff_rad)
-                return True
-            finally:
-                try:
-                    canvas.restore()
-                except Exception:
-                    exception_once(
-                        logger,
-                        "background_renderer_canvas_restore_exc",
-                        "Failed to restore canvas after shadow saveLayer",
-                    )
-        except Exception:
-            exception_once(
-                logger,
-                "background_renderer_shadow_imagefilter_exc",
-                "Failed to draw shadow using image filter",
-            )
-            return False
-
     def _draw_shadow(self, canvas, x, y, width, height, sc, dx, dy, sb, eff_rad, spread=0.0):
         """Draw one shadow layer.
 
@@ -275,22 +196,24 @@ class BackgroundRenderer:
             return
         eff_rad = self._inflate_radii(eff_rad, spread)
 
-        if sb and sb > 0.0:
-            if self._blur_with_mask_filter(canvas, sx, sy, width, height, sc, sb, eff_rad):
-                return
-            self._blur_with_image_filter(canvas, sx, sy, width, height, sc, sb, eff_rad)
-            return
-
         try:
             shadow_paint = make_paint(color=sc, style="fill", aa=True)
             if shadow_paint is None:
                 return
+            if sb and sb > 0.0:
+                # Skia blurs a round rect's mask analytically, so a MaskFilter
+                # needs no offscreen layer -- which is the whole cost of the
+                # alternative, and it grows with the square of the sigma.
+                mf = make_blur_mask_filter(float(sb))
+                if mf is None:
+                    return
+                set_paint_mask_filter(shadow_paint, mf)
             self._draw_shadow_rect(canvas, sx, sy, width, height, shadow_paint, eff_rad)
         except Exception:
             exception_once(
                 logger,
-                "background_renderer_shadow_simple_exc",
-                "Failed to draw an unblurred shadow",
+                "background_renderer_shadow_draw_exc",
+                "Failed to draw shadow",
             )
 
     def _draw_background(self, canvas, x, y, width, height, paint, eff_rad):
