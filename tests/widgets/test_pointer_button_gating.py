@@ -1,4 +1,4 @@
-"""Node-level pointer button gating (issue #305).
+"""Node-level pointer button gating.
 
 Only a primary (left / synthetic) button activates a click or starts a drag;
 secondary buttons must not. A release from a different button than the one that

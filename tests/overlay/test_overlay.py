@@ -130,7 +130,7 @@ def test_overlay_build_without_entries():
 def test_overlay_of_falls_back_to_the_app_overlay():
     """The App's Overlay is a sibling of the Navigator, so no ancestor walk
     reaches it -- the fallback is what makes ``Overlay.of(self)`` work from a
-    screen at all (#518)."""
+    screen at all."""
     content = Container()
     app = App(Window(content=content)).main_window
     app.root.mount(app)

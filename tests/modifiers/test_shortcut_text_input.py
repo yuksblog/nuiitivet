@@ -1,4 +1,4 @@
-"""Text input withholds the keys it types from the shortcut tier (issue #331).
+"""Text input withholds the keys it types from the shortcut tier.
 
 A text field consumes characters through the ``on_text`` route, not ``on_key``,
 so it declines printable keys on the route the dispatcher watches. Taking that

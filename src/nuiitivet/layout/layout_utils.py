@@ -60,7 +60,7 @@ def layout_child_if_needed(child: "Widget", width: int, height: int) -> None:
     A clean child — nothing in its subtree called ``mark_needs_layout`` since
     its last pass — laid out again at the same size produces the same subtree
     geometry, because ``layout()`` is a pure function of the widget's state and
-    its allocated size (see RENDERING_PIPELINE.md). Skipping the recursion
+    its allocated size. Skipping the recursion
     makes re-arranging an unchanged sibling O(1). The caller still positions
     the child with ``set_layout_rect``; position is not an input to ``layout``.
     """

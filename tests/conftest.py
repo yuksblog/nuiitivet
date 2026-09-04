@@ -53,5 +53,5 @@ warnings.filterwarnings(
 # (registered via the pytest11 entry point) installs a HarnessClock and resets
 # the framework's process-global state around every test — we run on the
 # isolation we ship, so a regression there breaks this suite first. The
-# fixture that cancelled leaked _ThreadClock timers (#468) and the one that
-# restored the App roots (#518, made per-instance) are both superseded.
+# fixture that cancelled leaked _ThreadClock timers and the one that
+# restored the App roots (since made per-instance) are both superseded.

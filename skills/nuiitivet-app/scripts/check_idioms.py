@@ -69,7 +69,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "weight (\"wt\" / \"wt2\") that shares the leftover space. \"100%\" was never a "
      "fraction of the parent - write \"wt\"."),
     (re.compile(r"\b(?:Navigator|Overlay)\.root\s*\(\s*\)|\b(?:Navigator|Overlay)\.set_root\b"), "removed API",
-     "Navigator.root() / Overlay.root() are gone (#518): a process-global root cannot "
+     "Navigator.root() / Overlay.root() are gone: a process-global root cannot "
      "say which App it belongs to. Resolve from a mounted widget instead - "
      "nv.Navigator.of(self) / nv.Overlay.of(self) return the nearest enclosing one and "
      "fall back to the App's; add root=True to force the App's."),

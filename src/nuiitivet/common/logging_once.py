@@ -26,7 +26,7 @@ _LOCK = threading.Lock()
 # how "show me every occurrence, not just the first" is expressed. Left on by
 # default so ordinary runs (and production) keep the anti-spam behaviour. A plain
 # module global -- a torn read/write of a bool is harmless for a debug toggle, so
-# it is deliberately not lock-guarded on the hot read path. See #409.
+# it is deliberately not lock-guarded on the hot read path.
 _LOG_ONCE_ENABLED = True
 
 
@@ -129,7 +129,7 @@ def exception_once_per_exc(
     keeps raising the *same* error stays collapsed to one line, but a *different*
     error from the same site -- e.g. a new failure after the human hot-reloads a
     fix -- is surfaced instead of being hidden under the first one's key. Must be
-    called from within an ``except`` block. See #409.
+    called from within an ``except`` block.
     """
     exception_once(logger, f"{prefix}:{_current_exc_signature()}", msg, *args)
 

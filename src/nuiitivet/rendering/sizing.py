@@ -8,7 +8,6 @@ A weight is a share of the *leftover* space, in the spirit of WPF star sizing:
 "fixed" and "auto" children take what they ask for, and what remains on the
 axis is split among the "weight" children in proportion to their weights. A
 lone weight child therefore fills the axis whatever its weight.
-See docs/design/SIZE_POLICY.md 1.1.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Enforce the public import policy (issue #283).
+"""Enforce the public import policy.
 
 Invariants:
 1. Every symbol in ``nuiitivet.material.__all__`` is actually reachable.
@@ -35,7 +35,7 @@ def test_material_all_symbols_resolve() -> None:
 
 
 def test_material_dir_names_resolve() -> None:
-    """Every name in ``dir(md)`` resolves (issue #650).
+    """Every name in ``dir(md)`` resolves.
 
     ``__dir__`` includes the lazy-export table, whose entries can go stale
     without appearing in ``__all__`` — so this sweep, not the ``__all__``

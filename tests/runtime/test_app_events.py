@@ -468,7 +468,7 @@ def test_mouse_scroll_bubbles_to_parent_widget():
 
 
 def test_file_drop_delivered_to_innermost_acceptor():
-    """A drop lands on the widget under the point, not on its ancestors (#599)."""
+    """A drop lands on the widget under the point, not on its ancestors."""
     from pathlib import Path
 
     from nuiitivet.input.events import FileDropEvent

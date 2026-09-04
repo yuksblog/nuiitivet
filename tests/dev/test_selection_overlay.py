@@ -1,4 +1,4 @@
-"""Tests for the inspect-mode overlay (#591).
+"""Tests for the inspect-mode overlay.
 
 The load-bearing property is negative: the human's designations are drawn for
 the human only, and must never reach the assistant's perception. If they did,
@@ -186,7 +186,7 @@ def test_the_hud_names_every_gesture_the_mode_binds() -> None:
 
     ``Backspace`` went undiscovered in real use precisely because the HUD never
     mentioned it. The list has since widened past "ways to unmake a designation":
-    the source jump (#593) is discoverable the same way and nowhere else, which
+    the source jump is discoverable the same way and nowhere else, which
     is what let it be a modifier rather than a button on the glass.
     """
     assert set(so._HINTS) == {
@@ -218,7 +218,7 @@ def test_the_hud_wraps_instead_of_running_off_a_narrow_window() -> None:
 
 
 def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
-    """What makes the jump discoverable without anything pressable (#593).
+    """What makes the jump discoverable without anything pressable.
 
     The overlay is a paint-only registry outside the widget tree; a button would
     need its own hit testing. Seeing the location is what tells the human it can
@@ -241,7 +241,7 @@ def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
 
 
 def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
-    """A production-shaped run reads exactly as it did before #593."""
+    """A production-shaped run reads exactly as it did before source capture."""
     leaf = Text("AAA")
 
     assert "·" not in so._describe(leaf)

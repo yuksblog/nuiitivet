@@ -3,9 +3,9 @@
 Owns the wiring between the background :class:`FileWatcher` and the main-thread
 reload. The watcher only *signals* (sets a flag); a pyglet clock callback that
 runs on the UI thread drains the flag and performs the actual reload, satisfying
-the main-thread-only rule for tree mutation (``docs/design/THREADING_MODEL.md``).
+the main-thread-only rule for tree mutation.
 
-The reload sequence (§8 of HOT_RELOAD.md):
+The reload sequence:
 
 1. snapshot ``Observable`` state and the declarative navigation stack from the
    live tree;
@@ -61,14 +61,14 @@ class HotReloadController:
         self._project_root = project_root.resolve()
         self._factory: "RootFactory" = initial_factory
         self._drain_interval = drain_interval
-        # Optional pull-able record of reload outcomes for an AI pair (#388).
+        # Optional pull-able record of reload outcomes for an AI pair.
         # When present, every reload -- success or failure -- is recorded so the
         # assistant can notice the code changed under it between turns.
         self._journal = journal
         # The human's inspect-mode designation, whose members are weak and so
         # evaporate when the rebuild replaces every live object. Re-resolved
         # below like observable state and the navigation stack, because a reload
-        # lands in the middle of essentially every use of it (#591).
+        # lands in the middle of essentially every use of it.
         self._selection = selection
         # Per-module source hashes from the last reload, so the next one can
         # report which files' *content* actually changed vs. a no-op save (the
@@ -111,7 +111,7 @@ class HotReloadController:
         changed = self._detect_changed_modules()
         snapshot = snapshot_observables(app.root)
         # Capture the declarative navigation stack before the rebuild replaces
-        # the App's navigator with a fresh one at its initial route (#378).
+        # the App's navigator with a fresh one at its initial route.
         nav_snapshot = snapshot_navigation(app)
 
         try:

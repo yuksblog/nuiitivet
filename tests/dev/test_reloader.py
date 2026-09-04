@@ -1,4 +1,4 @@
-"""Tests for user-module identification in the hot-reload reloader (#422).
+"""Tests for user-module identification in the hot-reload reloader.
 
 The reloader must reload only the user's in-tree modules. The regression these
 tests guard against is a project-local ``.venv/`` (``uv``'s default): when
@@ -33,7 +33,7 @@ def _is_user(module: ModuleType, project_root: Path, site_dirs: tuple[Path, ...]
 
 def test_site_packages_inside_project_root_is_rejected(tmp_path: Path) -> None:
     """A project-local ``.venv`` dependency is not user code, despite living
-    under the project root (the #422 regression)."""
+    under the project root."""
     project_root = tmp_path
     site_dir = project_root / ".venv" / "Lib" / "site-packages"
     dep = _fake_module("OpenGL.platform", str(site_dir / "OpenGL" / "platform.py"))

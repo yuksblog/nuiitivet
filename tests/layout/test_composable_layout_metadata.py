@@ -1,4 +1,4 @@
-"""A ComposableWidget is transparent to layout metadata (SIZE_POLICY.md §1.2).
+"""A ComposableWidget is transparent to layout metadata.
 
 A value declared on the wrapper wins; an undeclared one is derived from the
 widget its build() returned. The regression shape is the one from the bug

@@ -500,10 +500,10 @@ def test_animation_transition_expanded_to_collapsed_container_width():
 
 
 # ---------------------------------------------------------------------------
-# Intrinsic (auto) height — preferred_size (#377)
+# Intrinsic (auto) height — preferred_size
 # ---------------------------------------------------------------------------
 # Without an explicit height the rail resolves to Sizing.auto() ("size to
-# preferred"). Before #377 the custom layout reported height 0, so the rail
+# preferred"). The original custom layout reported height 0, so the rail
 # painted but had a 0-height rect that missed all pointer hit-testing.
 
 
@@ -547,7 +547,7 @@ def test_preferred_size_excludes_menu_button_when_hidden():
 def test_auto_height_layout_is_non_zero_and_hittable():
     """Under auto height the laid-out rect matches the intrinsic content height.
 
-    Regression for #377: a 0-height rect is painted but invisible to pointer
+    Regression: a 0-height rect is painted but invisible to pointer
     hit-testing. The rail's layout_rect height must equal its preferred height.
     """
     from nuiitivet.layout.row import Row
@@ -568,7 +568,7 @@ def test_auto_height_layout_is_non_zero_and_hittable():
 
 
 # ---------------------------------------------------------------------------
-# Long-label truncation (#276)
+# Long-label truncation
 # ---------------------------------------------------------------------------
 
 from nuiitivet.rendering.skia import get_typeface, measure_text_width  # noqa: E402

@@ -1,7 +1,4 @@
-"""Tests for theme-namespaced aliases in ``nuiitivet.material``.
-
-See issue #85.
-"""
+"""Tests for theme-namespaced aliases in ``nuiitivet.material``."""
 
 from __future__ import annotations
 

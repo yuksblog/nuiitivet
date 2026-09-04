@@ -62,7 +62,7 @@ def _inspect_consumed(app: Any, hook: str, *args: Any) -> bool:
     Absent -- production, or any run without the dev runner -- this is a single
     ``getattr`` returning ``None``, so the input path pays nothing for it. A
     failure inside the mode must never swallow the human's input, so it degrades
-    to "not consumed" and the event continues to the app (#591).
+    to "not consumed" and the event continues to the app.
     """
     mode = getattr(app, "_inspect_mode", None)
     if mode is None:
@@ -977,15 +977,14 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         modifier_keys = _normalize_modifiers(modifiers)
         # Dev-only: while inspect mode is latched, a press is the human aiming a
         # designation, not an interaction. It is consumed *before* dispatch --
-        # letting it through would fire the button they were merely pointing at
-        # (#591).
+        # letting it through would fire the button they were merely pointing at.
         if _inspect_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
             return True
         try:
             win._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
-        # Dev-only: record the human's click for the interaction journal (#390).
+        # Dev-only: record the human's click for the interaction journal.
         # Only the real input path reaches here; the assistant's synthesized
         # clicks enter below at ``_dispatch_*``, so this captures the human alone.
         recorder = getattr(win, "_interaction_recorder", None)
@@ -1001,8 +1000,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
         # Dev-only: release is where a designation resolves -- travel distance
-        # tells a click (pick a widget) from a drag (#591), and the accelerator
-        # turns the click into a jump to the widget's source instead (#593).
+        # tells a click (pick a widget) from a drag, and the accelerator
+        # turns the click into a jump to the widget's source instead.
         # Modifiers are read here, not on press, so the two decisions are made at
         # the same moment from the same event.
         if _inspect_consumed(win, "on_mouse_release", win, x_log, y_conv, modifier_keys):
@@ -1016,7 +1015,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     def on_mouse_motion(x, y, dx, dy):
         x_log, y_conv = _to_logical(x, y)
         # Dev-only: tracks the pick candidate under the cursor for the overlay's
-        # hover highlight (#591).
+        # hover highlight.
         if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv):
             return True
         try:
@@ -1031,7 +1030,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         modifier_keys = _normalize_modifiers(modifiers)
         # Dev-only: a drag mid-designation is the human sweeping out a region.
         # Routed to the same hook as a plain move, which tells the two apart by
-        # whether a press is outstanding (#591).
+        # whether a press is outstanding.
         if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv, modifier_keys):
             return True
         try:
@@ -1048,7 +1047,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             handler = win._dispatch_mouse_scroll(x_log, y_conv, scroll_x_n, scroll_y_n)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_scroll_dispatch_exc", "Mouse scroll dispatch raised")
-        # Dev-only: record the human's scroll for the interaction journal (#498).
+        # Dev-only: record the human's scroll for the interaction journal.
         # The recorder takes the *consuming region* the dispatch returned, so a
         # wheel event no region took is dropped -- nothing moved to report.
         recorder = getattr(win, "_interaction_recorder", None)
@@ -1077,7 +1076,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
         # Dev-only: inspect mode owns Ctrl+Shift+C, and every key while it is
         # latched. Checked before the recorder and the escape latch so its own
-        # exit key reaches it rather than closing a dialog behind it (#591).
+        # exit key reaches it rather than closing a dialog behind it.
         #
         # Returning ``True`` is load-bearing, not tidiness: pyglet treats a falsy
         # return as "not handled" and runs the next handler in the stack, whose
@@ -1088,7 +1087,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             return True
 
         # Dev-only: record semantic keys (shortcuts / navigation) for the
-        # interaction journal (#390). Recorded here -- before the escape latch and
+        # interaction journal. Recorded here -- before the escape latch and
         # dispatch -- so escape is captured too; bare typing is dropped inside the
         # recorder so field content never enters the journal.
         recorder = getattr(win, "_interaction_recorder", None)
@@ -1161,7 +1160,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
         # Dev-only: inspect mode consumed the press, so its release must not
-        # reach the focused widget on its own (#591).
+        # reach the focused widget on its own.
         if _inspect_consumed(win, "on_key_release", win, key_name, modifier_keys):
             return True
 
@@ -1204,7 +1203,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_text_dispatch_exc", "Text dispatch raised")
             handled = False
-        # Dev-only: record a content-free "typed here" marker (#390). Only the
+        # Dev-only: record a content-free "typed here" marker. Only the
         # printable/non-control payload counts as typing -- Enter/Tab emit control
         # characters (\r, \t) through on_text on some platforms, which would leave
         # a phantom "text" marker beside every commit. The text itself is never

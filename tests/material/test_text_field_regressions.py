@@ -1,4 +1,4 @@
-"""Regression tests for Issue #121.
+"""Regression tests for a batch of early TextField defects.
 
 Covers:
 - Japanese label / supporting text rendering uses CJK-aware font fallback.

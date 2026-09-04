@@ -796,7 +796,7 @@ def test_get_cleans_up_on_connection_refused(tmp_path: Path) -> None:
     assert not path.exists()
 
 
-# --- selection (#591) --------------------------------------------------------
+# --- selection --------------------------------------------------------
 
 
 def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) -> None:
@@ -873,7 +873,7 @@ def test_status_selection_is_null_without_one(tmp_path: Path, dev_run: None) -> 
         bridge.shutdown()
 
 
-# --- window addressing (#604) -------------------------------------------------
+# --- window addressing -------------------------------------------------
 
 
 class _FakeWindow:

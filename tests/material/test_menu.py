@@ -410,7 +410,7 @@ class _RecordingClock:
 
 
 def test_submenu_item_arms_no_clock_callback_at_mount(monkeypatch) -> None:
-    """#655: on_mount runs before the backend installs a UI clock.
+    """on_mount runs before the backend installs a UI clock.
 
     A menu built into the App's widget tree mounts while ``App()`` is still being
     constructed, so anything armed there lands on the fallback thread clock and

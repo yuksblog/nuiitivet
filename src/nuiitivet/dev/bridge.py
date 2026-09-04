@@ -4,7 +4,7 @@ Every "live" operation an assistant might perform on a running app -- read the
 tree, screenshot it, later click or type -- needs the same primitive: post a
 request onto the app's UI thread and return the result. Hot reload already owns
 that primitive (watcher thread -> flag -> ``pyglet.clock`` drain on the UI
-thread). This module generalizes it into one bridge that perception (#374),
+thread). This module generalizes it into one bridge that perception,
 action, and the MCP server are all thin clients of.
 
 Design:
@@ -17,13 +17,10 @@ Design:
   is marshalled onto the UI thread via :meth:`call_on_ui_thread`: the worker
   enqueues a callable and blocks on an event; a ``pyglet.clock`` drain
   registered by :meth:`install` runs the callable on the UI thread and signals
-  completion. This satisfies the main-thread-only rule for tree access
-  (``docs/design/THREADING_MODEL.md``).
+  completion. This satisfies the main-thread-only rule for tree access.
 * On start the chosen port is written to ``<project_root>/.nuiitivet/
   dev-bridge.json`` so CLI clients can discover the running app; the file is
   removed on shutdown.
-
-See #374 and ``docs/design/HOT_RELOAD.md``.
 """
 
 from __future__ import annotations
@@ -309,7 +306,7 @@ def _build_status(
         "error_count": _error_count(runtime_journal),
         # A pull-only surface nobody calls does not exist. ``status`` is the
         # cheapest tool and the one called first, so it is the most reliable
-        # place for an assistant to notice the human designated something (#591).
+        # place for an assistant to notice the human designated something.
         "selection": selection.summary() if selection is not None else None,
     }
 
@@ -543,7 +540,7 @@ def _make_handler(
                     # A cheap liveness/health roll-up: title + blank-frame probe
                     # (one UI-thread hop) plus the reload/runtime journals. The
                     # positively-named alternative to a screenshot for "is it up
-                    # and healthy?" (#420).
+                    # and healthy?".
                     self._send_json(
                         200, _build_status(marshaller, journal, runtime_journal, selection)
                     )
@@ -555,7 +552,7 @@ def _make_handler(
                 elif path == "/describe_state":
                     # ``include_animations`` opts the per-frame ``Animatable``
                     # channels back in; they are filtered out by default because
-                    # they dominated the payload (#418).
+                    # they dominated the payload.
                     include_animations = _parse_flag(query, "include_animations")
                     state = marshaller.call_on_ui_thread(
                         lambda app: describe_state(
@@ -567,8 +564,7 @@ def _make_handler(
                 elif path == "/describe_selection":
                     # What the *human* pointed at, the mirror of describe_tree /
                     # describe_state. Read on the UI thread: the payload carries
-                    # each member's live rect plus a scoped tree/state dump
-                    # (#591).
+                    # each member's live rect plus a scoped tree/state dump.
                     self._send_json(
                         200,
                         marshaller.call_on_ui_thread(
@@ -654,19 +650,19 @@ class DevBridge:
         self._project_root = project_root.resolve()
         self._host = host
         # Shared with the hot-reload controller, which records reload outcomes
-        # into it; the bridge serves them at ``/reload_log`` (#388).
+        # into it; the bridge serves them at ``/reload_log``.
         self._journal = journal
         # Shared with the app's ``InteractionRecorder``, which records the human's
         # coarse UI actions into it; the bridge serves them at
-        # ``/interaction_log`` (#390).
+        # ``/interaction_log``.
         self._interaction_journal = interaction_journal
         # Written by the runtime-log capture taps (log records + uncaught
         # exceptions); the bridge serves them at ``/runtime_log`` and toggles
-        # verbose capture via the capture handle at ``/runtime_log/verbose`` (#409).
+        # verbose capture via the capture handle at ``/runtime_log/verbose``.
         self._runtime_journal = runtime_journal
         self._runtime_capture = runtime_capture
         # Written by the app's inspect mode when the human designates a widget;
-        # the bridge serves it at ``/describe_selection`` (#591).
+        # the bridge serves it at ``/describe_selection``.
         self._selection = selection
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None

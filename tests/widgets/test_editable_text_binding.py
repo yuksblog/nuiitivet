@@ -1,4 +1,4 @@
-"""Observable binding on EditableText (issues #565, #575).
+"""Observable binding on EditableText.
 
 An observable passed as ``value`` is the field's value cell, not a source it
 mirrors: edits are written back to it, the same as for every other input
@@ -164,7 +164,7 @@ def test_an_unbound_field_still_edits():
 
 
 # ---------------------------------------------------------------------------
-# on_change and the observable are one signal (#575)
+# on_change and the observable are one signal
 # ---------------------------------------------------------------------------
 
 

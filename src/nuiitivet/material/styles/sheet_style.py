@@ -1,7 +1,7 @@
 """Sheet style definitions for modal side sheets and bottom sheets.
 
-Sizing on these styles follows the framework-wide weight semantics (see
-docs/design/SIZE_POLICY.md): a weight is a share of the leftover space, not a
+Sizing on these styles follows the framework-wide weight semantics: a weight
+is a share of the leftover space, not a
 fraction of the screen. A sheet is the only weight claimant in its overlay, so
 any weight makes it fill the axis - ``"wt"`` and ``"wt2"`` size it alike. Use a
 number (``height=400``) for a sheet that must be smaller than the screen.

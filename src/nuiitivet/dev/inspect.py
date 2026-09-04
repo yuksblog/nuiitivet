@@ -1,4 +1,4 @@
-"""Inspect mode: the gesture layer that turns the human's clicks into designations (#591).
+"""Inspect mode: the gesture layer that turns the human's clicks into designations.
 
 The input half of :mod:`nuiitivet.dev.selection`. It sits on the *real* input
 handlers -- the layer the human drives, which the assistant's synthesized actions
@@ -223,7 +223,7 @@ class InspectMode:
         if node is None:
             return True
         if _resolve_physical_modifiers(int(modifier_keys)) & (MOD_CTRL | MOD_META):
-            # Go to the source instead of designating (#593). Browsing ten
+            # Go to the source instead of designating. Browsing ten
             # widgets' code must not leave ten marks behind to clear.
             self._open_source(app, node)
             return True
@@ -301,7 +301,7 @@ class InspectMode:
             previous = node
 
     def _open_source(self, app: Any, node: Any) -> None:
-        """Take the human to where ``node`` was built (#593).
+        """Take the human to where ``node`` was built.
 
         Deliberately does *not* leave inspect mode. Reading several widgets'
         code in a row is the normal use, and leaving would make each one cost a
@@ -314,8 +314,8 @@ class InspectMode:
             self._notice = "no source recorded for this widget"
         else:
             path, line = target
-            # Success is announced too, not just failure -- and since #597 that
-            # matters more, not less. The URL is fire-and-forget: an opener
+            # Success is announced too, not just failure, and that matters
+            # here. The URL is fire-and-forget: an opener
             # succeeds whether or not anything is registered for the scheme, so
             # a jump that goes nowhere leaves no trace at all. Naming the file
             # is the only evidence the click was received, which is what makes

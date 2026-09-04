@@ -456,7 +456,7 @@ class TestPopupFactory:
         assert box._dismiss_on_outside_tap is False
 
     def test_passthrough_with_explicit_dismissal_raises(self) -> None:
-        with pytest.raises(ValueError, match="#508"):
+        with pytest.raises(ValueError, match="cannot also observe it"):
             popup(_FixedWidget(50, 30), passthrough=True, dismiss_on_outside_tap=True)
 
     def test_default_anchors(self) -> None:

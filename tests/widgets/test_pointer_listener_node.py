@@ -1,4 +1,4 @@
-"""Raw pointer-stream node backing ``pointer_input()`` (issue #308).
+"""Raw pointer-stream node backing ``pointer_input()``.
 
 Exercises ``PointerListenerNode`` at the node level: local coordinates, button
 filtering, capture on/off, the individual press/move/release/enter/leave/scroll

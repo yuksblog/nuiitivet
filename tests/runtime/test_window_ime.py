@@ -1,4 +1,4 @@
-"""Per-window IME state and the focus-loss composition commit (issue #625).
+"""Per-window IME state and the focus-loss composition commit.
 
 Each ``Window`` owns its own ``IMEManager`` — two windows never share
 candidate-window geometry — and losing the OS focus commits a pending

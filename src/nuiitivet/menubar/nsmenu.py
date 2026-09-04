@@ -12,8 +12,7 @@ The module separates the **pure translation** (``plan_menus`` — imported and
 tested on every platform) from the **Cocoa layer** (:class:`NSMenuBridge`,
 whose Objective-C imports happen lazily and only on macOS). The entry-level
 ``MenuEntry`` → ``NSMenu`` translation itself lives in
-:mod:`nuiitivet.menus.nsmenu`, shared with the tray icon. See
-``docs/design/MENU_BAR.md``, Section 7.2.
+:mod:`nuiitivet.menus.nsmenu`, shared with the tray icon.
 """
 
 from __future__ import annotations

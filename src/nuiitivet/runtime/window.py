@@ -6,7 +6,7 @@ object is one window lifetime. It is also the host object widget trees mount
 against: focus, pointer dispatch, rendering, overlay/navigator ownership, and
 the menu bar all live here, per window. The application-wide runtime (theme,
 event loop, exit policy, app-scoped intents) is
-:class:`nuiitivet.runtime.app.App`. See ``docs/design/APP_WINDOW.md``.
+:class:`nuiitivet.runtime.app.App`.
 """
 
 import itertools
@@ -141,7 +141,6 @@ class Window:
     object is one window lifetime: a closed Window is finished, and showing
     the same content again means constructing a new one. State that must
     survive a window lives in app-layer Observables passed into the content.
-    See ``docs/design/APP_WINDOW.md``.
     """
 
     # The wrapped, mounted root tree. Assigned by :meth:`open` (and swapped by
@@ -189,7 +188,7 @@ class Window:
 
         Assigning replaces the model wholesale and rebuilds the rendered bar;
         item *properties* (label / enabled / checked) may be Observables and
-        propagate live without replacement. See ``docs/design/MENU_BAR.md``.
+        propagate live without replacement.
         """
         return self._menubar_controller.model
 
@@ -211,7 +210,7 @@ class Window:
         """This window's IME geometry (cursor rect and window location).
 
         One instance per window, so two windows never race each other's
-        candidate-window positioning. See ``docs/design/APP_WINDOW.md`` 8.6.
+        candidate-window positioning.
         """
         return self._ime
 
@@ -470,7 +469,7 @@ class Window:
                 on other platforms — they always deliver the click.
             menu: The menu bar model (:class:`~nuiitivet.menubar.MenuBar`),
                 or ``None`` for no menu bar. Replace it wholesale via
-                ``window.menu = ...``; see ``docs/design/MENU_BAR.md``.
+                ``window.menu = ...``.
             parent: The parent window, or ``None`` for a top-level window.
                 A child stacks with its parent and closes when it closes.
             modal: Whether this window blocks input to its parent chain
@@ -581,12 +580,12 @@ class Window:
         # mouse-opened menu does not come up wearing a keyboard focus ring.
         self._last_input_source: FocusSource = FocusSource.KEYBOARD
         self._modifier_keys: int = 0
-        # Dev-only observer for the interaction journal (#390). The dev runner
+        # Dev-only observer for the interaction journal. The dev runner
         # attaches an ``InteractionRecorder`` here so the human's coarse UI
         # actions can be recorded for an AI pair to pull; ``None`` -- and zero
         # overhead -- in production.
         self._interaction_recorder: Optional[Any] = None
-        # Dev-only designation mode (#591). The dev runner attaches an
+        # Dev-only designation mode. The dev runner attaches an
         # ``InspectMode`` here so the human can point at a widget for an AI pair
         # to read; ``None`` -- and zero overhead -- in production.
         self._inspect_mode: Optional[Any] = None
@@ -637,7 +636,7 @@ class Window:
         :class:`AppScope`, and that walk only works once the widget is attached.
         Measuring first and mounting afterwards sizes the window against the
         default light theme, ignoring any custom typography or style the app
-        installed (#476).
+        installed.
 
         Args:
             width: The window width specification, as passed to the App.
@@ -1699,7 +1698,7 @@ class Window:
         # Framework modal: key input to a window blocked by an open modal
         # child is consumed (True), never delivered — reporting it unhandled
         # would let the backend's key defaults (pyglet's ESC-closes-window)
-        # act on the blocked window (see docs/design/APP_WINDOW.md).
+        # act on the blocked window.
         if self._modal_blocked():
             return True
 
@@ -1790,7 +1789,7 @@ class Window:
         A focused text field declines printable keys on the ``on_key`` route even
         though it is about to insert them as text through ``on_text``, so
         "declined" cannot be taken at face value here: a key the field will type
-        is withheld from the bindings outright (see #331).
+        is withheld from the bindings outright.
         """
         if self._text_input_claims(key, modifier_keys):
             return False

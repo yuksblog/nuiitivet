@@ -1,4 +1,4 @@
-"""The harness builds the app, not a stripped-down cousin of it (#547).
+"""The harness builds the app, not a stripped-down cousin of it.
 
 ``nv.App`` *is* ``MaterialApp``, so a screen an author writes runs under a
 Material overlay, a Material theme and a Material navigator. A harness that

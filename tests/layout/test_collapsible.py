@@ -101,7 +101,7 @@ def _frame(
 ) -> Tuple[int, int]:
     """Drive one parent frame: measure, then lay out at the measured size.
 
-    This is what a parent actually does, and since #531 it is the only thing
+    This is what a parent actually does, and it is the only thing
     that moves a Collapsible's animation targets -- measuring alone never does.
     """
     size = widget.preferred_size(width, height)
@@ -208,7 +208,7 @@ def test_follows_child_natural_size_change(nuiitivet_mount) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Measuring is a query, not a command (#531)
+# Measuring is a query, not a command
 # ---------------------------------------------------------------------------
 
 

@@ -508,8 +508,7 @@ class TextField(InteractiveWidget):
         has no answer before then — it falls back to the light default and says
         so. ``None`` expresses the same fallback to ``resolve_color_to_rgba``
         and to :meth:`TextFieldStyle.from_theme` without the warning, which here
-        would only be reporting a state the widget is expected to pass through
-        (issue #473).
+        would only be reporting a state the widget is expected to pass through.
         """
         from nuiitivet.widgeting.context_lookup import is_premature_lookup
 

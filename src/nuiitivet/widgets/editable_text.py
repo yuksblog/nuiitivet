@@ -56,7 +56,7 @@ def _strip_control_chars(text: str) -> str:
     Backends do not uniformly filter control characters out of the text they
     deliver. On macOS, for example, pressing Return dispatches ``on_text('\\r')``
     through a code path that bypasses the control-character guard applied to
-    every other key (see issue #307). Filtering here keeps the widget's value
+    every other key. Filtering here keeps the widget's value
     free of stray control characters regardless of which backend feeds it.
 
     ``EditableText`` is single-line only, so newlines are dropped as well. When
@@ -747,7 +747,7 @@ class EditableText(InteractionHostMixin, Widget):
 
         if key == "enter":
             # Enter confirms the text. EditableText is single-line, so Enter
-            # never inserts a newline; the value is left untouched (see #307).
+            # never inserts a newline; the value is left untouched.
             # Do not submit when this Enter is confirming an IME composition:
             # either the composition is still active, or it committed on this
             # same keystroke just before the Enter reached us.

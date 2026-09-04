@@ -1,6 +1,6 @@
 """Tests for TextStyle, TypeScale tokens and Text widget integration.
 
-Layer model (see docs/design/TYPOGRAPHY.md):
+Layer model:
 - Typography (font size / line height / weight / tracking) -> TypeScaleToken.
 - Layout / flow (alignment, overflow, ...) -> Text widget.
 - Reusable visual look (color, font_family) -> TextStyle.

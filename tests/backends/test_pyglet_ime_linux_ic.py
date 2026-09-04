@@ -1,4 +1,4 @@
-"""Tests for the input-context handover in the Linux IME patch (issue #520).
+"""Tests for the input-context handover in the Linux IME patch.
 
 ``install_patch`` swaps pyglet's input context for a callback-style one so inline
 preedit can be rendered. If it retires pyglet's IC before knowing whether the

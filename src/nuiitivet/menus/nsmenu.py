@@ -7,7 +7,7 @@ Both native menu surfaces use it: the macOS global menu bar bridge
 (``nuiitivet.platform.tray_cocoa``), so every native surface renders the
 model identically. ``key_equivalent`` is pure and imported and tested on
 every platform; :class:`NSMenuBuilder`'s Objective-C imports happen lazily
-and only on macOS. See ``docs/design/MENU_BAR.md``, Section 7.2.
+and only on macOS.
 """
 
 from __future__ import annotations

@@ -277,7 +277,7 @@ class _AlignedPositionedContent(Widget):
 
         # Flex is a weight, not a fraction of the parent. The overlay content is
         # the sole claimant on both axes, so a weight child fills the available
-        # extent (see docs/design/SIZE_POLICY.md).
+        # extent.
         if hasattr(child, "width_sizing") and child.width_sizing.kind == "weight":
             target_w = width
         if hasattr(child, "height_sizing") and child.height_sizing.kind == "weight":
@@ -447,7 +447,7 @@ class _AnchoredPositionedContent(Widget):
 
     # No hit_test override needed: this is a transparent full-screen positioning
     # wrapper, so the ``auto`` default (defer to children) already passes hits
-    # through to the positioned content and never catches on self. See #448.
+    # through to the positioned content and never catches on self.
 
 
 class _AnchoredOverlayPosition(OverlayPosition):

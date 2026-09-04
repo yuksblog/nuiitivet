@@ -4,8 +4,7 @@
 legitimate thing to do before mounting (App auto window sizing does it). A
 composable that parents its built child only at mount therefore hands the
 measurement a subtree with a broken ancestor chain: every lookup inside it
-fails, and ``Theme.of`` blames the widget for a call the framework made. See
-issue #476.
+fails, and ``Theme.of`` blames the widget for a call the framework made.
 """
 
 from __future__ import annotations
@@ -107,7 +106,7 @@ def test_clearing_children_keeps_a_reparented_childs_link() -> None:
 def test_measuring_an_unmounted_card_does_not_report_a_premature_lookup(
     caplog: pytest.LogCaptureFixture, no_log_dedup
 ) -> None:
-    """The symptom from #476: the warning named ``Text``, which was blameless."""
+    """The original symptom: the warning named ``Text``, which was blameless."""
     card = Card(width=200, height=100, child=Text("Fixed Size Box"), padding=16)
 
     with caplog.at_level(logging.WARNING, logger=_THEME_LOGGER):

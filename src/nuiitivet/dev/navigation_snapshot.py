@@ -1,4 +1,4 @@
-"""Snapshot & restore the declarative navigation stack across a reload (#378).
+"""Snapshot & restore the declarative navigation stack across a reload.
 
 A reload rebuilds the whole widget tree from the factory, so the freshly built
 ``Navigator`` starts at its initial route and every pushed route is lost. This is
@@ -9,7 +9,7 @@ route-table keys) before the swap, then replay them onto the rebuilt navigator.
 Only the App's own navigator is handled. Routes pushed as raw ``Route``/``Widget``
 instances are opaque — they cannot be rebuilt against the new code — and stop the
 replay, leaving the rest collapsed. Open overlays/dialogs are explicitly out of
-scope and keep resetting (§11 of ``docs/design/HOT_RELOAD.md``).
+scope and keep resetting.
 """
 
 from __future__ import annotations

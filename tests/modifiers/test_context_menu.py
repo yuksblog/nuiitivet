@@ -1,4 +1,4 @@
-"""Tests for the ``context_menu()`` modifier (issue #424).
+"""Tests for the ``context_menu()`` modifier.
 
 A context menu differs from ``popup()`` in that it owns
 both the open state and the transient click coordinate. These tests pin that

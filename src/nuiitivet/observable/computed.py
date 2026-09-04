@@ -61,7 +61,7 @@ class ComputedObservable(ObservableBase[T]):
 
         A derivation that raises is a bug in the caller's function rather than a
         value this observable could publish, so it is logged and the previous
-        value kept (``OBSERVABLE.md`` §7). Nothing is raised at any caller: the
+        value kept. Nothing is raised at any caller: the
         thread that triggered the recompute is whichever one happened to write
         the source -- a clock callback, a ``debounce`` timer -- and none of them
         is a handler for the derivation's bug.

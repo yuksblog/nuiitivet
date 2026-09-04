@@ -1,4 +1,4 @@
-"""Content kept mounted while off screen is out of the Tab sequence (issue #491).
+"""Content kept mounted while off screen is out of the Tab sequence.
 
 Three containers keep content mounted while the user cannot see it: a ``Deck``
 holding the pages it is not showing, a ``Navigator`` holding covered routes, and

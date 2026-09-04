@@ -1,4 +1,4 @@
-"""Tests for widget construction-site capture (#593).
+"""Tests for widget construction-site capture.
 
 The boundaries that matter are the ones the feature is built on: capture must be
 *off* until the dev runner turns it on (a production launch pays nothing), the
@@ -136,8 +136,8 @@ def test_the_chain_is_capped(recording: None) -> None:
 def test_widgets_from_one_line_share_one_interned_site(recording: None) -> None:
     """What keeps this a small table rather than a per-widget field.
 
-    In the #593 spike, 441 resolved widgets held 145 distinct sites because one
-    helper builds fourteen cards.
+    In the spike that shaped this design, 441 resolved widgets held 145
+    distinct sites because one helper builds fourteen cards.
     """
     nodes = [Text(f"Item {index}") for index in range(20)]
 

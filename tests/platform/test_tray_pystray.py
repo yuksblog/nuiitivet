@@ -234,7 +234,7 @@ def test_glib_pump_drains_context_for_appindicator(monkeypatch: pytest.MonkeyPat
     """The GTK-family backends get their GLib context iterated from the clock.
 
     Without this the initial ``_show()`` -- the D-Bus registration that makes
-    the icon exist at all -- is queued and never dispatched (#647).
+    the icon exist at all -- is queued and never dispatched.
     """
     pystray = _fake_pystray(monkeypatch)
     monkeypatch.setattr(pystray.Icon, "__module__", "pystray._appindicator")

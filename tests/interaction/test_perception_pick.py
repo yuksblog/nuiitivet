@@ -1,4 +1,4 @@
-"""Tests for geometric picking (``pick_at``) -- the inspect-mode picker (#591).
+"""Tests for geometric picking (``pick_at``) -- the inspect-mode picker.
 
 ``pick_at`` is the devtools-picker counterpart to ``hit_test``, and the cases
 that matter are the ones where the two must *disagree*: a widget that
@@ -69,7 +69,7 @@ def test_overlapping_siblings_resolve_top_most_first() -> None:
 
 
 def test_a_decks_hidden_page_is_never_picked() -> None:
-    """The case occlusion filtering alone cannot catch (#591).
+    """The case occlusion filtering alone cannot catch.
 
     Both pages carry the same rect and neither participates in hit testing, so
     ``hit_test`` at the point returns ``None`` -- which ``find_obstruction``
@@ -217,7 +217,7 @@ def test_an_empty_overlay_does_not_shadow_the_app() -> None:
         assert pick_at(host.root, 2, 2) is leaf
 
 
-# --- region geometry (#591) --------------------------------------------------
+# --- region geometry --------------------------------------------------
 
 
 def test_the_container_of_a_region_over_blank_space_names_what_should_have_painted() -> None:
@@ -287,7 +287,7 @@ def test_region_contents_keep_the_structure_instead_of_collapsing_it() -> None:
 
 
 def test_a_band_across_a_column_reports_what_it_actually_crosses() -> None:
-    """The case that motivated keeping the structure (#591).
+    """The case that motivated keeping the structure.
 
     A narrow band drawn down a column overlaps the column itself, so collapsing
     to the outermost match reported only the column -- telling the human what
@@ -336,7 +336,7 @@ def test_no_enclosing_container_for_a_region_outside_the_tree() -> None:
         assert enclosing_container(host.root, (9_000.0, 9_000.0, 10.0, 10.0)) is None
 
 
-# --- clipped-away content (#591) ---------------------------------------------
+# --- clipped-away content ---------------------------------------------
 
 
 def _clipped_tile() -> tuple[Any, Any, Any]:
@@ -357,7 +357,7 @@ def _clipped_tile() -> tuple[Any, Any, Any]:
 
 
 def test_a_clipped_away_child_is_not_picked_where_it_paints_nothing() -> None:
-    """The third instance of one blind spot, found in a real app (#591).
+    """The third instance of one blind spot, found in a real app.
 
     ``Box.hit_test`` has always honoured ``clip_content``, but the clip was not
     published under ``visual_clip_rect``, so ``find_obstruction`` could not see

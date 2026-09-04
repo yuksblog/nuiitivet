@@ -4,7 +4,7 @@ The menu bar is declarative data registered on ``App`` (``App(menu=...)``),
 not widgets in the tree: on macOS the global menu bar lives outside the
 window, and ``NSMenu`` renders labels, accelerators and check marks — not
 widget subtrees. The entries themselves are the surface-neutral
-:class:`~nuiitivet.menus.MenuEntry` model. See ``docs/design/MENU_BAR.md``.
+:class:`~nuiitivet.menus.MenuEntry` model.
 
 Lives in the framework-common ``menubar`` package (not under ``material``):
 the menu bar is not a Material Design component, so like the scrollbar it is

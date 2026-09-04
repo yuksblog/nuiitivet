@@ -60,7 +60,7 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
     # (window show/activate) requested this frame. Re-blit the cached full frame
     # 1:1 in device pixels instead of walking the whole tree. This fills the
     # entire back buffer, so the flip invariant (never flip a buffer you did not
-    # just draw) is preserved -- see docs/design/RENDERING_PIPELINE.md.
+    # just draw) is preserved.
     if _try_reblit_cached_frame(app, canvas, phys_w, phys_h, skia):
         _flush_gpu(app, gr_context)
         app._dirty = False
@@ -178,7 +178,7 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
 
 
 def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:
-    """Draw inspect-mode feedback on the live frame only (#591).
+    """Draw inspect-mode feedback on the live frame only.
 
     Live frames only, like the action overlay: the human's designations must not
     reach ``screenshot``, or the assistant would read them back as app content.
@@ -249,7 +249,7 @@ def _reset_gr_context(gr_context: Any) -> None:
 
     ``GrDirectContext`` caches GL state, but ``on_draw`` and pyglet's ``on_resize``
     rewrite the viewport behind its back -- hence the garbled frame after a
-    drag-resize (#467). A full reset (not just ``resetGLTextureBindings()``, which
+    drag-resize. A full reset (not just ``resetGLTextureBindings()``, which
     leaves the cached viewport wrong) costs one state resend per frame.
     """
 

@@ -1,4 +1,4 @@
-"""Tests for the ``drop_target()`` modifier (issue #599).
+"""Tests for the ``drop_target()`` modifier.
 
 Covers the modifier's node wiring: it attaches a ``FileDropNode``, delivers
 :class:`FileDropEvent` with widget-local coordinates, composes with

@@ -1,4 +1,4 @@
-"""Tests for the pyglet runner's mouse button/modifier normalization (issue #305).
+"""Tests for the pyglet runner's mouse button/modifier normalization.
 
 These exercise the runner's raw-pyglet -> backend-neutral mapping directly; the
 end-to-end dispatch of the normalized values is covered in

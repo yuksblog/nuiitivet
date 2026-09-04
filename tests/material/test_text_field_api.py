@@ -73,7 +73,7 @@ def test_text_field_on_submit_fires_with_confirmed_value():
     tf._editable._handle_key("enter", 0)
 
     assert seen == ["search"]
-    # Enter must not alter the value (issue #307).
+    # Enter must not alter the value.
     assert tf.value == "search"
 
 

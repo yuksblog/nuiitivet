@@ -3,9 +3,10 @@
 ``_ObservableValue``, ``ComputedObservable`` and ``SourceSubscribingObservable``
 each define the operator set themselves — they cannot share a mixin, because the
 first two propagate the ``dispatch=False`` opt-out into what they build and a
-wrapper has none to propagate (``OBSERVABLE.md`` §3). Three copies drift, and the
+wrapper has none to propagate. Three copies drift, and the
 drift is invisible until someone writes ``debounce(...).filter(...)`` and finds
-the method missing, which is exactly what happened between #555 and #554. This
+the method missing, which is exactly how ``filter`` was once left off the
+wrappers. This
 test is the cheap guard: add an operator to one, add it to all three.
 """
 

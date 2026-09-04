@@ -21,8 +21,7 @@ The journal itself holds no capture policy: it is a plain, thread-safe buffer
 written from any thread (the UI thread's callback path, a background thread's
 excepthook, an asyncio error logged from the loop) and read on HTTP worker
 threads. De-duplication of repeated errors lives upstream at the emit sites
-(``logging_once``); this buffer records whatever reaches it. See #409 and
-``docs/design/HOT_RELOAD.md`` (§12).
+(``logging_once``); this buffer records whatever reaches it.
 """
 
 from __future__ import annotations

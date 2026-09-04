@@ -510,7 +510,7 @@ def _iter_visible(node: Any, seen: set[int]) -> Any:
 def enclosing_container(root: Any, rect: tuple[float, float, float, float]) -> Optional[Any]:
     """Return the innermost visible node whose rect wholly encloses ``rect``.
 
-    The anchor for a designated *region* (#591). When the human draws a box over
+    The anchor for a designated *region*. When the human draws a box over
     empty space there is no widget to name, and this is the entire answer: it
     names the widget that *should* have painted something there.
 
@@ -756,7 +756,7 @@ def _node_state(node: Any, *, include_animations: bool) -> dict[str, Any]:
     ``Animatable`` attributes are skipped unless ``include_animations`` is set:
     an interactive widget carries several animation channels that change every
     frame and carry visual, not semantic, state, and they otherwise dominate the
-    dump (#418).
+    dump.
     """
     namespace = getattr(node, "__dict__", None)
     if not namespace:
@@ -833,7 +833,7 @@ def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, 
     length- and depth-capped and opaque objects render as ``type: repr``, so no
     single value can bloat or break the dump.
 
-    ``Animatable`` state is **omitted by default** (#418): an interactive widget
+    ``Animatable`` state is **omitted by default**: an interactive widget
     carries several animation channels (``state_layer_anim``, ``bg_color_anim``,
     …) whose per-frame visual values buried the semantic state and dominated the
     payload. Pass ``include_animations=True`` when the animation itself is what

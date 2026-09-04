@@ -50,7 +50,7 @@ class InputHubMixin:
     def _hit_is_interactive(self) -> bool:
         """Whether this widget handles pointer/scroll input, so hit-testing catches it.
 
-        Drives the ``auto`` hit-test default (issue #448): a widget is interactive
+        Drives the ``auto`` hit-test default: a widget is interactive
         when it overrides ``on_pointer_event`` / ``on_scroll_event`` or has a
         registered pointer/scroll input hook. This keeps low-level input widgets
         (e.g. scrollables) and modifier-attached handlers catching even when they

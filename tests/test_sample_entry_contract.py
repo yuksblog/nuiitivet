@@ -1,4 +1,4 @@
-"""Keep every sample launchable by the dev runner (issue #658).
+"""Keep every sample launchable by the dev runner.
 
 ``python -m nuiitivet.dev run <file>`` imports the sample, calls its entry once
 with no arguments, and expects that call to have built an ``App`` and called

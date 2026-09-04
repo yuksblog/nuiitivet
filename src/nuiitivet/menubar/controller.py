@@ -5,7 +5,7 @@ that knows which model is registered and which slot widget currently renders
 it. Slot widgets (the default one the App inserts below the chrome, and any
 user-placed :class:`~nuiitivet.menubar.MenuBarArea`) register themselves on
 mount; a mounted user area suppresses the default slot, so the model's pixels
-move without the model itself going anywhere. See ``docs/design/MENU_BAR.md``.
+move without the model itself going anywhere.
 """
 
 from __future__ import annotations

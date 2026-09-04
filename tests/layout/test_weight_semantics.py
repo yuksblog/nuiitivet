@@ -1,7 +1,7 @@
 """A weight is a share of the leftover space, never a fraction of the parent.
 
-These tests pin the single interpretation documented in
-docs/design/SIZE_POLICY.md across a layout container and an overlay: a lone
+These tests pin the single framework-wide interpretation
+across a layout container and an overlay: a lone
 weight child fills the available extent whatever its weight, and several weight
 siblings split the extent in proportion to their weights.
 """

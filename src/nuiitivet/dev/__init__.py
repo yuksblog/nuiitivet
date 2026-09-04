@@ -6,8 +6,7 @@ Launch an app with hot reload via::
     python -m nuiitivet.dev run --module yourpkg.app
 
 Editing and saving a user module rebuilds the widget tree in place while the
-window, the debugger session, and ``Observable`` state survive. See
-``docs/design/HOT_RELOAD.md`` for the design and #359 for background.
+window, the debugger session, and ``Observable`` state survive.
 
 This package is import-safe in production: importing it has no effect until the
 runner installs a session. ``App.run()`` only consults :func:`current_dev_session`.

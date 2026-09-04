@@ -1,4 +1,4 @@
-"""Tests for the human-only dev action overlay (#398).
+"""Tests for the human-only dev action overlay.
 
 The overlay visualizes AI-driven ``click`` / ``scroll`` / ``type`` / ``key`` actions for a
 human watching hot reload, without ever entering the assistant's perception. The

@@ -1,4 +1,4 @@
-"""Concrete observable base classes back the hot-path isinstance fast path (issue #324).
+"""Concrete observable base classes back the hot-path isinstance fast path.
 
 Every built-in observable must subclass :class:`ObservableBase` (and the mutable
 ones :class:`MutableObservableBase`) so widget construction can use a pure-C
@@ -43,7 +43,7 @@ def test_bases_still_satisfy_protocols_structurally():
     assert isinstance(obs, ReadOnlyObservableProtocol)
     assert isinstance(computed, ReadOnlyObservableProtocol)
     # A property's setter is invisible to a runtime-checkable Protocol, so this
-    # separation rests on ``set`` (#500) existing only on the mutable side.
+    # separation rests on ``set`` existing only on the mutable side.
     assert not isinstance(computed, ObservableProtocol)
 
 
@@ -61,7 +61,7 @@ def test_combine_result_is_observable_base():
 def test_animatable_is_recognised_as_observable():
     """Animatable is a duck-typed observable; it must ride the fast path too.
 
-    Regression guard for #324: widget setters use ``isinstance(x, ObservableBase)``
+    Regression guard: widget setters use ``isinstance(x, ObservableBase)``
     to decide whether to observe a value, so Animatable (passed e.g. to ``rotate``)
     must subclass ObservableBase or it would silently be treated as a plain value.
     """

@@ -36,7 +36,8 @@ def _resolve_dismiss_on_outside_tap(passthrough: bool, dismiss_on_outside_tap: b
         raise ValueError(
             "passthrough=True cannot be combined with dismiss_on_outside_tap=True: "
             "a popup that lets a tap through cannot also observe it. "
-            "See issue #508 (pass-behind / multi-target dispatch)."
+            "Observing without consuming would need pass-behind (multi-target) "
+            "dispatch, which the overlay does not do."
         )
     return resolved
 
@@ -403,7 +404,8 @@ def popup(
 
     Raises:
         ValueError: When the popup is opened with ``passthrough=True`` and an
-            explicit ``dismiss_on_outside_tap=True`` — see issue #508.
+            explicit ``dismiss_on_outside_tap=True`` — a popup that lets a tap
+            through cannot also observe it.
 
     Example::
 

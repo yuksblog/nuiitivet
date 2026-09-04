@@ -1,6 +1,6 @@
 """Regression tests for route transition motion resolution and per-frame repaint.
 
-See issue #399:
+Two defects are pinned:
 
 - Defect 1: ``pop`` fell back to the engine's 0.6 s default because the exit
   motion was resolved via ``getattr(spec, phase.value)`` — ``"exit"`` misses the

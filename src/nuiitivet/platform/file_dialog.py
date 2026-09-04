@@ -4,7 +4,7 @@ This module is OS-dependent but backend-agnostic. Each platform shells out to
 an OS helper process (``osascript`` on macOS, ``zenity``/``kdialog`` on Linux,
 PowerShell on Windows) instead of hosting a second GUI toolkit in-process:
 tkinter's Tk mainloop cannot coexist with the pyglet-owned ``NSApplication``
-on macOS (see issue #600 for the spike evidence).
+on macOS.
 
 The backend methods block until the dialog is dismissed. Applications use the
 async :class:`FileDialog` facade, which runs the blocking call in a worker
@@ -455,7 +455,7 @@ def _create_backend() -> FileDialogBackend:
     if sys.platform == "darwin":
         # Prefer the in-process Cocoa panels: near-instant once warm, correct
         # focus, app-modal. Fall back to the osascript helper when the bridge
-        # is unavailable (see issue #600 for the spike evidence).
+        # is unavailable.
         try:
             from .file_dialog_cocoa import CocoaFileDialogBackend
 

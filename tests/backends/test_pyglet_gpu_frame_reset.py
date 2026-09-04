@@ -1,4 +1,4 @@
-"""Tests for the Skia GL state reset in the pyglet GPU frame path (issue #467).
+"""Tests for the Skia GL state reset in the pyglet GPU frame path.
 
 ``GrDirectContext`` caches GL state and skips redundant GL calls, but the pyglet
 side calls ``GL.glViewport()`` directly and pyglet's own ``on_resize`` rewrites

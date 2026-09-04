@@ -1,4 +1,4 @@
-"""Tests that every dev action verb still reaches the overlay (#524).
+"""Tests that every dev action verb still reaches the overlay.
 
 The verbs themselves live in :mod:`nuiitivet._interaction.action` and are silent:
 what each one did is reported to an optional ``ActionObserver``, and

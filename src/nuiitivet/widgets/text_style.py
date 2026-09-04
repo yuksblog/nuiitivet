@@ -2,7 +2,7 @@
 
 Defines the minimal *visual* style surface for the core Text widget.
 
-Layer boundaries (see ``docs/design/TYPOGRAPHY.md``):
+Layer boundaries:
 
 * Typographic metrics (font size / line height / weight / tracking) live on the
   :class:`~nuiitivet.theme.type_scale.TypeScaleToken` passed as ``type_scale``.

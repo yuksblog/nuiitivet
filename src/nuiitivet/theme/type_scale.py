@@ -14,8 +14,7 @@ This is deliberately a *structured* value, not a bare ``int``:
   level — MD3 does not define a type-scale -> icon-size mapping, and a role's
   font size (e.g. 16) is not an icon optical size (20/24/40/48).
 
-See ``docs/design/TYPOGRAPHY.md`` for the 3-layer model and reference values
-(https://m3.material.io/styles/typography/type-scale-tokens).
+Reference values: https://m3.material.io/styles/typography/type-scale-tokens.
 """
 
 from __future__ import annotations

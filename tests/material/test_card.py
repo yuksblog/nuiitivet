@@ -114,7 +114,7 @@ class TrackingChild(Widget):
 
 
 def test_measure_does_not_unmount_live_child():
-    # Regression for issue #244: measuring a mounted Card must not tear down
+    # Regression: measuring a mounted Card must not tear down
     # (unmount) its live child subtree. Doing so cancels in-progress pointer
     # gestures, so clicks on interactive children inside a Card never fire.
     child = TrackingChild()

@@ -1,4 +1,4 @@
-"""Navigation and overlay state as things a test can ask (#541).
+"""Navigation and overlay state as things a test can ask.
 
 The point of the surface is that a test says what it means -- "we are on Detail
 now", "the dialog is gone" -- instead of asserting on a widget that happens to
@@ -354,7 +354,7 @@ def test_navigator_stack_is_public_and_observation_only() -> None:
 
 
 def test_snapshot_stack_is_not_the_stack() -> None:
-    """The name that sent #530 the long way round, pinned."""
+    """``snapshot_stack`` reads like "the stack" but is the restore log, pinned."""
     nav = Navigator.routes([ListScreen(), DetailScreen()])
 
     assert len(nav.stack) == 2

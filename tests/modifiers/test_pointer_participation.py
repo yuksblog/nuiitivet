@@ -1,4 +1,4 @@
-"""Tests for the pointer-participation modifier family (issue #449).
+"""Tests for the pointer-participation modifier family.
 
 ``defer_pointer`` / ``block_pointer`` / ``absorb_pointer`` each pick one posture
 on the internal S (self surface) x C (children) hit model, and
@@ -144,7 +144,7 @@ def test_defer_pointer_suppresses_painted_self_surface() -> None:
 def test_reported_bug_repro_with_explicit_defer_pointer() -> None:
     """Stack([canvas, full-size Container(toolbar)]) with explicit defer_pointer().
 
-    The motivating bug from #448, spelled out explicitly: the full-size alignment
+    The bug that motivated hit participation, spelled out explicitly: the full-size alignment
     Container hands empty-area clicks to the canvas behind it, while the toolbar
     strip still catches.
     """

@@ -1,4 +1,4 @@
-"""Tests for opening an editor at a construction site (#593, #597).
+"""Tests for opening an editor at a construction site.
 
 The cases that matter are the ones a human would otherwise experience as "the
 feature is broken". Since the route is a URL, most of those are *silent* -- an
@@ -161,7 +161,7 @@ def test_a_desktop_without_xdg_open_is_told_why_nothing_happens(
 ) -> None:
     """There is no CLI to fall back to any more, so this is the end of the road.
 
-    Accepted deliberately in #597: one mechanism is worth more than rescuing a
+    Accepted deliberately: one mechanism is worth more than rescuing a
     desktop that ships no opener, and ``--editor`` could not help here anyway --
     what is missing is the opener, not the scheme.
     """

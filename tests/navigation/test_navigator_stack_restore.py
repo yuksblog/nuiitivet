@@ -1,4 +1,4 @@
-"""Tests for declarative navigation stack snapshot/restore across reload (#378).
+"""Tests for declarative navigation stack snapshot/restore across reload.
 
 A hot reload rebuilds the tree from the factory, so the freshly built navigator
 starts at its initial route. These tests exercise the descriptor log that lets

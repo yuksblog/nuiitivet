@@ -3,14 +3,14 @@
 Resolving a style in ``__init__`` cannot work: the widget has no parent yet, so
 ``Theme.of`` cannot reach the ``AppScope`` and silently returns the light
 default. The style therefore has to be adopted once the widget is attached --
-and it has to keep following the theme after that. See issue #473.
+and it has to keep following the theme after that.
 
-The other half is #475: a widget whose style accessor never consults the theme
+The other half: a widget whose style accessor never consults the theme
 at all is just as wrong, only more quietly -- an app installing a customised
 ``MaterialThemeData`` cannot restyle it globally. Both halves are checked here,
 because the fix is the same pull: the widget reads the theme where the style is
 consumed (``build`` if it has one, otherwise ``preferred_size`` / ``paint``) and
-never holds the result. See ``docs/design/THEME_CONSUMPTION.md``.
+never holds the result.
 """
 
 from __future__ import annotations

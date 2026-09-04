@@ -1,4 +1,4 @@
-"""The lifetime contract for observables that subscribe to a source (#551).
+"""The lifetime contract for observables that subscribe to a source.
 
 ``debounce`` / ``throttle`` stay subscribed upstream for as long as they live.
 These tests pin the two halves of the contract: the source must not keep the

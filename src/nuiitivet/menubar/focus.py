@@ -1,8 +1,8 @@
 """macOS focus-follow for the global menu bar: focused window → installed menu.
 
 The global menu bar is one per process, so with several windows someone must
-decide whose model it shows. Per ``docs/design/APP_WINDOW.md`` Section 8.4 the
-bar follows the OS focus: the focused window's model is installed, and a
+decide whose model it shows. The bar follows the OS focus: the focused
+window's model is installed, and a
 window with ``menu=None`` falls back to the main window's model, so
 single-menu apps keep their behavior with no per-window declarations.
 

@@ -1,4 +1,4 @@
-"""The human's designation buffer: what they *pointed at*, for the assistant to pull (#591).
+"""The human's designation buffer: what they *pointed at*, for the assistant to pull.
 
 The dev bridge already carries perception (``describe_tree`` / ``describe_state``
 / ``screenshot``), action (``click`` / ``scroll`` / ``type`` / ``key``) and the
@@ -30,7 +30,7 @@ Three boundaries are load-bearing:
   "designate, then have the assistant fix it", so a rebuild lands in the middle
   of essentially every use. Members are therefore re-resolved by the same
   key-preferring structural path :mod:`nuiitivet.dev.snapshot` restores state
-  with (HOT_RELOAD.md §7.4), and any that fail are counted in ``lost`` rather
+  with, and any that fail are counted in ``lost`` rather
   than silently dropped -- an assistant reasoning over a quietly truncated set is
   the worst available outcome.
 * **Leaving is a decision, not a side effect.** ``Enter`` keeps what the session
@@ -466,7 +466,7 @@ def _node_payload(index: int, widget: Any) -> dict[str, Any]:
     rect = _rect_payload(widget)
     if rect is not None:
         info["rect"] = rect
-    # Where the widget was built (#593). Absent when the dev runner is not
+    # Where the widget was built. Absent when the dev runner is not
     # recording sites, and for the few widgets framework scaffolding builds with
     # no user frame in the stack -- both of which read as "unknown", not "none".
     source = source_payload(widget)

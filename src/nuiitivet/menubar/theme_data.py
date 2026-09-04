@@ -17,7 +17,7 @@ The palette covers **both** surfaces the menu system draws: the horizontal
 bar and its popups. The popups reuse the Material ``Menu`` widget machinery,
 but their colors come from here, not from the Material menu defaults — a
 non-Material design system must not get Material-colored popups under a
-framework-common bar (see ``docs/design/MENU_BAR.md``, Section 8.4).
+framework-common bar.
 """
 
 from __future__ import annotations

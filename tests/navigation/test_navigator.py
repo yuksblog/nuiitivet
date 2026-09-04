@@ -21,7 +21,7 @@ class _FlagWidget(Widget):
 
 
 def test_navigator_of_falls_back_to_the_app_navigator() -> None:
-    """An overlay entry hangs beside the Navigator, not under it (#518).
+    """An overlay entry hangs beside the Navigator, not under it.
 
     So there is no ancestor to walk to, and the App-scoped fallback is the only
     thing that makes ``Navigator.of`` work from inside a dialog.

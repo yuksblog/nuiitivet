@@ -12,7 +12,7 @@ re-exports everything here plus its own widgets::
     nv.Column(...)   # core symbol, re-exported here
     nv.Button(...)   # material symbol
 
-See the "Imports" section of ``docs/guide/index.md`` for the import policy.
+That single import is the whole supported surface.
 Reaching into the internal modules below (``nuiitivet.layout.column``,
 ``nuiitivet.widgeting.widget``, ...) is unsupported and may break without notice.
 """

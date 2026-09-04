@@ -70,7 +70,7 @@ class FocusDemo(nv.ComposableWidget):
 
 def main(png: str = ""):
     print("=" * 68)
-    print("Focusable key-event demo (#310)")
+    print("Focusable key-event demo")
     print("  1. Press Tab to focus a field (watch focus_change).")
     print("  2. Type letters / arrows -> key_DOWN then key_UP for each.")
     print("  3. Hold Shift/Ctrl/Alt/Cmd while typing -> mods shows the mask.")

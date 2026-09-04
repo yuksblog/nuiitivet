@@ -307,7 +307,7 @@ def _require_not_modal_blocked(app: Any, *, verb: str) -> None:
 
     The window would swallow the synthesized input (framework modal), so the
     verb must fail loudly instead of reporting success on an event that never
-    reached a widget. See ``docs/design/APP_WINDOW.md``.
+    reached a widget.
     """
     probe = getattr(app, "_modal_blocked", None)
     if callable(probe) and probe():

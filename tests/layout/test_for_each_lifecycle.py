@@ -1,4 +1,4 @@
-"""Regression tests for ForEach mount/unmount lifecycle counts (issue #365).
+"""Regression tests for ForEach mount/unmount lifecycle counts.
 
 ForEach used to fire ``on_mount`` / ``on_unmount`` on its item widgets far more
 than the tree changes justified: every item mounted twice on the initial render,

@@ -256,7 +256,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
         """Sync animation targets to current natural size / opened state.
 
         Called from ``layout`` only: retargeting is a command, and measuring
-        must not perform it (#531).
+        must not perform it.
         """
         open_ = _read_opened(self._opened)
 

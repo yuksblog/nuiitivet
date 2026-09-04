@@ -1,4 +1,4 @@
-"""Human-facing visualization of AI-driven dev-bridge actions (#398).
+"""Human-facing visualization of AI-driven dev-bridge actions.
 
 When an assistant drives a running app through the dev bridge (``click`` /
 ``scroll`` / ``type`` / ``key``), hot reload makes the screen update on its own -- but a human

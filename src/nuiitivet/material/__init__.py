@@ -10,8 +10,7 @@ single import gives access to everything::
     nv.Button(...)   # material symbol
 
 Deep imports (``nuiitivet.material.buttons``, ``nuiitivet.material.styles.*``,
-...) are internal and unsupported. See the "Imports" section of
-``docs/guide/index.md``.
+...) are internal and unsupported.
 """
 
 from __future__ import annotations

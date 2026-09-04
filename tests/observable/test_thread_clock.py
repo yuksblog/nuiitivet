@@ -1,4 +1,4 @@
-"""Regression tests for the fallback ``_ThreadClock`` (#522).
+"""Regression tests for the fallback ``_ThreadClock``.
 
 These run against the **real** ``_ThreadClock``, on purpose. A fake clock that
 fires callbacks on the thread that pumps it and unschedules by equality masks
@@ -393,7 +393,7 @@ class _RecordingClock:
 
 
 class TestHandoverToTheInstalledClock:
-    """#655: callbacks armed before a UI clock existed must not stay on the thread.
+    """Callbacks armed before a UI clock existed must not stay on the thread.
 
     A widget mounted while ``App()`` is being constructed arms on the fallback
     clock, and ``set_clock`` used to only rebind the module global -- leaving the
@@ -447,7 +447,7 @@ class TestHandoverToTheInstalledClock:
         runtime.set_clock(_RecordingClock())
 
         # The recording clock never fires, so anything arriving here came from
-        # the fallback's worker -- exactly what #655 was.
+        # the fallback's worker -- exactly the leak the handover exists to stop.
         assert not fired.wait(_SETTLE)
 
     def test_installing_the_same_clock_twice_does_not_re_arm(self, fallback: _ThreadClock) -> None:

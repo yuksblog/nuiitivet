@@ -43,7 +43,7 @@ def key_shortcut(
     ``TextField`` keeps eating the keys it uses before any shortcut is consulted.
 
     Bind the command where it is **owned**, not on whatever widget is nearest.
-    The owner decides the scope; see ``docs/design/KEYBOARD_SHORTCUTS.md``.
+    The owner decides the scope.
 
     Args:
         shortcut: The gesture, as a spec string (``"Accel+S"``, ``"Ctrl+Shift+Z"``)
