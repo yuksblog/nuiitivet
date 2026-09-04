@@ -148,10 +148,10 @@ class BasicApiApp(nv.ComposableWidget):
         )
 
 
+def main() -> None:
+    app = nv.App(nv.Window(content=BasicApiApp()))
+    app.run()
+
+
 if __name__ == "__main__":
-    widget = BasicApiApp()
-    app = nv.App(nv.Window(content=widget))
-    try:
-        app.run()
-    except Exception:
-        print("Basic API demo requires pyglet/skia to run.")
+    main()

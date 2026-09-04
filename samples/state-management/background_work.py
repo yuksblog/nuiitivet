@@ -147,10 +147,10 @@ class CsvImportScreen(nv.ComposableWidget):
         )
 
 
+def main() -> None:
+    app = nv.App(nv.Window(content=CsvImportScreen()))
+    app.run()
+
+
 if __name__ == "__main__":
-    widget = CsvImportScreen()
-    app = nv.App(nv.Window(content=widget))
-    try:
-        app.run()
-    except Exception:
-        print("Background Work demo requires pyglet/skia to run.")
+    main()

@@ -43,7 +43,7 @@ class BottomSheetDemo(nv.ComposableWidget):
         )
 
 
-def main(png_path: str = "") -> nv.App:
+def main(png_path: str = "") -> None:
     if png_path:
         background = nv.Container(
             alignment="center",
@@ -91,10 +91,11 @@ def main(png_path: str = "") -> nv.App:
             )
         )
         app.render_to_png(png_path)
-        return app
+        return
 
-    return nv.App(nv.Window(content=BottomSheetDemo(), width=480, height=400))
+    app = nv.App(nv.Window(content=BottomSheetDemo(), width=480, height=400))
+    app.run()
 
 
 if __name__ == "__main__":
-    main().run()
+    main()

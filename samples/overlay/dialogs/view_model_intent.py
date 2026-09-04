@@ -48,7 +48,7 @@ class IntentDemo(nv.ComposableWidget):
         )
 
 
-def main(png_path: str = ""):
+def main(png_path: str = "") -> None:
     if png_path:
         dialog = nv.BasicDialog(
             title="Operation Complete",
@@ -58,10 +58,11 @@ def main(png_path: str = ""):
         )
         app = nv.App(nv.Window(content=nv.Container(alignment="center", child=dialog), width=400, height=300))
         app.render_to_png(png_path)
-        return app
+        return
 
-    return nv.App(nv.Window(content=IntentDemo(), width=400, height=300))
+    app = nv.App(nv.Window(content=IntentDemo(), width=400, height=300))
+    app.run()
 
 
 if __name__ == "__main__":
-    main().run()
+    main()
