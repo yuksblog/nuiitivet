@@ -312,14 +312,12 @@ tree while `__init__.py` files are present (so `pkg/sub/app.py` in a package
 becomes `pkg.sub.app`, and a bare script becomes its file stem); the package
 root's parent is placed on `sys.path` so the import succeeds.
 
-Because the runner is a launcher, the app must not inherit the runner's
-`sys.argv` — an entry that calls `parse_args()` would die on it. Before the
-import (a module may parse arguments at import time too) `sys.argv` becomes the
-app's own path plus whatever followed a `--` separator on the command line.
+An entry that calls `parse_args()` would die on the runner's own command line,
+so `sys.argv` becomes the app's path plus anything after a `--` separator, set
+before the import because a module may parse arguments at import time too.
 
-The replacement is **permanent**, not restored once the entry returns: hot
-reload re-imports user modules, so handing the runner's argv back would spring
-the same trap on the next save. `pdb` and `cProfile` replace argv the same way.
+It is never restored: hot reload re-imports user modules, so putting the
+runner's argv back would break the next save. `pdb` and `cProfile` do the same.
 
 ## 9. Threading
 

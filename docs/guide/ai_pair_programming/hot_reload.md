@@ -66,16 +66,15 @@ or, for a package module:
 python -m nuiitivet.dev run --module yourpkg.app
 ```
 
-If your entry parses command-line arguments, put them after a `--` separator —
-everything past it becomes the app's `sys.argv`, and the runner's own arguments
-stay out of it:
+Arguments for your app go after a `--` separator — everything past it becomes
+the app's `sys.argv`:
 
 ```bash
 python -m nuiitivet.dev run app.py -- --png out.png
 ```
 
-With no separator the app sees an argv of just its own path, so an `argparse`
-entry gets its defaults.
+Without one, the app's argv is just its own path, so an `argparse` entry gets
+its defaults.
 
 Normal (production) launch is unchanged — `python -m yourpkg` runs `main()` and
 `App.run()` blocks as usual. There is no dev/prod branching in your code; the

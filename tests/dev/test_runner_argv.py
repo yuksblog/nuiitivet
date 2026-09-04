@@ -17,9 +17,9 @@ from nuiitivet.dev import source
 from nuiitivet.dev.__main__ import _parse_args, _run
 from nuiitivet.dev.session import set_dev_session
 
-# What the generated app writes out: the argv seen at import time and the argv
-# seen inside the entry. The entry never calls App.run(), so ``_run`` reports a
-# missing hand-off and returns 1 without ever opening a window.
+# What the generated app writes out: the argv at import time and inside the
+# entry. The entry never calls App.run(), so ``_run`` reports a missing hand-off
+# and returns 1 without opening a window.
 _APP_SOURCE = """
 import json
 import sys

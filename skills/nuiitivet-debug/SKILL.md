@@ -35,8 +35,8 @@ python -m nuiitivet.dev run path/to/app.py  # or: run --module pkg.app
 python -m nuiitivet.dev run app.py -- --flag value  # args for the app's own entry
 ```
 
-The app's `sys.argv` is its path plus anything after `--`; the runner's own
-arguments never reach it, so an `argparse` entry with no `--` gets its defaults.
+The app's `sys.argv` is its path plus anything after `--` — the runner's own
+arguments never reach it.
 
 Under the dev runner, saving a widget edit updates the running window **while
 `Observable` state survives**.
