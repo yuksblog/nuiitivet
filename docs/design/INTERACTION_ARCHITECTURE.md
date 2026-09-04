@@ -158,6 +158,7 @@ When a scope lets Tab escape and the focused node is not itself a stop, traversa
 | `RangeSlider` | handle indices (virtual stops) | one (the slider) | first / last handle | Tab | escape to the next widget |
 | `RadioGroup` | enabled radios (real `FocusNode`s) | one (the group) | **the selected radio** | arrows on both axes (wrap) | escape to the next widget |
 | `StandardButtonGroup` / `ConnectedButtonGroup` | enabled items (real `FocusNode`s) | one (the group) | first / last item | Left/Right (**no wrap**) | escape to the next widget |
+| `NavigationRail` | items (real `FocusNode`s) | one (the rail) | **the selected item** | Up/Down (wrap) | escape to the next widget |
 
 A single-handle `Slider` is a one-member scope: Tab enters, finds no second member, and hands the key straight back to the global sequence. Submenus are nested scopes.
 
@@ -165,6 +166,7 @@ A single-handle `Slider` is a one-member scope: Tab enters, finds no second memb
 
 - A `RadioGroup` follows the WAI-ARIA radio group: the arrows **wrap**, and moving the focus **moves the selection with it** ("selection follows focus"), which is also why Tab enters the group at the selected radio rather than the first one. Both axes rove, because a radio group is laid out as a `Row` or a `Column` and the keys must work either way.
 - A button group follows the WAI-ARIA toolbar: Left/Right **stop at the ends**, and roving moves the focus only — its items are actions or independent toggles, so activation stays on Enter/Space.
+- A `NavigationRail` mixes the two: like a radio group Tab enters it at the **selected** item and the arrows **wrap**, but like a button group roving moves the focus only ("manual activation" in WAI-ARIA tabs terms) — selecting a destination navigates, which is too heavy an action to fire on every arrow press. Only Up/Down rove, because a rail is always a column. How the focused item is *painted* is a Material decision, recorded in `MATERIAL_INTERACTION.md`.
 - A member is taken out of the group when it is disabled: a disabled `Clickable` has no `FocusNode` at all, so the policies enumerate exactly the members the keyboard should reach.
 
 ### Menu keyboard model (provisional)
@@ -190,7 +192,7 @@ The open question is whether Tab and the arrow keys should both rove, and whethe
 
 When screen reader / accessibility tree support is implemented (via `SemanticsNode`), revisit how the members of a scope are announced. Virtual stops (slider handles) carry no `FocusNode` and therefore no natural place for a per-thumb semantic label (e.g., "Start value: 30"); the `SemanticsNode` design will decide whether the policy grows a semantics hook or virtual stops become real nodes.
 
-Widget groups not yet on this primitive — segmented buttons, tab bars, toolbars — all want roving with a single external stop and should be migrated onto it rather than growing their own navigation. `NavigationRail` is a group too, but it is keyboard-unreachable today and how it should *show* the focus is unsettled (MD3 shows no focus ring on rail items, and a ring around the active indicator would collide with its neighbours); that is tracked separately.
+Widget groups not yet on this primitive — segmented buttons, tab bars, toolbars — all want roving with a single external stop and should be migrated onto it rather than growing their own navigation. The `NavigationRail` menu (expand/collapse) button is still keyboard-unreachable: it is an ordinary standalone control, not a scope member, and wants a plain Tab stop of its own.
 
 ## Node Roles & Extensibility
 

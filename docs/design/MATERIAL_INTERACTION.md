@@ -46,6 +46,13 @@ Visual overlays (State Layers) are resolved with the following priority in `_get
 3. **Hover** (`state.hovered`): While pointer is within bounds.
 4. **Key Focus**: (Note: Modern MD3 style often disables the colored State Layer for Focus, preferring just the Ring. Our implementation follows this by default).
     * Widgets that rove focus with the arrow keys inside a `FocusScope` (e.g. `MenuItem`) **do** layer focus, by overriding `_get_active_state_layer_opacity` to fall back to `_FOCUS_OPACITY` when `should_show_focus_ring`. The roved item must read as focused — and that is focus, not selection: `selected` stays reserved for a genuinely selected entry.
+    * This is not automatic for every roving widget: `NavigationRail` items rove too but stay ring-only, because their focus shape is the active-indicator pill — a layer there fills the whole pill and reads as a selection or hover state rather than focus. A menu item's full-width row does not have that ambiguity.
+
+### Focus Ring Placement
+
+The default ring (`draw_focus_indicator`) is drawn **outside** the widget bounds: 3dp stroke, 2dp offset. Where an outer ring cannot fit, a widget overrides `draw_focus_indicator` to draw the same ring **inset** — just inside the shape that indicates the focus, mirroring the 2dp gap inward.
+
+`NavigationRail` items are the case that settled this. MD3's component imagery shows no focus ring on rail items, which could be read as "rail items are not focusable" — but the token set says otherwise: the rail defines a full `focused` state family (state layer, icon and label colors, for active and inactive items alike), so the items are focusable, and dropping them from the Tab sequence would fail WCAG 2.1.1 (Keyboard). What the imagery reflects is geometry: the items are packed so closely that a ring offset *outside* one active indicator would overlap the neighbouring indicators. Jetpack Compose's current Material 3 ripple resolves the same conflict with an **inset focus ring** drawn inside the indicator shape. The rail follows Compose: the inset ring alone, painted on the active-indicator shape — legible even on the filled selected indicator, and identical in color and stroke to the standard ring, differing only in sitting inside the shape instead of outside.
 
 ## 3. Implementation Guide
 
