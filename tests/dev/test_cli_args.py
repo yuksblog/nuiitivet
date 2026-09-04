@@ -246,3 +246,40 @@ def test_other_subcommands_leave_the_separator_to_argparse() -> None:
     args = _parse_args(["type", "--", "--hello"])
     assert args.command == "type"
     assert args.text == "--hello"
+
+
+# --- --window -----------------------------------------------------------
+#
+# Every window-addressed subcommand takes the ids that 'status' lists, so a
+# secondary window is reachable from the CLI and not only from MCP.
+
+_WINDOW_SUBCOMMANDS = [
+    ["describe-tree"],
+    ["describe-state"],
+    ["screenshot"],
+    ["click", "--key", "a"],
+    ["scroll", "--key", "a", "--dy", "1"],
+    ["scroll-into-view", "--key", "a"],
+    ["type", "hello"],
+    ["key", "enter"],
+    ["wait-for", "--label", "Done"],
+]
+
+
+def test_window_defaults_to_the_main_window() -> None:
+    for argv in _WINDOW_SUBCOMMANDS:
+        args = _parse_args(argv)
+        assert args.window is None, argv
+
+
+def test_window_selects_an_open_window_by_id() -> None:
+    for argv in _WINDOW_SUBCOMMANDS:
+        args = _parse_args([*argv, "--window", "2"])
+        assert args.window == 2, argv
+
+
+def test_window_rejects_a_non_numeric_id() -> None:
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _parse_args(["describe-tree", "--window", "palette"])
