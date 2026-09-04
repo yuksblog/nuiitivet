@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
 from nuiitivet.material.tooltip_widgets import RichTooltip, Tooltip
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
+from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.modifiers.tooltip import TooltipBox, TooltipModifier, tooltip
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.clickable import Clickable
@@ -56,6 +57,25 @@ def test_rich_tooltip_style_defaults_and_copy_with() -> None:
     updated = style.copy_with(corner_radius=16)
     assert updated.corner_radius == 16
     assert style.corner_radius == 12
+
+
+def test_rich_tooltip_container_matches_the_md3_spec() -> None:
+    """The rich tooltip is an elevated ``surface-container``, per ``docs/md3/tooltips.md``.
+
+    Both values were wrong in a way that hid the other: level 1 instead of the
+    spec's level 2, over the highest container tone, which left the tooltip
+    with neither much shadow nor much tonal separation from what it sat on.
+    """
+    style = RichTooltipStyle.standard()
+    assert style.container_color is ColorRole.SURFACE_CONTAINER
+    assert style.elevation == 2
+
+
+def test_plain_tooltip_container_matches_the_md3_spec() -> None:
+    """The plain tooltip is a flat inverse-surface chip: no elevation at all."""
+    style = TooltipStyle.standard()
+    assert style.container_color is ColorRole.INVERSE_SURFACE
+    assert style.elevation == 0
 
 
 def test_rich_tooltip_style_from_theme_returns_style_instance() -> None:

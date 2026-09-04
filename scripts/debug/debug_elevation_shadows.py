@@ -39,7 +39,7 @@ class ElevationGallery(nv.ComposableWidget):
                     nv.Row(
                         gap=24,
                         children=[
-                            nv.Tooltip("Plain tooltip, level 2"),
+                            nv.Tooltip("Plain tooltip, level 0 -- flat by spec"),
                             nv.RichTooltip(
                                 "A rich tooltip container also sits at level 2.",
                                 subhead="Rich tooltip",
