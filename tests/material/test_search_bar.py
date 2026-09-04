@@ -1,6 +1,6 @@
 """Tests for SearchBar, DockedSearchBar and their styles.
 
-The assertions here track the decisions recorded on #573: ``width`` names the
+The assertions here pin the settled API decisions: ``width`` names the
 box rather than the bar, the outer margin animates on focus, neither widget
 carries an elevation, and the docked container clamps to the MD3 height range.
 """

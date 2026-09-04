@@ -1,6 +1,6 @@
 """Window lifecycle: open/close, parent/child, modality, exit policy.
 
-The contract from ``docs/design/APP_WINDOW.md``: a Window is a model until
+The contract: a Window is a model until
 ``open()``, one object is one window lifetime, children close with their
 parent, a modal child blocks input to its parent chain, and the App's
 ``ExitPolicy`` decides when the application exits.
@@ -107,7 +107,7 @@ def test_instrument_window_hook_runs_once_per_new_window() -> None:
 
 
 def test_unregister_window_hook_runs_once_per_close() -> None:
-    """The dev seam's counterpart: every close path reaches the hook (#622)."""
+    """The dev seam's counterpart: every close path reaches the hook."""
     app = _app()
     seen: list[Window] = []
     app._unregister_window_hook = seen.append

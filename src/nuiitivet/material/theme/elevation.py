@@ -7,7 +7,7 @@ understood by the rendering layer.
 MD3 draws each level as **two** stacked box-shadow layers: a tight, darker
 *key* shadow at alpha 0.30, and a wide, softer *ambient* shadow at alpha 0.15
 that carries a spread. The values below are the upstream box-shadow tokens
-transcribed verbatim; see ``docs/md3/elevation.md`` for the source tables.
+transcribed verbatim.
 
 Two things the table deliberately does not do:
 

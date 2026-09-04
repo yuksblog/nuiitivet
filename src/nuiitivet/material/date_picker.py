@@ -72,8 +72,8 @@ _WEEKDAY_LABELS: Tuple[str, ...] = ("S", "M", "T", "W", "T", "F", "S")
 # Month names, 0-indexed by ``month - 1``.  Fixed to English rather than read
 # from the ``calendar`` module, whose names are locale-sensitive and would
 # translate the month while the weekday headers, the Sunday-first grid and the
-# month-before-year header layout all stay English.  Locale support is #582;
-# this tuple goes away with it.
+# month-before-year header layout all stay English.  This tuple goes away when
+# locale support arrives.
 _MONTH_NAMES: Tuple[str, ...] = (
     "January",
     "February",
@@ -1823,8 +1823,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         MD3 Expressive specification.  Known limitation: the icon button that toggles
         between :class:`ModalDatePicker` and :class:`ModalDateInput` is not implemented.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
-        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
-        tracking.
+        framework.
 
     Args:
         init_value: Pre-selected date shown when the picker opens.
@@ -2073,8 +2072,7 @@ class ModalDateRangePicker(
         (``ModalDateRangeInput``) is not implemented, and ``ModalDateRangeInput``
         does not yet exist.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
-        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
-        tracking.
+        framework.
 
     Args:
         init_value: Pre-selected date range as ``(start, end)`` tuple.
@@ -2336,8 +2334,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         between :class:`ModalDateInput` and :class:`ModalDatePicker` is not implemented,
         and the range-input variant (``ModalDateRangeInput``) does not yet exist.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
-        framework.  See `#36 <https://github.com/yuksblog/nuiitivet/issues/36>`_ for
-        tracking.
+        framework.
 
     Args:
         init_value: Optional initial date used to pre-populate the text field.

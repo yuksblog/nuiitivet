@@ -263,7 +263,7 @@ class PointerInputNode(InteractionNode):
     def _handle_press(self, event: PointerEvent, bounds: Optional[Sequence[float]]) -> bool:
         # Only a primary (left / synthetic) button activates a click. Secondary
         # buttons (right / middle) must not press, focus, or capture — unless the
-        # node opted into any_button (dismissal surfaces; see issue #506).
+        # node opted into any_button (dismissal surfaces).
         if not self._any_button and not is_primary_button(event.button):
             return False
 
@@ -986,7 +986,7 @@ class FocusNode(InteractionNode):
         The dispatcher asks this before offering a key to the ``key_shortcut``
         tier: a node that takes text will turn a printable key into a character
         through the ``on_text`` route, and must not have that key stolen by a
-        shortcut (see #331). It walks the same ``parent`` chain that
+        shortcut. It walks the same ``parent`` chain that
         :meth:`handle_text_event` delivers along, so what it reports and where
         the text actually goes cannot drift apart.
         """
@@ -1390,7 +1390,7 @@ class InteractionHostMixin:
         """Interactive hosts catch on their own surface (S = all).
 
         A widget that hosts interaction nodes is a hit target regardless of
-        whether it paints, so pointer events reach its handlers. See issue #448.
+        whether it paints, so pointer events reach its handlers.
         """
         return True
 

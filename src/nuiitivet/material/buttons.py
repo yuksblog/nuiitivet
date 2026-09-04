@@ -399,8 +399,7 @@ class MaterialButtonBase(InteractiveWidget):
         consumed -- here, from :meth:`preferred_size`. The read registers a
         dependency, so a theme change re-measures the button and lands back
         here. The colour targets are therefore a write-through cache of this
-        pull rather than a value that can go stale on its own. See
-        ``docs/design/THEME_CONSUMPTION.md``.
+        pull rather than a value that can go stale on its own.
 
         Unlike a chip, a button cannot compare the *derived* value to decide
         whether to re-apply: its endpoints are concrete RGBA fed into running
@@ -1140,8 +1139,7 @@ class _FabBase(MaterialButtonBase):
         consumed -- :meth:`preferred_size` via ``_sync_theme_style``, and
         :meth:`paint` via :meth:`_sync_state_tokens`. The read registers a
         dependency, so a theme change re-measures and repaints the FAB and
-        lands back here with the new value. See
-        ``docs/design/THEME_CONSUMPTION.md``.
+        lands back here with the new value.
         """
         base = self._user_style
         if base is None:

@@ -9,7 +9,7 @@ owns the real event loop, the file watcher, and the reload sequence.
 
 This inversion is what lets a single ``app.py`` serve both ``python -m yourapp``
 (normal, blocking run) and ``python -m nuiitivet.dev run yourapp/app.py`` (hot
-reload) with no dev/prod branching in user code. See ``docs/design/HOT_RELOAD.md``.
+reload) with no dev/prod branching in user code.
 """
 
 from __future__ import annotations

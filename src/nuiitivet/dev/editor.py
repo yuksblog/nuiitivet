@@ -1,4 +1,4 @@
-"""Open an editor at a file and line (#593, #597).
+"""Open an editor at a file and line.
 
 The other half of :mod:`nuiitivet.dev.source`: that module answers *which line
 built this widget*, and this one takes the human there.
@@ -127,7 +127,7 @@ def _url_opener() -> Optional[str]:
     ``"startfile"`` names the Windows API rather than a command, since there is
     no process to spawn there.
 
-    All three were confirmed against a real editor (#594) -- the caret lands on
+    All three were confirmed against a real editor -- the caret lands on
     the line, and the jump is fast enough to be the URL rather than a CLI. CI
     cannot check any of this: it is headless, and the question is where the
     cursor ended up.

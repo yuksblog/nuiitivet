@@ -1,4 +1,4 @@
-"""Tests for scroll in the interaction journal (#498).
+"""Tests for scroll in the interaction journal.
 
 Built on real ``VerticalScrollable`` / ``HorizontalScrollable`` widgets driven
 through the real pointer dispatch, for the same reason ``test_action_scroll.py``

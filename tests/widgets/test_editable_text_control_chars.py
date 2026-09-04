@@ -1,4 +1,4 @@
-"""Control-character handling in EditableText (issue #307).
+"""Control-character handling in EditableText.
 
 Enter delivered as ``on_text('\\r')`` (macOS Cocoa's ``insertNewline_`` path)
 used to bypass the backend control-character filter and land a stray carriage

@@ -23,7 +23,7 @@ unchanged; capture is purely additive.
 default the journal shows each distinct failure once rather than a flood of the
 same one. :meth:`RuntimeLogCapture.set_verbose` flips that global switch off so a
 debugging session can see *every* occurrence -- the dev bridge exposes it as the
-``set_runtime_log_verbose`` control. See #409.
+``set_runtime_log_verbose`` control.
 """
 
 from __future__ import annotations

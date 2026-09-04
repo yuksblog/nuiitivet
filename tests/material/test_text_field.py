@@ -136,7 +136,7 @@ def test_text_field_controlled():
     state = _make_obs("Start")
 
     # The bound observable is the field's value cell: edits are written back
-    # to it directly, with no callback to wire up (#575).
+    # to it directly, with no callback to wire up.
     tf = TextField(value=state)
 
     # Simulate mount to setup subscription
@@ -311,7 +311,7 @@ def test_text_field_invokes_icon_tap_callbacks_on_press() -> None:
 def test_text_field_invokes_icon_tap_callbacks_when_field_is_offset_from_root() -> None:
     """Hit testing must keep working when the field is offset from the root.
 
-    Regression guard for #300: pointer events arrive in root coordinates, and
+    Regression guard: pointer events arrive in root coordinates, and
     the tappable icon (an IconButton child) is discovered through the
     framework's coordinate-translating hit test rather than a field-local
     rectangle comparison.
@@ -380,7 +380,7 @@ def test_text_field_does_not_invoke_icon_callbacks_when_disabled() -> None:
 
 
 def test_text_field_tappable_icon_shows_hover_and_press_feedback() -> None:
-    """The tappable icon renders interaction feedback (state layers) — #302."""
+    """The tappable icon renders interaction feedback (state layers)."""
     tf = TextField(value="", trailing_icon="close", on_tap_trailing_icon=lambda: None)
     root = _mount_field_at(tf, 24, 24)
 

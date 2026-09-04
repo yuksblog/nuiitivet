@@ -1,4 +1,4 @@
-"""Load the user's app module for the dev runner (§9.7 of HOT_RELOAD.md).
+"""Load the user's app module for the dev runner.
 
 The dev runner accepts either a **file path** (matching the documented
 ``launch.json`` ``args: ["${workspaceFolder}/app.py"]``) or an explicit

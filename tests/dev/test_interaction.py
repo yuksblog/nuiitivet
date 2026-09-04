@@ -111,7 +111,7 @@ def test_to_dict_text_is_bare_marker() -> None:
 
 
 def test_record_window_opened_and_closed_interleave_with_inputs() -> None:
-    """Lifecycle events share the input events' one seq order (#622)."""
+    """Lifecycle events share the input events' one seq order."""
     journal = InteractionJournal()
     opened = journal.record_window_opened({"id": 5, "title": "Palette", "main": False})
     click = journal.record_click({"type": "Button", "label": "close"})
@@ -345,7 +345,7 @@ def test_recorder_never_receives_or_stores_typed_text() -> None:
 
 
 def test_select_marker_is_content_free() -> None:
-    """A designation may disclose rects and text -- but not through this journal (#591).
+    """A designation may disclose rects and text -- but not through this journal.
 
     The marker says only *that* the human designated something; the payload is
     served solely by ``describe_selection``, so the ambient journal never becomes
@@ -363,7 +363,7 @@ def test_select_marker_is_content_free() -> None:
     }
 
 
-# --- window lifecycle wiring (#622) ----------------------------------------
+# --- window lifecycle wiring ----------------------------------------
 
 
 def test_app_hooks_feed_window_lifecycle_events() -> None:

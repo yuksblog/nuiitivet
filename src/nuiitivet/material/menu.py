@@ -422,7 +422,7 @@ class SubMenuItem(MenuItem):
         widget tree mounts while ``App()`` is still being constructed, before the
         backend installs a UI clock, so the tick would land on the fallback thread
         clock and stay there for the life of the process — opening the submenu off
-        the UI thread (#655). Every caller here is a pointer or focus event, which
+        the UI thread. Every caller here is a pointer or focus event, which
         can only arrive once the loop is running.
         """
         if self._submenu_tick is not None:
@@ -672,7 +672,7 @@ class Menu(InteractiveWidget):
         a theme change re-measures the menu and lands back here with the new
         value. The container visuals and the items' styles are derived from it
         rather than re-derived on every read, so they are re-applied whenever
-        the resolved style has moved. See ``docs/design/THEME_CONSUMPTION.md``.
+        the resolved style has moved.
         """
         if self._user_style is not None:
             resolved = self._user_style

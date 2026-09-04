@@ -180,7 +180,7 @@ class _ModalNavigator(ComposableWidget):
 
     # No hit_test override needed: the navigator and its transparent Stack/Container
     # wrapper both defer under the ``auto`` default, so input passes through
-    # whenever no actual overlay layer is hit (issue #448).
+    # whenever no actual overlay layer is hit.
 
 
 class _OverlayEntryRoute(Route):
@@ -615,7 +615,7 @@ class Overlay(ComposableWidget):
         Raises:
             ValueError: If ``timeout`` is negative, or if ``passthrough=True`` is
                 combined with ``dismiss_on_outside_tap=True`` — observing a tap
-                without consuming it needs multi-target dispatch (issue #508).
+                without consuming it needs multi-target dispatch.
 
         Notes:
             - `await handle` returns an OverlayResult.
@@ -627,7 +627,8 @@ class Overlay(ComposableWidget):
             raise ValueError(
                 "passthrough=True cannot be combined with dismiss_on_outside_tap=True: "
                 "a layer that lets a tap through cannot also observe it. "
-                "See issue #508 (pass-behind / multi-target dispatch)."
+                "Observing without consuming would need pass-behind (multi-target) "
+                "dispatch, which the overlay does not do."
             )
 
         entry: OverlayEntry
@@ -702,7 +703,7 @@ class Overlay(ComposableWidget):
                     # would be the box's child and would never see the event.
                     #
                     # any_button=True: an outside tap dismisses whichever button
-                    # produced it, not just the primary one (issue #506).
+                    # produced it, not just the primary one.
                     blocker_modifier = blocker_modifier | clickable(on_click=on_outside_tap, any_button=True)
                 layers.append(Container(width="wt", height="wt").modifier(blocker_modifier))
 
@@ -775,7 +776,7 @@ class Overlay(ComposableWidget):
         entries the overlay is fully transparent, but its scaffolding stays
         mounted at full window size. ``hit_test`` answers that for input; this
         answers it for anything reading the tree geometrically, which cannot tell
-        an empty layer from an opaque one by its rect (#591).
+        an empty layer from an opaque one by its rect.
         """
         return not self.has_entries()
 

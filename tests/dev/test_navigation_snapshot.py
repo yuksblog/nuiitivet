@@ -1,4 +1,4 @@
-"""Tests for the dev navigation snapshot/restore glue (#378).
+"""Tests for the dev navigation snapshot/restore glue.
 
 These cover the thin adapter over the App's navigator: a round-trip across a
 rebuild, and the safe no-op behavior when the App has no navigator yet.

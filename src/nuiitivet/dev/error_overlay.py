@@ -1,4 +1,4 @@
-"""Surface reload errors without killing the app (§9.4 of HOT_RELOAD.md).
+"""Surface reload errors without killing the app.
 
 Editing is a half-broken-code activity: a syntax or build error on save must not
 tear down the window or the debug session. When a reload fails the previous tree

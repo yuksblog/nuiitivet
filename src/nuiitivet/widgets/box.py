@@ -175,7 +175,7 @@ class Box(CachedPaintMixin, Widget):
     def _paints_visible_surface(self) -> bool:
         """Whether this Box paints a surface that should catch pointer hits.
 
-        Presence-based (issue #448): a Box catches when it has a background,
+        Presence-based: a Box catches when it has a background,
         a border, or a shadow. Alpha is not resolved -- a deliberately
         transparent Box that must pass clicks through should defer explicitly.
         """

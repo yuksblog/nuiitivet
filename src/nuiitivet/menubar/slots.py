@@ -10,8 +10,7 @@ model itself stays on the App. Two kinds exist:
 
 Both register with the App's :class:`~nuiitivet.menubar.controller.MenuBarController`
 on mount; the controller decides which one is active. An inactive slot (and a
-slot with no registered menu) renders nothing and takes no space. See
-``docs/design/MENU_BAR.md``, Section 6.
+slot with no registered menu) renders nothing and takes no space.
 """
 
 from __future__ import annotations

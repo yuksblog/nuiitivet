@@ -2,7 +2,7 @@
 
 ``Theme.of`` marks its reader, and a theme change invalidates every marked
 reader the provider can reach. Nothing registers with the provider, so nothing
-has to deregister. See ``docs/design/THEME_CONSUMPTION.md``.
+has to deregister.
 """
 
 from __future__ import annotations
@@ -127,7 +127,7 @@ def test_a_theme_change_rebuilds_a_reader_of_a_custom_extension() -> None:
     """The shape ``samples/design-system/theme_extensions`` documents.
 
     A custom ``ThemeExtension`` reaches the widget through the same read, so it
-    needs no subscription either -- which the sample and guide fixed in #482
+    needs no subscription either -- which the sample and guide once
     had wrong.
     """
 

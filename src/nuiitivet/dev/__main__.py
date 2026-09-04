@@ -33,7 +33,7 @@ runner's. ``describe-tree`` / ``screenshot`` (perception) and ``click`` /
 already-running ``run`` process over localhost, and each takes ``--window`` to
 address one of the ids ``status`` lists, so a multi-window app is reachable past
 its main window. ``mcp`` serves those same primitives as MCP tools over stdio for
-MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
+MCP hosts.
 """
 
 from __future__ import annotations
@@ -369,7 +369,7 @@ def _app_argv(args: argparse.Namespace) -> list[str]:
 def _run(args: argparse.Namespace) -> int:
     session = DevSession()
     set_dev_session(session)
-    # Before the user's module is even imported (#593): a construction site is
+    # Before the user's module is even imported: a construction site is
     # only knowable while the constructing frame is on the stack, so anything
     # built at import time is lost if this lands any later.
     source.install()
@@ -411,9 +411,9 @@ def _run(args: argparse.Namespace) -> int:
         host = app.main_window
         # One journal shared by both: the controller records reload outcomes
         # into it, the bridge serves them at ``/reload_log`` so an AI pair can
-        # notice the code changed between its turns (#388).
+        # notice the code changed between its turns.
         journal = ReloadJournal()
-        # What the human *points at* (#591), the reverse of the interaction
+        # What the human *points at*, the reverse of the interaction
         # journal's "what the human did". Inspect mode writes designations from
         # the real input path; the controller re-resolves them across a reload;
         # the bridge serves them at ``/describe_selection``.
@@ -426,7 +426,7 @@ def _run(args: argparse.Namespace) -> int:
             journal=journal,
             selection=selection,
         )
-        # The complementary surface (#390): the recorder captures the human's
+        # The complementary surface: the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
         # at ``/interaction_log`` so an AI pair can see how the human drove the
         # app between its turns. Instrumented per window — the journal and the
@@ -438,7 +438,7 @@ def _run(args: argparse.Namespace) -> int:
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
             win._inspect_mode = InspectMode(selection, journal=interaction_journal)
-            # Window lifecycle joins the same timeline (#622): the register
+            # Window lifecycle joins the same timeline: the register
             # hook covers every open path, and the loop below back-fills the
             # windows opened before the hook existed (the main window, and any
             # opened before run()).
@@ -451,7 +451,7 @@ def _run(args: argparse.Namespace) -> int:
         app._unregister_window_hook = _record_window_closed
         for win in app.windows:
             _instrument_window(win)
-        # The runtime log (#409): capture taps route the app's log output and
+        # The runtime log: capture taps route the app's log output and
         # uncaught exceptions (UI, background threads, asyncio) into this journal,
         # which the bridge serves at ``/runtime_log`` so an AI pair can see *why*
         # an action it drove had no visible effect.

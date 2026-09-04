@@ -49,7 +49,7 @@ class _ToolbarBase(Box):
     theme change re-measures the toolbar and lands back here with the new
     value; the container properties pushed onto :class:`Box` are therefore a
     write-through cache of that pull rather than a value that can go stale on
-    its own. See ``docs/design/THEME_CONSUMPTION.md``.
+    its own.
     """
 
     #: The style the caller passed, or ``None`` to follow the theme.

@@ -92,7 +92,7 @@ def produces_text(key: str, modifier_keys: int) -> bool:
     This keeps the shortcut tier off keys a focused text field is about to turn
     into characters. Text insertion arrives through the separate ``on_text``
     route, so the ``on_key`` return value the dispatcher sees cannot tell it that
-    the key was consumed after all (see #331).
+    the key was consumed after all.
 
     The answer cannot be exact. Windows reports AltGr as ``Ctrl+Alt``, and a
     German layout turns ``AltGr+Q`` into ``@``; macOS ``Option`` both produces
@@ -243,8 +243,7 @@ def to_shortcut(shortcut: ShortcutLike) -> Shortcut:
 class ShortcutScope(Enum):
     """When a :class:`ShortcutBinding` is live.
 
-    The members widen: each is a superset of the one before it. See
-    ``docs/design/KEYBOARD_SHORTCUTS.md`` for the full rationale.
+    The members widen: each is a superset of the one before it.
 
     Attributes:
         FOCUS: Live only while the subtree contains the focused node. Needed only

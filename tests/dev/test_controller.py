@@ -1,4 +1,4 @@
-"""Tests for the hot-reload controller's journal recording (#388).
+"""Tests for the hot-reload controller's journal recording.
 
 The controller's reload sequence touches many collaborators (snapshot, reloader,
 app root rebuild/commit, error overlay); these tests patch those out and drive
@@ -110,7 +110,7 @@ def test_successful_reload_records_modules() -> None:
 
 
 def test_successful_reload_replays_navigation_snapshot() -> None:
-    """The nav stack captured before the swap is replayed after the commit (#378)."""
+    """The nav stack captured before the swap is replayed after the commit."""
     controller = _make_controller(None)
     result = ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)
     sentinel = [object(), object()]

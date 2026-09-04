@@ -101,8 +101,8 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
 
         results = query.debounce(0.3).switch_map(search, initial=SearchOutcome())
 
-    ``initial`` is required and keyword-only for the same reason as ``filter``'s
-    (``OBSERVABLE.md`` §5.2): this observable has no value derivable from its
+    ``initial`` is required and keyword-only for the same reason as
+    ``filter``'s: this observable has no value derivable from its
     source, so the caller states what the UI shows meanwhile. Unlike ``filter``,
     **no run starts at construction** -- building a ViewModel should not fire
     I/O, and the source's construction-time value is usually the empty one -- so

@@ -243,7 +243,7 @@ class BridgeClient:
             raise RuntimeError(message) from exc
 
     def status(self) -> dict[str, Any]:
-        """Fetch a cheap liveness/health snapshot of the running app (#420).
+        """Fetch a cheap liveness/health snapshot of the running app.
 
         Aggregates ``{running, title, last_reload, error_count, blank}`` without
         the widget tree or a screenshot: ``running`` is always ``True`` when this
@@ -270,7 +270,7 @@ class BridgeClient:
         return payload.get("tree", {})
 
     def describe_selection(self) -> dict[str, Any]:
-        """Fetch what the human designated in inspect mode (#591).
+        """Fetch what the human designated in inspect mode.
 
         The human -> assistant direction of the loop: where ``describe_tree`` and
         ``describe_state`` report what the app *is*, this reports what the human
@@ -284,7 +284,7 @@ class BridgeClient:
     def describe_state(
         self, include_animations: bool = False, *, window: Optional[int] = None
     ) -> dict[str, Any]:
-        """Fetch the reactive ``Observable`` state of the running app (#410).
+        """Fetch the reactive ``Observable`` state of the running app.
 
         Complements :meth:`describe_tree`: it returns the live observable values
         behind the tree, in the same nested shape (``{"type", optional identity,
@@ -293,7 +293,7 @@ class BridgeClient:
         map; a derived value is ``{"value", "kind": "computed"}``.
 
         Animation (``Animatable``) state is omitted by default, since a widget's
-        per-frame animation channels otherwise dominate the payload (#418); pass
+        per-frame animation channels otherwise dominate the payload; pass
         ``include_animations=True`` when the animation itself is the subject.
         """
         endpoint = "/describe_state"
@@ -309,7 +309,7 @@ class BridgeClient:
         return payload.get("state", {})
 
     def reload_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
-        """Fetch recent hot-reload events from the running app (#388).
+        """Fetch recent hot-reload events from the running app.
 
         Each event is ``{"seq", "timestamp", "outcome", optional "modules",
         "changed", optional "error"}``, oldest-first. ``changed`` lists the
@@ -323,7 +323,7 @@ class BridgeClient:
         return payload.get("events", [])
 
     def interaction_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
-        """Fetch the human's recent coarse UI actions from the running app (#390).
+        """Fetch the human's recent coarse UI actions from the running app.
 
         Each event is ``{"seq", "timestamp", "kind", ...}``, oldest-first: a
         ``click`` carries the resolved widget ``target`` (never a coordinate), a
@@ -342,7 +342,7 @@ class BridgeClient:
         return payload.get("events", [])
 
     def runtime_log(self, limit: Optional[int] = None) -> list[dict[str, Any]]:
-        """Fetch the running app's recent log output and uncaught exceptions (#409).
+        """Fetch the running app's recent log output and uncaught exceptions.
 
         Each event is ``{"seq", "timestamp", "level", "source", "thread",
         "message", optional "logger"/"exc_type"/"traceback"}``, oldest-first.

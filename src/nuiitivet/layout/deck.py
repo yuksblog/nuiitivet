@@ -232,7 +232,7 @@ class Deck(Widget):
 
         The Deck itself never becomes the hit target (S = none); it defers to
         the selected child only (C descends into one child), routed through the
-        shared hit-participation helper (issue #448).
+        shared hit-participation helper.
         """
         children = expand_layout_children(self.children_snapshot())
         if not children or self._current_index >= len(children):

@@ -1,4 +1,4 @@
-"""Regression tests for the preferred_size measure cache (issue #609).
+"""Regression tests for the preferred_size measure cache.
 
 Every layout pass used to re-measure the entire subtree — text shaping
 included — so a width animation cost O(total children) per frame. These tests
@@ -95,7 +95,7 @@ def test_layout_param_change_drops_cache():
 
 
 def test_width_animation_does_not_re_measure_static_children():
-    """The issue #609 scenario: a width animation over a static list.
+    """The motivating scenario: a width animation over a static list.
 
     Once measured at the widest constraint, shrinking and growing the
     container within that range re-measures no child.

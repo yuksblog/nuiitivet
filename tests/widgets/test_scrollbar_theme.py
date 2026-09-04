@@ -1,4 +1,4 @@
-"""Tests for generic scrollbar theming via the theme seam (issue #255).
+"""Tests for generic scrollbar theming via the theme seam.
 
 The scrollbar is a generic widget: it must not depend on ``material`` and must
 resolve its colors from :class:`~nuiitivet.scrolling.ScrollbarThemeData` at paint

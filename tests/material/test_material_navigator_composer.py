@@ -1,6 +1,6 @@
 """Regression tests: MaterialNavigator must render Material page transitions.
 
-See issue #399. ``MaterialNavigator`` created directly via ``intents`` / ``routes``
+``MaterialNavigator`` created directly via ``intents`` / ``routes``
 (not only the implicit navigator that ``MaterialApp`` wires up) fell back to the
 core ``_DefaultNavigationLayerComposer``, which composites both routes at full
 opacity. The transition therefore never animated — every frame painted the same

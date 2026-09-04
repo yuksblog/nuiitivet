@@ -419,7 +419,7 @@ if __name__ == "__main__":
 
 
 def test_vertical_scrollable_gives_weight_content_the_viewport_width():
-    """A weight has no intrinsic size, so the viewport must supply it (#606).
+    """A weight has no intrinsic size, so the viewport must supply it.
 
     Measured alone, ``width="wt"`` answers with padding only. Laying the content
     out at that answer is what shrink-wraps a full-width card inside a list.

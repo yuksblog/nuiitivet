@@ -9,8 +9,6 @@ consumer references would keep every widget that ever read the theme alive for
 the app's lifetime, and would need a matching release that authors can forget
 silently -- which is exactly the failure mode this replaces. A mark on the
 reader dies with the reader, so there is nothing to clean up.
-
-See ``docs/design/THEME_CONSUMPTION.md``.
 """
 
 from __future__ import annotations

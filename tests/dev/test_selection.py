@@ -1,4 +1,4 @@
-"""Tests for the inspect-mode designation buffer (#591).
+"""Tests for the inspect-mode designation buffer.
 
 The cases that matter are the two boundaries the module is built around:
 designations key off *object identity* (not the resolved identity two anonymous
@@ -236,7 +236,7 @@ def test_describe_selection_without_a_selection_is_an_empty_payload() -> None:
     assert payload == {"seq": 0, "active": False, "nodes": [], "regions": [], "lost": 0}
 
 
-# --- regions (#591) ---------------------------------------------------------
+# --- regions ---------------------------------------------------------
 
 
 def test_a_region_is_designated_and_numbered_alongside_nodes() -> None:
@@ -407,7 +407,7 @@ def test_a_node_kept_only_for_a_descendant_carries_no_relation() -> None:
     assert find(region["contents"], "leaf")["relation"] == "contained"
 
 
-# --- construction site (#593) -----------------------------------------------
+# --- construction site -----------------------------------------------
 
 
 def test_a_designated_node_carries_where_it_was_built() -> None:

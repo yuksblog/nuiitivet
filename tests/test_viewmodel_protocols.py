@@ -1,4 +1,4 @@
-"""The ViewModel-facing Navigator / Overlay / App / Window protocols (#463, #634).
+"""The ViewModel-facing Navigator / Overlay / App / Window protocols.
 
 Two invariants:
 

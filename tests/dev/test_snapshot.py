@@ -1,4 +1,4 @@
-"""Tests for key-aware snapshot/restore path identity (§7.4 / #375)."""
+"""Tests for key-aware snapshot/restore path identity."""
 
 from __future__ import annotations
 

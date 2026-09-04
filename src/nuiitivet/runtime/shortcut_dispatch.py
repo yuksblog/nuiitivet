@@ -1,8 +1,7 @@
 """Scope predicates for keyboard-shortcut dispatch.
 
 A shortcut's scope asks a question about the widget's place in the tree — is it
-displayed? is it merely mounted? — and this module answers it. See
-``docs/design/KEYBOARD_SHORTCUTS.md``.
+displayed? is it merely mounted? — and this module answers it.
 """
 
 from __future__ import annotations

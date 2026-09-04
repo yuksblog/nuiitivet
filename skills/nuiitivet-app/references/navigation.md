@@ -13,7 +13,7 @@ widget — there is no global accessor:
 - `nv.Navigator.of(self, root=True)` / `nv.Overlay.of(self, root=True)` — skip any
   nested one and target the app's.
 
-There is **no** `Navigator.root()` / `Overlay.root()`; they were removed in #518
+There is **no** `Navigator.root()` / `Overlay.root()`; they were removed
 because a process-global root cannot say *which* app it belongs to. `self` must be
 mounted, so resolve in `on_mount()`, `build()`, or the event handler — never in
 `__init__`.

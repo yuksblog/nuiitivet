@@ -1,10 +1,10 @@
-"""``on_submit`` callback on EditableText (issues #318, #565, #575).
+"""``on_submit`` callback on EditableText.
 
 Pressing Enter in a single-line field fires ``on_submit`` with the current
-value. It must not modify the value (see #307) and must not fire while an IME
+value. It must not modify the value and must not fire while an IME
 composition is in progress.
 
-``on_submit`` reports a request to act, not a value settling (#575): it fires
+``on_submit`` reports a request to act, not a value settling: it fires
 on **every** Enter, including a repeat on an unchanged value, and never on
 focus loss. Work that belongs to leaving the field goes to ``on_focus_change``.
 """
@@ -36,7 +36,7 @@ def test_enter_does_not_modify_value():
 
     w._handle_key("enter", 0)
 
-    # Enter confirms the text; it must never alter the value (issue #307).
+    # Enter confirms the text; it must never alter the value.
     assert w._state_internal.value.text == "ab"
 
 

@@ -187,7 +187,7 @@ class _ThreadClock:
         callback then touches the widget tree off the UI thread and trips
         :func:`~nuiitivet.runtime.threading.assert_ui_thread`, half-mounting
         whatever it was building. Handing the schedule over closes that window
-        for every such widget rather than one at a time (see #655).
+        for every such widget rather than one at a time.
 
         One-shots keep their remaining time; intervals keep their period, which
         restarts the current one. Both are better than firing on the wrong
@@ -228,7 +228,8 @@ def set_clock(new_clock: Clock) -> None:
 
     Callbacks already armed on the *fallback* clock are handed over to
     ``new_clock``: they were armed before a UI clock existed, and leaving them
-    on the servicing thread is what #655 was. Handing over from any other clock
+    behind would fire their notifications on the fallback clock's servicing
+    thread instead of the UI thread. Handing over from any other clock
     is not possible -- the :class:`Clock` protocol cannot enumerate a schedule --
     and not needed, since those callbacks already run on the UI thread.
     """

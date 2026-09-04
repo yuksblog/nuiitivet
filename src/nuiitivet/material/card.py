@@ -113,7 +113,7 @@ class Card(ComposableWidget, Box):
         Called from :meth:`build`, which is where a widget that composes reads
         the theme. The read registers a dependency, so a theme change rebuilds
         this card and lands here again -- there is nothing to subscribe to and
-        nothing to unsubscribe from. See ``docs/design/THEME_CONSUMPTION.md``.
+        nothing to unsubscribe from.
         """
         if self._user_style is not None:
             return

@@ -1,5 +1,5 @@
 """Tests for the once-per-process log helpers: de-dup, the global toggle, and
-the per-exception keying used by the callback boundary (#409)."""
+the per-exception keying used by the callback boundary."""
 
 from __future__ import annotations
 

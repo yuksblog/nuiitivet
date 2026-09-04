@@ -609,7 +609,7 @@ def test_docked_date_picker_mount_does_not_write_to_the_bound_text():
 def picker_in_app():
     """Build a ``DockedDatePicker`` inside a real App and return it laid out.
 
-    The popup resolves its overlay by walking to the App (#518), so the picker
+    The popup resolves its overlay by walking to the App, so the picker
     has to be genuinely attached — building it standalone leaves it with nothing
     to resolve against.
 
@@ -909,7 +909,7 @@ def test_modal_date_input_build_returns_box():
 
 
 # ---------------------------------------------------------------------------
-# Month names (locale independence — interim measure for #582)
+# Month names (locale independence — interim measure until locale support)
 # ---------------------------------------------------------------------------
 
 

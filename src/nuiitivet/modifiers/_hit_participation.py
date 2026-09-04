@@ -10,9 +10,8 @@ One mechanism, several intent-named entry points. The public modifiers
 * ``self_opaque`` — the **S** axis: whether the box's own rectangle catches a
   hit that no child claimed.
 
-These map onto the internal S / C model from issue #448 (see
-``docs/design/HIT_TESTING.md``) without ever exposing the S tri-state or any
-string enum publicly. Each modifier fixes the two flags to name one posture:
+These map onto the internal S / C hit-testing model without ever exposing the
+S tri-state or any string enum publicly. Each modifier fixes the two flags to name one posture:
 
 ========================== ================ ================
 Modifier                   ``descend``      ``self_opaque``

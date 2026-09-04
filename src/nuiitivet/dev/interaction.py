@@ -2,7 +2,7 @@
 
 The dev bridge is **AI-initiated**: the assistant reads (``describe_tree`` /
 ``screenshot``) and acts (``click`` / ``type`` / ``key``) on its own turns. The
-reload journal (#388) closed one perception gap between turns -- "the *code*
+reload journal closed one perception gap between turns -- "the *code*
 changed under me". This module closes the complementary one: **"the human *drove
 the app* under me."** In a pair session the human often reproduces a bug or
 navigates to a screen while the assistant is mid-task, so the assistant's cached
@@ -15,10 +15,9 @@ assistant would need to reproduce, the assistant reproduces *through those same
 verbs*, so recording exactly those inbound is necessary and sufficient to
 reconstruct a replayable path. Higher-level *semantic* events (navigate / dialog
 open-close / submit) are deliberately **not** recorded -- they are states
-derivable from a click sequence plus ``describe_tree``, not primitive inputs
-(#390).
+derivable from a click sequence plus ``describe_tree``, not primitive inputs.
 
-Window lifecycle events (``window_opened`` / ``window_closed``, #622) are the
+Window lifecycle events (``window_opened`` / ``window_closed``) are the
 one exception, because the derivability argument fails for them: a close can
 happen on the OS title bar, entirely outside the widget tree, so no click
 sequence records it -- the assistant could only reconstruct it by diffing
@@ -39,7 +38,7 @@ Two boundaries are load-bearing:
   would leak the text a character at a time); a burst of ``on_text`` collapses to
   a single content-free ``text`` marker. Field values never enter the journal.
 
-Scrolling (#498) obeys those rules too, plus two of its own, since a single wheel
+Scrolling obeys those rules too, plus two of its own, since a single wheel
 gesture arrives as dozens of events:
 
 * **Only what a region consumed.** An unconsumed wheel event moved nothing, so it
@@ -51,8 +50,7 @@ gesture arrives as dozens of events:
 
 Recording happens on the UI thread (the input handlers that feed the real
 backend); reads happen on HTTP worker threads, so the buffer is guarded by a
-lock -- the same shape as the reload journal. See #390, #498 and
-``docs/design/HOT_RELOAD.md`` (§12).
+lock -- the same shape as the reload journal.
 """
 
 from __future__ import annotations
@@ -225,7 +223,7 @@ def own_identity(node: Any) -> dict[str, Any]:
     questions. ``resolve_target`` answers "how would you drive this?", which for
     a click on a button's inner label is the button. That is exactly right for an
     action, and wrong as the sole answer to "what is this node?" -- inspect-mode
-    picking (#591) exists precisely so an anonymous ``Text`` can be designated,
+    picking exists precisely so an anonymous ``Text`` can be designated,
     and reporting the button's identity beside that text's rect would describe
     neither node.
 
@@ -486,7 +484,7 @@ class InteractionJournal:
         return self._record("key", key=name, modifiers=modifiers)
 
     def record_select(self) -> InteractionEvent:
-        """Record a content-free marker that the human designated something (#591).
+        """Record a content-free marker that the human designated something.
 
         The counterpart to :meth:`record_text`, and content-free for a different
         reason. A designation *may* carry rects and field text -- it is an
@@ -504,7 +502,7 @@ class InteractionJournal:
         return self._record("text")
 
     def record_window_opened(self, window: dict[str, Any]) -> InteractionEvent:
-        """Record that a window opened (#622) and return the event.
+        """Record that a window opened and return the event.
 
         Args:
             window: The window's identity (see :func:`window_identity`).
@@ -512,7 +510,7 @@ class InteractionJournal:
         return self._record("window_opened", window=window)
 
     def record_window_closed(self, window: dict[str, Any]) -> InteractionEvent:
-        """Record that a window closed (#622) and return the event.
+        """Record that a window closed and return the event.
 
         Recorded from the App's unregister choke point, so an OS-button close or
         a parent-cascade close -- invisible to the input recorders -- appears in

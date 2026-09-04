@@ -8,8 +8,7 @@ update". The guard is therefore per callback rather than one ``try`` around the
 loop, which would only move the truncation.
 
 An exception reaching here is a bug in the subscriber, not a value the framework
-can publish, so it is logged and the remaining subscribers are notified. See
-``OBSERVABLE.md`` §7.
+can publish, so it is logged and the remaining subscribers are notified.
 
 **Only application subscribers are guarded.** The observable graph subscribes to
 itself -- a computed's dependency edges, a wrapper's edge to its source -- and

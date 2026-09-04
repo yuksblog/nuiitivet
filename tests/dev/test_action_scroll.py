@@ -1,4 +1,4 @@
-"""Integration tests for the dev bridge's scroll actions (#493).
+"""Integration tests for the dev bridge's scroll actions.
 
 Deliberately built on real ``VerticalScrollable`` / ``HorizontalScrollable``
 widgets rather than the ``_Node`` fake in ``test_action.py``: that fake sets

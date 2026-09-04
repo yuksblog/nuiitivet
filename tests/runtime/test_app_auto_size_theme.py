@@ -3,7 +3,7 @@
 A widget reaches its theme by walking up to the ``AppScope``, so a tree measured
 before it is attached resolves against the default light theme -- and the window
 comes out sized for a theme the app never installed. ``App`` therefore mounts
-the tree before it measures anything. See issue #476.
+the tree before it measures anything.
 """
 
 from __future__ import annotations

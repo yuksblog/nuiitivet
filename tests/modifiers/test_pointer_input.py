@@ -1,4 +1,4 @@
-"""Tests for the ``pointer_input()`` modifier (issue #308).
+"""Tests for the ``pointer_input()`` modifier.
 
 Covers the modifier's node wiring: it attaches a ``PointerListenerNode``,
 composes with ``clickable`` without either clobbering the other, and reconfigures

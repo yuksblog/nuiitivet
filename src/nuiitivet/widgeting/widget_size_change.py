@@ -5,8 +5,7 @@ children, or write an Observable that rebuilds a subtree. Running it inline from
 :meth:`WidgetKernel.set_layout_rect` would re-enter the tree *during* layout, so
 a measurement is instead queued here and dispatched **between frames**, at the
 same point in the frame as any other user code — the same deferral ``Geometry``
-gets for free by writing only to an Observable (see ``docs/design/GEOMETRY.md``
-§3 and §11).
+gets for free by writing only to an Observable.
 
 The queue is keyed by widget identity and holds the *latest* measurement, so a
 widget laid out several times within one frame reports once, with its final size.

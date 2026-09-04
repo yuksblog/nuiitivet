@@ -1,4 +1,4 @@
-"""Tests for the ``key_shortcut()`` modifier and its dispatch tiers (issue #327).
+"""Tests for the ``key_shortcut()`` modifier and its dispatch tiers.
 
 Covers the node wiring (attach, compose, re-apply) and the scope rules:
 FOREGROUND (the default) fires without focus but not when the subtree is hidden,
@@ -208,7 +208,7 @@ def test_a_shortcut_inside_the_modal_still_fires() -> None:
 
 def test_foreground_does_not_fire_on_a_hidden_deck_page() -> None:
     # A Deck keeps every page mounted; only the selected one is on screen, so only
-    # its shortcuts are live. Same boundary Tab stops at (issue #491).
+    # its shortcuts are live. Same boundary Tab stops at.
     fired: list[str] = []
     page0 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page0")))
     page1 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page1")))

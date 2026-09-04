@@ -60,7 +60,7 @@ def test_rich_tooltip_style_defaults_and_copy_with() -> None:
 
 
 def test_rich_tooltip_container_matches_the_md3_spec() -> None:
-    """The rich tooltip is an elevated ``surface-container``, per ``docs/md3/tooltips.md``.
+    """The rich tooltip is an elevated ``surface-container``, per the MD3 spec.
 
     Both values were wrong in a way that hid the other: level 1 instead of the
     spec's level 2, over the highest container tone, which left the tooltip
@@ -316,7 +316,7 @@ def test_tooltip_uninstall_stops_hover_after_unmount() -> None:
 def test_schedule_close_cancels_pending_open_when_externally_closed_and_focused_stale() -> None:
     """Regression: ESC sets _is_open=False externally; mouse-leave must still cancel pending open.
 
-    Bug #138: When _is_focused is stale True (from pointer-click, see #137),
+    When _is_focused is stale True (left set by a pointer-click),
     the old guard ``if _is_hovered or _is_focused: return`` would short-circuit
     _cancel_open(), leaving the pending callback alive. After the timer fires,
     _set_open(True) re-opens the tooltip even though ESC had dismissed it.
@@ -330,7 +330,7 @@ def test_schedule_close_cancels_pending_open_when_externally_closed_and_focused_
     box._on_hover_change(True)
     assert box._open_callback is not None
 
-    # Simulate pointer-click setting _is_focused=True (#137 bug).
+    # Simulate pointer-click leaving _is_focused=True behind.
     box._is_focused = True
 
     # ESC dismisses the overlay externally — bypasses _set_open().
@@ -408,7 +408,7 @@ def test_tooltip_esc_suppression_clears_after_pointer_leaves(nuiitivet_clock) ->
 
 
 # ---------------------------------------------------------------------------
-# Issue #169: RichTooltip default width should be auto (fit-to-content)
+# RichTooltip default width should be auto (fit-to-content)
 # ---------------------------------------------------------------------------
 
 

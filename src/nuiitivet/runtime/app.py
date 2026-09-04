@@ -6,7 +6,7 @@ tree, overlay, navigator, focus, rendering, the menu bar — lives on
 runtime that runs the loop, supplies the theme, and decides when the
 application exits.
 The window is constructed separately and passed in:
-``App(Window(content=...))``. See ``docs/design/APP_WINDOW.md``.
+``App(Window(content=...))``.
 """
 
 from __future__ import annotations

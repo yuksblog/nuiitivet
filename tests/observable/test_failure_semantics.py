@@ -1,8 +1,8 @@
-"""What happens when a derivation, a predicate or a subscriber raises (#562).
+"""What happens when a derivation, a predicate or a subscriber raises.
 
 Neither path is about *expected* failure -- a failed HTTP request is a value the
 UI renders, not an exception. These are bugs in application code, and the rule
-(``OBSERVABLE.md`` §7) is that a bug is logged where it happened rather than
+is that a bug is logged where it happened rather than
 thrown at whichever thread happened to trigger the recompute.
 
 The clock matters here, so these tests pump the ``HarnessClock`` the testing

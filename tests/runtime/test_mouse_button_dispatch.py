@@ -1,4 +1,4 @@
-"""End-to-end dispatch of mouse button / modifiers through app_events (issue #305).
+"""End-to-end dispatch of mouse button / modifiers through app_events.
 
 Covers that ``button``/``modifier_keys`` reach the delivered ``PointerEvent`` and
 that a secondary (right/middle) press neither activates nor blurs focus.

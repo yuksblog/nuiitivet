@@ -44,13 +44,13 @@ class _NavTransition:
 
 @dataclass(slots=True)
 class _PushDescriptor:
-    """A restorable record of one declaratively pushed route (#378).
+    """A restorable record of one declaratively pushed route.
 
     Captures the intent *value* pushed via :meth:`Navigator.push` together with
     its type's fully-qualified name. The qualname — not the class identity — is
     what a hot reload matches against, because reloading redefines the intent
     class so the live ``type(intent)`` no longer equals the freshly registered
-    route-table key (§8 of ``docs/design/HOT_RELOAD.md``).
+    route-table key.
     """
 
     intent: Any
@@ -286,7 +286,7 @@ class Navigator(ComposableWidget):
         A ``Route``/``Widget`` instance is opaque — it was built from code that a
         reload replaces, with no factory to rebuild it against — so it is recorded
         as ``None``. An intent is declarative: it is captured by value plus its
-        type's qualified name so the stack can be replayed after reload (#378).
+        type's qualified name so the stack can be replayed after reload.
         """
         if isinstance(route_or_widget_or_intent, (Route, Widget)):
             return None
@@ -443,7 +443,7 @@ class Navigator(ComposableWidget):
         (bottom to top): a :class:`_PushDescriptor` for a declarative (intent)
         push, or ``None`` for an opaque, non-restorable push. Routes from the
         initial construction stack are excluded — a hot reload rebuilds those
-        from the factory. Pair with :meth:`restore_stack` across a reload (#378).
+        from the factory. Pair with :meth:`restore_stack` across a reload.
 
         **This is not the route stack.** It is the restore log: one entry per
         *declarative* push, ``None`` for a raw widget push, and nothing at all

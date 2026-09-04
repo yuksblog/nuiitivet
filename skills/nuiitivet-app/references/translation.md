@@ -160,7 +160,7 @@ nv.Button("OK").modifier(
 Reach `Navigator` / `Overlay` through an instance resolved from a mounted widget:
 `nv.Navigator.of(self)` / `nv.Overlay.of(self)`. Each returns the nearest enclosing
 one, falling back to the app's; add `root=True` to force the app's. They are **not**
-static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor (#518).
+static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor.
 
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |

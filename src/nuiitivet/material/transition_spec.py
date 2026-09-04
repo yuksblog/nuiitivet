@@ -12,7 +12,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_SLO
 
 
 # MD3 Shared Axis (X) page-transition tokens, following the Material Components
-# for Android implementation (docs/theming/Motion.md#shared-axis):
+# for Android implementation:
 #
 # - A subtle, fixed slide distance (30dp) — not a full-width slide. The fade
 #   carries most of the meaning; the slide only signals direction.

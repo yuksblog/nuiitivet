@@ -1,4 +1,4 @@
-"""Tests for the App-level signals the dev bridge's ``status`` reads (#420):
+"""Tests for the App-level signals the dev bridge's ``status`` reads:
 the resolved ``title`` and the blank-frame probe (:meth:`App._frame_is_blank`).
 """
 

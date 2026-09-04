@@ -1,4 +1,4 @@
-"""Tests for the MCP server that wraps the dev bridge (#376).
+"""Tests for the MCP server that wraps the dev bridge.
 
 The server holds no app logic: every tool forwards to a discovered
 :class:`~nuiitivet.dev.client.BridgeClient`. These tests patch
@@ -6,7 +6,7 @@ The server holds no app logic: every tool forwards to a discovered
 the server's ``call_tool`` boundary, so tool schemas, result conversion
 (including the ``screenshot`` image), and error propagation are all exercised.
 
-They run against either ``mcp`` SDK major (#489). The SDK's own result shapes
+They run against either ``mcp`` SDK major. The SDK's own result shapes
 differ between them -- ``call_tool``'s return type and a mime-type field rename
 -- so the helpers below normalize those; the tools themselves behave
 identically and are asserted the same way for both.
@@ -330,7 +330,7 @@ def test_missing_mcp_dependency_is_a_helpful_error() -> None:
 def test_incompatible_mcp_version_is_reported_as_such() -> None:
     """An unusable-but-present SDK must not be reported as a missing one.
 
-    This is the mcp 2.0 failure mode (#489): the server package was renamed, so
+    This is the mcp 2.0 failure mode: the server package was renamed, so
     the import fails while the package is installed. Telling that user to
     install what they already have is a dead end, so the message says which
     version it found and that neither module path worked.

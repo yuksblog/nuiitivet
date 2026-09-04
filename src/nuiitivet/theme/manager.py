@@ -10,8 +10,7 @@ There is deliberately **no subscriber registry** here. Widgets do not subscribe
 to the theme; they read it, and the read registers a dependency that the
 framework invalidates (``nuiitivet/theme/dependency.py``). The single
 :attr:`on_change` hook belongs to the provider that owns this manager -- the
-``AppScope`` -- and is what drives that invalidation. See
-``docs/design/THEME_CONSUMPTION.md``.
+``AppScope`` -- and is what drives that invalidation.
 """
 
 from __future__ import annotations

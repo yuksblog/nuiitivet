@@ -1,4 +1,4 @@
-"""Human-facing feedback for inspect mode (#591).
+"""Human-facing feedback for inspect mode.
 
 The visual half of :mod:`nuiitivet.dev.inspect`. Where
 :mod:`nuiitivet.dev.action_overlay` shows the human what the *assistant* just
@@ -34,7 +34,7 @@ committing are different things:
   screen" hazard.
 
 Nodes are drawn as **corner brackets** rather than a full outline, so that when
-region designation lands (the second half of #591, drawn as a faint fill) the two
+region designation lands (drawn as a faint fill) the two
 read as different *classes* of mark instead of two similar rectangles.
 """
 
@@ -248,7 +248,7 @@ def _describe(node: Any) -> str:
     name = identity.get("key") or identity.get("label")
     head = identity.get("type", type(node).__name__)
     label = f"{head}  {name}" if name else str(head)
-    # Where it was built (#593). Shown so the jump gesture is discoverable
+    # Where it was built. Shown so the jump gesture is discoverable
     # without adding anything pressable to a paint-only overlay -- seeing the
     # location is what tells the human it can be reached. Basename only: the
     # caption has to stay readable in a window a few hundred pixels wide.

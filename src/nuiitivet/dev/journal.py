@@ -19,8 +19,7 @@ compile?" and decide on its own to re-read files / re-``describe_tree`` before
 acting.
 
 Recording happens on the UI thread (the controller's clock-drain); reads happen
-on HTTP worker threads, so the buffer is guarded by a lock. See #388 and
-``docs/design/HOT_RELOAD.md`` (§12).
+on HTTP worker threads, so the buffer is guarded by a lock.
 """
 
 from __future__ import annotations

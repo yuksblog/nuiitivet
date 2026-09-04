@@ -1,4 +1,4 @@
-"""Tests for unified overlay dismissal through ``will_pop`` (issue #186).
+"""Tests for unified overlay dismissal through ``will_pop``.
 
 Covers the three dismiss paths converging on a single pipeline:
     - ESC / system back  -> Overlay.async_request_close_topmost

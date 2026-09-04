@@ -56,8 +56,8 @@ class Widget(
         self._needs_layout = True
         # A stable, layout-independent identity (a "testID"). It serves two
         # purposes: the dev action bridge targets widgets by ``key`` instead of
-        # brittle pixel coordinates (#375), and hot reload uses it as a stable
-        # anchor so state survives a structural edit (HOT_RELOAD.md §7.4/§11).
+        # brittle pixel coordinates, and hot reload uses it as a stable
+        # anchor so state survives a structural edit.
         self.key: Optional[str] = str(key) if key is not None else None
         super().__init__(
             width=width,
@@ -247,7 +247,7 @@ class ComposableWidget(BuilderHostMixin, Widget):
     Composition widgets can override `build()` and use `scope()` /
     `render_scope()` for fine-grained recomposition.
 
-    Layout metadata is transparent (see docs/design/SIZE_POLICY.md §1.2): a
+    Layout metadata is transparent: a
     value declared on this widget wins, and an undeclared one is derived from
     the widget its `build()` returned — so extracting a subtree into a
     composable does not change how the tree lays out.

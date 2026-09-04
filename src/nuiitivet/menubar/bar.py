@@ -4,7 +4,7 @@ Internal: apps register a model via ``App(menu=...)`` and this widget is
 created by the active slot (see ``slots.py``). Popups reuse the Material
 ``Menu`` machinery through a thin adapter, but their colors come from the
 menu bar's own palette so a non-Material design system does not get
-Material-colored popups (``docs/design/MENU_BAR.md``, Section 8.4).
+Material-colored popups.
 
 This module imports ``nuiitivet.material``, which the rest of the package
 must not: ``nuiitivet.runtime.app`` imports the package, and only the slots'

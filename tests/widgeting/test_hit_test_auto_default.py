@@ -1,4 +1,4 @@
-"""Hit-test ``auto`` default: the paper / glass model (issue #448).
+"""Hit-test ``auto`` default: the paper / glass model.
 
 A widget catches a pointer on its own rect only when it paints a visible
 surface or is interactive; transparent layout wrappers and non-interactive

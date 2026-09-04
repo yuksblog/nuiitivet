@@ -5,7 +5,7 @@ Each :class:`~nuiitivet.runtime.window.Window` owns one :class:`IMEManager`
 into it, the backend publishes the window's screen geometry, and the platform
 IME hook for that OS window reads both back to position native IME UI (the
 candidate window). There is no process-wide instance: two windows never share
-composition geometry. See ``docs/design/APP_WINDOW.md`` Section 8.6.
+composition geometry.
 """
 
 from __future__ import annotations

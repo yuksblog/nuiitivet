@@ -3,7 +3,7 @@
 Provides the TextStyle dataclass for Text widget styling, following the
 same pattern as ButtonStyle, IconStyle, and CheckboxStyle.
 
-Layer boundaries (see ``docs/design/TYPOGRAPHY.md``):
+Layer boundaries:
 
 * Typography (font size / line height / weight / tracking) lives on the
   ``type_scale`` :class:`~nuiitivet.theme.type_scale.TypeScaleToken`.

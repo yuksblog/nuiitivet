@@ -1,4 +1,4 @@
-"""File watcher thread for hot reload (§4/§8 of HOT_RELOAD.md).
+"""File watcher thread for hot reload.
 
 The watcher runs on a **background thread** and does one job: notice that a
 watched file changed. It must never touch the widget tree — tree mutation is

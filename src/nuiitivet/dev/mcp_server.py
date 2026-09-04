@@ -1,6 +1,6 @@
 """MCP server exposing the dev bridge as assistant-native tools (dev-only).
 
-This is the polished, MCP-host-facing surface over the dev bridge (#374, #375):
+This is the polished, MCP-host-facing surface over the dev bridge:
 it turns the localhost control channel into first-class tools any MCP host
 (Claude Desktop, IDE integrations, other agents) can call to close the
 perception-action loop over hot reload -- edit code (hot reload) ->
@@ -25,8 +25,6 @@ is -- rather than a bare ``ImportError``.
 Run it over stdio (the transport every MCP host supports) with::
 
     python -m nuiitivet.dev mcp
-
-See #376 and ``docs/design/HOT_RELOAD.md``.
 """
 
 from __future__ import annotations
@@ -87,7 +85,7 @@ _INCOMPATIBLE_HINT = (
 # on screen?" (and resolves action targets); `describe_state` covers the reactive
 # values behind the tree.
 #
-# Design note (#437), for maintainers -- do not fold this into the model-facing
+# Design note, for maintainers -- do not fold this into the model-facing
 # text below: `screenshot` is classified by trigger, not cost. It is described
 # only by its own job -- a human-reported visual discrepancy tree+state can't
 # explain -- and is kept out of every see/verify/cost description entirely. The

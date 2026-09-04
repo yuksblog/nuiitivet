@@ -13,7 +13,7 @@ The widget reuses existing infrastructure:
 - The overlay (scrim, outside-tap dismissal, anchored positioning) comes from
   the existing :func:`~nuiitivet.modifiers.popup.popup` modifier.
 
-Geometry and colour values follow ``docs/md3/fab_menu.md``: the close button
+Geometry and colour values follow the MD3 FAB menu spec: the close button
 uses a solid/tonal FAB colour, list items use the matching ``*-container``
 colour set, items are 56dp fully-rounded pills with 24/8/24 internal spacing
 and a 4dp gap between items, and elevation rises to level-4 on hover and

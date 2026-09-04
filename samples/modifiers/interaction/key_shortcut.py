@@ -1,4 +1,4 @@
-"""Keyboard shortcuts and their scopes (#327).
+"""Keyboard shortcuts and their scopes.
 
 Two scopes, side by side:
 
@@ -84,7 +84,7 @@ class EditorPane(nv.ComposableWidget):
 
 def main(png: str = ""):
     print("=" * 70)
-    print("key_shortcut demo (#327)")
+    print("key_shortcut demo")
     print("  Accel = Cmd on macOS, Ctrl elsewhere.")
     print("  1. Press Accel+Z with nothing focused -> the canvas undoes.")
     print("  2. Click into an editor and type -> status becomes 'modified'.")

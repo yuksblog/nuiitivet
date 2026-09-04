@@ -1,4 +1,4 @@
-"""Snapshot & restore ``Observable`` state across a reload (§8 of HOT_RELOAD.md).
+"""Snapshot & restore ``Observable`` state across a reload.
 
 A reload rebuilds the whole widget tree from the factory, so no live object is
 carried over. "Preserving state" therefore means: read the *values* of every
@@ -33,7 +33,7 @@ Path = tuple[str, ...]
 def _segment(node: Any, positional: str) -> str:
     """Return the path segment for ``node``, preferring its stable ``key``.
 
-    A widget given a ``key`` (§7.4/#375) anchors its state to that identifier
+    A widget given a ``key`` anchors its state to that identifier
     rather than its position, so restore survives a reorder or the insertion of a
     sibling before it. Without a key the segment falls back to ``positional``
     (index/slot + type), the original position-based identity — so a keyless
@@ -80,7 +80,7 @@ def path_of(root: Any, node: Any) -> Optional[Path]:
 
     The same key-preferring path :func:`snapshot_observables` builds, exposed for
     anything that has to survive a reload by naming *where* a widget was rather
-    than holding the object -- the inspect-mode selection (#591) re-resolves its
+    than holding the object -- the inspect-mode selection re-resolves its
     members this way, for the same reason and with the same degradation: a
     keyless widget that moves loses its match.
     """

@@ -202,7 +202,7 @@ def test_overlay_show_dismiss_on_outside_tap_closes_on_outside_tap() -> None:
 
 
 def test_overlay_outside_tap_dismisses_on_secondary_and_middle_button() -> None:
-    """Issue #506: dismissal is not gated on the primary button."""
+    """Dismissal is not gated on the primary button."""
     for button in (BUTTON_RIGHT, BUTTON_MIDDLE):
         overlay = Overlay()
         overlay.show(BasicDialog(title="Title"), dismiss_on_outside_tap=True)
@@ -267,7 +267,7 @@ def test_overlay_passthrough_with_explicit_dismiss_on_outside_tap_raises() -> No
     try:
         overlay.show(BasicDialog(title="Title"), passthrough=True, dismiss_on_outside_tap=True)
     except ValueError as exc:
-        assert "#508" in str(exc)
+        assert "cannot also observe it" in str(exc)
     else:
         raise AssertionError("expected ValueError for the unimplementable fourth cell")
 

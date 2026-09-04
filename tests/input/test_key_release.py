@@ -1,6 +1,6 @@
 """Tests for key-release delivery and the authoritative modifier-key mask.
 
-Key release had no dispatch path before #310: the runner dropped every symbol
+Key release originally had no dispatch path: the runner dropped every symbol
 except ``escape`` and forwarded that one as a *press*. These tests cover the
 release path end to end at the framework boundary — ``_dispatch_key_release``,
 ``FocusNode.handle_key_release_event``, ``focusable(on_key_up=...)`` — plus the

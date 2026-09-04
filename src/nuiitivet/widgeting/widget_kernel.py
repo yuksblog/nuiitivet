@@ -328,7 +328,7 @@ class WidgetKernel:
 
     # --- Hit testing -------------------------------------------------------
     #
-    # Hit participation factors into two internal axes (issue #448):
+    # Hit participation factors into two internal axes:
     #   S -- self surface: does this widget's own rect become the hit target?
     #   C -- children:     does hit-testing descend into this subtree?
     #

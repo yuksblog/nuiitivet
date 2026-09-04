@@ -23,7 +23,7 @@ def _material_menubar_theme_data() -> MenuBarThemeData:
     Colors are stored as tokens (not resolved RGBA), so the same instance
     resolves to the correct light/dark values against whichever theme is
     active. Under a Material theme these roles make the menubar popups match
-    the MD3 ``Menu`` widgets (see ``docs/design/MENU_BAR.md``, Section 8.4).
+    the MD3 ``Menu`` widgets.
     """
     return MenuBarThemeData(
         bar_background=ColorRole.SURFACE_CONTAINER,

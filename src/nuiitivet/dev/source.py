@@ -1,6 +1,6 @@
-"""Where a widget was constructed (#593).
+"""Where a widget was constructed.
 
-A designation answers "which widget is this" (#591). It stops one step short of
+A designation answers "which widget is this". It stops one step short of
 the question that follows it every time: *which line of code built this?* In an
 app that passes no ``key=`` -- which is most apps -- the alternative is a chain
 of anonymous types twenty levels deep and a grep.
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # at all, which no real app produces.
 _MAX_DEPTH = 150
 
-# User frames kept. Three covered every case in the #593 spike -- a widget built
+# User frames kept. Three covered every observed case -- a widget built
 # in a helper, called from another helper, called from ``build()`` -- and the
 # limit trades payload size against the caller's ability to choose among them.
 _MAX_FRAMES = 3

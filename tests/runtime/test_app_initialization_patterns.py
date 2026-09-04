@@ -89,7 +89,7 @@ def test_app_with_intents_navigator_becomes_the_app_navigator() -> None:
 
 
 def test_two_apps_resolve_their_own_navigator_and_overlay() -> None:
-    """The point of #518: no process-global root to collide over."""
+    """The point of per-instance roots: no process-global root to collide over."""
     first = App(Window(content=_FlagWidget(label="first"))).main_window
     second = App(Window(content=_FlagWidget(label="second"))).main_window
 
@@ -98,7 +98,7 @@ def test_two_apps_resolve_their_own_navigator_and_overlay() -> None:
 
 
 def test_a_rebuild_is_adopted_only_once_committed() -> None:
-    """Building must not touch the App; only the commit hands over (#518)."""
+    """Building must not touch the App; only the commit hands over."""
     app = App(Window(content=_FlagWidget(label="first"))).main_window
     original_navigator = app.navigator
     original_overlay = app.overlay

@@ -6,8 +6,7 @@ Two widgets, both the *contained* (expressive) variant:
 - :class:`DockedSearchBar` — the bar plus a docked container, anchored 2dp
   below it.
 
-MD3 reference: ``md.comp.search-bar.*`` and ``md.comp.search-view.contained.*``
-(``docs/md3/search.md``).
+MD3 reference: ``md.comp.search-bar.*`` and ``md.comp.search-view.contained.*``.
 
 Deliberate omissions
 --------------------
@@ -185,7 +184,7 @@ class _SearchBarCore(InteractiveWidget):
 
         Before the widget is attached it has no ancestors, so ``Theme.of``
         would fall back to the light default and warn about it. ``None``
-        expresses the same fallback without the warning (issue #473).
+        expresses the same fallback without the warning.
         """
         from nuiitivet.widgeting.context_lookup import is_premature_lookup
 

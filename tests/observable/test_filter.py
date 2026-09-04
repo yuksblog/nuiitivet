@@ -1,4 +1,4 @@
-"""``filter(pred, initial=...)`` — the operator OBSERVABLE.md §2 once rejected.
+"""``filter(pred, initial=...)`` — the operator the observable design once rejected.
 
 The objection was that a filtered observable has no defined ``.value`` before
 anything passes. The seed answers it, so these tests pin what ``.value`` reports

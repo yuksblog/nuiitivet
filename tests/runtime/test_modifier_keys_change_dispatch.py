@@ -1,4 +1,4 @@
-"""Application-level routing of modifier-key mask changes (issue #308).
+"""Application-level routing of modifier-key mask changes.
 
 When the held modifier-key mask changes, the app synthesizes a pointer event at
 the last known position and routes it to the widget under (or capturing) the

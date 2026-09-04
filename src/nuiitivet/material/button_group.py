@@ -273,7 +273,6 @@ class GroupButton(InteractiveWidget):
         so a theme change re-measures the item and lands back here. An item that
         was given an explicit style, or that sits in a group (which resolves one
         style for the whole row so every segment matches), has nothing to pull.
-        See ``docs/design/THEME_CONSUMPTION.md``.
         """
         if self._has_user_style or self._group_styled:
             return
@@ -863,7 +862,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         consumed -- :meth:`preferred_size`. The read registers a dependency, so
         a theme change re-measures the group and lands back here; the style
         pushed onto the row and its items is therefore a write-through cache of
-        this pull. See ``docs/design/THEME_CONSUMPTION.md``.
+        this pull.
         """
         if self._has_user_style:
             return

@@ -1,23 +1,23 @@
-"""Reload the user's modules on save (§9.6 / §9.8 of HOT_RELOAD.md).
+"""Reload the user's modules on save.
 
 Two concerns live here:
 
-- **Identification (§9.8):** decide which loaded modules are the *user's* and are
+- **Identification:** decide which loaded modules are the *user's* and are
   therefore safe to reload. ``nuiitivet``, ``skia`` and ``pyglet`` are never
   reloaded (they wrap C extensions); this is enforced by a name blacklist, a
   "file must not live under a site-packages directory" check (so a project-local
-  ``.venv/`` is excluded — #422), and a "file must live under the project root"
+  ``.venv/`` is excluded), and a "file must live under the project root"
   check.
 
-- **Ordering (§9.6, case 1):** reload user modules in dependency order — a
+- **Ordering:** reload user modules in dependency order — a
   depended-upon module (a leaf like ``widgets``) before its dependents (``app``)
   — so that after reloading, a dependent's ``from .widgets import W`` re-binds to
-  the *new* class object instead of固着 to the stale one.
+  the *new* class object instead of staying bound to the stale one.
 
 All user modules are reloaded on every change (not just the saved file): reloading
 only the saved leaf would leave dependents holding stale bindings. Restoring
 in-tree ``Observable`` state is handled separately by the snapshot module;
-module-level state is intentionally out of scope (§9.5).
+module-level state is intentionally out of scope.
 """
 
 from __future__ import annotations
@@ -39,13 +39,13 @@ logger = logging.getLogger(__name__)
 
 # Top-level packages that must never be reloaded. ``skia``/``pyglet`` wrap C
 # extensions; ``nuiitivet`` is the framework itself. This is the hard safety net
-# required by #359 regardless of where the files happen to live.
+# that holds regardless of where the files happen to live.
 _BLACKLIST_ROOTS = frozenset({"nuiitivet", "skia", "skia_python", "pyglet"})
 
 
 @lru_cache(maxsize=1)
 def _site_directories() -> tuple[Path, ...]:
-    """Resolved install directories where dependencies live (#422).
+    """Resolved install directories where dependencies live.
 
     Third-party and stdlib packages install under the interpreter's site
     directories. When the virtualenv lives *inside* the project root (e.g.
@@ -120,7 +120,7 @@ def _is_user_module(module: ModuleType, project_root: Path) -> bool:
         return False
     # Reject dependencies by their real install location *before* the
     # project-root check, so a project-local ``.venv/`` (site-packages under the
-    # project root) is still excluded (#422). Editable installs (``pip install
+    # project root) is still excluded. Editable installs (``pip install
     # -e``) whose source lives in the tree resolve outside these directories, so
     # they stay reloadable — that source is genuinely the user's code.
     for site_dir in _site_directories():

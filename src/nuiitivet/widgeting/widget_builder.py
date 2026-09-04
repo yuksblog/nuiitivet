@@ -59,7 +59,7 @@ def _get_scoped_fragment_class():
 
         # Layout metadata (sizing / alignment) needs no syncing here: the
         # fragment derives undeclared metadata from its built child, like any
-        # ComposableWidget (SIZE_POLICY.md §1.2), and it never declares its own.
+        # ComposableWidget, and it never declares its own.
 
         def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
             child = self._current_child()
@@ -409,7 +409,7 @@ class BuilderHostMixin:
         ``X.of(context)`` resolves by walking it upward. Parenting therefore
         happens as soon as the subtree exists -- not at mount -- so that a
         composable measured before it is mounted still resolves its ancestors
-        instead of looking like a detached widget (#476).
+        instead of looking like a detached widget.
 
         A host whose ``build()`` returns ``self`` -- ``Card`` decorates itself
         and returns itself -- is skipped. Parenting it to itself would make
@@ -570,7 +570,7 @@ class BuilderHostMixin:
         if self._built:
             return measure_preferred_size(self._built, max_width=max_width, max_height=max_height)
 
-        # Measuring must be side-effect-free (issue #244). When mounted, the live
+        # Measuring must be side-effect-free. When mounted, the live
         # subtree already exists — either as ``_built`` (handled above) or, for
         # widgets whose ``build()`` returns ``self`` (e.g. Card), as mounted
         # children. Measure those directly; never call ``build()`` here, since
@@ -668,7 +668,7 @@ class BuilderHostMixin:
             # Always refresh the stored factory so a later invalidation rebuilds
             # against current host state, even when we skip rebuilding now.
             fragment.update_factory(normalized_factory)
-            # Idempotent recomposition (issue #244): rebuild only when the scope
+            # Idempotent recomposition: rebuild only when the scope
             # was explicitly invalidated or has no built subtree yet. Re-entering
             # build() (e.g. on every measure) must not tear down the live subtree.
             needs_build = scope_id in self._dirty_scopes or fragment.built_child is None

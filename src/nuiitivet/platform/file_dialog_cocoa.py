@@ -5,9 +5,8 @@ bundled ObjC bridge, instead of spawning an ``osascript`` helper per call. The
 panel's content is served by a per-process remote view service whose session
 setup costs ~1s; creating each panel once and reusing it keeps that session
 warm, so the first dialog pays that cost once and later ones appear
-near-instantly (see issue #600 for measurements — startup-time prewarming was
-tried and rejected there: it froze every app's launch for a feature many
-never use).
+near-instantly. (Startup-time prewarming was tried and rejected: it froze
+every app's launch for a feature many never use.)
 
 AppKit is main-thread-only, so this backend runs on the UI thread
 (``runs_on_ui_thread = True``); ``runModal`` blocks the event loop while the

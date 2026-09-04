@@ -1,4 +1,4 @@
-"""``set()`` is the expression-position spelling of the ``.value`` setter (#500).
+"""``set()`` is the expression-position spelling of the ``.value`` setter.
 
 A Python lambda cannot assign, so callback props and ``subscribe`` lambdas used
 to reach for ``setattr(obs, "value", v)``. ``set()`` replaces that, and must be

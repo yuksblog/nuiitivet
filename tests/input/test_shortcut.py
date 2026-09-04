@@ -1,4 +1,4 @@
-"""Tests for the ``Shortcut`` value type and ``MOD_ACCEL`` (issue #327).
+"""Tests for the ``Shortcut`` value type and ``MOD_ACCEL``.
 
 Covers spec parsing, key-name normalization, exact modifier matching, and the
 platform resolution of ``MOD_ACCEL`` — which must happen at match time, never at
@@ -115,7 +115,7 @@ def test_binding_identity_is_the_gesture() -> None:
     assert hash(a) == hash(b)
 
 
-# ``produces_text`` — the static half of the #331 guard.
+# ``produces_text`` — the static half of the typing-vs-shortcut guard.
 
 
 @pytest.mark.parametrize(

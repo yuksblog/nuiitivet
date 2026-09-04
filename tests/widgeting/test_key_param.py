@@ -1,4 +1,4 @@
-"""Every public widget accepts ``key`` in its constructor (issue #649).
+"""Every public widget accepts ``key`` in its constructor.
 
 ``key`` is a widget's stable, layout-independent identity — the dev bridge
 targets widgets by it (``click(key=...)``) and hot reload anchors observable
@@ -44,7 +44,7 @@ def test_every_public_widget_accepts_key() -> None:
             missing.append(name)
     assert missing == [], (
         "Public widgets missing an explicit `key` constructor parameter "
-        "(issue #649): " + ", ".join(missing)
+        ": " + ", ".join(missing)
     )
 
 

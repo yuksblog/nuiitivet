@@ -135,7 +135,7 @@ async def test_navigator_pop_calls_will_pop_inside_build(nuiitivet_mount) -> Non
 
 
 # ---------------------------------------------------------------------------
-# Re-entrancy guard (#53)
+# Re-entrancy guard
 # ---------------------------------------------------------------------------
 
 

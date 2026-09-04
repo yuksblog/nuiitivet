@@ -1,6 +1,6 @@
 """Tests for the MD3 Shared Axis (X) default page transition.
 
-See issue #402. The default ``MaterialTransitions.page()`` transition follows the
+The default ``MaterialTransitions.page()`` transition follows the
 Material Components for Android Shared Axis (X) pattern:
 
 - a subtle horizontal slide plus a "fade through" (the outgoing page fades out

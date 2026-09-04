@@ -22,7 +22,7 @@ class Animatable(ObservableBase[T]):
     ``value`` is read-only and reflects the current animated value.
 
     Subclasses :class:`ObservableBase` so it is recognised by the pure-C
-    ``isinstance`` fast path used on the widget construction hot path (#324);
+    ``isinstance`` fast path used on the widget construction hot path;
     it also structurally satisfies :class:`ReadOnlyObservableProtocol`.
     """
 

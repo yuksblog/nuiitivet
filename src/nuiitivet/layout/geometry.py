@@ -45,7 +45,7 @@ class Geometry(Widget):
     The measured size is written during the layout phase. Scope recomposition is
     flushed *before* layout within a frame, so a subtree that rebuilds on the size
     does so on the next frame, never re-entrantly mid-layout. The write itself,
-    however, propagates synchronously — see ``docs/design/GEOMETRY.md`` §3.1.
+    however, propagates synchronously.
     """
 
     def __init__(

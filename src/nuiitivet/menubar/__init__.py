@@ -2,7 +2,7 @@
 
 The menu bar is registered on the App (``App(menu=nv.MenuBar([...]))``) as
 plain declarative data, rendered as an in-app bar below the chrome (or at a
-user-placed :class:`MenuBarArea`). See ``docs/design/MENU_BAR.md``.
+user-placed :class:`MenuBarArea`).
 """
 
 from .model import MenuBar

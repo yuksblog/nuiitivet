@@ -1,4 +1,4 @@
-"""Committing and cancelling IME compositions on EditableText (issue #625).
+"""Committing and cancelling IME compositions on EditableText.
 
 ``_commit_composition`` is reached through the focus node when the window
 loses the OS focus: the provisional text is kept as committed text, matching

@@ -6,11 +6,10 @@ Run with hot reload::
 
 Then edit ``build()`` below — tweak the padding, the label, the button style —
 and save. The UI updates in place and ``count`` keeps its value because it is an
-``Observable`` snapshotted and restored across the reload. See
-``docs/guide/ai_pair_programming/hot_reload.md``.
+``Observable`` snapshotted and restored across the reload.
 
 The increment button carries a stable ``key`` so the dev action bridge can drive
-it without pixel coordinates (#375)::
+it without pixel coordinates::
 
     python -m nuiitivet.dev click --key increment-btn   # or: --label increment
     python -m nuiitivet.dev describe-tree                # Count went up

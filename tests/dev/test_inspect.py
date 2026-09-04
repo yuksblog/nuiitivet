@@ -1,4 +1,4 @@
-"""Tests for inspect mode -- the gesture layer over the designation buffer (#591)."""
+"""Tests for inspect mode -- the gesture layer over the designation buffer."""
 
 from __future__ import annotations
 
@@ -144,7 +144,7 @@ def test_pointer_events_pass_through_while_the_mode_is_off() -> None:
 
 
 def test_a_drag_does_not_fall_back_to_a_click() -> None:
-    """A drag designates a region (the second half of #591), so it must not
+    """A drag designates a region, so it must not
     quietly mean something else in the meantime."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
@@ -365,7 +365,7 @@ def test_a_walked_designation_still_survives_a_reload() -> None:
         assert selection.members() == [rebuilt]
 
 
-# --- regions (#591) ---------------------------------------------------------
+# --- regions ---------------------------------------------------------
 
 
 def test_a_drag_designates_the_area_it_swept() -> None:
@@ -443,7 +443,7 @@ def test_leaving_clears_an_abandoned_band() -> None:
         assert mode.band is None
 
 
-# --- committing and discarding (#591) ---------------------------------------
+# --- committing and discarding ---------------------------------------
 
 
 def test_escape_discards_the_session() -> None:
@@ -611,7 +611,7 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
         assert mode.selection.members() == []
 
 
-# --- jumping to the source (#593) -------------------------------------------
+# --- jumping to the source -------------------------------------------
 
 
 def _accel_click(mode: InspectMode, app: _App, x: float, y: float, mods: int = MOD_CTRL) -> None:

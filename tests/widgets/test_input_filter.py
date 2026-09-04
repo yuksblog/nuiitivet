@@ -1,4 +1,4 @@
-"""Input filters (issue #565).
+"""Input filters.
 
 A filter runs between a keystroke and the field's value. The character-level
 filters know which characters they dropped and move the caret exactly; the
