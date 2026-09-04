@@ -5,6 +5,7 @@ Subcommands::
     python -m nuiitivet.dev run path/to/app.py     # launch with hot reload
     python -m nuiitivet.dev path/to/app.py          # same (run is the default)
     python -m nuiitivet.dev run --module yourpkg.app  # dotted module name
+    python -m nuiitivet.dev run app.py -- --png out.png  # arguments for the app
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
@@ -24,15 +25,19 @@ Subcommands::
 ``run`` imports the user's app module under its real name (never ``__main__``,
 so importing it does not run ``main()``), installs a dev session, calls the
 entry once, then drives the event loop with file watching and the dev bridge
-enabled. ``describe-tree`` / ``screenshot`` (perception) and ``click`` /
-``scroll`` / ``type`` / ``key`` (action) are bridge clients: they talk to an already-running ``run``
-process over localhost. ``mcp`` serves those same primitives as MCP tools over
-stdio for MCP hosts (#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
+enabled. It also replaces ``sys.argv`` with the app's own -- its path plus
+anything after a ``--`` separator -- so an entry that parses arguments is not
+handed the runner's command line. ``describe-tree`` / ``screenshot``
+(perception) and ``click`` / ``scroll`` / ``type`` / ``key`` (action) are bridge
+clients: they talk to an already-running ``run`` process over localhost.
+``mcp`` serves those same primitives as MCP tools over stdio for MCP hosts
+(#376). See ``docs/design/HOT_RELOAD.md``, #374 and #375.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import Any, Optional, Sequence
 
@@ -80,7 +85,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    run = subparsers.add_parser("run", help="Run an app with in-process hot reload.")
+    run = subparsers.add_parser(
+        "run",
+        help="Run an app with in-process hot reload.",
+        description=(
+            "Run an app with in-process hot reload. Arguments after a '--' separator "
+            "are handed to the app as its own sys.argv, so an entry that parses "
+            "arguments sees them: python -m nuiitivet.dev run app.py -- --png out.png"
+        ),
+    )
+    # Filled in by _parse_args from whatever followed a '--' on the command line.
+    run.set_defaults(app_args=[])
     run.add_argument(
         "target",
         help="Path to the app file (e.g. app.py), or a dotted module name with --module.",
@@ -286,12 +301,45 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _split_app_args(args: list[str]) -> tuple[list[str], list[str]]:
+    """Split a ``run`` command line at the first ``--`` into runner and app arguments.
+
+    Splitting before argparse rather than through a trailing ``REMAINDER``
+    positional keeps the separator working under the implicit-``run`` insertion
+    above, and keeps runner flags after ``--`` (``--entry``, ``--module``) from
+    being claimed by the runner instead of reaching the app.
+    """
+    if "--" not in args:
+        return args, []
+    sep = args.index("--")
+    return args[:sep], args[sep + 1 :]
+
+
 def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     args = list(sys.argv[1:] if argv is None else argv)
     # Backward compat / ergonomics: if no explicit subcommand leads, assume 'run'.
     if not args or (args[0] not in _SUBCOMMANDS and not (args[0] == "-h" or args[0] == "--help")):
         args = ["run", *args]
-    return _build_parser().parse_args(args)
+    app_args: list[str] = []
+    # Only 'run' launches user code, so only 'run' has arguments to pass through;
+    # every other subcommand leaves '--' to argparse's own end-of-options meaning.
+    if args[0] == "run":
+        args, app_args = _split_app_args(args)
+    parsed = _build_parser().parse_args(args)
+    if parsed.command == "run":
+        parsed.app_args = app_args
+    return parsed
+
+
+def _app_argv(args: argparse.Namespace) -> list[str]:
+    """The ``sys.argv`` the user's app should see: its own path, then its own arguments.
+
+    A dotted ``--module`` target has no path until it is imported, so its name
+    stands in as ``argv[0]`` until :func:`_run` can replace it with the module's
+    real ``__file__``.
+    """
+    head = args.target if args.module else os.path.abspath(args.target)
+    return [head, *args.app_args]
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -307,8 +355,19 @@ def _run(args: argparse.Namespace) -> int:
             print(f"[nuiitivet.dev] --editor: {problem}", file=sys.stderr)
             return 1
         editor.configure(args.editor)
+
+    # The runner is a launcher, so the app must see an argv of its own rather
+    # than this process's -- an entry that parses arguments otherwise dies on
+    # the runner's command line. This lands before the import because a module
+    # may parse arguments at import time too, and it is deliberately *not*
+    # restored afterwards: hot reload re-imports user modules, so putting the
+    # runner's argv back would spring the same trap on the next save. ``pdb``
+    # and ``cProfile`` replace argv permanently for the same reason.
+    sys.argv = _app_argv(args)
     try:
         loaded = load_app_module(args.target, is_module=args.module)
+        # Now that the module is in hand, a dotted target can claim its real path.
+        sys.argv[0] = getattr(loaded.module, "__file__", None) or sys.argv[0]
         entry = resolve_entry(loaded.module, args.entry)
 
         # Run the user's entry once. It builds the App and calls App.run(), which
