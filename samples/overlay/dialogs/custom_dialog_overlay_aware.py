@@ -76,9 +76,10 @@ class OverlayAwareDialogDemo(nv.ComposableWidget):
         )
 
 
-def main(png_path: str = ""):
-    return nv.App(nv.Window(content=OverlayAwareDialogDemo(), width=400, height=300))
+def main() -> None:
+    app = nv.App(nv.Window(content=OverlayAwareDialogDemo(), width=400, height=300))
+    app.run()
 
 
 if __name__ == "__main__":
-    main().run()
+    main()

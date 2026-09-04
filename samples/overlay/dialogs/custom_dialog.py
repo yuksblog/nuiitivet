@@ -76,7 +76,7 @@ class CustomDialogDemo(nv.ComposableWidget):
         )
 
 
-def main(png_path: str = ""):
+def main(png_path: str = "") -> None:
     if png_path:
         from typing import cast
 
@@ -85,10 +85,11 @@ def main(png_path: str = ""):
         content.counter.value = 5
         app = nv.App(nv.Window(content=nv.Container(alignment="center", child=content), width=400, height=300))
         app.render_to_png(png_path)
-        return app
+        return
 
-    return nv.App(nv.Window(content=CustomDialogDemo(), width=400, height=300))
+    app = nv.App(nv.Window(content=CustomDialogDemo(), width=400, height=300))
+    app.run()
 
 
 if __name__ == "__main__":
-    main().run()
+    main()

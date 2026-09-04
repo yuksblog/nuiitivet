@@ -118,10 +118,10 @@ class ThreadSafetyApp(nv.ComposableWidget):
         )
 
 
+def main() -> None:
+    app = nv.App(nv.Window(content=ThreadSafetyApp()))
+    app.run()
+
+
 if __name__ == "__main__":
-    widget = ThreadSafetyApp()
-    app = nv.App(nv.Window(content=widget))
-    try:
-        app.run()
-    except Exception:
-        print("Thread Safety demo requires pyglet/skia to run.")
+    main()

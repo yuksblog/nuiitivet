@@ -96,10 +96,10 @@ class OperatorsApp(nv.ComposableWidget):
         )
 
 
+def main() -> None:
+    app = nv.App(nv.Window(content=OperatorsApp()))
+    app.run()
+
+
 if __name__ == "__main__":
-    widget = OperatorsApp()
-    app = nv.App(nv.Window(content=widget))
-    try:
-        app.run()
-    except Exception:
-        print("Operators demo requires pyglet/skia to run.")
+    main()

@@ -44,7 +44,7 @@ class BasicDialogDemo(nv.ComposableWidget):
         )
 
 
-def main(png_path: str = ""):
+def main(png_path: str = "") -> None:
     if png_path:
         # For screenshot, render the dialog directly
         dialog = nv.BasicDialog(
@@ -54,10 +54,11 @@ def main(png_path: str = ""):
         )
         app = nv.App(nv.Window(content=nv.Container(alignment="center", child=dialog), width=400, height=300))
         app.render_to_png(png_path)
-        return app
+        return
 
-    return nv.App(nv.Window(content=BasicDialogDemo(), width=400, height=300))
+    app = nv.App(nv.Window(content=BasicDialogDemo(), width=400, height=300))
+    app.run()
 
 
 if __name__ == "__main__":
-    main().run()
+    main()

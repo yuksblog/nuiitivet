@@ -85,10 +85,10 @@ class CounterApp(nv.ComposableWidget):
         )
 
 
+def main() -> None:
+    app = nv.App(nv.Window(content=CounterApp()))
+    app.run()
+
+
 if __name__ == "__main__":
-    widget = CounterApp()
-    app = nv.App(nv.Window(content=widget))
-    try:
-        app.run()
-    except Exception:
-        print("Getting started demo requires pyglet/skia to run.")
+    main()
