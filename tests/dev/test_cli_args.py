@@ -203,3 +203,46 @@ def test_wait_for_subcommand_absent_and_timeout() -> None:
 def test_mcp_subcommand() -> None:
     args = _parse_args(["mcp"])
     assert args.command == "mcp"
+
+
+def test_run_without_separator_has_no_app_args() -> None:
+    args = _parse_args(["run", "app.py"])
+    assert args.app_args == []
+
+
+def test_run_passes_through_args_after_separator() -> None:
+    args = _parse_args(["run", "app.py", "--", "--png", "out.png"])
+    assert args.target == "app.py"
+    assert args.app_args == ["--png", "out.png"]
+
+
+def test_bare_target_passes_through_args_after_separator() -> None:
+    args = _parse_args(["app.py", "--", "--png", "out.png"])
+    assert args.command == "run"
+    assert args.target == "app.py"
+    assert args.app_args == ["--png", "out.png"]
+
+
+def test_separator_keeps_runner_flags_out_of_the_runner() -> None:
+    # '--entry' after the separator belongs to the app, not to the runner.
+    args = _parse_args(["run", "app.py", "--entry", "start", "--", "--entry", "other"])
+    assert args.entry == "start"
+    assert args.app_args == ["--entry", "other"]
+
+
+def test_only_the_first_separator_splits() -> None:
+    args = _parse_args(["run", "app.py", "--", "--flag", "--", "tail"])
+    assert args.app_args == ["--flag", "--", "tail"]
+
+
+def test_separator_with_no_trailing_args() -> None:
+    args = _parse_args(["run", "app.py", "--"])
+    assert args.target == "app.py"
+    assert args.app_args == []
+
+
+def test_other_subcommands_leave_the_separator_to_argparse() -> None:
+    # Not a 'run', so '--' keeps its plain end-of-options meaning.
+    args = _parse_args(["type", "--", "--hello"])
+    assert args.command == "type"
+    assert args.text == "--hello"
