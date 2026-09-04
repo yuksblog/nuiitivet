@@ -1,5 +1,5 @@
 from nuiitivet.rendering.background_renderer import BackgroundRenderer
-from nuiitivet.rendering.shadow import ShadowParams
+from nuiitivet.rendering.shadow import Shadow
 
 
 class DummyOwner:
@@ -66,8 +66,8 @@ def test_paint_background_calls_draw_methods(monkeypatch):
     def fake_draw_background(canvas, x, y, width, height, paint, eff_rad):
         calls.append(("background", x, y, width, height, eff_rad))
 
-    def fake_draw_shadow(canvas, x, y, width, height, sc, dx, dy, sb, eff_rad, spread=0.0):
-        calls.append(("shadow", x, y, width, height, sc, dx, dy, sb, eff_rad, spread))
+    def fake_draw_shadow(canvas, x, y, width, height, sc, dx, dy, blur_radius, eff_rad, spread_radius=0.0):
+        calls.append(("shadow", x, y, width, height, sc, dx, dy, blur_radius, eff_rad, spread_radius))
 
     # monkeypatch the instance methods
     monkeypatch.setattr(br, "_draw_background", fake_draw_background)
@@ -84,7 +84,7 @@ def test_paint_background_calls_draw_methods(monkeypatch):
 
     # Reset and configure shadow -> shadow should be called before background
     calls.clear()
-    owner.shadows = (ShadowParams(sigma=0.0, offset=(2, 3), color=("#000000", 0.3)),)
+    owner.shadows = (Shadow(("#000000", 0.3), offset=(2, 3)),)
     br.paint_background(canvas=None, x=1, y=2, width=60, height=50)
     assert calls and calls[0][0] == "shadow"
 

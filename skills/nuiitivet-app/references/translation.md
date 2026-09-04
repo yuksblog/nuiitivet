@@ -145,7 +145,7 @@ and adaptive layout with `on_size_changed`.
 | Compose `Modifier.padding().background()` chain | `.modifier(...)` for decoration/behavior; padding is a widget **parameter** |
 
 Modifier functions live on `nv`: `background`, `border`, `corner_radius`, `clip`,
-`shadow`, `opacity`, `tooltip`, `clickable`, `focusable`, `hoverable`, `translate`,
+`shadows`, `opacity`, `tooltip`, `clickable`, `focusable`, `hoverable`, `translate`,
 `rotate`, `scale`, `visible`, … (there is **no** `radius` — it is `corner_radius`).
 
 ```python

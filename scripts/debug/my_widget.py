@@ -275,7 +275,7 @@ class MyWidget(nv.ComposableWidget):
                 style=nv.CardStyle.outlined().copy_with(border_radius=6),
                 alignment="start",
             ).modifier(
-                nv.shadow((nv.ColorRole.SHADOW, 0.12), blur=12.0, offset=(0, 6))
+                nv.shadows(nv.Shadow((nv.ColorRole.SHADOW, 0.12), blur_radius=24.0, offset=(0, 6)))
             ),  # Test that modifiers work on Cards
             nv.Card(
                 nv.Column(

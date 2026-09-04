@@ -21,7 +21,7 @@ from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
 from nuiitivet.overlay.overlay_position import OverlayPosition
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorBase, ColorSpec
@@ -595,7 +595,7 @@ class Menu(InteractiveWidget):
         self._focus_index = -1
         self._focusable_items: list[MenuItem] = []
 
-        _shadows = md3_elevation_to_shadow(effective_style.elevation)
+        _shadows = elevation_shadows(effective_style.elevation)
 
         children = self._materialize_children(effective_style)
         self._column = Column(children=children, width=Sizing.weight(), gap=0, cross_alignment="start")
@@ -701,7 +701,7 @@ class Menu(InteractiveWidget):
         self.padding = (0, style.container_vertical_padding, 0, style.container_vertical_padding)
         self.bgcolor = style.background
         self.corner_radius = style.corner_radius
-        self.shadows = md3_elevation_to_shadow(style.elevation)
+        self.shadows = elevation_shadows(style.elevation)
         self._rematerialize()
 
     def _focus_surface(self) -> None:

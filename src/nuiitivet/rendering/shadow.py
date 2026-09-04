@@ -1,119 +1,90 @@
-"""Renderer-level shadow parameters.
+"""Renderer-level shadow values.
 
 This module belongs to the rendering layer and has no knowledge of any
-design system (e.g. Material Design 3). It only describes *how* a shadow
-should be drawn using Skia-level primitives.
+design system (e.g. Material Design 3). It describes *what* to draw in the
+CSS ``box-shadow`` vocabulary — blur-radius and spread-radius — and leaves
+the translation to Skia primitives (blur-radius is twice the Gaussian
+sigma) to the renderer that draws it.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence, Tuple, Union
+from typing import Iterable, Sequence, Tuple, Union
 
 from nuiitivet.theme.types import ColorSpec
 
 
 @dataclass(frozen=True)
-class ShadowParams:
-    """Concrete parameters for a single shadow draw pass.
+class Shadow:
+    """A single shadow layer, in CSS ``box-shadow`` terms.
 
-    A shadow is drawn as one or more of these layers, stacked back to front.
+    A widget's shadow is one or more of these layers, stacked back to front.
 
     Args:
-        sigma: Gaussian blur radius (Skia ImageFilters.Blur sigma).
-            A value of 0.0 means no blur.
-        offset: (dx, dy) translation of the shadow relative to the widget.
         color: Shadow color. Supports ``ColorRole``, hex string, RGBA tuple,
             or a ``(ColorRole, alpha)`` pair where *alpha* is 0.0-1.0.
-        spread: Outward inflation of the shadow rect, in pixels, applied
-            before the blur. Corner radii grow by the same amount. A negative
-            value shrinks the rect. This is the CSS ``box-shadow`` spread.
+        blur_radius: CSS blur-radius, in pixels. A value of 0.0 means a
+            hard-edged shadow.
+        offset: (dx, dy) translation of the shadow relative to the widget.
+        spread_radius: CSS spread-radius, in pixels: outward inflation of
+            the shadow rect, applied before the blur. Corner radii grow by
+            the same amount. A negative value shrinks the rect.
     """
 
-    sigma: float
-    offset: Tuple[float, float]
     color: ColorSpec
-    spread: float = 0.0
+    blur_radius: float = 0.0
+    offset: Tuple[float, float] = (0.0, 0.0)
+    spread_radius: float = 0.0
 
     @property
     def is_visible(self) -> bool:
         """Return True when the shadow will produce any visible output."""
-        return self.sigma > 0.0 or self.spread != 0.0 or self.offset != (0.0, 0.0)
-
-    @classmethod
-    def from_css(
-        cls,
-        offset_x: float,
-        offset_y: float,
-        blur: float,
-        spread: float,
-        color: ColorSpec,
-    ) -> "ShadowParams":
-        """Build a layer from CSS ``box-shadow`` values.
-
-        CSS states a blur *radius*, which is twice the Gaussian sigma a
-        renderer applies, so *blur* is halved here.
-
-        Args:
-            offset_x: CSS offset-x, in pixels.
-            offset_y: CSS offset-y, in pixels.
-            blur: CSS blur-radius, in pixels.
-            spread: CSS spread-radius, in pixels.
-            color: Shadow color.
-
-        Returns:
-            The equivalent ``ShadowParams``.
-        """
-        return cls(
-            sigma=float(blur) / 2.0,
-            offset=(float(offset_x), float(offset_y)),
-            color=color,
-            spread=float(spread),
-        )
+        return self.blur_radius > 0.0 or self.spread_radius != 0.0 or self.offset != (0.0, 0.0)
 
 
 #: One or more shadow layers, stacked back to front.
-ShadowLayers = Tuple[ShadowParams, ...]
+Shadows = Tuple[Shadow, ...]
 
-#: What a caller may pass where shadow layers are expected.
-ShadowLayersLike = Union[None, ShadowParams, Sequence[ShadowParams]]
+#: What a caller may pass where shadows are expected.
+ShadowLike = Union[None, Shadow, Sequence[Shadow]]
 
 #: A no-op sentinel that produces no shadow.
-NO_SHADOW: ShadowLayers = ()
+NO_SHADOWS: Shadows = ()
 
 
-def normalize_shadows(value: ShadowLayersLike) -> ShadowLayers:
+def normalize_shadows(value: ShadowLike) -> Shadows:
     """Coerce a shadow specification into a tuple of visible layers.
 
-    Accepts ``None``, a single ``ShadowParams``, or any sequence of them.
-    Layers that would draw nothing are dropped, so an all-invisible input
-    normalizes to :data:`NO_SHADOW`.
+    Accepts ``None``, a single ``Shadow``, or any sequence of them. Layers
+    that would draw nothing are dropped, so an all-invisible input
+    normalizes to :data:`NO_SHADOWS`.
 
     Args:
         value: The shadow specification to normalize.
 
     Returns:
-        A tuple of visible ``ShadowParams``, possibly empty.
+        A tuple of visible ``Shadow`` layers, possibly empty.
 
     Raises:
-        TypeError: If *value* is neither ``None``, a ``ShadowParams``, nor a
-            sequence of ``ShadowParams``.
+        TypeError: If *value* is neither ``None``, a ``Shadow``, nor a
+            sequence of ``Shadow``.
     """
     if value is None:
-        return NO_SHADOW
-    if isinstance(value, ShadowParams):
-        layers: Iterable[ShadowParams] = (value,)
+        return NO_SHADOWS
+    if isinstance(value, Shadow):
+        layers: Iterable[Shadow] = (value,)
     elif isinstance(value, (list, tuple)):
         for item in value:
-            if not isinstance(item, ShadowParams):
-                raise TypeError(f"shadow layers must be ShadowParams, got {type(item).__name__}")
+            if not isinstance(item, Shadow):
+                raise TypeError(f"shadow layers must be Shadow, got {type(item).__name__}")
         layers = value
     else:
         raise TypeError(f"cannot interpret {type(value).__name__} as shadow layers")
     return tuple(layer for layer in layers if layer.is_visible)
 
 
-def shadow_outsets(layers: ShadowLayers, *, min_blur_pad: float = 4.0) -> Tuple[float, float, float, float]:
+def shadow_outsets(layers: Shadows, *, min_blur_pad: float = 4.0) -> Tuple[float, float, float, float]:
     """Return how far *layers* paint outside the widget rect.
 
     The result is the per-side maximum across every layer, so a single
@@ -132,29 +103,12 @@ def shadow_outsets(layers: ShadowLayers, *, min_blur_pad: float = 4.0) -> Tuple[
         if not layer.is_visible:
             continue
         pad = 0.0
-        if layer.sigma > 0.0:
-            pad = max(float(min_blur_pad), layer.sigma * 3.0)
-        pad += float(layer.spread)
+        if layer.blur_radius > 0.0:
+            pad = max(float(min_blur_pad), layer.blur_radius * 1.5)
+        pad += float(layer.spread_radius)
         dx, dy = layer.offset
         left = max(left, pad - float(dx))
         right = max(right, pad + float(dx))
         top = max(top, pad - float(dy))
         bottom = max(bottom, pad + float(dy))
     return (max(0.0, left), max(0.0, top), max(0.0, right), max(0.0, bottom))
-
-
-def resolve_shadow_layers(owner: object) -> ShadowLayers:
-    """Read normalized shadow layers off a widget, tolerating absence.
-
-    Args:
-        owner: The widget to read ``shadows`` from.
-
-    Returns:
-        The widget's layers, or :data:`NO_SHADOW` when it declares none.
-    """
-    value: Optional[ShadowLayersLike] = getattr(owner, "shadows", None)
-    if value is None:
-        return NO_SHADOW
-    if isinstance(value, tuple) and all(isinstance(item, ShadowParams) for item in value):
-        return value
-    return normalize_shadows(value)

@@ -9,14 +9,16 @@ def main(png: str = ""):
                 height=100,
                 child=nv.Text("Shadow"),
                 alignment="center",
-            ).modifier(nv.background("#FFFFFF") | nv.shadow(color="#000000", blur=8, offset=(0, 4))),
+            ).modifier(nv.background("#FFFFFF") | nv.shadows(nv.Shadow("#000000", blur_radius=16, offset=(0, 4)))),
             nv.Container(
                 width=100,
                 height=100,
                 child=nv.Text("With Radius"),
                 alignment="center",
             ).modifier(
-                nv.background("#FFFFFF") | nv.corner_radius(16) | nv.shadow(color="#000000", blur=12, offset=(0, 6))
+                nv.background("#FFFFFF")
+                | nv.corner_radius(16)
+                | nv.shadows(nv.Shadow("#000000", blur_radius=24, offset=(0, 6)))
             ),
         ],
         gap=32,

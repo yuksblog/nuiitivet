@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
-from ..theme.types import ColorSpec
-from ..rendering.shadow import ShadowLayers, ShadowLayersLike, ShadowParams, normalize_shadows
+from ..rendering.shadow import ShadowLike, Shadows, normalize_shadows
 from ..widgets.box import Box, ModifierBox
 
 
@@ -11,7 +9,7 @@ from ..widgets.box import Box, ModifierBox
 class ShadowModifier(ModifierElement):
     """Applies one or more shadow layers to a widget."""
 
-    layers: ShadowLayers
+    layers: Shadows
 
     def apply(self, widget: Widget) -> Widget:
         if isinstance(widget, Box):
@@ -43,37 +41,13 @@ class ShadowModifier(ModifierElement):
         )
 
 
-def shadow(
-    color: Optional[ColorSpec],
-    blur: float = 0.0,
-    offset: Tuple[float, float] = (0.0, 0.0),
-    spread: float = 0.0,
-) -> ShadowModifier:
-    """Draw a single shadow layer behind the widget.
-
-    Args:
-        color: Shadow color. ``None`` draws no shadow.
-        blur: Gaussian blur sigma. 0 gives a hard-edged shadow.
-        offset: (dx, dy) translation of the shadow.
-        spread: Outward inflation of the shadow rect, in pixels.
-
-    Returns:
-        The modifier to apply.
-    """
-    if color is None:
-        return ShadowModifier(layers=())
-    return ShadowModifier(layers=normalize_shadows(ShadowParams(sigma=blur, offset=offset, color=color, spread=spread)))
-
-
-def shadows(layers: ShadowLayersLike) -> ShadowModifier:
+def shadows(layers: ShadowLike) -> ShadowModifier:
     """Draw a stack of shadow layers behind the widget.
 
-    Use this where one layer cannot express the shadow -- Material Design's
-    elevation, for instance, is a key layer over a wider ambient one.
-
     Args:
-        layers: A ``ShadowParams``, a sequence of them ordered back to front,
-            or ``None`` for no shadow.
+        layers: A ``Shadow``, a sequence of them ordered back to front, or
+            ``None`` for no shadow. Material Design's elevation, for
+            instance, is a key layer over a wider ambient one.
 
     Returns:
         The modifier to apply.
