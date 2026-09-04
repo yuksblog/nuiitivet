@@ -28,9 +28,7 @@ class BorderModifier(ModifierElement):
                 border_width=self.width,
                 border_color=self.color,
                 corner_radius=widget.corner_radius,
-                shadow_blur=widget.shadow_blur,
-                shadow_color=widget.shadow_color,
-                shadow_offset=widget.shadow_offset,
+                shadows=widget.shadows,
                 alignment=widget.alignment,
             )
             box.clip_content = widget.clip_content

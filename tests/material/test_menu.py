@@ -228,9 +228,7 @@ def test_menu_uses_style_elevation() -> None:
     menu = Menu(items=[MenuItem("One")], style=style)
     shadow = md3_elevation_to_shadow(3)
 
-    assert menu.shadow_blur == shadow.sigma
-    assert menu.shadow_offset == shadow.offset
-    assert menu.shadow_color == shadow.color
+    assert menu.shadows == shadow
 
 
 def test_menu_preferred_size_passes_effective_max_width_to_measurement() -> None:

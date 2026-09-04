@@ -33,6 +33,7 @@ from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.rendering.shadow import ShadowLayers
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
@@ -103,13 +104,6 @@ def _resolve_color_rgba(value: ColorSpec, theme=None) -> Tuple[int, int, int, in
     from nuiitivet.theme.resolver import resolve_color_to_rgba
 
     return resolve_color_to_rgba(value, theme=theme)
-
-
-def _shadow_from_elevation(level: int) -> tuple[ColorSpec, float, tuple[float, float]]:
-    shadow = md3_elevation_to_shadow(level)
-    if shadow.sigma <= 0.0:
-        return None, 0.0, (0.0, 0.0)
-    return shadow.color, shadow.sigma, shadow.offset
 
 
 _RGBA_CONVERTER = RgbaTupleConverter()
@@ -246,12 +240,9 @@ def resolve_button_style_params(
     # Minimum touch target is enforced by MaterialButtonBase.preferred_size.
 
     # Elevation -> Shadow
-    shadow_color = None
-    shadow_blur = 0.0
-    shadow_offset: tuple[float, float] = (0.0, 0.0)
-
-    if style and getattr(style, "elevation", 0) != 0:
-        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(style.elevation)
+    shadows: ShadowLayers = ()
+    if style:
+        shadows = md3_elevation_to_shadow(int(getattr(style, "elevation", 0) or 0))
 
     # Overlay
     overlay_color = None
@@ -284,9 +275,7 @@ def resolve_button_style_params(
         "corner_radius": cr,
         "border_color": bc,
         "border_width": bw,
-        "shadow_color": shadow_color,
-        "shadow_blur": shadow_blur,
-        "shadow_offset": shadow_offset,
+        "shadows": shadows,
         "state_layer_color": overlay_color,
         "hover_opacity": hover_opacity,
         "pressed_opacity": pressed_opacity,
@@ -558,9 +547,7 @@ class MaterialButtonBase(InteractiveWidget):
         self.padding = params["padding"]
         self.corner_radius = params["corner_radius"]
         self.border_width = params["border_width"]
-        self.shadow_color = params["shadow_color"]
-        self.shadow_blur = params["shadow_blur"]
-        self.shadow_offset = params["shadow_offset"]
+        self.shadows = params["shadows"]
 
         self.state_layer_color = params["state_layer_color"]
         self._HOVER_OPACITY = params["hover_opacity"]
@@ -1218,13 +1205,9 @@ class _FabBase(MaterialButtonBase):
         self._HOVER_OPACITY = hover_opacity
         self._PRESS_OPACITY = pressed_opacity
 
-        shadow_color, shadow_blur, shadow_offset = _shadow_from_elevation(self._container_elevation(style))
-        if self.shadow_color != shadow_color:
-            self.shadow_color = shadow_color
-        if abs(float(self.shadow_blur) - float(shadow_blur)) > 1e-6:
-            self.shadow_blur = shadow_blur
-        if self.shadow_offset != shadow_offset:
-            self.shadow_offset = shadow_offset
+        shadows = md3_elevation_to_shadow(self._container_elevation(style))
+        if self.shadows != shadows:
+            self.shadows = shadows
 
     def _get_state_layer_target_opacity(self) -> float:
         state = self.state

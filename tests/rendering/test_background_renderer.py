@@ -1,4 +1,5 @@
 from nuiitivet.rendering.background_renderer import BackgroundRenderer
+from nuiitivet.rendering.shadow import ShadowParams
 
 
 class DummyOwner:
@@ -10,9 +11,7 @@ class DummyOwner:
         self.bgcolor = "#ffffff"
         self.corner_radii = None
         self.corner_radius = None
-        self.shadow_color = None
-        self.shadow_offset = (0, 0)
-        self.shadow_blur = 0.0
+        self.shadows = ()
         self.border_width = 0
         self.border_color = None
 
@@ -67,8 +66,8 @@ def test_paint_background_calls_draw_methods(monkeypatch):
     def fake_draw_background(canvas, x, y, width, height, paint, eff_rad):
         calls.append(("background", x, y, width, height, eff_rad))
 
-    def fake_draw_shadow(canvas, x, y, width, height, sc, dx, dy, sb, eff_rad):
-        calls.append(("shadow", x, y, width, height, sc, dx, dy, sb, eff_rad))
+    def fake_draw_shadow(canvas, x, y, width, height, sc, dx, dy, sb, eff_rad, spread=0.0):
+        calls.append(("shadow", x, y, width, height, sc, dx, dy, sb, eff_rad, spread))
 
     # monkeypatch the instance methods
     monkeypatch.setattr(br, "_draw_background", fake_draw_background)
@@ -79,15 +78,13 @@ def test_paint_background_calls_draw_methods(monkeypatch):
     monkeypatch.setattr("nuiitivet.rendering.background_renderer.make_paint", lambda **kw: object())
 
     # No shadow configured -> only background should be called
-    owner.shadow_color = None
+    owner.shadows = ()
     br.paint_background(canvas=None, x=0, y=0, width=50, height=40)
     assert calls and calls[0][0] == "background"
 
     # Reset and configure shadow -> shadow should be called before background
     calls.clear()
-    owner.shadow_color = ("#000000", 0.3)
-    owner.shadow_offset = (2, 3)
-    owner.shadow_blur = 0.0
+    owner.shadows = (ShadowParams(sigma=0.0, offset=(2, 3), color=("#000000", 0.3)),)
     br.paint_background(canvas=None, x=1, y=2, width=60, height=50)
     assert calls and calls[0][0] == "shadow"
 

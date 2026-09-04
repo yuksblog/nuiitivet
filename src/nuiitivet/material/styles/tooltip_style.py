@@ -56,7 +56,7 @@ class TooltipStyle:
 class RichTooltipStyle:
     """Immutable style for Material Design 3 rich tooltip widgets."""
 
-    container_color: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
+    container_color: ColorSpec = ColorRole.SURFACE_CONTAINER
     supporting_text_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     subhead_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     action_color: ColorSpec = ColorRole.PRIMARY
@@ -66,7 +66,8 @@ class RichTooltipStyle:
     bottom_padding: int = 8
     min_width: int = 160
     max_width: int = 320
-    elevation: int = 1
+    #: MD3 elevation *level*, not a dp value -- level 2 is the spec's 3dp.
+    elevation: int = 2
     subhead_text_size: int = 14
     supporting_text_size: int = 14
 

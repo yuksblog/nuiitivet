@@ -84,7 +84,7 @@ class Card(ComposableWidget, Box):
         # installed -- and re-apply the theme's style once mounted.
         initial_style = style if style is not None else CardStyle.filled()
         self._effective_style: CardStyle = initial_style
-        _shadow = md3_elevation_to_shadow(initial_style.elevation)
+        _shadows = md3_elevation_to_shadow(initial_style.elevation)
 
         # Pass raw colors to Box; it will resolve them lazily via BackgroundRenderer
         super().__init__(
@@ -96,9 +96,7 @@ class Card(ComposableWidget, Box):
             border_width=initial_style.border_width,
             border_color=initial_style.border_color,
             corner_radius=initial_style.border_radius,
-            shadow_blur=_shadow.sigma,
-            shadow_color=_shadow.color,
-            shadow_offset=_shadow.offset,
+            shadows=_shadows,
             alignment=alignment,
             key=key,
         )
@@ -124,14 +122,11 @@ class Card(ComposableWidget, Box):
     def _apply_card_style(self, style: CardStyle) -> None:
         """Push ``style`` onto the underlying :class:`Box` visual properties."""
         self._effective_style = style
-        shadow = md3_elevation_to_shadow(style.elevation)
         self.bgcolor = style.background
         self.border_width = style.border_width
         self.border_color = style.border_color
         self.corner_radius = style.border_radius
-        self.shadow_blur = shadow.sigma
-        self.shadow_color = shadow.color
-        self.shadow_offset = shadow.offset
+        self.shadows = md3_elevation_to_shadow(style.elevation)
 
     # --- Build / scope integration (Same as MaterialContainer) ----------------
     def build(self) -> Widget:

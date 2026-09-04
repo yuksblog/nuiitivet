@@ -1,15 +1,14 @@
 from .skia import (
-    make_blur_image_filter,
     make_blur_mask_filter,
     make_paint,
     make_path,
     make_rect,
     path_add_rrect,
     resolve_rrect,
-    set_paint_image_filter,
     set_paint_mask_filter,
 )
 from .skia.geometry import draw_round_rect
+from .shadow import resolve_shadow_layers
 from nuiitivet.common.logging_once import exception_once
 import logging
 
@@ -132,120 +131,90 @@ class BackgroundRenderer:
             exception_once(logger, "background_renderer_corner_radii_pixels_exc", "corner_radii_pixels failed")
             return (0.0, 0.0, 0.0, 0.0)
 
-    def _draw_shadow(self, canvas, x, y, width, height, sc, dx, dy, sb, eff_rad):
+    @staticmethod
+    def _inflate_radii(eff_rad, spread):
+        """Grow corner radii by *spread*, matching the inflated shadow rect."""
+        try:
+            if isinstance(eff_rad, (list, tuple)):
+                return tuple(max(0.0, float(r or 0.0) + spread) for r in eff_rad)
+            return max(0.0, float(eff_rad or 0.0) + spread)
+        except Exception:
+            exception_once(
+                logger,
+                "background_renderer_inflate_radii_exc",
+                "Failed to inflate corner radii by spread",
+            )
+            return eff_rad
+
+    @staticmethod
+    def _has_radius(eff_rad) -> bool:
+        try:
+            if isinstance(eff_rad, (list, tuple)):
+                return any(float(r or 0.0) > 0.0 for r in eff_rad)
+            return bool(eff_rad) and float(eff_rad) > 0.0
+        except Exception:
+            exception_once(
+                logger,
+                "background_renderer_has_radius_exc",
+                "Failed to inspect corner radii",
+            )
+            return False
+
+    def _draw_shadow_rect(self, canvas, sx, sy, width, height, paint, eff_rad) -> None:
+        """Fill one shadow rect with *paint*, rounding it when radii ask for it."""
+        _r = make_rect(sx, sy, width, height)
+        if _r is None:
+            return
+        if self._has_radius(eff_rad):
+            srr = resolve_rrect(_r, eff_rad)
+            if srr is not None:
+                canvas.drawRRect(srr, paint)
+                return
+        canvas.drawRect(_r, paint)
+
+    def _draw_shadow(self, canvas, x, y, width, height, sc, dx, dy, sb, eff_rad, spread=0.0):
+        """Draw one shadow layer.
+
+        *spread* inflates the shadow rect outward on every side before the
+        blur is applied, growing the corner radii to match. It is what lets a
+        low-elevation shadow show past the opaque body drawn on top of it.
+        """
         if canvas is None:
             return
 
-        sx = x + int(dx)
-        sy = y + int(dy)
+        try:
+            spread = float(spread or 0.0)
+        except Exception:
+            exception_once(logger, "background_renderer_shadow_spread_exc", "Failed to coerce shadow spread")
+            spread = 0.0
 
-        # prefer saveLayer + ImageFilter when blur requested
-        if sb and sb > 0.0:
-            try:
-                imgf = make_blur_image_filter(float(sb))
-                if imgf is None:
-                    return
-                layer_paint = make_paint(style="fill", aa=True)
-                if layer_paint is None:
-                    return
-                set_paint_image_filter(layer_paint, imgf)
+        sx = x + int(dx) - spread
+        sy = y + int(dy) - spread
+        width = width + spread * 2.0
+        height = height + spread * 2.0
+        if width <= 0.0 or height <= 0.0:
+            return
+        eff_rad = self._inflate_radii(eff_rad, spread)
 
-                pad = int(max(4, sb * 3))
-                lb = make_rect(sx - pad, sy - pad, width + pad * 2, height + pad * 2)
-                if lb is None or not hasattr(canvas, "saveLayer"):
+        try:
+            shadow_paint = make_paint(color=sc, style="fill", aa=True)
+            if shadow_paint is None:
+                return
+            if sb and sb > 0.0:
+                # Skia blurs a round rect's mask analytically, so a MaskFilter
+                # needs no offscreen layer -- which is the whole cost of the
+                # alternative, and it grows with the square of the sigma.
+                mf = make_blur_mask_filter(float(sb))
+                if mf is None:
                     return
-                canvas.saveLayer(lb, layer_paint)
-                try:
-                    # sc is an RGBA primitive resolved earlier
-                    sp = make_paint(color=sc, style="fill", aa=True)
-                    if sp is None:
-                        return
-                    has_rad = (isinstance(eff_rad, (list, tuple)) and any(float(r or 0.0) > 0.0 for r in eff_rad)) or (
-                        not isinstance(eff_rad, (list, tuple)) and eff_rad and float(eff_rad) > 0.0
-                    )
-                    _r = make_rect(sx, sy, width, height)
-                    if _r is None:
-                        return
-                    if has_rad:
-                        srr = resolve_rrect(_r, eff_rad)
-                        if srr is not None:
-                            canvas.drawRRect(srr, sp)
-                        else:
-                            canvas.drawRect(_r, sp)
-                    else:
-                        canvas.drawRect(_r, sp)
-                finally:
-                    try:
-                        canvas.restore()
-                    except Exception:
-                        exception_once(
-                            logger,
-                            "background_renderer_canvas_restore_exc",
-                            "Failed to restore canvas after shadow saveLayer",
-                        )
-            except Exception:
-                exception_once(
-                    logger,
-                    "background_renderer_shadow_imagefilter_exc",
-                    "Failed to draw shadow using image filter; falling back",
-                )
-                # fallback: mask-filter blur
-                try:
-                    shadow_paint = make_paint(color=sc, style="fill", aa=True)
-                    if shadow_paint is None:
-                        return
-                    mf = make_blur_mask_filter(float(sb))
-                    if mf is None:
-                        return
-                    set_paint_mask_filter(shadow_paint, mf)
-
-                    try:
-                        _r = make_rect(sx, sy, width, height)
-                        if _r is None:
-                            return
-                        srr = resolve_rrect(_r, eff_rad)
-                        if srr is not None:
-                            canvas.drawRRect(srr, shadow_paint)
-                        else:
-                            canvas.drawRect(_r, shadow_paint)
-                    except Exception:
-                        exception_once(
-                            logger,
-                            "background_renderer_shadow_maskfilter_draw_exc",
-                            "Failed to draw shadow using mask filter",
-                        )
-                except Exception:
-                    exception_once(
-                        logger,
-                        "background_renderer_shadow_maskfilter_exc",
-                        "Failed to prepare shadow mask filter",
-                    )
-        else:
-            try:
-                shadow_paint = make_paint(color=sc, style="fill", aa=True)
-                if shadow_paint is None:
-                    return
-                try:
-                    _r = make_rect(sx, sy, width, height)
-                    if _r is None:
-                        return
-                    srr = resolve_rrect(_r, eff_rad)
-                    if srr is not None:
-                        canvas.drawRRect(srr, shadow_paint)
-                    else:
-                        canvas.drawRect(_r, shadow_paint)
-                except Exception:
-                    exception_once(
-                        logger,
-                        "background_renderer_shadow_simple_draw_exc",
-                        "Failed to draw shadow",
-                    )
-            except Exception:
-                exception_once(
-                    logger,
-                    "background_renderer_shadow_simple_exc",
-                    "Failed to prepare shadow paint",
-                )
+                set_paint_mask_filter(shadow_paint, mf)
+            self._draw_shadow_rect(canvas, sx, sy, width, height, shadow_paint, eff_rad)
+        except Exception:
+            exception_once(
+                logger,
+                "background_renderer_shadow_draw_exc",
+                "Failed to draw shadow",
+            )
 
     def _draw_background(self, canvas, x, y, width, height, paint, eff_rad):
         rect = make_rect(x, y, width, height)
@@ -352,12 +321,21 @@ class BackgroundRenderer:
         from nuiitivet.theme.theme import Theme
 
         try:
-            sc = resolve_color_to_rgba(self.owner.shadow_color, theme=Theme.of(self.owner))
-            dx, dy = getattr(self.owner, "shadow_offset", (0, 0))
-            sb = float(getattr(self.owner, "shadow_blur", 0.0) or 0.0)
-            if sc is not None and (dx != 0 or dy != 0 or sb > 0.0):
+            layers = resolve_shadow_layers(self.owner)
+            if layers:
+                theme = Theme.of(self.owner)
                 radii = self.corner_radii_pixels(width, height)
-                self._draw_shadow(canvas, x, y, width, height, sc, dx, dy, sb, radii)
+                # Back to front: the first layer is drawn first and sits underneath.
+                for layer in layers:
+                    sc = resolve_color_to_rgba(layer.color, theme=theme)
+                    # An unresolvable color comes back transparent, and a blur
+                    # pass over it costs a saveLayer to paint nothing.
+                    if sc is None or (len(sc) > 3 and sc[3] == 0):
+                        continue
+                    dx, dy = layer.offset
+                    self._draw_shadow(
+                        canvas, x, y, width, height, sc, dx, dy, layer.sigma, radii, layer.spread
+                    )
         except Exception:
             exception_once(
                 logger,

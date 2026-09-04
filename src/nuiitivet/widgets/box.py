@@ -8,6 +8,7 @@ from ..rendering.skia.paint_cache import CachedPaintMixin
 from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
 from ..rendering.background_renderer import BackgroundRenderer
+from ..rendering.shadow import ShadowLayers, ShadowLayersLike, normalize_shadows, shadow_outsets
 from ..rendering.skia.geometry import clip_round_rect, make_rect
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
@@ -42,9 +43,7 @@ class Box(CachedPaintMixin, Widget):
         border_width: float = 0,
         border_color: Optional[ColorSpec] = None,
         corner_radius: Union[float, Tuple[float, float, float, float]] = 0,
-        shadow_blur: float = 0,
-        shadow_color: Optional[ColorSpec] = None,
-        shadow_offset: Tuple[float, float] = (0, 0),
+        shadows: ShadowLayersLike = None,
         # Alignment for the child (if present)
         alignment: Union[str, Tuple[str, str]] = "center",
         *,
@@ -54,7 +53,7 @@ class Box(CachedPaintMixin, Widget):
         self._theme_state_ready = False
         self._bgcolor: Optional[ColorSpec] = None
         self._border_color: Optional[ColorSpec] = None
-        self._shadow_color: Optional[ColorSpec] = None
+        self._shadows: ShadowLayers = ()
         if child:
             self.add_child(child)
 
@@ -62,9 +61,7 @@ class Box(CachedPaintMixin, Widget):
         self.border_width = border_width
         self.border_color = border_color
         self.corner_radius = corner_radius
-        self.shadow_blur = shadow_blur
-        self.shadow_color = shadow_color
-        self.shadow_offset = shadow_offset
+        self.shadows = shadows
         self.alignment = alignment
         self.clip_content = False
 
@@ -98,15 +95,16 @@ class Box(CachedPaintMixin, Widget):
         self._handle_visual_state_change()
 
     @property
-    def shadow_color(self) -> Optional[ColorSpec]:
-        return self._shadow_color
+    def shadows(self) -> ShadowLayers:
+        """The shadow layers this box draws, ordered back to front."""
+        return self._shadows
 
-    @shadow_color.setter
-    def shadow_color(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
+    @shadows.setter
+    def shadows(self, value: Union[ShadowLayersLike, ObservableBase]) -> None:
         if isinstance(value, ObservableBase):
-            self.observe(value, lambda v: setattr(self, "shadow_color", v))
+            self.observe(value, lambda v: setattr(self, "shadows", v))
             return
-        self._shadow_color = value
+        self._shadows = normalize_shadows(value)
         self._handle_visual_state_change()
 
     @property
@@ -131,30 +129,6 @@ class Box(CachedPaintMixin, Widget):
             self.observe(value, lambda v: setattr(self, "border_width", v))
             return
         self._border_width = float(value) if value is not None else 0.0
-        self._handle_visual_state_change()
-
-    @property
-    def shadow_blur(self) -> float:
-        return getattr(self, "_shadow_blur", 0.0)
-
-    @shadow_blur.setter
-    def shadow_blur(self, value: Union[float, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
-            self.observe(value, lambda v: setattr(self, "shadow_blur", v))
-            return
-        self._shadow_blur = float(value) if value is not None else 0.0
-        self._handle_visual_state_change()
-
-    @property
-    def shadow_offset(self) -> Tuple[float, float]:
-        return getattr(self, "_shadow_offset", (0.0, 0.0))
-
-    @shadow_offset.setter
-    def shadow_offset(self, value: Union[Tuple[float, float], ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
-            self.observe(value, lambda v: setattr(self, "shadow_offset", v))
-            return
-        self._shadow_offset = value if value is not None else (0.0, 0.0)
         self._handle_visual_state_change()
 
     @property
@@ -209,7 +183,7 @@ class Box(CachedPaintMixin, Widget):
             return True
         if self.border_width > 0:
             return True
-        if self._shadow_color is not None:
+        if self._shadows:
             return True
         return False
 
@@ -405,31 +379,12 @@ class Box(CachedPaintMixin, Widget):
         )
 
     def _shadow_paint_outsets(self) -> Tuple[int, int, int, int]:
-        color = getattr(self, "shadow_color", None)
-        if color is None:
-            return (0, 0, 0, 0)
-        try:
-            blur = float(getattr(self, "shadow_blur", 0.0) or 0.0)
-        except Exception:
-            exception_once(_logger, "box_shadow_blur_float_exc", "Failed to coerce shadow_blur to float")
-            blur = 0.0
-        try:
-            dx, dy = getattr(self, "shadow_offset", (0.0, 0.0))
-        except Exception:
-            exception_once(_logger, "box_shadow_offset_unpack_exc", "Failed to read shadow_offset")
-            dx = dy = 0.0
+        """Return how far this box's shadow layers paint outside its rect."""
+        left, top, right, bottom = shadow_outsets(self._shadows)
 
         def _component(val: float) -> int:
             return int(math.ceil(max(0.0, val)))
 
-        blur_pad = 0.0
-        if blur > 0.0:
-            blur_pad = float(max(4.0, blur * 3.0))
-
-        left = blur_pad + max(0.0, -float(dx))
-        right = blur_pad + max(0.0, float(dx))
-        top = blur_pad + max(0.0, -float(dy))
-        bottom = blur_pad + max(0.0, float(dy))
         return (_component(left), _component(top), _component(right), _component(bottom))
 
     def _handle_visual_state_change(self) -> None:

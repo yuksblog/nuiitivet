@@ -44,7 +44,7 @@ class CardStyle:
     def elevated(cls) -> "CardStyle":
         """Create a default style for an elevated card."""
         return cls(
-            background=ColorRole.SURFACE,
+            background=ColorRole.SURFACE_CONTAINER_LOW,
             elevation=1,  # MD3 level 1 = 1 dp
             border_radius=12.0,
         )
