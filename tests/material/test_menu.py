@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from nuiitivet.material.styles.menu_style import MenuStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.observable import runtime
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
@@ -226,7 +226,7 @@ def test_menu_item_uses_state_layer_corner_radius() -> None:
 def test_menu_uses_style_elevation() -> None:
     style = MenuStyle().copy_with(elevation=3)
     menu = Menu(items=[MenuItem("One")], style=style)
-    shadow = md3_elevation_to_shadow(3)
+    shadow = elevation_shadows(3)
 
     assert menu.shadows == shadow
 

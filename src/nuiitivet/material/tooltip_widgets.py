@@ -13,7 +13,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
@@ -55,7 +55,7 @@ class Tooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        _shadows = md3_elevation_to_shadow(style.elevation)
+        _shadows = elevation_shadows(style.elevation)
         label = Text(
             self.message,
             style=TextStyle(
@@ -152,7 +152,7 @@ class RichTooltip(ComposableWidget):
 
     def build(self) -> Widget:
         style = self.style
-        _shadows = md3_elevation_to_shadow(style.elevation)
+        _shadows = elevation_shadows(style.elevation)
 
         children: list[Widget] = []
         if self.subhead is not None:

@@ -201,6 +201,6 @@ nv.Button("OK").modifier(
 ```
 
 `padding`/`width` stay as **parameters**; modifiers are for things like
-`background`, `corner_radius`, `clip`, `border`, `shadow`, `tooltip`, `clickable`,
+`background`, `corner_radius`, `clip`, `border`, `shadows`, `tooltip`, `clickable`,
 `focusable`, `hoverable`, `opacity`, `translate`, `rotate`, `scale`, and popups.
 (The corner-rounding modifier is `corner_radius`, **not** `radius`.)

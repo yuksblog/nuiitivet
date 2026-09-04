@@ -18,9 +18,9 @@ import dataclasses
 import pytest
 
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.rendering.background_renderer import BackgroundRenderer
-from nuiitivet.rendering.shadow import ShadowLayers, ShadowParams, shadow_outsets
+from nuiitivet.rendering.shadow import Shadow, Shadows, shadow_outsets
 
 skia = pytest.importorskip("skia", reason="offscreen shadow sampling needs skia-python")
 
@@ -33,7 +33,7 @@ _CORNER = 12.0
 _PAD = 40  # slack around the card so no layer is clipped by the surface edge
 
 
-def _concrete(layers: ShadowLayers) -> ShadowLayers:
+def _concrete(layers: Shadows) -> Shadows:
     """Swap ``ColorRole.SHADOW`` for the value a Material theme resolves it to.
 
     The owner below is a stand-in, not a mounted widget, so ``Theme.of`` finds
@@ -53,7 +53,7 @@ def _concrete(layers: ShadowLayers) -> ShadowLayers:
 class _Owner:
     """The minimum surface ``BackgroundRenderer`` reads from its owner."""
 
-    def __init__(self, shadows: tuple[ShadowParams, ...], corner_radius: float) -> None:
+    def __init__(self, shadows: tuple[Shadow, ...], corner_radius: float) -> None:
         self._parent = None
         self._mounted = False
         self.bgcolor = None
@@ -65,7 +65,7 @@ class _Owner:
 
 
 def _sample_profile(
-    shadows: tuple[ShadowParams, ...],
+    shadows: tuple[Shadow, ...],
     *,
     direction: str,
     length: int,
@@ -126,7 +126,7 @@ _TOLERANCE = 12
 
 @pytest.mark.parametrize("level", sorted(_EXPECTED_DOWN))
 def test_elevation_profile_matches_the_md3_tokens(level: int) -> None:
-    profile = _sample_profile(md3_elevation_to_shadow(level), direction="down", length=14)
+    profile = _sample_profile(elevation_shadows(level), direction="down", length=14)
     expected = _EXPECTED_DOWN[level]
 
     drift = [abs(a - b) for a, b in zip(profile, expected)]
@@ -139,13 +139,13 @@ def test_elevation_profile_matches_the_md3_tokens(level: int) -> None:
 
 def test_every_level_draws_two_layers() -> None:
     """Levels 1-5 are a key layer over a wider ambient one; level 0 draws nothing."""
-    assert md3_elevation_to_shadow(0) == ()
+    assert elevation_shadows(0) == ()
     for level in range(1, 6):
-        layers = md3_elevation_to_shadow(level)
+        layers = elevation_shadows(level)
         assert len(layers) == 2, f"level {level} must keep both MD3 shadow layers"
         ambient, key = layers
-        assert ambient.spread > 0.0, f"level {level} ambient layer lost its spread"
-        assert ambient.sigma > key.sigma, f"level {level} ambient layer must be the softer one"
+        assert ambient.spread_radius > 0.0, f"level {level} ambient layer lost its spread"
+        assert ambient.blur_radius > key.blur_radius, f"level {level} ambient layer must be the softer one"
 
 
 def test_level_1_reaches_sideways_past_the_card_body() -> None:
@@ -154,7 +154,7 @@ def test_level_1_reaches_sideways_past_the_card_body() -> None:
     Without it the shadow rect is exactly the card rect, so the opaque body
     paints over everything but the blur tail and the fringe collapses to ~2px.
     """
-    profile = _sample_profile(md3_elevation_to_shadow(1), direction="right", length=6)
+    profile = _sample_profile(elevation_shadows(1), direction="right", length=6)
 
     assert profile[0] >= 35, f"level 1 has no darkness at the edge: {profile}"
     fringe = sum(1 for value in profile if value > 0)
@@ -167,10 +167,10 @@ def test_outsets_cover_the_whole_profile() -> None:
     An outset short of the drawn extent clips the shadow at the cache edge.
     """
     for level in range(1, 6):
-        layers = md3_elevation_to_shadow(level)
+        layers = elevation_shadows(level)
         left, top, right, bottom = shadow_outsets(layers)
         for layer in layers:
-            reach = max(4.0, layer.sigma * 3.0) + layer.spread
+            reach = max(4.0, layer.blur_radius * 1.5) + layer.spread_radius
             dx, dy = layer.offset
             assert left >= reach - dx
             assert right >= reach + dx

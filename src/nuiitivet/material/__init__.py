@@ -75,6 +75,7 @@ if TYPE_CHECKING:
     from .snackbar import Snackbar
     from .intents import BasicDialogIntent
     from .theme.color_role import ColorRole
+    from .theme.elevation import elevation_shadows
     from .theme.scheme_variant import SchemeVariant
     from .text import Text
     from .navigator import MaterialNavigator as Navigator
@@ -181,6 +182,7 @@ __all__ = [
     "Snackbar",
     "BasicDialogIntent",
     "ColorRole",
+    "elevation_shadows",
     "SchemeVariant",
     "NavigationRail",
     "RailItem",
@@ -304,6 +306,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "Snackbar": ("snackbar", "Snackbar"),
     "BasicDialogIntent": ("intents", "BasicDialogIntent"),
     "ColorRole": ("theme.color_role", "ColorRole"),
+    "elevation_shadows": ("theme.elevation", "elevation_shadows"),
     "SchemeVariant": ("theme.scheme_variant", "SchemeVariant"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),

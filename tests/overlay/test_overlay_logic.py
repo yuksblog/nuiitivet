@@ -2,7 +2,7 @@ import pytest
 
 from nuiitivet.material import Fab, Button
 from nuiitivet.material.styles.button_style import ButtonStyle
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+from nuiitivet.material.theme.elevation import elevation_shadows
 
 
 def test_resolve_overlay_defaults():
@@ -44,8 +44,8 @@ def test_fab_focus_opacity_matches_md3_spec() -> None:
 
 def test_fab_hover_elevation_matches_md3_spec() -> None:
     fab = Fab(icon="add")
-    enabled = md3_elevation_to_shadow(3)
-    hovered = md3_elevation_to_shadow(4)
+    enabled = elevation_shadows(3)
+    hovered = elevation_shadows(4)
 
     assert fab.shadows == enabled
 

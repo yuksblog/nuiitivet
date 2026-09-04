@@ -45,19 +45,39 @@ box2 = nv.Container(child=nv.Text("Clip")).modifier(
 
 ## Shadow
 
-You can add a drop shadow to a Widget using the `shadow` modifier. It takes parameters like `color`, `blur`, and `offset`.
+You can add a drop shadow to a Widget using the `shadows` modifier. It takes a `Shadow` value, a list of them ordered back to front, or `None` for no shadow.
+
+A `Shadow` describes one layer in CSS `box-shadow` terms:
+
+- `color`: the shadow color
+- `blur_radius`: the CSS blur-radius in pixels; `0` gives a hard-edged shadow
+- `offset`: `(dx, dy)` translation of the shadow
+- `spread_radius`: outward inflation of the shadow rect in pixels, applied before the blur; a negative value shrinks it
 
 ```python
 import nuiitivet.material as nv
 
 # Simple shadow
 box1 = nv.Container(child=nv.Text("Shadow")).modifier(
-    nv.background("#FFFFFF") | nv.shadow(color="#000000", blur=8, offset=(0, 4))
+    nv.background("#FFFFFF") | nv.shadows(nv.Shadow("#000000", blur_radius=16, offset=(0, 4)))
 )
 
 # Shadow with corner radius
 box2 = nv.Container(child=nv.Text("With Radius")).modifier(
-    nv.background("#FFFFFF") | nv.corner_radius(16) | nv.shadow(color="#000000", blur=12, offset=(0, 6))
+    nv.background("#FFFFFF")
+    | nv.corner_radius(16)
+    | nv.shadows(nv.Shadow("#000000", blur_radius=24, offset=(0, 6)))
+)
+
+# A stack: a wide, soft ambient layer under a tight key layer
+box3 = nv.Container(child=nv.Text("Stack")).modifier(
+    nv.background("#FFFFFF")
+    | nv.shadows(
+        [
+            nv.Shadow(("#000000", 0.15), blur_radius=8, offset=(0, 4), spread_radius=3),
+            nv.Shadow(("#000000", 0.30), blur_radius=3, offset=(0, 1)),
+        ]
+    )
 )
 ```
 

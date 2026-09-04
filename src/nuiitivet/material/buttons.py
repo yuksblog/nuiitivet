@@ -32,8 +32,8 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
-from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
-from nuiitivet.rendering.shadow import ShadowLayers
+from nuiitivet.material.theme.elevation import elevation_shadows
+from nuiitivet.rendering.shadow import Shadows
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
@@ -240,9 +240,9 @@ def resolve_button_style_params(
     # Minimum touch target is enforced by MaterialButtonBase.preferred_size.
 
     # Elevation -> Shadow
-    shadows: ShadowLayers = ()
+    shadows: Shadows = ()
     if style:
-        shadows = md3_elevation_to_shadow(int(getattr(style, "elevation", 0) or 0))
+        shadows = elevation_shadows(int(getattr(style, "elevation", 0) or 0))
 
     # Overlay
     overlay_color = None
@@ -1203,7 +1203,7 @@ class _FabBase(MaterialButtonBase):
         self._HOVER_OPACITY = hover_opacity
         self._PRESS_OPACITY = pressed_opacity
 
-        shadows = md3_elevation_to_shadow(self._container_elevation(style))
+        shadows = elevation_shadows(self._container_elevation(style))
         if self.shadows != shadows:
             self.shadows = shadows
 

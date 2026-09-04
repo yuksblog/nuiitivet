@@ -13,7 +13,7 @@ import logging
 from typing import Callable, Optional, Tuple, Union
 
 from ..widgeting.widget import ComposableWidget, Widget
-from .theme.elevation import md3_elevation_to_shadow
+from .theme.elevation import elevation_shadows
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..widgets.box import Box
@@ -84,7 +84,7 @@ class Card(ComposableWidget, Box):
         # installed -- and re-apply the theme's style once mounted.
         initial_style = style if style is not None else CardStyle.filled()
         self._effective_style: CardStyle = initial_style
-        _shadows = md3_elevation_to_shadow(initial_style.elevation)
+        _shadows = elevation_shadows(initial_style.elevation)
 
         # Pass raw colors to Box; it will resolve them lazily via BackgroundRenderer
         super().__init__(
@@ -126,7 +126,7 @@ class Card(ComposableWidget, Box):
         self.border_width = style.border_width
         self.border_color = style.border_color
         self.corner_radius = style.border_radius
-        self.shadows = md3_elevation_to_shadow(style.elevation)
+        self.shadows = elevation_shadows(style.elevation)
 
     # --- Build / scope integration (Same as MaterialContainer) ----------------
     def build(self) -> Widget:

@@ -178,7 +178,8 @@ and spacing stay widget *parameters*, not modifiers.
 | Rounded corners | `corner_radius` | `corner_radius(12)` |
 | Clip children to the shape | `clip` | `clip()` |
 | Border / outline | `border` | `border("#888", 1)` |
-| Drop shadow | `shadow` | `shadow("#0003", blur=8)` |
+| Drop shadow | `shadows` | `shadows(Shadow("#0003", blur_radius=16))` |
+| MD3 elevation shadow | `shadows` | `shadows(elevation_shadows(2))` |
 | Opacity | `opacity` | `opacity(0.5)` |
 | Show / hide conditionally | `visible` | `visible(is_open)` |
 

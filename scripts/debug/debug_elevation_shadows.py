@@ -1,7 +1,7 @@
 """Eyeball every widget whose shadow comes from the MD3 elevation table.
 
 Card, Menu, Dialog, DatePicker, Tooltip and FAB all route through
-``md3_elevation_to_shadow``, so a change to that table changes all of them at
+``elevation_shadows``, so a change to that table changes all of them at
 once. This puts them on one screen, over a plain surface, next to a row of bare
 cards at levels 1-5 for reference.
 

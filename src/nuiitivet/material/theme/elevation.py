@@ -1,7 +1,7 @@
-"""Material Design 3 elevation level -> shadow layer mapping.
+"""Material Design 3 elevation level -> shadow mapping.
 
 This module belongs to the Material Design layer. It translates the MD3
-concept of *elevation level* (0-5) into concrete ``ShadowParams`` layers
+concept of *elevation level* (0-5) into concrete ``Shadow`` layers
 understood by the rendering layer.
 
 MD3 draws each level as **two** stacked box-shadow layers: a tight, darker
@@ -24,51 +24,51 @@ See: https://m3.material.io/styles/elevation/overview
 from __future__ import annotations
 
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.rendering.shadow import NO_SHADOW, ShadowLayers, ShadowParams
+from nuiitivet.rendering.shadow import NO_SHADOWS, Shadow, Shadows
 
-# Alpha the two layers are drawn at, from the upstream stylesheet.
-_KEY_ALPHA = 0.30
-_AMBIENT_ALPHA = 0.15
+# The two layers' colors, from the upstream stylesheet.
+_KEY = (ColorRole.SHADOW, 0.30)
+_AMBIENT = (ColorRole.SHADOW, 0.15)
 
-_KEY_COLOR = (ColorRole.SHADOW, _KEY_ALPHA)
-_AMBIENT_COLOR = (ColorRole.SHADOW, _AMBIENT_ALPHA)
-
-# MD3 elevation level -> shadow layers, as CSS box-shadow values.
-# Key: elevation level (int, 0-5)
-# Value: (key layer, ambient layer), each (offset_y, blur, spread) in px.
-_MD3_BOX_SHADOWS: dict[int, tuple[tuple[float, float, float], tuple[float, float, float]]] = {
-    1: ((1.0, 2.0, 0.0), (1.0, 3.0, 1.0)),
-    2: ((1.0, 2.0, 0.0), (2.0, 6.0, 2.0)),
-    3: ((1.0, 3.0, 0.0), (4.0, 8.0, 3.0)),
-    4: ((2.0, 3.0, 0.0), (6.0, 10.0, 4.0)),
-    5: ((4.0, 4.0, 0.0), (8.0, 12.0, 6.0)),
+#: MD3 elevation level -> shadow layers, transcribed from the upstream CSS
+#: box-shadow tokens. Ambient first so the key shadow stacks on top of it.
+_MD3_SHADOWS: dict[int, Shadows] = {
+    0: NO_SHADOWS,
+    1: (
+        Shadow(_AMBIENT, blur_radius=3.0, offset=(0.0, 1.0), spread_radius=1.0),
+        Shadow(_KEY, blur_radius=2.0, offset=(0.0, 1.0)),
+    ),
+    2: (
+        Shadow(_AMBIENT, blur_radius=6.0, offset=(0.0, 2.0), spread_radius=2.0),
+        Shadow(_KEY, blur_radius=2.0, offset=(0.0, 1.0)),
+    ),
+    3: (
+        Shadow(_AMBIENT, blur_radius=8.0, offset=(0.0, 4.0), spread_radius=3.0),
+        Shadow(_KEY, blur_radius=3.0, offset=(0.0, 1.0)),
+    ),
+    4: (
+        Shadow(_AMBIENT, blur_radius=10.0, offset=(0.0, 6.0), spread_radius=4.0),
+        Shadow(_KEY, blur_radius=3.0, offset=(0.0, 2.0)),
+    ),
+    5: (
+        Shadow(_AMBIENT, blur_radius=12.0, offset=(0.0, 8.0), spread_radius=6.0),
+        Shadow(_KEY, blur_radius=4.0, offset=(0.0, 4.0)),
+    ),
 }
 
 
-def _layers(level: int) -> ShadowLayers:
-    key, ambient = _MD3_BOX_SHADOWS[level]
-    key_y, key_blur, key_spread = key
-    amb_y, amb_blur, amb_spread = ambient
-    return (
-        ShadowParams.from_css(0.0, amb_y, amb_blur, amb_spread, _AMBIENT_COLOR),
-        ShadowParams.from_css(0.0, key_y, key_blur, key_spread, _KEY_COLOR),
-    )
+def elevation_shadows(level: int) -> Shadows:
+    """Return the shadows for the given MD3 elevation level.
 
+    The result feeds the ``shadows()`` modifier directly::
 
-#: MD3 elevation level -> shadow layers, ambient first so the key shadow
-#: stacks on top of it.
-_MD3_SHADOWS: dict[int, ShadowLayers] = {level: _layers(level) for level in _MD3_BOX_SHADOWS}
-_MD3_SHADOWS[0] = NO_SHADOW
-
-
-def md3_elevation_to_shadow(level: int) -> ShadowLayers:
-    """Return the shadow layers for the given MD3 elevation level.
+        widget.modifier(nv.shadows(nv.elevation_shadows(2)))
 
     Args:
         level: MD3 elevation level, clamped to the range 0-5.
 
     Returns:
-        A tuple of ``ShadowParams`` ordered back to front (ambient, then key).
-        Level 0 returns :data:`NO_SHADOW`, an empty tuple.
+        A tuple of ``Shadow`` layers ordered back to front (ambient, then
+        key). Level 0 returns an empty tuple, which draws no shadow.
     """
     return _MD3_SHADOWS[max(0, min(5, level))]

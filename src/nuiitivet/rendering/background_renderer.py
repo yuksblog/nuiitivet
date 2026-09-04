@@ -8,7 +8,7 @@ from .skia import (
     set_paint_mask_filter,
 )
 from .skia.geometry import draw_round_rect
-from .shadow import resolve_shadow_layers
+from .shadow import NO_SHADOWS
 from nuiitivet.common.logging_once import exception_once
 import logging
 
@@ -172,18 +172,19 @@ class BackgroundRenderer:
                 return
         canvas.drawRect(_r, paint)
 
-    def _draw_shadow(self, canvas, x, y, width, height, sc, dx, dy, sb, eff_rad, spread=0.0):
+    def _draw_shadow(self, canvas, x, y, width, height, sc, dx, dy, blur_radius, eff_rad, spread_radius=0.0):
         """Draw one shadow layer.
 
-        *spread* inflates the shadow rect outward on every side before the
-        blur is applied, growing the corner radii to match. It is what lets a
-        low-elevation shadow show past the opaque body drawn on top of it.
+        *spread_radius* inflates the shadow rect outward on every side before
+        the blur is applied, growing the corner radii to match. It is what
+        lets a low-elevation shadow show past the opaque body drawn on top of
+        it.
         """
         if canvas is None:
             return
 
         try:
-            spread = float(spread or 0.0)
+            spread = float(spread_radius or 0.0)
         except Exception:
             exception_once(logger, "background_renderer_shadow_spread_exc", "Failed to coerce shadow spread")
             spread = 0.0
@@ -200,11 +201,12 @@ class BackgroundRenderer:
             shadow_paint = make_paint(color=sc, style="fill", aa=True)
             if shadow_paint is None:
                 return
-            if sb and sb > 0.0:
+            if blur_radius and blur_radius > 0.0:
                 # Skia blurs a round rect's mask analytically, so a MaskFilter
                 # needs no offscreen layer -- which is the whole cost of the
                 # alternative, and it grows with the square of the sigma.
-                mf = make_blur_mask_filter(float(sb))
+                # A CSS blur-radius is twice the Gaussian sigma Skia takes.
+                mf = make_blur_mask_filter(float(blur_radius) / 2.0)
                 if mf is None:
                     return
                 set_paint_mask_filter(shadow_paint, mf)
@@ -315,13 +317,17 @@ class BackgroundRenderer:
             )
 
     def paint_shadow_and_background(self, canvas, x, y, width, height):
-        """Draw shadow and background (but not border)."""
+        """Draw shadow and background (but not border).
+
+        ``owner.shadows``, when present, must already be a normalized
+        ``Shadows`` tuple — ``Box.shadows``'s setter guarantees it.
+        """
         # draw shadow first if requested
         from nuiitivet.theme.resolver import resolve_color_to_rgba
         from nuiitivet.theme.theme import Theme
 
         try:
-            layers = resolve_shadow_layers(self.owner)
+            layers = getattr(self.owner, "shadows", NO_SHADOWS)
             if layers:
                 theme = Theme.of(self.owner)
                 radii = self.corner_radii_pixels(width, height)
@@ -334,7 +340,7 @@ class BackgroundRenderer:
                         continue
                     dx, dy = layer.offset
                     self._draw_shadow(
-                        canvas, x, y, width, height, sc, dx, dy, layer.sigma, radii, layer.spread
+                        canvas, x, y, width, height, sc, dx, dy, layer.blur_radius, radii, layer.spread_radius
                     )
         except Exception:
             exception_once(

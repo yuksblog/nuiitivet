@@ -8,7 +8,7 @@ from ..rendering.skia.paint_cache import CachedPaintMixin
 from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
 from ..rendering.background_renderer import BackgroundRenderer
-from ..rendering.shadow import ShadowLayers, ShadowLayersLike, normalize_shadows, shadow_outsets
+from ..rendering.shadow import ShadowLike, Shadows, normalize_shadows, shadow_outsets
 from ..rendering.skia.geometry import clip_round_rect, make_rect
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
@@ -25,7 +25,7 @@ class Box(CachedPaintMixin, Widget):
     """(Advanced) Low-level drawing primitive.
 
     Note:
-        Prefer using Modifiers (e.g. `.background()`, `.border()`, `.shadow()`)
+        Prefer using Modifiers (e.g. `.background()`, `.border()`, `.shadows()`)
         on a `Container` or other widgets. This widget is used internally
         to implement those modifiers.
 
@@ -43,7 +43,7 @@ class Box(CachedPaintMixin, Widget):
         border_width: float = 0,
         border_color: Optional[ColorSpec] = None,
         corner_radius: Union[float, Tuple[float, float, float, float]] = 0,
-        shadows: ShadowLayersLike = None,
+        shadows: ShadowLike = None,
         # Alignment for the child (if present)
         alignment: Union[str, Tuple[str, str]] = "center",
         *,
@@ -53,7 +53,7 @@ class Box(CachedPaintMixin, Widget):
         self._theme_state_ready = False
         self._bgcolor: Optional[ColorSpec] = None
         self._border_color: Optional[ColorSpec] = None
-        self._shadows: ShadowLayers = ()
+        self._shadows: Shadows = ()
         if child:
             self.add_child(child)
 
@@ -95,12 +95,12 @@ class Box(CachedPaintMixin, Widget):
         self._handle_visual_state_change()
 
     @property
-    def shadows(self) -> ShadowLayers:
+    def shadows(self) -> Shadows:
         """The shadow layers this box draws, ordered back to front."""
         return self._shadows
 
     @shadows.setter
-    def shadows(self, value: Union[ShadowLayersLike, ObservableBase]) -> None:
+    def shadows(self, value: Union[ShadowLike, ObservableBase]) -> None:
         if isinstance(value, ObservableBase):
             self.observe(value, lambda v: setattr(self, "shadows", v))
             return

@@ -159,9 +159,9 @@ class BasicDialog(ComposableWidget):
                 )
             )
 
-        from nuiitivet.material.theme.elevation import md3_elevation_to_shadow
+        from nuiitivet.material.theme.elevation import elevation_shadows
 
-        _shadows = md3_elevation_to_shadow(style.elevation)
+        _shadows = elevation_shadows(style.elevation)
 
         return Box(
             background_color=style.background,
