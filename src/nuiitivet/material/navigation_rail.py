@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 import logging
 
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.common.logging_once import warning_once
+from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.rendering.sizing import SizingLike, Sizing, parse_sizing
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase, ReadOnlyObservableProtocol
@@ -12,7 +12,13 @@ from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
 from nuiitivet.material.text import Text, LabelLike
 from nuiitivet.material.icon import Icon, IconLike
 from nuiitivet.widgets.box import Box
-from nuiitivet.widgets.interaction import InteractionHostMixin, InteractionState
+from nuiitivet.widgets.interaction import (
+    FocusNode,
+    FocusNodePolicy,
+    FocusScope,
+    InteractionHostMixin,
+    InteractionState,
+)
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
 from nuiitivet.material.styles.icon_style import IconStyle
@@ -294,13 +300,16 @@ class _RailItemButton(InteractiveWidget):
         self._small_badge_subscription = None
         self._large_badge_subscription = None
 
+        # The item can hold the focus, but the rail is the Tab stop: its
+        # FocusScope hands the focus to an item and the arrow keys rove it.
         super().__init__(
             child=None,
             on_click=on_click,
             width=Sizing.weight(1),
             height=Sizing.fixed(eff_style.item_height),
             padding=0,
-            focusable=False,
+            focusable=True,
+            traversable=False,
         )
 
         # Add children manually; draw_children is overridden.
@@ -550,6 +559,38 @@ class _RailItemButton(InteractiveWidget):
         radii = [radius, radius, radius, radius]
         draw_round_rect(canvas, rect, radii, paint)
 
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
+        """Draw the focus ring inset within the active-indicator shape.
+
+        Rail items sit too close together vertically for the standard outer
+        ring: offset outside one indicator it would overlap the neighbouring
+        indicators. The ring is drawn just inside the indicator outline instead
+        (the inset focus ring Jetpack Compose's Material 3 ripple uses), so it
+        can never collide.
+        """
+        if self._indicator_rect is None:
+            return
+        try:
+            from nuiitivet.theme.theme import Theme
+
+            color = resolve_color_to_rgba(self._FOCUS_RING_COLOR, theme=Theme.of(self))
+            if color is None:
+                return
+
+            thickness = self._FOCUS_RING_THICKNESS
+            inset = self._FOCUS_RING_OFFSET + thickness / 2.0
+
+            ind_x, ind_y, ind_w, ind_h = self._indicator_rect
+            if ind_w <= 2 * inset or ind_h <= 2 * inset:
+                return
+
+            paint = make_paint(color=color, style="stroke", stroke_width=thickness)
+            rect = make_rect(x + ind_x + inset, y + ind_y + inset, ind_w - 2 * inset, ind_h - 2 * inset)
+            radius = max(0.0, float(self._indicator_radius) - inset)
+            draw_round_rect(canvas, rect, [radius, radius, radius, radius], paint)
+        except Exception:
+            exception_once(logger, "rail_item_focus_ring_exc", "Failed to draw focus indicator")
+
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
         """Draw state layer matching the indicator shape."""
         if self._indicator_rect is None:
@@ -727,7 +768,26 @@ class _NavigationRailLayout(Widget):
             self._expand_subscription = None
 
 
-class NavigationRail(Widget):
+class _RailTraversalPolicy(FocusNodePolicy):
+    """Traversal over the rail's items, entered at the selected one.
+
+    Like a radio group, the selected destination is the rail's stop in the Tab
+    sequence: Tab lands where the app currently is, and the arrow keys rove
+    from there.
+    """
+
+    def __init__(self, rail: "NavigationRail") -> None:
+        super().__init__(rail._item_focus_nodes)
+        self._rail = rail
+
+    def entry_index(self, backwards: bool) -> int:
+        index = self._rail.current_index
+        if 0 <= index < len(self.members()):
+            return index
+        return super().entry_index(backwards)
+
+
+class NavigationRail(InteractionHostMixin, Widget):
     """Vertical navigation bar for desktop applications.
 
     Material Design 3 component for persistent side navigation.
@@ -829,6 +889,17 @@ class NavigationRail(Widget):
         if width_warning is not None:
             warning_once(logger, width_warning[0], width_warning[1])
 
+        # The rail is one focus traversal group (WAI-ARIA tabs, manual
+        # activation): a single Tab stop entered at the selected item, with
+        # Up/Down roving the focus between the items — wrapping at the ends —
+        # and Enter/Space selecting the focused one. Roving deliberately does
+        # not move the selection: selecting a destination navigates, which is
+        # too heavy an action to fire on every arrow press.
+        self._focus_node = FocusNode(on_key=self.on_key_event)
+        self.add_node(self._focus_node)
+        self._focus_scope = FocusScope(_RailTraversalPolicy(self), tab_roves=False)
+        self.add_node(self._focus_scope)
+
         self._item_buttons: list[_RailItemButton] = []
 
         self._rail_items: Sequence[RailItem] = list(children)
@@ -859,6 +930,26 @@ class NavigationRail(Widget):
 
         # Build UI.
         self._rebuild_ui()
+
+    def _item_focus_nodes(self) -> list[FocusNode]:
+        """Return the FocusNodes of the item buttons, in tree order."""
+        return [cast(FocusNode, item.get_node(FocusNode)) for item in self._item_buttons]
+
+    def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
+        """Rove the items with Up/Down, wrapping; Enter/Space acts on the focused item.
+
+        Only the vertical axis roves — a rail is always a column. Enter/Space
+        are handled by the focused item itself, so they never reach here.
+        """
+        key_name = str(key).lower()
+
+        if key_name == "down":
+            return self._focus_scope.move(1, wrap=True)
+
+        if key_name == "up":
+            return self._focus_scope.move(-1, wrap=True)
+
+        return False
 
     def _on_index_changed(self, new_index: int) -> None:
         """Handle Observable index changes."""

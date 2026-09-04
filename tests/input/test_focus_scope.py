@@ -7,6 +7,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.material import Checkbox, Menu, MenuItem, SubMenuItem
 from nuiitivet.material.button_group import ConnectedButtonGroup, GroupButton, StandardButtonGroup
+from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.selection_controls import RadioButton, RadioGroup
 from nuiitivet.material.slider import HorizontalRangeSlider, HorizontalSlider
 from nuiitivet.runtime.app import App
@@ -539,6 +540,107 @@ def test_a_radio_outside_a_group_stays_an_ordinary_tab_stop() -> None:
     app = _mounted_app(Column([radio]))
 
     assert app._collect_focus_nodes() == [_focus_node(radio)]
+
+
+# --- NavigationRail -----------------------------------------------------------
+
+
+def _rail(index: int = 0, **kwargs) -> NavigationRail:
+    return NavigationRail(
+        children=[
+            RailItem(icon="home", label="Home"),
+            RailItem(icon="search", label="Search"),
+            RailItem(icon="settings", label="Settings"),
+        ],
+        index=index,
+        **kwargs,
+    )
+
+
+def test_a_navigation_rail_is_a_single_tab_stop() -> None:
+    """The rail is one stop, not one stop per destination."""
+    before = Checkbox()
+    rail = _rail()
+    app = _mounted_app(Column([before, rail]))
+
+    assert app._collect_focus_nodes() == [_focus_node(before), _focus_node(rail)]
+
+
+def test_tab_enters_a_navigation_rail_at_its_selected_item() -> None:
+    """Tab lands where the app currently is, not on the first destination."""
+    rail = _rail(index=2)
+    app = _mounted_app(Column([rail]))
+
+    app._dispatch_key_press("tab")
+
+    assert app._focused_node is _focus_node(rail._item_buttons[2])
+
+
+def test_rail_arrow_keys_rove_vertically_without_moving_the_selection() -> None:
+    """Up/Down rove the focus, wrapping; selecting is a navigation, so it stays on Enter."""
+    selected: list[int] = []
+    rail = _rail(index=0, on_select=selected.append)
+    app = _mounted_app(Column([rail]))
+    app._dispatch_key_press("tab")
+
+    app._dispatch_key_press("down")
+    assert app._focused_node is _focus_node(rail._item_buttons[1])
+
+    app._dispatch_key_press("down")
+    assert app._focused_node is _focus_node(rail._item_buttons[2])
+
+    # The ends wrap.
+    app._dispatch_key_press("down")
+    assert app._focused_node is _focus_node(rail._item_buttons[0])
+
+    app._dispatch_key_press("up")
+    assert app._focused_node is _focus_node(rail._item_buttons[2])
+
+    assert selected == []
+    assert rail.current_index == 0
+
+
+def test_enter_selects_the_focused_rail_item() -> None:
+    selected: list[int] = []
+    rail = _rail(index=0, on_select=selected.append)
+    app = _mounted_app(Column([rail]))
+    app._dispatch_key_press("tab")
+    app._dispatch_key_press("down")
+
+    app._dispatch_key_press("enter")
+
+    assert selected == [1]
+    assert rail.current_index == 1
+
+
+def test_tab_leaves_a_navigation_rail_rather_than_roving_it() -> None:
+    """Tab is how the rail is left; the arrows are how it is roved."""
+    rail = _rail(index=1)
+    after = Checkbox()
+    app = _mounted_app(Column([rail, after]))
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(rail._item_buttons[1])
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(after)
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(rail._item_buttons[1])
+
+
+def test_focused_rail_item_shows_the_ring_without_a_focus_layer() -> None:
+    """Focus is the inset ring alone: a focus layer would fill the whole
+    indicator pill and read as a different control state."""
+    rail = _rail(index=0)
+    app = _mounted_app(Column([rail]))
+
+    app._dispatch_key_press("tab")
+
+    item = rail._item_buttons[0]
+    assert item.should_show_focus_ring is True
+    assert item._get_active_state_layer_opacity() == 0.0
+    assert app is not None
 
 
 # --- ButtonGroup --------------------------------------------------------------

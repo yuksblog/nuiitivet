@@ -309,8 +309,8 @@ def test_rail_item_interactive_inheritance():
     assert isinstance(button, InteractiveWidget)
 
 
-def test_rail_item_no_focus():
-    """Verify RailItem does not accept keyboard focus (MD3 spec)."""
+def test_rail_item_is_focusable_but_not_a_tab_stop():
+    """The rail is the Tab stop; its items hold focus only via the rail's scope."""
     items = [RailItem(icon="home", label="Home")]
     rail = NavigationRail(children=items)
 
@@ -319,8 +319,9 @@ def test_rail_item_no_focus():
         rail._rebuild_ui()
 
     button = rail._item_buttons[0]
-    # InteractiveWidget adds FocusNode by default, but NavigationRail should remove it
-    assert button.get_node(FocusNode) is None
+    node = button.get_node(FocusNode)
+    assert isinstance(node, FocusNode)
+    assert node.traversable is False
 
 
 def test_rail_item_selection_state():
