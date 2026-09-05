@@ -186,6 +186,48 @@ def test_range_slider_value_end_clamped_to_value_start() -> None:
     assert r.value_start <= r.value_end
 
 
+def test_range_slider_value_reports_both_ends_as_a_pair() -> None:
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.8, min_value=0.0, max_value=1.0)
+
+    assert r.value == (0.2, 0.8)
+
+
+def test_range_slider_value_assignment_moves_the_whole_range_right() -> None:
+    """The end has to lead: each end's setter clamps against the other's old value."""
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.3, min_value=0.0, max_value=1.0)
+
+    r.value = (0.6, 0.9)
+
+    assert r.value == (0.6, 0.9)
+
+
+def test_range_slider_value_assignment_moves_the_whole_range_left() -> None:
+    r = HorizontalRangeSlider(value_start=0.6, value_end=0.9, min_value=0.0, max_value=1.0)
+
+    r.value = (0.1, 0.35)
+
+    assert r.value == (0.1, 0.35)
+
+
+def test_range_slider_value_assignment_normalizes_and_clamps() -> None:
+    r = HorizontalRangeSlider(value_start=0.2, value_end=0.3, min_value=0.0, max_value=1.0)
+
+    r.value = (0.9, 0.4)
+    assert r.value == (0.4, 0.9)
+
+    r.value = (-1.0, 5.0)
+    assert r.value == (0.0, 1.0)
+
+
+def test_range_slider_value_assignment_writes_back_to_bound_observables() -> None:
+    start, end = _make_obs(0.2), _make_obs(0.8)
+    r = HorizontalRangeSlider(value_start=start, value_end=end, min_value=0.0, max_value=1.0)
+
+    r.value = (0.4, 0.5)
+
+    assert (start.value, end.value) == (0.4, 0.5)
+
+
 # --- D4: Discrete stops keyboard navigation ---
 
 

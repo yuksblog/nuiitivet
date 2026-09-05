@@ -94,6 +94,92 @@ def test_describe_tree_truncates_long_identity() -> None:
     assert tree["text"].endswith("…")
 
 
+# --- describe_tree: interactive state --------------------------------------
+
+
+class _State:
+    """Stands in for an ``InteractionState``; ``focused`` is the duck-type probe."""
+
+    def __init__(self, **flags: bool) -> None:
+        self.hovered = False
+        self.pressed = False
+        self.focused = False
+        self.disabled = False
+        self.selected = False
+        for name, value in flags.items():
+            setattr(self, name, value)
+
+
+def test_describe_tree_omits_state_when_nothing_is_set() -> None:
+    assert "state" not in describe_tree(_Node(state=_State()))
+
+
+def test_describe_tree_reports_a_flag_from_a_property() -> None:
+    assert describe_tree(_Node(disabled=True))["state"] == {"disabled": True}
+
+
+def test_describe_tree_reports_a_flag_from_the_interaction_state() -> None:
+    """A chip publishes ``selected`` as a property; a navigation rail item does not."""
+    assert describe_tree(_Node(state=_State(selected=True)))["state"] == {"selected": True}
+
+
+def test_describe_tree_prefers_the_property_over_the_interaction_state() -> None:
+    root = _Node(disabled=False, state=_State(disabled=True))
+    assert "state" not in describe_tree(root)
+
+
+def test_describe_tree_ignores_a_state_attribute_that_is_not_interaction_state() -> None:
+    class _Other:
+        """Something else called ``state`` -- not a source of flags."""
+
+        selected = True
+
+    assert "state" not in describe_tree(_Node(state=_Other()))
+
+
+def test_describe_tree_reports_focus_from_the_interaction_state() -> None:
+    assert describe_tree(_Node(state=_State(focused=True)))["state"] == {"focused": True}
+
+
+def test_describe_tree_omits_transient_pointer_state() -> None:
+    """Hover and press do not survive the turn that would read them."""
+    assert "state" not in describe_tree(_Node(state=_State(hovered=True, pressed=True)))
+
+
+def test_describe_tree_reports_a_falsy_value() -> None:
+    """A toggle's ``False`` and a field's ``""`` are the answer, not its absence."""
+    assert describe_tree(_Node(value=False))["state"] == {"value": False}
+    assert describe_tree(_Node(value=""))["state"] == {"value": ""}
+
+
+def test_describe_tree_reports_an_indeterminate_value_as_null() -> None:
+    assert describe_tree(_Node(value=None))["state"] == {"value": None}
+
+
+def test_describe_tree_truncates_a_long_value() -> None:
+    value = describe_tree(_Node(value="x" * 500))["state"]["value"]
+    assert len(value) <= 200
+    assert value.endswith("…")
+
+
+def test_describe_tree_renders_an_opaque_value_as_type_repr() -> None:
+    class _Choice:
+        def __repr__(self) -> str:
+            return "<Choice B>"
+
+    assert describe_tree(_Node(value=_Choice()))["state"] == {"value": "_Choice: <Choice B>"}
+
+
+def test_describe_tree_survives_a_raising_state_getter() -> None:
+    class _Broken(_Node):
+        @property
+        def value(self) -> str:
+            raise RuntimeError("boom")
+
+    root = _Node(children=[_Broken(disabled=True)])
+    assert describe_tree(root)["children"][0]["state"] == {"disabled": True}
+
+
 def test_find_target_by_key() -> None:
     target = _Node(key="submit")
     root = _Node(children=[_Node(key="cancel"), target])
