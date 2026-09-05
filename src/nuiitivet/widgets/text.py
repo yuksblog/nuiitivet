@@ -9,6 +9,7 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union, TYPE_CH
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.widget_binding import notify_binding_probe
 from nuiitivet.observable import Disposable, ReadOnlyObservableProtocol
 from nuiitivet.rendering.skia import (
     get_typeface,
@@ -499,6 +500,7 @@ class TextBase(Widget):
         if callable(subscribe):
 
             def _cb(*_args, **_kwargs):
+                notify_binding_probe(self)
                 try:
                     self._paint_cache_key = None
                     self._paint_cache_lines = None

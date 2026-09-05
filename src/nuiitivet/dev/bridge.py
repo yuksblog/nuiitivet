@@ -47,6 +47,7 @@ from .action import (
 from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
+from . import profiling
 from .selection import Selection, describe_selection
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
@@ -394,6 +395,19 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
         )
 
 
+def _profile_start() -> dict[str, Any]:
+    """Start a profiling session; report whether one was already running."""
+    was_active = profiling.active_session() is not None
+    profiling.start()
+    return {"active": True, "was_active": was_active}
+
+
+def _profile_stop() -> dict[str, Any]:
+    """Stop the profiling session and return its report (``None`` if idle)."""
+    session = profiling.stop()
+    return {"active": False, "report": session.report() if session is not None else None}
+
+
 def _make_handler(
     marshaller: _UIThreadMarshaller,
     journal: Optional[ReloadJournal],
@@ -511,6 +525,12 @@ def _make_handler(
                         return
                     enabled = bool(body.get("enabled", False))
                     result = {"verbose": runtime_capture.set_verbose(enabled)}
+                elif path == "/profile/start":
+                    # On the UI thread: start() swaps class-level paint methods,
+                    # which must not happen while a frame is mid-paint.
+                    result = marshaller.call_on_ui_thread(lambda app: _profile_start())
+                elif path == "/profile/stop":
+                    result = marshaller.call_on_ui_thread(lambda app: _profile_stop())
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
                     return
@@ -611,6 +631,9 @@ def _make_handler(
                 elif path == "/runtime_log/verbose":
                     verbose = runtime_capture.is_verbose() if runtime_capture is not None else False
                     self._send_json(200, {"verbose": verbose})
+                elif path == "/profile":
+                    # Status only -- the report comes from ``/profile/stop``.
+                    self._send_json(200, {"active": profiling.active_session() is not None})
                 else:
                     self._fail(404, f"unknown endpoint: {path}")
             except TimeoutError as exc:

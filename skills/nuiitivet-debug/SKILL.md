@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user refers to a "selection" (e.g. "selection 1", "the selected widget"), it means widgets picked in the running app — read it with `describe_selection` first. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user refers to a "selection" (e.g. "selection 1", "the selected widget"), it means widgets picked in the running app — read it with `describe_selection` first. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -98,6 +98,7 @@ top to bottom.
 | The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
 | `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
+| A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop` — reach for it only because a human reported it; you cannot perceive jank or excess rebuilds yourself. The report's `rebuilds` and `bindings` counters name the widget doing wasted work; `frames` carries paint-walk mean/p95/max ms. Recording slows frames ~10%, so stop it when done. Paint counts equal painted-frame count (every painted frame walks the whole tree) — read `rebuilds`/`bindings` for the per-widget signal |
 
 **Multiple windows.** `status` lists every open window (`id`, `title`,
 `main`/`focused` flags). Every tree/state/action tool takes `window=<id>`;

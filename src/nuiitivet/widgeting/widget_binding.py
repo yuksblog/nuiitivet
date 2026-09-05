@@ -55,6 +55,38 @@ def _queue_binding_invalidation(widget: Any, dependency: Optional[str], scope_id
     return first_insert
 
 
+# Dev-only observation point: receives the widget each time an Observable
+# update is delivered to it (``observe`` and ``bind_to`` subscriptions; the
+# initial mount-time apply is not an update and does not fire it). ``None``
+# outside a profiling session.
+_binding_probe: Optional[Callable[[Any], None]] = None
+
+
+def set_binding_probe(probe: Optional[Callable[[Any], None]]) -> None:
+    """Install or clear the binding-update probe (dev profiling only)."""
+    global _binding_probe
+    _binding_probe = probe
+
+
+def notify_binding_probe(widget: Any) -> None:
+    """Report one Observable update delivered to *widget* (no-op when idle).
+
+    For binding paths outside :class:`BindingHostMixin` (e.g. a Text label
+    subscription) to participate in dev profiling.
+    """
+    probe = _binding_probe
+    if probe is None:
+        return
+    try:
+        probe(widget)
+    except Exception:
+        exception_once(
+            _logger,
+            "widget_binding_probe_exc",
+            "Binding-update probe raised",
+        )
+
+
 def flush_binding_invalidations() -> None:
     if not _pending_invalidation:
         return
@@ -175,6 +207,7 @@ class BindingHostMixin:
 
         # Create subscription wrapper
         def _on_change(val: T) -> None:
+            notify_binding_probe(self)
             try:
                 callback(val)
             except Exception:
@@ -238,6 +271,7 @@ class BindingHostMixin:
                 )
 
         def _on_value(value) -> None:
+            notify_binding_probe(self)
             try:
                 setter(value)
             except Exception:

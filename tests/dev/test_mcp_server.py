@@ -143,6 +143,8 @@ def test_build_server_registers_the_tools() -> None:
         "interaction_log",
         "runtime_log",
         "set_runtime_log_verbose",
+        "profile_start",
+        "profile_stop",
         "screenshot",
         "click",
         "scroll",
@@ -151,6 +153,27 @@ def test_build_server_registers_the_tools() -> None:
         "key",
         "wait_for",
     }
+
+
+def test_profile_start_forwards_to_client() -> None:
+    client = _fake_client()
+    client.profile_start.return_value = {"active": True, "was_active": False}
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "profile_start", {})
+    assert result == {"active": True, "was_active": False}
+    client.profile_start.assert_called_once_with()
+
+
+def test_profile_stop_forwards_to_client() -> None:
+    client = _fake_client()
+    report: dict[str, Any] = {"duration_s": 1.2, "frames": None, "paints": [], "rebuilds": [], "bindings": []}
+    client.profile_stop.return_value = {"active": False, "report": report}
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "profile_stop", {})
+    assert result == {"active": False, "report": report}
+    client.profile_stop.assert_called_once_with()
 
 
 def test_status_forwards_to_client() -> None:
