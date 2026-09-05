@@ -43,16 +43,6 @@ SPRING_STANDARD_FAST_SPATIAL: Motion = SpringMotion(
     damping=2.0 * _STD_FAST_SPATIAL_DAMPING_RATIO * math.sqrt(_STD_FAST_SPATIAL_STIFFNESS),
     mass=1.0,
 )
-
-# Standard button group — pressed item width spring.
-STANDARD_BUTTON_GROUP_WIDTH: Motion = SPRING_STANDARD_FAST_SPATIAL
-
-# Search bar — outer margin on focus, 24dp <-> 12dp.
-# md.comp.search-bar.contained.motion.spring names a fast spatial spring, and
-# contained is the expressive variant, so the expressive curve is the faithful
-# reading. Its 9.21% overshoot is an intended bounce, not ringing.
-SEARCH_BAR_FOCUS_MARGIN: Motion = EXPRESSIVE_FAST_SPATIAL
-
 __all__ = [
     "EXPRESSIVE_FAST_SPATIAL",
     "EXPRESSIVE_DEFAULT_SPATIAL",
@@ -67,6 +57,4 @@ __all__ = [
     "STANDARD_DEFAULT_EFFECTS",
     "STANDARD_SLOW_EFFECTS",
     "SPRING_STANDARD_FAST_SPATIAL",
-    "STANDARD_BUTTON_GROUP_WIDTH",
-    "SEARCH_BAR_FOCUS_MARGIN",
 ]

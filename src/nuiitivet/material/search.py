@@ -50,8 +50,11 @@ from typing import Callable, Optional, Tuple, TYPE_CHECKING, Union
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.material.interactive_widget import InteractiveWidget
-from nuiitivet.material.motion import SEARCH_BAR_FOCUS_MARGIN
-from nuiitivet.material.styles.search_bar_style import DockedSearchBarStyle, SearchBarStyle
+from nuiitivet.material.styles.search_bar_style import (
+    SEARCH_BAR_FOCUS_MARGIN,
+    DockedSearchBarStyle,
+    SearchBarStyle,
+)
 from nuiitivet.modifiers.popup import popup
 from nuiitivet.observable import Observable, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
