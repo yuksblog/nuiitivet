@@ -61,7 +61,11 @@ class NavigationRailStyle:
         gap_collapsed: Gap between items when collapsed.
         gap_expanded: Gap between items when expanded.
         label_gap_expanded: Icon-label gap when expanded.
-        menu_button_size: Menu button size.
+        menu_button_size: Menu button size (layout slot and hit target).
+        menu_state_layer_size: Diameter of the menu button's state layer and
+            focus ring, drawn centered in the button. The default 40dp is the
+            standard icon button state layer; the surrounding
+            ``menu_button_size`` stays the pointer target.
         top_padding: Top padding before first item.
     """
 
@@ -89,6 +93,7 @@ class NavigationRailStyle:
     gap_expanded: float = 0.0
     label_gap_expanded: float = 8.0
     menu_button_size: float = 56.0
+    menu_state_layer_size: float = 40.0
     top_padding: float = 44.0
 
     def clamp_expanded_width(self, value: float) -> float:

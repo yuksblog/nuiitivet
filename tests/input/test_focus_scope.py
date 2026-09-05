@@ -545,7 +545,9 @@ def test_a_radio_outside_a_group_stays_an_ordinary_tab_stop() -> None:
 # --- NavigationRail -----------------------------------------------------------
 
 
-def _rail(index: int = 0, **kwargs) -> NavigationRail:
+def _rail(index: int = 0, *, show_menu_button: bool = False, **kwargs) -> NavigationRail:
+    # The item-group tests build the rail without its menu button, which is a
+    # separate Tab stop with tests of its own below.
     return NavigationRail(
         children=[
             RailItem(icon="home", label="Home"),
@@ -553,17 +555,18 @@ def _rail(index: int = 0, **kwargs) -> NavigationRail:
             RailItem(icon="settings", label="Settings"),
         ],
         index=index,
+        show_menu_button=show_menu_button,
         **kwargs,
     )
 
 
-def test_a_navigation_rail_is_a_single_tab_stop() -> None:
-    """The rail is one stop, not one stop per destination."""
+def test_a_navigation_rail_item_group_is_a_single_tab_stop() -> None:
+    """The item group is one stop, not one stop per destination."""
     before = Checkbox()
     rail = _rail()
     app = _mounted_app(Column([before, rail]))
 
-    assert app._collect_focus_nodes() == [_focus_node(before), _focus_node(rail)]
+    assert app._collect_focus_nodes() == [_focus_node(before), _focus_node(rail._item_group)]
 
 
 def test_tab_enters_a_navigation_rail_at_its_selected_item() -> None:
@@ -641,6 +644,71 @@ def test_focused_rail_item_shows_the_ring_without_a_focus_layer() -> None:
     assert item.should_show_focus_ring is True
     assert item._get_active_state_layer_opacity() == 0.0
     assert app is not None
+
+
+# --- NavigationRail menu button -----------------------------------------------
+
+
+def test_the_menu_button_is_a_tab_stop_before_the_item_group() -> None:
+    """The menu button is an ordinary standalone stop, above the item group."""
+    before = Checkbox()
+    rail = _rail(show_menu_button=True)
+    app = _mounted_app(Column([before, rail]))
+
+    assert app._collect_focus_nodes() == [
+        _focus_node(before),
+        _focus_node(rail._menu_button),
+        _focus_node(rail._item_group),
+    ]
+
+
+def test_enter_and_space_toggle_the_rail_from_the_menu_button() -> None:
+    rail = _rail(show_menu_button=True)
+    app = _mounted_app(Column([rail]))
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(rail._menu_button)
+
+    app._dispatch_key_press("enter")
+    assert rail._is_expanded is True
+
+    app._dispatch_key_press("space")
+    assert rail._is_expanded is False
+
+
+def test_tab_walks_from_the_menu_button_into_the_item_group_and_back() -> None:
+    """The menu button and the item group stay separate stops, in that order."""
+    rail = _rail(index=1, show_menu_button=True)
+    after = Checkbox()
+    app = _mounted_app(Column([rail, after]))
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(rail._menu_button)
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(rail._item_buttons[1])
+
+    app._dispatch_key_press("tab")
+    assert app._focused_node is _focus_node(after)
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(rail._item_buttons[1])
+
+    app._dispatch_key_press("tab", modifier_keys=SHIFT)
+    assert app._focused_node is _focus_node(rail._menu_button)
+
+
+def test_menu_button_shows_the_ring_only_on_keyboard_focus() -> None:
+    rail = _rail(show_menu_button=True)
+    app = _mounted_app(Column([rail]))
+    button = rail._menu_button
+    assert button is not None
+
+    app._dispatch_key_press("tab")
+    assert button.should_show_focus_ring is True
+
+    _focus_node(button).request_focus(FocusSource.POINTER)
+    assert button.should_show_focus_ring is False
 
 
 # --- ButtonGroup --------------------------------------------------------------
