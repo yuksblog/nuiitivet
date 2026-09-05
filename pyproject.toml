@@ -54,6 +54,9 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+  # Self-reference the published extra so a plain `uv sync` keeps 'mcp'
+  # installed: extras are not synced by default, and the sync is exact.
+  "nuiitivet[dev]",
   "flake8>=7.0.0",
   "mypy>=1.18.2",
   "pytest>=9.0.1",
