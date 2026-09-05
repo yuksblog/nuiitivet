@@ -230,14 +230,16 @@ nv.DockedSearchBar(
 
 ### Opening and closing the panel
 
-The widget drives one observable from four triggers:
+The widget drives one observable from these triggers:
 
 | Trigger | Effect |
 | --- | --- |
 | The bar takes focus | Open — including on an empty query, where MD3 shows recent searches |
+| A tap on the bar | Open — so a click brings a closed panel back even while the bar keeps focus |
 | The user edits the text | Open, even if it was just closed |
 | `Enter` | Close, unless you pass `close_on_enter=False` |
-| Focus leaves, or a tap outside | Close |
+| `Escape` | Close, leaving the bar focused — typing reopens it. With the panel closed, `Escape` is left for an enclosing handler |
+| Focus leaves, or a tap outside | Close. The bar itself is not outside: clicking into the text moves the caret and the panel stays up |
 
 That default gives you the usual desktop loop for free: `Enter` puts the panel away, `on_submit` renders results on the page, and typing again brings the panel back. The close runs *before* `on_submit`, so a search that wants the panel to stay up can reopen it from inside its own callback. To keep the results *in* the panel instead, pass `close_on_enter=False` and swap `content` when the search returns.
 
@@ -252,8 +254,6 @@ def pick(self, item: str) -> None:
 Pass `is_open=self.panel_open` to drive the panel from your own `Observable[bool]`, or to react to it opening and closing. Writing to it opens and closes the panel directly; omit it and the widget keeps its own, readable as `bar.is_open`.
 
 In a window too short for the panel, it keeps its minimum height and extends past the bottom edge rather than covering the bar.
-
-`Escape` does not close the panel yet — click outside it, or write `False` to `is_open`.
 
 **There is no full-screen search widget.** Lay the screen out yourself and put a `SearchBar` in it; the bar keeps its focus animation there.
 

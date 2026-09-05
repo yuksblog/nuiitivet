@@ -292,6 +292,60 @@ class _OverlayEntryRoute(Route):
         self._widget = None
 
 
+class _PassthroughRectBox(Widget):
+    """Wraps the blocking layer and exempts one rect from it.
+
+    A hit inside the rect is declined outright — neither blocked nor counted
+    as an outside tap — so the pointer walk falls through to whatever the
+    entry covers there. The rect comes from a provider because it can move
+    every frame (an anchor animating its margin).
+
+    The provider's rect is in window coordinates (a painted rect), so the
+    local point is translated by this box's own painted origin before the
+    comparison. An entry's layers span the window at the origin, making the
+    translation a no-op in practice — it is kept for correctness, with the
+    unpainted case (origin unknown) treated as the origin.
+    """
+
+    def __init__(
+        self,
+        child: Widget,
+        *,
+        rect_provider: Callable[[], tuple[float, float, float, float] | None],
+    ) -> None:
+        super().__init__(
+            width=child.width_sizing,
+            height=child.height_sizing,
+            max_children=1,
+            overflow_policy="replace_last",
+        )
+        self._rect_provider = rect_provider
+        self.add_child(child)
+
+    def layout(self, width: int, height: int) -> None:
+        super().layout(width, height)
+        child = self.children[0]
+        if isinstance(child, Widget):
+            child.layout(width, height)
+            child.set_layout_rect(0, 0, width, height)
+
+    def hit_test(self, x: int, y: int):
+        rect: tuple[float, float, float, float] | None = None
+        try:
+            rect = self._rect_provider()
+        except Exception:
+            exception_once(logger, "overlay_passthrough_rect_provider_exc", "passthrough_rect provider raised")
+        if rect is not None:
+            gx, gy = 0.0, 0.0
+            own = self.global_visual_rect
+            if own is not None:
+                gx, gy = own[0], own[1]
+            rx, ry, rw, rh = rect
+            if rx <= gx + x < rx + rw and ry <= gy + y < ry + rh:
+                return None
+        return super().hit_test(x, y)
+
+
 class _DefaultOverlayLayerComposer:
     """Fallback core composer with minimal, design-agnostic rendering.
 
@@ -586,6 +640,7 @@ class Overlay(ComposableWidget):
         *,
         passthrough: bool = False,
         dismiss_on_outside_tap: bool = False,
+        passthrough_rect: Callable[[], tuple[float, float, float, float] | None] | None = None,
         backdrop: bool = False,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
@@ -605,6 +660,12 @@ class Overlay(ComposableWidget):
                 occludes everything below, for both pointer and keyboard.
             dismiss_on_outside_tap: Whether tapping outside the content dismisses
                 the entry. Requires ``passthrough=False``.
+            passthrough_rect: A window-coordinate rect the blocking layer leaves
+                alone: a tap inside it is neither blocked nor an outside tap —
+                it falls through to the content behind, which also keeps it from
+                dismissing the entry. A provider rather than a rect so it can
+                track a moving anchor. Inert with ``passthrough=True``, where
+                nothing is blocked to begin with.
             backdrop: Whether the layer composer paints a backdrop behind the
                 content. Purely visual — input blocking is ``passthrough``'s job.
             timeout: Seconds after which the entry auto-dismisses, or ``None``.
@@ -707,7 +768,10 @@ class Overlay(ComposableWidget):
                     # any_button=True: an outside tap dismisses whichever button
                     # produced it, not just the primary one.
                     blocker_modifier = blocker_modifier | clickable(on_click=on_outside_tap, any_button=True)
-                layers.append(Container(width="wt", height="wt").modifier(blocker_modifier))
+                blocker: Widget = Container(width="wt", height="wt").modifier(blocker_modifier)
+                if passthrough_rect is not None:
+                    blocker = _PassthroughRectBox(blocker, rect_provider=passthrough_rect)
+                layers.append(blocker)
 
             # ORDER IS LOAD-BEARING: the content must be *last* in children.
             # _hit_test_children walks reversed(children), so the content is

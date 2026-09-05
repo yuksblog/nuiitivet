@@ -25,15 +25,17 @@ result = await handle   # OverlayResult[Any]
 | `content` | `Widget \| Route` | required | Widget or route to display |
 | `passthrough` | `bool` | `False` | Whether input reaches the content behind the overlay |
 | `dismiss_on_outside_tap` | `bool` | `False` | Dismiss when a tap lands outside the content |
+| `passthrough_rect` | rect provider `\| None` | `None` | A window rect the blocking layer leaves alone — a tap there reaches the app behind and never dismisses |
 | `backdrop` | `bool` | `False` | Whether the design system paints a backdrop behind the content |
 | `timeout` | `float \| None` | `None` | Auto-dismiss after seconds |
 | `position` | `OverlayPosition \| None` | `None` (center) | Positioning strategy |
 | `transition_spec` | `TransitionSpec \| None` | `None` | Entry/exit transition |
 
-Two of these are about **input** and one is about **appearance**:
+Three of these are about **input** and one is about **appearance**:
 
 - `passthrough` decides whether the app behind the overlay stays usable — for pointer *and* keyboard.
 - `dismiss_on_outside_tap` decides whether a tap outside the content closes the overlay. Any button dismisses, not just the primary one.
+- `passthrough_rect` carves one window-coordinate rect out of the blocking layer: a tap inside it is neither blocked nor an outside tap. It is a zero-argument callable returning `(x, y, w, h)` (or `None`), so the rect can track a moving anchor. This is how `popup(anchor_passthrough=True)` keeps a tap on its anchor from dismissing. Inert with `passthrough=True`.
 - `backdrop` only decides whether a dimming layer is painted. It never blocks input on its own; that is `passthrough`'s job. `backdrop=True, passthrough=True` (dimmed but clickable through) is legal.
 
 ### Common combinations

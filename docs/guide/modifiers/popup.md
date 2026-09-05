@@ -28,6 +28,7 @@ button.modifier(nv.popup(nv.Menu(items=[...]), is_open=is_open))
 | `is_open` | `Observable[bool] \| None` | `None` | Open state you control |
 | `passthrough` | `bool` | `False` | Whether input reaches the UI behind the popup |
 | `dismiss_on_outside_tap` | `bool \| None` | `None` | Whether an outside tap closes it; follows `passthrough` |
+| `anchor_passthrough` | `bool` | `False` | Whether a tap on the anchor passes through to it instead of counting as an outside tap |
 | `target_anchor` | placement string | `"bottom-left"` | Reference point on the **anchor widget** |
 | `content_anchor` | placement string | `"top-left"` | Reference point on the **content** |
 | `offset` | `(float, float)` | `(0.0, 0.0)` | Extra `(dx, dy)` in pixels |
@@ -45,6 +46,8 @@ Two calls cover almost every case:
 | `popup(x, is_open=…, passthrough=True)` | Lets input through and stays open on an outside tap — the **toast** shape |
 
 You rarely set `dismiss_on_outside_tap` yourself — left at `None` it follows `passthrough`. Set it explicitly only for a blocking popup that must *not* close on an outside tap (`passthrough=False, dismiss_on_outside_tap=False`). Combining `passthrough=True` with `dismiss_on_outside_tap=True` raises `ValueError`: a popup that lets a tap through cannot also observe it.
+
+`anchor_passthrough` is the `passthrough` axis scoped to the anchor's own rect. The default `False` treats a tap on the anchor like any other outside tap — right for a toggle anchor such as a menu button, where re-tapping it should put the popup away. Pass `True` when the tap means something *on* the anchor — a search field, where a click moves the caret: the anchor's rect is exempted from the blocking layer, so the tap reaches the anchor and the popup stays up.
 
 Leaving `is_open` at `None` is legal, but the modifier then owns the observable and you have nothing to open the popup with. Always pass your own.
 
