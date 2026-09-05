@@ -721,8 +721,8 @@ class DockedSearchBar(ComposableWidget):
     matters.
 
     **When the container opens and closes.** The state is a single observable,
-    writable at any time by the application, that this widget drives from four
-    triggers:
+    writable at any time by the application, that this widget drives from
+    these triggers:
 
     ==================================== ==================================
     Trigger                              Effect
@@ -730,16 +730,30 @@ class DockedSearchBar(ComposableWidget):
     Focus gained                         Open — including on an empty query,
                                          which is where MD3 shows recent
                                          searches
+    A tap on the bar                     Open — focus cannot re-fire when the
+                                         bar already holds it, so the tap
+                                         itself is a trigger
     User edits the text                  Open, even if it was just closed
     Enter                                Close when *close_on_enter*
-    Focus lost, or a tap outside         Close
+    Escape                               Close, leaving the bar focused —
+                                         typing reopens. With nothing to
+                                         close, Escape is not claimed
+    Focus lost, or a tap outside         Close. The bar is *not* outside: a
+                                         tap there moves the caret and the
+                                         container stays up
     ==================================== ==================================
 
-    The second one is what makes "Enter closes the panel, results render on
+    The edit trigger is what makes "Enter closes the panel, results render on
     the page" work: focus never changed, so without it the panel could not
     come back. It counts *user* edits only — assigning to ``value``, or a
     write to the bound observable, does not reopen the container, so filling
-    the bar in after a pick stays closed.
+    the bar in after a pick stays closed. The tap trigger covers the pointer
+    half of the same gap.
+
+    Escape rides the window's back-event path, which closes the topmost
+    overlay entry — this container, when it is open — without moving focus.
+    When the container is closed the path declines the key, so an enclosing
+    handler (a dialog, the navigator) still sees it.
 
     Args:
         value: Initial query text, or the observable holding it.
@@ -798,6 +812,7 @@ class DockedSearchBar(ComposableWidget):
         self._style = style if style is not None else DockedSearchBarStyle()
         self._close_on_enter = bool(close_on_enter)
         self._on_submit = on_submit
+        self._on_focus_change = on_focus_change
 
         # Kept separate from ``core.focused`` so that an outside tap can close
         # the container (popup writes False here) without claiming the bar lost
@@ -820,7 +835,7 @@ class DockedSearchBar(ComposableWidget):
             on_change=on_change,
             on_user_edit=self._handle_user_edit,
             on_submit=self._handle_submit if wants_enter else None,
-            on_focus_change=on_focus_change,
+            on_focus_change=self._handle_focus_change,
             input_filter=input_filter,
             style=self._style.bar,
         )
@@ -869,13 +884,18 @@ class DockedSearchBar(ComposableWidget):
         """Programmatically focus the bar."""
         self._core.focus()
 
-    def on_mount(self) -> None:
-        """Open the container whenever the bar takes focus."""
-        super().on_mount()
-        self.observe(self._core.focused, self._on_focus_changed)
+    def _handle_focus_change(self, focused: bool, source: FocusSource) -> None:
+        """Drive the container from every focus announcement, then forward.
 
-    def _on_focus_changed(self, focused: bool) -> None:
+        Announcements, not ``core.focused`` transitions: a pointer press on the
+        already-focused bar re-announces ``focused=True`` (focus itself cannot
+        change, so no transition ever fires), and that announcement is the only
+        signal a tap on the bar produces once the container was closed by Enter
+        or by the application. It is what reopens the container for that tap.
+        """
         self._is_open.value = bool(focused)
+        if self._on_focus_change is not None:
+            self._on_focus_change(focused, source)
 
     def _handle_user_edit(self, _text: str) -> None:
         """Reopen the container for text the user typed.
@@ -915,6 +935,7 @@ class DockedSearchBar(ComposableWidget):
             popup(
                 self._container,
                 is_open=self._is_open,
+                anchor_passthrough=True,
                 target_anchor="bottom-left",
                 content_anchor="top-left",
                 offset=(0.0, self._style.gap),

@@ -459,6 +459,17 @@ class TestPopupFactory:
         with pytest.raises(ValueError, match="cannot also observe it"):
             popup(_FixedWidget(50, 30), passthrough=True, dismiss_on_outside_tap=True)
 
+    def test_anchor_passthrough_defaults_to_false(self) -> None:
+        """``popup(x)`` keeps the toggle-anchor shape: a re-tap dismisses."""
+        box = popup(_FixedWidget(50, 30)).apply(_FixedWidget(80, 40))
+        assert isinstance(box, PopupBox)
+        assert box._anchor_passthrough is False
+
+    def test_anchor_passthrough_is_forwarded(self) -> None:
+        box = popup(_FixedWidget(50, 30), anchor_passthrough=True).apply(_FixedWidget(80, 40))
+        assert isinstance(box, PopupBox)
+        assert box._anchor_passthrough is True
+
     def test_default_anchors(self) -> None:
         content = _FixedWidget(50, 30)
         modifier = popup(content)

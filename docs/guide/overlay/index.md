@@ -55,6 +55,7 @@ Two `App` instances in one process each get their own.
 | ---- | ------- | ------ |
 | `passthrough` | Input | Whether the app behind the overlay stays usable |
 | `dismiss_on_outside_tap` | Input | Whether a tap outside the content closes the overlay |
+| `passthrough_rect` | Input | A rect the blocking layer leaves alone — a tap there reaches the app and never dismisses (how `popup(anchor_passthrough=True)` exempts its anchor) |
 | `backdrop` | Appearance | Whether a backdrop is painted behind the content |
 
 Common shapes fall out of the combinations:

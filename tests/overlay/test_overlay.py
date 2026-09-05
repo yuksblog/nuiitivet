@@ -194,6 +194,50 @@ def test_overlay_of_before_mount_reports_premature():
         Overlay.of(DummyWidget())
 
 
+class _CatchAllWidget(Widget):
+    """Stands in for the blocking layer: catches every hit."""
+
+    def hit_test(self, x, y):
+        return self
+
+
+class TestPassthroughRectBox:
+    """The rect-scoped exemption `show(passthrough_rect=...)` wraps around
+    the blocking layer."""
+
+    def _box(self, provider):
+        from nuiitivet.overlay.overlay import _PassthroughRectBox
+
+        box = _PassthroughRectBox(_CatchAllWidget(), rect_provider=provider)
+        box.set_layout_rect(0, 0, 200, 200)
+        return box
+
+    def test_a_hit_inside_the_rect_is_declined(self):
+        box = self._box(lambda: (10.0, 10.0, 50.0, 50.0))
+        assert box.hit_test(30, 30) is None
+
+    def test_a_hit_outside_the_rect_still_blocks(self):
+        box = self._box(lambda: (10.0, 10.0, 50.0, 50.0))
+        assert box.hit_test(100, 100) is not None
+
+    def test_the_rect_edges_are_half_open(self):
+        box = self._box(lambda: (10.0, 10.0, 50.0, 50.0))
+        assert box.hit_test(10, 10) is None
+        assert box.hit_test(60, 60) is not None
+
+    def test_a_none_rect_blocks_everywhere(self):
+        """An anchor not laid out yet must not open a hole at the origin."""
+        box = self._box(lambda: None)
+        assert box.hit_test(30, 30) is not None
+
+    def test_a_raising_provider_degrades_to_blocking(self):
+        def bad_provider():
+            raise RuntimeError("boom")
+
+        box = self._box(bad_provider)
+        assert box.hit_test(30, 30) is not None
+
+
 def test_overlay_entry_dispose_is_idempotent() -> None:
     dispose_calls = 0
 

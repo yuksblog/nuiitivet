@@ -62,6 +62,7 @@ class PopupBox(Widget):
         is_open: Optional["Observable[bool]"] = None,
         passthrough: bool = False,
         dismiss_on_outside_tap: bool | None = None,
+        anchor_passthrough: bool = False,
         target_anchor: AlignmentLike = "bottom-left",
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
@@ -80,6 +81,9 @@ class PopupBox(Widget):
             passthrough: Whether input reaches the content behind the popup.
             dismiss_on_outside_tap: Whether an outside tap closes the popup.
                 ``None`` resolves to ``not passthrough``.
+            anchor_passthrough: Whether the anchor's rect is exempted from the
+                blocking layer, so a tap there reaches the anchor instead of
+                counting as an outside tap.
             target_anchor: Reference point on the anchor widget.
             content_anchor: Reference point on the popup content.
             offset: Additional ``(dx, dy)`` offset in pixels.
@@ -101,6 +105,7 @@ class PopupBox(Widget):
         self._transition_spec = transition_spec
         self._passthrough = bool(passthrough)
         self._dismiss_on_outside_tap = _resolve_dismiss_on_outside_tap(self._passthrough, dismiss_on_outside_tap)
+        self._anchor_passthrough = bool(anchor_passthrough)
 
         # Handle returned by Overlay.show(); None when the overlay is closed.
         self._handle: Optional["OverlayHandle[Any]"] = None
@@ -184,6 +189,7 @@ class PopupBox(Widget):
             self._content,
             passthrough=self._passthrough,
             dismiss_on_outside_tap=self._dismiss_on_outside_tap,
+            passthrough_rect=self._rect_provider if self._anchor_passthrough else None,
             position=position,
             transition_spec=self._transition_spec,
         )
@@ -312,6 +318,7 @@ class PopupModifier(ModifierElement):
     is_open: Optional["Observable[bool]"] = None
     passthrough: bool = False
     dismiss_on_outside_tap: bool | None = None
+    anchor_passthrough: bool = False
     target_anchor: AlignmentLike = "bottom-left"
     content_anchor: AlignmentLike = "top-left"
     offset: Tuple[float, float] = (0.0, 0.0)
@@ -334,6 +341,7 @@ class PopupModifier(ModifierElement):
             is_open=self.is_open,
             passthrough=self.passthrough,
             dismiss_on_outside_tap=self.dismiss_on_outside_tap,
+            anchor_passthrough=self.anchor_passthrough,
             target_anchor=self.target_anchor,
             content_anchor=self.content_anchor,
             offset=self.offset,
@@ -351,6 +359,7 @@ def popup(
     is_open: Optional["Observable[bool]"] = None,
     passthrough: bool = False,
     dismiss_on_outside_tap: bool | None = None,
+    anchor_passthrough: bool = False,
     target_anchor: AlignmentLike = "bottom-left",
     content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
@@ -384,6 +393,14 @@ def popup(
         dismiss_on_outside_tap: Whether an outside tap closes the popup.
             ``None`` (the default) resolves to ``not passthrough``, so each of
             the two legal combinations is spellable with a single flag.
+        anchor_passthrough: The ``passthrough`` axis scoped to the anchor's
+            rect: ``True`` exempts it from the blocking layer, so a tap there
+            reaches the anchor instead of counting as an outside tap. Use it
+            when the tap *means something on* the anchor — a search field
+            where a click moves the caret. ``False`` (the default) suits a
+            toggle anchor — a menu button re-tapped to put the menu away.
+            Inert with ``passthrough=True``, where nothing is blocked to
+            begin with.
         target_anchor: Reference point on the anchor widget (default
             ``"bottom-left"``).
         content_anchor: Reference point on the content widget (default
@@ -431,6 +448,7 @@ def popup(
         is_open=is_open,
         passthrough=passthrough,
         dismiss_on_outside_tap=dismiss_on_outside_tap,
+        anchor_passthrough=anchor_passthrough,
         target_anchor=target_anchor,
         content_anchor=content_anchor,
         offset=offset,

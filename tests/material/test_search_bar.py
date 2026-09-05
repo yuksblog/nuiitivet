@@ -52,6 +52,16 @@ def _settle(pane: _SearchPane) -> None:
     pane._margin._value.value = pane._margin.target
 
 
+def _announce_focus(docked: DockedSearchBar, focused: bool, source: FocusSource = FocusSource.KEYBOARD) -> None:
+    """Deliver a focus announcement the way the editable's FocusNode does.
+
+    Announcements are the trigger, not ``core.focused`` transitions: a pointer
+    press on the already-focused bar re-announces ``focused=True``, which a
+    transition-based trigger would deduplicate away.
+    """
+    docked._core._editable._handle_focus_change(focused, source)
+
+
 # ===========================================================================
 # Styles
 # ===========================================================================
@@ -281,7 +291,7 @@ class TestDockedSearchBar:
         try:
             assert docked.is_open.value is False
 
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             assert docked.is_open.value is True
         finally:
             docked.unmount()
@@ -289,8 +299,8 @@ class TestDockedSearchBar:
     def test_closes_on_blur(self):
         docked = _mount(self._docked())
         try:
-            docked._core.focused.value = True
-            docked._core.focused.value = False
+            _announce_focus(docked, True)
+            _announce_focus(docked, False)
             assert docked.is_open.value is False
         finally:
             docked.unmount()
@@ -300,7 +310,7 @@ class TestDockedSearchBar:
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), is_open=panel))
         try:
             assert docked.is_open is panel
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             assert panel.value is True
         finally:
             docked.unmount()
@@ -313,7 +323,7 @@ class TestDockedSearchBar:
         """
         docked = _mount(self._docked())
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked.is_open.value = False  # the app closes it
 
             docked._core._editable._handle_text("a")
@@ -325,7 +335,7 @@ class TestDockedSearchBar:
         """Filling the bar in after a pick must not bring the container back."""
         docked = _mount(self._docked())
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked.is_open.value = False
 
             docked._core.value = "apricot"
@@ -338,7 +348,7 @@ class TestDockedSearchBar:
         query: Observable[str] = Observable("")
         docked = _mount(DockedSearchBar(query, content=Box(width=200, height=100)))
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked.is_open.value = False
 
             query.value = "apricot"
@@ -351,7 +361,7 @@ class TestDockedSearchBar:
         seen: list[str] = []
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), on_submit=seen.append))
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             for ch in "kiwi":
                 docked._core._editable._handle_text(ch)
             docked._core._editable._handle_key("enter", 0)
@@ -371,7 +381,7 @@ class TestDockedSearchBar:
             )
         )
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked._core._editable._handle_text("k")
             docked._core._editable._handle_key("enter", 0)
 
@@ -383,7 +393,7 @@ class TestDockedSearchBar:
     def test_enter_closes_the_container_even_without_an_on_submit(self):
         docked = _mount(self._docked())
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked._core._editable._handle_key("enter", 0)
             assert docked.is_open.value is False
         finally:
@@ -394,7 +404,7 @@ class TestDockedSearchBar:
         seen: list[str] = []
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), on_submit=seen.append))
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked._core._editable._handle_text("k")
             docked._core._editable._handle_key("enter", 0)
             assert seen == ["k"]
@@ -413,13 +423,53 @@ class TestDockedSearchBar:
         seen: list[str] = []
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), on_submit=seen.append))
         try:
-            docked._core.focused.value = True
+            _announce_focus(docked, True)
             docked._core._editable._handle_text("k")
             docked._core._editable._handle_focus_change(False, FocusSource.POINTER)
 
             assert seen == []
         finally:
             docked.unmount()
+
+    def test_a_tap_on_the_focused_bar_reopens_a_closed_container(self):
+        """The pointer half of the reopen gap.
+
+        Enter closed the container and focus never left the bar, so the tap's
+        only trace is a re-announced ``focused=True`` — focus itself cannot
+        change. That announcement must reopen the container.
+        """
+        docked = _mount(self._docked())
+        try:
+            _announce_focus(docked, True)
+            docked._core._editable._handle_key("enter", 0)
+            assert docked.is_open.value is False
+
+            _announce_focus(docked, True, FocusSource.POINTER)
+            assert docked.is_open.value is True
+        finally:
+            docked.unmount()
+
+    def test_the_application_still_sees_focus_changes(self):
+        """The container trigger wraps, not replaces, the app's callback."""
+        seen: list[tuple[bool, FocusSource]] = []
+        docked = _mount(
+            DockedSearchBar(
+                content=Box(width=200, height=100),
+                on_focus_change=lambda f, s: seen.append((f, s)),
+            )
+        )
+        try:
+            _announce_focus(docked, True, FocusSource.POINTER)
+            assert seen == [(True, FocusSource.POINTER)]
+            assert docked.is_open.value is True
+        finally:
+            docked.unmount()
+
+    def test_the_anchor_bar_is_not_an_outside_tap(self):
+        """A click into the open bar moves the caret; it must not dismiss."""
+        docked = self._docked()
+        popup_box = docked.build()._child
+        assert popup_box._anchor_passthrough is True
 
     def test_enter_is_left_alone_when_it_would_do_nothing(self):
         """No submit handler and no close: the key stays free for a shortcut."""
