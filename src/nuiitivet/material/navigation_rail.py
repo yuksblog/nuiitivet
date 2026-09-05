@@ -17,7 +17,6 @@ from nuiitivet.widgets.interaction import (
     FocusNodePolicy,
     FocusScope,
     InteractionHostMixin,
-    InteractionState,
 )
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.styles.navigation_rail_style import NavigationRailStyle
@@ -644,6 +643,49 @@ class _RailItemButton(InteractiveWidget):
             self._badge_widget.paint(canvas, x + bx, y + by, bw, bh)
 
 
+class _RailMenuButton(InteractiveWidget):
+    """Expand/collapse toggle at the top of the rail.
+
+    A standalone control, not a member of the rail's item scope: it is an
+    ordinary Tab stop of its own, placed before the item group in tree order to
+    match its visual position. ``InteractiveWidget`` brings the Enter/Space
+    activation, the state layer and the keyboard-only focus ring.
+
+    The widget spans the full ``size`` slot so the pointer target stays large,
+    but the state layer and focus ring are drawn as a ``state_layer_size``
+    circle centered in it — the standard icon button treatment.
+    """
+
+    def __init__(
+        self,
+        icon: Widget,
+        on_click: Callable[[], None],
+        size: float,
+        state_layer_size: float,
+    ) -> None:
+        self._state_layer_size = min(float(state_layer_size), float(size))
+        super().__init__(
+            child=icon,
+            on_click=on_click,
+            width=Sizing.fixed(size),
+            height=Sizing.fixed(size),
+            padding=0,
+            # Fully round: the state layer and focus ring follow this radius.
+            corner_radius=self._state_layer_size / 2.0,
+            alignment="center",
+        )
+
+    def _state_layer_rect(self, x: int, y: int, width: int, height: int) -> Tuple[int, int, int, int]:
+        d = int(round(self._state_layer_size))
+        return (x + (width - d) // 2, y + (height - d) // 2, d, d)
+
+    def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        super().draw_state_layer(canvas, *self._state_layer_rect(x, y, width, height))
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        super().draw_focus_indicator(canvas, *self._state_layer_rect(x, y, width, height))
+
+
 class _NavigationRailLayout(Widget):
     """Custom deterministic layout for NavigationRail."""
 
@@ -651,7 +693,7 @@ class _NavigationRailLayout(Widget):
         self,
         *,
         menu_button: Optional[Widget],
-        item_buttons: Sequence[_RailItemButton],
+        item_group: "_RailItemGroup",
         animation: Animatable,
         style: NavigationRailStyle,
     ) -> None:
@@ -659,21 +701,20 @@ class _NavigationRailLayout(Widget):
 
         Args:
             menu_button: Optional menu button widget.
-            item_buttons: Rail item button widgets.
+            item_group: The group widget holding the rail item buttons.
             animation: Expand animation controller.
             style: Effective navigation rail style.
         """
         super().__init__(width=Sizing.weight(1), height=Sizing.weight(1), padding=0)
         self._menu_button = menu_button
-        self._item_buttons = list(item_buttons)
+        self._item_group = item_group
         self._animation = animation
         self._style = style
         self._expand_subscription = animation.subscribe(self._on_animation_tick)
 
         if menu_button is not None:
             self.add_child(menu_button)
-        for item in self._item_buttons:
-            self.add_child(item)
+        self.add_child(item_group)
 
         self.on_dispose(self.dispose)
 
@@ -694,10 +735,7 @@ class _NavigationRailLayout(Widget):
         if self._menu_button is not None:
             height += float(self._style.menu_button_size) + gap
 
-        item_count = len(self._item_buttons)
-        if item_count > 0:
-            height += item_count * float(self._style.item_height)
-            height += (item_count - 1) * gap
+        height += self._item_group.stacked_height(gap)
 
         width = float(self._style.container_width_collapsed)
 
@@ -734,17 +772,24 @@ class _NavigationRailLayout(Widget):
             cursor_collapsed += menu_size + gap_collapsed
             cursor_expanded += menu_size + gap_expanded
 
-        for item in self._item_buttons:
-            item_rect = lerp_rect(
-                Rect(x=0.0, y=cursor_collapsed, width=float(width), height=float(self._style.item_height)),
-                Rect(x=0.0, y=cursor_expanded, width=float(width), height=float(self._style.item_height)),
-                t,
-            )
-            item_rect_i = item_rect.to_int_tuple()
-            item.layout(item_rect_i[2], item_rect_i[3])
-            item.set_layout_rect(item_rect_i[0], item_rect_i[1], item_rect_i[2], item_rect_i[3])
-            cursor_collapsed += float(self._style.item_height) + gap_collapsed
-            cursor_expanded += float(self._style.item_height) + gap_expanded
+        group_rect = lerp_rect(
+            Rect(
+                x=0.0,
+                y=cursor_collapsed,
+                width=float(width),
+                height=self._item_group.stacked_height(gap_collapsed),
+            ),
+            Rect(
+                x=0.0,
+                y=cursor_expanded,
+                width=float(width),
+                height=self._item_group.stacked_height(gap_expanded),
+            ),
+            t,
+        )
+        group_rect_i = group_rect.to_int_tuple()
+        self._item_group.layout(group_rect_i[2], group_rect_i[3])
+        self._item_group.set_layout_rect(group_rect_i[0], group_rect_i[1], group_rect_i[2], group_rect_i[3])
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
@@ -785,6 +830,82 @@ class _RailTraversalPolicy(FocusNodePolicy):
         if 0 <= index < len(self.members()):
             return index
         return super().entry_index(backwards)
+
+
+class _RailItemGroup(InteractionHostMixin, Widget):
+    """The rail's destinations: one focus traversal group with its own Tab stop.
+
+    The group's ``FocusNode``/``FocusScope`` live here rather than on the rail
+    root for the menu button's sake: Tab stops are collected in tree order, so
+    the menu button above the items must precede the group's stop, and the
+    scope of a focused node is resolved by walking its ancestors, so the scope
+    must not enclose the menu button.
+    """
+
+    def __init__(
+        self,
+        *,
+        item_buttons: Sequence[_RailItemButton],
+        animation: Animatable,
+        style: NavigationRailStyle,
+        focus_node: FocusNode,
+        focus_scope: FocusScope,
+    ) -> None:
+        super().__init__(width=Sizing.weight(1), height=Sizing.weight(1), padding=0)
+        self._item_buttons = list(item_buttons)
+        self._animation = animation
+        self._style = style
+
+        self.add_node(focus_node)
+        self.add_node(focus_scope)
+
+        for item in self._item_buttons:
+            self.add_child(item)
+
+    def stacked_height(self, gap: float) -> float:
+        """Return the items' stacked height with ``gap`` between them."""
+        count = len(self._item_buttons)
+        if count == 0:
+            return 0.0
+        return count * float(self._style.item_height) + (count - 1) * gap
+
+    def layout(self, width: int, height: int) -> None:
+        Widget.layout(self, width, height)
+
+        t = _clamp01(self._animation.value)
+        item_height = float(self._style.item_height)
+        step_collapsed = item_height + float(self._style.gap_collapsed)
+        step_expanded = item_height + float(self._style.gap_expanded)
+
+        cursor_collapsed = 0.0
+        cursor_expanded = 0.0
+        for item in self._item_buttons:
+            item_rect = lerp_rect(
+                Rect(x=0.0, y=cursor_collapsed, width=float(width), height=item_height),
+                Rect(x=0.0, y=cursor_expanded, width=float(width), height=item_height),
+                t,
+            )
+            item_rect_i = item_rect.to_int_tuple()
+            item.layout(item_rect_i[2], item_rect_i[3])
+            item.set_layout_rect(item_rect_i[0], item_rect_i[1], item_rect_i[2], item_rect_i[3])
+            cursor_collapsed += step_collapsed
+            cursor_expanded += step_expanded
+
+    def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        self.set_last_rect(x, y, width, height)
+
+        if any(child.layout_rect is None for child in self.children):
+            return
+
+        for child in self.children_snapshot():
+            rect = child.layout_rect
+            if rect is None:
+                continue
+            rel_x, rel_y, child_w, child_h = rect
+            cx = x + rel_x
+            cy = y + rel_y
+            child.set_last_rect(cx, cy, child_w, child_h)
+            child.paint(canvas, cx, cy, child_w, child_h)
 
 
 class NavigationRail(InteractionHostMixin, Widget):
@@ -889,18 +1010,20 @@ class NavigationRail(InteractionHostMixin, Widget):
         if width_warning is not None:
             warning_once(logger, width_warning[0], width_warning[1])
 
-        # The rail is one focus traversal group (WAI-ARIA tabs, manual
+        # The items are one focus traversal group (WAI-ARIA tabs, manual
         # activation): a single Tab stop entered at the selected item, with
         # Up/Down roving the focus between the items — wrapping at the ends —
         # and Enter/Space selecting the focused one. Roving deliberately does
         # not move the selection: selecting a destination navigates, which is
-        # too heavy an action to fire on every arrow press.
+        # too heavy an action to fire on every arrow press. The nodes are
+        # created here but attached to the item-group widget each rebuild (see
+        # ``_RailItemGroup``); the menu button is a separate ordinary Tab stop.
         self._focus_node = FocusNode(on_key=self.on_key_event)
-        self.add_node(self._focus_node)
         self._focus_scope = FocusScope(_RailTraversalPolicy(self), tab_roves=False)
-        self.add_node(self._focus_scope)
 
         self._item_buttons: list[_RailItemButton] = []
+        self._item_group: Optional[_RailItemGroup] = None
+        self._menu_button: Optional[_RailMenuButton] = None
 
         self._rail_items: Sequence[RailItem] = list(children)
         self.on_select = on_select
@@ -998,6 +1121,7 @@ class NavigationRail(InteractionHostMixin, Widget):
         eff_style = self.style or NavigationRailStyle()
         if self.show_menu_button:
             menu_button = self._build_menu_button()
+        self._menu_button = menu_button
 
         # Build rail items.
         item_buttons = []
@@ -1019,9 +1143,18 @@ class NavigationRail(InteractionHostMixin, Widget):
             item_buttons.append(button)
         self._item_buttons = item_buttons
 
+        item_group = _RailItemGroup(
+            item_buttons=item_buttons,
+            animation=self._expand_animation,
+            style=eff_style,
+            focus_node=self._focus_node,
+            focus_scope=self._focus_scope,
+        )
+        self._item_group = item_group
+
         rail_layout = _NavigationRailLayout(
             menu_button=menu_button,
-            item_buttons=item_buttons,
+            item_group=item_group,
             animation=self._expand_animation,
             style=eff_style,
         )
@@ -1050,7 +1183,7 @@ class NavigationRail(InteractionHostMixin, Widget):
             return int(self._expanded_width)
         return int(eff_style.container_width_collapsed)
 
-    def _build_menu_button(self) -> Widget:
+    def _build_menu_button(self) -> _RailMenuButton:
         """Build the menu toggle button."""
         if self._menu_icon_name is None:
             self._menu_icon_name = _ObservableValue("menu_open" if self._is_expanded else "menu")
@@ -1062,20 +1195,12 @@ class NavigationRail(InteractionHostMixin, Widget):
             rotate(self._menu_rotation)
         )
 
-        # Wrap with InteractionHostMixin for click handling.
-        class MenuButton(InteractionHostMixin, Box):
-            def __init__(self, child: Widget, on_click: Callable[[], None]):
-                super().__init__(
-                    child=child,
-                    width=Sizing.fixed(eff_style.menu_button_size),
-                    height=Sizing.fixed(eff_style.menu_button_size),
-                    alignment="center",
-                )
-                self._state = InteractionState(disabled=False)
-                self.enable_hover()
-                self.enable_click(on_click=on_click)
-
-        return MenuButton(icon, self._toggle_expanded)
+        return _RailMenuButton(
+            icon,
+            self._toggle_expanded,
+            eff_style.menu_button_size,
+            eff_style.menu_state_layer_size,
+        )
 
     def _toggle_expanded(self) -> None:
         """Toggle expanded state."""
