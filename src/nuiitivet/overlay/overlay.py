@@ -22,7 +22,13 @@ from nuiitivet.observable import runtime
 from nuiitivet.navigation import Route
 from nuiitivet.navigation.stack_runtime import RouteStackRuntime
 from nuiitivet.navigation.transition_engine import TransitionEngine
-from nuiitivet.navigation.transition_spec import EmptyTransitionSpec, TransitionPhase, TransitionSpec, Transitions
+from nuiitivet.navigation.transition_spec import (
+    EmptyTransitionSpec,
+    TransitionPhase,
+    TransitionSpec,
+    Transitions,
+    resolve_phase_motion,
+)
 from nuiitivet.common.logging_once import exception_once
 from .overlay_aware import OverlayAware
 from .overlay_entry import OverlayEntry
@@ -266,17 +272,13 @@ class _OverlayEntryRoute(Route):
         )
 
     def _get_motion(self, phase: TransitionPhase) -> Any | None:
-        try:
-            definition = getattr(self.transition_spec, phase.value, None)
-            if definition is None:
-                return None
-            return getattr(definition, "motion", None)
-        except Exception:
-            return None
+        return resolve_phase_motion(self.transition_spec, phase)
 
     def _apply_progress(self, value: float, *, on_update: Callable[[], None]) -> None:
-        clamped = max(0.0, min(1.0, float(value)))
-        self.transition_progress_obs.value = clamped
+        # Values above 1.0 are kept: expressive spatial motions overshoot their
+        # target and settle, and the visual resolver extrapolates spatial
+        # patterns through that settle. Only the lower bound is pinned.
+        self.transition_progress_obs.value = max(0.0, float(value))
         on_update()
 
     def _finish_enter(self, *, on_update: Callable[[], None], on_complete: Callable[[], None]) -> None:

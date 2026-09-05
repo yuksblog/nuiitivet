@@ -162,7 +162,12 @@ class TransitionEngine:
         if active is None:
             return
 
-        if abs(float(value) - self._target) <= self._epsilon:
+        # Completion requires exact arrival, not epsilon proximity: an
+        # overshooting motion crosses the target mid-flight and settles back,
+        # and a proximity band would (rarely, flakily) finish on a crossing
+        # sample. Animatable emits the exact target value when its motion
+        # reports done, so equality is the reliable completion signal.
+        if float(value) == self._target:
             self._finish_if_active(active)
 
     def _emit_value(self, value: float) -> None:

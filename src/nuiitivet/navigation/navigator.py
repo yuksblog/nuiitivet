@@ -15,17 +15,9 @@ from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionC
 from .route import Route
 from .stack_runtime import RouteStackRuntime
 from .transition_engine import TransitionEngine, TransitionHandle
-from .transition_spec import EmptyTransitionSpec, TransitionPhase
+from .transition_spec import EmptyTransitionSpec, TransitionPhase, resolve_phase_motion
 
 _logger = logging.getLogger(__name__)
-
-# Transition phase → spec attribute name. The exit definition is stored under
-# ``exit_`` (``exit`` is a builtin), so a bare ``getattr(phase.value)`` would
-# miss it and fall back to the engine default motion.
-_TRANSITION_PHASE_ATTR: dict[TransitionPhase, str] = {
-    TransitionPhase.ENTER: "enter",
-    TransitionPhase.EXIT: "exit_",
-}
 
 # Lets ``of()`` keep the concrete subclass type, so that
 # ``MaterialNavigator.of(...)`` is a ``MaterialNavigator`` and not a ``Navigator``.
@@ -341,20 +333,8 @@ class Navigator(ComposableWidget):
         transition.progress = float(value)
         self.invalidate()
 
-    def _get_motion(self, route: Route, phase: TransitionPhase) -> Any | None:
-        # Phase → spec attribute. The exit definition lives under ``exit_``
-        # (trailing underscore), so ``phase.value`` ("exit") would miss. Mirror
-        # the mapping in ``material/transition_visual_spec.py``.
-        attr = _TRANSITION_PHASE_ATTR.get(phase)
-        if attr is None:
-            return None
-        try:
-            definition = getattr(route.transition_spec, attr, None)
-            if definition is None:
-                return None
-            return getattr(definition, "motion", None)
-        except Exception:
-            return None
+    def _get_motion(self, route: Route, phase: TransitionPhase, *, back: bool = False) -> Any | None:
+        return resolve_phase_motion(route.transition_spec, phase, back=back)
 
     def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
         self._cancel_transition()
@@ -639,7 +619,7 @@ class Navigator(ComposableWidget):
                 target=0.0,
                 apply=self._on_transition_progress,
                 on_complete=self._finish_pop,
-                motion=self._get_motion(outgoing, TransitionPhase.EXIT),
+                motion=self._get_motion(outgoing, TransitionPhase.EXIT, back=True),
             )
             self.mark_needs_layout()
             self.invalidate()
@@ -792,10 +772,12 @@ def _clamp01(value: float) -> float:
 
 
 def _transition_phase_progress(transition: _NavTransition) -> tuple[TransitionPhase, TransitionPhase, float] | None:
+    # Only the lower bound is pinned: overshooting motions run past 1.0 and
+    # settle, and the visual resolver extrapolates spatial patterns through it.
     if transition.kind == "push":
-        p = _clamp01(transition.progress)
+        p = max(0.0, transition.progress)
         return (TransitionPhase.EXIT, TransitionPhase.ENTER, p)
     if transition.kind == "pop":
-        p = _clamp01(1.0 - transition.progress)
+        p = max(0.0, 1.0 - transition.progress)
         return (TransitionPhase.EXIT, TransitionPhase.ENTER, p)
     return None
