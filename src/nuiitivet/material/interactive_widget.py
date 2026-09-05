@@ -212,6 +212,17 @@ class InteractiveWidget(Clickable):
 
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
         """Draws the MD3 Focus Indicator (Ring) when focused."""
+        self.draw_focus_ring(canvas, x, y, width, height, list(self.corner_radii_pixels(width, height)))
+
+    def draw_focus_ring(self, canvas, x: float, y: float, width: float, height: float, radii: list[float]):
+        """Draw the standard focus ring just outside the given rect.
+
+        ``radii`` are the corner radii of the rect the ring hugs; pass
+        ``[d / 2.0] * 4`` for a circular ring around a circle of diameter
+        ``d``. Widgets whose ring should follow a shape other than their
+        bounds (e.g. a state-layer circle) override ``draw_focus_indicator``
+        and delegate here with their own geometry.
+        """
         try:
             # Focus ring color is usually Secondary
             from nuiitivet.theme.theme import Theme
@@ -235,10 +246,9 @@ class InteractiveWidget(Clickable):
             rect = make_rect(x - inflate, y - inflate, width + (inflate * 2), height + (inflate * 2))
 
             # Adjust corner radii for the outer ring
-            original_radii = list(self.corner_radii_pixels(width, height))
-            radii = [r + inflate for r in original_radii]
+            out_radii = [r + inflate for r in radii]
 
-            draw_round_rect(canvas, rect, radii, paint)
+            draw_round_rect(canvas, rect, out_radii, paint)
 
         except Exception:
             exception_once(logger, "interactive_widget_focus_ring_exc", "Failed to draw focus indicator")

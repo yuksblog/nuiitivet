@@ -376,9 +376,6 @@ class Checkbox(Toggleable, InteractiveWidget):
             icon_x = cx + (touch_sz - icon_sz) // 2
             icon_y = cy + (touch_sz - icon_sz) // 2
 
-            focus_stroke = max(1.0, float(3.0 * (touch_sz / 48.0)))
-            focus_offset = float(2.0 * (touch_sz / 48.0))
-
             from nuiitivet.theme.theme import Theme
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
@@ -420,24 +417,8 @@ class Checkbox(Toggleable, InteractiveWidget):
             if rect is not None and stroke_p is not None:
                 draw_round_rect(canvas, rect, corner, stroke_p)
 
-            if is_keyboard_focus:
-                focus_alpha = 0.12
-                prim = roles.get(ColorRole.PRIMARY, "#000000")
-                focus_col = skcolor(prim, focus_alpha)
-                focus_p = make_paint(color=focus_col, style="stroke", stroke_width=focus_stroke, aa=True)
-                try:
-                    radius = float(state_diam / 2.0 + focus_offset + (focus_stroke / 2.0))
-                    canvas.drawCircle(
-                        cx + touch_sz / 2.0,
-                        cy + touch_sz / 2.0,
-                        radius,
-                        focus_p,
-                    )
-                except Exception:
-                    ox = cx + touch_sz / 2.0 - (state_diam / 2.0 + 4.0)
-                    oy = cy + touch_sz / 2.0 - (state_diam / 2.0 + 4.0)
-                    side = state_diam + 8.0
-                    draw_oval(canvas, make_rect(ox, oy, side, side), focus_p)
+            if not self.disabled and is_keyboard_focus:
+                self.draw_focus_indicator(canvas, x, y, width, height)
 
             val = self.value
             selection_progress = self._get_selection_progress()
@@ -498,6 +479,19 @@ class Checkbox(Toggleable, InteractiveWidget):
         except Exception:
             exception_once(_logger, "checkbox_paint_exc", "Checkbox paint raised")
             return
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        """Draw the standard focus ring around the state-layer circle."""
+        content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
+        touch_sz = min(content_w, content_h)
+        if touch_sz <= 0:
+            return
+        cx = content_x + (content_w - touch_sz) // 2
+        cy = content_y + (content_h - touch_sz) // 2
+        diameter = float(cast(float, self.style.compute_sizes(touch_sz)["state_layer_size"]))
+        ring_x = cx + (touch_sz - diameter) / 2.0
+        ring_y = cy + (touch_sz - diameter) / 2.0
+        self.draw_focus_ring(canvas, ring_x, ring_y, diameter, diameter, [diameter / 2.0] * 4)
 
 
 class _RadioTraversalPolicy(FocusNodePolicy):
@@ -902,27 +896,23 @@ class RadioButton(Toggleable, InteractiveWidget):
                 if dot_rect is not None and dot_paint is not None:
                     draw_oval(canvas, dot_rect, dot_paint)
 
-            if self.should_show_focus_ring:
-                focus_stroke = float(cast(float, sizes["focus_stroke"]))
-                focus_offset = float(cast(float, sizes["focus_offset"]))
-                focus_color = roles.get(ColorRole.PRIMARY, "#000000")
-                focus_size = state_layer_size + (focus_offset * 2.0)
-                focus_rect = make_rect(
-                    cx + (touch_sz - focus_size) / 2.0,
-                    cy + (touch_sz - focus_size) / 2.0,
-                    focus_size,
-                    focus_size,
-                )
-                focus_paint = make_paint(
-                    color=skcolor(focus_color, self.style.focus_alpha),
-                    style="stroke",
-                    stroke_width=focus_stroke,
-                    aa=True,
-                )
-                if focus_rect is not None and focus_paint is not None:
-                    draw_oval(canvas, focus_rect, focus_paint)
+            if not self.disabled and self.should_show_focus_ring:
+                self.draw_focus_indicator(canvas, x, y, width, height)
         except Exception:
             exception_once(_logger, "radio_button_paint_exc", "RadioButton paint raised")
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        """Draw the standard focus ring around the state-layer circle."""
+        content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
+        touch_sz = min(content_w, content_h)
+        if touch_sz <= 0:
+            return
+        cx = content_x + (content_w - touch_sz) // 2
+        cy = content_y + (content_h - touch_sz) // 2
+        diameter = float(cast(float, self.style.compute_sizes(touch_sz)["state_layer_size"]))
+        ring_x = cx + (touch_sz - diameter) / 2.0
+        ring_y = cy + (touch_sz - diameter) / 2.0
+        self.draw_focus_ring(canvas, ring_x, ring_y, diameter, diameter, [diameter / 2.0] * 4)
 
 
 class Switch(Toggleable, InteractiveWidget):
@@ -1050,6 +1040,26 @@ class Switch(Toggleable, InteractiveWidget):
             total_h = min(int(total_h), int(max_height))
         return (int(total_w), int(total_h))
 
+    def paint_outsets(self) -> Tuple[int, int, int, int]:
+        """Extend the overflow allowance for the track's sideways overhang.
+
+        The track is wider than the touch target and the focus ring sits
+        outside the track, so the base ring-only allowance would clip the
+        ring's left and right edges.
+        """
+        import math
+
+        base = super().paint_outsets()
+        try:
+            sizes = self.style.compute_sizes(self._touch_target_size)
+            track_overflow = (float(cast(float, sizes["track_width"])) - float(self._touch_target_size)) / 2.0
+        except Exception:
+            track_overflow = 0.0
+        if track_overflow <= 0:
+            return base
+        extra = int(math.ceil(track_overflow))
+        return (base[0] + extra, base[1], base[2] + extra, base[3])
+
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint switch with animated thumb and track."""
         try:
@@ -1167,27 +1177,33 @@ class Switch(Toggleable, InteractiveWidget):
             if thumb_rect is not None and thumb_paint is not None:
                 draw_oval(canvas, thumb_rect, thumb_paint)
 
-            if self.should_show_focus_ring:
-                focus_stroke = float(cast(float, sizes["focus_stroke"]))
-                focus_offset = float(cast(float, sizes["focus_offset"]))
-                focus_color = roles.get(ColorRole.PRIMARY, "#000000")
-                focus_size = state_layer_size + (focus_offset * 2.0)
-                focus_rect = make_rect(
-                    thumb_x + (thumb_d - focus_size) / 2.0,
-                    thumb_y + (thumb_d - focus_size) / 2.0,
-                    focus_size,
-                    focus_size,
-                )
-                focus_paint = make_paint(
-                    color=skcolor(focus_color, self.style.focus_alpha),
-                    style="stroke",
-                    stroke_width=focus_stroke,
-                    aa=True,
-                )
-                if focus_rect is not None and focus_paint is not None:
-                    draw_oval(canvas, focus_rect, focus_paint)
+            if not self.disabled and self.should_show_focus_ring:
+                self.draw_focus_indicator(canvas, x, y, width, height)
         except Exception:
             exception_once(_logger, "switch_paint_exc", "Switch paint raised")
+
+    def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        """Draw the standard focus ring around the track.
+
+        Unlike Checkbox/RadioButton, the MD3 switch ring hugs the track
+        outline rather than the thumb's state-layer circle, so it is a pill
+        shape that stays put as the thumb moves.
+        """
+        content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
+        touch_sz = min(content_w, content_h)
+        if touch_sz <= 0:
+            return
+        cx = content_x + (content_w - touch_sz) // 2
+        cy = content_y + (content_h - touch_sz) // 2
+
+        sizes = self.style.compute_sizes(touch_sz)
+        track_w = float(cast(float, sizes["track_width"]))
+        track_h = float(cast(float, sizes["track_height"]))
+
+        track_x = cx + (touch_sz - track_w) / 2.0
+        track_y = cy + (touch_sz - track_h) / 2.0
+
+        self.draw_focus_ring(canvas, track_x, track_y, track_w, track_h, [track_h / 2.0] * 4)
 
 
 __all__ = ["Checkbox", "RadioGroup", "RadioButton", "Switch"]

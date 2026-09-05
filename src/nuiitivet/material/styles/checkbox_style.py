@@ -53,12 +53,6 @@ class CheckboxStyle:
     hover_alpha: float = 0.08
     pressed_alpha: float = 0.12
 
-    # Focus indicator (M3 spec: 3dp stroke, 2dp offset at 48dp touch target)
-    focus_stroke_ratio: float = 3.0 / 48.0  # Focus stroke relative to touch target
-    focus_offset_ratio: float = 2.0 / 48.0  # Focus offset relative to touch target
-    focus_alpha: float = 0.12
-    focus_color: ColorSpec = ColorRole.PRIMARY
-
     def copy_with(self, **changes) -> "CheckboxStyle":
         """Create a new style instance with specified fields changed."""
         return replace(self, **changes)
@@ -72,7 +66,6 @@ class CheckboxStyle:
             "checked_foreground": resolve_color_to_rgba(self.checked_foreground, theme=theme),
             "disabled_color": resolve_color_to_rgba(self.disabled_color, theme=theme),
             "disabled_mark": resolve_color_to_rgba(self.disabled_mark, theme=theme),
-            "focus_color": resolve_color_to_rgba(self.focus_color, theme=theme),
         }
 
     def compute_sizes(self, touch_target_size: int) -> dict:
@@ -81,8 +74,6 @@ class CheckboxStyle:
         corner = max(1.0, float(icon_sz) * self.corner_radius_ratio)
         stroke_w = max(1.0, float(icon_sz) * self.stroke_width_ratio)
         state_diam = touch_target_size * self.state_layer_ratio
-        focus_stroke = max(1.0, float(touch_target_size) * self.focus_stroke_ratio)
-        focus_offset = float(touch_target_size) * self.focus_offset_ratio
 
         return {
             "icon_size": icon_sz,
@@ -90,8 +81,6 @@ class CheckboxStyle:
             "stroke_width": stroke_w,
             "state_layer_diameter": state_diam,
             "state_layer_size": state_diam,
-            "focus_stroke": focus_stroke,
-            "focus_offset": focus_offset,
         }
 
 

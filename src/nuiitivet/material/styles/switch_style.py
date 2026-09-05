@@ -51,11 +51,6 @@ class SwitchStyle:
     hover_alpha: float = 0.08
     pressed_alpha: float = 0.12
 
-    focus_stroke_ratio: float = 3.0 / 48.0
-    focus_offset_ratio: float = 2.0 / 48.0
-    focus_alpha: float = 0.12
-    focus_color: ColorSpec = ColorRole.PRIMARY
-
     def copy_with(self, **changes) -> "SwitchStyle":
         """Create a new style instance with specified fields changed."""
         return replace(self, **changes)
@@ -76,7 +71,6 @@ class SwitchStyle:
                 theme=theme,
             ),
             "disabled_unchecked_thumb": resolve_color_to_rgba(self.disabled_unchecked_thumb, theme=theme),
-            "focus_color": resolve_color_to_rgba(self.focus_color, theme=theme),
         }
 
     def compute_sizes(self, touch_target_size: int) -> dict[str, float | int]:
@@ -88,8 +82,6 @@ class SwitchStyle:
         thumb_diameter_pressed = max(20.0, float(touch_target_size) * self.thumb_diameter_pressed_ratio)
         track_outline_width = max(1.0, float(touch_target_size) * self.track_outline_width_ratio)
         state_layer_size = float(touch_target_size) * self.state_layer_ratio
-        focus_stroke = max(1.0, float(touch_target_size) * self.focus_stroke_ratio)
-        focus_offset = float(touch_target_size) * self.focus_offset_ratio
 
         return {
             "track_width": track_width,
@@ -100,8 +92,6 @@ class SwitchStyle:
             "thumb_diameter_pressed": thumb_diameter_pressed,
             "track_outline_width": track_outline_width,
             "state_layer_size": state_layer_size,
-            "focus_stroke": focus_stroke,
-            "focus_offset": focus_offset,
         }
 
 
