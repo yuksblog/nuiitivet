@@ -53,9 +53,8 @@ jobs:
             libgl1-mesa-dri \
             libglvnd0
 
-      # The 'dev' extra is included so the MCP server tests actually run: they
-      # start with importorskip('mcp'), so without it the whole module was
-      # silently skipped and #489 reached users unseen.
+      # --extra dev pulls in 'mcp': without it the MCP server tests skip
+      # silently. Redundant with the dev group, kept as the explicit record.
       - name: Sync locked dependencies
         run: uv sync --locked --dev --extra dev
 
@@ -68,11 +67,8 @@ jobs:
       - name: Run pytest
         run: uv run pytest
 
-  # The plugin's async runner defers to pytest-asyncio whenever it is
-  # installed, and it always is in the job above — so the runner itself would
-  # ship untested. This job uninstalls pytest-asyncio and runs the whole
-  # suite: the @pytest.mark.asyncio tests become orphaned markers that the
-  # runner executes (issue #527).
+  # The plugin's async runner defers to pytest-asyncio, which the job above
+  # always installs. Re-run the suite without it so the runner is exercised.
   check-without-pytest-asyncio:
     runs-on: ubuntu-latest
     steps:
