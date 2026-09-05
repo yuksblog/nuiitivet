@@ -28,7 +28,8 @@ from nuiitivet.layout.layout_utils import expand_layout_children
 from nuiitivet.layout.metrics import align_offset
 from nuiitivet.layout.row import Row
 from nuiitivet.material.interactive_widget import InteractiveWidget
-from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, STANDARD_BUTTON_GROUP_WIDTH
+from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
+from nuiitivet.material.styles.button_group_style import STANDARD_BUTTON_GROUP_WIDTH
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import MutableObservableBase, ObservableBase
 from nuiitivet.rendering.sizing import Sizing, SizingLike

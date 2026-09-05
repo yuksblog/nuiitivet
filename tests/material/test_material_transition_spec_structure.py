@@ -12,7 +12,11 @@ from nuiitivet.animation.transition_pattern import (
     CompositePattern,
 )
 from nuiitivet.animation.motion import BezierMotion
-from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
+from nuiitivet.material.motion import (
+    EXPRESSIVE_DEFAULT_SPATIAL,
+    EXPRESSIVE_FAST_EFFECTS,
+    EXPRESSIVE_FAST_SPATIAL,
+)
 
 
 def test_dialog_spec_defaults():
@@ -23,14 +27,34 @@ def test_dialog_spec_defaults():
     assert isinstance(spec.enter, TransitionDefinition)
     assert isinstance(spec.exit_, TransitionDefinition)
 
-    # Check default Dialog Enter: Fade | Scale
+    # Enter: Fade | Scale on spatial timing (scale is the spatial motion).
     assert isinstance(spec.enter.pattern, CompositePattern)
-    # Checking implementation details of defaults slightly, but necessary for verification
-    # Note: CompositePattern structure depends on order (Fade | Scale)
-
-    # Default motion
     assert isinstance(spec.enter.motion, BezierMotion)
-    assert spec.enter.motion.duration == EXPRESSIVE_DEFAULT_EFFECTS.duration
+    assert spec.enter.motion is EXPRESSIVE_DEFAULT_SPATIAL
+
+    # Exit: plain fade-out over a shorter run (effects: the fade is the motion).
+    assert isinstance(spec.exit_.pattern, FadePattern)
+    assert spec.exit_.motion is EXPRESSIVE_FAST_EFFECTS
+    assert spec.exit_.motion.duration < spec.enter.motion.duration
+
+
+def test_snackbar_spec_enter_exit_asymmetry():
+    spec = MaterialTransitions.snackbar()
+
+    assert spec.enter.motion is EXPRESSIVE_FAST_SPATIAL
+    assert spec.exit_.motion is EXPRESSIVE_FAST_EFFECTS
+    assert spec.exit_.motion.duration < spec.enter.motion.duration
+    # Exit drops the slide and only fades.
+    assert isinstance(spec.exit_.pattern, FadePattern)
+
+
+def test_sheet_specs_enter_exit_asymmetry():
+    for spec in (MaterialTransitions.side_sheet(), MaterialTransitions.bottom_sheet()):
+        assert spec.barrier_mode == "fade"
+        assert spec.enter.motion is EXPRESSIVE_DEFAULT_SPATIAL
+        # The slide-out stays spatial; the fast speed keeps it shorter.
+        assert spec.exit_.motion is EXPRESSIVE_FAST_SPATIAL
+        assert spec.exit_.motion.duration < spec.enter.motion.duration
 
 
 def test_dialog_spec_custom():

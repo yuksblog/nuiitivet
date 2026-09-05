@@ -16,12 +16,17 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any, Optional, TYPE_CHECKING, Union
 
+from nuiitivet.animation.motion import Motion
+from nuiitivet.material.motion import SPRING_STANDARD_FAST_SPATIAL
 from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
 if TYPE_CHECKING:
     from nuiitivet.theme import Theme
+
+# Pressed item width spring.
+STANDARD_BUTTON_GROUP_WIDTH: Motion = SPRING_STANDARD_FAST_SPATIAL
 
 # ---------------------------------------------------------------------------
 # Size token tables (M3 spec)
@@ -515,6 +520,7 @@ ButtonGroupStyle = Union[StandardButtonGroupStyle, ConnectedButtonGroupStyle]
 
 __all__ = [
     "ButtonSize",
+    "STANDARD_BUTTON_GROUP_WIDTH",
     "StandardButtonGroupStyle",
     "ConnectedButtonGroupStyle",
     "ButtonGroupStyle",

@@ -10,11 +10,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
-from ..theme.color_role import ColorRole
+from nuiitivet.animation.motion import Motion
+from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.theme.types import ColorSpec
+
+from ..theme.color_role import ColorRole
 
 if TYPE_CHECKING:
     from ...theme import Theme
+
+# Focus margin animation (md.comp.search-bar.contained.motion.spring: fast spatial).
+SEARCH_BAR_FOCUS_MARGIN: Motion = EXPRESSIVE_FAST_SPATIAL
 
 
 @dataclass(frozen=True)

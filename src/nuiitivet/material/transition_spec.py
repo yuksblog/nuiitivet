@@ -8,20 +8,24 @@ from typing import Literal
 
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern, FractionalSlidePattern, ScalePattern, SlidePattern
-from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_SLOW_EFFECTS
+from nuiitivet.material.motion import (
+    EXPRESSIVE_DEFAULT_SPATIAL,
+    EXPRESSIVE_FAST_EFFECTS,
+    EXPRESSIVE_FAST_SPATIAL,
+    EXPRESSIVE_SLOW_EFFECTS,
+)
+
+# Overlay preset policy: entrances run on expressive spatial tokens (slide and
+# scale carry the meaning; the slight overshoot is the settle). Exits run on
+# the fast tokens — effects for pure fade-outs, spatial for slide-outs — so an
+# exit is always shorter than its entrance. A definition has one motion, so a
+# composed fade shares the spatial curve and clamps at full opacity while it
+# settles — an accepted approximation.
 
 
-# MD3 Shared Axis (X) page-transition tokens, following the Material Components
-# for Android implementation:
-#
-# - A subtle, fixed slide distance (30dp) — not a full-width slide. The fade
-#   carries most of the meaning; the slide only signals direction.
-# - "Fade through" timing: the outgoing page fades out over the first 35% of the
-#   transition and the incoming page fades in over the last 65%, so the two are
-#   never both half-opaque at once (which reads as a muddy cross-fade).
-# - Forward (push): incoming enters from the right, outgoing exits to the left.
-#   Backward (pop): reversed — returning page enters from the left, leaving page
-#   exits to the right (see the ``*_back`` variants).
+# MD3 Shared Axis (X): a subtle fixed slide (not full-width) — the fade carries
+# the meaning, the slide only signals direction. The fade windows sequence the
+# two pages ("fade through") so they are never both half-opaque at once.
 _SHARED_AXIS_X_SLIDE = 30.0
 _FADE_THROUGH_THRESHOLD = 0.35
 
@@ -70,33 +74,32 @@ def _default_page_exit_back() -> TransitionDefinition:
 
 def _default_dialog_enter() -> TransitionDefinition:
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_DEFAULT_SPATIAL,
         pattern=FadePattern(start_alpha=0.0, end_alpha=1.0)
-        | ScalePattern(start_scale_x=0.92, start_scale_y=0.92, end_scale_x=1.0, end_scale_y=1.0),
+        | ScalePattern(start_scale_x=0.8, start_scale_y=0.8, end_scale_x=1.0, end_scale_y=1.0),
     )
 
 
 def _default_dialog_exit() -> TransitionDefinition:
+    # Plain fade-out: in MD3's fade pattern the scale only plays on the way in.
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
-        pattern=FadePattern(start_alpha=1.0, end_alpha=0.0)
-        | ScalePattern(start_scale_x=1.0, start_scale_y=1.0, end_scale_x=0.96, end_scale_y=0.96),
+        motion=EXPRESSIVE_FAST_EFFECTS,
+        pattern=FadePattern(start_alpha=1.0, end_alpha=0.0),
     )
 
 
 def _default_snackbar_enter() -> TransitionDefinition:
-    # Emphasized easing for entrance
+    # Fast rather than default spatial: the snackbar is a small component.
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_FAST_SPATIAL,
         pattern=FadePattern(start_alpha=0.0, end_alpha=1.0)
         | SlidePattern(start_x=0.0, start_y=20.0, end_x=0.0, end_y=0.0),
     )
 
 
 def _default_snackbar_exit() -> TransitionDefinition:
-    # Emphasized easing for exit (faster)
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_FAST_EFFECTS,
         pattern=FadePattern(start_alpha=1.0, end_alpha=0.0),
     )
 
@@ -106,7 +109,7 @@ def _default_side_sheet_enter(side: Literal["right", "left"] = "right") -> Trans
     # `side="left"` slides in from the left edge instead.
     sign = 1.0 if side == "right" else -1.0
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_DEFAULT_SPATIAL,
         pattern=FractionalSlidePattern(start_x=sign, end_x=0.0),
     )
 
@@ -114,21 +117,21 @@ def _default_side_sheet_enter(side: Literal["right", "left"] = "right") -> Trans
 def _default_side_sheet_exit(side: Literal["right", "left"] = "right") -> TransitionDefinition:
     sign = 1.0 if side == "right" else -1.0
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_FAST_SPATIAL,
         pattern=FractionalSlidePattern(start_x=0.0, end_x=sign),
     )
 
 
 def _default_bottom_sheet_enter() -> TransitionDefinition:
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_DEFAULT_SPATIAL,
         pattern=FractionalSlidePattern(start_y=1.0, end_y=0.0),
     )
 
 
 def _default_bottom_sheet_exit() -> TransitionDefinition:
     return TransitionDefinition(
-        motion=EXPRESSIVE_DEFAULT_EFFECTS,
+        motion=EXPRESSIVE_FAST_SPATIAL,
         pattern=FractionalSlidePattern(start_y=0.0, end_y=1.0),
     )
 

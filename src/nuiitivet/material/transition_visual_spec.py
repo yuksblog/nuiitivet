@@ -42,8 +42,14 @@ def resolve_material_transition_visual_spec(
             definitions (``enter_back`` / ``exit_back``) are used when present,
             so directional patterns such as Shared Axis (Z) reverse correctly
             instead of replaying the forward motion.
+
+    Progress above ``1.0`` is passed through to the patterns rather than
+    clamped: expressive spatial curves overshoot their target and settle, and
+    slide/scale patterns extrapolate linearly to render that settle. Fades
+    clamp themselves, and the scrim is clamped here, so only spatial
+    properties overshoot.
     """
-    p = _clamp01(progress)
+    p = max(0.0, float(progress))
 
     if isinstance(transition_spec, EmptyTransitionSpec):
         return MaterialTransitionVisualSpec(
@@ -82,9 +88,9 @@ def resolve_material_transition_visual_spec(
     barrier: float | None
     if transition_spec.barrier_mode == "fade":
         if phase is TransitionPhase.ENTER:
-            barrier = p
+            barrier = _clamp01(p)
         elif phase is TransitionPhase.EXIT:
-            barrier = 1.0 - p
+            barrier = _clamp01(1.0 - p)
         else:
             barrier = 1.0
     else:  # "none"
