@@ -102,7 +102,11 @@ _SERVER_INSTRUCTIONS = (
     "an error count, and a `blank` flag for a white/blank screen, all without the "
     "tree or an image. To reason about the UI or check that the right thing is on "
     "screen, and to resolve click/type targets by key or label, use "
-    "`describe_tree` -- a compact JSON tree, cheap in tokens. Use `screenshot` "
+    "`describe_tree` -- a compact JSON tree, cheap in tokens. Each node also "
+    "carries the interactive state its widget publishes -- `disabled`, "
+    "`focused` and `selected` when true, `value` whenever it has one -- so the "
+    "tree alone tells you what is greyed out, where the keyboard is, and what a "
+    "`type` landed. Use `screenshot` "
     "for one thing: investigating a human-reported visual/layout discrepancy that "
     "`describe_tree` + `describe_state` cannot explain; a human's report is what "
     "puts it in play. When the displayed tree looks wrong but you need to know "
@@ -219,9 +223,20 @@ def build_server() -> "FastMCP":
 
         This is the token-cheap default for reasoning about the UI and for
         resolving `click` / `type` targets. Each node is
-        ``{"type", optional "key"/"label"/"text"/"title", optional "rect",
-        optional "children"}`` where ``rect`` is ``[x, y, w, h]`` in root
-        coordinates. This is the default for reading what is on screen.
+        ``{"type", optional "key"/"label"/"text"/"title", optional "state",
+        optional "rect", optional "children"}`` where ``rect`` is
+        ``[x, y, w, h]`` in root coordinates. This is the default for reading
+        what is on screen.
+
+        ``state`` is the interactive state the widget publishes, and it is how
+        you tell a disabled control from an enabled one, see where the keyboard
+        is, and read back what a `type` landed: ``disabled`` / ``focused`` /
+        ``selected`` appear only when true, and ``value`` whenever the widget has
+        one (a toggle's checked state included -- a tri-state checkbox reports
+        ``null``, a range slider a ``[start, end]`` pair). Do not reach for
+        `describe_state` to answer these; it reports
+        the raw observables underneath, under whatever private attribute names
+        the widget bound them to.
 
         ``window`` selects an open window by id (from `status`'s ``windows``
         listing); omit it for the main window.
@@ -248,6 +263,11 @@ def build_server() -> "FastMCP":
         ``{"checked": true}``); a derived/computed value is instead
         ``{"value", "kind": "computed"}``. Values are length- and depth-capped and
         opaque objects render as ``type: repr``.
+
+        These are the *raw* observables, named as the widget bound them
+        (``_state_internal``, ``checked_external_tri``), so they differ per
+        widget. For `disabled` / `focused` / `selected` / `value` in one
+        vocabulary, read `describe_tree`'s own ``state`` instead.
 
         Animation state is **omitted by default**: an interactive widget's
         `Animatable` channels (`state_layer_anim`, `bg_color_anim`, …) change

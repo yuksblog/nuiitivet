@@ -1,10 +1,12 @@
 """Structural perception of a running app: a token-cheap JSON tree dump.
 
 ``describe_tree`` walks the mounted widget tree and emits, per node, its type,
-any human-meaningful identity (``key`` / ``label`` / ``text``) and its
-``global_layout_rect`` in root coordinates. This is the semantic, low-token view
-an assistant reasons over -- "a ``Button`` labeled 'increment' at (x, y, w, h)"
--- and is what makes targeting for :mod:`nuiitivet._interaction.action` possible.
+any human-meaningful identity (``key`` / ``label`` / ``text``), the interactive
+state it publishes (``disabled`` / ``focused`` / ``selected`` / ``value``) and
+its ``global_layout_rect`` in root coordinates. This is the semantic, low-token
+view an assistant reasons over -- "a disabled ``Button`` labeled 'increment' at
+(x, y, w, h)" -- and is what makes targeting for
+:mod:`nuiitivet._interaction.action` possible.
 
 Alongside the dump it owns the *geometry* half of targeting -- resolving a node
 to the point on screen the app's own pointer dispatch would deliver to
@@ -28,18 +30,29 @@ _IDENTITY_ATTRS = ("key", "label", "text", "title")
 # Cap on a single identity string so one giant text node cannot bloat the dump.
 _MAX_IDENTITY_LEN = 120
 
-# Caps for ``describe_state`` value serialization: a single string/repr is
-# truncated to this length, and a container reports at most this many items so
-# one large collection cannot bloat the dump.
+# Caps for value serialization: a single string/repr is truncated to this
+# length, and a container reports at most this many items so one large
+# collection cannot bloat the dump.
 _MAX_VALUE_LEN = 200
 _MAX_VALUE_ITEMS = 20
 # How deep to recurse into nested containers before summarizing, so a
 # self-referential or deeply nested value cannot recurse without bound.
 _MAX_VALUE_DEPTH = 4
 
+# Boolean semantic state reported per node, in order. Each is probed as a public
+# property first and as a field of the widget's ``InteractionState`` second: a
+# widget publishes a flag one way or the other, and both kinds exist (a chip
+# carries ``selected`` only as a property, a navigation rail item only in its
+# state). ``focused`` lives solely in the state -- the input backend drives it.
+_STATE_FLAGS = ("disabled", "focused", "selected")
+
 # Sentinel: an observable whose value could not be read is dropped rather than
 # reported, so one misbehaving getter never aborts the whole state dump.
 _UNREADABLE = object()
+
+# Sentinel: an attribute a node does not publish, kept distinct from ``None`` so
+# a tri-state checkbox's indeterminate ``value`` still reports as ``null``.
+_MISSING = object()
 
 
 def _coerce_display(value: Any) -> Optional[str]:
@@ -66,6 +79,101 @@ def _coerce_display(value: Any) -> Optional[str]:
     return text
 
 
+def _truncate(text: str) -> str:
+    """Return ``text`` capped at :data:`_MAX_VALUE_LEN` with an ellipsis marker."""
+    if len(text) > _MAX_VALUE_LEN:
+        return text[: _MAX_VALUE_LEN - 1] + "…"
+    return text
+
+
+def _coerce_value(value: Any, *, depth: int = 0) -> Any:
+    """Return a JSON-safe, bounded representation of a reported value.
+
+    Scalars pass through; strings are length-capped; lists/tuples and dicts are
+    recursed element-wise with both breadth (:data:`_MAX_VALUE_ITEMS`) and depth
+    (:data:`_MAX_VALUE_DEPTH`) caps; anything else is rendered as a truncated
+    ``type: repr`` so an opaque object is still identifiable without bloating the
+    dump. Never raises -- a value whose ``repr`` fails degrades to its type name.
+    """
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return _truncate(value)
+    if depth >= _MAX_VALUE_DEPTH:
+        return _opaque(value)
+    if isinstance(value, (list, tuple)):
+        items = list(value)
+        out = [_coerce_value(item, depth=depth + 1) for item in items[:_MAX_VALUE_ITEMS]]
+        if len(items) > _MAX_VALUE_ITEMS:
+            out.append(f"… (+{len(items) - _MAX_VALUE_ITEMS} more)")
+        return out
+    if isinstance(value, dict):
+        out_map: dict[str, Any] = {}
+        for index, (key, item) in enumerate(value.items()):
+            if index >= _MAX_VALUE_ITEMS:
+                out_map["…"] = f"(+{len(value) - _MAX_VALUE_ITEMS} more)"
+                break
+            out_map[str(key)] = _coerce_value(item, depth=depth + 1)
+        return out_map
+    return _opaque(value)
+
+
+def _opaque(value: Any) -> str:
+    """Render a non-JSON value as a truncated ``type: repr``, never raising."""
+    try:
+        return _truncate(f"{type(value).__name__}: {value!r}")
+    except Exception:
+        return type(value).__name__
+
+
+def _probe(node: Any, name: str) -> Any:
+    """Return ``node``'s ``name`` attribute, or :data:`_MISSING`.
+
+    A widget publishes its semantic state as an ordinary property, so reading one
+    runs app code; a getter that raises degrades to "not published" rather than
+    aborting the whole dump.
+    """
+    try:
+        return getattr(node, name, _MISSING)
+    except Exception:
+        return _MISSING
+
+
+def _node_semantics(node: Any) -> dict[str, Any]:
+    """Return the interactive/semantic state ``node`` publishes.
+
+    The half of a widget's state that :func:`describe_state` structurally cannot
+    reach. ``disabled`` and ``focused`` are plain fields of an
+    ``InteractionState``, never observables; ``selected`` and ``value`` are
+    observable-backed but only under whatever private attribute the widget bound
+    them to (``_state_internal``, ``checked_external_tri``), so the raw state
+    dump names them differently for every widget. Here they are one vocabulary.
+
+    The flags are reported only when set, so an ordinary node costs no bytes.
+    ``value`` is reported whenever the widget has one: a toggle's ``False`` and a
+    field's ``""`` are the answer as much as their opposites. A checkbox reports
+    its checked state as ``value`` like every other toggle -- there is no
+    separate ``checked``, which could not carry the indeterminate third state.
+    """
+    state = _probe(node, "state")
+    if _probe(state, "focused") is _MISSING:
+        # Something else named ``state``; only an InteractionState is a source.
+        state = _MISSING
+
+    semantics: dict[str, Any] = {}
+    for name in _STATE_FLAGS:
+        flag = _probe(node, name)
+        if not isinstance(flag, bool):
+            flag = _probe(state, name)
+        if flag is True:
+            semantics[name] = True
+
+    value = _probe(node, "value")
+    if value is not _MISSING:
+        semantics["value"] = _coerce_value(value)
+    return semantics
+
+
 def _describe_node(node: Any, *, seen: set[int]) -> dict[str, Any]:
     """Build the JSON description for ``node`` and, recursively, its children."""
     info: dict[str, Any] = {"type": type(node).__name__}
@@ -74,6 +182,10 @@ def _describe_node(node: Any, *, seen: set[int]) -> dict[str, Any]:
         display = _coerce_display(getattr(node, attr, None))
         if display is not None:
             info[attr] = display
+
+    semantics = _node_semantics(node)
+    if semantics:
+        info["state"] = semantics
 
     rect = getattr(node, "global_layout_rect", None)
     if rect is not None:
@@ -651,9 +763,16 @@ def match_condition(
 def describe_tree(root: Any) -> dict[str, Any]:
     """Return a nested JSON-serializable description of ``root``'s mounted tree.
 
-    Must be called on the UI thread (it reads live layout state). Each node maps
-    to ``{"type", optional "key"/"label"/"text"/"title", optional "rect",
-    optional "children"}`` where ``rect`` is ``[x, y, w, h]`` in root coordinates.
+    Must be called on the UI thread (it reads live layout and interaction state).
+    Each node maps to ``{"type", optional "key"/"label"/"text"/"title", optional
+    "state", optional "rect", optional "children"}`` where ``rect`` is
+    ``[x, y, w, h]`` in root coordinates.
+
+    ``state`` is the interactive state the widget publishes (see
+    :func:`_node_semantics`), in the widget's own vocabulary: ``disabled`` /
+    ``focused`` / ``selected`` / ``value``. It is not :func:`describe_state`'s
+    ``state``, which is the raw ``Observable`` attributes underneath, named as
+    the widget bound them.
 
     Args:
         root: The mounted root widget (``App.root``).
@@ -664,53 +783,6 @@ def describe_tree(root: Any) -> dict[str, Any]:
     if root is None:
         return {}
     return _describe_node(root, seen=set())
-
-
-def _truncate(text: str) -> str:
-    """Return ``text`` capped at :data:`_MAX_VALUE_LEN` with an ellipsis marker."""
-    if len(text) > _MAX_VALUE_LEN:
-        return text[: _MAX_VALUE_LEN - 1] + "…"
-    return text
-
-
-def _coerce_value(value: Any, *, depth: int = 0) -> Any:
-    """Return a JSON-safe, bounded representation of an observable's value.
-
-    Scalars pass through; strings are length-capped; lists/tuples and dicts are
-    recursed element-wise with both breadth (:data:`_MAX_VALUE_ITEMS`) and depth
-    (:data:`_MAX_VALUE_DEPTH`) caps; anything else is rendered as a truncated
-    ``type: repr`` so an opaque object is still identifiable without bloating the
-    dump. Never raises -- a value whose ``repr`` fails degrades to its type name.
-    """
-    if value is None or isinstance(value, (bool, int, float)):
-        return value
-    if isinstance(value, str):
-        return _truncate(value)
-    if depth >= _MAX_VALUE_DEPTH:
-        return _opaque(value)
-    if isinstance(value, (list, tuple)):
-        items = list(value)
-        out = [_coerce_value(item, depth=depth + 1) for item in items[:_MAX_VALUE_ITEMS]]
-        if len(items) > _MAX_VALUE_ITEMS:
-            out.append(f"… (+{len(items) - _MAX_VALUE_ITEMS} more)")
-        return out
-    if isinstance(value, dict):
-        out_map: dict[str, Any] = {}
-        for index, (key, item) in enumerate(value.items()):
-            if index >= _MAX_VALUE_ITEMS:
-                out_map["…"] = f"(+{len(value) - _MAX_VALUE_ITEMS} more)"
-                break
-            out_map[str(key)] = _coerce_value(item, depth=depth + 1)
-        return out_map
-    return _opaque(value)
-
-
-def _opaque(value: Any) -> str:
-    """Render a non-JSON value as a truncated ``type: repr``, never raising."""
-    try:
-        return _truncate(f"{type(value).__name__}: {value!r}")
-    except Exception:
-        return type(value).__name__
 
 
 def _state_name(attr: str) -> str:
@@ -832,6 +904,11 @@ def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, 
     (computed) observable is instead ``{"value", "kind": "computed"}``. Values are
     length- and depth-capped and opaque objects render as ``type: repr``, so no
     single value can bloat or break the dump.
+
+    These are the *raw* observables, named as the widget bound them
+    (``_state_internal``, ``checked_external_tri``); :func:`describe_tree`'s own
+    ``state`` reports the same widget in its published vocabulary instead. Reach
+    for this one when that vocabulary is not the level the bug is at.
 
     ``Animatable`` state is **omitted by default**: an interactive widget
     carries several animation channels (``state_layer_anim``, ``bg_color_anim``,

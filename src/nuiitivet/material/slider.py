@@ -1018,6 +1018,25 @@ class _RangeSlider(_SliderBase):
             self._value_end_external.value = e
         self.invalidate()
 
+    @property
+    def value(self) -> Tuple[float, float]:
+        """The two ends, in the order ``on_change`` delivers them."""
+        return (self.value_start, self.value_end)
+
+    @value.setter
+    def value(self, new_value: Tuple[float, float]) -> None:
+        s, e = float(new_value[0]), float(new_value[1])
+        s, e = min(s, e), max(s, e)
+        # Each end's setter clamps against the *other* end's current value, so
+        # assigning in the wrong order collapses the new range onto the old one.
+        # Moving right, the end has to lead; moving left, the start does.
+        if s > self.value_end:
+            self.value_end = e
+            self.value_start = s
+        else:
+            self.value_start = s
+            self.value_end = e
+
     def _update_value_from_ratio(self, ratio: float, *, from_track: bool) -> None:
         del from_track
         next_value = self._ratio_to_value(ratio)
