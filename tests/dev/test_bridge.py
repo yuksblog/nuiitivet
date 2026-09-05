@@ -457,6 +457,39 @@ def test_bridge_runtime_log_verbose_without_capture_is_404(
         bridge.shutdown()
 
 
+def test_bridge_profile_start_stop_roundtrip(tmp_path: Path, dev_run: None) -> None:
+    from nuiitivet.dev import profiling
+
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            assert client.profile_active() is False
+            assert client.profile_start() == {"active": True, "was_active": False}
+            assert client.profile_active() is True
+            assert client.profile_start() == {"active": True, "was_active": True}
+            result = client.profile_stop()
+            assert result["active"] is False
+            report = result["report"]
+            assert set(report) == {"duration_s", "frames", "paints", "rebuilds", "bindings"}
+            assert client.profile_active() is False
+    finally:
+        profiling.stop()
+        bridge.shutdown()
+
+
+def test_bridge_profile_stop_without_session_reports_none(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            assert client.profile_stop() == {"active": False, "report": None}
+    finally:
+        bridge.shutdown()
+
+
 def test_bridge_click_by_key(tmp_path: Path, dev_run: None) -> None:
     app: Any = _FakeApp()
     bridge = DevBridge(app, tmp_path)

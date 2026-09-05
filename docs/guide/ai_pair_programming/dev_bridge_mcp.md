@@ -73,7 +73,7 @@ Everything below assumes this setup is in place.
 
 ## What the assistant can do
 
-Fifteen tools, grouped by the question each one answers. Skim the tool names;
+The tools, grouped by the question each one answers. Skim the tool names;
 where a row carries a **bold note**, that is the thing worth knowing as the human
 in the loop. *When* the assistant should reach for which is the
 [`nuiitivet-debug` skill](nuiitivet_debug_skill.md)'s business, not yours.
@@ -119,6 +119,18 @@ between them, and not what the app wrote to a console it cannot read.
 | `interaction_log` | The coarse UI actions *you* took mid-task: clicks resolved to a widget identity, shortcut keys, scrolls (with where the region ended up), and content-free text markers. <br> **Typed content never enters it.** A bare printable keystroke is dropped and a burst of typing collapses to one marker, so field text never leaks. |
 | `runtime_log` | The app's recent log output and uncaught exceptions, with `exc_type` / `traceback` when one carries a failure — background threads and unretrieved asyncio tasks included. <br> **This is where a silent failure surfaces.** A handler that raises is swallowed to keep the app alive, so the tree looks unchanged and only this log says why. Repeated identical failures collapse to one entry. |
 | `set_runtime_log_verbose` | Turns `runtime_log`'s de-duplication off process-wide — every occurrence of a repeated failure is then recorded — and back on. |
+
+### Profile — find wasted work
+
+A start/stop recording, like a DevTools performance capture: start it, reproduce
+the janky or chatty interaction, stop it and read the report. Counters are
+cumulative within one recording and the session boundary is the reset — there is
+no `seq` to track.
+
+| Tool | What it gives you |
+| --- | --- |
+| `profile_start` | Begins recording rebuild/repaint counters and painted-frame timings. <br> **Recording is not free.** An active session inflates frame time by roughly 10% on a heavy tree; outside a session nothing is installed and nothing costs anything, so leave it off unless a question needs it. |
+| `profile_stop` | Ends the recording and returns the report: painted-frame timings (mean / p95 / max of the paint walk), paint counts by widget type, and the actionable pair — scope-recomposition counts and `Observable` binding-update counts, per widget, largest first. A widget rebuilding far more often than the interaction warrants is the wasted-work signal. <br> **Paint counts track frames, not damage.** Every painted frame walks the whole tree, so per-widget paint counts equal the painted-frame count; the per-widget signal lives in the rebuild and binding counters. |
 
 ## Point at something (inspect mode)
 
@@ -218,6 +230,8 @@ python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log
 python -m nuiitivet.dev runtime-log --verbose on
+python -m nuiitivet.dev profile start
+python -m nuiitivet.dev profile stop
 python -m nuiitivet.dev screenshot -o out.png
 python -m nuiitivet.dev click --label increment
 python -m nuiitivet.dev scroll --key feed --dy 5      # --key names the region

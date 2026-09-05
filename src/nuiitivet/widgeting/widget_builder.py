@@ -286,11 +286,23 @@ def _queue_scope_recomposition(widget: "BuilderHostMixin", scope_id: str) -> boo
     return first_insert
 
 
+# Dev-only observation point: receives (host, scope_count) for every host
+# flushed below. ``None`` outside a profiling session.
+_recomposition_probe: Optional[Callable[[Any, int], None]] = None
+
+
+def set_recomposition_probe(probe: Optional[Callable[[Any, int], None]]) -> None:
+    """Install or clear the recomposition probe (dev profiling only)."""
+    global _recomposition_probe
+    _recomposition_probe = probe
+
+
 def flush_scope_recompositions() -> None:
     if not _pending_scope_recompositions:
         return
     pending = list(_pending_scope_recompositions.items())
     _pending_scope_recompositions.clear()
+    probe = _recomposition_probe
     for _, (ref, scopes) in pending:
         host = ref()
         if host is None or not scopes:
@@ -298,6 +310,15 @@ def flush_scope_recompositions() -> None:
         handler = getattr(host, "_process_scope_recompositions", None)
         if not callable(handler):
             continue
+        if probe is not None:
+            try:
+                probe(host, len(scopes))
+            except Exception:
+                exception_once(
+                    _logger,
+                    "widget_builder_recomposition_probe_exc",
+                    "Recomposition probe raised",
+                )
         try:
             handler(set(scopes))
         except Exception as exc:

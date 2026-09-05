@@ -404,6 +404,38 @@ def build_server() -> "FastMCP":
         return {"verbose": _client().set_runtime_log_verbose(enabled)}
 
     @server.tool()
+    def profile_start() -> dict[str, Any]:
+        """Start recording rebuild/repaint counters and frame timings.
+
+        A **human's report of jank or slowness** is the trigger that puts it in
+        play -- you cannot perceive stutter or excess rebuilds yourself, so do
+        not reach for it unprompted. DevTools-style recording: call this,
+        reproduce the interaction they named (`click` / `type` / scroll, or ask
+        the human to), then call `profile_stop` to read the results. While
+        recording, painted frames run roughly 10% slower; nothing is recorded
+        (and nothing costs anything) outside a session. Returns
+        ``{"active": true, "was_active": bool}`` -- ``was_active`` means a
+        session was already running and kept its counters.
+        """
+        return _client().profile_start()
+
+    @server.tool()
+    def profile_stop() -> dict[str, Any]:
+        """Stop the profiling session and return what it recorded.
+
+        Returns ``{"active": false, "report": {...}}`` (``report`` is null when
+        nothing was recording). The report carries ``duration_s``; ``frames``
+        (painted count, mean/p95/max tree-walk ms); ``paints`` by widget type
+        (every painted frame walks the whole tree, so per-widget paint counts
+        track frames, not damage); and the actionable pair: ``rebuilds`` (scope
+        recompositions per widget) and ``bindings`` (fine-grained Observable
+        updates per widget), each ``{"widget", "key", "alive", "count"}``,
+        largest first. A widget rebuilding far more often than the interaction
+        warrants is the wasted-work signal to chase.
+        """
+        return _client().profile_stop()
+
+    @server.tool()
     def screenshot(window: Optional[int] = None) -> Image:
         """Return a PNG of the widget tree, re-rendered offscreen.
 

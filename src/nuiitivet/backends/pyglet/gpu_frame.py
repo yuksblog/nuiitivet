@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from nuiitivet.common.logging_once import debug_once, exception_once
@@ -129,7 +130,13 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
             bg_fill.setColor(bg_color)
             canvas.drawRRect(rrect, bg_fill)
 
-        app.root.paint(canvas, 0, 0, w, content_height)
+        prof = _profiling_session()
+        if prof is None:
+            app.root.paint(canvas, 0, 0, w, content_height)
+        else:
+            t0 = time.perf_counter()
+            app.root.paint(canvas, 0, 0, w, content_height)
+            prof.record_frame(time.perf_counter() - t0)
 
         if chrome_corner_radius > 0:
             canvas.restore()
@@ -175,6 +182,19 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
     _flush_gpu(app, gr_context)
     app._dirty = False
     return True
+
+
+def _profiling_session() -> Any:
+    """Return the active dev profiling session, or ``None``.
+
+    Lazy import, like the dev overlays below: the render path must not pull
+    in :mod:`nuiitivet.dev` at module load.
+    """
+    try:
+        from nuiitivet.dev.profiling import active_session
+    except Exception:
+        return None
+    return active_session()
 
 
 def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:

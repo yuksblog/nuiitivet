@@ -75,6 +75,7 @@ _SUBCOMMANDS = frozenset(
         "key",
         "wait-for",
         "runtime-log",
+        "profile",
         "mcp",
     }
 )
@@ -206,6 +207,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Set verbose capture and exit (does not print the log). 'on' records "
             "every repeated failure; 'off' restores the de-duplicated default."
+        ),
+    )
+
+    profile = subparsers.add_parser(
+        "profile",
+        help="Record rebuild/repaint counters and frame timings in the running app.",
+    )
+    profile.add_argument(
+        "action",
+        choices=("start", "stop", "status"),
+        help=(
+            "'start' begins recording, 'stop' ends it and prints the report as "
+            "JSON, 'status' prints whether a recording is active."
         ),
     )
 
@@ -597,6 +611,24 @@ def _runtime_log(args: argparse.Namespace) -> int:
     return 0
 
 
+def _profile(args: argparse.Namespace) -> int:
+    import json
+
+    try:
+        client = BridgeClient.discover()
+        if args.action == "start":
+            result = client.profile_start()
+        elif args.action == "stop":
+            result = client.profile_stop()
+        else:
+            result = {"active": client.profile_active()}
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2))
+    return 0
+
+
 def _screenshot(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
@@ -714,6 +746,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _interaction_log(args)
     if args.command == "runtime-log":
         return _runtime_log(args)
+    if args.command == "profile":
+        return _profile(args)
     if args.command == "screenshot":
         return _screenshot(args)
     if args.command == "click":

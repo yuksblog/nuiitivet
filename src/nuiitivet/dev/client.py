@@ -373,6 +373,29 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return bool(payload.get("verbose", False))
 
+    def profile_start(self) -> dict[str, Any]:
+        """Start a performance profiling session in the running app.
+
+        Returns ``{"active": True, "was_active": bool}`` -- ``was_active``
+        means a session was already running and kept its counters.
+        """
+        return self._post("/profile/start", {})
+
+    def profile_stop(self) -> dict[str, Any]:
+        """Stop the profiling session; return ``{"active", "report"}``.
+
+        ``report`` is ``None`` when no session was running, otherwise the
+        session summary (frame timings, paint counts by widget type, rebuild
+        and binding-invalidation counts per widget).
+        """
+        return self._post("/profile/stop", {})
+
+    def profile_active(self) -> bool:
+        """Return whether a profiling session is currently running."""
+        body, _ = self._get("/profile")
+        payload = json.loads(body.decode("utf-8"))
+        return bool(payload.get("active", False))
+
     def screenshot(self, *, window: Optional[int] = None) -> bytes:
         """Fetch a PNG of the running app's widget tree, re-rendered offscreen.
 
