@@ -264,24 +264,24 @@ exists only for that screen, cancel from an `on_unmount()` override — not an
 
 ## `subscribe()` — legitimate vs anti-pattern
 
-`Observable.subscribe(fn)` returns a `Disposable`. **Always keep it.** In a widget
-that means `self.bind(...)`, which disposes it at unmount:
+- OK: side effects — logging, calling a service, analytics.
+- Anti-pattern: subscribing to copy a value into a widget. That is what binding
+  is for; pass the Observable into the widget instead.
+
+`subscribe(fn)` returns a `Disposable`; keep it. In a widget that means
+`self.bind(...)`, which disposes it at unmount:
 
 ```python
 self.bind(self.user.subscribe(self._log_change))
 ```
 
-- OK: side effects — logging, calling a service, analytics.
-- Anti-pattern: subscribing to copy a value into a widget. That is what binding
-  is for; pass the Observable into the widget instead.
-
-Dropping the `Disposable` fails in one of two opposite ways, so neither symptom
-points at the cause on its own:
+Dropping it fails in one of two opposite ways, so neither symptom points at the
+cause on its own:
 
 | Subscribed to | Symptom |
 | --- | --- |
 | a plain Observable | the source holds the callback, so it keeps firing after unmount — into a dead tree |
-| anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`) | nothing holds the derived Observable, so it is collected and never fires at all |
+| anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`, `scan`) | nothing holds the derived Observable, so it is collected and never fires at all — see **Hold what you derive** |
 
 ## Initialization that must run exactly once
 

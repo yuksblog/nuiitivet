@@ -209,22 +209,15 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
 ]
 
 
-# The same dead chain as the RULES entry above, but split across two lines:
+# The same dead chain as the RULES entry above, split across two lines:
 #
 #     debounced = self.raw_count.debounce(0.5)     # local, not stored on self
 #     debounced.subscribe(cb)                      # Disposable discarded too
 #
-# Neither line is damning alone — a local is fine if the Disposable is kept, and
-# a bare `.subscribe(` is fine on something that is held — so this needs both
-# halves, which a line-at-a-time rule cannot see.
-#
-# Scoped to __init__ / on_mount, and that scoping is load-bearing rather than
-# cautious. A local holds the chain for the rest of the call, so this shape is
-# perfectly correct in a function that also *uses* it before returning — which is
-# what most test code looks like. It is only a bug where the chain has to outlive
-# the call, and setup methods are where that is certain: whatever is being set up
-# keeps running afterwards. Retaining either half (`self._sub = x.subscribe(...)`,
-# `self.bind(x.subscribe(...))`) is legitimate anywhere and never fires.
+# Neither half is damning alone, so both are needed. The scoping to __init__ /
+# on_mount is load-bearing: a local holds the chain for the rest of the call, so
+# the shape is correct in a function that uses it before returning, and a bug
+# only where the chain must outlive the call -- which a setup method guarantees.
 _SETUP_DEF = re.compile(r"^([ \t]*)def\s+(?:__init__|on_mount)\s*\(")
 _LOCAL_WRAPPER = re.compile(r"^[ \t]+([A-Za-z_]\w*)\s*=\s*[^=].*\.(?:debounce|throttle|filter)\s*\(")
 _DISCARDED_SUBSCRIBE = r"^[ \t]*{name}\s*\.\s*subscribe\s*\("
@@ -275,14 +268,10 @@ def find_dead_chains(text: str) -> list[tuple[int, str]]:
 # An `on_mount` override on a ComposableWidget that never calls `super()`.
 #
 # The base implementation is what runs `build()`, so skipping it mounts a widget
-# with no children: a blank screen, no exception, nothing in the log. It is the
-# quietest failure in the framework, and the shape that causes it -- needing
-# `X.of(self)`, which cannot run in `__init__` -- is exactly what the references
-# tell an author to write.
-#
-# Scoped to ComposableWidget subclasses on purpose. `Widget.on_mount` is a no-op,
-# so omitting `super()` there costs nothing and flagging it would be noise;
-# `BuilderHostMixin.on_mount` is the one with work to do.
+# with no children: a blank screen, no exception, nothing in the log. The
+# references send authors into that override in the first place, since
+# `X.of(self)` cannot run in `__init__`. Scoped to ComposableWidget subclasses
+# because `Widget.on_mount` is a no-op: omitting `super()` there costs nothing.
 _COMPOSABLE_CLASS = re.compile(r"^([ \t]*)class\s+\w+\s*\([^)]*\bComposableWidget\b")
 _ON_MOUNT_DEF = re.compile(r"^([ \t]*)def\s+on_mount\s*\(")
 _SUPER_ON_MOUNT = re.compile(r"\bsuper\s*\(\s*\)\s*\.\s*on_mount\s*\(")
