@@ -272,37 +272,49 @@ alike. `tests/observable/test_operator_parity.py` asserts the three stay equal.
 
 ### 5.1 Timing: debounce and throttle
 
-**Problem:** high-frequency events (typing, mouse moves, API responses) trigger
-excessive UI updates and expensive computations.
+**Purpose:** high-frequency events — typing, pointer moves, a stream of API
+responses — change a source faster than the UI updates and the recomputations
+behind it are worth running. Both operators thin them, and both exist because
+they thin them differently: most filtering wants the trailing edge, once the
+input has settled (typing, window resize), while pointer moves and scrolling want
+periodic samples of something that never settles.
+
+**API:**
 
 | Operator | Behavior | Use case |
 | :--- | :--- | :--- |
 | `.debounce(seconds)` | Emits only after `seconds` of silence | Search input, form validation |
 | `.throttle(seconds)` | Emits the first value immediately, then at most one per `seconds` | Mouse tracking, scroll position |
 
-**Design decisions:**
+```python
+settled = query.debounce(0.3)
+sampled = position.throttle(0.1)
+```
 
-- **Debounce for settling, throttle for sampling.** Most UI event filtering wants the trailing edge (typing, window resize); mouse moves and scrolling want periodic samples instead, which is why both exist rather than one
-- **Timing is explicit.** The seconds parameter puts the performance trade-off in the code rather than in a default
-- **The clock, not a thread.** Timers go through the installed clock (`pyglet.clock` in production), so they fire on the UI thread and integrate with the event loop. Debounce cancels and re-arms on each new value; throttle emits on the leading edge and samples afterwards
+- **`seconds` has no default.** The window is a trade-off the app makes, and a
+  default would hide it in the framework
+- **The seed differs by operator.** `debounce` reports the source's
+  construction-time value until the input first settles; `throttle` emits on the
+  leading edge, so its first change moves it immediately
+- **Emissions arrive on the UI thread**, because the timers go through the
+  installed clock (`pyglet.clock` in production) rather than a thread of their
+  own — so nothing needs marshalling (§4.4), and a test installs a deterministic
+  clock instead of sleeping
 
-**Seeds:** `debounce` reports the source's construction-time value until the input
-first settles. `throttle` emits on the leading edge, so its first change moves it
-immediately.
-
-**Implementation:**
-
-- `DebouncedObservable` and `ThrottledObservable` (`observable/timed.py`) hold only the latest pending value; timer cancellation happens in `dispose()` (§4.1 Rule 3)
-- Testing uses `MockClock` with epsilon tolerance for deterministic timing assertions
+**Implementation:** `DebouncedObservable` and `ThrottledObservable`
+(`observable/timed.py`) subclass `ShapingObservable` and hold only the latest
+pending value; `debounce` cancels and re-arms its timer on every value, `throttle`
+arms one on the leading edge and samples until it fires. Disarming happens in
+`dispose()` (§4.1 Rule 3).
 
 ### 5.2 Value gating: filter
 
-**Problem:** some of a source's values must not reach the UI — an amount that has
+**Purpose:** some of a source's values must not reach the UI — an amount that has
 not validated yet, a selection that is sometimes empty. `map` cannot express
 this: it must return something for every input, so the rejected value still
 arrives, merely transformed.
 
-**Solution:** `.filter(pred, initial=...)` updates only when `pred` accepts the
+**API:** `.filter(pred, initial=...)` updates only when `pred` accepts the
 source's value. `.value` is the last value that passed, or `initial` if none has.
 
 ```python
@@ -310,20 +322,10 @@ valid = amount.filter(lambda n: n > 0, initial=0)
 nv.Text(valid.map(str))   # never shows a rejected amount
 ```
 
-**The seed is required**, keyword-only and without a default. Every other
-operator derives `.value` from its source; `filter` alone cannot, because the
-predicate may reject everything the source ever produces. The caller therefore
-states what the UI shows until the first value passes. Two alternatives were not
-chosen:
-
-- **Pass the source through until the first pass.** It displays a value the
-  predicate rejected, which is the one outcome the operator exists to prevent,
-  and it is the read-through §4.2 rules out
-- **Report `Optional[T]`.** Every downstream `.map()` grows a `None` check, and
-  the seed answers the same question without changing the type
-
-**Semantics:**
-
+- **The seed is required**, keyword-only and without a default. Every other
+  operator derives `.value` from its source; `filter` alone cannot, because the
+  predicate may reject everything the source ever produces, so the caller states
+  what the UI shows until the first value passes
 - **The seed is tested too.** At construction the source's current value runs
   through `pred` and is kept if it passes, so `initial` means strictly "nothing
   has passed", not "nothing has arrived yet"
@@ -336,38 +338,37 @@ chosen:
   notifies, and no wrapper second-guesses that
 - **`pred` is a pure function of the value it is handed**, run untracked (§4.3)
 
-**Implementation:**
+Two alternatives to the seed were not chosen:
 
-- `FilteredObservable` (`observable/filtered.py`) subclasses `ShapingObservable`,
-  so §4 is inherited rather than restated
-- The seed is its only departure from the base: `__init__` replaces `_held_value`
-  with `initial` unless the source's construction-time value passes `pred`
+- **Pass the source through until the first pass.** It displays a value the
+  predicate rejected, which is the one outcome the operator exists to prevent,
+  and it is the read-through §4.2 rules out
+- **Report `Optional[T]`.** Every downstream `.map()` grows a `None` check, and
+  the seed answers the same question without changing the type
+
+**Implementation:** `FilteredObservable` (`observable/filtered.py`) subclasses
+`ShapingObservable`, so §4 is inherited rather than restated. The seed is its only
+departure from the base: `__init__` replaces `_held_value` with `initial` unless
+the source's construction-time value passes `pred`.
 
 ### 5.3 Asynchronous mapping: switch_map
 
-**Problem:** deriving a value from a function that takes time to answer.
-`map` runs its function synchronously on the triggering thread — the UI thread in
-a `debounce` chain — so I/O in it blocks the window, and with two calls in flight
+**Purpose:** deriving a value from a function that takes time to answer. `map`
+runs its function synchronously on the triggering thread — the UI thread in a
+`debounce` chain — so I/O in it blocks the window, and with two calls in flight
 the slower-but-older one lands last and wins. Writing it by hand means a per-run
 `threading.Event` protocol whose failure modes are silent: a reused `Event` that
 gets `clear()`ed lets a superseded worker resume, and an unguarded `except` /
 `finally` lets a stale run write over a live one. That is the hazard §3.1
 requires an operator to remove.
 
-**Solution:** `.switch_map(fn, initial=...)` runs `fn` off the UI thread and
-delivers only the newest run's result.
-
-```python
-self.results = self.query.debounce(0.3).switch_map(self._search, initial=SearchOutcome())
-```
-
-**`switch_map` is `map`**, and the rest follows:
+**`switch_map` is `map`**, and the scope follows:
 
 - a run starts **only** because the source's value changed
 - a run is discarded **only** because the source's value changed again
 - a run produces **exactly one** value
 
-**What it cannot express**, which stays a hand-written worker
+**What it cannot express** stays a hand-written worker
 (`samples/state-management/background_work.py`):
 
 | Shape | Why it is not a mapping |
@@ -381,32 +382,29 @@ Two things are not criteria: the amount of data returned (items *and* a total
 *and* facets is one answer) and the weight of the work (a thread is started
 either way).
 
-**The seed is required**, keyword-only and without a default, as in §5.2 — but
-meaning "**no run has landed yet**" rather than "nothing has passed", because
-**no run starts at construction**: building a ViewModel must not fire I/O.
+**API:** `.switch_map(fn, initial=...)` runs `fn` off the UI thread and delivers
+only the newest run's result.
 
-**Failure is a value.** `fn` catches what the UI must render and returns it in
-the app's own result type, so one value decides both the error and the items it
-replaces. The return stays a plain observable whose only read surface is
-`.value`. An exception that escapes `fn` is a bug, not a result: logged through
-`exception_once`, delivered to nobody.
+```python
+self.results = self.query.debounce(0.3).switch_map(self._search, initial=SearchOutcome())
+```
 
-A companion `results.error: Observable[Exception | None]` was rejected. It does
-not survive `.map()`, so a binding built from the result cannot see it; it needs
-its own supersede test, clearing rule and batching; and it decides only the error,
-never the accompanying value, leaving a failed run's error above the previous
-run's rows. Adding it later would be purely additive.
-
-**`CancelToken` is cooperative and optional.** Python cannot interrupt a thread,
-so superseding discards the result and the worker still runs to completion. A run
-that checks the token can return early instead; one that blocks in a single call
-never gets the chance. It is still the second positional parameter of every `fn`,
-because a signature cannot be widened later without breaking every existing one.
-Against a hand-rolled `threading.Event` it removes the ways to misuse one: no
-`clear()`, one token per run.
-
-**Semantics:**
-
+- **The seed is required**, keyword-only and without a default, as in §5.2 — but
+  meaning "**no run has landed yet**" rather than "nothing has passed", because
+  **no run starts at construction**: building a ViewModel must not fire I/O
+- **Failure is a value.** `fn` catches what the UI must render and returns it in
+  the app's own result type, so one value decides both the error and the items it
+  replaces, and the return stays a plain observable whose only read surface is
+  `.value`. An exception that escapes `fn` is a bug, not a result: logged through
+  `exception_once`, delivered to nobody
+- **`CancelToken` is cooperative and optional.** Python cannot interrupt a
+  thread, so superseding discards the result and the worker still runs to
+  completion; a run that checks the token can return early instead, and one that
+  blocks in a single call never gets the chance. It is still the second
+  positional parameter of every `fn`, because a signature cannot be widened later
+  without breaking every existing one — and against a hand-rolled
+  `threading.Event` it removes the ways to misuse one: no `clear()`, one token
+  per run
 - **A superseded run's result never lands, from any path.** The test is identity
   against the live token at delivery, not a flag read earlier, so a result
   returned from `fn`'s own `except` or `finally` is discarded like any other
@@ -417,11 +415,17 @@ Against a hand-rolled `threading.Event` it removes the ways to misuse one: no
   name would mean two supersede implementations. The event-loop story is
   `ASYNCIO_INTEGRATION.md`, and widening the accepted type later is additive
 
+A companion `results.error: Observable[Exception | None]` was rejected. It does
+not survive `.map()`, so a binding built from the result cannot see it; it needs
+its own supersede test, clearing rule and batching; and it decides only the error,
+never the accompanying value, leaving a failed run's error above the previous
+run's rows. Adding it later would be purely additive.
+
 **Implementation:**
 
 - `SwitchMappedObservable` (`observable/switched.py`) subclasses
-  `SourceSubscribingObservable[TIn, TOut]` rather than `ShapingObservable` — it is
-  the operator whose two type parameters differ (§4.6)
+  `SourceSubscribingObservable[TIn, TOut]` rather than `ShapingObservable` — its
+  two type parameters differ (§4.6)
 - Each run gets a fresh `CancelToken` and a daemon thread named
   `switch_map:<fn qualname>`; the name lets tests join workers instead of sleeping
 - Delivery stages the result under a lock only if the delivering token is still
@@ -444,13 +448,13 @@ to hold that line and `subscribe` becomes the only way in — an empty `Observab
 beside the write that fills it, plus a `Disposable` that must be held or the value
 silently stops moving.
 
+**API:** `.scan(fn, initial=...)` folds `fn(accumulator, value)` over every
+emission, and the accumulator is this observable's value.
+
 ```python
 self.debounced = self.raw_count.debounce(0.5)
 self.executed = self.debounced.scan(lambda n, _: n + 1, initial=0)
 ```
-
-**API:** `.scan(fn, initial=...)` folds `fn(accumulator, value)` over every
-emission, and the accumulator is this observable's value.
 
 - **The seed is required**, keyword-only and without a default, as in §5.2 and
   §5.3 — here meaning "the source has emitted nothing"
