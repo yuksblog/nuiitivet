@@ -202,6 +202,7 @@ def pick_accessible_foreground(fg_hex: str, bg_hex: str, *, level: str = "AA", l
         return fg_hex
 
 
+@lru_cache(maxsize=4096)
 def hex_to_rgba(hexstr: str, alpha: float = 1.0) -> Tuple[int, int, int, int]:
     """Convert hex color string to (r,g,b,a) tuple with 0-255 ints.
 
