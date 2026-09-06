@@ -4,6 +4,7 @@ from nuiitivet.layout.geometry import Geometry
 from nuiitivet.rendering.size import Size
 from nuiitivet.layout.container import Container
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
 
 class _Probe(ComposableWidget):
@@ -25,6 +26,10 @@ def test_layout_publishes_measured_size():
 
     geom.layout(300, 200)
 
+    # The publish is deferred: layout only queues, the between-frames flush
+    # performs the Observable write.
+    assert geom.size.value == Size(0, 0)
+    flush_size_change_callbacks()
     assert geom.size.value == Size(300, 200)
 
 
@@ -43,7 +48,9 @@ def test_size_updates_on_relayout():
 
     geom.layout(300, 200)
     geom.layout(640, 480)
+    flush_size_change_callbacks()
 
+    # Two layouts within one frame coalesce into one publish of the final size.
     assert geom.size.value == Size(640, 480)
 
 
@@ -53,10 +60,50 @@ def test_equal_size_is_deduped():
     geom.size.subscribe(seen.append)
 
     geom.layout(300, 200)
+    flush_size_change_callbacks()
     geom.layout(300, 200)  # identical: must not re-fire
+    flush_size_change_callbacks()
     geom.layout(300, 201)  # changed: fires
+    flush_size_change_callbacks()
 
     assert seen == [Size(300, 200), Size(300, 201)]
+
+
+class _LazySizeReader(Widget):
+    """Reads the source Observable at measure time, like a bound Text label."""
+
+    def __init__(self, source) -> None:
+        super().__init__()
+        self._source = source
+        self.measured_against: list[Size] = []
+
+    def preferred_size(self, max_width=None, max_height=None):
+        size = self._source.value
+        self.measured_against.append(size)
+        return (max(1, size.width), 16)
+
+    def paint(self, canvas, x, y, width, height) -> None:
+        del canvas, x, y, width, height
+
+
+def test_sibling_measured_before_geometry_is_not_torn():
+    from nuiitivet.layout.column import Column
+
+    # A sibling laid out before the Geometry in the same pass must keep seeing
+    # the old size for the rest of the frame: measurement and paint then agree,
+    # and the new size lands for everyone at the between-frames flush.
+    geom = Geometry(Container(height=80), width="wt")
+    reader = _LazySizeReader(geom.size)
+    root = Column([reader, geom], width=400, height=300)
+
+    root.layout(400, 300)
+
+    assert set(reader.measured_against) == {Size(0, 0)}
+    # What a paint-time reader would resolve now is still the measured value.
+    assert geom.size.value == Size(0, 0)
+
+    flush_size_change_callbacks()
+    assert geom.size.value.width == 400
 
 
 def test_of_returns_nearest_provider():
@@ -111,5 +158,6 @@ def test_filling_geometry_measures_available_space():
     row = Row([Container(width=200), pane], gap=0)
 
     row.layout(500, 100)
+    flush_size_change_callbacks()
 
     assert pane.size.value.width == 300

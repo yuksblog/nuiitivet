@@ -4,6 +4,7 @@ from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.scrollable import VerticalScrollable
+from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
 
 class DummyCanvas:
@@ -65,6 +66,8 @@ def test_scroller_reports_extent_with_transient_foreach_items():
     try:
         canvas = DummyCanvas()
         scroller.paint(canvas, 0, 0, 200, 80)
+        # The Observable publish is deferred to the between-frames flush.
+        flush_size_change_callbacks()
         axis_state = scroller._controller.axis_state(ScrollDirection.VERTICAL)
         assert axis_state.content_size.value > axis_state.viewport_size.value
         assert axis_state.max_extent.value > 0

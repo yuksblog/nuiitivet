@@ -38,7 +38,11 @@ All `Widget`s adhere to the following protocol:
         2. If child Widgets exist, call their `layout()` to determine their sizes and positions.
         3. Store calculation results (own size, child relative positions) in `_layout_rect`.
         4. Clear the `_needs_layout` flag.
-    * **Forbidden**: Issuing draw commands or state changes with side effects (except for storing layout results).
+    * **Forbidden**: Issuing draw commands, or any state change that other consumers can observe from within the same layout pass. An `Observable` write is the canonical violation: it propagates synchronously, so a sibling measured *before* the write and painted *after* it sees two different values inside one frame — a torn frame. Whether tearing strikes depends on sibling order within the pass, which app authors cannot reason about; the writer is the only party that knows it is inside `layout()`, so the rule binds the writer.
+    * **Permitted side effects** — these do not make anything observable mid-pass:
+        1. Storing layout results: `_layout_rect`, and plain synchronous fields that paint, hit-testing, and other post-layout consumers read (e.g. the recorded scroll metrics).
+        2. Requesting a frame: `invalidate()` / `mark_needs_layout()` alter no measurement; scheduling work discovered during measurement is unavoidable.
+        3. Queueing a deferred publish or callback (`widgeting.widget_size_change`). The app flushes that queue between frames — at the start of the next frame, before its build flush — which is the sanctioned way to make a measured result reactive: `Geometry`'s size and the scroll metrics publish to their `Observable`s through it. Reactive consumers therefore see a measurement one frame after the layout that produced it, and never a torn mix of old and new.
 
 2. **`preferred_size()` Method**
     * Reports the Widget's intrinsic size so the parent can allocate room during `layout()`.
@@ -65,11 +69,13 @@ All `Widget`s adhere to the following protocol:
 
 ### Lifecycle Integration
 
-The `App` main loop processes tasks in the following order:
+The `App` main loop processes each frame in the following order:
 
-1. **Layout Pass**: Calls `layout()` on the root Widget (only if `_needs_layout` is True).
-    * At this stage, sizes, positions, and scroll metrics for all Widgets are finalized.
-    * This guarantees the accuracy of scrollbar visibility and hit-testing.
+1. **Queue Flush**: Runs the deferred publishes and size-change callbacks the *previous* frame's layout queued (see Permitted side effects above), then flushes bindings and scope recompositions — so an `Observable` written here is picked up by this frame's build.
+2. **Layout Pass**: Calls `layout()` on the root Widget (only if `_needs_layout` is True).
+    * Sizes, positions, and scroll metrics for all Widgets are **recorded** at this stage, in `_layout_rect` and plain synchronous fields. Paint and hit-testing read those records — that is what guarantees scrollbar visibility and hit-testing accuracy within the same frame.
+    * Recording is distinct from publishing: the `Observable` publish of a recorded measurement rides the queue and lands at the start of the next frame. Layout finalizes the frame's geometry without making any of it observable mid-pass.
+3. **Paint Pass**: Draws from the recorded layout results.
 
 ## 3. Paint Phase
 

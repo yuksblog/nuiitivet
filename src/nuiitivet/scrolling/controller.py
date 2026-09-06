@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, Mapping, Tuple
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import Observable
+from nuiitivet.widgeting.widget_size_change import queue_deferred_publish
 
 from .types import ScrollDirection, ScrollPhysics
 
@@ -21,10 +22,12 @@ _logger = logging.getLogger(__name__)
 class ScrollAxisState:
     """Holds scroll metrics for a single axis.
 
-    This uses `Observable` descriptors for per-instance observable fields
-    instead of constructing runtime `Value(...)` objects. Instances still
-    expose `_ObservableValue` objects when accessed (via the descriptor), so
-    calling code can use `.value` and `.subscribe(...)` as before.
+    ``offset`` and the metrics are per-instance ``Observable`` fields (class-
+    level descriptors), so callers use ``.value`` and ``.subscribe(...)``.
+    Layout must not write an Observable, so :meth:`set_metrics` records metrics
+    in plain fields — read same-frame by paint, hit-testing and clamping — and
+    :meth:`publish_metrics` writes the Observables between frames; subscribers
+    see metrics one frame after the layout that measured them.
     """
 
     offset = Observable(0.0)
@@ -34,6 +37,9 @@ class ScrollAxisState:
 
     def __init__(self, axis: ScrollDirection, initial: float = 0.0) -> None:
         self.axis = axis
+        self._max_extent: float = 0.0
+        self._viewport_size: int = 0
+        self._content_size: int = 0
         try:
             setattr(self, "offset", float(initial))
         except Exception:
@@ -45,6 +51,19 @@ class ScrollAxisState:
                     "scroll_axis_state_init_offset_exc",
                     "ScrollAxisState offset initialization failed",
                 )
+
+    def set_metrics(self, max_extent: float, viewport_size: int, content_size: int) -> bool:
+        """Record the metrics synchronously; report whether anything changed."""
+        recorded = (float(max_extent), int(viewport_size), int(content_size))
+        changed = recorded != (self._max_extent, self._viewport_size, self._content_size)
+        self._max_extent, self._viewport_size, self._content_size = recorded
+        return changed
+
+    def publish_metrics(self) -> None:
+        """Publish the recorded metrics to the Observables (call between frames)."""
+        self.max_extent.value = self._max_extent
+        self.viewport_size.value = self._viewport_size
+        self.content_size.value = self._content_size
 
 
 class ScrollController:
@@ -163,26 +182,26 @@ class ScrollController:
         Computed as content_size - viewport_size. Updated automatically by the
         scrollable widget.
         """
-        return self._primary_axis_state().max_extent.value
+        return self._primary_axis_state()._max_extent
 
     def axis_max_extent(self, axis: ScrollDirection) -> float:
-        return self.axis_state(axis).max_extent.value
+        return self.axis_state(axis)._max_extent
 
     @property
     def viewport_size(self) -> int:
         """Viewport size in pixels."""
-        return self._primary_axis_state().viewport_size.value
+        return self._primary_axis_state()._viewport_size
 
     def axis_viewport_size(self, axis: ScrollDirection) -> int:
-        return self.axis_state(axis).viewport_size.value
+        return self.axis_state(axis)._viewport_size
 
     @property
     def content_size(self) -> int:
         """Total content size in pixels."""
-        return self._primary_axis_state().content_size.value
+        return self._primary_axis_state()._content_size
 
     def axis_content_size(self, axis: ScrollDirection) -> int:
-        return self.axis_state(axis).content_size.value
+        return self.axis_state(axis)._content_size
 
     @property
     def is_at_start(self) -> bool:
@@ -207,7 +226,7 @@ class ScrollController:
         """
         state = self._resolve_axis(axis)
         offset = float(state.offset.value)
-        max_extent = float(getattr(state.max_extent, "value", 0.0))
+        max_extent = float(state._max_extent)
         return {
             "axis": state.axis.value,
             "offset": offset,
@@ -225,8 +244,7 @@ class ScrollController:
             offset: Target scroll position in pixels.
         """
         axis_state = self._resolve_axis(axis)
-        max_extent = getattr(axis_state.max_extent, "value", 0.0)
-        clamped = max(0.0, min(float(offset), max_extent))
+        clamped = max(0.0, min(float(offset), axis_state._max_extent))
         try:
             axis_state.offset.value = clamped
         except Exception:
@@ -261,13 +279,10 @@ class ScrollController:
     def scroll_to_end(self, *, axis: ScrollDirection | None = None) -> None:
         axis_state = self._resolve_axis(axis)
         try:
-            max_val = getattr(axis_state.max_extent, "value", None)
-            if max_val is None and hasattr(axis_state.max_extent, "value"):
-                max_val = axis_state.max_extent.value
-            axis_state.offset.value = max_val
+            axis_state.offset.value = axis_state._max_extent
         except Exception:
             try:
-                axis_state.offset.value = getattr(axis_state.max_extent, "value", 0.0)
+                axis_state.offset.value = axis_state._max_extent
             except Exception:
                 exception_once(
                     _logger,
@@ -282,42 +297,17 @@ class ScrollController:
         content_size: int,
         *,
         axis: ScrollDirection | None = None,
+        widget: Any = None,
     ) -> None:
-        """Update scroll metrics (for the scrollable widget only)."""
+        """Record scroll metrics and queue their Observable publish.
+
+        For the scrollable widget only. Called from ``layout()``, where an
+        Observable write is forbidden; *widget* has a frame requested for the
+        flush.
+        """
         state = self._resolve_axis(axis)
-        try:
-            state.max_extent.value = float(max_extent)
-        except Exception:
-            try:
-                state.max_extent.value = float(max_extent)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "scroll_controller_update_metrics_set_max_extent_exc",
-                    "ScrollController failed to set max_extent",
-                )
-        try:
-            state.viewport_size.value = int(viewport_size)
-        except Exception:
-            try:
-                state.viewport_size.value = int(viewport_size)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "scroll_controller_update_metrics_set_viewport_size_exc",
-                    "ScrollController failed to set viewport_size",
-                )
-        try:
-            state.content_size.value = int(content_size)
-        except Exception:
-            try:
-                state.content_size.value = int(content_size)
-            except Exception:
-                exception_once(
-                    _logger,
-                    "scroll_controller_update_metrics_set_content_size_exc",
-                    "ScrollController failed to set content_size",
-                )
+        if state.set_metrics(max_extent, viewport_size, content_size):
+            queue_deferred_publish(state, state.publish_metrics, widget=widget)
 
 
 __all__ = ["ScrollAxisState", "ScrollController"]

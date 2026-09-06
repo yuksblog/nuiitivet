@@ -158,8 +158,8 @@ nv.Geometry(Pane(), width="wt", height="wt")   # filling: defines the scope
   a one-time snapshot that never updates.
 - **Nearest provider wins.** The app installs a root `Geometry` at the window, so
   a top-level read tracks the window.
-- Measured during layout; a consumer that has to rebuild does so on the next
-  frame.
+- Measured during layout, published between frames: every consumer sees the
+  size on the next frame.
 
 ## Dynamic lists
 
