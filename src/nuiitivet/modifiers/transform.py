@@ -8,6 +8,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import alignment_to_point, normalize_alignment
 from nuiitivet.observable import ObservableBase
 from ..rendering.sizing import SizingLike
+from ..rendering.visual_bounds import transformed_outsets
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
 
@@ -224,6 +225,20 @@ class TransformBox(Widget):
             child.set_layout_rect(0, 0, width, height)
         except Exception:
             exception_once(logger, "transform_box_layout_exc", "Child layout/set_layout_rect raised")
+
+    def paint_outsets(self) -> Tuple[int, int, int, int]:
+        # The transform moves the child's pixels; a container deciding whether
+        # this widget can be seen at all has to know where they end up.
+        rect = self.layout_rect
+        width, height = (rect[2], rect[3]) if rect is not None else (0, 0)
+        return transformed_outsets(
+            width,
+            height,
+            translate=(self._translate_x, self._translate_y),
+            scale=(self._scale_x, self._scale_y),
+            rotation=self._rotation,
+            origin=self._resolve_origin(width, height),
+        )
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)

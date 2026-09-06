@@ -548,6 +548,13 @@ class BuilderHostMixin:
         else:
             super().paint(canvas, x, y, width, height)  # type: ignore
 
+    def paint_outsets(self) -> Tuple[int, int, int, int]:
+        # The built subtree paints in this widget's place, so its overflow is
+        # this widget's overflow.
+        if self._built:
+            return self._built.paint_outsets()
+        return super().paint_outsets()  # type: ignore
+
     def hit_test(self, x: int, y: int):
         if self._built:
             hit = self._built.hit_test(x, y)

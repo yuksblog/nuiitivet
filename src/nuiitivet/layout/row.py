@@ -7,7 +7,7 @@ from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children, layout_child_if_needed
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_children_at_layout_rects
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
@@ -223,18 +223,7 @@ class Row(Widget):
         if any(c.layout_rect is None for c in children):
             self.layout(width, height)
 
-        for child in children:
-            rect = child.layout_rect
-            if rect is None:
-                continue
-
-            rel_x, rel_y, w, h = rect
-            abs_x = x + rel_x
-            abs_y = y + rel_y
-
-            child.set_last_rect(abs_x, abs_y, w, h)
-
-            child.paint(canvas, abs_x, abs_y, w, h)
+        paint_children_at_layout_rects(children, canvas, x, y)
 
     @staticmethod
     def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:

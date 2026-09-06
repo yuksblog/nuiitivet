@@ -314,3 +314,26 @@ def test_visible_chains_with_other_modifiers() -> None:
     wrapped = child.modifier(opacity(0.5) | visible(cond))
     assert isinstance(wrapped, PassthroughPointerBox)
     assert wrapped._active is False
+
+
+def test_visible_paint_outsets_follow_the_slide() -> None:
+    """Mid-transition the child is drawn away from its rect, and reports it."""
+    from nuiitivet.animation.transition_pattern import FractionalSlidePattern
+
+    cond = _ObservableValue(True)
+    child = _make_child()
+    transition = TransitionDefinition(
+        motion=LinearMotion(1.0),
+        pattern=FractionalSlidePattern(start_y=1.0, end_y=0.0),
+    )
+    wrapped = child.modifier(visible(cond, transition=transition))
+    paint_box = _inner(wrapped)
+    assert isinstance(paint_box, _AnimatedVisibleBox)
+    wrapped.layout(100, 50)
+
+    # Fully shown: no offset.
+    assert paint_box.paint_outsets() == (0, 0, 0, 0)
+
+    # Halfway in: still half its height below its rect.
+    paint_box._progress = 0.5
+    assert paint_box.paint_outsets() == (0, 0, 0, 25)

@@ -266,6 +266,31 @@ def clip_rect(canvas, rect, anti_alias: bool = True) -> bool:
         return False
 
 
+def local_clip_bounds(canvas) -> Optional[tuple[float, float, float, float]]:
+    """Return the canvas clip as ``(left, top, right, bottom)`` in local coordinates.
+
+    Skia already maps its device clip through the current matrix and rounds
+    outwards, so the result is conservative under any transform. ``None`` means
+    the clip is unknown -- no canvas, a non-Skia stand-in, or a call that
+    failed -- and a caller must then treat everything as visible.
+    """
+
+    read = getattr(canvas, "getLocalClipBounds", None)
+    if read is None:
+        return None
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        return None
+    try:
+        rect = read()
+        if not isinstance(rect, skia.Rect):
+            return None
+        return (rect.fLeft, rect.fTop, rect.fRight, rect.fBottom)
+    except Exception:
+        exception_once(logger, "skia_local_clip_bounds_exc", "canvas.getLocalClipBounds failed")
+        return None
+
+
 def make_point(x: Number, y: Number) -> Optional[object]:
     """Return a skia.Point or None if unavailable."""
 
@@ -392,6 +417,7 @@ __all__ = [
     "draw_round_rect",
     "clip_round_rect",
     "clip_rect",
+    "local_clip_bounds",
     "make_point",
     "draw_oval",
     "make_path",

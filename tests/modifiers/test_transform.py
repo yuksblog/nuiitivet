@@ -661,3 +661,25 @@ def test_paint_without_layout():
     child = box._child()
     assert child is not None
     assert child.layout_rect is not None
+
+
+def test_paint_outsets_cover_the_translated_child():
+    """A translation moves the pixels; the outsets say where they end up."""
+    box = TransformBox(MockWidget(), translation=(0, -400))
+    box.layout(100, 50)
+
+    assert box.paint_outsets() == (0, 400, 0, 0)
+
+
+def test_paint_outsets_cover_the_scaled_child():
+    box = TransformBox(MockWidget(), scale=2.0)
+    box.layout(100, 50)
+
+    assert box.paint_outsets() == (50, 25, 50, 25)
+
+
+def test_paint_outsets_are_zero_without_transforms():
+    box = TransformBox(MockWidget())
+    box.layout(100, 50)
+
+    assert box.paint_outsets() == (0, 0, 0, 0)
