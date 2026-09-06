@@ -98,7 +98,7 @@ top to bottom.
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
 | The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
 | `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
-| A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem |
+| A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem, and scope it to the widget they named: `screenshot(key=...)` / `screenshot(label=...)` crops to that widget plus `padding` px (default 8) each side, `screenshot(rect=[x, y, w, h])` to a raw region from `describe_tree`. Take the whole frame only when the problem has no widget to name |
 | A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop` — reach for it only because a human reported it; you cannot perceive jank or excess rebuilds yourself. The report's `rebuilds` and `bindings` counters name the widget doing wasted work; `frames` carries paint-walk mean/p95/max ms. Recording slows frames ~10%, so stop it when done. Paint counts equal painted-frame count (every painted frame walks the whole tree) — read `rebuilds`/`bindings` for the per-widget signal |
 
 **Multiple windows.** `status` lists every open window (`id`, `title`,
@@ -179,6 +179,12 @@ is on screen*:
   window.** It can come back clean while the screen is visibly broken (GPU path,
   swap chain), so never dismiss a human's visual report on that basis — ask them
   for their own screenshot.
+- **A scoped `screenshot` fails "not visible" for a widget scrolled wholly out
+  of view.** `scroll_into_view(key=...)` it, then retry; a widget half off
+  screen returns its visible half.
+- **`screenshot(label=...)` crops to the node that displays the text** -- the
+  `Text` inside a `Button`, not the `Button`. To frame the whole widget, give it
+  a `key` and use `screenshot(key=...)`.
 
 ## Act — drive the running app
 

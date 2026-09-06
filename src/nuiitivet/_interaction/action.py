@@ -33,7 +33,7 @@ them.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol, Sequence
 
 from .perception import ancestors, find_obstruction, find_target, global_visual_rect
 from nuiitivet.input.codes import (
@@ -231,6 +231,79 @@ def _resolve_point(
     if x is not None and y is not None:
         return (float(x), float(y), {})
     raise ValueError(f"{verb} requires a 'key', a 'label', or explicit 'x' and 'y'")
+
+
+# Logical pixels kept around a scoped screenshot's target. Shadows, focus rings
+# and outlines paint outside a widget's rect, and a tight crop hides them.
+DEFAULT_CAPTURE_PADDING = 8.0
+
+
+def resolve_capture_rect(
+    app: Any,
+    *,
+    key: Optional[str] = None,
+    label: Optional[str] = None,
+    rect: Optional[Sequence[float]] = None,
+    padding: float = DEFAULT_CAPTURE_PADDING,
+) -> tuple[tuple[float, float, float, float], dict[str, Any]]:
+    """Resolve a screenshot target to the ``(x, y, w, h)`` region to render.
+
+    A stable identifier (``key`` / ``label``) is resolved to the widget's rect
+    *as painted*, padded by ``padding`` on every side; a raw ``rect`` in root
+    coordinates is taken as given, and never padded. Either way the result is
+    clamped to the window, so a target half off screen yields its visible
+    half. Returns the region plus the identity to echo back.
+
+    Raises:
+        ValueError: If neither an identifier nor a ``rect`` is given, or the
+            ``rect`` is malformed or lies wholly outside the window.
+        TargetNotFoundError: If the identifier matched nothing (or it has no
+            rect yet).
+        TargetNotVisibleError: If the target is scrolled wholly out of view.
+    """
+    settle(app)
+    if key is not None or label is not None:
+        node = find_target(app.root, key=key, label=label)
+        if node is None:
+            raise TargetNotFoundError(_no_match_message(key, label))
+        node_rect = global_visual_rect(node)
+        if node_rect is None:
+            raise TargetNotFoundError(
+                f"{type(node).__name__} has no layout rect yet (not laid out); cannot capture it"
+            )
+        pad = max(0.0, float(padding))
+        x, y, w, h = node_rect
+        wanted = (x - pad, y - pad, w + 2 * pad, h + 2 * pad)
+        clipped = _clamp_to_window(app, wanted)
+        if clipped is None:
+            raise TargetNotVisibleError(
+                f"{type(node).__name__} lies at {tuple(round(v) for v in node_rect)}, "
+                "outside the window; 'scroll_into_view' it first"
+            )
+        return (clipped, _describe_target(node))
+    if rect is not None:
+        if len(rect) != 4:
+            raise ValueError("rect must be [x, y, w, h]")
+        x, y, w, h = (float(v) for v in rect)
+        if w <= 0 or h <= 0:
+            raise ValueError("rect width and height must be positive")
+        clipped = _clamp_to_window(app, (x, y, w, h))
+        if clipped is None:
+            raise ValueError(f"rect {tuple(rect)} lies outside the {app.width}x{app.height} window")
+        return (clipped, {})
+    raise ValueError("screenshot requires a 'key', a 'label', or a 'rect' to scope it")
+
+
+def _clamp_to_window(
+    app: Any, rect: tuple[float, float, float, float]
+) -> Optional[tuple[float, float, float, float]]:
+    """Intersect ``rect`` with the window bounds; ``None`` when nothing is left."""
+    x, y, w, h = rect
+    left, top = max(0.0, x), max(0.0, y)
+    right, bottom = min(float(app.width), x + w), min(float(app.height), y + h)
+    if right <= left or bottom <= top:
+        return None
+    return (left, top, right - left, bottom - top)
 
 
 def _is_scroll_region(node: Any) -> bool:

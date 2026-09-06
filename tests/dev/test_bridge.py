@@ -69,8 +69,10 @@ class _FakeApp:
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
         self.text_motions: list[tuple] = []
+        self.clips: list[Any] = []
 
-    def _render_to_png_bytes(self) -> bytes:
+    def _render_to_png_bytes(self, clip: Any = None) -> bytes:
+        self.clips.append(clip)
         return self._PNG
 
     def _frame_is_blank(self) -> bool:
@@ -182,6 +184,37 @@ def test_bridge_describe_tree_and_screenshot(tmp_path: Path, dev_run: None) -> N
 
             png = client.screenshot()
             assert png == _FakeApp._PNG
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_screenshot_scoped_to_a_target(tmp_path: Path, dev_run: None) -> None:
+    app: Any = _FakeApp()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            assert client.screenshot(key="submit", padding=4) == _FakeApp._PNG
+            assert client.screenshot(rect=[5, 5, 20, 20]) == _FakeApp._PNG
+            assert client.screenshot() == _FakeApp._PNG
+    finally:
+        bridge.shutdown()
+    # The root sits at (0, 0, 10, 10) in a 100x100 window: padding is clamped
+    # at the origin; a raw rect passes through; no scope means the whole frame.
+    assert app.clips == [(0.0, 0.0, 14.0, 14.0), (5.0, 5.0, 20.0, 20.0), None]
+
+
+def test_bridge_screenshot_rejects_bad_scope(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="no widget matched"):
+                client.screenshot(key="nope")
+            with pytest.raises(RuntimeError, match="rect must be"):
+                client._get("/screenshot?rect=1,2,3")
     finally:
         bridge.shutdown()
 

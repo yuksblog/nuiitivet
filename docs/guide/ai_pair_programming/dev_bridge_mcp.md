@@ -85,7 +85,7 @@ in the loop. *When* the assistant should reach for which is the
 | `status` | Liveness, the window title, the newest reload's outcome, a count of runtime errors, and a `blank` flag for a screen where nothing painted. No tree, no image. <br> **`blank` is a heuristic.** It catches a swallowed paint exception that the tree cannot reveal — but an intentionally solid-color screen reads blank too. |
 | `describe_tree` | The mounted tree as compact JSON — each node's type, identity (`key` / `label` / `text` / `title`), interactive state (`disabled` / `focused` / `selected` / `value`), and rect. The cheap view the assistant reasons over and resolves action targets from. |
 | `describe_state` | The live `Observable` values behind that tree, in the same shape as `describe_tree` so the two join node-for-node. Answers "the value updated but the UI didn't", and the reverse. <br> **These are the raw observables, under the attribute names your widgets bound them to** — `describe_tree`'s own state is the same thing in one vocabulary. <br> **Animation state is omitted by default.** `Animatable` channels carry visual rather than semantic state and would dominate the dump; `include_animations=True` brings them back. |
-| `screenshot` | The mounted tree rendered to PNG. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
+| `screenshot` | The mounted tree rendered to PNG — the whole frame, or just one widget: `key` / `label` crop to that widget's painted rect plus `padding` logical pixels each side (default 8, so shadows and outlines stay in), `rect=[x, y, w, h]` crops to a raw region. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
 | `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-inspect-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
 
 ### Act — drive it
@@ -233,6 +233,8 @@ python -m nuiitivet.dev runtime-log --verbose on
 python -m nuiitivet.dev profile start
 python -m nuiitivet.dev profile stop
 python -m nuiitivet.dev screenshot -o out.png
+python -m nuiitivet.dev screenshot --key save -o save.png   # one widget, padded 8px
+python -m nuiitivet.dev screenshot --rect 100 50 80 40      # a raw region
 python -m nuiitivet.dev click --label increment
 python -m nuiitivet.dev scroll --key feed --dy 5      # --key names the region
 python -m nuiitivet.dev scroll --xy 238 367 --dy 5    # ...or its rect centre

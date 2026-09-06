@@ -30,7 +30,7 @@ class _RecordingClient:
         self.window = window
         return {}
 
-    def screenshot(self, *, window: Optional[int] = None) -> bytes:
+    def screenshot(self, *, window: Optional[int] = None, **kwargs: Any) -> bytes:
         self.window = window
         return b"png"
 

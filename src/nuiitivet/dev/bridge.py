@@ -35,6 +35,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
+from nuiitivet._interaction.action import resolve_capture_rect
+
 from .action import (
     TargetNotFoundError,
     check_condition,
@@ -184,6 +186,41 @@ def _parse_flag(query: str, name: str) -> bool:
     if not values:
         return False
     return values[0].strip().lower() in ("", "1", "true", "yes", "on")
+
+
+def _parse_capture_scope(query: str) -> dict[str, Any]:
+    """Extract a ``/screenshot`` scope (``key`` / ``label`` / ``rect`` / ``padding``).
+
+    Empty when the query names no target, meaning the whole frame. ``rect`` is
+    ``x,y,w,h``; a malformed one raises ``ValueError`` so the request fails 400
+    rather than quietly falling back to the full frame.
+    """
+    from urllib.parse import parse_qs
+
+    params = parse_qs(query)
+    scope: dict[str, Any] = {}
+    for name in ("key", "label"):
+        values = params.get(name)
+        if values:
+            scope[name] = values[0]
+    rect_values = params.get("rect")
+    if rect_values:
+        parts = rect_values[0].split(",")
+        if len(parts) != 4:
+            raise ValueError("rect must be 'x,y,w,h'")
+        scope["rect"] = [float(part) for part in parts]
+    padding_values = params.get("padding")
+    if padding_values:
+        scope["padding"] = float(padding_values[0])
+    return scope
+
+
+def _render_screenshot(window: Any, scope: dict[str, Any]) -> bytes:
+    """Render the whole frame, or just the region ``scope`` resolves to."""
+    if not scope:
+        return window._render_to_png_bytes()
+    clip, _ = resolve_capture_rect(window, **scope)
+    return window._render_to_png_bytes(clip=clip)
 
 
 def _resolve_window(app: Any, spec: Any) -> Any:
@@ -594,8 +631,9 @@ def _make_handler(
                         ),
                     )
                 elif path == "/screenshot":
+                    scope = _parse_capture_scope(query)
                     png = marshaller.call_on_ui_thread(
-                        lambda app: _resolve_window(app, window_spec)._render_to_png_bytes()
+                        lambda app: _render_screenshot(_resolve_window(app, window_spec), scope)
                     )
                     self._send_png(png)
                 elif path == "/reload_log":

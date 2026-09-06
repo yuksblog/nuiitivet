@@ -1320,19 +1320,27 @@ class Window:
             except Exception:
                 exception_once(logger, "app_request_draw_exc", "Event loop request_draw raised")
 
-    def _render_to_png_bytes(self) -> bytes:
+    def _render_to_png_bytes(self, clip: Optional[tuple[float, float, float, float]] = None) -> bytes:
         """Render the root widget to PNG bytes (raster surface).
 
-        Uses `self._scale` when available to generate a high-DPI image.
+        Uses `self._scale` when available to generate a high-DPI image. ``clip``
+        is a logical ``(x, y, w, h)`` rect; only that region is rendered.
         """
         scale = max(1.0, float(getattr(self, "_scale", 1.0)))
-        img = self._render_snapshot(scale=scale, settle=True)
+        img = self._render_snapshot(scale=scale, settle=True, clip=clip)
         data = img.encodeToData()
         if data is None:
             raise RuntimeError("encodeToData() returned None (failed to encode image)")
         return bytes(data)
 
-    def _render_snapshot(self, scale: float = 1.0, *, for_display: bool = False, settle: bool = False):
+    def _render_snapshot(
+        self,
+        scale: float = 1.0,
+        *,
+        for_display: bool = False,
+        settle: bool = False,
+        clip: Optional[tuple[float, float, float, float]] = None,
+    ):
         """Create a Skia image snapshot for the current root at given scale.
 
         Returns an image object. Raises RuntimeError if Skia is missing or
@@ -1340,6 +1348,9 @@ class Window:
 
         Args:
             scale: Device-pixel scale factor for the raster surface.
+            clip: A logical ``(x, y, w, h)`` rect to render instead of the whole
+                window. Layout is unchanged; the surface is just that region,
+                so paint outside it is culled rather than cropped afterwards.
             for_display: When ``True`` this snapshot is being drawn to the live
                 on-screen window (the CPU/raster frame path), so the human-only
                 dev action overlay is painted over it. Screenshot callers leave
@@ -1359,8 +1370,9 @@ class Window:
             exception_once(logger, "app_snapshot_flush_scope_recompositions_exc", "flush_scope_recompositions failed")
         require_skia()
 
-        phys_w = max(1, int(self.width * scale))
-        phys_h = max(1, int(self.height * scale))
+        clip_x, clip_y, clip_w, clip_h = clip if clip is not None else (0.0, 0.0, self.width, self.height)
+        phys_w = max(1, int(round(clip_w * scale)))
+        phys_h = max(1, int(round(clip_h * scale)))
 
         surface = make_raster_surface(phys_w, phys_h)
         canvas = surface.getCanvas()
@@ -1368,6 +1380,8 @@ class Window:
         # Map logical coordinates to device pixels
         if scale != 1.0:
             canvas.scale(scale, scale)
+        if clip is not None:
+            canvas.translate(-clip_x, -clip_y)
 
         # Clear with configured background (already normalized by
         # `_update_background_color` to either a backend color or an
