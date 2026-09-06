@@ -183,6 +183,45 @@ nv.TextField(value=self.qty.map(str))   # renders, but cannot be typed into
 
 Bind the observable you created, and derive from it — never the other way round.
 
+## Disabling a Control While Its Handler Runs
+
+An async handler is scheduled and returns immediately, so the button stays
+live while the work runs. Holding a busy flag by hand takes a `try/finally`,
+and the `finally` is the part that is silently wrong when omitted — a handler
+that raises leaves the control disabled forever:
+
+```python
+async def save(self) -> None:
+    self.busy.value = True
+    try:
+        await api.save(...)
+    finally:
+        self.busy.value = False
+```
+
+`while_value()` says the same thing in one line: the value is set on entry and
+the previous one comes back on exit, also when the block raises.
+
+```python
+import nuiitivet.material as nv
+
+class EditorViewModel:
+    def __init__(self):
+        self.busy = nv.Observable(False)
+
+    async def save(self) -> None:
+        async with self.busy.while_value(True):
+            await api.save(...)
+```
+
+```python
+nv.Button("Save", on_click=vm.save, disabled=vm.busy)
+```
+
+Any value can be held this way, not just a `bool` —
+`async with self.mode.while_value(Mode.PREVIEW): ...` — and plain `with` works
+for a sync block.
+
 ---
 
 ## Next Steps

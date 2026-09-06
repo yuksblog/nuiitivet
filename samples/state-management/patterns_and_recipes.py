@@ -5,10 +5,12 @@ Demonstrates:
 - Derived state composition with map() and combine()
 - Memory management with Disposable
 - Typed values derived from a text field's text
+- A busy flag held with while_value() while an async handler runs
 
 Work produced on a worker thread lives in background_work.py.
 """
 
+import asyncio
 from datetime import date
 
 import nuiitivet.material as nv
@@ -145,6 +147,24 @@ class OrderForm:
 
 
 # ---------------------------------------------------------------------------
+# Pattern 5: Busy flag while an async handler runs
+# ---------------------------------------------------------------------------
+
+
+class SaveViewModel:
+    """``busy`` is True exactly while ``save()`` runs, however it exits."""
+
+    def __init__(self) -> None:
+        self.busy = nv.Observable(False)
+        self.saved_count = nv.Observable(0)
+
+    async def save(self) -> None:
+        async with self.busy.while_value(True):
+            await asyncio.sleep(1.0)  # stands in for the real I/O
+            self.saved_count.value += 1
+
+
+# ---------------------------------------------------------------------------
 # Combined demo widget
 # ---------------------------------------------------------------------------
 
@@ -155,6 +175,7 @@ class PatternsApp(nv.ComposableWidget):
         self.vm = TodoViewModel()
         self.cart = ShoppingCart()
         self.form = OrderForm()
+        self.save_vm = SaveViewModel()
         self._counter = 1
 
     def _add_todo_item(self) -> None:
@@ -231,6 +252,20 @@ class PatternsApp(nv.ComposableWidget):
                         is_error=form.error.map(lambda e: e is not None),
                     ),
                     nv.Text(form.arrival.map(lambda d: f"arrival:         {d}")),
+                    # --- Busy flag while an async handler runs ---
+                    nv.Text("Pattern 5: Busy Flag While a Handler Runs"),
+                    nv.Row(
+                        gap=8,
+                        children=[
+                            nv.Button(
+                                "Save",
+                                on_click=self.save_vm.save,
+                                disabled=self.save_vm.busy,
+                                style=nv.ButtonStyle.filled(),
+                            ),
+                            nv.Text(self.save_vm.saved_count.map(lambda n: f"saved {n} time(s)")),
+                        ],
+                    ),
                 ],
             ),
         )
@@ -238,7 +273,7 @@ class PatternsApp(nv.ComposableWidget):
 
 def main() -> None:
     # The class, not an instance: hot reload rebuilds the root by calling it.
-    nv.App(nv.Window(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=900)).run()
+    nv.App(nv.Window(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=980)).run()
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from .protocols import (
 from .runtime import Clock, ClockCallback, get_clock, set_clock
 from .switched import CancelToken, SwitchMappedObservable
 from .timed import DebouncedObservable, ThrottledObservable
-from .value import Observable, _ObservableValue
+from .value import Observable, WhileValue, _ObservableValue
 from .wrapper import ShapingObservable, SourceSubscribingObservable
 
 __all__ = [
@@ -41,6 +41,7 @@ __all__ = [
     "SourceSubscribingObservable",
     "SwitchMappedObservable",
     "ThrottledObservable",
+    "WhileValue",
     "_ObservableValue",
     "get_clock",
     "set_clock",

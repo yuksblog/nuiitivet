@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 import threading
 import warnings
-from typing import Any, Callable, List, Optional, TypeVar, TYPE_CHECKING
+from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from typing import Any, Callable, Generic, List, Literal, Optional, TypeVar, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import debug_once
 from nuiitivet.runtime.threading import is_ui_thread
@@ -48,26 +49,32 @@ class _ObservableValue(MutableObservableBase[T]):
         self._pending_value: T | _Unset = UNSET
         self._is_scheduled = False
 
-    def _is_equal(self, candidate: T) -> bool:
-        owner_name = type(self._owner).__name__ if self._owner is not None else "ObservableOwner"
+    @property
+    def _owner_name(self) -> str:
+        return type(self._owner).__name__ if self._owner is not None else "ObservableOwner"
+
+    def _values_equal(self, a: T, b: T) -> bool:
         if self._compare is not None:
             try:
-                return bool(self._compare(self._value, candidate))
+                return bool(self._compare(a, b))
             except Exception as exc:
-                msg = f"Observable compare failed for '{self._name}' on {owner_name}: {exc}"
+                msg = f"Observable compare failed for '{self._name}' on {self._owner_name}: {exc}"
                 warnings.warn(msg, RuntimeWarning, stacklevel=2)
                 return False
         try:
-            result = self._value == candidate
+            result = a == b
         except Exception as exc:  # pragma: no cover
-            msg = f"Observable equality failed for '{self._name}' on {owner_name}: {exc}"
+            msg = f"Observable equality failed for '{self._name}' on {self._owner_name}: {exc}"
             warnings.warn(msg, RuntimeWarning, stacklevel=2)
             return False
         if isinstance(result, bool):
             return result
-        msg = f"Observable equality for '{self._name}' on {owner_name} returned non-bool {result!r}"
+        msg = f"Observable equality for '{self._name}' on {self._owner_name} returned non-bool {result!r}"
         warnings.warn(msg, RuntimeWarning, stacklevel=2)
         return False
+
+    def _is_equal(self, candidate: T) -> bool:
+        return self._values_equal(self._value, candidate)
 
     @property
     def value(self) -> T:
@@ -123,6 +130,36 @@ class _ObservableValue(MutableObservableBase[T]):
 
     def _notify_subs(self) -> None:
         notify_all(self._subs, lambda: self._value, logger=logger, key="observable")
+
+    def _latest_value(self) -> T:
+        """The most recent write, whether applied or still queued for the UI thread."""
+        with self._lock:
+            pending = self._pending_value
+            return self._value if isinstance(pending, _Unset) else pending
+
+    def while_value(self, value: T) -> "WhileValue[T]":
+        """Hold ``value`` for the duration of a block, then restore the previous value.
+
+        Supports both ``with`` and ``async with``::
+
+            async def save(self) -> None:
+                async with self.busy.while_value(True):
+                    await api.save(...)
+
+        Re-entry is not guarded. An app whose runs must not overlap adds the
+        guard itself::
+
+            async def save(self) -> None:
+                if self.busy.value:
+                    return
+                async with self.busy.while_value(True):
+                    ...
+
+        The observable must have a single writer; a value written by someone else
+        during the block is logged as a warning on exit and overwritten by the
+        restore.
+        """
+        return WhileValue(self, value)
 
     def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
         from .computed import ComputedObservable
@@ -185,6 +222,46 @@ class _ObservableValue(MutableObservableBase[T]):
                 debug_once(logger, "value_observable_dispose_remove_missing", "Subscriber callback was already removed")
 
         return Disposable(_dispose)
+
+
+class WhileValue(AbstractContextManager[None], AbstractAsyncContextManager[None], Generic[T]):
+    """Context manager that holds a temporary value on an observable.
+
+    Returned by :meth:`_ObservableValue.while_value`; see that docstring for
+    the semantics and caveats. Supports both ``with`` and ``async with``.
+    """
+
+    def __init__(self, obs: _ObservableValue[T], value: T) -> None:
+        self._obs = obs
+        self._temporary = value
+        self._saved: T | _Unset = UNSET
+
+    def __enter__(self) -> None:
+        # _latest_value, not .value: saving an applied-but-stale value while a
+        # write is still queued for the UI thread would restore the wrong one.
+        self._saved = self._obs._latest_value()
+        self._obs.value = self._temporary
+        return None
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> Literal[False]:
+        saved = self._saved
+        self._saved = UNSET
+        if isinstance(saved, _Unset):
+            return False
+        if not self._obs._values_equal(self._obs._latest_value(), self._temporary):
+            logger.warning(
+                "Observable '%s' on %s was written while while_value held it; restoring the saved value anyway",
+                self._obs._name,
+                self._obs._owner_name,
+            )
+        self._obs.value = saved
+        return False
+
+    async def __aenter__(self) -> None:
+        return self.__enter__()
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return self.__exit__(exc_type, exc, tb)
 
 
 class Observable(_ObservableValue[T]):
