@@ -47,6 +47,7 @@ from nuiitivet.animation.transition_pattern import TransitionVisuals
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable import ObservableBase
 from nuiitivet.observable.computed import ComputedObservable
+from nuiitivet.rendering.visual_bounds import transformed_outsets
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
@@ -214,6 +215,24 @@ class _AnimatedVisibleBox(Widget):
                 "Child layout raised in _AnimatedVisibleBox",
             )
 
+    def paint_outsets(self) -> Tuple[int, int, int, int]:
+        # A slide or scale moves the child's pixels; a container deciding
+        # whether this widget can be seen at all has to know where they end up.
+        visuals = self._resolve_visuals()
+        if visuals is None or not _has_visual_effect(visuals):
+            return super().paint_outsets()
+        rect = self.layout_rect
+        width, height = (rect[2], rect[3]) if rect is not None else (0, 0)
+        return transformed_outsets(
+            width,
+            height,
+            translate=_translation(visuals, width, height),
+            scale=(
+                visuals.scale_x if visuals.scale_x is not None else 1.0,
+                visuals.scale_y if visuals.scale_y is not None else 1.0,
+            ),
+        )
+
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         child = self._child()
@@ -236,12 +255,7 @@ class _AnimatedVisibleBox(Widget):
         op = _clamp_unit(visuals.opacity) if visuals.opacity is not None else 1.0
         sx = visuals.scale_x if visuals.scale_x is not None else 1.0
         sy = visuals.scale_y if visuals.scale_y is not None else 1.0
-        tx = visuals.translate_x if visuals.translate_x is not None else 0.0
-        ty = visuals.translate_y if visuals.translate_y is not None else 0.0
-        if visuals.translate_x_fraction is not None:
-            tx += visuals.translate_x_fraction * float(width)
-        if visuals.translate_y_fraction is not None:
-            ty += visuals.translate_y_fraction * float(height)
+        tx, ty = _translation(visuals, width, height)
 
         needs_opacity = op < 1.0
         try:
@@ -292,6 +306,17 @@ class _AnimatedVisibleBox(Widget):
 
 def _clamp_unit(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
+
+
+def _translation(visuals: TransitionVisuals, width: float, height: float) -> Tuple[float, float]:
+    """Total ``(dx, dy)`` of a transition step: absolute plus size-relative."""
+    tx = visuals.translate_x if visuals.translate_x is not None else 0.0
+    ty = visuals.translate_y if visuals.translate_y is not None else 0.0
+    if visuals.translate_x_fraction is not None:
+        tx += visuals.translate_x_fraction * float(width)
+    if visuals.translate_y_fraction is not None:
+        ty += visuals.translate_y_fraction * float(height)
+    return (tx, ty)
 
 
 def _has_visual_effect(visuals: TransitionVisuals) -> bool:

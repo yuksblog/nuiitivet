@@ -123,7 +123,15 @@ Outsets are **not** part of layout and **not** part of hit testing.
 Outsets exist to:
 
 - avoid clipping artifacts when using paint caches,
+- let containers skip painting a child whose visual bounds lie outside the canvas clip,
 - allow natural shadows, focus rings, and overlays to extend beyond the allocated rect.
+
+The second point makes `paint_outsets()` a contract, not a hint: a widget that
+draws outside its allocated rect -- a shadow, a focus ring, a paint-time
+translation or scale -- must report the overflow, or a container may decide it
+cannot be seen and never call its `paint()`. Outsets are reported per widget,
+not per subtree; a small slack band around the clip covers the ordinary case of
+a grandchild's shadow.
 
 Consequences:
 

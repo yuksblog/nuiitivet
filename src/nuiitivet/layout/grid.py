@@ -10,7 +10,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from .container import Container
 from .gap import normalize_gap
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, paint_children_at_layout_rects
 
 logger = logging.getLogger(__name__)
 
@@ -300,18 +300,7 @@ class Grid(Widget):
         if any(c.layout_rect is None for c in children):
             self.layout(width, height)
 
-        for child in children:
-            rect = child.layout_rect
-            if rect is None:
-                continue
-
-            rel_x, rel_y, w, h = rect
-            abs_x = x + rel_x
-            abs_y = y + rel_y
-
-            child.set_last_rect(abs_x, abs_y, w, h)
-
-            child.paint(canvas, abs_x, abs_y, w, h)
+        paint_children_at_layout_rects(children, canvas, x, y)
 
     # --- helpers -------------------------------------------------
     def _prepare_layout(

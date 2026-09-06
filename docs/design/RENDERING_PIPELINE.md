@@ -90,6 +90,7 @@ The phase where actual drawing to the screen is performed based on the finalized
 * **Constraints**:
   * Calculating sizes or changing placements is forbidden at this stage.
   * `paint()` is a pure consumer and must not modify layout results.
+* **Culling**: A multi-child container (`Column`, `Row`, `Flow`, `UniformFlow`, `Grid`) reads the canvas clip once per paint and skips any child whose visual bounds -- layout rect plus `paint_outsets()` -- end more than a small slack outside it. A scrolled list therefore pays paint cost for the rows in the viewport, not for the whole content. A culled child still receives its `last_rect`; only its subtree's paint code is not run. Without a readable clip (no canvas, or a stand-in) every child is painted. See [BOX_MODEL.md](BOX_MODEL.md) for what this asks of a widget that draws outside its rect.
 
 ### Paint Cache Reuse
 

@@ -40,3 +40,10 @@ def test_manager_bumps_its_generation_on_every_change():
     mgr.set_theme(MaterialThemeFactory.light("#111111"))
 
     assert mgr.generation == start + 2
+
+
+def test_manager_without_an_initial_theme_starts_light():
+    manager = ThemeManager()
+
+    assert manager.current.mode == "light"
+    assert manager.current is manager.current

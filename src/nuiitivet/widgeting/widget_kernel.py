@@ -35,6 +35,9 @@ class WidgetKernel:
     # until first measured. Dropped by ``mark_needs_layout()`` so any change
     # that dirties layout also re-measures.
     _measure_cache: Optional[List[Tuple[Optional[int], Optional[int], int, int]]] = None
+    # The ``AppScope`` this widget resolved on its first ``.of()`` lookup after
+    # mounting; owned by ``context_lookup.find_app_scope``, reset by mount/unmount.
+    _app_scope: Any = None
 
     def __init__(
         self,

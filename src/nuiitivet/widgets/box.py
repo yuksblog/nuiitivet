@@ -369,6 +369,8 @@ class Box(CachedPaintMixin, Widget):
         return self._renderer.corner_radii_pixels(width, height)
 
     def paint_outsets(self) -> Tuple[int, int, int, int]:
+        if not self._shadows:
+            return super().paint_outsets()
         base_left, base_top, base_right, base_bottom = super().paint_outsets()
         shadow_left, shadow_top, shadow_right, shadow_bottom = self._shadow_paint_outsets()
         return (

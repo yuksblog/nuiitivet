@@ -17,6 +17,7 @@ import logging
 from typing import Any, Iterator, List, Optional
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.context_lookup import find_app_scope
 
 __all__ = [
     "current_theme_reader",
@@ -101,10 +102,7 @@ def theme_generation(context: Any) -> int:
     Returns:
         The provider's change count, or ``-1`` when no ``AppScope`` is reachable.
     """
-    from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
-    from nuiitivet.widgeting.context_lookup import find_provider
-
-    scope = find_provider(context, AppScope)
+    scope = find_app_scope(context)
     if scope is None:
         return -1
     try:

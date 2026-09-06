@@ -9,6 +9,7 @@ from typing import Any, Callable, List, Optional, Tuple
 from ..common.logging_once import exception_once
 from ..runtime.threading import assert_ui_thread
 from .callbacks import VoidCallback, invoke_event_handler, report_contained
+from .context_lookup import forget_app_scope
 
 
 _logger = logging.getLogger(__name__)
@@ -54,6 +55,8 @@ class LifecycleHostMixin:
         self._unmounted = False
         self._mounted = True
         self._app = app
+        # Entering a tree: whatever an earlier placement resolved is stale.
+        forget_app_scope(self)
         if __debug__:
             # Per mount, not per instance: a re-mount is checked again.
             self._on_mount_chained = False
@@ -122,6 +125,7 @@ class LifecycleHostMixin:
                     "Exception while canceling pointer captures for widget",
                 )
         self._app = None
+        forget_app_scope(self)
         self._unmounted = True
         self._mounted = False
         # As in ``mount``: after the teardown, and only if the override ran clean.

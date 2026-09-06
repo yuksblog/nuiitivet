@@ -197,3 +197,19 @@ def test_theme_styles_independent_of_mode():
     assert light_mat.radio_button_style.default_touch_target == dark_mat.radio_button_style.default_touch_target
     assert light_mat.switch_style.default_touch_target == dark_mat.switch_style.default_touch_target
     assert light_mat.icon_style.default_size == dark_mat.icon_style.default_size
+
+
+def test_default_styles_are_shared_between_reads_and_themes():
+    """A theme that does not override a style hands out one default object,
+    not a fresh one per read: the property runs on every paint."""
+    from nuiitivet.material.theme.color_role import ColorRole
+    from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+    roles = {role: "#000000" for role in ColorRole}
+    a = MaterialThemeData(roles=roles)
+    b = MaterialThemeData(roles=roles)
+
+    assert a.text_style is a.text_style
+    assert a.text_style is b.text_style
+    assert a.filled_button_style is b.filled_button_style
+    assert a.filled_button_style is not a.outlined_button_style

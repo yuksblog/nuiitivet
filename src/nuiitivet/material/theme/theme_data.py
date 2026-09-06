@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Mapping, TYPE_CHECKING, Any
+from typing import Callable, Mapping, TYPE_CHECKING, Any, TypeVar
 
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ThemeExtension
@@ -36,6 +36,24 @@ if TYPE_CHECKING:
     from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 
 ColorValue = str
+
+_S = TypeVar("_S")
+
+_shared_defaults: dict[Any, Any] = {}
+
+
+def _shared_default(make: Callable[..., _S], *args: Any) -> _S:
+    """Return the one default style ``make(*args)`` builds, constructing it on first use.
+
+    A style property falls through to its default whenever the theme does not
+    override it, which is the common case and runs on every paint; styles are
+    frozen, so every theme can hand out the same object.
+    """
+    key = (make, args)
+    style: _S | None = _shared_defaults.get(key)
+    if style is None:
+        style = _shared_defaults[key] = make(*args)
+    return style
 
 
 @dataclass(frozen=True)
@@ -101,7 +119,7 @@ class MaterialThemeData(ThemeExtension):
             return self._filled_button_style
         from nuiitivet.material.styles.button_style import ButtonStyle
 
-        return ButtonStyle.filled()
+        return _shared_default(ButtonStyle.filled)
 
     @property
     def outlined_button_style(self) -> "ButtonStyle":
@@ -110,7 +128,7 @@ class MaterialThemeData(ThemeExtension):
             return self._outlined_button_style
         from nuiitivet.material.styles.button_style import ButtonStyle
 
-        return ButtonStyle.outlined()
+        return _shared_default(ButtonStyle.outlined)
 
     @property
     def text_button_style(self) -> "ButtonStyle":
@@ -119,7 +137,7 @@ class MaterialThemeData(ThemeExtension):
             return self._text_button_style
         from nuiitivet.material.styles.button_style import ButtonStyle
 
-        return ButtonStyle.text()
+        return _shared_default(ButtonStyle.text)
 
     @property
     def elevated_button_style(self) -> "ButtonStyle":
@@ -128,7 +146,7 @@ class MaterialThemeData(ThemeExtension):
             return self._elevated_button_style
         from nuiitivet.material.styles.button_style import ButtonStyle
 
-        return ButtonStyle.elevated()
+        return _shared_default(ButtonStyle.elevated)
 
     @property
     def tonal_button_style(self) -> "ButtonStyle":
@@ -137,7 +155,7 @@ class MaterialThemeData(ThemeExtension):
             return self._tonal_button_style
         from nuiitivet.material.styles.button_style import ButtonStyle
 
-        return ButtonStyle.tonal()
+        return _shared_default(ButtonStyle.tonal)
 
     @property
     def fab_style(self) -> "FabStyle":
@@ -146,7 +164,7 @@ class MaterialThemeData(ThemeExtension):
             return self._fab_style
         from nuiitivet.material.styles.fab_style import FabStyle
 
-        return FabStyle.primary()
+        return _shared_default(FabStyle.primary)
 
     @property
     def toggle_button_style(self) -> "ToggleButtonStyle":
@@ -155,7 +173,7 @@ class MaterialThemeData(ThemeExtension):
             return self._toggle_button_style
         from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 
-        return ToggleButtonStyle.filled("s")
+        return _shared_default(ToggleButtonStyle.filled, "s")
 
     @property
     def icon_toggle_button_style(self) -> "IconToggleButtonStyle":
@@ -164,7 +182,7 @@ class MaterialThemeData(ThemeExtension):
             return self._icon_toggle_button_style
         from nuiitivet.material.styles.button_style import IconToggleButtonStyle
 
-        return IconToggleButtonStyle.standard()
+        return _shared_default(IconToggleButtonStyle.standard)
 
     @property
     def standard_button_group_style(self) -> "StandardButtonGroupStyle":
@@ -173,7 +191,7 @@ class MaterialThemeData(ThemeExtension):
             return self._standard_button_group_style
         from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
 
-        return StandardButtonGroupStyle.filled()
+        return _shared_default(StandardButtonGroupStyle.filled)
 
     @property
     def connected_button_group_style(self) -> "ConnectedButtonGroupStyle":
@@ -182,7 +200,7 @@ class MaterialThemeData(ThemeExtension):
             return self._connected_button_group_style
         from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
 
-        return ConnectedButtonGroupStyle.filled()
+        return _shared_default(ConnectedButtonGroupStyle.filled)
 
     @property
     def menu_style(self) -> "MenuStyle":
@@ -191,7 +209,7 @@ class MaterialThemeData(ThemeExtension):
             return self._menu_style
         from nuiitivet.material.styles.menu_style import MenuStyle
 
-        return MenuStyle.standard()
+        return _shared_default(MenuStyle.standard)
 
     @property
     def toolbar_style(self) -> "ToolbarStyle":
@@ -200,7 +218,7 @@ class MaterialThemeData(ThemeExtension):
             return self._toolbar_style
         from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 
-        return ToolbarStyle.standard()
+        return _shared_default(ToolbarStyle.standard)
 
     @property
     def filled_card_style(self) -> "CardStyle":
@@ -209,7 +227,7 @@ class MaterialThemeData(ThemeExtension):
             return self._filled_card_style
         from nuiitivet.material.styles.card_style import CardStyle
 
-        return CardStyle.filled()
+        return _shared_default(CardStyle.filled)
 
     @property
     def outlined_card_style(self) -> "CardStyle":
@@ -218,7 +236,7 @@ class MaterialThemeData(ThemeExtension):
             return self._outlined_card_style
         from nuiitivet.material.styles.card_style import CardStyle
 
-        return CardStyle.outlined()
+        return _shared_default(CardStyle.outlined)
 
     @property
     def elevated_card_style(self) -> "CardStyle":
@@ -227,7 +245,7 @@ class MaterialThemeData(ThemeExtension):
             return self._elevated_card_style
         from nuiitivet.material.styles.card_style import CardStyle
 
-        return CardStyle.elevated()
+        return _shared_default(CardStyle.elevated)
 
     @property
     def filled_text_field_style(self) -> "TextFieldStyle":
@@ -236,7 +254,7 @@ class MaterialThemeData(ThemeExtension):
             return self._filled_text_field_style
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        return TextFieldStyle.filled()
+        return _shared_default(TextFieldStyle.filled)
 
     @property
     def search_bar_style(self) -> "SearchBarStyle":
@@ -245,7 +263,7 @@ class MaterialThemeData(ThemeExtension):
             return self._search_bar_style
         from nuiitivet.material.styles.search_bar_style import SearchBarStyle
 
-        return SearchBarStyle()
+        return _shared_default(SearchBarStyle)
 
     @property
     def outlined_text_field_style(self) -> "TextFieldStyle":
@@ -254,7 +272,7 @@ class MaterialThemeData(ThemeExtension):
             return self._outlined_text_field_style
         from nuiitivet.material.styles.text_field_style import TextFieldStyle
 
-        return TextFieldStyle.outlined()
+        return _shared_default(TextFieldStyle.outlined)
 
     @property
     def checkbox_style(self) -> "CheckboxStyle":
@@ -263,7 +281,7 @@ class MaterialThemeData(ThemeExtension):
             return self._checkbox_style
         from nuiitivet.material.styles.checkbox_style import CheckboxStyle
 
-        return CheckboxStyle()
+        return _shared_default(CheckboxStyle)
 
     @property
     def assist_chip_style(self) -> "ChipStyle":
@@ -272,7 +290,7 @@ class MaterialThemeData(ThemeExtension):
             return self._assist_chip_style
         from nuiitivet.material.styles.chip_style import ChipStyle
 
-        return ChipStyle.assist()
+        return _shared_default(ChipStyle.assist)
 
     @property
     def filter_chip_style(self) -> "ChipStyle":
@@ -281,7 +299,7 @@ class MaterialThemeData(ThemeExtension):
             return self._filter_chip_style
         from nuiitivet.material.styles.chip_style import ChipStyle
 
-        return ChipStyle.filter()
+        return _shared_default(ChipStyle.filter)
 
     @property
     def input_chip_style(self) -> "ChipStyle":
@@ -290,7 +308,7 @@ class MaterialThemeData(ThemeExtension):
             return self._input_chip_style
         from nuiitivet.material.styles.chip_style import ChipStyle
 
-        return ChipStyle.input()
+        return _shared_default(ChipStyle.input)
 
     @property
     def suggestion_chip_style(self) -> "ChipStyle":
@@ -299,7 +317,7 @@ class MaterialThemeData(ThemeExtension):
             return self._suggestion_chip_style
         from nuiitivet.material.styles.chip_style import ChipStyle
 
-        return ChipStyle.suggestion()
+        return _shared_default(ChipStyle.suggestion)
 
     @property
     def radio_button_style(self) -> "RadioButtonStyle":
@@ -308,7 +326,7 @@ class MaterialThemeData(ThemeExtension):
             return self._radio_button_style
         from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
 
-        return RadioButtonStyle()
+        return _shared_default(RadioButtonStyle)
 
     @property
     def switch_style(self) -> "SwitchStyle":
@@ -317,7 +335,7 @@ class MaterialThemeData(ThemeExtension):
             return self._switch_style
         from nuiitivet.material.styles.switch_style import SwitchStyle
 
-        return SwitchStyle()
+        return _shared_default(SwitchStyle)
 
     @property
     def slider_style(self) -> "SliderStyle":
@@ -326,7 +344,7 @@ class MaterialThemeData(ThemeExtension):
             return self._slider_style
         from nuiitivet.material.styles.slider_style import SliderStyle
 
-        return SliderStyle.xs()
+        return _shared_default(SliderStyle.xs)
 
     @property
     def basic_dialog_style(self) -> "DialogStyle":
@@ -335,7 +353,7 @@ class MaterialThemeData(ThemeExtension):
             return self._basic_dialog_style
         from nuiitivet.material.styles.dialog_style import DialogStyle
 
-        return DialogStyle.basic()
+        return _shared_default(DialogStyle.basic)
 
     @property
     def icon_style(self) -> "IconStyle":
@@ -344,7 +362,7 @@ class MaterialThemeData(ThemeExtension):
             return self._icon_style
         from nuiitivet.material.styles.icon_style import IconStyle
 
-        return IconStyle()
+        return _shared_default(IconStyle)
 
     @property
     def text_style(self) -> "TextStyle":
@@ -353,7 +371,7 @@ class MaterialThemeData(ThemeExtension):
             return self._text_style
         from nuiitivet.material.styles.text_style import TextStyle
 
-        return TextStyle()
+        return _shared_default(TextStyle)
 
     @property
     def loading_indicator_style(self) -> "LoadingIndicatorStyle":
@@ -362,7 +380,7 @@ class MaterialThemeData(ThemeExtension):
             return self._loading_indicator_style
         from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
 
-        return LoadingIndicatorStyle.default()
+        return _shared_default(LoadingIndicatorStyle.default)
 
     @property
     def contained_loading_indicator_style(self) -> "LoadingIndicatorStyle":
@@ -371,7 +389,7 @@ class MaterialThemeData(ThemeExtension):
             return self._contained_loading_indicator_style
         from nuiitivet.material.styles.loading_indicator_style import LoadingIndicatorStyle
 
-        return LoadingIndicatorStyle.contained()
+        return _shared_default(LoadingIndicatorStyle.contained)
 
     @property
     def linear_progress_indicator_style(self) -> "LinearProgressIndicatorStyle":
@@ -380,7 +398,7 @@ class MaterialThemeData(ThemeExtension):
             return self._linear_progress_indicator_style
         from nuiitivet.material.styles.progress_indicator_style import LinearProgressIndicatorStyle
 
-        return LinearProgressIndicatorStyle.default()
+        return _shared_default(LinearProgressIndicatorStyle.default)
 
     @property
     def circular_progress_indicator_style(self) -> "CircularProgressIndicatorStyle":
@@ -389,7 +407,7 @@ class MaterialThemeData(ThemeExtension):
             return self._circular_progress_indicator_style
         from nuiitivet.material.styles.progress_indicator_style import CircularProgressIndicatorStyle
 
-        return CircularProgressIndicatorStyle.default()
+        return _shared_default(CircularProgressIndicatorStyle.default)
 
     def copy_with(self, **kwargs: Any) -> "MaterialThemeData":
         """Create a copy of this theme data with the given fields replaced."""
