@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nuiitivet.dev.__main__ import _parse_args
 
 
@@ -29,6 +31,23 @@ def test_screenshot_default_output() -> None:
     args = _parse_args(["screenshot"])
     assert args.command == "screenshot"
     assert args.output == "screenshot.png"
+    assert (args.key, args.label, args.rect, args.padding) == (None, None, None, None)
+
+
+def test_screenshot_scoped_by_key_with_padding() -> None:
+    args = _parse_args(["screenshot", "--key", "save", "--padding", "0"])
+    assert args.key == "save"
+    assert args.padding == 0.0
+
+
+def test_screenshot_scoped_by_rect() -> None:
+    args = _parse_args(["screenshot", "--rect", "10", "20", "30", "40"])
+    assert args.rect == [10.0, 20.0, 30.0, 40.0]
+
+
+def test_screenshot_scopes_are_exclusive() -> None:
+    with pytest.raises(SystemExit):
+        _parse_args(["screenshot", "--key", "a", "--label", "b"])
 
 
 def test_status_subcommand() -> None:

@@ -14,6 +14,7 @@ Subcommands::
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
     python -m nuiitivet.dev screenshot -o out.png   # screenshot the running app
+    python -m nuiitivet.dev screenshot --key save   # ...or just one widget
     python -m nuiitivet.dev click --label increment # click a widget by identifier
     python -m nuiitivet.dev scroll --key feed --dy 5 # wheel a region (notches, ~20px)
     python -m nuiitivet.dev scroll-into-view --key row-42 # reveal a widget
@@ -231,6 +232,23 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         default="screenshot.png",
         help="Where to write the PNG (default: screenshot.png; '-' for stdout).",
+    )
+    scope = shot.add_mutually_exclusive_group()
+    scope.add_argument("--key", help="Capture only the widget whose key matches.")
+    scope.add_argument("--label", help="Capture only the widget whose label/text/title matches.")
+    scope.add_argument(
+        "--rect",
+        nargs=4,
+        type=float,
+        metavar=("X", "Y", "W", "H"),
+        help="Capture a raw root-coordinate region (never padded).",
+    )
+    shot.add_argument(
+        "--padding",
+        type=float,
+        default=None,
+        metavar="PX",
+        help="Logical pixels kept around a --key/--label target (default: 8).",
     )
     _add_window_arg(shot)
 
@@ -632,7 +650,13 @@ def _profile(args: argparse.Namespace) -> int:
 def _screenshot(args: argparse.Namespace) -> int:
     try:
         client = BridgeClient.discover()
-        png = client.screenshot(window=args.window)
+        png = client.screenshot(
+            key=args.key,
+            label=args.label,
+            rect=args.rect,
+            padding=args.padding,
+            window=args.window,
+        )
     except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1

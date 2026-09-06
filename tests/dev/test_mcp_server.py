@@ -263,7 +263,22 @@ def test_screenshot_returns_png_image_content() -> None:
     block = content[0]
     assert block.type == "image"
     assert _mime_type(block) == "image/png"
-    client.screenshot.assert_called_once_with(window=None)
+    client.screenshot.assert_called_once_with(
+        key=None, label=None, rect=None, padding=None, window=None
+    )
+
+
+def test_screenshot_forwards_scope() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        content = _call_content(server, "screenshot", {"key": "save", "padding": 0})
+        _call_content(server, "screenshot", {"rect": [10, 20, 30, 40]})
+    assert content[0].type == "image"
+    client.screenshot.assert_any_call(key="save", label=None, rect=None, padding=0, window=None)
+    client.screenshot.assert_any_call(
+        key=None, label=None, rect=[10, 20, 30, 40], padding=None, window=None
+    )
 
 
 def test_click_forwards_target_identifiers() -> None:

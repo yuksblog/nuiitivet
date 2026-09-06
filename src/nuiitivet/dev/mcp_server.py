@@ -109,7 +109,8 @@ _SERVER_INSTRUCTIONS = (
     "`type` landed. Use `screenshot` "
     "for one thing: investigating a human-reported visual/layout discrepancy that "
     "`describe_tree` + `describe_state` cannot explain; a human's report is what "
-    "puts it in play. When the displayed tree looks wrong but you need to know "
+    "puts it in play, and `key`/`label` scope it to the widget in question. When "
+    "the displayed tree looks wrong but you need to know "
     "whether "
     "the *state* behind it is wrong too -- a reactive bug where the value "
     "updated but the UI did not, or the reverse -- call `describe_state`: it "
@@ -456,7 +457,13 @@ def build_server() -> "FastMCP":
         return _client().profile_stop()
 
     @server.tool()
-    def screenshot(window: Optional[int] = None) -> Image:
+    def screenshot(
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        rect: Optional[list[float]] = None,
+        padding: Optional[float] = None,
+        window: Optional[int] = None,
+    ) -> Image:
         """Return a PNG of the widget tree, re-rendered offscreen.
 
         Use it for one job: investigating a *human-reported* visual or layout
@@ -467,11 +474,24 @@ def build_server() -> "FastMCP":
         `blank` flag) for whether the app started or is healthy, `describe_tree`
         for on-screen structure and action targets.
 
+        **Scope it to the widget in question.** `key` / `label` (the same
+        targets `click` takes) crop the image to that widget's painted rect plus
+        `padding` logical pixels on each side (default 8, enough to show its
+        shadow or outline); `rect=[x, y, w, h]` from `describe_tree` crops to a
+        raw region, unpadded. A widget scrolled wholly out of view fails with
+        "not visible" -- `scroll_into_view` it first. Omit all three for the
+        whole frame, which is far larger in image tokens.
+
         **It can come back clean while the screen is visibly broken** (GPU path,
         swap chain), so never dismiss a human's visual report on that basis --
         ask them for their own screenshot.
         """
-        return Image(data=_client().screenshot(window=window), format="png")
+        return Image(
+            data=_client().screenshot(
+                key=key, label=label, rect=rect, padding=padding, window=window
+            ),
+            format="png",
+        )
 
     @server.tool()
     def click(

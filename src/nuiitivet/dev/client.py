@@ -20,8 +20,9 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from urllib.error import URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .bridge import (
@@ -396,14 +397,37 @@ class BridgeClient:
         payload = json.loads(body.decode("utf-8"))
         return bool(payload.get("active", False))
 
-    def screenshot(self, *, window: Optional[int] = None) -> bytes:
+    def screenshot(
+        self,
+        *,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
+        rect: Optional[Sequence[float]] = None,
+        padding: Optional[float] = None,
+        window: Optional[int] = None,
+    ) -> bytes:
         """Fetch a PNG of the running app's widget tree, re-rendered offscreen.
 
-        It can come back clean while the screen is visibly broken (GPU path,
-        swap chain). ``window`` selects an open window by id; ``None`` is the
-        main window.
+        ``key`` / ``label`` scope the image to that widget's painted rect plus
+        ``padding`` logical pixels on each side (the bridge's default when
+        ``None``); ``rect`` is a raw ``[x, y, w, h]`` region in root
+        coordinates, never padded. With none of them the whole frame is
+        returned. It can come back clean while the screen is visibly broken
+        (GPU path, swap chain). ``window`` selects an open window by id;
+        ``None`` is the main window.
         """
-        endpoint = "/screenshot" if window is None else f"/screenshot?window={int(window)}"
+        params: dict[str, str] = {}
+        if key is not None:
+            params["key"] = key
+        if label is not None:
+            params["label"] = label
+        if rect is not None:
+            params["rect"] = ",".join(str(float(v)) for v in rect)
+        if padding is not None:
+            params["padding"] = str(float(padding))
+        if window is not None:
+            params["window"] = str(int(window))
+        endpoint = "/screenshot" + ("?" + urlencode(params) if params else "")
         body, content_type = self._get(endpoint)
         if "image/png" not in content_type:
             raise RuntimeError(f"expected image/png, got {content_type!r}: {body[:200]!r}")
