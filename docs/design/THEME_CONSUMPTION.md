@@ -1,7 +1,6 @@
 # Theme Consumption
 
-**Status: implemented.** Closes #464, #473 and #476. Per-frame cost is out of
-scope here and tracked in #478.
+**Status: implemented.**
 
 This document specifies how a widget obtains the theme.
 
@@ -65,6 +64,13 @@ rebuilding the readers, not from deferring resolution.
 
 1. resolves the nearest `AppScope` by walking `_parent` upward, and
 2. records that the **current reader** depends on the theme.
+
+The walk runs once per mount, not once per read: a widget changes the tree it
+belongs to only through `mount()` and `unmount()`, so the scope it resolved is
+remembered on the widget until one of those runs
+(`context_lookup.find_app_scope`). A read that finds no scope remembers
+nothing, so a widget measured before it is attached resolves the real scope on
+its next read.
 
 The "current reader" is whichever unit the framework can invalidate:
 
@@ -135,9 +141,11 @@ no reason to defer to paint, and a leaf cannot take the advice at all. Framing
 this as a default to be preferred implies a decision that does not exist, and
 leaves the majority of readers with guidance they cannot follow.
 
-The per-frame cost on the leaf side is therefore unavoidable. What that costs
-today, and what to do about it, is a property of the implementation rather than
-of this rule, and is tracked in #478.
+The per-frame cost on the leaf side is therefore unavoidable, and the
+implementation keeps it to a few attribute reads: the scope is cached per mount
+(above), the manager hands out the current theme without a lock, and the style
+a theme does not override is one shared frozen object rather than one built per
+read.
 
 ### Enforcement, and its limit
 

@@ -32,17 +32,16 @@ class ThemeManager:
         initial: Optional[Theme] = None,
     ) -> None:
         self._lock = threading.RLock()
-        self._current = initial
+        self._current = initial if initial is not None else Theme(mode="light", extensions=[])
         self._generation = 0
         #: Set by the owning provider. Not a subscriber list: exactly one owner.
         self.on_change: Optional[Callable[[Theme], None]] = None
 
     @property
     def current(self) -> Theme:
-        with self._lock:
-            if self._current is None:
-                self._current = Theme(mode="light", extensions=[])
-            return self._current
+        # No lock: this is one reference read on every paint of every leaf, and
+        # ``set_theme`` swaps the reference atomically.
+        return self._current
 
     @property
     def generation(self) -> int:

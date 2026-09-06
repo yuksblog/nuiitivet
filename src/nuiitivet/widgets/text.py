@@ -258,8 +258,9 @@ class TextBase(Widget):
     def _resolve_font_candidates(self) -> Tuple[str, ...]:
         """Resolve font family candidates including Japanese fonts."""
         fallbacks = get_default_font_fallbacks()
-        if self.style.font_family:
-            return (self.style.font_family,) + fallbacks
+        family = self.style.font_family
+        if family:
+            return (family,) + fallbacks
         return fallbacks
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> tuple[int, int]:

@@ -20,7 +20,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainTheme
-from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
+from ..widgeting.context_lookup import find_app_scope, raise_if_premature_lookup
 from ..widgeting.widget import Widget
 from .renderer import RendererMode, parse_renderer_mode
 from .window import Window
@@ -231,7 +231,7 @@ class App:
             RuntimeError: If called before ``context`` is mounted (typically from
                 ``__init__``), or if the widget is not attached to an App.
         """
-        scope = find_provider(context, AppScope)
+        scope = find_app_scope(context)
         app = scope.app if scope is not None else None
         if app is None:
             raise_if_premature_lookup("App.of", context)

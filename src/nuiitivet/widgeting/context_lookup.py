@@ -23,12 +23,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Final, Optional, Type, TypeVar
 
 if TYPE_CHECKING:
-    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.app import App, AppScope
     from nuiitivet.runtime.window import Window
 
 __all__ = [
     "find_app",
+    "find_app_scope",
     "find_provider",
+    "forget_app_scope",
     "find_window",
     "is_premature_lookup",
     "is_uninitialized_context",
@@ -37,6 +39,9 @@ __all__ = [
 ]
 
 _MISSING: Final = object()
+
+#: Attribute holding a widget's resolved ``AppScope`` while it is mounted.
+_APP_SCOPE_CACHE: Final = "_app_scope"
 
 T = TypeVar("T")
 
@@ -63,6 +68,49 @@ def find_provider(context: Any, widget_type: Type[T]) -> Optional[T]:
         return None
 
 
+def find_app_scope(context: Any) -> Optional["AppScope"]:
+    """Return the nearest :class:`~nuiitivet.runtime.app.AppScope` above ``context``.
+
+    The answer is remembered on ``context`` for as long as it stays mounted:
+    a widget changes the tree it belongs to only through ``mount()`` and
+    ``unmount()``, and both call :func:`forget_app_scope`. ``Theme.of`` runs
+    on every paint of every leaf, so the walk happens once per mount instead
+    of once per frame.
+
+    Nothing is remembered while the walk comes back empty -- a widget measured
+    before it is attached must resolve the real scope on its next read.
+
+    Args:
+        context: The widget to search upward from.
+
+    Returns:
+        The nearest ``AppScope``, or ``None`` if there is none (or if
+        ``context`` cannot be searched yet).
+    """
+    scope: Optional["AppScope"] = getattr(context, _APP_SCOPE_CACHE, None)
+    if scope is not None:
+        return scope
+    from nuiitivet.runtime.app import AppScope
+
+    scope = find_provider(context, AppScope)
+    if scope is not None:
+        setattr(context, _APP_SCOPE_CACHE, scope)
+    return scope
+
+
+def forget_app_scope(context: Any) -> None:
+    """Drop what :func:`find_app_scope` remembered on ``context``.
+
+    Called by ``mount()`` and ``unmount()``: a re-mount resolves afresh, and
+    an unmounted widget does not keep its old tree alive through the cache.
+
+    Args:
+        context: The widget leaving its tree.
+    """
+    if getattr(context, _APP_SCOPE_CACHE, None) is not None:
+        setattr(context, _APP_SCOPE_CACHE, None)
+
+
 def find_app(context: Any) -> Optional["App"]:
     """Return the :class:`~nuiitivet.runtime.app.App` owning ``context``'s tree.
 
@@ -76,9 +124,7 @@ def find_app(context: Any) -> Optional["App"]:
     Returns:
         The owning App, or ``None`` if there is none to be found.
     """
-    from nuiitivet.runtime.app import AppScope
-
-    scope = find_provider(context, AppScope)
+    scope = find_app_scope(context)
     if scope is None:
         return None
     return scope.app

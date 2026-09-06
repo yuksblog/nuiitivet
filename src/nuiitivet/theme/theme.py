@@ -10,7 +10,9 @@ from dataclasses import dataclass, field
 import logging
 from typing import Any, List, Type, TypeVar
 
+from .dependency import register_theme_dependency
 from .types import ThemeExtension
+from nuiitivet.widgeting.context_lookup import find_app_scope, is_uninitialized_context
 
 _logger = logging.getLogger(__name__)
 
@@ -80,11 +82,7 @@ class Theme:
                 what makes it a bug is keeping the result, which the "read,
                 never hold" rule forbids.
         """
-        from nuiitivet.runtime.app import AppScope  # lazy import – avoids circular dep
-        from nuiitivet.theme.dependency import register_theme_dependency
-        from nuiitivet.widgeting.context_lookup import find_provider, is_uninitialized_context
-
-        scope = find_provider(context, AppScope)
+        scope = find_app_scope(context)
         if scope is None:
             if is_uninitialized_context(context):
                 raise RuntimeError(
