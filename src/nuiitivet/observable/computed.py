@@ -21,11 +21,13 @@ from . import runtime
 if TYPE_CHECKING:
     from .combine import CombineBuilder
     from .filtered import FilteredObservable
+    from .scanned import ScannedObservable
     from .switched import CancelToken, SwitchMappedObservable
     from .timed import DebouncedObservable, ThrottledObservable
 
 T = TypeVar("T")
 _R = TypeVar("_R")
+_A = TypeVar("_A")
 
 
 logger = logging.getLogger(__name__)
@@ -243,6 +245,22 @@ class ComputedObservable(ObservableBase[T]):
         from .switched import SwitchMappedObservable
 
         return SwitchMappedObservable(self, fn, initial=initial)
+
+    def scan(
+        self,
+        fn: Callable[[_A, T], _A],
+        *,
+        initial: _A,
+    ) -> "ScannedObservable[T, _A]":
+        """Observable of ``fn`` folded over every value this one emits.
+
+        ``initial`` is required because the accumulator has no value until the
+        source emits; see
+        :class:`~nuiitivet.observable.scanned.ScannedObservable`.
+        """
+        from .scanned import ScannedObservable
+
+        return ScannedObservable(self, fn, initial=initial)
 
     def dispose(self) -> None:
         if self._disposed:

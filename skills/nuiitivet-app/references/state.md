@@ -147,9 +147,34 @@ changes no value, so nothing fires — reports progress, is cancelled explicitly
 or appends to the previous result. Neither the amount of data returned nor the
 weight of the work matters.
 
-**Hold what you derive.** `q.debounce(0.3)` creates a new Observable, and like
-every derived Observable it is collected unless something holds it — by name, or
-by the `Disposable` that `subscribe()` returns:
+### `scan(fn, initial=...)` — accumulate over emissions
+
+`fn(accumulator, value)` folds every emission into a running accumulator, and that
+accumulator is the returned Observable's value:
+
+```python
+self.debounced = self.raw_count.debounce(0.5)
+self.executed = self.debounced.scan(lambda n, _: n + 1, initial=0)   # settled windows so far
+```
+
+- **`initial` is required and keyword-only.** It is what the UI shows until the
+  source emits, and the value the source holds at construction is not folded in —
+  a counter starts at `initial`, not at 1.
+- **`fn` must be a pure function of the two values handed to it.** Reading another
+  Observable inside it creates no dependency; use `combine` for that.
+- **`fn` must not raise.** An escaping exception is a bug: logged, the accumulator
+  left as it stood, nothing published.
+
+Use it for what an operator emits: `debounce`, `throttle` and `switch_map` publish
+because time passed or a run landed, so there is no handler to hold an imperative
+counter. Where a click or a keystroke is what you are counting, write
+`self.count.value += 1` in the handler instead.
+
+## Hold what you derive
+
+`q.debounce(0.3)` creates a new Observable, and like every derived Observable it
+is collected unless something holds it — by name, or by the `Disposable` that
+`subscribe()` returns:
 
 ```python
 self.results = self.query.debounce(0.3).map(format_query)       # named -> held
@@ -166,21 +191,23 @@ where the source owns the subscription and dropping the handle is normal. The
 local-variable spelling is the easy one to miss: it looks like setup, but nothing
 survives the constructor.
 
-**Bind one directly — `.value` is the last shaped emission.** A wrapper holds
-what it last emitted, seeded from the source when it is built, so no `map()` is
-needed to make it bindable:
+## Bind a wrapper directly (no `map()` needed)
+
+A wrapper holds what it last emitted, seeded from the source when it is built, so
+`.value` is the last shaped emission and nothing has to unwrap it:
 
 ```python
 nv.Text(self.query.debounce(0.3))            # debounced
 ```
 
 Until the first emission it reports the seed: `debounce` shows the value the
-source had when the chain was built, `throttle` moves on the first change, and
-`filter` shows `initial` until something passes.
+source had when the chain was built, `throttle` moves on the first change,
+`filter` shows `initial` until something passes, and `scan` shows `initial` until
+the source emits.
 
-Inline like that is safe even under "hold what you derive": the widget's binding
+Inline like that is safe under **Hold what you derive**: the widget's binding
 holds the wrapper, exactly as `subscribe()`'s `Disposable` does. What is *not*
-safe is the local variable in `__init__` above — nothing binds it.
+safe is the local variable in `__init__` under that heading — nothing binds it.
 
 ## Background work (threads)
 

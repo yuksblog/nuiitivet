@@ -254,7 +254,7 @@ day-to-day nuiitivet code is here, offline.
   "tempted to write X → in Nuiitivet write Y" table. Read this first when unsure.
 - **State, reactivity, derived/async values** →
   [references/state.md](references/state.md) — Observable, `combine`/`compute`,
-  `map`/`debounce`/`filter`, `switch_map` for async work, background threads and
+  `map`/`debounce`/`filter`/`scan`, `switch_map` for async work, background threads and
   cancellation, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
   [references/layout.md](references/layout.md).

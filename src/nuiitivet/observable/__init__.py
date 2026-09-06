@@ -13,6 +13,7 @@ from .protocols import (
     ReadOnlyObservableProtocol,
 )
 from .runtime import Clock, ClockCallback, get_clock, set_clock
+from .scanned import ScannedObservable
 from .switched import CancelToken, SwitchMappedObservable
 from .timed import DebouncedObservable, ThrottledObservable
 from .value import Observable, WhileValue, _ObservableValue
@@ -37,6 +38,7 @@ __all__ = [
     "ObservableBase",
     "ObservableProtocol",
     "ReadOnlyObservableProtocol",
+    "ScannedObservable",
     "ShapingObservable",
     "SourceSubscribingObservable",
     "SwitchMappedObservable",

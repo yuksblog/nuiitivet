@@ -189,6 +189,13 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Hold what you derive: debounce/throttle/filter returns a new Observable that is "
      "collected unless something holds it, so this never fires. Name it (self.results = ...), "
      "or keep the Disposable: self.bind(source.debounce(0.3).subscribe(cb))."),
+    # Matched on the read-modify-write of the *same* observable inside the callback:
+    # a legitimate subscriber writes a value, never the previous value of the one
+    # it writes.
+    (re.compile(r"\.subscribe\s*\(\s*lambda\b[^:]*:\s*[\w.]+\.set\s*\(\s*[\w.]+\.value\s*[-+*/]"), "Rx habit",
+     "Accumulation is an operator: source.scan(lambda acc, value: ..., initial=...) -- the "
+     "accumulator is the returned Observable's value, so there is no second Observable to seed "
+     "and no Disposable to hold. initial is required and keyword-only."),
     # LINQ / Rx operator aliases. Neither exists: aliases for the same operation
     # were rejected outright, and `where` in particular now has a real counterpart
     # whose required seed is the whole point.

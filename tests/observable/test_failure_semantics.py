@@ -29,11 +29,13 @@ from nuiitivet.testing import HarnessClock
 
 _COMPUTED_LOGGER = "nuiitivet.observable.computed"
 _FILTERED_LOGGER = "nuiitivet.observable.filtered"
+_SCANNED_LOGGER = "nuiitivet.observable.scanned"
 _VALUE_LOGGER = "nuiitivet.observable.value"
 _WRAPPER_LOGGER = "nuiitivet.observable.wrapper"
 
 _DERIVATION_FAILED = "Computed function raised; keeping the previous value"
 _PRED_FAILED = "filter predicate raised; the value was treated as not passing"
+_FOLD_FAILED = "scan function raised; the accumulator was left unchanged"
 
 # Long enough that the debounce window is genuinely elapsed when the test pumps,
 # short enough to keep the file fast. HarnessClock uses real time, not virtual.
@@ -199,6 +201,35 @@ class TestRaisingFilterPredicate:
         source.value = 5
 
         assert positive.value == 5
+
+
+class TestRaisingScanFunction:
+    """``scan``'s ``fn`` runs on the same edge as ``filter``'s ``pred``, and guards itself."""
+
+    def test_raising_fn_leaves_the_accumulator_alone(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        source: Observable[Optional[int]] = Observable(2)
+        total = source.scan(lambda acc, n: acc + n, initial=0)  # type: ignore[operator]
+
+        source.value = 3
+        assert total.value == 3
+
+        with caplog.at_level(logging.ERROR, logger=_SCANNED_LOGGER):
+            source.value = None  # TypeError inside the fold
+
+        assert total.value == 3, "the accumulator moved on a fold that never completed"
+        assert [r.message for r in _records(caplog, _SCANNED_LOGGER)] == [_FOLD_FAILED]
+
+    def test_scan_recovers_once_the_source_is_fixed(self) -> None:
+        source: Observable[Optional[int]] = Observable(2)
+        total = source.scan(lambda acc, n: acc + n, initial=0)  # type: ignore[operator]
+
+        source.value = 3
+        source.value = None
+        source.value = 4
+
+        assert total.value == 7
 
 
 class _Thrower:

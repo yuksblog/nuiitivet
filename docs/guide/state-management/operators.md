@@ -79,6 +79,9 @@ display = nv.Observable.compute(lambda: (
     else self.tax_excluded.value
 ))
 
+# a value that depends on what came before, not just the current one
+executed = query.debounce(0.3).scan(lambda n, _: n + 1, initial=0)
+
 # the transformation takes time to answer
 results = query.switch_map(search, initial=SearchOutcome())
 ```

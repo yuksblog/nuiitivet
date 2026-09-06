@@ -37,14 +37,12 @@ class BasicApiApp(nv.ComposableWidget):
         # Custom comparison 1: always notify even when the value is unchanged
         self.noise = nv.Observable(0, compare=lambda a, b: False)
         self._noise_write_count = nv.Observable(0)
-        self._noise_notify_count = nv.Observable(0)
-        self.noise.subscribe(lambda _: self._noise_notify_count.set(self._noise_notify_count.value + 1))
+        self._noise_notify_count = self.noise.scan(lambda n, _: n + 1, initial=0)
 
         # Custom comparison 2: user identity determined by uid only
         self.user: nv.Observable[UserRecord] = nv.Observable(UserRecord(1, "Alice"), compare=compare_users)
         self._rename_write_count = nv.Observable(0)
-        self._user_notify_count = nv.Observable(0)
-        self.user.subscribe(lambda _: self._user_notify_count.set(self._user_notify_count.value + 1))
+        self._user_notify_count = self.user.scan(lambda n, _: n + 1, initial=0)
 
         # --- Derived display labels ---
         self.age_label = self.age.map(lambda a: f"Age: {a}")

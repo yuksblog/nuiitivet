@@ -20,7 +20,7 @@ from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.observable.wrapper import SourceSubscribingObservable
 
 
-OPERATORS = ("map", "combine", "filter", "debounce", "throttle", "switch_map")
+OPERATORS = ("map", "combine", "filter", "debounce", "throttle", "switch_map", "scan")
 
 OPERATOR_HOSTS = (_ObservableValue, ComputedObservable, SourceSubscribingObservable)
 

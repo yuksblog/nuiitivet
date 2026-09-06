@@ -105,6 +105,7 @@ class of silent, intermittent bug unwritable.
 | `.throttle(seconds)` | wraps | Emit on the leading edge, then at most once per `seconds` (§5.1) | `position.throttle(0.1)` |
 | `.filter(pred, initial=...)` | wraps | Emit only values passing `pred` (§5.2) | `amount.filter(lambda n: n > 0, initial=0)` |
 | `.switch_map(fn, initial=...)` | wraps | Asynchronous `map`; the newest run's result wins (§5.3) | `query.switch_map(search, initial=SearchOutcome())` |
+| `.scan(fn, initial=...)` | wraps | Fold every emission into a running accumulator (§5.4) | `clicks.debounce(0.5).scan(lambda n, _: n + 1, initial=0)` |
 
 ### 3.3 Two kinds: deriving and wrapping
 
@@ -115,10 +116,11 @@ right now?" with a function of their sources. They hold no state and keep nothin
 subscribed; the tracking context re-collects their dependencies on every
 recompute.
 
-**Wrapping** operators shape *when* or *whether* a source's values are
-republished, rather than deriving new ones. That requires staying subscribed to
-the source for as long as the wrapper lives, which makes lifetime, value
-semantics and threading real questions rather than trivial ones. §4 answers them
+**Wrapping** operators stay subscribed to their source for as long as they live
+— either shaping *when* or *whether* its values are republished (`debounce`,
+`throttle`, `filter`), or publishing values of their own that depend on more than
+the source's current one (`switch_map`, `scan`). That subscription is what makes
+lifetime, value semantics and threading real questions rather than trivial ones. §4 answers them
 once for all wrappers; §5 covers what each operator adds on top.
 
 **Implementation strategy (deriving):**
@@ -260,7 +262,7 @@ alike. `tests/observable/test_operator_parity.py` asserts the three stay equal.
 ### 4.6 Implementation
 
 - `SourceSubscribingObservable` (`observable/wrapper.py`) owns every rule in this section; operators subclass it and implement `_seed`, `_on_source_changed` and `_clock_callbacks`
-- It takes **two type parameters**, `[TIn, TOut]`. An operator that hands the source's own values on subclasses `ShapingObservable[T]`, which fixes the two together and seeds from the source — correct **because** the types agree. `switch_map` is the one operator where they differ, and therefore the one whose seed cannot come from the source at all
+- It takes **two type parameters**, `[TIn, TOut]`. An operator that hands the source's own values on subclasses `ShapingObservable[T]`, which fixes the two together and seeds from the source — correct **because** the types agree. `switch_map` and `scan` are the operators where they differ, and therefore the ones whose seed cannot come from the source at all
 - `_seed()` sets `_held_value`; `_emit_to_subscribers()` updates it; the default `_current_value()` returns it. A subclass that must report something other than what it emitted overrides `_current_value()`, and the tracking suppression in `value` keeps that read from registering the source (§4.3)
 - Clock callbacks are matched by **equality**, so `dispose()` can unschedule a callback that was never armed at no cost
 - `wrapper._untracked(fn)` is how a wrapper runs its own reads and its user callbacks with tracking suppressed
@@ -373,7 +375,7 @@ self.results = self.query.debounce(0.3).switch_map(self._search, initial=SearchO
 | Started by a button | A click changes no input. A Retry button is the sharp case: the value is unchanged, so de-duplication means nothing fires |
 | Reports progress as it runs | A mapping produces one value, not a stream |
 | Stopped by an explicit Cancel | "The user wants this to stop" is not an input |
-| Accumulates onto the previous value | A mapping depends on its input alone; an append also depends on the value it replaces, which superseding cannot order |
+| Accumulates onto the previous value | A mapping depends on its input alone; an append also depends on the value it replaces, which superseding cannot order. Accumulating the *results* is `scan` over the output (§5.4) |
 
 Two things are not criteria: the amount of data returned (items *and* a total
 *and* facets is one answer) and the weight of the work (a thread is started
@@ -427,6 +429,53 @@ Against a hand-rolled `threading.Event` it removes the ways to misuse one: no
   result superseded in between is still dropped
 - `exception_once` is keyed on the function's qualname, so two `switch_map`s
   cannot de-duplicate each other's bug into silence
+
+### 5.4 Accumulation: scan
+
+**Purpose:** a value that follows from every emission rather than from the
+source's current one — how many times something fired, a running total, a list
+appended to.
+
+The scope is accumulation over **an operator's output**. `Observable` is mutable
+state, so accumulating a user action is one line in the handler
+(`self.count.value += 1`) and needs no operator at all. `debounce`, `throttle` and
+`switch_map` publish because time passed or a run landed, so there is no handler
+to hold that line and `subscribe` becomes the only way in — an empty `Observable`
+beside the write that fills it, plus a `Disposable` that must be held or the value
+silently stops moving.
+
+```python
+self.debounced = self.raw_count.debounce(0.5)
+self.executed = self.debounced.scan(lambda n, _: n + 1, initial=0)
+```
+
+**API:** `.scan(fn, initial=...)` folds `fn(accumulator, value)` over every
+emission, and the accumulator is this observable's value.
+
+- **The seed is required**, keyword-only and without a default, as in §5.2 and
+  §5.3 — here meaning "the source has emitted nothing"
+- **The construction-time value is not folded in.** It has not been emitted, and
+  folding it would start a counter at 1 and count a debounce window that never
+  settled
+- **One emission out per emission in.** Nothing is dropped: a fold landing on the
+  accumulator it already held still emits, because the fold ran
+- **No equality check of its own.** `_ObservableValue` de-dupes before it
+  notifies, so a repeated source value folds once
+- **The accumulator never re-seeds.** It belongs to this observable rather than to
+  the chain: a rebuilt chain is a new observable that starts from `initial` again
+- **`fn` is a pure function of the two values handed to it**, run untracked (§4.3)
+- **A raising `fn` leaves the accumulator as it stood**: logged, nothing emitted
+  (§7)
+
+`fold` was rejected as the name: it states a terminal result, and what is
+published here is every intermediate accumulator. `accumulate` matches
+`itertools` at the cost of length. §3.1 keeps second names out, and `scan` is not
+one — no existing operator accumulates.
+
+**Implementation:** `ScannedObservable` (`observable/scanned.py`) subclasses
+`SourceSubscribingObservable[TIn, TAcc]` rather than `ShapingObservable`, because
+its two type parameters differ: `_seed` returns `initial` without reading the
+source (§4.6). The rest is the wrapper contract in §4, unchanged.
 
 ## 6. Binding an observable to a widget: the value cell
 
@@ -563,6 +612,7 @@ value:**
 | a derivation (`map`, `combine().compute`, `Observable.compute`) | `ComputedObservable._recompute` | the previous value — no emission, so subscribers see nothing |
 | a `filter` predicate | `FilteredObservable._passes` | the last value that *passed* — the tested value counts as not passing |
 | a `switch_map` function | `SwitchMappedObservable._run` (§5.3) | the last landed result — the failed run publishes nothing |
+| a `scan` function | `ScannedObservable._on_source_changed` (§5.4) | the accumulator as it stood — the failed fold publishes nothing |
 | a subscriber | `_notify.notify_all` | unaffected; the remaining subscribers are still notified |
 
 Keeping the previous value is chosen over propagating a sentinel, which would
