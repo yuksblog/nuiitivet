@@ -5,6 +5,7 @@ Demonstrates:
 - debounce() to fire only after input has settled
 - throttle() to sample high-frequency events at a fixed rate
 - filter() to update only on values that pass a predicate
+- scan() to accumulate over what an operator emits
 - Chaining operators (debounce → map)
 """
 
@@ -21,10 +22,9 @@ class BatchModel:
     def __init__(self) -> None:
         self.price = nv.Observable(100)
         self.quantity = nv.Observable(2)
-        self.notify_count = nv.Observable(0)
 
         self.total = self.price.combine(self.quantity).compute(lambda p, q: p * q)
-        self.total.subscribe(lambda _: self.notify_count.set(self.notify_count.value + 1))
+        self.notify_count = self.total.scan(lambda n, _: n + 1, initial=0)
 
     def update_batched(self) -> None:
         """Update both observables atomically → one notification."""
@@ -43,7 +43,6 @@ class DebounceModel:
 
     def __init__(self) -> None:
         self.raw_count = nv.Observable(0)
-        self.execute_count = nv.Observable(0)
 
         # Named -> held. One window, two consumers below. A derived Observable
         # nobody holds is collected and never fires.
@@ -53,13 +52,9 @@ class DebounceModel:
         # label - self.debounced binds on its own, holding what it last emitted.
         self.settled = self.debounced.map(lambda n: f"Settled at: {n} clicks")
 
-        # subscribe() because counting *emissions* is accumulation over history,
-        # which map()/compute() cannot express - they recompute from the current
-        # value. There is no handler to hold an imperative counter either: the
-        # thing being counted is an operator's output, not a user action.
-        self._subscription = self.debounced.subscribe(
-            lambda _: self.execute_count.set(self.execute_count.value + 1)
-        )
+        # scan() because counting *emissions* is accumulation over history, which
+        # map()/compute() cannot express - they recompute from the current value.
+        self.execute_count = self.debounced.scan(lambda n, _: n + 1, initial=0)
 
     def click(self) -> None:
         self.raw_count.value += 1
@@ -70,14 +65,11 @@ class ThrottleModel:
 
     def __init__(self) -> None:
         self.raw_count = nv.Observable(0)
-        self.execute_count = nv.Observable(0)
 
         # Same shape as DebounceModel: name the window, then derive from it.
         self.throttled = self.raw_count.throttle(0.5)
         self.sampled = self.throttled.map(lambda n: f"Sampled at: {n} clicks")
-        self._subscription = self.throttled.subscribe(
-            lambda _: self.execute_count.set(self.execute_count.value + 1)
-        )
+        self.execute_count = self.throttled.scan(lambda n, _: n + 1, initial=0)
 
     def click(self) -> None:
         self.raw_count.value += 1

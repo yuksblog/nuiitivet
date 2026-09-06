@@ -45,9 +45,9 @@ scope with a timer armed does not fire into a dead chain.
 ``throttle`` and ``filter`` reshape *when* or *whether* a value is republished
 and hand on what they were given, so their input and output types agree;
 :class:`ShapingObservable` names that case and seeds them from the source.
-``switch_map`` maps ``TIn`` to a different ``TOut`` and cannot be seeded from the
-source at all, which is why the seed is a method rather than a line in
-``__init__``.
+``switch_map`` and ``scan`` map ``TIn`` to a different ``TOut`` and cannot be
+seeded from the source at all, which is why the seed is a method rather than a
+line in ``__init__``.
 """
 
 from __future__ import annotations
@@ -72,6 +72,7 @@ if TYPE_CHECKING:
     from .combine import CombineBuilder
     from .computed import ComputedObservable
     from .filtered import FilteredObservable
+    from .scanned import ScannedObservable
     from .switched import CancelToken, SwitchMappedObservable
     from .timed import DebouncedObservable, ThrottledObservable
 
@@ -79,6 +80,7 @@ T = TypeVar("T")
 TIn = TypeVar("TIn")
 TOut = TypeVar("TOut")
 _R = TypeVar("_R")
+_A = TypeVar("_A")
 
 
 logger = logging.getLogger(__name__)
@@ -310,6 +312,22 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
 
         return SwitchMappedObservable(self, fn, initial=initial)
 
+    def scan(
+        self,
+        fn: Callable[[_A, TOut], _A],
+        *,
+        initial: _A,
+    ) -> "ScannedObservable[TOut, _A]":
+        """Observable of ``fn`` folded over every value this one emits.
+
+        ``initial`` is required because the accumulator has no value until the
+        source emits; see
+        :class:`~nuiitivet.observable.scanned.ScannedObservable`.
+        """
+        from .scanned import ScannedObservable
+
+        return ScannedObservable(self, fn, initial=initial)
+
 
 class ShapingObservable(SourceSubscribingObservable[T, T]):
     """A wrapper that changes *when* or *whether* a value is republished, not what.
@@ -318,7 +336,7 @@ class ShapingObservable(SourceSubscribingObservable[T, T]):
     on, so their input and output types are the same one and the seed is simply
     the source's construction-time value. Naming that here keeps the rule in one
     place: reading the source to seed is correct **because** the types agree,
-    which is exactly what ``switch_map`` cannot claim.
+    which is exactly what ``switch_map`` and ``scan`` cannot claim.
     """
 
     def _seed(self, source: ReadOnlyObservableProtocol[T]) -> T:

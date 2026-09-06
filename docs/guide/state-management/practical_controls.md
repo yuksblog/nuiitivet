@@ -75,6 +75,59 @@ The predicate must be a pure function of the value it is handed. Reading another
 observable inside it does not create a dependency, so the filter will not re-run
 when that observable changes — use `combine()` for that.
 
+## `scan()`
+
+Use `scan()` for a value that depends on what came before — a count, a running
+total, a list appended to. `initial` is required: it is what the observable
+reports until the source emits.
+
+Counting how often a debounced observable fired, written without it:
+
+```python
+raw_count = nv.Observable(0)
+debounced = raw_count.debounce(0.5)
+
+# without scan(): an empty Observable, plus the callback that fills it
+execute_count = nv.Observable(0)
+subscription = debounced.subscribe(
+    lambda _: execute_count.set(execute_count.value + 1)
+)
+```
+
+and with it:
+
+```python
+# with scan(): the accumulator is the Observable
+execute_count = debounced.scan(lambda n, _: n + 1, initial=0)
+
+nv.Text(execute_count.map(lambda n: f"Executed: {n}x"))
+```
+
+Three things go away. The counter stops being defined in two places — its
+starting value and the way it moves are one expression. The callback no longer
+reads back the value it is about to write. And the subscription is one less
+lifetime to own.
+
+`map()` cannot do this job — it recomputes from the current value and never sees
+the previous one.
+
+Where a click or a keystroke is what you are counting, there is a handler to
+write in, and one line does it:
+
+```python
+def on_click(self) -> None:
+    self.count.value += 1
+```
+
+`scan()` is for the case with no handler: what an operator emits. Above, the
+count moves when the debounce window settles, which no click handler can see.
+
+The value the source holds when the chain is built is not folded in, so the
+counter starts at `initial` rather than at 1.
+
+The fold must be a pure function of the two values it is handed. Reading another
+observable inside it does not create a dependency — use `combine()` for that.
+
 ## Binding into a widget
 
 A `debounce()` / `throttle()` / `filter()` result holds the value it last emitted,
@@ -87,7 +140,8 @@ nv.Text(query.debounce(0.5))
 Until the first emission it reports its seed — for `debounce`, the value the
 source had when the chain was built, which is what you see until the input first
 settles; `throttle` emits on the first change, so it moves right away; `filter`
-reports `initial` until something passes.
+reports `initial` until something passes, and so does `scan` until the source
+emits.
 
 ## Chaining
 
