@@ -8,6 +8,7 @@ from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollPhysics
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.scrollable import VerticalScrollable, HorizontalScrollable
 from nuiitivet.layout.scroll_viewport import ScrollViewport
+from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.scrolling import ScrollableStyle, ScrollbarBehavior, ScrollbarStyle
@@ -219,6 +220,8 @@ def test_scrollable_updates_metrics_without_explicit_height():
     scrollable = VerticalScrollable(child=TallWidget())
     canvas = DummyCanvas()
     scrollable.paint(canvas, 0, 0, 120, 150)
+    # The Observable publish is deferred to the between-frames flush.
+    flush_size_change_callbacks()
     axis_state = scrollable._controller.axis_state(ScrollDirection.VERTICAL)
     assert axis_state.viewport_size.value == 150
     assert axis_state.content_size.value == 400
@@ -238,6 +241,7 @@ def test_scrollable_updates_horizontal_metrics_without_explicit_width():
     scrollable = HorizontalScrollable(child=WideWidget())
     canvas = DummyCanvas()
     scrollable.paint(canvas, 0, 0, 180, 80)
+    flush_size_change_callbacks()
     axis_state = scrollable._controller.axis_state(ScrollDirection.HORIZONTAL)
     assert axis_state.viewport_size.value == 180
     assert axis_state.content_size.value == 360

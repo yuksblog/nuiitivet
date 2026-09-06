@@ -15,6 +15,7 @@ from nuiitivet.navigation import Navigator
 from nuiitivet.runtime.app import App, AppScope
 from nuiitivet.runtime.window import Window, WindowScope
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
 
 class _FlagWidget(Widget):
@@ -53,9 +54,11 @@ def test_app_installs_root_geometry_provider() -> None:
     assert isinstance(geometry, Geometry)
 
     # The root Geometry measures the window through the normal layout pass:
-    # laying out the app root publishes the window size, and a content widget
-    # resolves Geometry.of(...) to this root provider.
+    # laying out the app root queues the window size, the between-frames flush
+    # publishes it, and a content widget resolves Geometry.of(...) to this root
+    # provider.
     app.root.layout(800, 600)
+    flush_size_change_callbacks()
     assert geometry.size.value == Size(800, 600)
     assert Geometry.of(content) is geometry
 

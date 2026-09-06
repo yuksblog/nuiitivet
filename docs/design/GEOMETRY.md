@@ -53,54 +53,46 @@ nuiitivet's frame pipeline is strictly **build → layout → paint**, and build
 - then `on_draw` performs `root.layout(w, h)`,
 - then paint.
 
-A container's measured size is known only during the layout phase. When
-`Geometry` publishes a changed size during layout, it writes to an `Observable`.
-The **recomposition** that write triggers is queued, not run: dependent scopes
-are rebuilt when the next frame flushes them, so no subtree is rebuilt
-mid-layout.
+A container's measured size is known only during the layout phase. `Geometry`
+does not write its `Observable` there — the Layout Protocol forbids a
+layout-phase `Observable` write ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)
+§2). Instead, `layout()` **queues** the measurement on the post-layout queue
+(`widgeting.widget_size_change`), and the app flushes that queue at the start of
+the next frame, before that frame's build flush. The write, and everything it
+triggers, happens between frames:
 
 ```text
-frame N   : layout → Geometry measures → size changed → Observable.set()
-            → dependent scopes queued dirty → next frame requested
-frame N+1 : flush bindings/scopes (rebuild dependents) → layout → paint
+frame N   : layout → Geometry measures → size changed → queued + frame requested
+frame N+1 : flush queue (Observable.set) → flush bindings/scopes (rebuild
+            dependents) → layout → paint
 ```
 
-This is the key result: **because scope recomposition and layout are serialized
-across frames, a rebuild driven from layout is naturally deferred.** That is what
-sidesteps the layout-time re-entrancy hazard a synchronous,
-build-during-layout `LayoutBuilder` would expose to callers.
+This is the key result: **the publish and the layout pass are serialized across
+frames, so nothing a consumer can observe changes mid-pass.** A rebuild driven
+from layout is naturally deferred — sidestepping the layout-time re-entrancy
+hazard a synchronous, build-during-layout `LayoutBuilder` would expose to
+callers — and a lazily-read binding (a mapped `Text` label) resolves one
+consistent value for a whole frame: measurement and paint agree.
 
 ### 3.1 What is *not* deferred — a known deviation
 
-Only recomposition defers. The write itself propagates **synchronously**: a
+~~Only recomposition defers. The write itself propagates **synchronously**: a
 `bind_to` setter runs immediately, and a lazy reader such as `Text`'s label
 resolution picks up the new value the moment it is asked. So within one layout
 pass, a widget measured *before* the publishing `Geometry` measures against the
-old value while a widget measured after it sees the new one.
+old value while a widget measured after it sees the new one — a `Text` bound to
+the size and laid out ahead of the `Geometry` in the same `Column` paints one
+torn frame before self-healing.~~ **Resolved in #466.** The write itself now
+defers too: `layout()` queues the measurement and the between-frames flush
+publishes it, so no consumer — synchronous, lazy, or recomposing — can observe
+a mid-pass change (§3 above describes the current model).
 
-That is a state change with side effects during layout, which
-[RENDERING_PIPELINE.md](RENDERING_PIPELINE.md) §2 forbids for `layout()`
-("except for storing layout results"). It is observable, not theoretical. A
-`Text` bound to the size and laid out *ahead* of the `Geometry` in the same
-`Column`:
-
-```text
-pass 1 -> label rect (0, 0, 103, 16)      # measured for "width is 0 pixels"
-          label text 'width is 400 pixels'  (preferred width 119)
-pass 2 -> label rect (0, 0, 119, 16)
-```
-
-Frame N paints a 119px string in a box measured at 103px. It self-heals — the
-write also marks the tree dirty and requests a frame, so frame N+1 measures
-correctly — but frame N is torn.
-
-This is a deviation the initial cut (#431) shipped with, not a property to build
-on. Nothing in this document should be read as endorsing a layout-phase
-`Observable` write; §11's push path deliberately avoids needing one.
-
-Tracked in **#466**, which also covers `ScrollViewport` — it publishes scroll
-metrics from `layout()` the same way, so the resolution is a protocol-level
-decision rather than a fix local to `Geometry`.
+The same resolution covers `ScrollViewport`, with one refinement: scroll
+metrics are additionally *recorded* in plain synchronous fields during layout,
+which paint, hit-testing, and offset clamping read within the same frame — the
+pipeline's scrollbar-visibility and hit-testing guarantees are unchanged. Only
+the `Observable` publish defers. The accepted cost is latency: a reactive
+consumer sees a measurement one frame after the layout that produced it.
 
 ## 4. API
 
@@ -121,7 +113,7 @@ class Geometry(Widget):
 
     @property
     def size(self) -> Observable[Size]:
-        """This widget's resolved (width, height), updated after layout.
+        """This widget's resolved (width, height), published between frames.
 
         A single atomic ``Observable[Size]`` — width and height update
         together so consumers never read a torn (new width, old height) pair.
@@ -277,7 +269,8 @@ path without an API break. `Geometry` remains the special (C) provider that
   container; no separate `App.of().size`. The root provider needs no bespoke
   resize plumbing — it measures the window through the normal layout pass.
 - **One-frame-deferred reactivity is acceptable.** Imperceptible, and it is what
-  makes the layout-time write re-entrancy-free.
+  keeps the layout pass free of `Observable` writes — the publish rides the
+  post-layout queue (§3).
 
 ## 11. `on_size_changed` (#460): the push counterpart
 
@@ -308,16 +301,17 @@ decision still holds: it creates no scope and is not resolvable via `.of()`. Lik
 `on_mount` / `on_unmount` it does not wrap the target — the callback is
 registered on the widget itself and no node is added to the tree.
 
-**Dispatch is between frames, not during layout**, and unlike `Geometry` the push
-path needs no exemption from the layout protocol to get there. A size callback is
+**Dispatch is between frames, not during layout.** A size callback is
 arbitrary user code that may mutate the tree, so `set_layout_rect` does two
 things only: it stores `_layout_rect` — a layout result, which
 [RENDERING_PIPELINE.md](RENDERING_PIPELINE.md) §2 explicitly allows — and appends
 the measurement to a framework-internal queue
 (`widgeting/widget_size_change.py`). Nothing in the tree is mutated and no
-`Observable` is written during layout, so §3.1's tearing has no analogue here.
-`App._render_frame` drains the queue at the start of the next frame, before the
-build flush, and the effect lands one frame after the measurement.
+`Observable` is written during layout. `App._render_frame` drains the queue at
+the start of the next frame, before the build flush, and the effect lands one
+frame after the measurement. This queue is now also how `Geometry` and the
+scroll metrics publish (§3.1's resolution): the push path pioneered the
+mechanism, and the pull paths ride it.
 
 The one side effect the layout pass does keep is a frame request: queuing calls
 `invalidate()`, because a draw-on-demand app would otherwise never reach the
@@ -331,9 +325,8 @@ created a frame phase the framework does not otherwise have — recomposition an
 mounting on an already-laid-out tree — to serve a tooling concern. Snapshots
 instead settle explicitly at the entry point
 (`App._settle_pending_size_changes`, capped by `_MAX_SNAPSHOT_SETTLE_PASSES`),
-which simulates the frames an interactive app would have drawn. A `Geometry`
-sample can look correct in a one-shot render without that help, but only because
-of §3.1 — that is the deviation showing through, not a reason to copy it.
+which simulates the frames an interactive app would have drawn. `Geometry`
+samples rely on the same settle, since their publishes ride the same queue.
 
 Contract details: the queue is keyed by widget and holds the *latest*
 measurement, so several layout passes in one frame report once; the report

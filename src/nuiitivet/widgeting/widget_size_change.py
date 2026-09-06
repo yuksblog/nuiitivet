@@ -1,16 +1,12 @@
-"""Post-layout dispatch of widget size-change callbacks.
+"""Post-layout dispatch of what the layout pass measured.
 
-A size-change callback is arbitrary user code: it may push a route, reassign
-children, or write an Observable that rebuilds a subtree. Running it inline from
-:meth:`WidgetKernel.set_layout_rect` would re-enter the tree *during* layout, so
-a measurement is instead queued here and dispatched **between frames**, at the
-same point in the frame as any other user code — the same deferral ``Geometry``
-gets for free by writing only to an Observable.
-
-The queue is keyed by widget identity and holds the *latest* measurement, so a
-widget laid out several times within one frame reports once, with its final size.
-Entries hold a weak reference: a widget dropped from the tree before the flush is
-skipped rather than resurrected.
+An ``Observable`` write from inside ``layout()`` propagates synchronously and
+tears the frame for consumers measured earlier in the same pass, so layout only
+*queues* here; the app flushes the queue between frames, before the next frame's
+build flush. Size-change callbacks (arbitrary user code) and deferred publishes
+(framework state such as ``Geometry``'s size and scroll metrics) both ride the
+queue, keyed by owner and coalesced to the latest entry. Size-change entries
+hold a weak reference, so a widget dropped before the flush is skipped.
 """
 
 from __future__ import annotations
@@ -32,6 +28,7 @@ SizeCallback = Union[Callable[[Size], None], Callable[[Size], Awaitable[None]]]
 
 _PendingEntry = Tuple["weakref.ReferenceType[Any]", Size]
 _pending_size_changes: Dict[int, _PendingEntry] = {}
+_pending_publishes: Dict[int, Callable[[], None]] = {}
 
 
 def _make_finalizer(key: int) -> Callable[[Any], None]:
@@ -41,56 +38,83 @@ def _make_finalizer(key: int) -> Callable[[Any], None]:
     return _cleanup
 
 
+def _request_flush_frame(widget: Any) -> None:
+    """Request the frame whose start flushes the queues (an idle app has none)."""
+    invalidate = getattr(widget, "invalidate", None)
+    if not callable(invalidate):
+        return
+    try:
+        invalidate()
+    except Exception as exc:
+        exception_once(
+            _logger,
+            f"widget_size_change_invalidate_exc:{type(widget).__name__}",
+            "Exception in invalidate() after a size change for widget=%s",
+            type(widget).__name__,
+        )
+        report_contained(
+            exc,
+            owner=type(widget).__name__,
+            site="invalidate() after a size change",
+        )
+
+
 def queue_size_change(widget: Any, size: Size) -> None:
     """Queue *widget*'s new measured *size* for dispatch after layout.
 
-    Requests a frame on the first queued entry: the callback fires from the
-    next frame's flush, and on an idle (draw-on-demand) app nothing else would
-    schedule that frame.
+    Requests a frame on the first queued entry. A measurement equal to the last
+    reported size queues nothing, so a clean relayout schedules no extra frame.
     """
     key = id(widget)
     first_insert = key not in _pending_size_changes
     if first_insert:
+        if size == getattr(widget, "_reported_size", None):
+            return
         _pending_size_changes[key] = (weakref.ref(widget, _make_finalizer(key)), size)
+        _request_flush_frame(widget)
     else:
         _pending_size_changes[key] = (_pending_size_changes[key][0], size)
 
-    if not first_insert:
-        return
-    invalidate = getattr(widget, "invalidate", None)
-    if callable(invalidate):
-        try:
-            invalidate()
-        except Exception as exc:
-            exception_once(
-                _logger,
-                f"widget_size_change_invalidate_exc:{type(widget).__name__}",
-                "Exception in invalidate() after a size change for widget=%s",
-                type(widget).__name__,
-            )
-            report_contained(
-                exc,
-                owner=type(widget).__name__,
-                site="invalidate() after a size change",
-            )
+
+def queue_deferred_publish(key: Any, publish: Callable[[], None], *, widget: Any = None) -> None:
+    """Queue *publish* (an Observable write) to run at the next flush.
+
+    Keyed by *key*, latest entry wins — *publish* should read the owner's
+    current state rather than close over values. *widget*, when given, has a
+    frame requested on the first queued entry.
+    """
+    first_insert = id(key) not in _pending_publishes
+    _pending_publishes[id(key)] = publish
+    if first_insert and widget is not None:
+        _request_flush_frame(widget)
 
 
 def flush_size_change_callbacks() -> bool:
-    """Dispatch every queued size change to its widget's callbacks.
+    """Run queued deferred publishes, then dispatch queued size changes.
 
-    Called by the app at the start of a frame, before the build flush, so an
-    Observable a callback writes is picked up by that frame's recomposition.
-    Safe to call from tests to settle a size change without running a frame.
-
-    Returns:
-        Whether any callback ran. A one-shot render uses this to know when the
-        tree has stopped changing (``App._settle_pending_size_changes``).
+    Called at the start of a frame, before the build flush, so a write lands in
+    that frame's recomposition; publishes run first so callbacks read fresh
+    framework state. Safe to call from tests. Returns whether anything ran,
+    which is how a one-shot render knows the tree has settled.
     """
+    dispatched = False
+    if _pending_publishes:
+        publishes = list(_pending_publishes.values())
+        _pending_publishes.clear()
+        for publish in publishes:
+            try:
+                publish()
+            except Exception:
+                exception_once(
+                    _logger,
+                    "widget_size_change_publish_exc",
+                    "Exception in a deferred layout-result publish",
+                )
+        dispatched = True
     if not _pending_size_changes:
-        return False
+        return dispatched
     pending = list(_pending_size_changes.values())
     _pending_size_changes.clear()
-    dispatched = False
     for ref, size in pending:
         widget = ref()
         if widget is None or getattr(widget, "_unmounted", False):
@@ -119,5 +143,6 @@ __all__ = [
     "SizeCallback",
     "flush_size_change_callbacks",
     "invoke_size_callback",
+    "queue_deferred_publish",
     "queue_size_change",
 ]

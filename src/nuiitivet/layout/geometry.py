@@ -11,6 +11,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_children import ChildContainerMixin
+from nuiitivet.widgeting.widget_size_change import queue_size_change
 
 GeometryT = TypeVar("GeometryT", bound="Geometry")
 
@@ -18,13 +19,11 @@ GeometryT = TypeVar("GeometryT", bound="Geometry")
 class Geometry(Widget):
     """Publishes this widget's own measured geometry to its subtree.
 
-    ``Geometry`` wraps a single child and is transparent to layout: the child
-    receives the same size this widget receives. After each layout pass it
-    publishes its own resolved size as an ``Observable[Size]``, which descendants
-    read via :meth:`Geometry.of`. Follow nuiitivet's reactivity rule: **bind the
-    ``size`` Observable (mapped); do not read ``.value`` at build time** (that is
-    a one-time snapshot). Map it into a value widget, or drive a ``Deck`` index
-    for a structural switch::
+    Transparent to layout: the single child receives this widget's own size.
+    Each layout pass publishes that size as an ``Observable[Size]``, read by
+    descendants via :meth:`Geometry.of` — bind it (mapped); a ``.value`` read at
+    build time is a one-time snapshot. Map it into a value widget, or drive a
+    ``Deck`` index for a structural switch::
 
         class Panel(ComposableWidget):
             def build(self) -> Widget:
@@ -36,16 +35,11 @@ class Geometry(Widget):
 
         Geometry(Panel())
 
-    Because the nearest ancestor provider wins, wrapping a panel in ``Geometry``
-    makes its descendants react to the *panel*, not the window: local reflow
-    independent of window size falls out for free. The app installs a root
-    ``Geometry`` provider at the window, so with no nearer ``Geometry`` a
-    top-level read falls back to it and tracks the window size.
-
-    The measured size is written during the layout phase. Scope recomposition is
-    flushed *before* layout within a frame, so a subtree that rebuilds on the size
-    does so on the next frame, never re-entrantly mid-layout. The write itself,
-    however, propagates synchronously.
+    The nearest ancestor provider wins, so wrapping a panel makes descendants
+    react to the panel, not the window; with no nearer provider, reads fall back
+    to the root ``Geometry`` the app installs at the window and track the window
+    size. The size is measured during layout and published between frames:
+    consumers see it one frame later, never a torn mix of old and new.
     """
 
     def __init__(
@@ -73,7 +67,11 @@ class Geometry(Widget):
         # Observable de-dupes equal values, so an unchanged size performs no
         # write and triggers no dependent recomposition (the oscillation guard).
         self._size: Observable[Size] = Observable(Size(0, 0))
+        self.add_size_callback(self._publish_size)
         self.add_child(child)
+
+    def _publish_size(self, size: Size) -> None:
+        self._size.value = size
 
     def add_child(self, w: Widget) -> None:
         """Keep at most one child; bypass overrides like :class:`Container`."""
@@ -81,7 +79,7 @@ class Geometry(Widget):
 
     @property
     def size(self) -> Observable[Size]:
-        """This widget's resolved ``(width, height)``, updated after layout."""
+        """This widget's resolved ``(width, height)``, published between frames."""
         return self._size
 
     @classmethod
@@ -118,15 +116,16 @@ class Geometry(Widget):
         return (w, h)
 
     def layout(self, width: int, height: int) -> None:
-        """Lay the child out at this widget's own size, then publish that size."""
+        """Lay the child out at this widget's own size, then queue its publish."""
         super().layout(width, height)
         if self.children:
             child = self.children[0]
             child.layout(width, height)
             child.set_layout_rect(0, 0, width, height)
-        # Publish the measured size. Equal values are de-duped by the Observable,
-        # so a stable size does not re-fire and cannot drive an oscillation loop.
-        self._size.value = Size(int(width), int(height))
+        # Queue, don't write: an Observable write here would propagate to
+        # consumers mid-pass. The queue delivers the final measurement to
+        # _publish_size between frames, de-duped against the last report.
+        queue_size_change(self, Size(int(width), int(height)))
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the child at this widget's own rect (transparent to paint)."""

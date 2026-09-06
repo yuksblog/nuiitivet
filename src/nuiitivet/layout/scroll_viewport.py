@@ -197,7 +197,7 @@ class ScrollViewport(Widget):
 
         content_w, content_h = self._resolve_cross_axis(content, content_w, content_h, vp_w, vp_h)
 
-        # Update metrics during layout phase
+        # Record metrics; their Observable publish lands between frames.
         self._update_scroll_metrics(content_w, content_h, vp_w, vp_h)
 
         # Layout content with its preferred size
@@ -407,6 +407,7 @@ class ScrollViewport(Widget):
             viewport_size,
             content_extent,
             axis=self.direction,
+            widget=self,
         )
 
 

@@ -91,10 +91,10 @@ pane it lands in.
 - **A filling `Geometry` measures available space.** `width="wt"` makes it fill
   what the parent offers, so it measures the space *available* to a pane rather
   than the child's intrinsic size.
-- **Rebuilds land on the next frame.** The size is measured during layout, so a
-  consumer that has to rebuild — a `Deck` switching arrangements, say — does so
-  on the following frame. Imperceptible, and it keeps the layout pass free of
-  subtree rebuilds.
+- **The size lands on the next frame.** It is measured during layout and
+  published between frames, so every consumer — a mapped label or a `Deck`
+  switching arrangements — sees it on the following frame. Imperceptible, and it
+  keeps the layout pass free of subtree rebuilds.
 - **Stable sizes don't re-fire.** An unchanged size is de-duped, so a `Geometry`
   whose size is imposed by its parent cannot drive a feedback loop.
 - **`Size`** is a `(width, height)` pair: `size.width`, `size.height`, or unpack
