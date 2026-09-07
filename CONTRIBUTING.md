@@ -29,6 +29,7 @@ Branch names should indicate the type of work, issue number, and a brief descrip
 | `refactor/` | Refactoring | `refactor/optimize-rendering` |
 | `docs/` | Documentation updates | `docs/update-readme` |
 | `chore/` | Build settings or tools | `chore/update-dependencies` |
+| `release/` | Version bumps | `release/0.22.0` |
 
 ---
 
@@ -50,6 +51,7 @@ Commit messages affect the quality of auto-generated release notes, so please fo
 - **perf**: A code change that improves performance
 - **test**: Adding missing tests or correcting existing tests
 - **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- **release**: A version bump, and nothing else. Merging it cuts the release
 
 ### Examples
 
@@ -122,23 +124,7 @@ in order.
 
 ## 📦 Release Process
 
-The build, upload to PyPI, and documentation deployment are **automated via GitHub Actions**.
-
-### Procedure
-
-1. **Local Preparation**
-    - Update `version` in `pyproject.toml` (e.g., `0.1.2` -> `0.1.3`).
-    - Run `uv lock` to update the lock file.
-    - Commit and push the changes.
-
-2. **GitHub Release**
-    - Go to the [Releases](https://github.com/yuksblog/nuiitivet/releases) page.
-    - Click **Draft a new release**.
-    - **Choose a tag**: Enter the new version number (e.g., `0.1.3`) and create it.
-    - Click the **Generate release notes** button (PR contents will be auto-filled).
-    - Review the content and click **Publish release**.
-
-3. **Automated Deployment**
-    - GitHub Actions (`release.yml`) is triggered.
-    - Package is published to PyPI.
-    - GitHub Pages documentation is updated.
+Releases are cut by the maintainer, not by contributors: merging a
+`release: <version>` PR — the version bumped with
+`scripts/dev/bump_version.py` and the PR labelled `ignore-for-release` — is what
+tags, publishes to PyPI, and deploys the documentation, all in `release.yml`.
