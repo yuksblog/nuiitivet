@@ -7,22 +7,47 @@ concurrency:
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - 'docs/**'
-      - 'LICENSE'
-      - 'LICENSES/**'
-      - '**/*.md'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - 'docs/**'
-      - 'LICENSE'
-      - 'LICENSES/**'
-      - '**/*.md'
   workflow_dispatch: {}
 
 jobs:
+  # 'ci' below is the branch rule's required status check, so this workflow has
+  # to start on every PR: one held back by a paths filter reports nothing at all
+  # and leaves that check pending forever. Doc-only changes are skipped a job at
+  # a time instead, which the rule accepts as a pass.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes outside docs
+        id: filter
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          # No diff to read — a fresh branch, a force push, a manual run — means
+          # the full suite runs.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          rest=$(git diff --name-only "$BASE" "$HEAD" \
+            | grep -Ev '^docs/|^LICENSE$|^LICENSES/|\.md$' || true)
+          if [ -n "$rest" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   check:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -70,6 +95,8 @@ jobs:
   # The plugin's async runner defers to pytest-asyncio, which the job above
   # always installs. Re-run the suite without it so the runner is exercised.
   check-without-pytest-asyncio:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,3 +130,25 @@ jobs:
 
       - name: Run pytest
         run: uv run --no-sync pytest
+
+  # The single required status check. It stands in for the jobs above so the
+  # branch rule never has to name a matrix entry.
+  ci:
+    needs: [changes, check, check-without-pytest-asyncio]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the aggregate result
+        env:
+          RESULTS: >-
+            ${{ needs.changes.result }}
+            ${{ needs.check.result }}
+            ${{ needs['check-without-pytest-asyncio'].result }}
+        run: |
+          echo "results: $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *) echo "A job this check stands in for did not pass."; exit 1 ;;
+            esac
+          done
