@@ -1,16 +1,70 @@
 name: Release
 
 on:
+  push:
+    branches: [ main ]
   release:
     types: [published]
 
 jobs:
+  # Cutting the tag from main, rather than by hand, is what makes merging the
+  # version-bump PR the whole release. Keeping it in this file matters: PyPI's
+  # trusted publisher is bound to the workflow that mints the OIDC token, so the
+  # publishing job has to stay the entry point it was registered under.
+  tag:
+    name: Tag and Release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      created: ${{ steps.tag.outputs.created }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Pinned rather than left to the runner image: the step below reads the
+      # version with tomllib, which needs 3.11.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create the tag and the Release
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python3 -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # Every push to main lands here, so an existing tag is the ordinary
+          # case: this one carried no version bump.
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "Release $version already exists — nothing to cut."
+            exit 0
+          fi
+
+          gh release create "$version" \
+            --target "$GITHUB_SHA" \
+            --title "$version" \
+            --generate-notes
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
   publish-and-deploy:
     name: Publish to PyPI and Deploy Docs
+    needs: tag
+    if: always() && (github.event_name == 'release' || needs.tag.outputs.created == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+    env:
+      # A Release published by hand carries the version in the ref; one cut by
+      # the job above arrives from main, where the ref is the branch.
+      VERSION: ${{ needs.tag.outputs.version || github.ref_name }}
 
     steps:
       - name: Checkout code
@@ -38,4 +92,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
 
       - name: Deploy docs
-        run: uv run --group docs mike deploy ${{ github.ref_name }} latest --push --update-aliases
+        run: uv run --group docs mike deploy "$VERSION" latest --push --update-aliases
