@@ -28,6 +28,7 @@ from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.scrolling import ScrollableStyle, ScrollController, ScrollDirection
 from nuiitivet.material.buttons import Button, IconButton
+from nuiitivet.material.calendar_labels import CalendarLabels, DEFAULT_CALENDAR_LABELS
 from nuiitivet.material.date_format import DateFormat, DEFAULT_DATE_FORMAT
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.modifiers.popup import popup
@@ -66,29 +67,6 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-# Weekday column headers — Sunday first, matching the MD3 spec.
-_WEEKDAY_LABELS: Tuple[str, ...] = ("S", "M", "T", "W", "T", "F", "S")
-
-# Month names, 0-indexed by ``month - 1``.  Fixed to English rather than read
-# from the ``calendar`` module, whose names are locale-sensitive and would
-# translate the month while the weekday headers, the Sunday-first grid and the
-# month-before-year header layout all stay English.  This tuple goes away when
-# locale support arrives.
-_MONTH_NAMES: Tuple[str, ...] = (
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-)
-
 
 def _prev_month(year: int, month: int) -> Tuple[int, int]:
     """Return (year, month) for the month preceding the given one."""
@@ -104,23 +82,26 @@ def _next_month(year: int, month: int) -> Tuple[int, int]:
     return year, month + 1
 
 
-def _fill_six_weeks(year: int, month: int) -> list[list[_Date]]:
+def _fill_six_weeks(year: int, month: int, first_day_of_week: int) -> list[list[_Date]]:
     """Return exactly 6 weeks of dates for the calendar grid.
 
     Fills leading and trailing empty slots with dates from adjacent months so
-    the grid always has 6 full weeks (42 cells), starting on Sunday.
+    the grid always has 6 full weeks (42 cells).
 
     Args:
         year: Calendar year.
         month: Calendar month (1\u201312).
 
+        first_day_of_week: Weekday of the first grid column, numbered as
+            :meth:`datetime.date.weekday` (Monday 0 ... Sunday 6).
+
     Returns:
         List of 6 weeks, each containing 7 :class:`datetime.date` objects.
     """
     first_day = _Date(year, month, 1)
-    # ``isoweekday() % 7`` maps Sunday→0, Monday→1, …, Saturday→6 so the grid
-    # always begins on the Sunday on or before the first of the month.
-    start = first_day - _TimeDelta(days=first_day.isoweekday() % 7)
+    # Back up to the nearest first_day_of_week on or before the first of the
+    # month, so the grid always opens on a full week.
+    start = first_day - _TimeDelta(days=(first_day.weekday() - first_day_of_week) % 7)
     return [[start + _TimeDelta(days=w * 7 + d) for d in range(7)] for w in range(6)]
 
 
@@ -747,6 +728,7 @@ class _MonthList(ComposableWidget):
         on_select: Callback invoked with the selected month number.
         list_height: Pixel height for the :class:`VerticalScrollable` viewport.
         item_width: Width of each list item (inner container width).
+        labels: Month names to display.
         style: DatePickerStyle.
     """
 
@@ -757,6 +739,7 @@ class _MonthList(ComposableWidget):
         on_select: Callable[[int], None],
         list_height: int,
         item_width: float,
+        labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         style: "DatePickerStyle",
     ) -> None:
         super().__init__()
@@ -764,6 +747,7 @@ class _MonthList(ComposableWidget):
         self._on_select = on_select
         self._list_height = list_height
         self._item_width = item_width
+        self._labels = labels
         self._style = style
 
     def build(self) -> Widget:
@@ -775,7 +759,7 @@ class _MonthList(ComposableWidget):
             _m = m
             items.append(
                 _MenuListItem(
-                    _MONTH_NAMES[m - 1],
+                    self._labels.month_names[m - 1],
                     is_selected=(m == self._current_month),
                     on_tap=lambda _m=_m: self._on_select(_m),
                     item_width=item_w,
@@ -871,6 +855,10 @@ class _MonthYearHeader(ComposableWidget):
     - ``"modal"``: A single combined ``[Month Year ▾/▴]`` button on the left
       with prev/next chevrons on the right.
 
+    Both variants place the month before the year.  The order is part of the
+    MD3 layout and fixed: *labels* localizes the names, never the order, even
+    for languages that write the year first.
+
     Args:
         year: Current view year.
         month: Current view month (1–12).
@@ -889,6 +877,7 @@ class _MonthYearHeader(ComposableWidget):
         nav_padding: (modal) Outer padding (left, top, right, bottom) of the
             nav row. MD3 modal measurement: ``(12, 6, 12, 2)`` in the calendar
             view, ``(12, 6, 12, 8)`` in the year-selection view.
+        labels: Month names to display.
         style: CalendarStyle.
     """
 
@@ -910,6 +899,7 @@ class _MonthYearHeader(ComposableWidget):
         year_rotation: Optional[ObservableBase[float]] = None,
         variant: Literal["inline", "modal"] = "inline",
         nav_padding: Tuple[int, int, int, int] = (12, 6, 12, 2),
+        labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         style: "CalendarStyle",
     ) -> None:
         super().__init__()
@@ -928,11 +918,12 @@ class _MonthYearHeader(ComposableWidget):
         self._year_rotation = year_rotation
         self._variant = variant
         self._nav_padding = nav_padding
+        self._labels = labels
         self._style = style
 
     def build(self) -> Widget:
         """Build the navigation header row."""
-        month_name = _MONTH_NAMES[self._month - 1]
+        month_name = self._labels.month_names[self._month - 1]
         s = self._style
 
         if self._variant == "inline":
@@ -1092,6 +1083,7 @@ class _CalendarGrid(ComposableWidget):
         min_date: Earliest selectable date.
         max_date: Latest selectable date.
         on_day_tap: Callback invoked with the tapped :class:`datetime.date`.
+        labels: Weekday headers and first day of week.
         style: CalendarStyle.
     """
 
@@ -1106,6 +1098,7 @@ class _CalendarGrid(ComposableWidget):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         on_day_tap: Optional[Callable[[_Date], None]] = None,
+        labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         style: "CalendarStyle",
     ) -> None:
         """Initialize _CalendarGrid.
@@ -1119,6 +1112,7 @@ class _CalendarGrid(ComposableWidget):
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             on_day_tap: Callback for day cell taps.
+            labels: Weekday headers and first day of week.
             style: Date picker style.
         """
         super().__init__()
@@ -1130,6 +1124,7 @@ class _CalendarGrid(ComposableWidget):
         self._min_date = min_date
         self._max_date = max_date
         self._on_day_tap = on_day_tap
+        self._labels = labels
         self._style = style
 
     def build(self) -> Widget:
@@ -1141,7 +1136,7 @@ class _CalendarGrid(ComposableWidget):
         """
         style = self._style
         today = _Date.today()
-        weeks = _fill_six_weeks(self._year, self._month)
+        weeks = _fill_six_weeks(self._year, self._month, self._labels.first_day_of_week)
 
         # Each calendar column occupies a 48dp-wide slot: a 40dp date container
         # (MD3 ``date.container`` token) with 4dp on each side. Date cells are
@@ -1153,7 +1148,7 @@ class _CalendarGrid(ComposableWidget):
 
         # Weekday header row: one text-line slot per column, centred in 48dp slot.
         header_cells: list[Widget] = []
-        for label in _WEEKDAY_LABELS:
+        for label in self._labels.weekday_columns():
             header_cells.append(
                 Text(
                     label,
@@ -1272,6 +1267,9 @@ class DatePicker(ComposableWidget):
             omitted, Cancel clears ``value``.
         min_date: Earliest selectable date.
         max_date: Latest selectable date.
+        labels: Month names, weekday headers and first day of week the
+            calendar renders with.  The default is English and Sunday-first on
+            every platform; it never reads the process locale.
         style: Visual style.  Defaults to :class:`DatePickerStyle`.
     """
 
@@ -1284,6 +1282,7 @@ class DatePicker(ComposableWidget):
         on_cancel: Optional[Callable[[], None]] = None,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
+        labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         style: Optional["DatePickerStyle"] = None,
         key: Optional[str] = None,
     ) -> None:
@@ -1297,6 +1296,7 @@ class DatePicker(ComposableWidget):
                 default "clear the selection" behavior.
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
+            labels: Calendar display labels.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -1307,6 +1307,7 @@ class DatePicker(ComposableWidget):
         self._on_cancel_cb = on_cancel
         self._min_date = min_date
         self._max_date = max_date
+        self._labels = labels
         self._user_style = style
 
         # Initialise view to the currently selected month, or the current month.
@@ -1476,6 +1477,7 @@ class DatePicker(ComposableWidget):
             month_rotation=self._month_rotation,
             year_rotation=self._year_rotation,
             variant="inline",
+            labels=self._labels,
             style=style,
         )
 
@@ -1503,6 +1505,7 @@ class DatePicker(ComposableWidget):
                 on_select=self._select_month,
                 list_height=list_height,
                 item_width=style.container_width,
+                labels=self._labels,
                 style=style,
             )
         elif self._view_mode == "year":
@@ -1521,6 +1524,7 @@ class DatePicker(ComposableWidget):
                 min_date=self._min_date,
                 max_date=self._max_date,
                 on_day_tap=self._on_day_tap,
+                labels=self._labels,
                 style=style,
             )
 
@@ -1636,6 +1640,9 @@ class DockedDatePicker(ComposableWidget):
             produce a date outside these bounds, but typing can: enforcing a
             range on typed text is the application's, via *is_error*.  An
             application that wants both states the bounds in both places.
+        labels: Month names, weekday headers and first day of week the dropdown
+            calendar renders with.  The default is English and Sunday-first on
+            every platform; it never reads the process locale.
         label: Floating label for the text field.
         supporting_text: Text shown below the field.  Empty by default: the
             widget has nothing of its own to say there, and the slot is where an
@@ -1657,6 +1664,7 @@ class DockedDatePicker(ComposableWidget):
         date_format: DateFormat = DEFAULT_DATE_FORMAT,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
+        labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         label: str = "Date",
         supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         is_error: bool | ReadOnlyObservableProtocol[bool] = False,
@@ -1673,6 +1681,7 @@ class DockedDatePicker(ComposableWidget):
             date_format: How text is read as a date and written back.
             min_date: Earliest date selectable in the calendar.
             max_date: Latest date selectable in the calendar.
+            labels: Calendar display labels.
             label: Text field label.
             supporting_text: Text shown below the field.  Empty by default.
             is_error: Whether to show the field in its error state.
@@ -1723,6 +1732,7 @@ class DockedDatePicker(ComposableWidget):
             on_cancel=self._on_calendar_cancel,
             min_date=min_date,
             max_date=max_date,
+            labels=labels,
             style=style_.calendar,
         )
 

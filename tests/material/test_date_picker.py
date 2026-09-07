@@ -13,13 +13,15 @@ from nuiitivet.material.date_picker import (
     ModalDateInput,
     ModalDatePicker,
     ModalDateRangePicker,
+    _CalendarGrid,
     _MenuListItem,
     _MonthList,
     _MonthYearHeader,
-    _MONTH_NAMES,
+    _fill_six_weeks,
     _prev_month,
     _next_month,
 )
+from nuiitivet.material.calendar_labels import CalendarLabels, DEFAULT_CALENDAR_LABELS
 from nuiitivet.material.date_format import DateFormat, is_date
 from nuiitivet.material.styles.date_picker_style import (
     CalendarStyle,
@@ -909,7 +911,7 @@ def test_modal_date_input_build_returns_box():
 
 
 # ---------------------------------------------------------------------------
-# Month names (locale independence — interim measure until locale support)
+# Calendar labels (locale independence)
 # ---------------------------------------------------------------------------
 
 
@@ -954,12 +956,68 @@ def _menu_item_labels(widget) -> list[str]:
     return found
 
 
-def test_month_names_are_english():
-    """_MONTH_NAMES is 0-indexed English, unlike 1-indexed calendar.month_name."""
-    assert len(_MONTH_NAMES) == 12
-    assert _MONTH_NAMES[0] == "January"
-    assert _MONTH_NAMES[7] == "August"
-    assert _MONTH_NAMES[11] == "December"
+# Japanese: Sunday-first is the local convention, so only the names change.
+_JA_LABELS = CalendarLabels(
+    month_names=tuple(f"{m}月" for m in range(1, 13)),
+    weekday_labels=("月", "火", "水", "木", "金", "土", "日"),
+)
+
+# German: Monday-first, so the grid rotates too.
+_DE_LABELS = CalendarLabels(
+    month_names=(
+        "Januar",
+        "Februar",
+        "März",
+        "April",
+        "Mai",
+        "Juni",
+        "Juli",
+        "August",
+        "September",
+        "Oktober",
+        "November",
+        "Dezember",
+    ),
+    weekday_labels=("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),
+    first_day_of_week=calendar.MONDAY,
+)
+
+
+def test_default_calendar_labels_are_english_sunday_first():
+    """The defaults are 0-indexed English names in a Sunday-first grid."""
+    labels = DEFAULT_CALENDAR_LABELS
+    assert labels.month_names[0] == "January"
+    assert labels.month_names[7] == "August"
+    assert labels.month_names[11] == "December"
+    assert labels.first_day_of_week == calendar.SUNDAY
+    assert labels.weekday_columns() == ("S", "M", "T", "W", "T", "F", "S")
+
+
+def test_calendar_labels_validate_their_shapes():
+    """Wrong tuple lengths and out-of-range first days are refused."""
+    with pytest.raises(ValueError):
+        CalendarLabels(month_names=("January",))
+    with pytest.raises(ValueError):
+        CalendarLabels(weekday_labels=("M", "T"))
+    with pytest.raises(ValueError):
+        CalendarLabels(first_day_of_week=7)
+
+
+def test_weekday_columns_rotate_to_the_first_day():
+    """weekday_labels stay Monday-indexed; the columns start at first_day_of_week."""
+    assert _JA_LABELS.weekday_columns() == ("日", "月", "火", "水", "木", "金", "土")
+    assert _DE_LABELS.weekday_columns() == ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+
+
+def test_fill_six_weeks_starts_on_the_first_day_of_week():
+    """The grid backs up to the chosen weekday on or before the 1st."""
+    # August 1, 2026 is a Saturday.
+    sunday_first = _fill_six_weeks(2026, 8, calendar.SUNDAY)
+    assert sunday_first[0][0] == date(2026, 7, 26)  # Sunday
+    monday_first = _fill_six_weeks(2026, 8, calendar.MONDAY)
+    assert monday_first[0][0] == date(2026, 7, 27)  # Monday
+    assert all(len(week) == 7 for week in monday_first)
+    assert len(monday_first) == 6
 
 
 def test_month_year_header_stays_english_under_a_translating_locale():
@@ -985,4 +1043,69 @@ def test_month_list_stays_english_under_a_translating_locale():
             item_width=100.0,
             style=DatePickerStyle(),
         )
-        assert _menu_item_labels(month_list.build()) == list(_MONTH_NAMES)
+        assert _menu_item_labels(month_list.build()) == list(DEFAULT_CALENDAR_LABELS.month_names)
+
+
+def test_month_year_header_renders_the_given_month_names():
+    """The inline header takes its month name from the labels."""
+    header = _MonthYearHeader(
+        2026,
+        8,
+        on_prev=lambda: None,
+        on_next=lambda: None,
+        labels=_JA_LABELS,
+        style=CalendarStyle(),
+    )
+    assert _text_labels(header.build()) == ["8月", "2026"]
+
+
+def test_month_list_renders_the_given_month_names():
+    """The month dropdown lists the labels' month names."""
+    month_list = _MonthList(
+        8,
+        on_select=lambda _m: None,
+        list_height=200,
+        item_width=100.0,
+        labels=_DE_LABELS,
+        style=DatePickerStyle(),
+    )
+    assert _menu_item_labels(month_list.build())[:3] == ["Januar", "Februar", "März"]
+
+
+def test_calendar_grid_renders_the_weekday_columns():
+    """The grid's header row shows the labels' weekday columns, rotated."""
+    grid = _CalendarGrid(2026, 8, labels=_JA_LABELS, style=CalendarStyle())
+    assert _text_labels(grid.build())[:7] == ["日", "月", "火", "水", "木", "金", "土"]
+
+    grid = _CalendarGrid(2026, 8, labels=_DE_LABELS, style=CalendarStyle())
+    assert _text_labels(grid.build())[:7] == ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+
+def _find_widgets(widget, cls) -> list:
+    """Collect every ``cls`` instance in a built widget tree."""
+    found: list = []
+    for child in widget.children_snapshot():
+        if isinstance(child, cls):
+            found.append(child)
+        found.extend(_find_widgets(child, cls))
+    return found
+
+
+def test_date_picker_renders_with_the_given_labels():
+    """DatePicker threads its labels into the header and the grid."""
+    picker = DatePicker(Observable(date(2026, 8, 17)), labels=_JA_LABELS)
+    built = picker.build()
+    (header,) = _find_widgets(built, _MonthYearHeader)
+    assert _text_labels(header.build()) == ["8月", "2026"]
+    (grid,) = _find_widgets(built, _CalendarGrid)
+    assert _text_labels(grid.build())[:7] == ["日", "月", "火", "水", "木", "金", "土"]
+
+
+def test_docked_date_picker_passes_labels_to_the_calendar():
+    """The docked picker's dropdown calendar renders with the same labels."""
+    picker = DockedDatePicker(value=Observable("08/17/2026"), labels=_DE_LABELS)
+    built = picker._calendar.build()
+    (header,) = _find_widgets(built, _MonthYearHeader)
+    assert _text_labels(header.build()) == ["August", "2026"]
+    (grid,) = _find_widgets(built, _CalendarGrid)
+    assert _text_labels(grid.build())[:7] == ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
