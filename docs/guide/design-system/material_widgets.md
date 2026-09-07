@@ -401,6 +401,26 @@ nv.DockedDatePicker(value=self.arrival_text, label="Arrival")
 
 See [Typed Values from Text Input](../state-management/patterns_and_recipes.md#typed-values-from-text-input) for the recipe, and `nv.DateFormat` for a pattern other than `mm/dd/yyyy`.
 
+The calendar renders English month names and weekday initials in a Sunday-first grid on every platform — it never reads the process locale. To localize it, pass `nv.CalendarLabels`:
+
+```python
+import calendar
+
+nv.DockedDatePicker(
+    value=self.arrival_text,
+    label="Anreise",
+    date_format=nv.DateFormat("dd.mm.yyyy"),
+    labels=nv.CalendarLabels(
+        month_names=("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+                     "August", "September", "Oktober", "November", "Dezember"),
+        weekday_labels=("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),  # Monday first
+        first_day_of_week=calendar.MONDAY,
+    ),
+)
+```
+
+`weekday_labels` is always given Monday-first (indexed like `date.weekday()`), whatever `first_day_of_week` says; the default first day is Sunday, per MD3. The header always shows the month before the year, even for languages that write the year first. `DatePicker`, the inline calendar, takes the same `labels`.
+
 ![DockedDatePicker](../../assets/material_widgets_docked_date_picker.png)
 
 [API Reference](../../api/material.md#nuiitivet.material.DockedDatePicker)

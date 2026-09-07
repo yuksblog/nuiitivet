@@ -114,6 +114,10 @@ if TYPE_CHECKING:
         format_date,
         is_date,
     )
+    from .calendar_labels import (
+        CalendarLabels,
+        DEFAULT_CALENDAR_LABELS,
+    )
     from .styles.date_picker_style import (
         DatePickerStyle,
         DockedDatePickerStyle,
@@ -237,6 +241,8 @@ __all__ = [
     "parse_date",
     "format_date",
     "is_date",
+    "CalendarLabels",
+    "DEFAULT_CALENDAR_LABELS",
     "FadeIn",
     "FadeOut",
     "ScaleIn",
@@ -361,6 +367,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "parse_date": ("date_format", "parse_date"),
     "format_date": ("date_format", "format_date"),
     "is_date": ("date_format", "is_date"),
+    "CalendarLabels": ("calendar_labels", "CalendarLabels"),
+    "DEFAULT_CALENDAR_LABELS": ("calendar_labels", "DEFAULT_CALENDAR_LABELS"),
     "FadeIn": ("transitions", "FadeIn"),
     "FadeOut": ("transitions", "FadeOut"),
     "ScaleIn": ("transitions", "ScaleIn"),
