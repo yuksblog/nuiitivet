@@ -61,6 +61,17 @@ widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
    through the `ThemeExtension` seam by each design system, with a
    per-instance `MenuBarStyle` for geometry and overrides — and the palette
    drives the popups too, not only the bar (Section 8).
+7. **No focused-value/command indirection; the active pane is app state.**
+   One shared entry acting on whichever pane is focused ("Save" over N open
+   documents) is wired in the app: an app-owned Observable
+   (`active_document` or equivalent) updated on focus/selection change, and
+   read by the shared entry's `on_select`. SwiftUI (`@FocusedValue`) and WPF
+   (`RoutedCommand`) solve this with a framework primitive through which the
+   focused subtree publishes an action; nuiitivet adds no such primitive —
+   the app-level Observable matches the ViewModel convention and keeps the
+   wiring visible in app code. Revisit only if an app makes this wiring
+   genuinely awkward, e.g. deep pane nesting where tracking the active pane
+   ends up duplicating focus logic the framework already has.
 
 ## 4. The Menu Model
 
