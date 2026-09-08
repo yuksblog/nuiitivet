@@ -111,6 +111,61 @@ model — item properties keep updating live in between:
 app.menu = nv.MenuBar([...])   # wholesale replacement
 ```
 
+## Acting on the focused pane
+
+A shared entry — one File > Save over several open documents — must act on
+whichever pane the user is working in. Hold that in app state: an observable
+each pane writes when it gains focus, read by the entry's `on_select`:
+
+```python
+class State:
+    def __init__(self) -> None:
+        self.notes = Document("notes.txt")
+        self.draft = Document("draft.txt")
+        self.active = nv.Observable(self.notes)
+
+    def save(self) -> None:
+        document = self.active.value
+        ...
+
+
+class Pane(nv.ComposableWidget):
+    def __init__(self, state: State, document: Document) -> None:
+        super().__init__()
+        self.state = state
+        self.document = document
+
+    def build(self) -> nv.Widget:
+        return nv.TextField(
+            value=self.document.text,
+            label=self.document.name,
+            on_focus_change=self._on_focus_change,
+        )
+
+    def _on_focus_change(self, focused: bool, source: nv.FocusSource) -> None:
+        if focused:
+            self.state.active.value = self.document
+
+
+menu = nv.MenuBar([
+    nv.MenuEntry("File", submenu=[
+        nv.MenuEntry(
+            state.active.map(lambda d: f"Save {d.name}"),  # the label names its target
+            shortcut="Accel+S",
+            on_select=state.save,
+        ),
+    ]),
+])
+```
+
+Only `focused=True` writes: focus moving to the menu itself — or anywhere
+else — leaves `active` on the last pane, which is exactly what Save should
+hit. The entry's shortcut rides along, so `Accel+S` saves the focused pane
+with no per-pane binding.
+
+A runnable demo is at
+[`samples/window/menu_bar_active_pane.py`](https://github.com/yuksblog/nuiitivet/blob/main/samples/window/menu_bar_active_pane.py).
+
 ## Placement
 
 By default the bar appears at the top of the content area, under either
