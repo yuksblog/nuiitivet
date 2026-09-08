@@ -80,10 +80,23 @@ class WindowPosition:
         return cls(alignment_key=alignment, offset=offset, screen_index=screen_index)
 
 
+WindowPositionLike = WindowPosition | str
+
+
+def parse_window_position(value: WindowPositionLike) -> WindowPosition:
+    if isinstance(value, WindowPosition):
+        return value
+    if isinstance(value, str):
+        return WindowPosition(value)
+    raise TypeError("WindowPositionLike must be WindowPosition or an alignment string")
+
+
 __all__ = [
     "WindowSizing",
     "WindowSizingKind",
     "WindowSizingLike",
     "parse_window_sizing",
     "WindowPosition",
+    "WindowPositionLike",
+    "parse_window_position",
 ]

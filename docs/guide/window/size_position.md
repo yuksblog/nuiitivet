@@ -1,25 +1,31 @@
 # Window Size and Position
 
-You can control how the window is sized and where it appears on the screen using `WindowSizing` and `WindowPosition`. These are configured when constructing your `Window`.
+You can control how the window is sized and where it appears on the screen when constructing your `Window`.
 
 ## WindowSizing
 
-`WindowSizing` determines how the window calculates its dimensions. You can specify the `width` and `height` parameters of your application using `WindowSizing` objects, integers (which are treated as fixed sizes), or the string `"auto"`.
+The `width` and `height` parameters accept an integer (a fixed size in pixels) or the string `"auto"`.
 
-- **`fixed`**: The window has a fixed size specified by width and height.
-- **`auto`**: The window automatically resizes itself to fit its content.
+- **fixed**: The window has a fixed size specified by width and height.
+- **`"auto"`**: The window automatically resizes itself to fit its content.
+
+Both are shorthands for `nv.WindowSizing` values — `nv.WindowSizing.fixed(800)` and `nv.WindowSizing.auto()` — which you only need when annotating a type or holding the value in a variable.
 
 ### Fixed Size Example
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window_sizing import WindowSizing
+
+
+def build_root() -> nv.Widget:
+    return nv.Text("Fixed Size Window")
+
 
 app = nv.App(
     nv.Window(
-        content=lambda: nv.Text("Fixed Size Window"),
-        width=WindowSizing.fixed(800),   # Or simply width=800
-        height=WindowSizing.fixed(600),  # Or simply height=600
+        content=build_root,
+        width=800,
+        height=600,
     ),
 )
 app.run()
@@ -31,16 +37,20 @@ When using `"auto"`, the window will calculate its size based on the preferred s
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window_sizing import WindowSizing
+
+
+def build_root() -> nv.Widget:
+    return nv.Container(
+        child=nv.Text("Auto Sized Window"),
+        padding=50,
+    )
+
 
 app = nv.App(
     nv.Window(
-        content=lambda: nv.Container(
-            child=nv.Text("Auto Sized Window"),
-            padding=50,
-        ),
-        width=WindowSizing.auto(),   # Or simply width="auto"
-        height=WindowSizing.auto(),  # Or simply height="auto"
+        content=build_root,
+        width="auto",
+        height="auto",
     ),
 )
 app.run()
@@ -48,24 +58,45 @@ app.run()
 
 ## WindowPosition
 
-`WindowPosition` allows you to specify the exact location of the window on the screen. You can pass a `WindowPosition` object to the `window_position` parameter of your `Window`.
-
-- **Alignment**: You can align the window to specific parts of the screen (e.g., center, top-left, bottom-right).
-- **Offset**: You can apply an X and Y offset from the chosen alignment.
-- **Screen Index**: In multi-monitor setups, you can specify which screen the window should appear on.
-
-### Positioning Example
+The `window_position` parameter accepts a nine-point alignment string: `"center"`, `"top-left"`, `"bottom-right"`, and so on.
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window_sizing import WindowPosition
+
+
+def build_root() -> nv.Widget:
+    return nv.Text("Positioned Window")
+
 
 app = nv.App(
     nv.Window(
-        content=lambda: nv.Text("Positioned Window"),
+        content=build_root,
         width=400,
         height=300,
-        window_position=WindowPosition.alignment(
+        window_position="center",
+    ),
+)
+app.run()
+```
+
+### Offsets and multiple monitors
+
+An offset from the alignment point, or a specific screen in a multi-monitor setup, needs the explicit `nv.WindowPosition` form:
+
+```python
+import nuiitivet.material as nv
+
+
+def build_root() -> nv.Widget:
+    return nv.Text("Positioned Window")
+
+
+app = nv.App(
+    nv.Window(
+        content=build_root,
+        width=400,
+        height=300,
+        window_position=nv.WindowPosition.alignment(
             alignment="top-right",
             offset=(-20, 20),  # 20 pixels left, 20 pixels down from top-right corner
             screen_index=0,    # Primary monitor

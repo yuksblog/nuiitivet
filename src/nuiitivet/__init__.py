@@ -163,6 +163,12 @@ from nuiitivet.runtime.app import AppScope, ExitPolicy
 from nuiitivet.runtime.chrome import OSChrome, CustomChrome, Border
 from nuiitivet.runtime.protocols import AppProtocol, WindowProtocol
 from nuiitivet.runtime.window import Window, WindowScope
+from nuiitivet.runtime.window_sizing import (
+    WindowPosition,
+    WindowPositionLike,
+    WindowSizing,
+    WindowSizingLike,
+)
 
 # Configuration
 from nuiitivet.rendering.fonts import Fonts
@@ -300,8 +306,12 @@ __all__: list[str] = [
     "AppScope",
     "ExitPolicy",
     "Window",
+    "WindowPosition",
+    "WindowPositionLike",
     "WindowProtocol",
     "WindowScope",
+    "WindowSizing",
+    "WindowSizingLike",
     "OSChrome",
     "CustomChrome",
     "Border",
