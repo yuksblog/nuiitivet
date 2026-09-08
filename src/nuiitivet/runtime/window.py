@@ -56,7 +56,12 @@ from .app_events import (
 from .chrome import OSChrome, CustomChrome
 from .title_bar import WindowDragArea
 from nuiitivet.observable.protocols import Disposable, ObservableBase
-from .window_sizing import WindowSizingLike, WindowPosition, parse_window_sizing
+from .window_sizing import (
+    WindowPositionLike,
+    WindowSizingLike,
+    parse_window_position,
+    parse_window_sizing,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 
@@ -427,7 +432,7 @@ class Window:
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay_factory: Callable[[], "Overlay"] | None = None,
-        window_position: WindowPosition | None = None,
+        window_position: WindowPositionLike | None = None,
         resizable: bool = True,
         accepts_first_mouse: bool = True,
         menu: "MenuBar | None" = None,
@@ -458,7 +463,9 @@ class Window:
                 default) is equivalent to ``OSChrome()``.
             background: Window background color.
             overlay_factory: Optional overlay factory.
-            window_position: Initial window position.
+            window_position: Initial window position. Accepts a 9-point
+                alignment string (e.g. ``"center"``, ``"top-right"``) or a
+                :class:`WindowPosition` for offsets and screen selection.
             resizable: Whether the window can be resized.
             accepts_first_mouse: macOS only. When ``True`` (default), the
                 click that activates this window while it is inactive is
@@ -550,7 +557,7 @@ class Window:
         # window.height must still see a number rather than an AttributeError.
         self.width = self._resolve_window_sizing(width, preferred=0, fallback=640)
         self.height = self._resolve_window_sizing(height, preferred=0, fallback=480)
-        self.window_position = window_position
+        self.window_position = None if window_position is None else parse_window_position(window_position)
         self.resizable = resizable
         self.accepts_first_mouse = bool(accepts_first_mouse)
 

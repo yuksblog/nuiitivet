@@ -35,14 +35,13 @@ Control the window size, position, and resize behavior:
 
 ```python
 import nuiitivet.material as nv
-from nuiitivet.runtime.window_sizing import WindowPosition
 
 nv.App(
     nv.Window(
         content=HomeScreen,
         width=1280,
         height=800,
-        window_position=WindowPosition("center"),
+        window_position="center",
         resizable=False,
     ),
 ).run()

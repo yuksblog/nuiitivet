@@ -11,7 +11,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.navigation.navigator import Navigator
 from nuiitivet.navigation.route import Route
 from nuiitivet.runtime.window import RootFactory, Window, _UNSET
-from nuiitivet.runtime.window_sizing import WindowPosition, WindowSizingLike
+from nuiitivet.runtime.window_sizing import WindowPositionLike, WindowSizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
@@ -50,7 +50,7 @@ class MaterialWindow(Window):
         title: "str | None | ObservableBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         overlay_factory: Callable[[], "Overlay"] | None = None,
-        window_position: WindowPosition | None = None,
+        window_position: WindowPositionLike | None = None,
         resizable: bool = True,
         accepts_first_mouse: bool = True,
         menu: "MenuBar | None" = None,
@@ -73,7 +73,9 @@ class MaterialWindow(Window):
             chrome: Window decoration; omitting defaults to ``OSChrome()``.
             overlay_factory: Optional overlay factory overriding the Material
                 default.
-            window_position: Initial window position.
+            window_position: Initial window position — an alignment string or
+                a :class:`~nuiitivet.runtime.window_sizing.WindowPosition`;
+                see :class:`~nuiitivet.runtime.window.Window`.
             resizable: Whether the window can be resized.
             accepts_first_mouse: macOS only — deliver the click that
                 activates this window while inactive; ``False`` restores
