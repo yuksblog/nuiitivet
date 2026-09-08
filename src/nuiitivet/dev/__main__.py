@@ -412,6 +412,17 @@ def _run(args: argparse.Namespace) -> int:
             return 1
         editor.configure(args.editor)
 
+    # The runtime log: capture taps route the app's log output and uncaught
+    # exceptions (UI, background threads, asyncio) into this journal, which the
+    # bridge serves at ``/runtime_log`` so an AI pair can see *why* an action it
+    # drove had no visible effect. Installed before the import for the same
+    # reason as ``source``: WARNINGs emitted while the user's module loads and
+    # its entry constructs the app (an instance-root ``Window``, say) must land
+    # in the journal, not just on the console.
+    runtime_journal = RuntimeJournal()
+    runtime_capture = RuntimeLogCapture(runtime_journal)
+    runtime_capture.install()
+
     # The app must see its own argv, not this process's -- an entry that parses
     # arguments otherwise dies on the runner's command line. Set before the
     # import because a module may parse arguments at import time too, and not
@@ -483,12 +494,6 @@ def _run(args: argparse.Namespace) -> int:
         app._unregister_window_hook = _record_window_closed
         for win in app.windows:
             _instrument_window(win)
-        # The runtime log: capture taps route the app's log output and
-        # uncaught exceptions (UI, background threads, asyncio) into this journal,
-        # which the bridge serves at ``/runtime_log`` so an AI pair can see *why*
-        # an action it drove had no visible effect.
-        runtime_journal = RuntimeJournal()
-        runtime_capture = RuntimeLogCapture(runtime_journal)
         # The bridge's discovery file anchors to the user-facing project root (so
         # a client finds it by searching upward, like git), which is not always
         # Python's import root -- see :func:`find_discovery_root`.
@@ -512,7 +517,6 @@ def _run(args: argparse.Namespace) -> int:
         from nuiitivet.backends.pyglet.runner import run_app
 
         controller.install()
-        runtime_capture.install()
         bridge.install()
         bridge.start()
         print(
@@ -525,10 +529,10 @@ def _run(args: argparse.Namespace) -> int:
             run_app(app, draw_fps=session.draw_fps, renderer=session.renderer)
         finally:
             bridge.shutdown()
-            runtime_capture.shutdown()
             controller.shutdown()
         return 0
     finally:
+        runtime_capture.shutdown()
         set_dev_session(None)
 
 

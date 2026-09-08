@@ -146,13 +146,30 @@ class HotReloadController:
         app.invalidate()
         self._reload_secondary_windows(changed)
         if self._journal is not None:
-            self._journal.record_success(result.reloaded, changed=changed)
+            self._journal.record_success(
+                result.reloaded,
+                changed=changed,
+                inert_windows=self._inert_window_ids(),
+            )
         print(
             f"[nuiitivet.dev] reloaded {len(result.reloaded)} module(s), "
             f"restored {restored} value(s), {restored_routes} route(s).",
             file=sys.stderr,
             flush=True,
         )
+
+    def _inert_window_ids(self) -> list[int]:
+        """Ids of open windows whose instance root makes reload a no-op for them.
+
+        Per-window, not scalar: a multi-window app can mix a factory root with
+        an instance root, and only the latter is inert.
+        """
+        try:
+            owner = self._app.app
+            windows = list(getattr(owner, "windows", ()) or ())
+        except Exception:
+            windows = [self._app]
+        return [w.id for w in windows if getattr(w, "_hot_reload_inert", False)]
 
     def _reload_secondary_windows(self, changed: list[str]) -> None:
         """Rebuild every other open window's tree from its own root factory.

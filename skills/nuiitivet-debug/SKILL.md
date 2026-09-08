@@ -59,7 +59,9 @@ a factory** — a zero-argument callable returning the root widget — passed to
   module-level state created there are not restored.
 
 If a reload seems to do nothing or the app resets its state on every edit, suspect
-a stray `content=build_root()` first.
+a stray `content=build_root()` first — the dev runner says so itself: a startup
+WARNING in `runtime_log`, and an `inert_windows` list on every `reload_log`
+success naming the windows edits cannot reach.
 
 ### Register the dev bridge / MCP server
 
@@ -257,7 +259,11 @@ Don't trust a green return or a single number; confirm against the live app.
 
 - **The edit landed.** `reload_log` shows a `success` outcome with your file in
   `changed`. An `error` outcome means the save didn't compile and the live UI is
-  stale — fix and re-save before reading anything else.
+  stale — fix and re-save before reading anything else. A `success` carrying
+  `inert_windows` means those windows were rebuilt to the identical tree: their
+  root is a widget instance, so no edit can reach them until
+  `Window(content=...)` is changed to a factory (see **Hot reload requires a
+  factory root**).
 - **No new error appeared — check `runtime_log`, not `error_count`.** `error_count`
   (from `status`) is cumulative and a green build does not reset it, so a clean
   `last_reload: success` can still report failures from *before* your fix. Instead,

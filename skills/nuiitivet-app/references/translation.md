@@ -22,6 +22,7 @@ to write the left column, write the right column instead.
 | `runApp(MyApp())` (Flutter) | `nv.App(nv.Window(content=build_root)).run()` — pass a **factory** for hot reload |
 | `MaterialApp(home=...)` (Flutter) | `nv.App(nv.Window(content=...))`; theming via `nv.App(win, theme=nv.ThemeFactory...)` |
 | `nv.App(content=..., title=...)` (older nuiitivet) | `nv.App(nv.Window(content=..., title=...))` — `App` takes its main `Window`; window keywords (`title`, `width`, `menu`, ...) live on `Window`, and `App` keeps only `theme=` / `exit_policy=` / `tray=` |
+| `nv.Window(content=CounterApp())` — a widget **instance** as the root | `nv.Window(content=CounterApp)`, or `nv.Window(content=lambda: CounterApp(cfg))` when the constructor takes arguments — a **factory**. An instance root makes hot reload inert: every rebuild returns the same object, so edits never reach that window |
 
 ```python
 # Correct — a root factory keeps hot reload working (don't call it)
@@ -32,6 +33,11 @@ def build_root() -> nv.Widget:
 
 def main() -> None:
     nv.App(nv.Window(content=build_root, title="Counter")).run()
+```
+
+```python
+# WRONG — instance root: hot reload can never change this window's tree
+nv.App(nv.Window(content=CounterApp(), title="Counter")).run()
 ```
 
 ## Component definition
