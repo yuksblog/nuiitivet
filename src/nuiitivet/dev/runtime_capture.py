@@ -76,8 +76,9 @@ class _JournalHandler(logging.Handler):
 class RuntimeLogCapture:
     """Installs and removes the runtime-log capture taps for one dev session.
 
-    Lifecycle mirrors the other dev components: :meth:`install` before the event
-    loop runs, :meth:`shutdown` after it exits. Not reentrant -- one per process.
+    Lifecycle: :meth:`install` before the user's module is imported, so
+    import-time and construction-time WARNINGs are captured too; :meth:`shutdown`
+    when the dev run ends. Not reentrant -- one per process.
     """
 
     def __init__(self, journal: RuntimeJournal, *, level: int = logging.WARNING) -> None:

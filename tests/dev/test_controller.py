@@ -32,6 +32,8 @@ class _FakeApp:
         # The App owns its navigation layers; these tests never build a tree.
         self._navigator = None
         self._overlay = None
+        # Stands in for the owning App; tests append fake windows as needed.
+        self.app = types.SimpleNamespace(windows=[])
 
     def _rebuild_content_root(self, factory: Any) -> Any:
         return object()
@@ -43,9 +45,11 @@ class _FakeApp:
         self.invalidated = True
 
 
-def _make_controller(journal: Optional[ReloadJournal]) -> HotReloadController:
+def _make_controller(
+    journal: Optional[ReloadJournal], app: Optional[_FakeApp] = None
+) -> HotReloadController:
     return HotReloadController(
-        _FakeApp(),  # type: ignore[arg-type]
+        app or _FakeApp(),  # type: ignore[arg-type]
         Path("."),
         _fake_factory,
         journal=journal,
@@ -107,6 +111,34 @@ def test_successful_reload_records_modules() -> None:
     assert len(events) == 1
     assert events[0].outcome == "success"
     assert events[0].modules == ("pkg.a", "pkg.b")
+
+
+def _fake_window(win_id: int, *, inert: bool) -> Any:
+    """A stand-in secondary window the reload sequence can rebuild."""
+    return types.SimpleNamespace(
+        id=win_id,
+        _hot_reload_inert=inert,
+        root=object(),
+        _rebuild_content_root=lambda: object(),
+        _commit_content_root=lambda content: None,
+        invalidate=lambda: None,
+    )
+
+
+def test_successful_reload_records_inert_windows() -> None:
+    """Per-window ids, so a mixed factory/instance multi-window app stays legible."""
+    journal = ReloadJournal()
+    fake_app = _FakeApp()
+    fake_app.app.windows = [_fake_window(1, inert=False), _fake_window(2, inert=True)]
+    controller = _make_controller(journal, app=fake_app)
+    result = ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)
+
+    with _patched_reload(reload=result):
+        controller._do_reload()
+
+    events = journal.recent()
+    assert len(events) == 1
+    assert events[0].inert_windows == (2,)
 
 
 def test_successful_reload_replays_navigation_snapshot() -> None:

@@ -88,6 +88,15 @@ _window_ids = itertools.count(1)
 RootFactory = Callable[[], Widget]
 
 
+def _under_dev_session() -> bool:
+    """True when the process runs under ``python -m nuiitivet.dev``."""
+    try:
+        from nuiitivet.dev import current_dev_session
+    except ImportError:
+        return False
+    return current_dev_session() is not None
+
+
 # NOTE: compatibility wrapper removed. Use `resolve_color_to_rgba` from
 # `nuiitivet.theme.resolver` to resolve theme ColorRole/ColorLike values to
 # an (r,g,b,a) tuple. The app stores a primitive (RGBA tuple) or a
@@ -495,9 +504,14 @@ class Window:
         # the single source of truth the reload path re-invokes.
         if callable(content) and not isinstance(content, Widget):
             self._root_factory: RootFactory = content
+            self._hot_reload_inert = False
         elif isinstance(content, Widget):
             instance = content
             self._root_factory = lambda: instance
+            # The wrapping lambda can never be re-fetched from a reloaded
+            # module, so every rebuild returns this same object: hot reload
+            # can never change this window's tree.
+            self._hot_reload_inert = True
         else:
             raise TypeError(
                 "'content' must be a Widget instance or a callable returning a Widget."
@@ -516,6 +530,20 @@ class Window:
         # Stable per-process identity, used by tooling (the dev bridge's
         # window selector) and useful in logs. Never reused within a process.
         self.id: int = next(_window_ids)
+
+        # Warn once, at the moment the app shape can still be fixed. Only under
+        # the dev runner: in production there is no hot reload to be inert for.
+        if self._hot_reload_inert and _under_dev_session():
+            root_name = type(content).__name__
+            logger.warning(
+                "Window id=%d content is a widget instance (%s); hot reload "
+                "cannot apply edits to this window. Pass a factory instead: "
+                "Window(content=%s) or Window(content=lambda: %s(...)).",
+                self.id,
+                root_name,
+                root_name,
+                root_name,
+            )
 
         if not isinstance(close_action, ObservableBase) and close_action not in ("close", "hide"):
             raise ValueError('close_action must be "close", "hide", or an Observable of one.')

@@ -125,6 +125,32 @@ def test_to_dict_includes_populated_fields() -> None:
     assert payload["error"] == "trace"
 
 
+def test_record_success_captures_inert_windows() -> None:
+    journal = ReloadJournal()
+    event = journal.record_success(["pkg.a"], changed=["pkg.a"], inert_windows=[2, 5])
+
+    assert event.inert_windows == (2, 5)
+    assert journal.record_success(["pkg.a"]).inert_windows == ()
+
+
+def test_to_dict_emits_inert_windows_only_when_populated() -> None:
+    empty = ReloadEvent(
+        seq=1, timestamp=1.0, outcome="success", modules=(), changed=(), error=None
+    )
+    assert "inert_windows" not in empty.to_dict()
+
+    inert = ReloadEvent(
+        seq=2,
+        timestamp=1.0,
+        outcome="success",
+        modules=("a",),
+        changed=("a",),
+        error=None,
+        inert_windows=(2,),
+    )
+    assert inert.to_dict()["inert_windows"] == [2]
+
+
 def test_record_error_accepts_changed() -> None:
     journal = ReloadJournal()
     event = journal.record_error("boom", changed=["pkg.a"])

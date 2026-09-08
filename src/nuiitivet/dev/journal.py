@@ -74,6 +74,10 @@ class ReloadEvent:
             re-reading. A non-empty list pinpoints exactly which file(s) the
             human edited, so a re-read can target them.
         error: The failure traceback (error only; ``None`` on success), capped.
+        inert_windows: Ids of open windows whose root is a widget instance, so
+            no reload -- this one included -- can change their tree (success
+            only). A window listed here needs its ``Window(content=...)``
+            changed to a factory before edits can land.
     """
 
     seq: int
@@ -82,6 +86,7 @@ class ReloadEvent:
     modules: tuple[str, ...]
     changed: tuple[str, ...]
     error: Optional[str]
+    inert_windows: tuple[int, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-friendly dict.
@@ -101,6 +106,8 @@ class ReloadEvent:
         payload["changed"] = list(self.changed)
         if self.error is not None:
             payload["error"] = self.error
+        if self.inert_windows:
+            payload["inert_windows"] = list(self.inert_windows)
         return payload
 
 
@@ -128,7 +135,11 @@ class ReloadJournal:
         return self._capacity
 
     def record_success(
-        self, modules: Iterable[str], *, changed: Iterable[str] = ()
+        self,
+        modules: Iterable[str],
+        *,
+        changed: Iterable[str] = (),
+        inert_windows: Iterable[int] = (),
     ) -> ReloadEvent:
         """Record a successful reload and return the event.
 
@@ -136,9 +147,15 @@ class ReloadJournal:
             modules: All user modules reloaded.
             changed: The subset whose source actually changed (empty for a no-op
                 save).
+            inert_windows: Ids of windows whose instance root kept this reload
+                from changing their tree.
         """
         return self._record(
-            "success", modules=tuple(modules), changed=tuple(changed), error=None
+            "success",
+            modules=tuple(modules),
+            changed=tuple(changed),
+            error=None,
+            inert_windows=tuple(inert_windows),
         )
 
     def record_error(
@@ -159,6 +176,7 @@ class ReloadJournal:
         modules: tuple[str, ...],
         changed: tuple[str, ...],
         error: Optional[str],
+        inert_windows: tuple[int, ...] = (),
     ) -> ReloadEvent:
         with self._lock:
             event = ReloadEvent(
@@ -168,6 +186,7 @@ class ReloadJournal:
                 modules=modules,
                 changed=changed,
                 error=error,
+                inert_windows=inert_windows,
             )
             self._events.append(event)
             return event

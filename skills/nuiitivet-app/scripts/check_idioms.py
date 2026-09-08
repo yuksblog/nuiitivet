@@ -234,6 +234,37 @@ def _indent_of(line: str) -> int:
     return len(line) - len(line.lstrip())
 
 
+# A call after ``content=`` passes the *returned instance* as the window root;
+# lambda / functools.partial are factories, so they pass.
+_INSTANCE_ROOT = re.compile(
+    r"\bWindow\(\s*content\s*=\s*(?!lambda\b|(?:functools\.)?partial\b)"
+    r"[A-Za-z_][\w.]*\s*\("
+)
+_RENDER_TO_PNG = re.compile(r"\.render_to_png\s*\(")
+_INSTANCE_ROOT_FIX = (
+    "A widget instance as Window content makes hot reload inert: every rebuild "
+    "returns the same object, so edits never reach that window. Pass a factory: "
+    "Window(content=CounterApp) or Window(content=lambda: CounterApp(cfg))."
+)
+
+
+def find_instance_roots(text: str) -> list[tuple[int, str]]:
+    """``(lineno, source)`` for ``Window(content=<call>())`` instance roots.
+
+    A window handed straight to ``render_to_png`` (within the next few lines)
+    never hot reloads, so an instance root there is fine and is skipped.
+    """
+    lines = [strip_comment(raw) for raw in text.splitlines()]
+    findings = []
+    for index, line in enumerate(lines):
+        if not _INSTANCE_ROOT.search(line):
+            continue
+        if any(_RENDER_TO_PNG.search(follow) for follow in lines[index:index + 4]):
+            continue
+        findings.append((index + 1, text.splitlines()[index].strip()))
+    return findings
+
+
 def find_dead_chains(text: str) -> list[tuple[int, str]]:
     """``(lineno, source)`` for setup-local wrapper chains whose Disposable is dropped."""
     lines = [strip_comment(raw) for raw in text.splitlines()]
@@ -384,6 +415,11 @@ def main(argv: list[str]) -> int:
             findings += 1
             print(f"{path}:{lineno}: [lifecycle] {source}")
             print(f"    -> {_MISSING_SUPER_FIX}")
+
+        for lineno, source in find_instance_roots(text):
+            findings += 1
+            print(f"{path}:{lineno}: [nuiitivet (instance root)] {source}")
+            print(f"    -> {_INSTANCE_ROOT_FIX}")
 
     if findings:
         print(f"\n{findings} foreign-idiom warning(s). See "

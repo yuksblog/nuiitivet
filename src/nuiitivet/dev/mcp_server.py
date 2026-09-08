@@ -335,7 +335,8 @@ def build_server() -> "FastMCP":
         session they may save a file while you work, so your last `describe_tree`
         and your assumptions about the source can go stale. Each event is
         ``{"seq", "timestamp", "outcome": "success"|"error", optional "modules",
-        "changed", optional "error"}``. ``seq`` is monotonic -- compare it to the
+        "changed", optional "error", optional "inert_windows"}``. ``seq`` is
+        monotonic -- compare it to the
         last one you saw to tell whether new reloads happened. ``changed`` lists
         the modules whose *source actually changed*: an empty ``changed`` is a
         no-op save (mtime bumped but bytes identical -- an editor autosave or
@@ -343,8 +344,11 @@ def build_server() -> "FastMCP":
         which file(s) to re-read. An ``"error"`` outcome means the human's save
         did *not* compile and the previous UI is still running, so the live tree
         does not reflect the code you are reading; re-read the files (and
-        re-`describe_tree`) before acting. ``limit`` caps the result to the
-        newest N events.
+        re-`describe_tree`) before acting. ``inert_windows`` lists window ids
+        whose root was constructed from a widget *instance* rather than a
+        factory: a ``"success"`` there rebuilt the same tree, so edits can never
+        reach those windows until ``Window(content=...)`` is changed to a
+        factory. ``limit`` caps the result to the newest N events.
         """
         return {"events": _client().reload_log(limit=limit)}
 
