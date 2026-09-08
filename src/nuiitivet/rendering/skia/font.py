@@ -7,6 +7,7 @@ import os
 import hashlib
 import logging
 import locale
+import sys
 import weakref
 from typing import Optional, Tuple
 
@@ -26,6 +27,10 @@ _TYPEFACE_ID_REGISTRY: "weakref.WeakValueDictionary[int, object]" = weakref.Weak
 
 # User defined default font family
 _USER_DEFAULT_FONT_FAMILY: Optional[str] = None
+
+# Resolved fallback list, computed once per process (the UI language cannot
+# change while the process runs) and rebuilt only by set_default_font_family().
+_DEFAULT_FALLBACKS_CACHE: Optional[Tuple[str, ...]] = None
 
 # Registry mapping custom family names to font file paths (populated by register_font)
 _FONT_REGISTRY: dict[str, str] = {}
@@ -56,8 +61,9 @@ def set_default_font_family(family_name: Optional[str]) -> None:
     This font will be prioritized over locale-based defaults.
     Pass None to reset to automatic locale detection.
     """
-    global _USER_DEFAULT_FONT_FAMILY
+    global _USER_DEFAULT_FONT_FAMILY, _DEFAULT_FALLBACKS_CACHE
     _USER_DEFAULT_FONT_FAMILY = family_name
+    _DEFAULT_FALLBACKS_CACHE = None
 
 
 def register_font(path: str, family_name: str) -> None:
@@ -76,51 +82,97 @@ def register_font(path: str, family_name: str) -> None:
     _FONT_REGISTRY[family_name] = path
 
 
-def get_default_font_fallbacks() -> Tuple[str, ...]:
-    """Get the default font fallback list based on the system locale."""
-    try:
-        lang, _ = locale.getdefaultlocale()
-    except Exception:
-        lang = None
+def _detect_ui_language() -> Optional[str]:
+    """Lowercase ISO 639 language code of the user's UI language, or None."""
+    if sys.platform == "win32":
+        # The C locale often stays "C" on Windows; the UI language is the
+        # reliable signal for which scripts the user reads.
+        try:
+            import ctypes
 
-    # Common CJK fonts
-    cjk_fonts = (
-        "Hiragino Sans",
-        "Hiragino Kaku Gothic ProN",
-        "Meiryo",
-        "Yu Gothic",
-        "Noto Sans CJK JP",
-        "Noto Sans JP",
-        "MS Gothic",
-        "AppleGothic",
-    )
+            langid = int(ctypes.windll.kernel32.GetUserDefaultUILanguage())  # type: ignore[attr-defined]
+            name = locale.windows_locale.get(langid)
+            if name:
+                return name.split("_")[0].lower()
+        except Exception:
+            pass
+        return None
 
-    # Common Western fonts
-    western_fonts = (
-        "DejaVu Sans",
-        "Arial",
-        "Helvetica",
-        "Liberation Sans",
-        "Segoe UI",
-        "Roboto",
-        "San Francisco",
-        ".AppleSystemUIFont",  # macOS system font
-    )
+    # Read the LANG-family variables directly: locale.getlocale() only
+    # reflects them after a process-global setlocale() call, which a library
+    # must not make.
+    for var in ("LC_ALL", "LC_CTYPE", "LANG"):
+        value = os.environ.get(var)
+        if not value:
+            continue
+        lang = value.split(".")[0].split("_")[0].lower()
+        if lang in ("c", "posix"):
+            continue
+        return lang
+    return None
 
-    fallbacks: Tuple[str, ...]
 
-    if lang and lang.startswith("ja"):
-        # Prioritize Japanese fonts for Japanese locale
-        fallbacks = cjk_fonts + western_fonts
+def _platform_font_fallbacks(prefer_cjk: bool) -> Tuple[str, ...]:
+    """Font fallback list for the current platform.
+
+    Ranked by weight coverage: families with a true Medium (500) face come
+    first so label roles resolve exactly; 400/700-only families are last
+    resorts. The ranking matters most on macOS, where CoreText rounds a
+    missing 500 *up* to Bold — its head must therefore be weight-complete
+    and always present. DirectWrite and fontconfig round 500 *down* to
+    Regular, so the Windows and Linux tails merely lose the Medium/Regular
+    distinction instead of turning bold.
+    """
+    if sys.platform == "darwin":
+        western = (
+            ".AppleSystemUIFont",  # full weight axis, always present
+            "Helvetica Neue",  # has a true Medium (600 undershoots to 500)
+            "Arial",  # 400/700 only: 500 turns Bold
+        )
+        cjk = (
+            "Hiragino Sans",  # W0-W9, always present
+            "Hiragino Kaku Gothic ProN",  # 400/700 only: 500 turns Bold
+        )
+    elif sys.platform == "win32":
+        western = (
+            "Segoe UI Variable",  # Windows 11: variable weight axis
+            "Segoe UI",  # no Medium face; 500 rounds down to Regular
+            "Arial",
+        )
+        cjk = (
+            "Yu Gothic",  # has a true Medium (unlike Yu Gothic UI)
+            "Yu Gothic UI",
+            "Meiryo",
+            "MS Gothic",
+        )
     else:
-        # Default: Western fonts first, then CJK as fallback (to avoid tofu)
-        fallbacks = western_fonts + cjk_fonts
+        western = (
+            "Noto Sans",  # has a Medium face when fully installed
+            "Liberation Sans",
+            "DejaVu Sans",
+        )
+        cjk = (
+            "Noto Sans CJK JP",
+            "Noto Sans JP",
+        )
 
-    if _USER_DEFAULT_FONT_FAMILY:
-        # Prepend the user specified font
-        return (_USER_DEFAULT_FONT_FAMILY,) + fallbacks
+    # Non-CJK locales still get the CJK tail so CJK text avoids tofu.
+    return cjk + western if prefer_cjk else western + cjk
 
-    return fallbacks
+
+def get_default_font_fallbacks() -> Tuple[str, ...]:
+    """Get the default font fallback list for this platform and UI language.
+
+    The list is cached for the life of the process; calling this per
+    measure/paint is free.
+    """
+    global _DEFAULT_FALLBACKS_CACHE
+    if _DEFAULT_FALLBACKS_CACHE is None:
+        fallbacks = _platform_font_fallbacks(prefer_cjk=_detect_ui_language() == "ja")
+        if _USER_DEFAULT_FONT_FAMILY:
+            fallbacks = (_USER_DEFAULT_FONT_FAMILY,) + fallbacks
+        _DEFAULT_FALLBACKS_CACHE = fallbacks
+    return _DEFAULT_FALLBACKS_CACHE
 
 
 def _register_typeface(typeface: object) -> int:
@@ -627,7 +679,7 @@ def make_font(typeface: Optional[object], size: float) -> Optional[object]:
 
     if typeface is None:
         typeface = get_typeface(
-            family_candidates=("DejaVu Sans", "Arial", "Helvetica", "Liberation Sans"),
+            family_candidates=get_default_font_fallbacks(),
             fallback_to_default=False,
         )
 
@@ -716,10 +768,12 @@ def register_typeface_cache_clearer(fn) -> None:
 def _clear_typeface_caches_for_tests() -> None:
     """Clear internal typeface caches (tests only)."""
 
+    global _DEFAULT_FALLBACKS_CACHE
     try:
         _TYPEFACE_CACHE.clear()
         _TYPEFACE_DIRECT_CACHE.clear()
         _FONT_REGISTRY.clear()
+        _DEFAULT_FALLBACKS_CACHE = None
         for clearer in _EXTRA_CACHE_CLEARERS:
             clearer()
     except Exception:
