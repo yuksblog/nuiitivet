@@ -58,7 +58,7 @@ def _fit_card(label: str, fit: str, source: bytes) -> nv.Container:
     )
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     source = _make_demo_png_bytes()
     content = nv.Container(
         padding=16,
@@ -82,7 +82,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="Image", width=420, height=340))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Image", width=420, height=340))
     if png_path:
         app.render_to_png(png_path)
     else:

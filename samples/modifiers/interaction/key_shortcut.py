@@ -82,16 +82,7 @@ class EditorPane(nv.ComposableWidget):
         )
 
 
-def main(png: str = ""):
-    print("=" * 70)
-    print("key_shortcut demo")
-    print("  Accel = Cmd on macOS, Ctrl elsewhere.")
-    print("  1. Press Accel+Z with nothing focused -> the canvas undoes.")
-    print("  2. Click into an editor and type -> status becomes 'modified'.")
-    print("  3. Accel+Z still undoes the canvas, even while the editor has focus.")
-    print("  4. Accel+S saves only the editor that currently holds focus.")
-    print("=" * 70)
-
+def build_root() -> nv.Widget:
     content = nv.Column(
         children=[
             PaintCanvas(),
@@ -103,8 +94,20 @@ def main(png: str = ""):
         gap=16,
         padding=16,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="key_shortcut Modifier"))
+
+def main(png: str = ""):
+    print("=" * 70)
+    print("key_shortcut demo")
+    print("  Accel = Cmd on macOS, Ctrl elsewhere.")
+    print("  1. Press Accel+Z with nothing focused -> the canvas undoes.")
+    print("  2. Click into an editor and type -> status becomes 'modified'.")
+    print("  3. Accel+Z still undoes the canvas, even while the editor has focus.")
+    print("  4. Accel+S saves only the editor that currently holds focus.")
+    print("=" * 70)
+
+    app = nv.App(nv.Window(content=build_root, title="key_shortcut Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

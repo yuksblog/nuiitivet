@@ -46,7 +46,6 @@ class Screen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    screen = Screen()
     window: nv.Window  # assigned below; the tray menu closure resolves it lazily
     tray = nv.TrayIcon(
         tooltip="Close to Tray",
@@ -58,7 +57,7 @@ def main(png: str = ""):
         ],
     )
     window = nv.Window(
-        content=screen,
+        content=Screen,
         title="close_to_tray",
         width=480,
         height=240,

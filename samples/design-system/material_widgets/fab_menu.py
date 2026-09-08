@@ -58,7 +58,7 @@ def main(png_path: str = "") -> None:
         app = nv.App(nv.Window(content=_build_png_content(), title="FabMenu", width=420, height=520))
         app.render_to_png(png_path)
     else:
-        app = nv.App(nv.Window(content=_build_interactive_content(), title="FabMenu", width=420, height=520))
+        app = nv.App(nv.Window(content=_build_interactive_content, title="FabMenu", width=420, height=520))
         app.run()
 
 

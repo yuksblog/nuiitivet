@@ -62,7 +62,7 @@ def main(png_path: str = "") -> None:
         app.render_to_png(png_path)
         return
 
-    app = nv.App(nv.Window(content=SnackbarDemo(), width=480, height=320))
+    app = nv.App(nv.Window(content=SnackbarDemo, width=480, height=320))
     app.run()
 
 

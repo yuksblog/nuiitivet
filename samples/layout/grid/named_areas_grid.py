@@ -14,7 +14,7 @@ def _card(label: str, width="wt", height="wt") -> nv.Card:
     )
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = nv.Grid.named_areas(
         rows=[60, "wt", "auto"],
         columns=["auto", "wt"],
@@ -35,8 +35,11 @@ def main(png: str = ""):
             nv.GridItem.named_area(_card("Footer", height=None), "footer"),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="nv.Grid Layout (Named Areas)", width=400, height=400))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.Grid Layout (Named Areas)", width=400, height=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

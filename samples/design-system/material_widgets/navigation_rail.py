@@ -5,7 +5,7 @@ from __future__ import annotations
 import nuiitivet.material as nv
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     rail = nv.NavigationRail(
         children=[
             nv.RailItem(icon="home", label="Home", small_badge=nv.Observable(True)),
@@ -31,7 +31,11 @@ def main(png_path: str = "") -> None:
         width="wt",
         height="wt",
     )
-    app = nv.App(nv.Window(content=nv.Row([rail, body], width="wt", height="wt"), title="NavigationRail", width=560))
+    return nv.Row([rail, body], width="wt", height="wt")
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="NavigationRail", width=560))
     if png_path:
         app.render_to_png(png_path)
     else:

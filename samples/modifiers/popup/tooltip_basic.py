@@ -8,6 +8,10 @@ target = nv.Container(
 ).modifier(nv.tooltip(nv.Tooltip("This is a tooltip"), delay=0.0))
 
 
+def build_root() -> nv.Widget:
+    return nv.Column(children=[nv.Container(height=20), target], gap=16, padding=24)
+
+
 def main(png: str = "") -> None:
     if png:
         # For screenshot: place Tooltip widget directly above anchor (overlay not captured by render_to_png)
@@ -27,8 +31,7 @@ def main(png: str = "") -> None:
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
-    content = nv.Column(children=[nv.Container(height=20), target], gap=16, padding=24)
-    app = nv.App(nv.Window(content=content, title="tooltip Modifier", width=400, height=200))
+    app = nv.App(nv.Window(content=build_root, title="tooltip Modifier", width=400, height=200))
     app.run()
 
 

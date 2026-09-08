@@ -13,7 +13,7 @@ def _cell(name: str, size: int) -> nv.Column:
     )
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Container(
         padding=24,
         child=nv.Column(
@@ -43,7 +43,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="Icon", width=560, height=280))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Icon", width=560, height=280))
     if png_path:
         app.render_to_png(png_path)
     else:

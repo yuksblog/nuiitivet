@@ -51,7 +51,7 @@ class DropZone(nv.ComposableWidget):
         )
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     content = nv.Row(
         children=[
             DropZone("Zone A", nv.ColorRole.SURFACE_CONTAINER_HIGH),
@@ -60,7 +60,11 @@ def main(png: str = ""):
         gap=24,
         padding=24,
     )
-    app = nv.App(nv.Window(content=content, title="drop_target — file drop zones", width=560))
+    return content
+
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="drop_target — file drop zones", width=560))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

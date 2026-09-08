@@ -145,7 +145,7 @@ class SearchScreen(nv.ComposableWidget):
 
 def main() -> None:
     random.seed(0)
-    app = nv.App(nv.Window(content=SearchScreen(), title="Observable: Async State"))
+    app = nv.App(nv.Window(content=SearchScreen, title="Observable: Async State"))
     app.run()
 
 

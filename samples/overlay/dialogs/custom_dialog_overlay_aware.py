@@ -77,7 +77,7 @@ class OverlayAwareDialogDemo(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=OverlayAwareDialogDemo(), width=400, height=300))
+    app = nv.App(nv.Window(content=OverlayAwareDialogDemo, width=400, height=300))
     app.run()
 
 

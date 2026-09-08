@@ -97,7 +97,7 @@ class OperatorsApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=OperatorsApp()))
+    app = nv.App(nv.Window(content=OperatorsApp))
     app.run()
 
 

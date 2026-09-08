@@ -352,7 +352,7 @@ mounted for the life of the app — a route push covers it but does not unmount 
 ```python
 nv.App(
     nv.Window(
-        content=home.modifier(
+        content=lambda: HomeScreen().modifier(
             nv.key_shortcut("Accel+Q", on_trigger=quit, scope=nv.ShortcutScope.MOUNT)
         ),
     ),

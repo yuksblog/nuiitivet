@@ -25,16 +25,15 @@ class CounterApp(nv.ComposableWidget):
 
 
 def main(png: str = "") -> None:
-    app_widget = CounterApp()
     if png:
+        app_widget = CounterApp()
         app_widget.count.value = 3
-    app = nv.App(nv.Window(content=app_widget, title="Counter Demo", width=250))
-
-    if png:
+        app = nv.App(nv.Window(content=app_widget, title="Counter Demo", width=250))
         app.render_to_png(png)
         print(f"Rendered {png}")
         return
 
+    app = nv.App(nv.Window(content=CounterApp, title="Counter Demo", width=250))
     app.run()
 
 

@@ -17,7 +17,7 @@ from nuiitivet.runtime.window_sizing import WindowSizing
 
 app = nv.App(
     nv.Window(
-        content=nv.Text("Fixed Size Window"),
+        content=lambda: nv.Text("Fixed Size Window"),
         width=WindowSizing.fixed(800),   # Or simply width=800
         height=WindowSizing.fixed(600),  # Or simply height=600
     ),
@@ -35,7 +35,7 @@ from nuiitivet.runtime.window_sizing import WindowSizing
 
 app = nv.App(
     nv.Window(
-        content=nv.Container(
+        content=lambda: nv.Container(
             child=nv.Text("Auto Sized Window"),
             padding=50,
         ),
@@ -62,7 +62,7 @@ from nuiitivet.runtime.window_sizing import WindowPosition
 
 app = nv.App(
     nv.Window(
-        content=nv.Text("Positioned Window"),
+        content=lambda: nv.Text("Positioned Window"),
         width=400,
         height=300,
         window_position=WindowPosition.alignment(

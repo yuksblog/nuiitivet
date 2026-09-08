@@ -17,14 +17,19 @@ Use the `title=` parameter to set the text shown in the OS title bar. It accepts
 ```python
 import nuiitivet.material as nv
 
+
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Hello, World!"),
+    )
+
+
 app = nv.App(
     nv.Window(
-        content=nv.Container(
-            alignment="center",
-            width="wt",
-            height="wt",
-            child=nv.Text("Hello, World!"),
-        ),
+        content=build_root,
         title="My Application",
         width=400,
         height=240,
@@ -68,14 +73,19 @@ header = nv.Row(
     padding=(12, 0),
 ).modifier(nv.background("#1a237e"))
 
+
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Custom Chrome"),
+    )
+
+
 app = nv.App(
     nv.Window(
-        content=nv.Container(
-            alignment="center",
-            width="wt",
-            height="wt",
-            child=nv.Text("Custom Chrome"),
-        ),
+        content=build_root,
         title="My App",
         chrome=nv.CustomChrome(
             header=header,
@@ -99,14 +109,19 @@ Pass `chrome=None` for a completely bare borderless window with no OS decoration
 ```python
 import nuiitivet.material as nv
 
+
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Borderless Window"),
+    )
+
+
 app = nv.App(
     nv.Window(
-        content=nv.Container(
-            alignment="center",
-            width="wt",
-            height="wt",
-            child=nv.Text("Borderless Window"),
-        ),
+        content=build_root,
         title="Borderless",
         chrome=None,
         width=400,

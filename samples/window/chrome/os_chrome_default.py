@@ -3,15 +3,19 @@
 import nuiitivet.material as nv
 
 
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Hello, World!"),
+    )
+
+
 def main(png_path: str = "") -> None:
     app = nv.App(
         nv.Window(
-            content=nv.Container(
-                alignment="center",
-                width="wt",
-                height="wt",
-                child=nv.Text("Hello, World!"),
-            ),
+            content=build_root,
             title="My Application",
             width=400,
             height=240,

@@ -24,7 +24,7 @@ class HomeScreen(nv.ComposableWidget):
         )
 
 
-nv.App(nv.Window(content=HomeScreen(), title="Material App")).run()
+nv.App(nv.Window(content=HomeScreen, title="Material App")).run()
 ```
 
 ![Material App Basic Usage](../../assets/material_app_basic_usage.png)
@@ -39,7 +39,7 @@ from nuiitivet.runtime.window_sizing import WindowPosition
 
 nv.App(
     nv.Window(
-        content=HomeScreen(),
+        content=HomeScreen,
         width=1280,
         height=800,
         window_position=WindowPosition("center"),
@@ -57,7 +57,7 @@ By default `Window` uses OS-managed chrome (`OSChrome`), which draws the standar
 ```python
 import nuiitivet.material as nv
 
-nv.App(nv.Window(content=HomeScreen(), title="My App")).run()
+nv.App(nv.Window(content=HomeScreen, title="My App")).run()
 ```
 
 ### Custom Chrome
@@ -77,7 +77,7 @@ header = nv.Row(
 
 nv.App(
     nv.Window(
-        content=HomeScreen(),
+        content=HomeScreen,
         title="My App",
         chrome=nv.CustomChrome(header=header, corner_radius=8),
     ),
@@ -93,7 +93,7 @@ Pass a `ThemeFactory` to change the seed color or switch to dark mode:
 ```python
 import nuiitivet.material as nv
 
-nv.App(nv.Window(content=HomeScreen()), theme=nv.ThemeFactory.dark("#00639B")).run()
+nv.App(nv.Window(content=HomeScreen), theme=nv.ThemeFactory.dark("#00639B")).run()
 ```
 
 See [Material Theme](material_theme.md) for detailed usage.
@@ -107,7 +107,7 @@ import nuiitivet.material as nv
 
 nv.App(
     nv.Window(
-        content=HomeScreen(),
+        content=HomeScreen,
         overlay_routes={
             MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
         },

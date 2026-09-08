@@ -5,6 +5,15 @@ import nuiitivet.material as nv
 SKIP_WINDOW_FRAME = True
 
 
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Custom Chrome"),
+    )
+
+
 def main(png_path: str = "") -> None:
     header = nv.Row(
         children=[
@@ -18,12 +27,7 @@ def main(png_path: str = "") -> None:
 
     app = nv.App(
         nv.Window(
-            content=nv.Container(
-                alignment="center",
-                width="wt",
-                height="wt",
-                child=nv.Text("Custom Chrome"),
-            ),
+            content=build_root,
             title="My App",
             chrome=nv.CustomChrome(
                 header=header,

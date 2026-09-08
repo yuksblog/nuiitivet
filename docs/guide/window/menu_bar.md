@@ -8,31 +8,40 @@ bar at the top of the content area, below the window chrome:
 import nuiitivet.material as nv
 
 
-class Editor(nv.ComposableWidget):
+class EditorState:
+    """The menu binds to this, so it lives outside the widget tree."""
+
     def __init__(self) -> None:
-        super().__init__()
         self.can_save = nv.Observable(False)
         self.word_wrap = nv.Observable(False)
 
     ...
 
 
-editor = Editor()
+class Editor(nv.ComposableWidget):
+    def __init__(self, state: EditorState) -> None:
+        super().__init__()
+        self.state = state
+
+    ...
+
+
+state = EditorState()
 app = nv.App(
     nv.Window(
-        content=editor,
+        content=lambda: Editor(state),
         title="Editor",
         menu=nv.MenuBar([
             nv.MenuEntry("File", submenu=[
-                nv.MenuEntry("Open...", shortcut="Accel+O", on_select=editor.open),
+                nv.MenuEntry("Open...", shortcut="Accel+O", on_select=state.open),
                 nv.MenuEntry("Save", shortcut="Accel+S",
-                               on_select=editor.save, enabled=editor.can_save),
+                               on_select=state.save, enabled=state.can_save),
                 nv.MenuEntry.separator(),
                 nv.MenuEntry.quit(),
             ]),
             nv.MenuEntry("View", submenu=[
-                nv.MenuEntry("Word Wrap", on_select=editor.wrap_changed,
-                               checked=editor.word_wrap),
+                nv.MenuEntry("Word Wrap", on_select=state.wrap_changed,
+                               checked=state.word_wrap),
             ]),
         ]),
     ),

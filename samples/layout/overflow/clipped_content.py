@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = nv.Card(
         width=150,
         height=150,
@@ -17,8 +17,11 @@ def main(png: str = ""):
     )  # 枠からはみ出た部分は描画されない
 
     root = nv.Container(padding=100, child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="Clipped Content", width=400))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Clipped Content", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -148,7 +148,7 @@ class CsvImportScreen(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=CsvImportScreen()))
+    app = nv.App(nv.Window(content=CsvImportScreen))
     app.run()
 
 

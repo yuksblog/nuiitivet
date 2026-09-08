@@ -9,7 +9,7 @@ def _cell(label: str, icon) -> nv.Column:
     return nv.Column(gap=8, cross_alignment="center", children=[icon, nv.Text(label)])
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     base = "notifications"
     content = nv.Container(
         padding=24,
@@ -24,7 +24,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="Badge", width=520, height=200))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Badge", width=520, height=200))
     if png_path:
         app.render_to_png(png_path)
     else:

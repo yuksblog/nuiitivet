@@ -7,7 +7,7 @@ identically to ``builder()`` at runtime but reads in a SwiftUI-like style.
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     tags = ["Python", "UI", "Framework", "Layout"]
 
     widget = nv.Flow(
@@ -24,8 +24,11 @@ def main(png: str = ""):
     )
 
     root = nv.Container(alignment="center", child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="Dynamic List: ForEach"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Dynamic List: ForEach"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

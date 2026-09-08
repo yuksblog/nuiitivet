@@ -13,8 +13,7 @@ def _card(label: str) -> nv.Card:
     )
 
 
-def main(png: str = ""):
-    # Step 3: 行と列のサイズ定義を変更
+def build_root() -> nv.Widget:
     widget = nv.Grid(
         rows=[60, "wt", "auto"],
         columns=["auto", "wt"],
@@ -32,8 +31,13 @@ def main(png: str = ""):
             nv.GridItem(_card("Footer"), row=2, column=1),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="Step 3: nv.Sizing Strategies", width=400, height=400))
+
+def main(png: str = ""):
+    # Step 3: 行と列のサイズ定義を変更
+
+    app = nv.App(nv.Window(content=build_root, title="Step 3: nv.Sizing Strategies", width=400, height=400))
     if png:
         app.render_to_png(png)
         return

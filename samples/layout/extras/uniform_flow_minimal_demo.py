@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     tiles = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
     widget = nv.UniformFlow(
@@ -17,8 +17,11 @@ def main(png: str = ""):
     )
 
     root = nv.Container(alignment="center", child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="nv.UniformFlow Demo"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.UniformFlow Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

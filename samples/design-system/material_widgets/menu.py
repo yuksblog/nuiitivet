@@ -5,7 +5,7 @@ from __future__ import annotations
 import nuiitivet.material as nv
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     menu = nv.Menu(
         items=[
             nv.MenuItem("New", leading_icon="add"),
@@ -21,8 +21,11 @@ def main(png_path: str = "") -> None:
             nv.MenuItem("Exit"),
         ],
     )
+    return nv.Container(padding=24, child=menu)
 
-    app = nv.App(nv.Window(content=nv.Container(padding=24, child=menu), title="Menu", width=460, height=380))
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Menu", width=460, height=380))
     if png_path:
         app.render_to_png(png_path)
     else:

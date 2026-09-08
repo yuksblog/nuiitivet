@@ -147,7 +147,7 @@ class BasicApiApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=BasicApiApp()))
+    app = nv.App(nv.Window(content=BasicApiApp))
     app.run()
 
 

@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = "") -> None:
+def build_root() -> nv.Widget:
     def _tile(label: str, *, width: int = 160, height: int = 40) -> nv.Card:
         return nv.Card(
             nv.Text(label),
@@ -23,8 +23,12 @@ def main(png: str = "") -> None:
             nv.CrossAligned(_tile("end (override)"), "end"),
         ],
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="nv.CrossAligned", width="auto", height="auto"))
+
+def main(png: str = "") -> None:
+
+    app = nv.App(nv.Window(content=build_root, title="nv.CrossAligned", width="auto", height="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

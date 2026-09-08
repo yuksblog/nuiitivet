@@ -165,7 +165,7 @@ class PracticalControlsApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=PracticalControlsApp()))
+    app = nv.App(nv.Window(content=PracticalControlsApp))
     app.run()
 
 

@@ -22,7 +22,7 @@ def _toggling_fab(label: str, icon: str, style: nv.FabStyle) -> nv.ExtendedFab:
     )
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Container(
         padding=24,
         child=nv.Column(
@@ -62,7 +62,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="ExtendedFab", width=660, height=420))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="ExtendedFab", width=660, height=420))
     if png_path:
         app.render_to_png(png_path)
     else:

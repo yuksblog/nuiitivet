@@ -87,7 +87,7 @@ def main(png_path: str = "") -> None:
         app.render_to_png(png_path)
         return
 
-    app = nv.App(nv.Window(content=CustomDialogDemo(), width=400, height=300))
+    app = nv.App(nv.Window(content=CustomDialogDemo, width=400, height=300))
     app.run()
 
 

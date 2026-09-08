@@ -1,8 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
-    # Just a simple 1x1 grid to show expansion
+def build_root() -> nv.Widget:
     widget = nv.Grid(
         rows=[200],
         columns=[200],
@@ -22,8 +21,13 @@ def main(png: str = ""):
     )
 
     root = nv.Container(padding=50, child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="Expanded Cell"))
+
+def main(png: str = ""):
+    # Just a simple 1x1 grid to show expansion
+
+    app = nv.App(nv.Window(content=build_root, title="Expanded Cell"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

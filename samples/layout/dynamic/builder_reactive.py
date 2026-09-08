@@ -40,11 +40,14 @@ class TagListApp(nv.ComposableWidget):
         )
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = TagListApp()
     root = nv.Container(alignment="center", child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="Dynamic List: reactive builder()"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Dynamic List: reactive builder()"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -27,7 +27,7 @@ class HomeScreen(nv.ComposableWidget):
 
 def main(png_path: str = "") -> None:
     app = nv.App(
-        nv.Window(content=HomeScreen(), title="Dark Mode", width=400, height=280),
+        nv.Window(content=HomeScreen, title="Dark Mode", width=400, height=280),
         theme=nv.ThemeFactory.dark("#00639B"),
     )
     if png_path:

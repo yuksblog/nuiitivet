@@ -108,7 +108,7 @@ def main(png_path: str = "") -> None:
     # 3. Register the Mapping in App
     app = nv.App(
         nv.Window(
-            content=CustomIntentDemo(),
+            content=CustomIntentDemo,
             overlay_routes={CounterIntent: create_counter_dialog},
             width=400,
             height=300,

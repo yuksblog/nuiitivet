@@ -145,7 +145,7 @@ class HomeScreen(nv.ComposableWidget):
 
 def main(png_path: str = "") -> None:
     app = nv.App(
-        nv.Window(content=HomeScreen(), title="Theme Extensions - Light/Dark Widget", width=400, height=280),
+        nv.Window(content=HomeScreen, title="Theme Extensions - Light/Dark Widget", width=400, height=280),
         theme=_dark,
     )
     if png_path:

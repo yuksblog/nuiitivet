@@ -11,7 +11,7 @@ def _overlay_icon(name: str, color: str) -> nv.Widget:
     return nv.Icon(name, size=30, style=nv.IconStyle(color=color))
 
 
-def main(png: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Row(
         children=[
             # cloud + upward arrow = "upload to cloud"
@@ -42,8 +42,12 @@ def main(png: str = "") -> None:
         gap=32,
         padding=24,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="stick Modifier", width=400))
+
+def main(png: str = "") -> None:
+
+    app = nv.App(nv.Window(content=build_root, title="stick Modifier", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -41,13 +41,17 @@ class _VisibleToggleDemo(nv.ComposableWidget):
         )
 
 
-def main(png: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Container(
         padding=24,
         child=_VisibleToggleDemo(),
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="visible() Animated", width=480, height=280))
+
+def main(png: str = "") -> None:
+
+    app = nv.App(nv.Window(content=build_root, title="visible() Animated", width=480, height=280))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -22,27 +22,12 @@ _MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 
 
 class Screen(nv.ComposableWidget):
-    def __init__(self) -> None:
+    # The tray menu must keep working across hot reloads, so the state it
+    # binds to is app-level (created once in main) and passed in here.
+    def __init__(self, pings: nv.Observable[int], muted: nv.Observable[bool]) -> None:
         super().__init__()
-        self.pings = nv.Observable(0)
-        self.muted = nv.Observable(False)
-
-    def tray(self) -> nv.TrayIcon:
-        return nv.TrayIcon(
-            tooltip="Nuiitivet Tray",
-            menu=[
-                nv.MenuEntry(
-                    self.pings.map(lambda n: f"Ping ({n})"),
-                    on_select=self._ping,
-                ),
-                nv.MenuEntry("Muted", on_select=lambda: None, checked=self.muted),
-                nv.MenuEntry.separator(),
-                nv.MenuEntry.quit(),
-            ],
-        )
-
-    def _ping(self) -> None:
-        self.pings.value += 1
+        self.pings = pings
+        self.muted = muted
 
     def build(self):
         return nv.Column(
@@ -60,11 +45,30 @@ class Screen(nv.ComposableWidget):
         )
 
 
+def _tray(pings: nv.Observable[int], muted: nv.Observable[bool]) -> nv.TrayIcon:
+    def ping() -> None:
+        pings.value += 1
+
+    return nv.TrayIcon(
+        tooltip="Nuiitivet Tray",
+        menu=[
+            nv.MenuEntry(
+                pings.map(lambda n: f"Ping ({n})"),
+                on_select=ping,
+            ),
+            nv.MenuEntry("Muted", on_select=lambda: None, checked=muted),
+            nv.MenuEntry.separator(),
+            nv.MenuEntry.quit(),
+        ],
+    )
+
+
 def main(png: str = ""):
-    screen = Screen()
+    pings = nv.Observable(0)
+    muted = nv.Observable(False)
     app = nv.App(
-        nv.Window(content=screen, title="tray_icon", width=480, height=240),
-        tray=screen.tray(),
+        nv.Window(content=lambda: Screen(pings, muted), title="tray_icon", width=480, height=240),
+        tray=_tray(pings, muted),
     )
     if png:
         app.render_to_png(png)
