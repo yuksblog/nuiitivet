@@ -106,7 +106,7 @@ class EditScreen(nv.ComposableWidget):
 def main() -> None:
     nv.App(
         nv.Window(
-            content=HomeScreen(),
+            content=HomeScreen,
         ),
     ).run()
 ```

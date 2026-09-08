@@ -14,7 +14,7 @@ def _card(label: str, width="wt", height="wt") -> nv.Card:
     )
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     header = nv.GridItem(_card("Header"), row=0, column=[0, 1])
     # Sidebar width is "auto" (content based), so we disable explicit weight/size
     sidebar = nv.GridItem(_card("Sidebar", width=None), row=[1, 2], column=0)
@@ -33,7 +33,11 @@ def main(png: str = ""):
 
     # 400x400 as requested
     # title_bar argument included so render_layout_images.py can extract the title string
-    app = nv.App(nv.Window(content=widget, title="nv.Grid Layout", width=400, height=400))
+    return widget
+
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.Grid Layout", width=400, height=400))
 
     if png:
         app.render_to_png(png)

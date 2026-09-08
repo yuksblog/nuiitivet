@@ -19,7 +19,7 @@ def _card(label: str, expand: bool = True) -> nv.Card:
     )
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = nv.Grid(
         rows=["wt", "wt"],
         columns=["wt", "wt"],
@@ -43,8 +43,11 @@ def main(png: str = ""):
             nv.GridItem(_card("Shrink/Wrap\n(No Flex)", expand=False), row=1, column=1),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="Step 4: Expansion", width=400, height=400))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Step 4: Expansion", width=400, height=400))
     if png:
         app.render_to_png(png)
         return

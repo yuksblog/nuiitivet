@@ -12,7 +12,7 @@ def _panel(label: str) -> nv.Widget:
     )
 
 
-def main(png: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Column(
         children=[
             nv.Text("visible(True) — always shown", type_scale=_CAPTION),
@@ -25,8 +25,12 @@ def main(png: str = "") -> None:
         cross_alignment="start",
         padding=24,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="visible() Static", width=480, height=280))
+
+def main(png: str = "") -> None:
+
+    app = nv.App(nv.Window(content=build_root, title="visible() Static", width=480, height=280))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

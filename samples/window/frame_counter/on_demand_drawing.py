@@ -91,7 +91,7 @@ def main(png_path: str = "") -> None:
         except ValueError:
             draw_fps = None
 
-    app = nv.App(nv.Window(content=FrameCounterApp(), title="On-demand Frame Counter", width=360, height=220))
+    app = nv.App(nv.Window(content=FrameCounterApp, title="On-demand Frame Counter", width=360, height=220))
 
     if png_path:
         app.render_to_png(png_path)

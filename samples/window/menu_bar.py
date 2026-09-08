@@ -20,71 +20,80 @@ import nuiitivet.material as nv
 _MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 
 
-class Screen(nv.ComposableWidget):
+class State:
+    """App-level state: the menu binds to it, so it is created once in main
+    and survives hot reloads of the widget tree."""
+
     def __init__(self) -> None:
-        super().__init__()
         self.log = nv.Observable("Pick something from the menu.")
         self.can_save = nv.Observable(False)
         self.word_wrap = nv.Observable(False)
 
-    def menu(self) -> nv.MenuBar:
-        return nv.MenuBar(
-            [
-                nv.MenuEntry(
-                    "File",
-                    submenu=[
-                        nv.MenuEntry("Open...", shortcut="Accel+O", on_select=self._open),
-                        nv.MenuEntry(
-                            "Save",
-                            shortcut="Accel+S",
-                            on_select=lambda: self._say("Saved."),
-                            enabled=self.can_save,
-                        ),
-                        nv.MenuEntry.separator(),
-                        nv.MenuEntry.quit(),
-                    ],
-                ),
-                nv.MenuEntry(
-                    "Edit",
-                    submenu=[
-                        nv.MenuEntry("Undo", shortcut="Accel+Z", on_select=lambda: self._say("Undo.")),
-                        nv.MenuEntry("Redo", shortcut="Accel+Shift+Z", on_select=lambda: self._say("Redo.")),
-                        nv.MenuEntry.separator(),
-                        nv.MenuEntry(
-                            "Advanced",
-                            submenu=[
-                                nv.MenuEntry("Sort Lines", on_select=lambda: self._say("Sorted.")),
-                            ],
-                        ),
-                    ],
-                ),
-                nv.MenuEntry(
-                    "View",
-                    submenu=[
-                        nv.MenuEntry(
-                            "Word Wrap",
-                            on_select=lambda: self._say(f"Word wrap: {self.word_wrap.value}"),
-                            checked=self.word_wrap,
-                        ),
-                        nv.MenuEntry.full_screen(),
-                    ],
-                ),
-            ]
-        )
-
-    def _open(self) -> None:
+    def open(self) -> None:
         self.can_save.value = True
-        self._say("Opened; Save is now enabled.")
+        self.say("Opened; Save is now enabled.")
 
-    def _say(self, message: str) -> None:
+    def say(self, message: str) -> None:
         self.log.value = message
+
+
+def _menu(state: State) -> nv.MenuBar:
+    return nv.MenuBar(
+        [
+            nv.MenuEntry(
+                "File",
+                submenu=[
+                    nv.MenuEntry("Open...", shortcut="Accel+O", on_select=state.open),
+                    nv.MenuEntry(
+                        "Save",
+                        shortcut="Accel+S",
+                        on_select=lambda: state.say("Saved."),
+                        enabled=state.can_save,
+                    ),
+                    nv.MenuEntry.separator(),
+                    nv.MenuEntry.quit(),
+                ],
+            ),
+            nv.MenuEntry(
+                "Edit",
+                submenu=[
+                    nv.MenuEntry("Undo", shortcut="Accel+Z", on_select=lambda: state.say("Undo.")),
+                    nv.MenuEntry("Redo", shortcut="Accel+Shift+Z", on_select=lambda: state.say("Redo.")),
+                    nv.MenuEntry.separator(),
+                    nv.MenuEntry(
+                        "Advanced",
+                        submenu=[
+                            nv.MenuEntry("Sort Lines", on_select=lambda: state.say("Sorted.")),
+                        ],
+                    ),
+                ],
+            ),
+            nv.MenuEntry(
+                "View",
+                submenu=[
+                    nv.MenuEntry(
+                        "Word Wrap",
+                        on_select=lambda: state.say(f"Word wrap: {state.word_wrap.value}"),
+                        checked=state.word_wrap,
+                    ),
+                    nv.MenuEntry.full_screen(),
+                ],
+            ),
+        ]
+    )
+
+
+class Screen(nv.ComposableWidget):
+    def __init__(self, state: State) -> None:
+        super().__init__()
+        self.state = state
 
     def build(self):
         return nv.Column(
             children=[
                 nv.Text("Menu bar", type_scale=nv.TypeScale.TITLE_MEDIUM),
-                nv.Text(self.log, style=_MUTED),
-                nv.Text(self.word_wrap.map(lambda w: f"word wrap: {'on' if w else 'off'}"), style=_MUTED),
+                nv.Text(self.state.log, style=_MUTED),
+                nv.Text(self.state.word_wrap.map(lambda w: f"word wrap: {'on' if w else 'off'}"), style=_MUTED),
             ],
             gap=12,
             padding=24,
@@ -92,8 +101,10 @@ class Screen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    screen = Screen()
-    app = nv.App(nv.Window(content=screen, title="menu_bar", width=560, height=320, menu=screen.menu()))
+    state = State()
+    app = nv.App(
+        nv.Window(content=lambda: Screen(state), title="menu_bar", width=560, height=320, menu=_menu(state))
+    )
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

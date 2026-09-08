@@ -15,7 +15,7 @@ def _card(label: str, style: nv.CardStyle) -> nv.Card:
     )
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Container(
         padding=24,
         child=nv.Row(
@@ -27,7 +27,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="Card", width=600, height=220))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Card", width=600, height=220))
     if png_path:
         app.render_to_png(png_path)
     else:

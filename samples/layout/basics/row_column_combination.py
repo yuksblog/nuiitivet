@@ -1,8 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
-    # ユーザー登録フォーム
+def build_root() -> nv.Widget:
     form = nv.Column(
         children=[
             # 1行目: 名前（横並び）
@@ -28,8 +27,13 @@ def main(png: str = ""):
         padding=16,
         cross_alignment="center",
     )
+    return form
 
-    app = nv.App(nv.Window(content=form, title="nv.Row/nv.Column Combination", width="auto"))
+
+def main(png: str = ""):
+    # ユーザー登録フォーム
+
+    app = nv.App(nv.Window(content=build_root, title="nv.Row/nv.Column Combination", width="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

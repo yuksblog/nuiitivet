@@ -46,6 +46,10 @@ anchor = (
 )
 
 
+def build_root() -> nv.Widget:
+    return nv.Column(children=[anchor], gap=8, padding=16)
+
+
 def main(png: str = "") -> None:
     if png:
         # For screenshot: place popup content directly in layout (overlay not captured by render_to_png)
@@ -82,7 +86,7 @@ def main(png: str = "") -> None:
         return
     app = nv.App(
         nv.Window(
-            content=nv.Column(children=[anchor], gap=8, padding=16),
+            content=build_root,
             title="popup Modifier (passthrough)",
             width=300,
             height=250,

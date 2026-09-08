@@ -5,7 +5,7 @@ from __future__ import annotations
 import nuiitivet.material as nv
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Container(
         padding=24,
         child=nv.Column(
@@ -48,7 +48,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="ToggleButton", width=560, height=260))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="ToggleButton", width=560, height=260))
     if png_path:
         app.render_to_png(png_path)
     else:

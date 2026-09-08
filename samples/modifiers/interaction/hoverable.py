@@ -20,14 +20,17 @@ class HoverDemo(nv.ComposableWidget):
         ).modifier(nv.background(bg_color) | nv.corner_radius(8) | nv.hoverable(on_hover_change=self._set_hovered))
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     content = nv.Column(
         children=[HoverDemo()],
         gap=16,
         padding=16,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="Hoverable Modifier"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Hoverable Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

@@ -68,6 +68,15 @@ class FocusDemo(nv.ComposableWidget):
         )
 
 
+def build_root() -> nv.Widget:
+    content = nv.Column(
+        children=[FocusDemo("field-1"), FocusDemo("field-2")],
+        gap=16,
+        padding=16,
+    )
+    return content
+
+
 def main(png: str = ""):
     print("=" * 68)
     print("Focusable key-event demo")
@@ -78,13 +87,7 @@ def main(png: str = ""):
     print("  5. Cmd/Alt+Tab away and back -> mask is cleared on deactivate.")
     print("=" * 68)
 
-    content = nv.Column(
-        children=[FocusDemo("field-1"), FocusDemo("field-2")],
-        gap=16,
-        padding=16,
-    )
-
-    app = nv.App(nv.Window(content=content, title="Focusable Modifier"))
+    app = nv.App(nv.Window(content=build_root, title="Focusable Modifier"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

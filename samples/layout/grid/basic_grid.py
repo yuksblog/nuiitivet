@@ -11,8 +11,7 @@ def _cell(label: str) -> nv.Card:
     )
 
 
-def main(png: str = ""):
-    # 2行 x 2列 のレイアウト
+def build_root() -> nv.Widget:
     widget = nv.Grid(
         # 列の定義: 左側は自動、右側は残り全部
         columns=["auto", "wt"],
@@ -31,8 +30,13 @@ def main(png: str = ""):
             nv.GridItem(_cell("Main Content"), row=1, column=[0, 1]),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="Basic nv.Grid"))
+
+def main(png: str = ""):
+    # 2行 x 2列 のレイアウト
+
+    app = nv.App(nv.Window(content=build_root, title="Basic nv.Grid"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

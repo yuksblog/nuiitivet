@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = nv.Stack(
         width=200,
         height=200,
@@ -36,8 +36,11 @@ def main(png: str = ""):
         alignment="center",
         style=nv.CardStyle(background=None, border_radius=0),
     )
+    return root
 
-    app = nv.App(nv.Window(content=root, title="nv.Stack Demo"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.Stack Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

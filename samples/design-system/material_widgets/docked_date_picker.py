@@ -16,11 +16,28 @@ from datetime import date
 import nuiitivet.material as nv
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     text = nv.Observable(nv.format_date(date(2026, 6, 25)))
     selected = text.map(nv.parse_date)
+    return nv.Container(
+        padding=24,
+        child=nv.Column(
+            gap=16,
+            cross_alignment="start",
+            children=[
+                nv.DockedDatePicker(value=text),
+                # The derived date, not the text: this is what the rest of an
+                # application would work with.
+                nv.Text(selected.map(lambda d: f"Selected: {d}")),
+            ],
+        ),
+    )
 
+
+def main(png_path: str = "") -> None:
     if png_path:
+        text = nv.Observable(nv.format_date(date(2026, 6, 25)))
+        selected = text.map(nv.parse_date)
         # For screenshot: place the dropdown calendar directly in the layout,
         # since render_to_png does not capture overlay content.
         style = nv.DockedDatePickerStyle()
@@ -36,22 +53,9 @@ def main(png_path: str = "") -> None:
         app.render_to_png(png_path)
         return
 
-    content = nv.Container(
-        padding=24,
-        child=nv.Column(
-            gap=16,
-            cross_alignment="start",
-            children=[
-                nv.DockedDatePicker(value=text),
-                # The derived date, not the text: this is what the rest of an
-                # application would work with.
-                nv.Text(selected.map(lambda d: f"Selected: {d}")),
-            ],
-        ),
-    )
     # Tall enough for the anchored dropdown: the calendar hangs ~460dp below the
     # field, and the overlay is clipped to the window.
-    app = nv.App(nv.Window(content=content, title="DockedDatePicker", width=460, height=600))
+    app = nv.App(nv.Window(content=build_root, title="DockedDatePicker", width=460, height=600))
     app.run()
 
 

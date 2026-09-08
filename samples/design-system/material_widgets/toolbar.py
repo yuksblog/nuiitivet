@@ -14,7 +14,7 @@ def _actions() -> list[nv.IconButton]:
     ]
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     docked = nv.DockedToolbar(_actions(), style=nv.ToolbarStyle.standard())
     docked.width_sizing = 480
 
@@ -37,7 +37,11 @@ def main(png_path: str = "") -> None:
             ],
         ),
     )
-    app = nv.App(nv.Window(content=content, title="Toolbar", width=560, height=300))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="Toolbar", width=560, height=300))
     if png_path:
         app.render_to_png(png_path)
     else:

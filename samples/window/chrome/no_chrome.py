@@ -5,15 +5,19 @@ import nuiitivet.material as nv
 SKIP_WINDOW_FRAME = True
 
 
+def build_root() -> nv.Widget:
+    return nv.Container(
+        alignment="center",
+        width="wt",
+        height="wt",
+        child=nv.Text("Borderless Window"),
+    )
+
+
 def main(png_path: str = "") -> None:
     app = nv.App(
         nv.Window(
-            content=nv.Container(
-                alignment="center",
-                width="wt",
-                height="wt",
-                child=nv.Text("Borderless Window"),
-            ),
+            content=build_root,
             title="Borderless",
             chrome=None,
             width=400,

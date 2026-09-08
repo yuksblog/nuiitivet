@@ -8,7 +8,7 @@ data collection via a ``(item, index) -> Widget`` builder function.
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     tags = ["Python", "UI", "Framework", "Layout"]
 
     widget = nv.Flow.builder(
@@ -21,8 +21,11 @@ def main(png: str = ""):
     )
 
     root = nv.Container(alignment="center", child=widget)
+    return root
 
-    app = nv.App(nv.Window(content=root, title="Dynamic List: builder()"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Dynamic List: builder()"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

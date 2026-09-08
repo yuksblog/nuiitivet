@@ -89,7 +89,7 @@ def _size_group(size: nv.ButtonSize) -> nv.StandardButtonGroup:
 # ---------------------------------------------------------------------------
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     standard = _section(
         "Standard",
         _labeled("Filled", _days_group(nv.StandardButtonGroupStyle.filled())),
@@ -123,7 +123,11 @@ def main(png_path: str = "") -> None:
     )
 
     content = nv.Container(padding=32, child=page)
-    app = nv.App(nv.Window(content=content, title="ButtonGroup"))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="ButtonGroup"))
     if png_path:
         app.render_to_png(png_path)
     else:

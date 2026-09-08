@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     widget = nv.Row(
         padding=16,
         gap=16,
@@ -13,8 +13,11 @@ def main(png: str = ""):
             nv.Button("Right", style=nv.ButtonStyle.filled()),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="nv.Spacer Flex Demo"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.Spacer Flex Demo"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

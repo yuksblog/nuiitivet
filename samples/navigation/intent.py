@@ -66,16 +66,20 @@ class HomeScreen(nv.ComposableWidget):
         )
 
 
+def build_root() -> nv.Widget:
+    return nv.Navigator.intents(
+        initial_route=HomeIntent(),
+        routes={
+            HomeIntent: lambda _: HomeScreen(),
+            DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
+        },
+    )
+
+
 def main(png_path: str | None = None) -> None:
     app = nv.App(
         nv.Window(
-            content=nv.Navigator.intents(
-                initial_route=HomeIntent(),
-                routes={
-                    HomeIntent: lambda _: HomeScreen(),
-                    DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),
-                },
-            ),
+            content=build_root,
             title="Navigation Intent",
             width=400,
             height=300,

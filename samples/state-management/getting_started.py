@@ -86,7 +86,7 @@ class CounterApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=CounterApp()))
+    app = nv.App(nv.Window(content=CounterApp))
     app.run()
 
 

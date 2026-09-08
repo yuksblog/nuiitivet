@@ -11,7 +11,7 @@ from datetime import date
 import nuiitivet.material as nv
 
 
-def main(png_path: str = "") -> None:
+def build_root() -> nv.Widget:
     selected: nv.Observable[date | None] = nv.Observable(date(2026, 6, 25))
     content = nv.Container(
         padding=24,
@@ -20,7 +20,11 @@ def main(png_path: str = "") -> None:
             on_change=lambda value: print(f"Selected: {value}"),
         ),
     )
-    app = nv.App(nv.Window(content=content, title="DatePicker", width=460, height=560))
+    return content
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, title="DatePicker", width=460, height=560))
     if png_path:
         app.render_to_png(png_path)
     else:

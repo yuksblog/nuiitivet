@@ -13,9 +13,7 @@ def _card(label: str) -> nv.Card:
     )
 
 
-def main(png: str = ""):
-    # 3行 x 2列
-    # Step 1: 単純に並べる (3Rows, 2Cols)
+def build_root() -> nv.Widget:
     widget = nv.Grid(
         rows=["wt", "wt", "wt"],
         columns=["wt", "wt"],
@@ -37,8 +35,14 @@ def main(png: str = ""):
             nv.GridItem(_card("Footer"), row=2, column=1),
         ],
     )
+    return widget
 
-    app = nv.App(nv.Window(content=widget, title="Step 1: Simple nv.Grid", width=400, height=400))
+
+def main(png: str = ""):
+    # 3行 x 2列
+    # Step 1: 単純に並べる (3Rows, 2Cols)
+
+    app = nv.App(nv.Window(content=build_root, title="Step 1: Simple nv.Grid", width=400, height=400))
     if png:
         app.render_to_png(png)
         return

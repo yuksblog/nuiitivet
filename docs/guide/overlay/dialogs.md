@@ -296,16 +296,14 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
        # calls nv.Overlay.of(self) when it wants to close.
        return CustomDialogContent(initial=intent.initial_value)
 
-   class IntentDemoApp(nv.ComposableWidget):
-       def build(self) -> nv.Widget:
-           return nv.App(
-               nv.Window(
-                   content=HomeView(),
-                   overlay_routes={
-                       CounterIntent: create_counter_dialog
-                   },
-               ),
-           )
+   app = nv.App(
+       nv.Window(
+           content=HomeView,
+           overlay_routes={
+               CounterIntent: create_counter_dialog
+           },
+       ),
+   )
    ```
 
 3. **Use in ViewModel**:

@@ -119,7 +119,7 @@ class ThreadSafetyApp(nv.ComposableWidget):
 
 
 def main() -> None:
-    app = nv.App(nv.Window(content=ThreadSafetyApp()))
+    app = nv.App(nv.Window(content=ThreadSafetyApp))
     app.run()
 
 

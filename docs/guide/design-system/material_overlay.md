@@ -234,7 +234,7 @@ class ConfirmIntent:
 
 nv.App(
     nv.Window(
-        content=HomeScreen(),
+        content=HomeScreen,
         overlay_routes={
             ConfirmIntent: lambda intent: nv.BasicDialog(
                 title="Confirm",

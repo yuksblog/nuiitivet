@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     content = nv.Row(
         children=[
             nv.Container(
@@ -20,8 +20,11 @@ def main(png: str = ""):
         gap=48,
         padding=48,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="Rotate & Scale", width=400))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Rotate & Scale", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

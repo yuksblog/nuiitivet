@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     main_alignments = [
         "start",
         "center",
@@ -55,8 +55,11 @@ def main(png: str = ""):
         padding=24,
         cross_alignment="start",
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="nv.Column main_alignment", width="auto", height="auto"))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="nv.Column main_alignment", width="auto", height="auto"))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

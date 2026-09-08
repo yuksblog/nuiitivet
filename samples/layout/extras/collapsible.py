@@ -35,7 +35,7 @@ class CollapsibleDemo(nv.ComposableWidget):
 
 
 def main(png: str = "") -> None:
-    app = nv.App(nv.Window(content=CollapsibleDemo(), title="nv.Collapsible Demo", width=320, height=220))
+    app = nv.App(nv.Window(content=CollapsibleDemo, title="nv.Collapsible Demo", width=320, height=220))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

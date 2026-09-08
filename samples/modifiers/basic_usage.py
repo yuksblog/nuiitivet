@@ -1,7 +1,7 @@
 import nuiitivet.material as nv
 
 
-def main(png: str = ""):
+def build_root() -> nv.Widget:
     content = nv.Column(
         children=[
             nv.Text("Hello").modifier(nv.background("#FF5722")),
@@ -10,8 +10,11 @@ def main(png: str = ""):
         gap=16,
         padding=16,
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="Modifier Basic Usage", width=400))
+
+def main(png: str = ""):
+    app = nv.App(nv.Window(content=build_root, title="Modifier Basic Usage", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

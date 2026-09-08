@@ -28,7 +28,7 @@ def _tile(label: str, color: str) -> nv.Widget:
     ).modifier(nv.background(color) | nv.corner_radius(12) | nv.context_menu(_menu()))
 
 
-def main(png: str = "") -> None:
+def build_root() -> nv.Widget:
     content = nv.Column(
         children=[
             nv.Text("Right-click a tile — the menu opens at the pointer"),
@@ -45,8 +45,12 @@ def main(png: str = "") -> None:
         padding=24,
         cross_alignment="start",
     )
+    return content
 
-    app = nv.App(nv.Window(content=content, title="context_menu Modifier", width=440, height=320))
+
+def main(png: str = "") -> None:
+
+    app = nv.App(nv.Window(content=build_root, title="context_menu Modifier", width=440, height=320))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
