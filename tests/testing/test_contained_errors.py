@@ -91,9 +91,6 @@ def test_the_exception_keeps_its_own_type_and_traceback(nuiitivet_app) -> None:
     assert excinfo.traceback[-1].name == "_boom"
 
 
-@pytest.mark.skipif(
-    not hasattr(BaseException, "add_note"), reason="notes need Python 3.11"
-)
 def test_the_owner_and_the_site_ride_along_as_a_note(nuiitivet_app) -> None:
     app = nuiitivet_app(_Screen(_boom), size=SIZE)
 

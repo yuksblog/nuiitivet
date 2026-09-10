@@ -117,7 +117,7 @@ def _resolve_role(x: Any, role_resolver: RoleResolver) -> Optional[RGBA]:
 
 def _resolve_one(x: Any, theme: Theme | None, role_resolver: Optional[RoleResolver]) -> Optional[RGBA]:
     # Literals first, and by concrete type: ``ColorToken`` is a runtime-checkable
-    # Protocol, and on Python 3.10/3.11 an ``isinstance`` against one re-scans
+    # Protocol, and on Python 3.11 an ``isinstance`` against one re-scans
     # the protocol's attributes on every call -- microseconds, on a path that
     # runs for every colour of every widget on every frame. Only what is left
     # after the literal checks is asked whether it can ``resolve``.
