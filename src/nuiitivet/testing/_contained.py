@@ -20,9 +20,8 @@ module is what listens.
 **The failure keeps its own type.** A contained ``ValueError`` reaches the test
 as a ``ValueError``, not wrapped -- the same contract the async half already
 ships (``idle()`` re-raises what the handler raised), so ``pytest.raises`` reads
-the same for both and the traceback still points at the handler's own line. On
-Python 3.11+ the owner and the containment site are attached as a note; below
-that the traceback carries the location on its own.
+the same for both and the traceback still points at the handler's own line. The
+owner and the containment site are attached as a note.
 """
 
 from __future__ import annotations
@@ -108,17 +107,14 @@ def annotate(error: ContainedError) -> BaseException:
 
     The exception is raised *as itself* so that a test reads the same whichever
     half of the framework contained it. That leaves nowhere to put the context
-    except a note, which exists from Python 3.11; below that the traceback
-    already points at the callback's own line, which is the part that matters.
+    except a note.
     """
-    add_note = getattr(error.exc, "add_note", None)
-    if add_note is not None:
-        add_note(
-            f"nuiitivet: raised inside a callback owned by {error.owner}, and "
-            f"contained by the framework at {error.site}. In production this is "
-            "logged and the frame carries on; under a test harness it fails the "
-            'test instead. Set callback_errors="off" to opt out.'
-        )
+    error.exc.add_note(
+        f"nuiitivet: raised inside a callback owned by {error.owner}, and "
+        f"contained by the framework at {error.site}. In production this is "
+        "logged and the frame carries on; under a test harness it fails the "
+        'test instead. Set callback_errors="off" to opt out.'
+    )
     return error.exc
 
 

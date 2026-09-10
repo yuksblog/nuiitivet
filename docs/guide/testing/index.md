@@ -189,9 +189,9 @@ with pytest.raises(RuntimeError):
 ```
 
 It arrives **as itself** — a `ValueError` stays a `ValueError` — with the
-traceback pointing at the line inside your callback, and (on Python 3.11+) a note
-naming the widget and the containment it came out of. An `async def` handler has
-behaved this way since `idle()` shipped; this is the same guarantee for the
+traceback pointing at the line inside your callback, and a note naming the
+widget and the containment it came out of. An `async def` handler has behaved
+this way since `idle()` shipped; this is the same guarantee for the
 synchronous half, and it covers `on_click` and friends, `on_mount` / `on_unmount`,
 a rebuild triggered by a binding, a size-change callback and a dispose callback.
 

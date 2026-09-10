@@ -309,7 +309,7 @@ The unchecked items are tracked in
 
 ### 3.1 Requirements
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - macOS / Windows / Linux
 
 Main libraries used for drawing and rendering: pyglet, PyOpenGL, skia-python,

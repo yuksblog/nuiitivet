@@ -25,17 +25,13 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import sys
 import threading
 import warnings
 from typing import Any, Coroutine, Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib  # ships with pytest on Python 3.10
+import tomllib
 
 from nuiitivet.testing import _support
 from nuiitivet.testing._contained import CALLBACK_ERROR_LEVELS
