@@ -92,7 +92,7 @@ Naming a location in prose is the weak link. An inner widget with no `key`
 and no distinctive text is hard; **a gap, where nothing was painted at all**,
 is nearly impossible.
 
-`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters inspect mode. **Click to
+`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters select mode. **Click to
 designate a widget, drag to designate an area.** Each designation gets a
 numbered badge, and the assistant sees the same numbers — so "fix the second
 one" simply works.
@@ -118,8 +118,8 @@ for.
 
 ### 1.5 You take over
 
-**`Ctrl+Click`** in inspect mode **opens the code that built that widget, in
-your editor.**
+**`Ctrl+Shift+Click`** (`Cmd+Shift+Click` on macOS) **opens the code that built
+that widget, in your editor** — in select mode or out of it.
 
 ![Take over](docs/assets/readme_1.5.gif)
 
@@ -391,8 +391,8 @@ if __name__ == "__main__":
 ### 3.4 Into the loop
 
 `python app.py` works, but during development, use the dev runner. Everything
-described above — hot reload, the dev bridge, inspect mode, the jump to source
-— turns on here.
+described above — hot reload, the dev bridge, select mode, the source jump —
+turns on here.
 
 ```bash
 python -m nuiitivet.dev run app.py

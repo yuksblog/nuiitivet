@@ -271,7 +271,7 @@ class BridgeClient:
         return payload.get("tree", {})
 
     def describe_selection(self) -> dict[str, Any]:
-        """Fetch what the human designated in inspect mode.
+        """Fetch what the human designated in select mode.
 
         The human -> assistant direction of the loop: where ``describe_tree`` and
         ``describe_state`` report what the app *is*, this reports what the human

@@ -65,7 +65,7 @@ class HotReloadController:
         # When present, every reload -- success or failure -- is recorded so the
         # assistant can notice the code changed under it between turns.
         self._journal = journal
-        # The human's inspect-mode designation, whose members are weak and so
+        # The human's select-mode designation, whose members are weak and so
         # evaporate when the rebuild replaces every live object. Re-resolved
         # below like observable state and the navigation stack, because a reload
         # lands in the middle of essentially every use of it.

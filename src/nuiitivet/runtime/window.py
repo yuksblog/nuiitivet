@@ -620,10 +620,14 @@ class Window:
         # actions can be recorded for an AI pair to pull; ``None`` -- and zero
         # overhead -- in production.
         self._interaction_recorder: Optional[Any] = None
-        # Dev-only designation mode. The dev runner attaches an
-        # ``InspectMode`` here so the human can point at a widget for an AI pair
+        # Dev-only designation mode. The dev runner attaches a
+        # ``SelectMode`` here so the human can point at a widget for an AI pair
         # to read; ``None`` -- and zero overhead -- in production.
-        self._inspect_mode: Optional[Any] = None
+        self._select_mode: Optional[Any] = None
+        # Dev-only source jump. The dev runner attaches a ``SourceJump`` here so
+        # a chorded click opens the code that built a widget; ``None`` in
+        # production.
+        self._source_jump: Optional[Any] = None
         # Last known pointer position / held buttons (screen coords), used to
         # synthesize the pointer event delivered on a modifier-key mask change.
         self._last_pointer_pos: Optional[Tuple[float, float]] = None

@@ -80,7 +80,7 @@ def path_of(root: Any, node: Any) -> Optional[Path]:
 
     The same key-preferring path :func:`snapshot_observables` builds, exposed for
     anything that has to survive a reload by naming *where* a widget was rather
-    than holding the object -- the inspect-mode selection re-resolves its
+    than holding the object -- the select-mode selection re-resolves its
     members this way, for the same reason and with the same degradation: a
     keyless widget that moves loses its match.
     """

@@ -1,10 +1,10 @@
-"""Tests for inspect mode -- the gesture layer over the designation buffer."""
+"""Tests for select mode -- the gesture layer over the designation buffer."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from nuiitivet.dev.inspect import InspectMode
+from nuiitivet.dev.select_mode import SelectMode
 from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.selection import Selection
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
@@ -26,13 +26,13 @@ class _App:
         self.invalidated += 1
 
 
-def _mode() -> tuple[InspectMode, Selection, _App]:
+def _mode() -> tuple[SelectMode, Selection, _App]:
     """A mode with no tree under it, for the tests that only exercise keys."""
     selection = Selection()
-    return (InspectMode(selection), selection, _App())
+    return (SelectMode(selection), selection, _App())
 
 
-def _click(mode: InspectMode, app: _App, x: float, y: float) -> None:
+def _click(mode: SelectMode, app: _App, x: float, y: float) -> None:
     mode.on_mouse_press(app, x, y)
     mode.on_mouse_release(app, x, y)
 
@@ -182,7 +182,7 @@ def test_hover_tracks_the_pick_candidate() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
 
         assert mode.on_mouse_motion(app, 2, 2) is True
@@ -250,7 +250,7 @@ def test_a_designation_leaves_a_content_free_marker() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         journal = InteractionJournal()
-        mode = InspectMode(Selection(), journal=journal)
+        mode = SelectMode(Selection(), journal=journal)
         mode.on_key_press(app, "c", _ENTER)
 
         _click(mode, app, 2, 2)
@@ -282,7 +282,7 @@ def test_every_designation_change_asks_for_a_frame() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
 
         for act in (
@@ -303,7 +303,7 @@ def test_hovering_the_same_candidate_does_not_repaint() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
 
@@ -350,7 +350,7 @@ def test_a_walked_designation_still_survives_a_reload() -> None:
     with mount(column) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(selection)
+        mode = SelectMode(selection)
         mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "up", 0)
@@ -373,7 +373,7 @@ def test_a_drag_designates_the_area_it_swept() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
@@ -388,7 +388,7 @@ def test_a_drag_normalizes_whichever_way_it_went() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 60, 40)
@@ -401,7 +401,7 @@ def test_the_rubber_band_tracks_the_drag_and_clears_on_release() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
@@ -418,7 +418,7 @@ def test_a_drag_does_not_move_the_hover_candidate() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
         assert mode.hovered is leaf
@@ -433,7 +433,7 @@ def test_leaving_clears_an_abandoned_band() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
@@ -452,7 +452,7 @@ def test_escape_discards_the_session() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         selection = mode.selection
         mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
@@ -471,7 +471,7 @@ def test_escape_rolls_back_only_the_session() -> None:
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         first_rect = first.global_layout_rect
         assert first_rect is not None
 
@@ -491,7 +491,7 @@ def test_escape_discards_regions_too() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_release(app, 60, 40)
@@ -509,7 +509,7 @@ def test_a_discarded_session_still_moves_seq() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         before = mode.selection.summary()["seq"]
@@ -536,7 +536,7 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
     with mount(old) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         mode.selection.toggle(old.children[0], root=host.root)
         mode.on_key_press(app, "enter", 0)
@@ -559,7 +559,7 @@ def test_ctrl_backspace_clears_every_designation() -> None:
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         rect = first.global_layout_rect
         assert rect is not None
         mode.on_key_press(app, "c", _ENTER)
@@ -580,7 +580,7 @@ def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "enter", 0)
@@ -599,7 +599,7 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "enter", 0)
@@ -609,264 +609,3 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
         mode.on_key_press(app, "enter", 0)
 
         assert mode.selection.members() == []
-
-
-# --- jumping to the source -------------------------------------------
-
-
-def _accel_click(mode: InspectMode, app: _App, x: float, y: float, mods: int = MOD_CTRL) -> None:
-    """A click carrying the accelerator, which jumps instead of designating."""
-    mode.on_mouse_press(app, x, y, mods)
-    mode.on_mouse_release(app, x, y, mods)
-
-
-def _records_into(sink: list[tuple[str, int]]) -> Any:
-    """A stand-in for ``open_at`` that records the jump instead of launching."""
-
-    def _open(path: str, line: int) -> None:
-        sink.append((path, line))
-        return None
-
-    return _open
-
-
-def test_an_accelerator_click_jumps_instead_of_designating(monkeypatch: Any) -> None:
-    """Browsing ten widgets' code must not leave ten marks to clear afterwards."""
-    from nuiitivet.dev import source
-
-    opened: list[tuple[str, int]] = []
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", _records_into(opened))
-
-    source.install()
-    try:
-        leaf = Text("AAA")
-        with mount(Column(children=[leaf])) as host:
-            host.layout(300, 200)
-            host.settle()
-            selection = Selection()
-            mode = InspectMode(selection)
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2)
-    finally:
-        source.uninstall()
-
-    assert selection.members() == [], "the accelerator click must not designate"
-    assert len(opened) == 1
-    assert opened[0][0].endswith("test_inspect.py")
-
-
-def test_the_meta_accelerator_also_jumps(monkeypatch: Any) -> None:
-    """macOS spells it Cmd -- and there Ctrl+click is the OS's secondary click."""
-    from nuiitivet.dev import source
-
-    opened: list[tuple[str, int]] = []
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", _records_into(opened))
-
-    source.install()
-    try:
-        with mount(Column(children=[Text("AAA")])) as host:
-            host.layout(300, 200)
-            host.settle()
-            mode = InspectMode(Selection())
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2, MOD_META)
-    finally:
-        source.uninstall()
-
-    assert len(opened) == 1
-
-
-def test_a_plain_click_still_designates(monkeypatch: Any) -> None:
-    """The accelerator is the only thing that changes what a click means."""
-    opened: list[tuple[str, int]] = []
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", _records_into(opened))
-
-    leaf = Text("AAA")
-    with mount(Column(children=[leaf])) as host:
-        host.layout(300, 200)
-        host.settle()
-        selection = Selection()
-        mode = InspectMode(selection)
-        app = _App(host.root)
-        mode.on_key_press(app, "c", _ENTER)
-
-        _click(mode, app, 2, 2)
-
-    assert selection.members() == [leaf]
-    assert opened == []
-
-
-def test_an_accelerated_drag_is_still_an_area(monkeypatch: Any) -> None:
-    """The accelerator means "jump instead of designate", and an area has
-    nothing to jump to -- so a modified press that travels stays a drag."""
-    opened: list[tuple[str, int]] = []
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", _records_into(opened))
-
-    with mount(Column(children=[Text("AAA")])) as host:
-        host.layout(300, 200)
-        host.settle()
-        selection = Selection()
-        mode = InspectMode(selection)
-        app = _App(host.root)
-        mode.on_key_press(app, "c", _ENTER)
-
-        mode.on_mouse_press(app, 10, 10, MOD_CTRL)
-        mode.on_mouse_release(app, 80, 60, MOD_CTRL)
-
-    assert len(selection.regions()) == 1
-    assert opened == []
-
-
-def test_a_widget_with_no_recorded_source_says_so(monkeypatch: Any) -> None:
-    """Silence would be indistinguishable from a broken feature."""
-    opened: list[tuple[str, int]] = []
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", _records_into(opened))
-
-    # Capture never installed, so nothing carries a site.
-    with mount(Column(children=[Text("AAA")])) as host:
-        host.layout(300, 200)
-        host.settle()
-        mode = InspectMode(Selection())
-        app = _App(host.root)
-        mode.on_key_press(app, "c", _ENTER)
-
-        _accel_click(mode, app, 2, 2)
-
-    assert opened == []
-    assert mode.notice is not None
-    assert "no source" in mode.notice
-
-
-def test_a_failed_launch_reaches_the_human(monkeypatch: Any) -> None:
-    from nuiitivet.dev import source
-
-    monkeypatch.setattr(
-        "nuiitivet.dev.inspect.open_at", lambda path, line: "code is not on PATH"
-    )
-    source.install()
-    try:
-        with mount(Column(children=[Text("AAA")])) as host:
-            host.layout(300, 200)
-            host.settle()
-            mode = InspectMode(Selection())
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2)
-    finally:
-        source.uninstall()
-
-    assert mode.notice == "code is not on PATH"
-
-
-def test_jumping_does_not_leave_inspect_mode(monkeypatch: Any) -> None:
-    """Reading several widgets in a row is the normal use.
-
-    Safe only because the overlay repaints on every state change, so returning
-    from the editor shows the badge saying the mode is still on.
-    """
-    from nuiitivet.dev import source
-
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", lambda path, line: None)
-    source.install()
-    try:
-        with mount(Column(children=[Text("AAA")])) as host:
-            host.layout(300, 200)
-            host.settle()
-            mode = InspectMode(Selection())
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2)
-
-            assert mode.active is True
-    finally:
-        source.uninstall()
-
-
-def test_the_notice_clears_on_the_next_move(monkeypatch: Any) -> None:
-    """It replaces the hover caption, so it must not outlive the moment."""
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", lambda path, line: None)
-
-    with mount(Column(children=[Text("AAA")])) as host:
-        host.layout(300, 200)
-        host.settle()
-        mode = InspectMode(Selection())
-        app = _App(host.root)
-        mode.on_key_press(app, "c", _ENTER)
-        _accel_click(mode, app, 2, 2)
-        assert mode.notice is not None
-
-        mode.on_mouse_motion(app, 40, 40)
-
-        assert mode.notice is None
-
-
-def test_an_accelerator_click_is_consumed_like_any_other(monkeypatch: Any) -> None:
-    """It must not also reach the app underneath."""
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", lambda path, line: None)
-
-    with mount(Column(children=[Text("AAA")])) as host:
-        host.layout(300, 200)
-        host.settle()
-        mode = InspectMode(Selection())
-        app = _App(host.root)
-        mode.on_key_press(app, "c", _ENTER)
-
-        assert mode.on_mouse_press(app, 2, 2, MOD_CTRL) is True
-        assert mode.on_mouse_release(app, 2, 2, MOD_CTRL) is True
-
-
-def test_a_successful_jump_says_what_it_is_opening(monkeypatch: Any) -> None:
-    """The editor's CLI takes ~1.4 s to reach an already-running window.
-
-    Nearly all of that is outside this process -- its launcher boots a Node
-    runtime -- so it cannot be made faster from here. What can be fixed is the
-    second of nothing visible happening, which is what makes the click feel dead.
-    """
-    from nuiitivet.dev import source
-
-    monkeypatch.setattr("nuiitivet.dev.inspect.open_at", lambda path, line: None)
-    source.install()
-    try:
-        with mount(Column(children=[Text("AAA")])) as host:
-            host.layout(300, 200)
-            host.settle()
-            mode = InspectMode(Selection())
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2)
-    finally:
-        source.uninstall()
-
-    assert mode.notice is not None
-    assert mode.notice.startswith("opening ")
-    assert "test_inspect.py:" in mode.notice
-
-
-def test_a_failure_still_wins_over_the_opening_message(monkeypatch: Any) -> None:
-    """The reason is the only thing worth reading at that moment."""
-    from nuiitivet.dev import source
-
-    monkeypatch.setattr(
-        "nuiitivet.dev.inspect.open_at", lambda path, line: "code is not on PATH"
-    )
-    source.install()
-    try:
-        with mount(Column(children=[Text("AAA")])) as host:
-            host.layout(300, 200)
-            host.settle()
-            mode = InspectMode(Selection())
-            app = _App(host.root)
-            mode.on_key_press(app, "c", _ENTER)
-
-            _accel_click(mode, app, 2, 2)
-    finally:
-        source.uninstall()
-
-    assert mode.notice == "code is not on PATH"

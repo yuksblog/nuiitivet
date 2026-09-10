@@ -572,7 +572,7 @@ def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
 
     A layout-only wrapper stacking several rects under one pixel is skipped in
     favour of its deepest child; walking back out to it is the caller's job (the
-    ancestor walk in inspect mode), not this function's.
+    ancestor walk in select mode), not this function's.
 
     Must be called on the UI thread (it reads live layout state).
 

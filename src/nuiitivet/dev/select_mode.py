@@ -1,4 +1,4 @@
-"""Inspect mode: the gesture layer that turns the human's clicks into designations.
+"""Select mode: the gesture layer that turns the human's clicks into designations.
 
 The input half of :mod:`nuiitivet.dev.selection`. It sits on the *real* input
 handlers -- the layer the human drives, which the assistant's synthesized actions
@@ -11,7 +11,10 @@ than held. A
 held modifier cannot carry a persistent affordance and cannot survive a
 multi-pick sequence, and ``Shift`` -- the obvious candidate -- is the modifier
 applications own most (see ``_COMMAND_MODS`` in :mod:`.interaction`). The
-shortcut matches the one Chrome DevTools uses for the same gesture.
+shortcut matches the one Chrome DevTools uses for the same gesture, and
+``Ctrl+Shift`` is the dev runner's prefix: every chord the runner claims -- this
+one, and the source jump's click (:mod:`.source_jump`) -- starts with it, so an
+app never has to guess which chords are taken.
 
 While latched, input is **consumed**: a click is a designation, not an
 interaction, and letting it also reach the app would fire the button the human
@@ -26,7 +29,6 @@ took five ``Backspace`` presses to undo.
 from __future__ import annotations
 
 import logging
-import os
 import weakref
 from typing import Any, Callable, Optional
 
@@ -38,10 +40,8 @@ from nuiitivet.input.codes import (
     resolve_modifiers as _resolve_physical_modifiers,
 )
 
-from .editor import open_at
 from .interaction import InteractionJournal
 from .selection import Selection
-from .source import absolute_target
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +55,10 @@ _DRAG_THRESHOLD = 4.0
 _ENTER_KEY = "c"
 
 
-class InspectMode:
+class SelectMode:
     """Latched designation mode for one running app.
 
-    Attach to the app as ``app._inspect_mode``; the backend's real input handlers
+    Attach to the app as ``app._select_mode``; the backend's real input handlers
     call the ``on_*`` hooks and honour their return value, which is ``True`` when
     the mode consumed the event and the app must not also see it.
 
@@ -85,9 +85,6 @@ class InspectMode:
         self._hover: Optional[Callable[[], Any]] = None
         # The rect a drag has swept so far, for the overlay's rubber band.
         self._band: Optional[tuple[float, float, float, float]] = None
-        # A one-off message shown in place of the hover caption, for the cases a
-        # jump cannot happen. Cleared on the next move, so it never lingers.
-        self._notice: Optional[str] = None
 
     @property
     def selection(self) -> Selection:
@@ -108,11 +105,6 @@ class InspectMode:
     def band(self) -> Optional[tuple[float, float, float, float]]:
         """The rect a drag has swept so far, or ``None`` when not dragging."""
         return self._band
-
-    @property
-    def notice(self) -> Optional[str]:
-        """Why the last jump did not happen, for the overlay to show. Transient."""
-        return self._notice
 
     # --- keys -------------------------------------------------------------
 
@@ -209,9 +201,6 @@ class InspectMode:
         if press is None:
             return True
         if abs(float(x) - press[0]) > _DRAG_THRESHOLD or abs(float(y) - press[1]) > _DRAG_THRESHOLD:
-            # A modified press that travelled is still just a drag: the accelerator
-            # only ever means "jump instead of designate", and there is nothing to
-            # jump to for an area.
             self._selection.add_region(_normalized(press, (float(x), float(y))))
             self._changed(app)
             return True
@@ -221,11 +210,6 @@ class InspectMode:
             return True
         node = self._pick(root, press[0], press[1])
         if node is None:
-            return True
-        if _resolve_physical_modifiers(int(modifier_keys)) & (MOD_CTRL | MOD_META):
-            # Go to the source instead of designating. Browsing ten
-            # widgets' code must not leave ten marks behind to clear.
-            self._open_source(app, node)
             return True
         self._selection.toggle(node, root=root)
         self._anchor = _weak(node)
@@ -241,9 +225,6 @@ class InspectMode:
         """
         if not self.active:
             return False
-        if self._notice is not None:
-            self._notice = None
-            _invalidate(app)
         if self._press is not None:
             band = _normalized(self._press, (float(x), float(y)))
             if band != self._band:
@@ -264,7 +245,7 @@ class InspectMode:
         try:
             return pick_at(root, x, y)
         except Exception:
-            logger.debug("inspect: pick_at failed", exc_info=True)
+            logger.debug("select: pick_at failed", exc_info=True)
             return None
 
     # --- ancestor walk ----------------------------------------------------
@@ -300,30 +281,6 @@ class InspectMode:
                 return
             previous = node
 
-    def _open_source(self, app: Any, node: Any) -> None:
-        """Take the human to where ``node`` was built.
-
-        Deliberately does *not* leave inspect mode. Reading several widgets'
-        code in a row is the normal use, and leaving would make each one cost a
-        re-entry. That is only safe because the overlay repaints on every state
-        change, so coming back from the editor shows the badge that says the mode
-        is still on.
-        """
-        target = absolute_target(node)
-        if target is None:
-            self._notice = "no source recorded for this widget"
-        else:
-            path, line = target
-            # Success is announced too, not just failure, and that matters
-            # here. The URL is fire-and-forget: an opener
-            # succeeds whether or not anything is registered for the scheme, so
-            # a jump that goes nowhere leaves no trace at all. Naming the file
-            # is the only evidence the click was received, which is what makes
-            # "nothing happened" readable as an editor problem.
-            reason = open_at(path, line)
-            self._notice = reason or f"opening {os.path.basename(path)}:{line}"
-        _invalidate(app)
-
     # --- change notification ----------------------------------------------
 
     def _changed(self, app: Any, *, note: bool = True) -> None:
@@ -340,7 +297,7 @@ class InspectMode:
             try:
                 self._journal.record_select()
             except Exception:
-                logger.debug("inspect: recording the select marker failed", exc_info=True)
+                logger.debug("select: recording the select marker failed", exc_info=True)
 
 
 def _invalidate(app: Any) -> None:
@@ -348,7 +305,7 @@ def _invalidate(app: Any) -> None:
     try:
         app.invalidate()
     except Exception:
-        logger.debug("inspect: invalidate failed", exc_info=True)
+        logger.debug("select: invalidate failed", exc_info=True)
 
 
 def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float, float, float]:
@@ -367,4 +324,4 @@ def _weak(obj: Any) -> Optional[Callable[[], Any]]:
         return None
 
 
-__all__ = ["InspectMode"]
+__all__ = ["SelectMode"]

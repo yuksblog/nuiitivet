@@ -135,7 +135,7 @@ class App:
         # the tree, and run() realizes every open window).
         self._realize_window_hook: Optional[Callable[[Window], None]] = None
         # Dev-only seam: the dev runner installs per-window instrumentation
-        # (inspect mode, interaction recorder) through this; it runs once for
+        # (select mode, source jump, interaction recorder) through this; it runs once for
         # every window as it registers. ``None`` in production.
         self._instrument_window_hook: Optional[Callable[[Window], None]] = None
         # Dev-only seam, the counterpart of ``_instrument_window_hook``: runs

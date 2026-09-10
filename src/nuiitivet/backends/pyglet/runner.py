@@ -56,22 +56,31 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return True
 
 
-def _inspect_consumed(app: Any, hook: str, *args: Any) -> bool:
-    """Offer an input event to the dev-only inspect mode; ``True`` if it took it.
+# The dev-only input layers, in the order an event is offered to them. The
+# source jump goes first so its chord means the same thing inside a mode as
+# outside one; it never consumes a key, so the order is moot for the keyboard.
+_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode")
 
-    Absent -- production, or any run without the dev runner -- this is a single
-    ``getattr`` returning ``None``, so the input path pays nothing for it. A
-    failure inside the mode must never swallow the human's input, so it degrades
-    to "not consumed" and the event continues to the app.
+
+def _dev_consumed(app: Any, hook: str, *args: Any) -> bool:
+    """Offer an input event to the dev-only input layers; ``True`` if one took it.
+
+    Absent -- production, or any run without the dev runner -- this is two
+    ``getattr`` calls returning ``None``, so the input path pays nothing for it.
+    A failure inside a layer must never swallow the human's input, so it
+    degrades to "not consumed" and the event continues to the next layer and
+    then to the app.
     """
-    mode = getattr(app, "_inspect_mode", None)
-    if mode is None:
-        return False
-    try:
-        return bool(getattr(mode, hook)(*args))
-    except Exception:
-        exception_once(logger, "pyglet_inspect_mode_exc", "Inspect mode hook raised")
-        return False
+    for attr in _DEV_INPUT_LAYERS:
+        layer = getattr(app, attr, None)
+        if layer is None:
+            continue
+        try:
+            if getattr(layer, hook)(*args):
+                return True
+        except Exception:
+            exception_once(logger, f"pyglet{attr}_exc", f"Dev input layer {attr} raised")
+    return False
 
 
 def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode = "auto") -> None:
@@ -975,10 +984,11 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
-        # Dev-only: while inspect mode is latched, a press is the human aiming a
-        # designation, not an interaction. It is consumed *before* dispatch --
-        # letting it through would fire the button they were merely pointing at.
-        if _inspect_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
+        # Dev-only: a chorded press is a source jump, and while select mode is
+        # latched any press is the human aiming a designation. Either is consumed
+        # *before* dispatch -- letting it through would fire the button they were
+        # merely pointing at.
+        if _dev_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
             return True
         try:
             win._dispatch_mouse_press(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
@@ -999,12 +1009,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
-        # Dev-only: release is where a designation resolves -- travel distance
-        # tells a click (pick a widget) from a drag, and the accelerator
-        # turns the click into a jump to the widget's source instead.
-        # Modifiers are read here, not on press, so the two decisions are made at
-        # the same moment from the same event.
-        if _inspect_consumed(win, "on_mouse_release", win, x_log, y_conv, modifier_keys):
+        # Dev-only: release is where a jump or a designation resolves -- travel
+        # distance tells a click from a drag.
+        if _dev_consumed(win, "on_mouse_release", win, x_log, y_conv, modifier_keys):
             return True
         try:
             win._dispatch_mouse_release(x_log, y_conv, button=button_n, modifier_keys=modifier_keys)
@@ -1016,7 +1023,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         # Dev-only: tracks the pick candidate under the cursor for the overlay's
         # hover highlight.
-        if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv):
+        if _dev_consumed(win, "on_mouse_motion", win, x_log, y_conv):
             return True
         try:
             win._dispatch_mouse_motion(x_log, y_conv)
@@ -1031,7 +1038,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         # Dev-only: a drag mid-designation is the human sweeping out a region.
         # Routed to the same hook as a plain move, which tells the two apart by
         # whether a press is outstanding.
-        if _inspect_consumed(win, "on_mouse_motion", win, x_log, y_conv, modifier_keys):
+        if _dev_consumed(win, "on_mouse_motion", win, x_log, y_conv, modifier_keys):
             return True
         try:
             win._dispatch_mouse_motion(x_log, y_conv, buttons=buttons_n, modifier_keys=modifier_keys)
@@ -1074,7 +1081,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
-        # Dev-only: inspect mode owns Ctrl+Shift+C, and every key while it is
+        # Dev-only: select mode owns Ctrl+Shift+C, and every key while it is
         # latched. Checked before the recorder and the escape latch so its own
         # exit key reaches it rather than closing a dialog behind it.
         #
@@ -1083,7 +1090,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         # default ESC behaviour closes the window -- exactly what the latch below
         # relies on with its explicit ``return False``. Falling out of here
         # without a value would quit the win on the mode's own exit key.
-        if _inspect_consumed(win, "on_key_press", win, key_name, modifier_keys):
+        if _dev_consumed(win, "on_key_press", win, key_name, modifier_keys):
             return True
 
         # Dev-only: record semantic keys (shortcuts / navigation) for the
@@ -1159,9 +1166,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
-        # Dev-only: inspect mode consumed the press, so its release must not
+        # Dev-only: select mode consumed the press, so its release must not
         # reach the focused widget on its own.
-        if _inspect_consumed(win, "on_key_release", win, key_name, modifier_keys):
+        if _dev_consumed(win, "on_key_release", win, key_name, modifier_keys):
             return True
 
         nonlocal esc_down

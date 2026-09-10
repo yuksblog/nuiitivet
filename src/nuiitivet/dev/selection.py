@@ -4,7 +4,7 @@ The dev bridge already carries perception (``describe_tree`` / ``describe_state`
 / ``screenshot``), action (``click`` / ``scroll`` / ``type`` / ``key``) and the
 journals that let an assistant catch up on what the human *did*. This module adds
 the one thing missing in the human -> assistant direction: a record of what the
-human *means*. The human enters inspect mode, designates widgets and areas, and
+human *means*. The human enters select mode, designates widgets and areas, and
 leaves; the assistant reads the result on its own turn. Nothing is pushed.
 
 It is an **annotation** surface, not an inspector: the audience is another party,
@@ -113,7 +113,7 @@ class Selection:
     """The designation buffer for one running app.
 
     Holds the marks the human made -- widgets and areas, in one ordered
-    sequence -- whether inspect mode is currently on, and a monotonic ``seq``
+    sequence -- whether select mode is currently on, and a monotonic ``seq``
     that bumps on every change, which is what lets an assistant notice a
     designation happened by polling the cheap ``status`` summary rather than the
     full payload.
@@ -124,7 +124,7 @@ class Selection:
     """
 
     _marks: list[Any] = field(default_factory=list)
-    #: The marks as they stood when inspect mode was entered, so leaving can
+    #: The marks as they stood when select mode was entered, so leaving can
     #: either keep the session's work or throw it away. ``None`` when the mode is
     #: off, which is also what makes :meth:`discard` a no-op outside a session.
     _pending: Optional[list[Any]] = None
@@ -137,12 +137,12 @@ class Selection:
 
     @property
     def active(self) -> bool:
-        """Whether inspect mode is on, i.e. the set may still be growing."""
+        """Whether select mode is on, i.e. the set may still be growing."""
         with self._lock:
             return self._active
 
     def enter(self) -> None:
-        """Latch inspect mode on, remembering what to fall back to.
+        """Latch select mode on, remembering what to fall back to.
 
         The snapshot is what makes :meth:`discard` mean "this session", not
         "everything". Re-entering to add one more mark and then changing your
@@ -156,7 +156,7 @@ class Selection:
             self._seq += 1
 
     def commit(self) -> None:
-        """Latch inspect mode off, keeping what the session designated."""
+        """Latch select mode off, keeping what the session designated."""
         with self._lock:
             if not self._active:
                 return
@@ -165,7 +165,7 @@ class Selection:
             self._seq += 1
 
     def discard(self) -> None:
-        """Latch inspect mode off, rolling the session back.
+        """Latch select mode off, rolling the session back.
 
         A rollback rather than an undo of history: marks go live the moment they
         are made, so an assistant reading mid-session may have seen one that this

@@ -722,7 +722,7 @@ class DevBridge:
         # verbose capture via the capture handle at ``/runtime_log/verbose``.
         self._runtime_journal = runtime_journal
         self._runtime_capture = runtime_capture
-        # Written by the app's inspect mode when the human designates a widget;
+        # Written by the app's select mode when the human designates a widget;
         # the bridge serves it at ``/describe_selection``.
         self._selection = selection
         self._marshaller = _UIThreadMarshaller(app)

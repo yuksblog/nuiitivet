@@ -47,14 +47,15 @@ from typing import Any, Optional, Sequence
 from .bridge import DevBridge
 from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
-from .inspect import InspectMode
 from .interaction import InteractionJournal, InteractionRecorder, window_identity
 from .journal import ReloadJournal
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
+from .select_mode import SelectMode
 from .selection import Selection
 from .session import DevSession, set_dev_session
+from .source_jump import SourceJump
 from . import editor, source
 
 # Subcommands that may appear as the first token. Anything else is treated as a
@@ -136,7 +137,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--editor",
         help=(
-            "Where a Ctrl+Click in inspect mode opens the code (default: vscode). "
+            "Where Ctrl+Shift+Click opens the code that built a widget (default: vscode). "
             "Either 'vscode' or your editor's URL scheme as a template carrying "
             '{file} and {line}, e.g. "cursor://file{file}:{line}:1". The path is '
             "made absolute and percent-encoded for you."
@@ -165,7 +166,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser(
         "describe-selection",
-        help="Print what the human designated in the running app's inspect mode, as JSON.",
+        help="Print what the human designated in the running app's select mode, as JSON.",
     )
 
     reload_log = subparsers.add_parser(
@@ -457,7 +458,7 @@ def _run(args: argparse.Namespace) -> int:
         # notice the code changed between its turns.
         journal = ReloadJournal()
         # What the human *points at*, the reverse of the interaction
-        # journal's "what the human did". Inspect mode writes designations from
+        # journal's "what the human did". Select mode writes designations from
         # the real input path; the controller re-resolves them across a reload;
         # the bridge serves them at ``/describe_selection``.
         selection = Selection()
@@ -473,14 +474,15 @@ def _run(args: argparse.Namespace) -> int:
         # coarse UI actions from the real input path, and the bridge serves them
         # at ``/interaction_log`` so an AI pair can see how the human drove the
         # app between its turns. Instrumented per window — the journal and the
-        # selection are shared, but each window carries its own recorder and
-        # inspect mode so hover/gesture state stays window-local and the
-        # Ctrl+Shift+C latch works in every window, not just the main one.
+        # selection are shared, but each window carries its own recorder,
+        # select mode and source jump so hover/gesture state stays window-local
+        # and the Ctrl+Shift chords work in every window, not just the main one.
         interaction_journal = InteractionJournal()
 
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
-            win._inspect_mode = InspectMode(selection, journal=interaction_journal)
+            win._select_mode = SelectMode(selection, journal=interaction_journal)
+            win._source_jump = SourceJump()
             # Window lifecycle joins the same timeline: the register
             # hook covers every open path, and the loop below back-fills the
             # windows opened before the hook existed (the main window, and any
