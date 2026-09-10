@@ -284,7 +284,7 @@ def test_something_that_is_not_a_url_is_rejected() -> None:
     """A CLI command is the likeliest thing to try, and no longer a route.
 
     Catching it at startup is what keeps that mistake from arriving as silence
-    on the first Ctrl+Click.
+    on the first Ctrl+Shift+Click.
     """
     problem = editor.validate("pycharm --line {line} {file}")
 

@@ -86,7 +86,7 @@ in the loop. *When* the assistant should reach for which is the
 | `describe_tree` | The mounted tree as compact JSON — each node's type, identity (`key` / `label` / `text` / `title`), interactive state (`disabled` / `focused` / `selected` / `value`), and rect. The cheap view the assistant reasons over and resolves action targets from. |
 | `describe_state` | The live `Observable` values behind that tree, in the same shape as `describe_tree` so the two join node-for-node. Answers "the value updated but the UI didn't", and the reverse. <br> **These are the raw observables, under the attribute names your widgets bound them to** — `describe_tree`'s own state is the same thing in one vocabulary. <br> **Animation state is omitted by default.** `Animatable` channels carry visual rather than semantic state and would dominate the dump; `include_animations=True` brings them back. |
 | `screenshot` | The mounted tree rendered to PNG — the whole frame, or just one widget: `key` / `label` crop to that widget's painted rect plus `padding` logical pixels each side (default 8, so shadows and outlines stay in), `rect=[x, y, w, h]` crops to a raw region. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
-| `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-inspect-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
+| `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-select-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
 
 ### Act — drive it
 
@@ -132,9 +132,9 @@ no `seq` to track.
 | `profile_start` | Begins recording rebuild/repaint counters and painted-frame timings. <br> **Recording is not free.** An active session inflates frame time by roughly 10% on a heavy tree; outside a session nothing is installed and nothing costs anything, so leave it off unless a question needs it. |
 | `profile_stop` | Ends the recording and returns the report: painted-frame timings (mean / p95 / max of the paint walk), paint counts by widget type, and the actionable pair — scope-recomposition counts and `Observable` binding-update counts, per widget, largest first. A widget rebuilding far more often than the interaction warrants is the wasted-work signal. <br> **Paint counts track frames, not damage.** Every painted frame walks the whole tree, so per-widget paint counts equal the painted-frame count; the per-widget signal lives in the rebuild and binding counters. |
 
-## Point at something (inspect mode)
+## Point at something (select mode)
 
-Every tool above runs assistant → app. Inspect mode runs the other way: it is how
+Every tool above runs assistant → app. Select mode runs the other way: it is how
 you **point**.
 
 Prose is a poor way to name a location, and for two cases it barely works — an
@@ -143,11 +143,10 @@ painted and there is no widget to name at all.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+C` | Enter inspect mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). The shortcut Chrome DevTools uses. |
+| `Ctrl+Shift+C` | Enter select mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). The shortcut Chrome DevTools uses. |
 | Click | Designate the widget under the cursor; click it again to remove it. |
 | Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
 | `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
-| `Ctrl+Click` | **Open the code that built this widget**, in your editor. Does not designate, so you can read through several without leaving marks behind. |
 | `Backspace` | Remove the newest designation. |
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
@@ -165,16 +164,8 @@ matching what the assistant sees — "fix the second one" is unambiguous.
 Hovering names the widget **and the line that built it**, and the assistant is
 given that same line — so it edits the right place instead of hunting for it.
 That is worth most in the apps where naming a widget in prose is hardest: the
-ones passing no `key=` anywhere.
-
-VS Code works as installed. For another editor, pass its URL scheme to
-`--editor` — `{file}` and `{line}` are filled in for you, encoding and all:
-
-```bash
-python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
-python -m nuiitivet.dev run app.py \
-  --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
-```
+ones passing no `key=` anywhere. To open that line yourself, see
+[Jump to the source](#jump-to-the-source).
 
 You do not have to say you did it: `status` carries a `selection` summary, so the
 assistant notices on the cheapest call it makes. Designations survive a reload
@@ -197,6 +188,30 @@ fix to see what is there now.
 > content-free marker that you designated *something*; the payload goes out only
 > when the assistant asks for it.
 
+## Jump to the source
+
+`Ctrl+Shift+Click` (`Cmd+Shift+Click` on macOS) on a widget **opens the code
+that built it**, in your editor. It is not a mode: it works with no mode on, and
+inside select mode, where it opens the code instead of designating — so you can
+read through several widgets without leaving marks behind.
+
+Hold `Ctrl+Shift` and the widget under the cursor gets brackets and a caption
+naming its file and line, so you can aim before clicking. After the click a
+caption says what happened — `opening app.py:42`, or why nothing did — and
+clears on the next pointer move.
+
+VS Code works as installed. For another editor, pass its URL scheme to
+`--editor` — `{file}` and `{line}` are filled in for you, encoding and all:
+
+```bash
+python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
+python -m nuiitivet.dev run app.py \
+  --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
+```
+
+`Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+C`,
+`Ctrl+Shift+Click` — starts with it, and nothing else does.
+
 ## Watch the assistant act (on-screen)
 
 `interaction_log` closes the loop in one direction — it lets the assistant catch
@@ -212,7 +227,7 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
-These markers are **indigo**; inspect mode's are **amber**. The two directions
+These markers are **indigo**; select mode's are **amber**. The two directions
 must never be confusable.
 
 ## No MCP host? Use the CLI

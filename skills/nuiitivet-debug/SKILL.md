@@ -98,7 +98,7 @@ top to bottom.
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
 | What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
-| The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in inspect mode. Check before guessing from a screenshot |
+| The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in select mode. Check before guessing from a screenshot |
 | `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem, and scope it to the widget they named: `screenshot(key=...)` / `screenshot(label=...)` crops to that widget plus `padding` px (default 8) each side, `screenshot(rect=[x, y, w, h])` to a raw region from `describe_tree`. Take the whole frame only when the problem has no widget to name |
 | A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop` — reach for it only because a human reported it; you cannot perceive jank or excess rebuilds yourself. The report's `rebuilds` and `bindings` counters name the widget doing wasted work; `frames` carries paint-walk mean/p95/max ms. Recording slows frames ~10%, so stop it when done. Paint counts equal painted-frame count (every painted frame walks the whole tree) — read `rebuilds`/`bindings` for the per-widget signal |
@@ -110,7 +110,7 @@ window is only reached by passing its id explicitly. An action on a window
 blocked by a modal child fails with an error naming the blocking window; drive
 the modal child (or close it) instead of retrying. Window ids are never reused,
 so an id from an earlier `status` stays valid for that window's lifetime.
-Inspect mode and the interaction log cover every window, and a designated
+Select mode and the interaction log cover every window, and a designated
 node's `describe_selection` payload names its window (`"window": <id>`) — use
 that id for the follow-up `describe_tree` / action calls.
 `interaction_log` also records window lifecycle: `window_opened` /
@@ -140,7 +140,7 @@ what they *meant*, not what the app is.
 - Refer to a designation by its `index`: it matches the badge on their screen.
 - `lost` > 0 — some designations did not survive a reload. **Say so.** Never
   reason over a silently shortened list.
-- `active: true` — they are still in inspect mode and have not pressed `Enter`,
+- `active: true` — they are still in select mode and have not pressed `Enter`,
   so the set is not committed. Do not act on it: tell them that, or ask them to
   press `Enter`.
 - `regions` are areas, numbered in the same sequence as `nodes`:

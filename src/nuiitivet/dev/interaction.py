@@ -222,7 +222,7 @@ def own_identity(node: Any) -> dict[str, Any]:
     The counterpart to :func:`resolve_target`, and the two answer different
     questions. ``resolve_target`` answers "how would you drive this?", which for
     a click on a button's inner label is the button. That is exactly right for an
-    action, and wrong as the sole answer to "what is this node?" -- inspect-mode
+    action, and wrong as the sole answer to "what is this node?" -- select-mode
     picking exists precisely so an anonymous ``Text`` can be designated,
     and reporting the button's identity beside that text's rect would describe
     neither node.

@@ -209,7 +209,7 @@ def build_server() -> "FastMCP":
           the ``window`` argument of the tree/state/screenshot/action tools to
           address that window; omitting it addresses the main window.
         - ``selection`` -- ``{"seq", "active", "nodes", "regions"}`` (or ``null``):
-          what the human has pointed at in inspect mode. A ``seq`` you have not
+          what the human has pointed at in select mode. A ``seq`` you have not
           seen before means they designated something for you since your last
           turn -- call `describe_selection` to read it. ``active: true`` means
           they are still designating.
@@ -286,7 +286,7 @@ def build_server() -> "FastMCP":
         The one channel that runs *from* the human *to* you. `describe_tree` and
         `describe_state` tell you what the app is; `interaction_log` tells you
         what the human did. This tells you what the human **meant** -- the widgets
-        they entered inspect mode and designated on purpose.
+        they entered select mode and designated on purpose.
 
         Reach for it whenever `status` reports a `selection` whose `seq` you have
         not seen, and whenever the human says "this is wrong" / "look at this
@@ -318,7 +318,7 @@ def build_server() -> "FastMCP":
         there. Regions are re-derived on every call, so read one again after your
         fix to see what occupies the area now.
 
-        `active: true` means inspect mode is still on: the human may still be
+        `active: true` means select mode is still on: the human may still be
         designating, and has not yet pressed `Enter` to keep it (`Esc` throws the
         session away). Prefer waiting over acting on a half-made set -- and if
         they say they pointed at something but the lists are empty, this is why. `lost` is

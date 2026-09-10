@@ -491,12 +491,12 @@ edit again.
   new error from the same handler after a hot-reload fix still surfaces. A
   process-wide **verbose** switch (`POST /runtime_log/verbose`) flips
   `set_log_once_enabled(False)` so a debugging session can see every occurrence.
-- **Designation** (`dev/selection.py`, `dev/inspect.py`, `dev/selection_overlay.py`,
+- **Designation** (`dev/selection.py`, `dev/select_mode.py`, `dev/selection_overlay.py`,
   [#591](https://github.com/yuksblog/nuiitivet/issues/591)).
   Every surface above runs assistant → app. This one runs **human → assistant**:
   it records what the human *pointed at*. Prose is an expensive channel for a
   location, and for two cases it barely works at all — an anonymous inner node
-  (no phrase identifies it) and a *gap* (no widget to name). Inspect mode is
+  (no phrase identifies it) and a *gap* (no widget to name). Select mode is
   a latched, dev-only gesture layer sitting on the backend's *real* input
   handlers — the same layer the interaction recorder uses, and for the same
   reason: the assistant's synthesized actions enter below it at `app._dispatch_*`
@@ -504,9 +504,14 @@ edit again.
   `GET /describe_selection`, with a `selection` roll-up on `/status` and a
   content-free `select` marker on the interaction journal so an assistant
   notices it without being told. The gestures themselves are the user guide's
-  business.
+  business. The **source jump** (`dev/source_jump.py`) shares this input layer
+  and is offered every event *ahead of* the mode (`_DEV_INPUT_LAYERS` in the
+  pyglet runner): `Ctrl+Shift+Click` opens a widget's construction site in any
+  state, and it is not a mode because nothing persists between one jump and the
+  next. `Ctrl+Shift` is the dev runner's prefix — every chord it claims starts
+  with it, so an app never has to guess which are taken.
   - **Ownership and threading.** One `Selection` per app, built by the dev runner
-    and shared three ways: `InspectMode` writes it from the UI thread,
+    and shared three ways: `SelectMode` writes it from the UI thread,
     `HotReloadController` re-resolves it after a rebuild, and the bridge reads it
     on HTTP worker threads. It carries its own `RLock` for that last split — the
     same shape as the reload and interaction journals. Nodes and regions live in
@@ -625,7 +630,7 @@ edit again.
     A template is validated **at startup**, not at click time, because a URL is
     the one route that cannot report its own failure: openers succeed whether or
     not anything is registered. A typo would otherwise arrive as silence on the
-    first Ctrl+Click. What survives the check is a well-formed URL for a scheme
+    first Ctrl+Shift+Click. What survives the check is a well-formed URL for a scheme
     nobody has registered, and nothing can catch that. That is also why
     **success is announced**, not just failure: naming the file is the only
     evidence the click was received, which is what makes "nothing happened"

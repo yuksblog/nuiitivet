@@ -11,7 +11,7 @@ app is a local process and has no such constraint, but the CLI it could spawn
 turns out to be the *worse* option anyway: see :func:`_open_url`.
 
 An MCP server would be the wrong shape for a different reason: MCP is how a
-*model* calls tools, and no model is involved -- inspect mode picks the node,
+*model* calls tools, and no model is involved -- the source jump picks the node,
 reads its site, and opens the editor, all in one process.
 """
 
@@ -69,7 +69,7 @@ def validate(spec: str) -> Optional[str]:
     guards against is a typo in a hand-written template, and a URL is the one
     route that *cannot* report its own failure: ``open`` and ``xdg-open``
     succeed whether or not anything is registered for the scheme. Discovering
-    that on the first ``Ctrl+Click``, as silence, would be the worst of both.
+    that on the first ``Ctrl+Shift+Click``, as silence, would be the worst of both.
 
     What survives this check is a well-formed URL for a scheme nobody has
     registered. Nothing here can catch that.

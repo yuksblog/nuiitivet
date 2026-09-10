@@ -1,4 +1,4 @@
-"""Tests for the inspect-mode designation buffer.
+"""Tests for the select-mode designation buffer.
 
 The cases that matter are the two boundaries the module is built around:
 designations key off *object identity* (not the resolved identity two anonymous

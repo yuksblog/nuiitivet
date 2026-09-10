@@ -198,7 +198,7 @@ def _profiling_session() -> Any:
 
 
 def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:
-    """Draw inspect-mode feedback on the live frame only.
+    """Draw select-mode and source-jump feedback on the live frame only.
 
     Live frames only, like the action overlay: the human's designations must not
     reach ``screenshot``, or the assistant would read them back as app content.

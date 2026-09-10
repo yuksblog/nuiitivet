@@ -1,6 +1,6 @@
-"""Human-facing feedback for inspect mode.
+"""Human-facing feedback for select mode and the source jump.
 
-The visual half of :mod:`nuiitivet.dev.inspect`. Where
+The visual half of :mod:`nuiitivet.dev.select_mode`. Where
 :mod:`nuiitivet.dev.action_overlay` shows the human what the *assistant* just
 did, this shows them what *they* are designating -- so the two must not look
 alike. The action overlay's indigo means "the assistant did this"; this one uses
@@ -36,6 +36,10 @@ committing are different things:
 Nodes are drawn as **corner brackets** rather than a full outline, so that when
 region designation lands (drawn as a faint fill) the two
 read as different *classes* of mark instead of two similar rectangles.
+
+The source jump (:mod:`nuiitivet.dev.source_jump`) paints here too, in any
+state: brackets and a caption on the widget a chorded click would open while
+the chord is held, and what the last jump did once it has happened.
 """
 
 from __future__ import annotations
@@ -77,7 +81,7 @@ def _color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
 
 
 def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
-    """Paint inspect-mode feedback over the just-painted tree.
+    """Paint select-mode and source-jump feedback over the just-painted tree.
 
     Called from the on-screen GPU / raster frame paths *after* the widget tree is
     painted, and never from ``App._render_snapshot``, so none of this reaches
@@ -86,14 +90,17 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
     """
     if not _enabled():
         return
-    mode = getattr(app, "_inspect_mode", None)
-    if mode is None:
+    mode = getattr(app, "_select_mode", None)
+    jump = getattr(app, "_source_jump", None)
+    if mode is None and jump is None:
         return
     try:
-        selection = mode.selection
-        active = bool(mode.active)
-        marks = selection.marks()
-        if not active and not marks:
+        selection = mode.selection if mode is not None else None
+        active = bool(mode.active) if mode is not None else False
+        marks = selection.marks() if selection is not None else []
+        jump_target = jump.hovered if jump is not None else None
+        jump_notice = jump.notice if jump is not None else None
+        if not active and not marks and jump_target is None and not jump_notice:
             return
 
         from nuiitivet.rendering.skia.skia_module import get_skia
@@ -132,12 +139,14 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
                 _paint_brackets(skia, canvas, rect, 1.0)
             _paint_badge(skia, canvas, rect, str(index), font, typeface, 1.0 if full else 0.75)
 
-        if active:
+        if active and mode is not None and selection is not None:
             band = mode.band
             if band is not None:
                 _paint_band(skia, canvas, band)
-            _paint_hover(skia, canvas, mode, font, typeface, selection.members())
+            _paint_hover(skia, canvas, mode, font, typeface, selection.members(), skip=jump_target)
             _paint_hud(skia, canvas, font, typeface, marks, width, height)
+        if jump_target is not None or jump_notice:
+            _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, height)
     except Exception:
         logger.debug("selection_overlay: paint failed", exc_info=True)
 
@@ -218,11 +227,22 @@ def _paint_badge(
 
 
 def _paint_hover(
-    skia: Any, canvas: Any, mode: Any, font: Any, typeface: Any, members: list[Any]
+    skia: Any,
+    canvas: Any,
+    mode: Any,
+    font: Any,
+    typeface: Any,
+    members: list[Any],
+    *,
+    skip: Any = None,
 ) -> None:
-    """Outline the pick candidate and name it, so the human can aim before clicking."""
+    """Outline the pick candidate and name it, so the human can aim before clicking.
+
+    ``skip`` is the widget the source jump is already bracketing: while its
+    chord is held the click is a jump, so the jump's caption is the one to show.
+    """
     candidate = mode.hovered
-    if candidate is None or any(candidate is member for member in members):
+    if candidate is None or candidate is skip or any(candidate is member for member in members):
         return
     rect = visible_rect(candidate)
     if rect is None:
@@ -232,11 +252,33 @@ def _paint_hover(
     wash.setColor(_color(skia, _ACCENT, 0.16))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
     _paint_brackets(skia, canvas, rect, 0.7)
-    # A failed jump replaces the caption rather than sitting beside it: the
-    # reason is the only thing worth reading at that moment, and it is cleared by
-    # the next pointer move.
-    notice = getattr(mode, "notice", None)
-    text = notice if notice else _describe(candidate)
+    _caption(skia, canvas, _describe(candidate), font, typeface, x, max(0.0, y - 22.0))
+
+
+def _paint_jump(
+    skia: Any,
+    canvas: Any,
+    target: Any,
+    notice: Optional[str],
+    font: Any,
+    typeface: Any,
+    height: int,
+) -> None:
+    """Bracket the widget a chorded click would open, and say what the last jump did.
+
+    The notice replaces the caption rather than sitting beside it: right after
+    a jump, what happened is the only thing worth reading, and the next pointer
+    move clears it. With the chord already released there is no widget to hang
+    it on, so it sits at the bottom corner, clear of the mode badge.
+    """
+    rect = visible_rect(target) if target is not None else None
+    if rect is None:
+        if notice:
+            _caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
+        return
+    x, y, _w, _h = rect
+    _paint_brackets(skia, canvas, rect, 0.7)
+    text = notice if notice else _describe(target)
     _caption(skia, canvas, text, font, typeface, x, max(0.0, y - 22.0))
 
 
@@ -280,7 +322,7 @@ _HINTS = (
     "Esc discard",
     "Backspace remove",
     "Ctrl+Backspace clear",
-    "Ctrl+Click source",
+    "Ctrl+Shift+Click source",
 )
 
 _SEPARATOR = "  ·  "
@@ -330,7 +372,7 @@ def _paint_hud(
     if regions:
         parts.append(_plural(regions, "region"))
 
-    lines = ["INSPECT" + _SEPARATOR + _SEPARATOR.join(parts)]
+    lines = ["SELECT" + _SEPARATOR + _SEPARATOR.join(parts)]
     lines.extend(_wrap(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
         _caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)

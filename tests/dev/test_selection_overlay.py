@@ -1,4 +1,4 @@
-"""Tests for the inspect-mode overlay.
+"""Tests for the select-mode and source-jump overlay.
 
 The load-bearing property is negative: the human's designations are drawn for
 the human only, and must never reach the assistant's perception. If they did,
@@ -13,7 +13,7 @@ import pytest
 
 from nuiitivet._interaction.perception import describe_tree
 from nuiitivet.dev import selection_overlay as so
-from nuiitivet.dev.inspect import InspectMode
+from nuiitivet.dev.select_mode import SelectMode
 from nuiitivet.dev.selection import Selection
 from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
 from nuiitivet.layout.column import Column
@@ -37,11 +37,16 @@ class _Canvas:
 
 
 class _App:
-    def __init__(self, root: Any, mode: Any = None) -> None:
+    def __init__(self, root: Any, mode: Any = None, jump: Any = None) -> None:
         self.root = root
         self.width = 300
         self.height = 200
-        self._inspect_mode = mode
+        self.modifier_keys = 0
+        self._select_mode = mode
+        self._source_jump = jump
+
+    def invalidate(self) -> None:
+        pass
 
 
 @pytest.fixture(autouse=True)
@@ -50,11 +55,11 @@ def _enabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def designating() -> Iterator[tuple[_App, InspectMode]]:
-    """An app with inspect mode latched on and one widget already designated."""
+def designating() -> Iterator[tuple[_App, SelectMode]]:
+    """An app with select mode latched on and one widget already designated."""
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
-        mode = InspectMode(Selection())
+        mode = SelectMode(Selection())
         app = _App(host.root, mode)
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 2, 2)
@@ -63,7 +68,7 @@ def designating() -> Iterator[tuple[_App, InspectMode]]:
 
 
 def test_the_overlay_never_enters_the_widget_tree(
-    designating: tuple[_App, InspectMode]
+    designating: tuple[_App, SelectMode]
 ) -> None:
     """The invariant: it holds no widgets, so ``describe_tree`` cannot see it."""
     app, _mode = designating
@@ -74,7 +79,7 @@ def test_the_overlay_never_enters_the_widget_tree(
     assert describe_tree(app.root) == before
 
 
-def test_paints_something_while_designating(designating: tuple[_App, InspectMode]) -> None:
+def test_paints_something_while_designating(designating: tuple[_App, SelectMode]) -> None:
     app, _mode = designating
     canvas = _Canvas()
 
@@ -83,7 +88,7 @@ def test_paints_something_while_designating(designating: tuple[_App, InspectMode
     assert canvas.calls, "a designated widget must be marked on screen"
 
 
-def test_paints_nothing_without_an_inspect_mode() -> None:
+def test_paints_nothing_without_a_select_mode() -> None:
     """Production, and any run without the dev runner."""
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
@@ -99,13 +104,13 @@ def test_paints_nothing_when_idle_with_nothing_designated() -> None:
         host.layout(300, 200)
         canvas = _Canvas()
 
-        so.paint_selection(_App(host.root, InspectMode(Selection())), canvas, 300, 200)
+        so.paint_selection(_App(host.root, SelectMode(Selection())), canvas, 300, 200)
 
         assert canvas.calls == []
 
 
 def test_the_env_kill_switch_disables_it(
-    designating: tuple[_App, InspectMode], monkeypatch: pytest.MonkeyPatch
+    designating: tuple[_App, SelectMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, _mode = designating
     monkeypatch.setenv("NUIITIVET_DEV_ACTION_OVERLAY", "0")
@@ -117,7 +122,7 @@ def test_the_env_kill_switch_disables_it(
 
 
 def test_a_committed_designation_still_marks_the_screen(
-    designating: tuple[_App, InspectMode]
+    designating: tuple[_App, SelectMode]
 ) -> None:
     """Leaving commits, so the badges survive the mode being switched off."""
     app, mode = designating
@@ -130,7 +135,7 @@ def test_a_committed_designation_still_marks_the_screen(
 
 
 def test_painting_never_raises_on_a_broken_canvas(
-    designating: tuple[_App, InspectMode]
+    designating: tuple[_App, SelectMode]
 ) -> None:
     """A decoration must never break the frame."""
 
@@ -143,7 +148,7 @@ def test_painting_never_raises_on_a_broken_canvas(
     so.paint_selection(app, _Broken(), app.width, app.height)
 
 
-def test_a_region_is_marked_on_screen(designating: tuple[_App, InspectMode]) -> None:
+def test_a_region_is_marked_on_screen(designating: tuple[_App, SelectMode]) -> None:
     app, mode = designating
     mode.selection.add_region((10.0, 10.0, 40.0, 30.0))
     canvas = _Canvas()
@@ -153,7 +158,7 @@ def test_a_region_is_marked_on_screen(designating: tuple[_App, InspectMode]) -> 
     assert "drawRect" in canvas.calls, "a designated area needs its own wash"
 
 
-def test_a_region_only_selection_still_paints(designating: tuple[_App, InspectMode]) -> None:
+def test_a_region_only_selection_still_paints(designating: tuple[_App, SelectMode]) -> None:
     """Regions and nodes are independent, so either alone must be drawable."""
     app, mode = designating
     mode.selection.clear()
@@ -167,7 +172,7 @@ def test_a_region_only_selection_still_paints(designating: tuple[_App, InspectMo
 
 
 def test_the_rubber_band_is_drawn_while_dragging(
-    designating: tuple[_App, InspectMode]
+    designating: tuple[_App, SelectMode]
 ) -> None:
     app, mode = designating
     mode.on_mouse_press(app, 10, 10)
@@ -194,7 +199,7 @@ def test_the_hud_names_every_gesture_the_mode_binds() -> None:
         "Esc discard",
         "Backspace remove",
         "Ctrl+Backspace clear",
-        "Ctrl+Click source",
+        "Ctrl+Shift+Click source",
     }
 
 
@@ -262,8 +267,8 @@ def test_a_node_mark_paints_only_in_its_own_window() -> None:
 
     selection = Selection()
     selection.toggle(main_content, root=main_win.root)
-    main_win._inspect_mode = InspectMode(selection)
-    second._inspect_mode = InspectMode(selection)
+    main_win._select_mode = SelectMode(selection)
+    second._select_mode = SelectMode(selection)
 
     own_canvas, foreign_canvas = _Canvas(), _Canvas()
     so.paint_selection(main_win, own_canvas, 300, 200)
@@ -271,3 +276,54 @@ def test_a_node_mark_paints_only_in_its_own_window() -> None:
 
     assert own_canvas.calls
     assert foreign_canvas.calls == []
+
+
+# --- the source jump ---------------------------------------------------------
+
+
+def test_the_jump_affordance_paints_with_no_mode_on() -> None:
+    """The chord works outside any mode, so its feedback cannot depend on one."""
+    from nuiitivet.dev.source_jump import SourceJump
+
+    with mount(Column(children=[Text("AAA")])) as host:
+        host.layout(300, 200)
+        jump = SourceJump()
+        app = _App(host.root, jump=jump)
+        app.modifier_keys = _ENTER
+        jump.on_mouse_motion(app, 2, 2)
+        canvas = _Canvas()
+
+        so.paint_selection(app, canvas, 300, 200)
+
+        assert "drawLine" in canvas.calls, "the widget a click would open gets brackets"
+
+
+def test_an_idle_jump_paints_nothing() -> None:
+    from nuiitivet.dev.source_jump import SourceJump
+
+    with mount(Column(children=[Text("AAA")])) as host:
+        host.layout(300, 200)
+        canvas = _Canvas()
+
+        so.paint_selection(_App(host.root, jump=SourceJump()), canvas, 300, 200)
+
+        assert canvas.calls == []
+
+
+def test_the_notice_paints_after_the_chord_is_released(monkeypatch: pytest.MonkeyPatch) -> None:
+    """What the jump did has to be readable even with nothing left to hang it on."""
+    from nuiitivet.dev.source_jump import SourceJump
+
+    monkeypatch.setattr("nuiitivet.dev.source_jump.open_at", lambda path, line: "no editor")
+    with mount(Column(children=[Text("AAA")])) as host:
+        host.layout(300, 200)
+        jump = SourceJump()
+        app = _App(host.root, jump=jump)
+        jump.on_mouse_press(app, 2, 2, _ENTER)
+        jump.on_mouse_release(app, 2, 2, _ENTER)
+        assert jump.hovered is None and jump.notice
+        canvas = _Canvas()
+
+        so.paint_selection(app, canvas, 300, 200)
+
+        assert "drawRoundRect" in canvas.calls, "the caption box is drawn"

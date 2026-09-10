@@ -1,4 +1,4 @@
-"""Tests for geometric picking (``pick_at``) -- the inspect-mode picker.
+"""Tests for geometric picking (``pick_at``) -- the select-mode picker.
 
 ``pick_at`` is the devtools-picker counterpart to ``hit_test``, and the cases
 that matter are the ones where the two must *disagree*: a widget that
