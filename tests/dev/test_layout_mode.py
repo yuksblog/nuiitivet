@@ -46,7 +46,7 @@ def tile(label):
 
 
 def build():
-    return Column(children=[Text("AAA", width=100, height=40)], gap=0)  # noqa: E501
+    return Column(children=[Text("AAA", width=100, height=40)], gap=0)
 
 
 def build_bound():
@@ -71,7 +71,7 @@ def build_labeled():
 
 
 def build_list():
-    return Column(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40), Text("CCC", width=100, height=40)], gap=0)
+    return Column(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40), Text("CCC", width=100, height=40)], gap=0)  # noqa: E501
 
 
 def build_row():
@@ -88,6 +88,19 @@ def build_for_each():
 
 def build_comprehension():
     return Column(children=[Text(item, width=100, height=40) for item in ("a", "b")], gap=0)
+
+
+def build_local_literal():
+    tags = ["a", "b", "c"]
+    return Column(children=[Text(tag, width=100, height=40) for tag in tags], gap=0)
+
+
+def load():
+    return ["a", "b", "c"]
+
+
+def build_data_driven():
+    return Column.builder(load(), lambda item, index: Text(item, width=100, height=40), gap=0)
 
 
 def card(label):
@@ -688,26 +701,49 @@ def test_the_line_at_a_flows_line_break_follows_the_pointers_row(app_file: Path)
         s.close()
 
 
-def test_children_that_come_through_a_for_each_are_refused_as_the_drag_begins(app_file: Path) -> None:
+def test_children_built_by_a_builder_over_a_literal_are_reordered_in_the_literal(app_file: Path) -> None:
     s = _list(app_file, "build_for_each")
-    before = s.text()
     try:
         s.drag_body((50, 20), (50, 100))
 
-        assert s.text() == before
-        assert s.mode.notice is not None and "ForEach" in s.mode.notice
+        assert 'Column.builder(["b", "a", "c"], lambda' in s.text()
+        assert s.edits.pending is not None and s.edits.pending.child == "TextBase"
     finally:
         s.close()
 
 
-def test_children_that_are_not_one_list_literal_are_refused_on_release(app_file: Path) -> None:
+def test_a_comprehension_over_a_literal_bound_in_the_function_is_reordered_there(app_file: Path) -> None:
+    s = _list(app_file, "build_local_literal")
+    try:
+        s.drag_body((50, 20), (50, 100))
+
+        assert 'tags = ["b", "a", "c"]' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_comprehension_over_an_inline_tuple_is_reordered_in_the_tuple(app_file: Path) -> None:
     s = _list(app_file, "build_comprehension")
-    before = s.text()
     try:
         s.drag_body((50, 20), (50, 70))
 
+        assert 'for item in ("b", "a")]' in s.text()
+    finally:
+        s.close()
+
+
+def test_children_whose_order_is_not_in_a_literal_are_refused_on_release(app_file: Path) -> None:
+    s = _list(app_file, "build_data_driven")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 100)
+        assert s.mode.ghosts, "the source decides, so the ghost shows until release"
+
+        s.mode.on_mouse_release(s.app, 50, 100)
+
         assert s.text() == before
-        assert s.mode.notice == "children are a comprehension, not one list"
+        assert s.mode.notice == "items are the result of load(...), not one list"
     finally:
         s.close()
 

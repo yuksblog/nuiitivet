@@ -374,3 +374,20 @@ def test_the_editor_target_is_absolute(recording: None) -> None:
 
 def test_no_editor_target_without_a_site() -> None:
     assert source.absolute_target(Container()) is None
+
+
+def test_a_classmethod_factory_on_the_widgets_own_class_is_part_of_its_construction() -> None:
+    """``Column.builder(...)`` builds the column through a classmethod; the user
+    call naming the factory is the one that built it."""
+    from nuiitivet.layout.column import Column
+    from nuiitivet.widgets.text import TextBase as Text
+
+    source.install()
+    try:
+        column = Column.builder(["a"], lambda item, index: Text(item))
+        frame = source.construction_frame(column)
+    finally:
+        source.uninstall()
+
+    assert frame is not None
+    assert frame.function == "test_a_classmethod_factory_on_the_widgets_own_class_is_part_of_its_construction"

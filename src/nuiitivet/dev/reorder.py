@@ -6,10 +6,10 @@ resolves to a slot -- the sibling gap the pointer is over, read from the rects
 layout gave the siblings -- and the edit that lands it is one element moved in
 the ``children`` list literal. What is written is never a coordinate.
 
-Two gates decide whether such an edit exists at all: the children must be the
-container's own list, not a ``ForEach``'s data, and every laid-out child must
-be a direct element of one list literal, so that a layout index names a source
-span. The second half of that check is the source's (:func:`.source_edit.plan_move`).
+Whether such an edit exists at all is the source's question
+(:func:`.source_edit.plan_move`): the list literal that owns the order -- the
+``children`` list, or the data a comprehension or a ``ForEach`` iterates --
+must be found, and every laid-out child must map to one of its elements.
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ from nuiitivet.layout.layout_utils import expand_layout_children
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.widgeting.widget import ComposableWidget
+
+from .source import construction_frame
 
 logger = logging.getLogger(__name__)
 
@@ -43,21 +45,37 @@ def container_of(node: Any) -> tuple[Optional[Any], Any]:
 
     Composable wrappers are transparent; any other container in between means
     ``node`` is not a child of a list a drag can reorder, and the answer is
-    ``(None, member)``.
+    ``(None, member)``. A ``ForEach`` is transparent too, but its children are
+    the ones layout places, so the member stays below it.
     """
     member = node
     for ancestor in ancestors(node):
         if isinstance(ancestor, REORDERABLE):
             return (ancestor, member)
+        if isinstance(ancestor, ForEach):
+            continue
         if not isinstance(ancestor, ComposableWidget):
             return (None, member)
         member = ancestor
     return (None, member)
 
 
-def data_driven(container: Any) -> bool:
-    """Whether ``container``'s children come through a ``ForEach``, whose order is its data's."""
-    return any(isinstance(child, ForEach) for child in container.children_snapshot())
+def visible(node: Any) -> Any:
+    """The widget the human sees for a laid-out child.
+
+    ``node`` itself when a user call built it; otherwise -- a fragment a
+    ``ForEach`` wraps each item in -- the sole descendant a user call did
+    build, which is what a caption or a check should name.
+    """
+    while construction_frame(node) is None:
+        child = getattr(node, "built_child", None)
+        if child is None:
+            children = list(node.children_snapshot()) if hasattr(node, "children_snapshot") else []
+            if len(children) != 1:
+                break
+            child = children[0]
+        node = child
+    return node
 
 
 def siblings(container: Any) -> list[Any]:
@@ -162,9 +180,9 @@ def _nearer(y: float, first: Rect, second: Rect) -> bool:
 __all__ = [
     "REORDERABLE",
     "container_of",
-    "data_driven",
     "insertion_line",
     "reorder_reading",
     "siblings",
     "slot_at",
+    "visible",
 ]

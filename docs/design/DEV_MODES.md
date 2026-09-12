@@ -285,14 +285,16 @@ containers, grids and alignment are later increments.
   alignment's and has no reading yet. Fixing that here keeps alignment from
   reopening the gesture later. A wrapping flow has no per-child cross reading,
   so every travel in it is a reorder, row by row.
-- **A reorder moves a span.** The runner locates the container's `children`
-  list literal through the container's site and moves the child's element,
-  with one of its separators, so the list's formatting survives. Two gates
-  decide whether that edit exists: children that come through a `ForEach`
-  have their order in the data, and children that are not all direct elements
-  of one list literal — a comprehension, a concatenation, a spread — give a
-  layout index no source span. Both are refusals; tree indices are never
-  trusted past those gates.
+- **A reorder moves a span.** The runner locates, through the container's
+  site, the list literal that owns the children's order — `children` itself,
+  or the list a comprehension or a `ForEach` iterates, inline or bound once to
+  a name in the enclosing scope and never mentioned again — and moves the
+  child's element there, with one of its separators, so the formatting
+  survives. The gate is that a layout index must name a source span: a
+  concatenation, a spread, a filtered comprehension, items from a call or a
+  view model, a name bound twice or used again, each leave the order somewhere
+  the runner cannot see, and are refused by name. Tree indices are never
+  trusted past that gate.
 - **Write, reload, check.** The ghost is a prediction: after the reload the
   edit log finds the instances rebuilt at the site and compares their rect —
   or, for a move, the class at the slot — with it, and a miss, a site that now

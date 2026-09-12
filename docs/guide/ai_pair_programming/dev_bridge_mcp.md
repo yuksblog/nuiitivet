@@ -223,20 +223,22 @@ When one call builds many widgets — a helper returning a card, called from a
 loop — every one of them gets a ghost and the caption counts them
 (`14 widgets`), because the edit changes them all.
 
-A body drag moves the widget in the list that built it. In a `Column` only
-up-and-down travel reorders and in a `Row` only left-and-right; drag across
-the axis and nothing happens on release. In a `Flow` or `UniformFlow` any
-direction reorders, row by row. Dragging a card's title moves it within every
-card built by the same helper, as with a resize.
+A body drag moves the widget in the list that orders it: the `children` list,
+or the list a comprehension or `Column.builder()` iterates — written inline,
+or bound once to a name in the same function or module (`tags = [...]`). In a
+`Column` only up-and-down travel reorders and in a `Row` only left-and-right;
+drag across the axis and nothing happens on release. In a `Flow` or
+`UniformFlow` any direction reorders, row by row. Dragging a card's title
+moves it within every card built by the same helper, as with a resize.
 
 Some drags are refused, and the corner badge says why. Nothing is written for:
 
 - a size bound to a name or an expression (`width=self.card_w`);
 - a widget whose constructor takes no `width`, `height` or `size`;
-- a reorder inside `Column.builder()` and friends — the order lives in the
-  data you passed, not in the source;
-- a reorder where `children` is not one list literal — a comprehension,
-  `head + tail`, `[first, *rest]`;
+- a reorder whose order is not in one list literal in the file — `head +
+  tail`, `[first, *rest]`, a filtered comprehension, items from a call or a
+  view model, a name that is assigned twice or used again after its list. The
+  badge names the list;
 - a call the runner cannot find at the recorded line, or a widget built with
   no source recorded.
 
