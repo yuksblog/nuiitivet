@@ -265,3 +265,58 @@ def test_successful_reload_records_changed_subset(tmp_path: Path) -> None:
     # All modules reloaded, but only the edited file is reported as changed.
     assert events[-1].modules == ("hot", "helper")
     assert events[-1].changed == ("hot",)
+
+
+# --- layout mode's edits --------------------------------------------------------
+
+
+class _FakeEdits:
+    """Stands in for the edit log: records which outcome the controller reported."""
+
+    def __init__(self) -> None:
+        self.landed: list[list[Any]] = []
+        self.failed: list[str] = []
+
+    def after_reload(self, roots: Any) -> None:
+        self.landed.append(list(roots))
+
+    def reload_failed(self, traceback_text: str) -> None:
+        self.failed.append(traceback_text)
+
+
+def test_a_successful_reload_lets_the_pending_edit_check_every_window() -> None:
+    app = _FakeApp()
+    second = _fake_window(2, inert=False)
+    app.app.windows = [app, second]
+    edits = _FakeEdits()
+    controller = HotReloadController(app, Path("."), _fake_factory, edits=edits)  # type: ignore[arg-type]
+
+    with _patched_reload(reload=ReloadResult(reloaded=["pkg"], new_factory=_fake_factory)):
+        controller._do_reload()
+
+    assert edits.landed == [[app.root, second.root]]
+    assert edits.failed == []
+
+
+def test_a_failed_reload_is_reported_to_the_pending_edit() -> None:
+    edits = _FakeEdits()
+    controller = HotReloadController(_FakeApp(), Path("."), _fake_factory, edits=edits)  # type: ignore[arg-type]
+
+    with _patched_reload(reload_side_effect=SyntaxError("bad edit")):
+        controller._do_reload()
+
+    assert edits.landed == []
+    assert len(edits.failed) == 1 and "bad edit" in edits.failed[0]
+
+
+def test_request_reload_sets_the_flag_and_acknowledges_the_file(tmp_path: Path) -> None:
+    """A file the runner wrote itself must not reload twice: once on request,
+    once more when the watcher notices the mtime."""
+    file = tmp_path / "app.py"
+    file.write_text("v = 1\n", encoding="utf-8")
+    controller = _make_controller(None)
+
+    controller.request_reload(str(file))
+
+    assert controller._pending.is_set()
+    assert controller._watcher._mtimes[file] == file.stat().st_mtime

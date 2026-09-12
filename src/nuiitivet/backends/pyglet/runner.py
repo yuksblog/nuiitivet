@@ -59,13 +59,14 @@ def _env_flag(name: str, default: bool = False) -> bool:
 # The dev-only input layers, in the order an event is offered to them. The
 # source jump goes first so its chord means the same thing inside a mode as
 # outside one; it never consumes a key, so the order is moot for the keyboard.
-_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode")
+# The two modes are never latched at once, so their order is moot as well.
+_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode", "_layout_mode")
 
 
 def _dev_consumed(app: Any, hook: str, *args: Any) -> bool:
     """Offer an input event to the dev-only input layers; ``True`` if one took it.
 
-    Absent -- production, or any run without the dev runner -- this is two
+    Absent -- production, or any run without the dev runner -- this is three
     ``getattr`` calls returning ``None``, so the input path pays nothing for it.
     A failure inside a layer must never swallow the human's input, so it
     degrades to "not consumed" and the event continues to the next layer and
@@ -984,10 +985,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
-        # Dev-only: a chorded press is a source jump, and while select mode is
-        # latched any press is the human aiming a designation. Either is consumed
-        # *before* dispatch -- letting it through would fire the button they were
-        # merely pointing at.
+        # Dev-only: a chorded press is a source jump, and while a mode is
+        # latched any press is the human aiming a designation or a drag. Either
+        # is consumed *before* dispatch -- letting it through would fire the
+        # button they were merely pointing at.
         if _dev_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
             return True
         try:
@@ -1081,9 +1082,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_key_press_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
-        # Dev-only: select mode owns Ctrl+Shift+C, and every key while it is
-        # latched. Checked before the recorder and the escape latch so its own
-        # exit key reaches it rather than closing a dialog behind it.
+        # Dev-only: the modes own their Ctrl+Shift chords, and every key while
+        # one is latched. Checked before the recorder and the escape latch so a
+        # mode's own exit key reaches it rather than closing a dialog behind it.
         #
         # Returning ``True`` is load-bearing, not tidiness: pyglet treats a falsy
         # return as "not handled" and runs the next handler in the stack, whose
@@ -1166,7 +1167,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_key_release_set_modifier_keys_exc", "Failed to update modifier-key mask")
 
-        # Dev-only: select mode consumed the press, so its release must not
+        # Dev-only: a latched mode consumed the press, so its release must not
         # reach the focused widget on its own.
         if _dev_consumed(win, "on_key_release", win, key_name, modifier_keys):
             return True

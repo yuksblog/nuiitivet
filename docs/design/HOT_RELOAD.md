@@ -577,7 +577,9 @@ edit again.
     The payload keeps a short chain rather than one location, for the reason the
     region fields keep two: "change every tile" wants the helper and "change this
     one" wants the call site, and only the caller knows which was meant. The
-    innermost frame is flagged as the single place an editor can open.
+    innermost frame is flagged as the single place an editor can open. Each
+    frame also carries the span of its executing call, which is what lets
+    layout mode edit the exact `Call` on a line that holds several.
   - **The jump** (`dev/editor.py`) is `Ctrl`/`Cmd`+click, which does *not*
     designate -- reading several widgets' code in a row must not leave a mark per
     widget. It also does not leave the mode, which is only safe because the
@@ -677,7 +679,72 @@ edit again.
     assistant did this", amber means "the human means this", and one visual
     language for opposite directions would mislead. Same paint-only,
     outside-the-tree, live-frames-only constraint, so `describe_tree` never sees
-    it and `screenshot` never contains it.
+    it and `screenshot` never contains it. The source jump's brackets are a
+    fourth family, rose: under a held chord inside select mode, amber brackets
+    would read as a designation about to be made rather than a jump.
+- **Layout mode** (`dev/layout_mode.py`, `dev/landing.py`, `dev/source_edit.py`,
+  `dev/layout_overlay.py`). The sibling of select mode with the opposite division
+  of labour: the human drags a widget's corner and the **dev runner edits the
+  source itself** — no assistant, no turn. Release writes `width` / `height` /
+  `size` into the call that built the widget, and the hot reload that follows
+  is the apply step. The tree is never mutated: what is on screen always came
+  from the code, and during the gesture only the overlay moves. Increment 1
+  ships the mode and the corner resize; body drags (reorder, move, alignment)
+  are later increments.
+  - **Two modes, one switch rule.** `Ctrl+Shift+E` enters; `Ctrl+Shift+C`
+    inside it switches to select mode and vice versa. Each mode lets the
+    *other's* chord pass and the entering mode closes the other, so the rule
+    holds whatever order the input layers run in, and neither mode needs the
+    other to exist. There is no commit: every release writes, so `Ctrl+Z` is
+    what "I did not mean that" reaches for.
+  - **The selection is held by the pointer.** A click selects, and `↑` / `↓`
+    walk the selection so a container can be grabbed through its children.
+    That is the selection's only job, so it lasts exactly as long as the
+    pointer stays on the selected widget and its grab zones, and inside that
+    rect the children's hover is overridden. The alternatives were rejected by
+    feel: hover-always-wins loses the container before its corner can be
+    reached, and drawing selection and hover as two outlines at once makes the
+    mode read like select mode's marks.
+  - **The exact call, not the line.** A construction site records each frame's
+    executing call as a span, and the edit re-parses the file and matches that
+    `Call` node: a line can hold several calls, and chained calls share a
+    start. The frame edited is the innermost user frame *outside any
+    `__init__`*, since inside a constructor the executing call is
+    `super().__init__(...)`, not the call a human recognises as building the
+    widget. A frame also records whether it built the widget *directly*: a
+    label a button builds for itself, in its constructor or during layout, has
+    no user call of its own, so a pointer on it means the nearest ancestor a
+    user call did build. A site under an install directory is refused rather
+    than written to.
+  - **Span surgery.** An edit replaces the literal's span or inserts the
+    keyword after the last argument; nothing around it is reformatted. Undo
+    is the inverse span, and it refuses when the text it expects has moved
+    under a hand edit.
+  - **Refusals are badges, not marks.** A value that is a name or expression, a
+    keyword that may come through `**kwargs`, a constructor without the
+    keyword, a call that cannot be located: nothing is written and the badge
+    names the reason. Layout mode never touches the `Selection`; a refusal is
+    not handed to the assistant.
+  - **Landing values are measured, not guessed.** The `auto` band is the
+    widget's own intrinsic size measured at the proposed width, and the `wt`
+    band is what the parent's own allocation would give it, so a snapped value
+    matches the reload to the pixel. `auto` outranks `wt` where the bands
+    overlap; `Alt` at release suppresses snapping. An axis whose landing
+    equals what is declared is not rewritten.
+  - **Write, reload, check.** The ghost is a prediction: after the reload the
+    edit log finds the instances rebuilt at the site and compares their rect
+    with it, and a miss, a site that now builds nothing, or a failed reload
+    becomes the badge.
+  - **Shared sites.** One helper builds fourteen cards; the edit is to the
+    helper and changes them all. What makes that honest is the ghost: every
+    instance of the site gets one before release, and the caption carries the
+    count.
+  - **Overlay.** Teal, the third colour family: amber is a note the human
+    wrote, indigo a report of what the assistant did, teal a change about to be
+    made to a file. The candidate's corner brackets *are* the grab zones; the
+    ghost is a dashed outline captioned with the landing values; the badge
+    lists every gesture. Same paint-only, live-frames-only constraint as the
+    other two.
 - **CLI clients** (`dev/client.py`, `dev/__main__.py`). `describe-tree`,
   `describe-state`, `describe-selection`, `reload-log`, `interaction-log`,
   `runtime-log`, `screenshot`, `click`, `type`, and `key` are one-shot subcommands that discover the running
@@ -798,3 +865,7 @@ coordinate, and a scroll carries no content.
 | interaction journal (pull-able human UI actions for an AI pair) | `dev/interaction.py` (recorded from the backend input handlers) |
 | action (`click` / `type` / `key`, target resolution) | `_interaction/action.py`, bound to the overlay observer by `dev/action.py` |
 | MCP server (bridge as MCP tools, stdio) | `dev/mcp_server.py` |
+| designation (select mode, selection, overlay) | `dev/select_mode.py`, `dev/selection.py`, `dev/selection_overlay.py` |
+| source jump (`Ctrl+Shift+Click`) | `dev/source_jump.py`, `dev/source.py`, `dev/editor.py` |
+| layout mode (corner resize → source edit) | `dev/layout_mode.py`, `dev/landing.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
+| mechanics shared by the dev input layers (prefix chord, click/drag, pick, ancestor walk) | `dev/gesture.py` |

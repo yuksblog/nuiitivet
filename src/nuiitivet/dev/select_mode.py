@@ -13,8 +13,9 @@ multi-pick sequence, and ``Shift`` -- the obvious candidate -- is the modifier
 applications own most (see ``_COMMAND_MODS`` in :mod:`.interaction`). The
 shortcut matches the one Chrome DevTools uses for the same gesture, and
 ``Ctrl+Shift`` is the dev runner's prefix: every chord the runner claims -- this
-one, and the source jump's click (:mod:`.source_jump`) -- starts with it, so an
-app never has to guess which chords are taken.
+one, layout mode's (:mod:`.layout_mode`), and the source jump's click
+(:mod:`.source_jump`) -- starts with it, so an app never has to guess which
+chords are taken.
 
 While latched, input is **consumed**: a click is a designation, not an
 interaction, and letting it also reach the app would fire the button the human
@@ -29,30 +30,20 @@ took five ``Backspace`` presses to undo.
 from __future__ import annotations
 
 import logging
-import weakref
 from typing import Any, Callable, Optional
 
-from nuiitivet._interaction.perception import ancestors, pick_at
-from nuiitivet.input.codes import (
-    MOD_CTRL,
-    MOD_META,
-    MOD_SHIFT,
-    resolve_modifiers as _resolve_physical_modifiers,
-)
-
+from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .interaction import InteractionJournal
 from .selection import Selection
 
 logger = logging.getLogger(__name__)
 
-# Pointer travel, in logical pixels, below which a press/release pair is a click
-# rather than a drag. Discriminating on *release* is what lets one gesture serve
-# both: the press handler never has to commit to a reading it cannot yet make.
-_DRAG_THRESHOLD = 4.0
-
 # The key that enters the mode, with either accelerator -- Ctrl on Windows/Linux,
 # Cmd on macOS -- matching how the same shortcut is spelled per platform.
 _ENTER_KEY = "c"
+# Layout mode's key. Its chord is let through while this mode is latched, so
+# the two switch directly; the mode that enters closes the other.
+_LAYOUT_KEY = "e"
 
 
 class SelectMode:
@@ -116,15 +107,16 @@ class SelectMode:
         mode's own exits (``Enter`` / ``Esc``) are always available.
         """
         key = str(name).strip().lower()
-        physical = _resolve_physical_modifiers(int(modifier_keys))
+        chord = chord_held(modifier_keys)
 
         if not self.active:
-            accel = bool(physical & (MOD_CTRL | MOD_META))
-            if key == _ENTER_KEY and accel and physical & MOD_SHIFT:
+            if key == _ENTER_KEY and chord:
                 self._enter(app)
                 return True
             return False
 
+        if key == _LAYOUT_KEY and chord and getattr(app, "_layout_mode", None) is not None:
+            return False
         if key == "escape":
             self._discard(app)
         elif key == "enter":
@@ -134,7 +126,7 @@ class SelectMode:
             # accelerator escalates a backspace to a whole word in a text field.
             # Both land *inside* the session, so ``Esc`` undoes either -- which
             # is what makes clearing safe to reach for.
-            if physical & (MOD_CTRL | MOD_META):
+            if accel_held(modifier_keys):
                 self._selection.clear()
             else:
                 self._selection.remove_last()
@@ -155,11 +147,19 @@ class SelectMode:
         return self.active
 
     def _enter(self, app: Any) -> None:
+        other = getattr(app, "_layout_mode", None)
+        if other is not None and other.active:
+            other.leave(app)
         self._selection.enter()
         self._press = None
         self._hover = None
         self._band = None
         self._changed(app, note=False)
+
+    def commit(self, app: Any) -> None:
+        """Keep the session's work and leave, as ``Enter`` does. No-op when off."""
+        if self.active:
+            self._commit(app)
 
     def _commit(self, app: Any) -> None:
         self._selection.commit()
@@ -188,8 +188,7 @@ class SelectMode:
     def on_mouse_release(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Resolve the gesture. Returns ``True`` when the mode consumed it.
 
-        Travel below :data:`_DRAG_THRESHOLD` is a click, which toggles the widget
-        under the cursor; anything further is a drag, which designates the area
+        A click toggles the widget under the cursor; a drag designates the area
         it swept. Deciding here rather than on press is what lets one gesture
         serve both without the press handler committing to a reading it cannot
         yet make.
@@ -200,19 +199,17 @@ class SelectMode:
         self._band = None
         if press is None:
             return True
-        if abs(float(x) - press[0]) > _DRAG_THRESHOLD or abs(float(y) - press[1]) > _DRAG_THRESHOLD:
+        if travelled(press, x, y):
             self._selection.add_region(_normalized(press, (float(x), float(y))))
             self._changed(app)
             return True
 
         root = getattr(app, "root", None)
-        if root is None:
-            return True
-        node = self._pick(root, press[0], press[1])
-        if node is None:
+        node = pick(app, press[0], press[1])
+        if root is None or node is None:
             return True
         self._selection.toggle(node, root=root)
-        self._anchor = _weak(node)
+        self._anchor = weak(node)
         self._changed(app)
         return True
 
@@ -229,57 +226,37 @@ class SelectMode:
             band = _normalized(self._press, (float(x), float(y)))
             if band != self._band:
                 self._band = band
-                _invalidate(app)
+                invalidate(app)
             return True
-        root = getattr(app, "root", None)
-        candidate = self._pick(root, x, y) if root is not None else None
+        candidate = pick(app, x, y)
         if candidate is self.hovered:
             # A mouse move that does not change the candidate would otherwise
             # request a repaint per motion event.
             return True
-        self._hover = _weak(candidate)
-        _invalidate(app)
+        self._hover = weak(candidate)
+        invalidate(app)
         return True
-
-    def _pick(self, root: Any, x: float, y: float) -> Optional[Any]:
-        try:
-            return pick_at(root, x, y)
-        except Exception:
-            logger.debug("select: pick_at failed", exc_info=True)
-            return None
 
     # --- ancestor walk ----------------------------------------------------
 
     def _walk_up(self, app: Any) -> None:
         """Replace the newest member with its parent."""
         current = self._selection.last()
-        if current is None:
+        parent = parent_of(current) if current is not None else None
+        if parent is None:
             return
-        chain = ancestors(current)
-        if not chain:
-            return
-        self._selection.replace_last(chain[0], root=getattr(app, "root", None))
+        self._selection.replace_last(parent, root=getattr(app, "root", None))
         self._changed(app)
 
     def _walk_down(self, app: Any) -> None:
-        """Step back toward the node the walk started from.
-
-        ``down`` is only meaningful as the inverse of ``up``: a node has many
-        children and no way to guess which the human meant, but it has exactly
-        one child on the path back to where they started. Without an anchor --
-        the walk never went up -- there is nothing to descend to.
-        """
+        """Step back toward the node the walk started from."""
         current = self._selection.last()
         anchor = self._anchor() if self._anchor is not None else None
-        if current is None or anchor is None or anchor is current:
+        child = child_toward(current, anchor)
+        if child is None:
             return
-        previous = anchor
-        for node in ancestors(anchor):
-            if node is current:
-                self._selection.replace_last(previous, root=getattr(app, "root", None))
-                self._changed(app)
-                return
-            previous = node
+        self._selection.replace_last(child, root=getattr(app, "root", None))
+        self._changed(app)
 
     # --- change notification ----------------------------------------------
 
@@ -292,7 +269,7 @@ class SelectMode:
         the human sees no reason why until something else happens to force a
         redraw.
         """
-        _invalidate(app)
+        invalidate(app)
         if note and self._journal is not None:
             try:
                 self._journal.record_select()
@@ -300,28 +277,11 @@ class SelectMode:
                 logger.debug("select: recording the select marker failed", exc_info=True)
 
 
-def _invalidate(app: Any) -> None:
-    """Ask for a frame, so the overlay reflects the change that just happened."""
-    try:
-        app.invalidate()
-    except Exception:
-        logger.debug("select: invalidate failed", exc_info=True)
-
-
 def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float, float, float]:
     """Return the rect two corners span, whichever direction the drag went."""
     x0, x1 = sorted((a[0], b[0]))
     y0, y1 = sorted((a[1], b[1]))
     return (x0, y0, x1 - x0, y1 - y0)
-
-
-def _weak(obj: Any) -> Optional[Callable[[], Any]]:
-    if obj is None:
-        return None
-    try:
-        return weakref.ref(obj)
-    except TypeError:
-        return None
 
 
 __all__ = ["SelectMode"]

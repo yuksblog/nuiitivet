@@ -151,6 +151,7 @@ painted and there is no widget to name at all.
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
 | `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
+| `Ctrl+Shift+E` | Keep them and switch to [layout mode](#resize-a-widget-by-dragging-layout-mode). |
 
 Every designation and both removals take effect *inside* the session, so `Esc`
 undoes any of them.
@@ -188,15 +189,64 @@ fix to see what is there now.
 > content-free marker that you designated *something*; the payload goes out only
 > when the assistant asks for it.
 
+## Resize a widget by dragging (layout mode)
+
+Select mode tells the assistant what you mean. Layout mode needs no assistant:
+drag a widget's corner, and on release the dev runner writes the new `width` /
+`height` / `size` into the call that built it. Hot reload applies the edit.
+
+| Gesture | What it does |
+| --- | --- |
+| `Ctrl+Shift+E` | Enter layout mode (`Cmd+Shift+E` on macOS). Inside select mode it switches directly, keeping your designations as `Enter` would; `Ctrl+Shift+C` switches back. |
+| Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
+| Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
+| Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
+| Release | Write that value and reload. The ghost stays until the reload lands. |
+| `Alt` while dragging | Land on the exact pixel count instead of snapping. |
+| `Ctrl+Z` | Undo the last edit this mode wrote. |
+| `Esc` | Cancel the drag in flight; otherwise leave. |
+
+The value written is one of the three sizes a widget accepts:
+
+- `"auto"` when you release within a few pixels of the widget's natural size;
+- `"wt"` when you release where a weight would put it — the full cross axis of
+  a `Column`, or its share of the leftover on the main axis;
+- the integer otherwise.
+
+The caption says which (`w 240  ·  h auto`). A widget with a `size` parameter
+(`Icon`) stays square: the larger of the two deltas wins.
+
+When one call builds many widgets — a helper returning a card, called from a
+loop — every one of them gets a ghost and the caption counts them
+(`14 widgets`), because the edit changes them all.
+
+Some drags are refused, and the corner badge says why. Nothing is written for:
+
+- a size bound to a name or an expression (`width=self.card_w`);
+- a widget whose constructor takes no `width`, `height` or `size`;
+- a call the runner cannot find at the recorded line, or a widget built with
+  no source recorded.
+
+After the reload, the badge also reports a size that did not land where the
+ghost said, or a reload that failed on the edit. Either way `Ctrl+Z` still
+reverts it — unless you have edited that line by hand since, in which case the
+undo is refused rather than applied to the wrong text.
+
+Only `width`, `height` and `size` are ever written. `padding`, `gap`, colours
+and every other style value are yours to change in code.
+
 ## Jump to the source
 
 `Ctrl+Shift+Click` (`Cmd+Shift+Click` on macOS) on a widget **opens the code
 that built it**, in your editor. It is not a mode: it works with no mode on, and
-inside select mode, where it opens the code instead of designating — so you can
-read through several widgets without leaving marks behind.
+inside select mode or layout mode, where it opens the code instead of
+designating or selecting — so you can read through several widgets without
+leaving marks behind.
 
-Hold `Ctrl+Shift` and the widget under the cursor gets brackets and a caption
-naming its file and line, so you can aim before clicking. After the click a
+Hold `Ctrl+Shift` and the widget under the cursor gets **rose** brackets and a
+caption naming its file and line, so you can aim before clicking — a different
+colour from select mode's amber, so inside that mode you can tell a jump from
+a designation. After the click a
 caption says what happened — `opening app.py:42`, or why nothing did — and
 clears on the next pointer move.
 
@@ -210,7 +260,7 @@ python -m nuiitivet.dev run app.py \
 ```
 
 `Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+C`,
-`Ctrl+Shift+Click` — starts with it, and nothing else does.
+`Ctrl+Shift+E`, `Ctrl+Shift+Click` — starts with it, and nothing else does.
 
 ## Watch the assistant act (on-screen)
 
@@ -227,8 +277,10 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
-These markers are **indigo**; select mode's are **amber**. The two directions
-must never be confusable.
+These markers are **indigo**; select mode's are **amber**; layout mode's ghosts
+are **teal**; the source jump's brackets are **rose**. What the assistant did,
+what you pointed at, what is about to change in your file, and where a click
+would take you must never be confusable.
 
 ## No MCP host? Use the CLI
 

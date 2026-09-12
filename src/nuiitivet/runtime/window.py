@@ -628,6 +628,9 @@ class Window:
         # a chorded click opens the code that built a widget; ``None`` in
         # production.
         self._source_jump: Optional[Any] = None
+        # Dev-only layout mode. The dev runner attaches a ``LayoutMode`` here so
+        # a corner drag rewrites the size in the source; ``None`` in production.
+        self._layout_mode: Optional[Any] = None
         # Last known pointer position / held buttons (screen coords), used to
         # synthesize the pointer event delivered on a modifier-key mask change.
         self._last_pointer_pos: Optional[Tuple[float, float]] = None
@@ -1451,9 +1454,10 @@ class Window:
                 exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
 
             try:
-                from nuiitivet.dev import selection_overlay
+                from nuiitivet.dev import layout_overlay, selection_overlay
 
                 selection_overlay.paint_selection(self, canvas, self.width, self.height)
+                layout_overlay.paint_layout(self, canvas, self.width, self.height)
             except Exception:
                 exception_once(
                     logger, "app_snapshot_dev_selection_overlay_exc", "dev selection overlay paint raised"
