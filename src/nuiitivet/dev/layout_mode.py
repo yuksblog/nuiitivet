@@ -1,13 +1,14 @@
-"""Layout mode: the human drags a widget's corner, and the runner edits the source.
+"""Layout mode: the human drags a widget, and the runner edits the source.
 
 The sibling of :mod:`.select_mode`, on the same real input handlers, with the
 opposite division of labour. Select mode is how the human *says* something to
-the assistant; this is how they *do* something with no assistant in the loop:
-a corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
-``"auto"`` or ``"wt"`` (:mod:`.landing`), release writes the keyword into the
-call that built the widget (:mod:`.source_edit`), and the hot reload that
-follows is what applies it. The tree is never touched directly: what is on
-screen always came from the code.
+the assistant; this is how they *do* something with no assistant in the loop.
+A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
+``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
+the widget's siblings (:mod:`.reorder`). Release writes the keyword, or moves
+the element, in the call that built it (:mod:`.source_edit`), and the hot
+reload that follows is what applies it. The tree is never touched directly:
+what is on screen always came from the code.
 
 Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and select mode's
 switch directly, each mode closing the other on entry. There is no commit:
@@ -19,16 +20,16 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import global_visual_rect
 from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
 
-from . import landing
+from . import landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .snapshot import Path, path_of, widgets_by_path
-from .source import construction_frame, site_owner, widgets_built_at
-from .source_edit import Edit, EditLog, Refusal, Value, is_project_file, plan_keywords
+from .source import Frame, construction_frame, site_owner, widgets_built_at
+from .source_edit import Edit, EditLog, Refusal, Value, is_project_file, plan_keywords, plan_move
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,19 @@ _CORNER_GRAB = 10.0
 
 @dataclass
 class Ghost:
-    """One proposed rect the overlay draws, with its caption."""
+    """One shape the overlay draws for a proposed edit, with its caption.
+
+    A resize's ghost is the proposed rect. A reorder's is an insertion line,
+    given as a rect with no thickness on the axis it crosses.
+    """
 
     rect: Rect
     caption: str
+    line: bool = False
 
 
 @dataclass
-class _Drag:
+class _Resize:
     node: Any
     # Which corner is held: -1 for left / top, +1 for right / bottom.
     corner: tuple[int, int]
@@ -70,8 +76,31 @@ class _Drag:
     snap: bool = True
 
 
+@dataclass
+class _Move:
+    node: Any
+    # The container's direct child on ``node``'s path -- ``node`` itself unless
+    # a composable wrapper stands between -- and its current index.
+    member: Any
+    container: Any
+    siblings: list[Any]
+    index: int
+    start: tuple[float, float]
+    # Every container built from the same site, this one included: the edit
+    # moves the child in all of them, so each gets a ghost.
+    instances: list[Any]
+    # The slot the pointer is over, or ``None`` while the drag does not read
+    # as a reorder; and the pointer itself, which picks where the line sits
+    # when a slot has two places.
+    slot: Optional[int] = None
+    pointer: tuple[float, float] = (0.0, 0.0)
+
+
+_Drag = Union[_Resize, _Move]
+
+
 class LayoutMode:
-    """Latched resize mode for one window.
+    """Latched layout mode for one window: corner drags resize, body drags reorder.
 
     Attach as ``app._layout_mode``; the backend's real input handlers call the
     ``on_*`` hooks and honour a ``True`` return as "consumed". While latched
@@ -86,9 +115,10 @@ class LayoutMode:
         # reload replaces the tree under them.
         self._app: Optional[Callable[[], Any]] = None
         self._pointer: Optional[tuple[float, float]] = None
-        # Where a non-corner press landed, so release can tell a click from a
-        # body drag.
+        # Where a non-corner press landed and on what, so travel can start a
+        # body drag and release can tell a click from one.
         self._press: Optional[tuple[float, float]] = None
+        self._press_node: Optional[Callable[[], Any]] = None
         self._drag: Optional[_Drag] = None
         # Weak throughout: the mode must never keep a detached subtree alive.
         self._hover: Optional[Callable[[], Any]] = None
@@ -126,19 +156,21 @@ class LayoutMode:
 
     @property
     def candidate(self) -> Optional[Any]:
-        """The widget a corner drag would resize: the selection, else the hover."""
+        """The widget a drag would edit: the selection, else the hover."""
         return self.selected or self.hovered
 
     @property
     def dragging(self) -> bool:
-        """Whether a corner drag is in flight."""
+        """Whether a drag is in flight."""
         return self._drag is not None
 
     @property
     def ghosts(self) -> list[Ghost]:
-        """The rects the current or pending edit will produce. Empty once it landed."""
-        if self._drag is not None:
-            return self._drag_ghosts(self._drag)
+        """What the current or pending edit will produce. Empty once it landed."""
+        if isinstance(self._drag, _Resize):
+            return self._resize_ghosts(self._drag)
+        if isinstance(self._drag, _Move):
+            return self._move_ghosts(self._drag)
         if self._edits.pending is None:
             self._ghosts = []
         return list(self._ghosts)
@@ -203,6 +235,7 @@ class LayoutMode:
 
     def _reset(self) -> None:
         self._press = None
+        self._press_node = None
         self._drag = None
         self._hover = None
         self._select(None, None)
@@ -241,7 +274,7 @@ class LayoutMode:
     # --- pointer ----------------------------------------------------------
 
     def on_mouse_press(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
-        """Grab a corner of the candidate, or start a click. ``True`` when consumed."""
+        """Grab a corner of the candidate, or start a click or body drag. ``True`` when consumed."""
         if not self._active:
             return False
         self._clear_notice()
@@ -249,27 +282,27 @@ class LayoutMode:
         if candidate is not None:
             corner = _corner_at(candidate, float(x), float(y))
             if corner is not None:
-                self._begin_drag(app, candidate, corner, float(x), float(y), modifier_keys)
+                self._begin_resize(app, candidate, corner, float(x), float(y), modifier_keys)
                 return True
         self._press = (float(x), float(y))
+        self._press_node = weak(candidate)
         return True
 
     def on_mouse_release(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
-        """Finish a drag, or select on a click. ``True`` when consumed.
-
-        A body drag -- travel from a press that grabbed no corner -- has no
-        meaning yet and does nothing.
-        """
+        """Finish a drag, or select on a click. ``True`` when consumed."""
         if not self._active:
             return False
-        drag, self._drag = self._drag, None
-        if drag is not None:
-            self._finish_drag(app, drag, float(x), float(y), modifier_keys)
-            return True
         press, self._press = self._press, None
-        if press is None:
+        if self._drag is None and press is not None and travelled(press, x, y):
+            self._begin_move(app, press, float(x), float(y))
+        drag, self._drag = self._drag, None
+        if isinstance(drag, _Resize):
+            self._finish_resize(app, drag, float(x), float(y), modifier_keys)
             return True
-        if travelled(press, x, y):
+        if isinstance(drag, _Move):
+            self._finish_move(app, drag, float(x), float(y))
+            return True
+        if press is None:
             return True
         self._select(_target(app, press[0], press[1]), getattr(app, "root", None))
         invalidate(app)
@@ -280,8 +313,14 @@ class LayoutMode:
         if not self._active:
             return False
         self._pointer = (float(x), float(y))
-        if self._drag is not None:
-            self._update_drag(app, self._drag, float(x), float(y), modifier_keys)
+        if self._press is not None and self._drag is None and travelled(self._press, x, y):
+            press, self._press = self._press, None
+            self._begin_move(app, press, float(x), float(y))
+        if isinstance(self._drag, _Resize):
+            self._update_resize(app, self._drag, float(x), float(y), modifier_keys)
+            return True
+        if isinstance(self._drag, _Move):
+            self._update_move(app, self._drag, float(x), float(y))
             return True
         if self._press is not None:
             return True
@@ -298,7 +337,7 @@ class LayoutMode:
 
     # --- the resize drag --------------------------------------------------
 
-    def _begin_drag(self, app: Any, node: Any, corner: tuple[int, int], x: float, y: float, mods: int) -> None:
+    def _begin_resize(self, app: Any, node: Any, corner: tuple[int, int], x: float, y: float, mods: int) -> None:
         axes = landing.editable_axes(node)
         if not axes:
             self._notice = f"{type(node).__name__} has no width or height parameter"
@@ -312,11 +351,11 @@ class LayoutMode:
         instances = (
             widgets_built_at(root, frame, type(node).__name__) if frame is not None and root is not None else [node]
         )
-        drag = _Drag(node, corner, rect, (x, y), axes, instances or [node])
-        self._update_drag(app, drag, x, y, mods)
+        drag = _Resize(node, corner, rect, (x, y), axes, instances or [node])
+        self._update_resize(app, drag, x, y, mods)
         self._drag = drag
 
-    def _update_drag(self, app: Any, drag: _Drag, x: float, y: float, mods: int) -> None:
+    def _update_resize(self, app: Any, drag: _Resize, x: float, y: float, mods: int) -> None:
         sx, sy = drag.corner
         dx, dy = (x - drag.start[0]) * sx, (y - drag.start[1]) * sy
         _ox, _oy, ow, oh = drag.origin
@@ -354,46 +393,42 @@ class LayoutMode:
             out[axis] = landing.resolve(proposed, natural, weight, snap=snap)
         return out
 
-    def _finish_drag(self, app: Any, drag: _Drag, x: float, y: float, mods: int) -> None:
-        self._update_drag(app, drag, x, y, mods)
+    def _finish_resize(self, app: Any, drag: _Resize, x: float, y: float, mods: int) -> None:
+        self._update_resize(app, drag, x, y, mods)
         if not travelled(drag.start, x, y):
             self._select(drag.node, getattr(app, "root", None))
             invalidate(app)
             return
-        planned = self._plan(drag)
+        if self._write(app, self._plan_resize(drag), self._resize_ghosts(drag)):
+            # The resized widget stays the candidate through the reload, so
+            # the next drag needs no re-aim.
+            self._select(drag.node, getattr(app, "root", None))
+        invalidate(app)
+
+    def _write(self, app: Any, planned: Edit | Refusal, ghosts: list[Ghost]) -> bool:
+        """Apply a planned edit and ask for the reload; a refusal becomes the notice."""
         if isinstance(planned, Refusal):
             self._notice = planned.reason
-            invalidate(app)
-            return
+            return False
         try:
             self._edits.apply(planned)
         except OSError as exc:
             self._notice = f"cannot write {planned.file}: {exc}"
-            invalidate(app)
-            return
-        self._ghosts = self._drag_ghosts(drag)
-        # The resized widget stays the candidate through the reload, so the
-        # next drag needs no re-aim.
-        self._select(drag.node, getattr(app, "root", None))
+            return False
+        self._ghosts = ghosts
         if self._request_reload is not None:
             self._request_reload(planned.file)
-        invalidate(app)
+        return True
 
-    def _plan(self, drag: _Drag) -> Edit | Refusal:
-        """The edit a finished drag asks for, or why there is none."""
+    def _plan_resize(self, drag: _Resize) -> Edit | Refusal:
+        """The edit a finished resize asks for, or why there is none."""
         changes = self._changes(drag)
         if not changes:
             return Refusal("unchanged")
-        frame = construction_frame(drag.node)
-        if frame is None:
-            return Refusal("no source recorded for this widget")
-        if not is_project_file(frame.file):
-            return Refusal(f"built outside the project, in {os.path.basename(frame.file)}")
-        try:
-            with open(frame.file, encoding="utf-8", newline="") as handle:
-                text = handle.read()
-        except OSError as exc:
-            return Refusal(f"cannot read {frame.file}: {exc}")
+        located = _source_of(drag.node, "this widget")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
         spans = plan_keywords(text, frame, changes)
         if isinstance(spans, Refusal):
             return spans
@@ -411,7 +446,7 @@ class LayoutMode:
             widget=type(drag.node).__name__,
         )
 
-    def _changes(self, drag: _Drag) -> dict[str, Value]:
+    def _changes(self, drag: _Resize) -> dict[str, Value]:
         """The keywords to write, skipping any axis the drag left as declared."""
         changes: dict[str, Value] = {}
         for axis, land in drag.landings.items():
@@ -420,7 +455,7 @@ class LayoutMode:
             changes[drag.axes[axis]] = land.value
         return changes
 
-    def _drag_ghosts(self, drag: _Drag) -> list[Ghost]:
+    def _resize_ghosts(self, drag: _Resize) -> list[Ghost]:
         """One ghost per instance; the dragged one carries the caption."""
         ghosts = [Ghost(_anchored(drag.origin, drag.corner, drag.proposed), _caption(drag))]
         for node in drag.instances:
@@ -430,6 +465,104 @@ class LayoutMode:
             if rect is not None:
                 ghosts.append(Ghost((rect[0], rect[1], drag.proposed[0], drag.proposed[1]), ""))
         return ghosts
+
+    # --- the body drag ----------------------------------------------------
+
+    def _begin_move(self, app: Any, press: tuple[float, float], x: float, y: float) -> None:
+        node = self._press_node() if self._press_node is not None else None
+        self._press_node = None
+        if node is None:
+            return
+        container, member = reorder.container_of(node)
+        if container is None:
+            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow or UniformFlow"
+            invalidate(app)
+            return
+        if reorder.data_driven(container):
+            self._notice = f"{type(container).__name__}'s children come from a ForEach; their order is its data's"
+            invalidate(app)
+            return
+        children = reorder.siblings(container)
+        if member not in children:
+            return
+        frame = construction_frame(container)
+        instances = widgets_built_at(self._root(), frame, type(container).__name__) if frame else []
+        drag = _Move(node, member, container, children, children.index(member), press, instances or [container])
+        self._update_move(app, drag, x, y)
+        self._drag = drag
+
+    def _update_move(self, app: Any, drag: _Move, x: float, y: float) -> None:
+        drag.pointer = (x, y)
+        dx, dy = x - drag.start[0], y - drag.start[1]
+        if reorder.reorder_reading(drag.container, dx, dy):
+            drag.slot = reorder.slot_at(drag.container, drag.siblings, drag.member, x, y)
+        else:
+            drag.slot = None
+        invalidate(app)
+
+    def _finish_move(self, app: Any, drag: _Move, x: float, y: float) -> None:
+        self._update_move(app, drag, x, y)
+        if drag.slot is None or drag.slot == drag.index:
+            invalidate(app)
+            return
+        if self._write(app, self._plan_move(drag), self._move_ghosts(drag)):
+            # The moved widget's path changes with the reload, so the selection
+            # is let go and hover takes over where the pointer is.
+            self._select(None, None)
+        invalidate(app)
+
+    def _plan_move(self, drag: _Move) -> Edit | Refusal:
+        """The edit a finished body drag asks for, or why there is none."""
+        if drag.slot is None or drag.slot == drag.index:
+            return Refusal("unchanged")
+        container = drag.container
+        located = _source_of(container, f"this {type(container).__name__}")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        spans = plan_move(text, frame, drag.index, drag.slot, len(drag.siblings))
+        if isinstance(spans, Refusal):
+            return spans
+        return Edit(
+            kind="move",
+            file=frame.file,
+            site=frame,
+            parent_layout=type(container).__name__,
+            before={"slot": drag.index},
+            after={"slot": drag.slot},
+            expected={"slot": drag.slot},
+            instances=len(drag.instances),
+            spans=spans,
+            widget=type(container).__name__,
+            child=type(drag.member).__name__,
+        )
+
+    def _move_ghosts(self, drag: _Move) -> list[Ghost]:
+        """An insertion line per instance of the container; the dragged one carries the caption.
+
+        None while the pointer is over the child's own slot: a line there would
+        promise a change that release does not make.
+        """
+        if drag.slot is None or drag.slot == drag.index:
+            return []
+        line = reorder.insertion_line(drag.container, drag.siblings, drag.member, drag.slot, drag.pointer)
+        if line is None:
+            return []
+        ghosts = [Ghost(line, _move_caption(drag), line=True)]
+        for container in drag.instances:
+            if container is drag.container:
+                continue
+            children = reorder.siblings(container)
+            if len(children) != len(drag.siblings):
+                continue
+            other = reorder.insertion_line(container, children, children[drag.index], drag.slot)
+            if other is not None:
+                ghosts.append(Ghost(other, "", line=True))
+        return ghosts
+
+    def _root(self) -> Any:
+        app = self._app() if self._app is not None else None
+        return getattr(app, "root", None)
 
     # --- undo ---------------------------------------------------------------
 
@@ -471,7 +604,21 @@ class LayoutMode:
         invalidate(app)
 
 
-def _caption(drag: _Drag) -> str:
+def _source_of(node: Any, what: str) -> tuple[Frame, str] | Refusal:
+    """The construction site of ``node`` and its file's text, or why an edit cannot reach it."""
+    frame = construction_frame(node)
+    if frame is None:
+        return Refusal(f"no source recorded for {what}")
+    if not is_project_file(frame.file):
+        return Refusal(f"built outside the project, in {os.path.basename(frame.file)}")
+    try:
+        with open(frame.file, encoding="utf-8", newline="") as handle:
+            return (frame, handle.read())
+    except OSError as exc:
+        return Refusal(f"cannot read {frame.file}: {exc}")
+
+
+def _caption(drag: _Resize) -> str:
     """The landing values, the instance count past one, and whether snapping is off."""
     parts: list[str] = []
     if drag.axes.get("width") == "size" and "width" in drag.landings:
@@ -483,6 +630,26 @@ def _caption(drag: _Drag) -> str:
     if not drag.snap:
         parts.append("no snap")
     return "  ·  ".join(parts)
+
+
+def _move_caption(drag: _Move) -> str:
+    """Which sibling the child lands before, and the instance count past one."""
+    others = [child for child in drag.siblings if child is not drag.member]
+    slot = drag.slot if drag.slot is not None else drag.index
+    parts = [f"before {_name(others[slot])}" if slot < len(others) else "to the end"]
+    if len(drag.instances) > 1:
+        parts.append(f"{len(drag.instances)} widgets")
+    return "  ·  ".join(parts)
+
+
+def _name(node: Any) -> str:
+    """A widget's type and its key or label, as ``describe_tree`` names it."""
+    from .interaction import resolve_target
+
+    identity = resolve_target(node)
+    name = identity.get("key") or identity.get("label")
+    head = identity.get("type", type(node).__name__)
+    return f"{head} {name}" if name else str(head)
 
 
 def _target(app: Any, x: float, y: float) -> Optional[Any]:

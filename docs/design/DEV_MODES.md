@@ -1,6 +1,6 @@
 # Dev Modes
 
-> Status: Implemented (select mode, source jump, layout mode increment 1)
+> Status: Implemented (select mode, source jump, layout mode increments 1–2)
 > User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
@@ -241,12 +241,14 @@ the cursor landed; each platform's opener was confirmed against a real editor.
 ## 6. Layout mode
 
 The sibling of select mode with the opposite division of labour: the human
-drags a widget's corner and the **dev runner edits the source itself** — no
-assistant, no turn. Release writes `width` / `height` / `size` into the call
-that built the widget, and the hot reload that follows is the apply step. The
-tree is never mutated: what is on screen always came from the code, and during
-the gesture only the overlay moves. Increment 1 ships the mode and the corner
-resize; body drags (reorder, move, alignment) are later increments.
+drags a widget and the **dev runner edits the source itself** — no assistant,
+no turn. A corner drag writes `width` / `height` / `size` into the call that
+built the widget; a body drag moves the widget's element in its container's
+`children` list. The hot reload that follows is the apply step. The tree is
+never mutated: what is on screen always came from the code, and during the
+gesture only the overlay moves. Increments 1 and 2 ship the corner resize and
+the reorder within one `Column` / `Row` / `Flow` / `UniformFlow`; moves across
+containers, grids and alignment are later increments.
 
 - **No commit.** Every release writes, so `Ctrl+Z` is what "I did not mean
   that" reaches for. Undo is the inverse span, and it refuses when the text it
@@ -274,10 +276,27 @@ resize; body drags (reorder, move, alignment) are later increments.
   matches the reload to the pixel. `auto` outranks `wt` where the bands
   overlap; `Alt` at release suppresses snapping. An axis whose landing equals
   what is declared is not rewritten.
+- **A drag is not a coordinate.** A corner drag resolves to one of the three
+  size spellings, a body drag to a slot among the siblings — the sibling gap
+  the pointer is over, read from the rects layout gave them. What is written is
+  a landing value or a list position, never a delta.
+- **The axis decides the reading.** In a `Column` or `Row` the dominant axis of
+  the travel at release decides: along the main axis is a reorder, across it is
+  alignment's and has no reading yet. Fixing that here keeps alignment from
+  reopening the gesture later. A wrapping flow has no per-child cross reading,
+  so every travel in it is a reorder, row by row.
+- **A reorder moves a span.** The runner locates the container's `children`
+  list literal through the container's site and moves the child's element,
+  with one of its separators, so the list's formatting survives. Two gates
+  decide whether that edit exists: children that come through a `ForEach`
+  have their order in the data, and children that are not all direct elements
+  of one list literal — a comprehension, a concatenation, a spread — give a
+  layout index no source span. Both are refusals; tree indices are never
+  trusted past those gates.
 - **Write, reload, check.** The ghost is a prediction: after the reload the
-  edit log finds the instances rebuilt at the site and compares their rect
-  with it, and a miss, a site that now builds nothing, or a failed reload
-  becomes the badge.
+  edit log finds the instances rebuilt at the site and compares their rect —
+  or, for a move, the class at the slot — with it, and a miss, a site that now
+  builds nothing, or a failed reload becomes the badge.
 - **Shared sites.** One helper builds fourteen cards; the edit is to the
   helper and changes them all. What makes that honest is the ghost: every
   instance of the site gets one before release, and the caption carries the
@@ -298,8 +317,10 @@ because one visual language for opposite directions would mislead:
 | rose (source jump) | a jump, not a mark — under a held chord inside select mode, amber brackets would read as a designation about to be made |
 
 In layout mode the candidate's corner brackets *are* the grab zones, the ghost
-is a dashed outline captioned with the landing values, and the badge lists
-every gesture, since the badge is the only place a human can learn them.
+is a dashed outline captioned with the landing values — or, for a reorder, an
+insertion line in the slot, captioned with the sibling it lands before — and
+the badge lists every gesture, since the badge is the only place a human can
+learn them.
 
 ## 8. Implementation map
 
@@ -311,5 +332,5 @@ every gesture, since the badge is the only place a human can learn them.
 | geometry picker, visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`) |
 | construction sites | `dev/source.py` |
 | source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
-| layout mode: mode, landing values, span surgery, overlay | `dev/layout_mode.py`, `dev/landing.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
+| layout mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
 | edit log and reload request | `dev/source_edit.py` (`EditLog`), `dev/controller.py` |

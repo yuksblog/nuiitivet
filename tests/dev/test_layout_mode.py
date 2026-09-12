@@ -1,4 +1,4 @@
-"""Tests for layout mode -- the corner drag that rewrites a size in the source.
+"""Tests for layout mode -- the drags that rewrite a size or an order in the source.
 
 The widgets under test are built from a real file so their construction sites
 point at it, and the assertions read the file back: the mode's whole job is what
@@ -28,6 +28,8 @@ _CHORD = MOD_CTRL | MOD_SHIFT
 
 _APP = '''
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.flow import Flow
+from nuiitivet.layout.row import Row
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -44,7 +46,7 @@ def tile(label):
 
 
 def build():
-    return Column(children=[Text("AAA", width=100, height=40)], gap=0)
+    return Column(children=[Text("AAA", width=100, height=40)], gap=0)  # noqa: E501
 
 
 def build_bound():
@@ -66,6 +68,34 @@ class Labeled(Column):
 
 def build_labeled():
     return Column(children=[Labeled(width=100, height=40)], gap=0)
+
+
+def build_list():
+    return Column(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40), Text("CCC", width=100, height=40)], gap=0)
+
+
+def build_row():
+    return Row(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40), Text("CCC", width=100, height=40)], gap=0)  # noqa: E501
+
+
+def build_flow():
+    return Flow(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40), Text("CCC", width=100, height=40), Text("DDD", width=100, height=40)])  # noqa: E501
+
+
+def build_for_each():
+    return Column.builder(["a", "b", "c"], lambda item, index: Text(item, width=100, height=40), gap=0)
+
+
+def build_comprehension():
+    return Column(children=[Text(item, width=100, height=40) for item in ("a", "b")], gap=0)
+
+
+def card(label):
+    return Column(children=[Text(label, width=100, height=40), Text("x", width=100, height=40)], gap=0)
+
+
+def build_cards():
+    return Column(children=[card("a"), card("b")], gap=0)
 '''
 
 
@@ -105,7 +135,7 @@ def _load(path: Path) -> Any:
 class _Session:
     """A mode latched over a tree built from ``app_file``."""
 
-    def __init__(self, path: Path, factory: str = "build") -> None:
+    def __init__(self, path: Path, factory: str = "build", width: int = 300) -> None:
         self.path = path
         self.reloads: list[str] = []
         self.edits = EditLog()
@@ -113,7 +143,7 @@ class _Session:
         self.column = getattr(_load(path), factory)()
         self.host = mount(self.column)
         self.root = self.host.__enter__().root
-        self.host.layout(300, 200)
+        self.host.layout(width, 200)
         self.app = _App(self.root)
         self.app._layout_mode = self.mode
         self.mode.on_key_press(self.app, "e", _CHORD)
@@ -134,6 +164,8 @@ class _Session:
         self.mode.on_mouse_press(self.app, *start, mods)
         self.mode.on_mouse_motion(self.app, *end, mods)
         self.mode.on_mouse_release(self.app, *end, mods)
+
+    drag_body = drag_corner
 
 
 @pytest.fixture
@@ -290,16 +322,6 @@ def test_the_selection_survives_the_pointer_crossing_its_children(session: _Sess
     assert session.mode.candidate is session.column, "the corner grab zone counts as on it"
 
     session.hover(50, 260)
-    assert session.mode.selected is None
-
-
-def test_a_body_drag_does_nothing_yet(session: _Session) -> None:
-    session.hover(50, 20)
-    before = session.text()
-
-    session.drag_corner((50, 20), (120, 60))
-
-    assert session.text() == before
     assert session.mode.selected is None
 
 
@@ -524,6 +546,202 @@ def test_the_children_a_widget_builds_for_itself_get_no_ghost(app_file: Path) ->
         s.mode.on_mouse_release(s.app, 160, 40)
         assert "Labeled(width=160, height=40)" in s.text()
         assert s.edits.pending is not None and s.edits.pending.instances == 1
+    finally:
+        s.close()
+
+
+# --- the body drag ---------------------------------------------------------------
+
+
+def _list(path: Path, factory: str, width: int = 300) -> _Session:
+    s = _Session(path, factory, width)
+    s.hover(50, 20)
+    return s
+
+
+def _written(s: _Session, factory: str) -> str:
+    """The children list of ``factory`` as written, whitespace collapsed."""
+    text = s.text()
+    start = text.index("[", text.index(f"def {factory}"))
+    return " ".join(text[start : text.index("]", start) + 1].split())
+
+
+def test_a_body_drag_down_a_column_moves_the_child_past_the_siblings_it_crossed(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    try:
+        s.drag_body((50, 20), (50, 100))
+
+        assert _written(s, "build_list").startswith('[Text("BBB", width=100, height=40), Text("AAA"')
+        assert s.reloads == [str(s.path)]
+        assert s.edits.pending is not None and s.edits.pending.kind == "move"
+        assert s.mode.selected is None, "the moved widget's path changes with the reload"
+        assert s.mode.ghosts and s.mode.ghosts[0].line, "the ghost stays until the reload lands"
+    finally:
+        s.close()
+
+
+def test_the_ghost_is_an_insertion_line_before_the_next_sibling(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 100)
+
+        ghosts = s.mode.ghosts
+
+        assert len(ghosts) == 1 and ghosts[0].line
+        x, y, w, h = ghosts[0].rect
+        assert (x, w, h) == (0.0, 300.0, 0.0), "across the column, no thickness"
+        assert 77.0 <= y <= 80.0, "in the gap above CCC"
+        assert ghosts[0].caption == "before TextBase CCC"
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_the_last_slot_is_captioned_to_the_end(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 119)
+
+        assert s.mode.ghosts[0].caption == "to the end"
+        s.mode.on_mouse_release(s.app, 50, 119)
+        assert _written(s, "build_list").endswith('Text("AAA", width=100, height=40)]')
+    finally:
+        s.close()
+
+
+def test_cross_axis_travel_in_a_column_has_no_reading(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 200, 30)
+        assert s.mode.dragging and s.mode.ghosts == []
+
+        s.mode.on_mouse_release(s.app, 200, 30)
+
+        assert s.text() == before
+        assert s.mode.notice is None
+        assert s.reloads == []
+    finally:
+        s.close()
+
+
+def test_the_childs_own_slot_shows_no_line_and_release_there_is_silent(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 30)
+        assert s.mode.dragging and s.mode.ghosts == []
+
+        s.mode.on_mouse_release(s.app, 50, 30)
+
+        assert s.text() == before
+        assert s.mode.notice is None
+    finally:
+        s.close()
+
+
+def test_a_body_drag_along_a_row_reorders_too(app_file: Path) -> None:
+    s = _list(app_file, "build_row")
+    try:
+        s.drag_body((50, 20), (250, 20))
+
+        assert _written(s, "build_row").startswith('[Text("BBB", width=100, height=40), Text("AAA"')
+    finally:
+        s.close()
+
+
+def test_a_body_drag_in_a_flow_reads_by_row_then_by_column(app_file: Path) -> None:
+    """At 250 wide the flow wraps CCC and DDD onto a second row; dragging CCC up
+    and to the left of AAA puts it first."""
+    s = _list(app_file, "build_flow", width=250)
+    try:
+        s.hover(50, 60)
+        s.drag_body((50, 60), (40, 10))
+
+        assert _written(s, "build_flow").startswith('[Text("CCC", width=100, height=40), Text("AAA"')
+    finally:
+        s.close()
+
+
+def test_the_line_at_a_flows_line_break_follows_the_pointers_row(app_file: Path) -> None:
+    """The slot after BBB and before CCC is one slot; the line sits at the end
+    of the first row or the start of the second, whichever row the pointer is on."""
+    s = _list(app_file, "build_flow", width=250)
+    try:
+        s.hover(150, 60)
+        s.mode.on_mouse_press(s.app, 150, 60)
+
+        s.mode.on_mouse_motion(s.app, 230, 20)
+        end_of_row = s.mode.ghosts[0].rect
+        s.mode.on_mouse_motion(s.app, 5, 45)
+        start_of_row = s.mode.ghosts[0].rect
+
+        assert end_of_row == (203.0, 0.0, 0.0, 40.0), "after BBB, on the first row"
+        assert start_of_row == (-3.0, 40.0, 0.0, 40.0), "before CCC, on the second"
+        assert s.mode.ghosts[0].caption == "before TextBase CCC"
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_children_that_come_through_a_for_each_are_refused_as_the_drag_begins(app_file: Path) -> None:
+    s = _list(app_file, "build_for_each")
+    before = s.text()
+    try:
+        s.drag_body((50, 20), (50, 100))
+
+        assert s.text() == before
+        assert s.mode.notice is not None and "ForEach" in s.mode.notice
+    finally:
+        s.close()
+
+
+def test_children_that_are_not_one_list_literal_are_refused_on_release(app_file: Path) -> None:
+    s = _list(app_file, "build_comprehension")
+    before = s.text()
+    try:
+        s.drag_body((50, 20), (50, 70))
+
+        assert s.text() == before
+        assert s.mode.notice == "children are a comprehension, not one list"
+    finally:
+        s.close()
+
+
+def test_a_shared_container_site_ghosts_every_instance_and_moves_them_all(app_file: Path) -> None:
+    s = _list(app_file, "build_cards")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 70)
+
+        ghosts = s.mode.ghosts
+
+        assert len(ghosts) == 2 and all(g.line for g in ghosts)
+        assert ghosts[0].caption == "to the end  ·  2 widgets"
+        assert ghosts[1].rect[1] > 80.0, "the second card's line"
+
+        s.mode.on_mouse_release(s.app, 50, 70)
+        assert _written(s, "card") == '[Text("x", width=100, height=40), Text(label, width=100, height=40)]'
+        assert s.edits.pending is not None and s.edits.pending.instances == 2
+    finally:
+        s.close()
+
+
+def test_ctrl_z_reverts_a_move(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    before = s.text()
+    try:
+        s.drag_body((50, 20), (50, 100))
+        assert s.text() != before
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+
+        assert s.text() == before
+        assert s.mode.notice == "undoing TextBase → position 2"
     finally:
         s.close()
 

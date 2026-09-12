@@ -24,6 +24,7 @@ from nuiitivet.dev.source_edit import (
     apply_spans,
     locate_call,
     plan_keywords,
+    plan_move,
     still_applies,
 )
 from nuiitivet.layout.column import Column
@@ -199,6 +200,77 @@ def test_an_inverse_no_longer_applies_once_the_text_moved() -> None:
 # --- the edit log ------------------------------------------------------------
 
 
+# --- moving a list element ---------------------------------------------------
+
+
+def _moved(text: str, snippet: str, index: int, slot: int, count: int = 3) -> str:
+    planned = plan_move(text, _site(text, snippet), index, slot, count)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def _refused(text: str, snippet: str, index: int, slot: int, count: int = 3) -> str:
+    planned = plan_move(text, _site(text, snippet), index, slot, count)
+    assert isinstance(planned, Refusal)
+    return planned.reason
+
+
+_LIST = "Column(children=[a(), b(), c()])"
+
+
+def test_a_middle_element_moves_to_the_front() -> None:
+    assert _moved(_LIST, _LIST, 1, 0) == "Column(children=[b(), a(), c()])"
+
+
+def test_the_first_element_moves_to_the_end() -> None:
+    assert _moved(_LIST, _LIST, 0, 2) == "Column(children=[b(), c(), a()])"
+
+
+def test_the_last_element_moves_to_the_front() -> None:
+    assert _moved(_LIST, _LIST, 2, 0) == "Column(children=[c(), a(), b()])"
+
+
+def test_a_positional_children_list_is_edited_too() -> None:
+    text = "Row([a(), b()])"
+    assert _moved(text, text, 0, 1, count=2) == "Row([b(), a()])"
+
+
+def test_a_multi_line_list_keeps_its_indentation_and_trailing_comma() -> None:
+    text = "Column(\n    children=[\n        a(),\n        b(),\n        c(),\n    ],\n)"
+
+    moved = _moved(text, text, 2, 0)
+
+    assert moved == "Column(\n    children=[\n        c(),\n        a(),\n        b(),\n    ],\n)"
+
+
+def test_the_inverse_of_a_move_restores_the_text() -> None:
+    planned = plan_move(_LIST, _site(_LIST, _LIST), 0, 2, 3)
+    assert not isinstance(planned, Refusal)
+    moved, inverse = apply_spans(_LIST, planned)
+
+    assert still_applies(moved, inverse)
+    assert apply_spans(moved, inverse)[0] == _LIST
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("Column(children=[a() for _ in items])", "children are a comprehension, not one list"),
+        ("Column(children=items)", "children are bound to items, not one list"),
+        ("Column(children=head + tail)", "children are an expression, not one list"),
+        ("Column(children=make())", "children are the result of make(...), not one list"),
+        ("Column(children=[a(), *rest])", "children spread rest"),
+        ("Column(gap=0)", "no children are written on this call"),
+    ],
+)
+def test_children_that_are_not_one_list_literal_are_refused(text: str, reason: str) -> None:
+    assert _refused(text, text, 0, 1, count=2) == reason
+
+
+def test_a_list_whose_length_disagrees_with_layout_is_refused() -> None:
+    assert _refused(_LIST, _LIST, 0, 1, count=2) == "the list holds 3 elements but layout saw 2 children"
+
+
 @pytest.fixture
 def app_file(tmp_path: Path) -> Path:
     path = tmp_path / "app.py"
@@ -306,6 +378,19 @@ def test_after_reload_reports_a_site_that_built_nothing(recording: None) -> None
         outcome = log.after_reload([host.root])
 
     assert outcome is not None and "gone.py:1" in outcome
+
+
+def test_after_reload_checks_the_class_at_the_slot_of_a_move(recording: None) -> None:
+    column = Column(children=[Text("AAA"), Column(children=[])])
+    site = source.site_of(column)[0]
+    log = EditLog()
+    edit = Edit("move", site.file, site, "Column", {"slot": 0}, {"slot": 1}, {"slot": 1}, 1, (), "Column", "Text")
+    log._pending = (edit, False)
+
+    with mount(column) as host:
+        host.layout(300, 200)
+
+        assert log.after_reload([host.root]) == "position 2 holds Column, expected Text"
 
 
 def test_only_files_outside_the_install_directories_are_the_humans_to_edit(tmp_path: Path) -> None:
