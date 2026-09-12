@@ -114,6 +114,24 @@ def test_the_ghost_paints_as_a_dashed_rect_while_dragging(latched: tuple[_App, L
     mode.on_key_press(app, "escape", 0)
 
 
+def test_a_reorder_ghost_paints_as_a_line() -> None:
+    with mount(Column(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40)])) as host:
+        host.layout(300, 200)
+        mode = LayoutMode(EditLog())
+        app = _App(host.root, mode)
+        mode.on_key_press(app, "e", _ENTER)
+        mode.on_mouse_motion(app, 50, 20)
+        mode.on_mouse_press(app, 50, 20)
+        mode.on_mouse_motion(app, 50, 70)
+        canvas = _Canvas()
+
+        lo.paint_layout(app, canvas, app.width, app.height)
+
+        assert "drawLine" in canvas.calls, "the insertion line"
+        assert "drawRect" not in canvas.calls, "no rect: the child's size is not what changes"
+        mode.on_key_press(app, "escape", 0)
+
+
 def test_the_candidate_yields_to_the_source_jump_while_its_chord_is_held() -> None:
     """The jump's rose brackets are painted underneath; a teal wash over them
     reads as grey, and the click is a jump anyway."""
@@ -160,6 +178,7 @@ def test_the_hud_names_every_gesture_the_mode_binds() -> None:
     """The badge is the only place a human can learn these."""
     assert set(lo._HINTS) == {
         "drag a corner resize",
+        "drag reorder",
         "click select",
         "↑/↓ parent/child",
         "Alt no snap",

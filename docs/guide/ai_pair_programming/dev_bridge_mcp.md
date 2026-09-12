@@ -151,7 +151,7 @@ painted and there is no widget to name at all.
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
 | `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
-| `Ctrl+Shift+E` | Keep them and switch to [layout mode](#resize-a-widget-by-dragging-layout-mode). |
+| `Ctrl+Shift+E` | Keep them and switch to [layout mode](#resize-or-reorder-a-widget-by-dragging-layout-mode). |
 
 Every designation and both removals take effect *inside* the session, so `Esc`
 undoes any of them.
@@ -189,11 +189,13 @@ fix to see what is there now.
 > content-free marker that you designated *something*; the payload goes out only
 > when the assistant asks for it.
 
-## Resize a widget by dragging (layout mode)
+## Resize or reorder a widget by dragging (layout mode)
 
 Select mode tells the assistant what you mean. Layout mode needs no assistant:
 drag a widget's corner, and on release the dev runner writes the new `width` /
-`height` / `size` into the call that built it. Hot reload applies the edit.
+`height` / `size` into the call that built it; drag its body along a `Column`
+or `Row`, and the runner moves it in the `children` list. Hot reload applies
+the edit.
 
 | Gesture | What it does |
 | --- | --- |
@@ -201,7 +203,8 @@ drag a widget's corner, and on release the dev runner writes the new `width` /
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
-| Release | Write that value and reload. The ghost stays until the reload lands. |
+| Drag the body | Reorder among its siblings. An **insertion line** marks the slot it will land in, captioned with the sibling it goes before. |
+| Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
 | `Esc` | Cancel the drag in flight; otherwise leave. |
@@ -220,10 +223,20 @@ When one call builds many widgets — a helper returning a card, called from a
 loop — every one of them gets a ghost and the caption counts them
 (`14 widgets`), because the edit changes them all.
 
+A body drag moves the widget in the list that built it. In a `Column` only
+up-and-down travel reorders and in a `Row` only left-and-right; drag across
+the axis and nothing happens on release. In a `Flow` or `UniformFlow` any
+direction reorders, row by row. Dragging a card's title moves it within every
+card built by the same helper, as with a resize.
+
 Some drags are refused, and the corner badge says why. Nothing is written for:
 
 - a size bound to a name or an expression (`width=self.card_w`);
 - a widget whose constructor takes no `width`, `height` or `size`;
+- a reorder inside `Column.builder()` and friends — the order lives in the
+  data you passed, not in the source;
+- a reorder where `children` is not one list literal — a comprehension,
+  `head + tail`, `[first, *rest]`;
 - a call the runner cannot find at the recorded line, or a widget built with
   no source recorded.
 
@@ -232,8 +245,9 @@ ghost said, or a reload that failed on the edit. Either way `Ctrl+Z` still
 reverts it — unless you have edited that line by hand since, in which case the
 undo is refused rather than applied to the wrong text.
 
-Only `width`, `height` and `size` are ever written. `padding`, `gap`, colours
-and every other style value are yours to change in code.
+Only `width`, `height`, `size` and the order of `children` are ever written.
+`padding`, `gap`, colours and every other style value are yours to change in
+code.
 
 ## Jump to the source
 

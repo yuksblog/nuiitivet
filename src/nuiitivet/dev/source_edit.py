@@ -1,10 +1,11 @@
 """Span surgery on the file that built a widget.
 
 Layout mode's edits are written here. Each one is a handful of character
-spans replaced in one file -- the value of a ``width=`` keyword, or a keyword
-inserted after the last argument -- located by re-parsing the file with
-:mod:`ast` and matching the call at the widget's construction site. Nothing
-around a span is touched, so the human's formatting survives every edit.
+spans replaced in one file -- the value of a ``width=`` keyword, a keyword
+inserted after the last argument, an element moved within a ``children`` list
+-- located by re-parsing the file with :mod:`ast` and matching the call at the
+widget's construction site. Nothing around a span is touched, so the human's
+formatting survives every edit.
 
 The file is re-read and re-parsed for every edit rather than cached: a hand
 edit or an earlier edit of this mode may have shifted every line since the
@@ -73,9 +74,13 @@ class Edit:
     #: Widgets built from the site when the edit was made.
     instances: int
     spans: tuple[SpanEdit, ...]
-    #: The class name of the widget resized, which tells its instances apart
-    #: from the children it builds for itself at the same site.
+    #: The class name of the widget the site builds -- the one resized, or the
+    #: container reordered -- which tells its instances apart from the children
+    #: it builds for itself at the same site.
     widget: str = ""
+    #: For a move: the class name of the child moved, checked at its slot after
+    #: the reload.
+    child: str = ""
     inverse: tuple[SpanEdit, ...] = field(default_factory=tuple)
 
 
@@ -138,6 +143,56 @@ def plan_keywords(text: str, site: Frame, changes: Mapping[str, Value]) -> Union
         old = text[start:end]
         edits.append(SpanEdit(start, end, _spell(value, old), replaces=old))
     return tuple(edits)
+
+
+def plan_move(text: str, site: Frame, index: int, slot: int, count: int) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that move element ``index`` of the ``children`` list at ``site`` to ``slot``.
+
+    ``slot`` is the element's position in the list without it, and ``count`` is
+    how many children layout saw: only when the list is one literal with
+    exactly that many elements does a layout index name a source span, so
+    anything else -- a comprehension, an expression, a spread, a mismatch -- is
+    refused. The element travels with one of its separators, so the list's
+    formatting comes along.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    children = next((kw.value for kw in call.keywords if kw.arg == "children"), None)
+    if children is None and call.args:
+        children = call.args[0]
+    if children is None:
+        return Refusal("no children are written on this call")
+    if not isinstance(children, ast.List):
+        return Refusal(f"children are {_describe_children(text, children)}, not one list")
+    spread = next((elt for elt in children.elts if isinstance(elt, ast.Starred)), None)
+    if spread is not None:
+        return Refusal(f"children spread {_segment(text, spread.value)}")
+    elts = children.elts
+    if len(elts) != count:
+        return Refusal(f"the list holds {len(elts)} elements but layout saw {count} children")
+    if not 0 <= index < len(elts) or not 0 <= slot < len(elts):
+        return Refusal("the slot is outside the list")
+    offsets = _Offsets(text)
+    starts = [offsets.of(elt.lineno, elt.col_offset) for elt in elts]
+    ends = [offsets.of(elt.end_lineno or elt.lineno, elt.end_col_offset or 0) for elt in elts]
+    element = text[starts[index] : ends[index]]
+    last = len(elts) - 1
+    # The element leaves with the separator after it; the last element, which
+    # has none, takes the one before it so a trailing comma stays where it is.
+    if index < last:
+        cut = (starts[index], starts[index + 1])
+        separator = text[ends[index] : starts[index + 1]]
+    else:
+        cut = (ends[index - 1], ends[index])
+        separator = text[ends[index - 1] : starts[index]]
+    before = slot if slot < index else slot + 1
+    if before < len(elts):
+        insertion = SpanEdit(starts[before], starts[before], element + separator)
+    else:
+        insertion = SpanEdit(ends[last], ends[last], separator + element)
+    removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
+    return (removal, insertion)
 
 
 def apply_spans(text: str, spans: Iterable[SpanEdit]) -> tuple[str, tuple[SpanEdit, ...]]:
@@ -253,6 +308,8 @@ class EditLog:
         instances = [node for root in roots for node in widgets_built_at(root, edit.site, edit.widget or None)]
         if not instances:
             return f"reloaded, but no widget is built at {os.path.basename(edit.file)}:{edit.site.line}"
+        if edit.kind == "move":
+            return _check_slot(instances[0], int(expected["slot"]), edit.child)
         rect = getattr(instances[0], "layout_rect", None)
         if rect is None:
             return None
@@ -272,8 +329,38 @@ class EditLog:
         return self.outcome
 
 
+def _check_slot(container: Any, slot: int, child: str) -> Optional[str]:
+    """Whether ``container``'s child at ``slot`` is of the class the move put there.
+
+    A class name is all the rebuilt child shares with the one that was
+    dragged, so this catches a move that landed nowhere or on the wrong
+    list, not one that swapped two children of a kind.
+    """
+    from nuiitivet.layout.layout_utils import expand_layout_children
+
+    children = expand_layout_children(container.children_snapshot())
+    if slot >= len(children):
+        return f"reloaded, but {type(container).__name__} has {len(children)} children, expected {slot + 1} or more"
+    got = type(children[slot]).__name__
+    if child and got != child:
+        return f"position {slot + 1} holds {got}, expected {child}"
+    return None
+
+
 def _summary(edit: Edit) -> str:
+    if edit.kind == "move":
+        return f"{edit.child} → position {int(edit.after['slot']) + 1}"
     return ", ".join(f"{name} → {value}" for name, value in edit.after.items())
+
+
+def _describe_children(text: str, node: ast.expr) -> str:
+    if isinstance(node, (ast.ListComp, ast.GeneratorExp)):
+        return "a comprehension"
+    if isinstance(node, (ast.Name, ast.Attribute)):
+        return f"bound to {_segment(text, node)}"
+    if isinstance(node, ast.Call):
+        return f"the result of {_segment(text, node.func)}(...)"
+    return "an expression"
 
 
 def _is_literal(node: ast.expr) -> bool:
@@ -375,5 +462,6 @@ __all__ = [
     "is_project_file",
     "locate_call",
     "plan_keywords",
+    "plan_move",
     "still_applies",
 ]
