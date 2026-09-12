@@ -38,8 +38,10 @@ region designation lands (drawn as a faint fill) the two
 read as different *classes* of mark instead of two similar rectangles.
 
 The source jump (:mod:`nuiitivet.dev.source_jump`) paints here too, in any
-state: brackets and a caption on the widget a chorded click would open while
-the chord is held, and what the last jump did once it has happened.
+state: rose brackets and a caption on the widget a chorded click would open
+while the chord is held, and what the last jump did once it has happened. Its
+own colour, because inside select mode the same brackets in amber would read
+as a designation about to be made.
 """
 
 from __future__ import annotations
@@ -59,6 +61,10 @@ _FALSY = {"0", "false", "no", "off"}
 # Amber: "the human means this", deliberately distant from the action overlay's
 # indigo, and the colour annotation tools reach for.
 _ACCENT = (255, 171, 0)
+# Rose, for the source jump: a fourth family, since a jump is none of the other
+# three -- not a note, not a report, not a change -- and the brackets it shows
+# under a held chord must not read as a designation about to be made.
+_JUMP_ACCENT = (236, 64, 122)
 # Ink and ground for badges and captions.
 _BADGE_INK = (32, 24, 0)
 _CAPTION_BG = (28, 24, 14, 220)
@@ -75,7 +81,8 @@ def _enabled() -> bool:
     return os.environ.get("NUIITIVET_DEV_ACTION_OVERLAY", "1").strip().lower() not in _FALSY
 
 
-def _color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
+def color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
+    """A skia colour from an RGB triple and a 0..1 alpha."""
     r, g, b = rgb
     return skia.Color(r, g, b, max(0, min(255, int(round(alpha * 255)))))
 
@@ -111,7 +118,7 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
 
         from nuiitivet.widgeting.context_lookup import find_window
 
-        font, typeface = _font(skia)
+        font, typeface = hud_font(skia)
         newest_index = marks[-1][0] if marks else None
         for index, kind, mark in marks:
             if kind != "region":
@@ -136,7 +143,7 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
                 # same weight would be the unreadable case when they nest.
                 _paint_wash(skia, canvas, rect, 0.22 if full else 0.13)
             elif full:
-                _paint_brackets(skia, canvas, rect, 1.0)
+                paint_brackets(skia, canvas, rect, 1.0)
             _paint_badge(skia, canvas, rect, str(index), font, typeface, 1.0 if full else 0.75)
 
         if active and mode is not None and selection is not None:
@@ -151,7 +158,8 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
         logger.debug("selection_overlay: paint failed", exc_info=True)
 
 
-def _font(skia: Any) -> tuple[Any, Any]:
+def hud_font(skia: Any) -> tuple[Any, Any]:
+    """The overlay's ``(font, typeface)`` at the HUD size."""
     from nuiitivet.rendering.skia.font import (
         get_default_font_fallbacks,
         get_typeface,
@@ -162,14 +170,16 @@ def _font(skia: Any) -> tuple[Any, Any]:
     return (make_font(typeface, _FONT_SIZE), typeface)
 
 
-def _paint_brackets(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float) -> None:
+def paint_brackets(
+    skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float, rgb: tuple[int, int, int] = _ACCENT
+) -> None:
     """Draw four corner brackets -- "this object", as distinct from "this area"."""
     x, y, w, h = rect
     arm = min(_BRACKET_LEN, max(2.0, w / 3.0), max(2.0, h / 3.0))
     paint = skia.Paint(AntiAlias=True)
     paint.setStyle(skia.Paint.kStroke_Style)
     paint.setStrokeWidth(_BRACKET_WIDTH)
-    paint.setColor(_color(skia, _ACCENT, alpha))
+    paint.setColor(color(skia, rgb, alpha))
     for cx, sx in ((x, 1.0), (x + w, -1.0)):
         for cy, sy in ((y, 1.0), (y + h, -1.0)):
             canvas.drawLine(cx, cy, cx + arm * sx, cy, paint)
@@ -180,7 +190,7 @@ def _paint_wash(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float) -
     """Fill a designated area -- "this region", as distinct from "this object"."""
     x, y, w, h = rect
     paint = skia.Paint(AntiAlias=True)
-    paint.setColor(_color(skia, _ACCENT, alpha))
+    paint.setColor(color(skia, _ACCENT, alpha))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), paint)
 
 
@@ -191,7 +201,7 @@ def _paint_band(skia: Any, canvas: Any, rect: tuple[float, ...]) -> None:
     stroke = skia.Paint(AntiAlias=True)
     stroke.setStyle(skia.Paint.kStroke_Style)
     stroke.setStrokeWidth(1.5)
-    stroke.setColor(_color(skia, _ACCENT, 0.9))
+    stroke.setColor(color(skia, _ACCENT, 0.9))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), stroke)
 
 
@@ -211,7 +221,7 @@ def _paint_badge(
     """
     x, y, _w, _h = rect
     disc = skia.Paint(AntiAlias=True)
-    disc.setColor(_color(skia, _ACCENT, alpha))
+    disc.setColor(color(skia, _ACCENT, alpha))
     canvas.drawCircle(x, y, _BADGE_RADIUS, disc)
     if font is None:
         return
@@ -222,7 +232,7 @@ def _paint_badge(
         return
     text_w = measure_text_width(typeface, _FONT_SIZE, label)
     ink = skia.Paint(AntiAlias=True)
-    ink.setColor(_color(skia, _BADGE_INK, alpha))
+    ink.setColor(color(skia, _BADGE_INK, alpha))
     canvas.drawTextBlob(blob, x - text_w / 2.0, y + _FONT_SIZE / 2.5, ink)
 
 
@@ -249,10 +259,10 @@ def _paint_hover(
         return
     x, y, w, h = rect
     wash = skia.Paint(AntiAlias=True)
-    wash.setColor(_color(skia, _ACCENT, 0.16))
+    wash.setColor(color(skia, _ACCENT, 0.16))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
-    _paint_brackets(skia, canvas, rect, 0.7)
-    _caption(skia, canvas, _describe(candidate), font, typeface, x, max(0.0, y - 22.0))
+    paint_brackets(skia, canvas, rect, 0.7)
+    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, max(0.0, y - 22.0))
 
 
 def _paint_jump(
@@ -274,16 +284,16 @@ def _paint_jump(
     rect = visible_rect(target) if target is not None else None
     if rect is None:
         if notice:
-            _caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
+            paint_caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
         return
     x, y, _w, _h = rect
-    _paint_brackets(skia, canvas, rect, 0.7)
-    text = notice if notice else _describe(target)
-    _caption(skia, canvas, text, font, typeface, x, max(0.0, y - 22.0))
+    paint_brackets(skia, canvas, rect, 0.8, _JUMP_ACCENT)
+    text = notice if notice else describe_node(target)
+    paint_caption(skia, canvas, text, font, typeface, x, max(0.0, y - 22.0))
 
 
-def _describe(node: Any) -> str:
-    """Name the candidate the way ``describe_tree`` would, for a caption."""
+def describe_node(node: Any) -> str:
+    """Name a widget the way ``describe_tree`` would, plus where it was built."""
     from nuiitivet.dev.interaction import resolve_target
 
     identity = resolve_target(node)
@@ -305,8 +315,7 @@ def _origin(node: Any) -> Optional[str]:
     site = site_of(node)
     if not site:
         return None
-    filename, line, _function = site[0]
-    return f"{os.path.basename(filename)}:{line}"
+    return f"{os.path.basename(site[0].file)}:{site[0].line}"
 
 
 def _plural(count: int, noun: str) -> str:
@@ -328,7 +337,7 @@ _HINTS = (
 _SEPARATOR = "  ·  "
 
 
-def _wrap(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
+def wrap_hints(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
     """Greedily pack ``parts`` into lines that fit ``max_width``.
 
     Measured rather than split at a fixed point, because the hint has to stay
@@ -373,14 +382,13 @@ def _paint_hud(
         parts.append(_plural(regions, "region"))
 
     lines = ["SELECT" + _SEPARATOR + _SEPARATOR.join(parts)]
-    lines.extend(_wrap(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
+    lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
-        _caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
+        paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
 
 
-def _caption(
-    skia: Any, canvas: Any, text: str, font: Any, typeface: Any, x: float, y: float
-) -> None:
+def paint_caption(skia: Any, canvas: Any, text: str, font: Any, typeface: Any, x: float, y: float) -> None:
+    """A one-line caption in a dark rounded box with its top-left at ``(x, y)``."""
     if font is None:
         return
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
@@ -395,8 +403,16 @@ def _caption(
     bg.setColor(skia.Color(r, g, b, a))
     canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, text_w + pad * 2, box_h), 5.0, 5.0, bg)
     ink = skia.Paint(AntiAlias=True)
-    ink.setColor(_color(skia, _CAPTION_INK, 1.0))
+    ink.setColor(color(skia, _CAPTION_INK, 1.0))
     canvas.drawTextBlob(blob, x + pad, y + box_h - 6.0, ink)
 
 
-__all__ = ["paint_selection"]
+__all__ = [
+    "color",
+    "describe_node",
+    "hud_font",
+    "paint_brackets",
+    "paint_caption",
+    "paint_selection",
+    "wrap_hints",
+]

@@ -198,15 +198,16 @@ def _profiling_session() -> Any:
 
 
 def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:
-    """Draw select-mode and source-jump feedback on the live frame only.
+    """Draw select-mode, layout-mode and source-jump feedback on the live frame only.
 
     Live frames only, like the action overlay: the human's designations must not
     reach ``screenshot``, or the assistant would read them back as app content.
     """
     try:
-        from nuiitivet.dev import selection_overlay
+        from nuiitivet.dev import layout_overlay, selection_overlay
 
         selection_overlay.paint_selection(app, canvas, int(app.width), int(app.height))
+        layout_overlay.paint_layout(app, canvas, int(app.width), int(app.height))
     except Exception:
         exception_once(logger, "gpu_frame_dev_selection_overlay_exc", "dev selection overlay paint raised")
 

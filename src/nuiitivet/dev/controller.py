@@ -27,7 +27,7 @@ import sys
 import threading
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
 
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
@@ -35,6 +35,7 @@ from .navigation_snapshot import restore_navigation, snapshot_navigation
 from .selection import Selection
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
+from .source_edit import EditLog
 from .watcher import FileWatcher
 
 if TYPE_CHECKING:
@@ -56,6 +57,7 @@ class HotReloadController:
         drain_interval: float = 0.1,
         journal: Optional[ReloadJournal] = None,
         selection: Optional[Selection] = None,
+        edits: Optional[EditLog] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -70,6 +72,9 @@ class HotReloadController:
         # below like observable state and the navigation stack, because a reload
         # lands in the middle of essentially every use of it.
         self._selection = selection
+        # Layout mode's edits. Told after every reload whether its pending edit
+        # landed, since a reload is how an edit takes effect at all.
+        self._edits = edits
         # Per-module source hashes from the last reload, so the next one can
         # report which files' *content* actually changed vs. a no-op save (the
         # watcher fires on mtime, which an editor autosave/formatter bumps even
@@ -95,6 +100,16 @@ class HotReloadController:
 
     def _request_reload(self) -> None:
         """Signal a reload (called on the watcher thread — must stay cheap)."""
+        self._pending.set()
+
+    def request_reload(self, path: Optional[str] = None) -> None:
+        """Reload on the next UI tick, for a file the dev runner wrote itself.
+
+        The watcher is told it has seen ``path`` as written, so the poll that
+        follows does not reload a second time.
+        """
+        if path is not None:
+            self._watcher.acknowledge(Path(path))
         self._pending.set()
 
     def _drain(self, dt: float) -> None:
@@ -126,6 +141,7 @@ class HotReloadController:
             tb = traceback.format_exc()
             self._record_error(tb, changed)
             show_reload_error(app, tb)
+            self._edit_failed(tb)
             return
 
         try:
@@ -139,12 +155,14 @@ class HotReloadController:
             tb = traceback.format_exc()
             self._record_error(tb, changed)
             show_reload_error(app, tb)
+            self._edit_failed(tb)
             return
 
         self._factory = new_factory
         clear_reload_error(app)
         app.invalidate()
         self._reload_secondary_windows(changed)
+        self._edit_landed()
         if self._journal is not None:
             self._journal.record_success(
                 result.reloaded,
@@ -158,18 +176,34 @@ class HotReloadController:
             flush=True,
         )
 
+    def _windows(self) -> list[Any]:
+        """Every open window, the main one included."""
+        try:
+            owner = self._app.app
+            return list(getattr(owner, "windows", ()) or ())
+        except Exception:
+            return [self._app]
+
     def _inert_window_ids(self) -> list[int]:
         """Ids of open windows whose instance root makes reload a no-op for them.
 
         Per-window, not scalar: a multi-window app can mix a factory root with
         an instance root, and only the latter is inert.
         """
+        return [w.id for w in self._windows() if getattr(w, "_hot_reload_inert", False)]
+
+    def _edit_landed(self) -> None:
+        """Let a pending layout edit check itself against the rebuilt trees."""
+        if self._edits is None:
+            return
         try:
-            owner = self._app.app
-            windows = list(getattr(owner, "windows", ()) or ())
+            self._edits.after_reload([getattr(w, "root", None) for w in self._windows()])
         except Exception:
-            windows = [self._app]
-        return [w.id for w in windows if getattr(w, "_hot_reload_inert", False)]
+            logger.debug("hot reload: checking the pending edit failed", exc_info=True)
+
+    def _edit_failed(self, traceback_text: str) -> None:
+        if self._edits is not None:
+            self._edits.reload_failed(traceback_text)
 
     def _reload_secondary_windows(self, changed: list[str]) -> None:
         """Rebuild every other open window's tree from its own root factory.

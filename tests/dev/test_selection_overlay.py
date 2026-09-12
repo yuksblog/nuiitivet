@@ -215,7 +215,7 @@ def test_the_hud_wraps_instead_of_running_off_a_narrow_window() -> None:
     typeface = get_typeface(family_candidates=get_default_font_fallbacks(), fallback_to_default=True)
     limit = 200.0
 
-    lines = so._wrap(so._HINTS, typeface, limit)
+    lines = so.wrap_hints(so._HINTS, typeface, limit)
 
     assert len(lines) > 1
     for line in lines:
@@ -238,7 +238,7 @@ def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
             host.layout(300, 200)
             host.settle()
 
-            caption = so._describe(leaf)
+            caption = so.describe_node(leaf)
     finally:
         source.uninstall()
 
@@ -249,7 +249,7 @@ def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     """A production-shaped run reads exactly as it did before source capture."""
     leaf = Text("AAA")
 
-    assert "·" not in so._describe(leaf)
+    assert "·" not in so.describe_node(leaf)
 
 
 def test_a_node_mark_paints_only_in_its_own_window() -> None:

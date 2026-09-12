@@ -49,12 +49,14 @@ from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
 from .interaction import InteractionJournal, InteractionRecorder, window_identity
 from .journal import ReloadJournal
+from .layout_mode import LayoutMode
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .select_mode import SelectMode
 from .selection import Selection
 from .session import DevSession, set_dev_session
+from .source_edit import EditLog
 from .source_jump import SourceJump
 from . import editor, source
 
@@ -462,6 +464,10 @@ def _run(args: argparse.Namespace) -> int:
         # the real input path; the controller re-resolves them across a reload;
         # the bridge serves them at ``/describe_selection``.
         selection = Selection()
+        # What the human *changes* without an assistant: layout mode's edits to
+        # the source, applied by the reload the controller runs, so the
+        # controller is what tells the log whether an edit landed.
+        edits = EditLog()
         controller = HotReloadController(
             host,
             loaded.project_root,
@@ -469,19 +475,22 @@ def _run(args: argparse.Namespace) -> int:
             poll_interval=args.poll_interval,
             journal=journal,
             selection=selection,
+            edits=edits,
         )
         # The complementary surface: the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
         # at ``/interaction_log`` so an AI pair can see how the human drove the
-        # app between its turns. Instrumented per window — the journal and the
-        # selection are shared, but each window carries its own recorder,
-        # select mode and source jump so hover/gesture state stays window-local
-        # and the Ctrl+Shift chords work in every window, not just the main one.
+        # app between its turns. Instrumented per window — the journal, the
+        # selection and the edit log are shared, but each window carries its own
+        # recorder, modes and source jump so hover/gesture state stays
+        # window-local and the Ctrl+Shift chords work in every window, not just
+        # the main one.
         interaction_journal = InteractionJournal()
 
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
             win._select_mode = SelectMode(selection, journal=interaction_journal)
+            win._layout_mode = LayoutMode(edits, request_reload=controller.request_reload)
             win._source_jump = SourceJump()
             # Window lifecycle joins the same timeline: the register
             # hook covers every open path, and the loop below back-fills the

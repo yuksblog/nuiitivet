@@ -18,27 +18,13 @@ from __future__ import annotations
 
 import logging
 import os
-import weakref
 from typing import Any, Callable, Optional
 
-from nuiitivet._interaction.perception import pick_at
-from nuiitivet.input.codes import (
-    MOD_CTRL,
-    MOD_META,
-    MOD_SHIFT,
-    resolve_modifiers as _resolve_physical_modifiers,
-)
-
 from .editor import open_at
-from .select_mode import _DRAG_THRESHOLD
+from .gesture import chord_held, invalidate, pick, travelled, weak
 from .source import absolute_target
 
 logger = logging.getLogger(__name__)
-
-
-def _chord_held(modifier_keys: int) -> bool:
-    physical = _resolve_physical_modifiers(int(modifier_keys))
-    return bool(physical & (MOD_CTRL | MOD_META)) and bool(physical & MOD_SHIFT)
 
 
 class SourceJump:
@@ -96,7 +82,7 @@ class SourceJump:
         Decided on press, not release: the press has to be kept from the app
         here or the button under the cursor fires before the jump can happen.
         """
-        if not _chord_held(modifier_keys):
+        if not chord_held(modifier_keys):
             return False
         self._press = (float(x), float(y))
         return True
@@ -104,16 +90,15 @@ class SourceJump:
     def on_mouse_release(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Resolve a chorded press. Returns ``True`` when consumed.
 
-        Travel beyond :data:`_DRAG_THRESHOLD` is a drag, and there is nothing to
-        open for a drag; it is consumed all the same, since the app never saw
-        the press it would be releasing.
+        A drag opens nothing, and is consumed all the same, since the app never
+        saw the press it would be releasing.
         """
         press, self._press = self._press, None
         if press is None:
             return False
-        if abs(float(x) - press[0]) > _DRAG_THRESHOLD or abs(float(y) - press[1]) > _DRAG_THRESHOLD:
+        if travelled(press, x, y):
             return True
-        node = self._pick(app, press[0], press[1])
+        node = pick(app, press[0], press[1])
         if node is not None:
             self._jump(app, node)
         return True
@@ -128,7 +113,7 @@ class SourceJump:
         self._pointer = (float(x), float(y))
         if self._notice is not None:
             self._notice = None
-            _invalidate(app)
+            invalidate(app)
         if self._press is not None:
             return True
         if modifier_keys is None:
@@ -138,22 +123,12 @@ class SourceJump:
 
     def _sync_hover(self, app: Any, modifier_keys: int) -> None:
         candidate = None
-        if _chord_held(modifier_keys) and self._pointer is not None:
-            candidate = self._pick(app, self._pointer[0], self._pointer[1])
+        if chord_held(modifier_keys) and self._pointer is not None:
+            candidate = pick(app, self._pointer[0], self._pointer[1])
         if candidate is self.hovered:
             return
-        self._hover = _weak(candidate)
-        _invalidate(app)
-
-    def _pick(self, app: Any, x: float, y: float) -> Optional[Any]:
-        root = getattr(app, "root", None)
-        if root is None:
-            return None
-        try:
-            return pick_at(root, x, y)
-        except Exception:
-            logger.debug("source_jump: pick_at failed", exc_info=True)
-            return None
+        self._hover = weak(candidate)
+        invalidate(app)
 
     def _jump(self, app: Any, node: Any) -> None:
         """Take the human to where ``node`` was built, and say what happened."""
@@ -170,23 +145,7 @@ class SourceJump:
             # editor problem.
             reason = open_at(path, line)
             self._notice = reason or f"opening {os.path.basename(path)}:{line}"
-        _invalidate(app)
-
-
-def _invalidate(app: Any) -> None:
-    try:
-        app.invalidate()
-    except Exception:
-        logger.debug("source_jump: invalidate failed", exc_info=True)
-
-
-def _weak(obj: Any) -> Optional[Callable[[], Any]]:
-    if obj is None:
-        return None
-    try:
-        return weakref.ref(obj)
-    except TypeError:
-        return None
+        invalidate(app)
 
 
 __all__ = ["SourceJump"]

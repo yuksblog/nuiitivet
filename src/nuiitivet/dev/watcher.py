@@ -74,6 +74,18 @@ class FileWatcher:
                 except Exception:
                     logger.exception("hot reload: on_change callback raised")
 
+    def acknowledge(self, path: Path) -> None:
+        """Take ``path``'s current mtime as already seen, so it fires no change.
+
+        For a file the dev runner wrote itself and reloaded directly. The
+        watcher thread may replace the table under this write; the cost of
+        losing the race is one redundant reload, not a missed one.
+        """
+        try:
+            self._mtimes[path] = path.stat().st_mtime
+        except OSError:
+            pass
+
     def start(self) -> None:
         """Start the background polling thread (idempotent)."""
         if self._thread is not None:
