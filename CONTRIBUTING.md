@@ -95,6 +95,33 @@ If you write `Closes #IssueNumber` in the PR description, the linked Issue will 
 Guides live in `docs/guide/`, design documents in `docs/design/`. Run
 `uv run --group docs mkdocs build --strict` before opening the PR.
 
+### What goes where
+
+Each kind of text has one job, and a fact lives in the place whose job it is.
+When a passage would fit two of them, it belongs in the lower one and the
+upper one links or stays silent.
+
+| Place | Carries | Leaves out |
+| --- | --- | --- |
+| Design doc (`docs/design/`) | The framework's core ideas: what the design is, how it is realised, and the alternatives that were rejected and why. API and procedure only as far as the design needs them to be understood | Parameter lists, step-by-step mechanics, measurements, the story of how a rule was found |
+| Guide (`docs/guide/`) | How a user does something and what will surprise them | Why the API is shaped that way |
+| Docstring | What the caller can observe: behaviour, timing, constraints | Mechanism and rationale |
+| Code | The procedure itself; a comment carries only the *why*, once, at the definition site | Anything the code already says |
+
+A design doc that grows past its name is the usual symptom: it has started
+carrying procedure or API reference. Move the surplus down, not into a bigger
+doc.
+
+**Draw the important structure.** A design doc that describes layers, the flow
+between components, or a sequence across threads shows it as a diagram, and
+the diagram is a `mermaid` fence: it renders on the site and on GitHub, it
+diffs as text, and it is readable by a tool that never renders it. Prefer a
+`flowchart` with subgraphs for structure and a `sequenceDiagram` for
+protocols; keep a small spatial nesting (boxes inside boxes) as a `text`
+fence when the drawing *is* the point. `mkdocs build --strict` does not
+validate Mermaid syntax, so check a new diagram in `mkdocs serve` or the
+GitHub preview.
+
 ### Linking between guide pages
 
 Cross-links are the part of a guide that rots. With N sibling pages covering
