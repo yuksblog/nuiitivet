@@ -255,11 +255,11 @@ def test_the_inverse_of_a_move_restores_the_text() -> None:
 @pytest.mark.parametrize(
     ("text", "reason"),
     [
-        ("Column(children=[a() for _ in items])", "children are a comprehension, not one list"),
-        ("Column(children=items)", "children are bound to items, not one list"),
+        ("Column(children=[a() for _ in items])", "items is not bound to a list literal in this file"),
+        ("Column(children=items)", "items is not bound to a list literal in this file"),
         ("Column(children=head + tail)", "children are an expression, not one list"),
         ("Column(children=make())", "children are the result of make(...), not one list"),
-        ("Column(children=[a(), *rest])", "children spread rest"),
+        ("Column(children=[a(), *rest])", "the list spreads rest"),
         ("Column(gap=0)", "no children are written on this call"),
     ],
 )
@@ -269,6 +269,86 @@ def test_children_that_are_not_one_list_literal_are_refused(text: str, reason: s
 
 def test_a_list_whose_length_disagrees_with_layout_is_refused() -> None:
     assert _refused(_LIST, _LIST, 0, 1, count=2) == "the list holds 3 elements but layout saw 2 children"
+
+
+# --- the literal that owns the order ----------------------------------------
+
+_COMP = "Column(children=[Text(t) for t in tags])"
+_LOCAL = 'def build():\n    tags = ["a", "b", "c"]\n    return ' + _COMP + "\n"
+_BUILDER = "Column.builder(TAGS, make)"
+_MODULE = 'TAGS = ["a", "b", "c"]\n\n\ndef build():\n    return ' + _BUILDER + "\n"
+
+
+def test_a_comprehension_over_a_name_bound_in_the_function_moves_the_element_there() -> None:
+    assert _moved(_LOCAL, _COMP, 0, 2) == 'def build():\n    tags = ["b", "c", "a"]\n    return ' + _COMP + "\n"
+
+
+def test_a_builder_over_a_module_level_literal_moves_the_element_there() -> None:
+    assert _moved(_MODULE, _BUILDER, 2, 0).startswith('TAGS = ["c", "a", "b"]\n')
+
+
+def test_a_comprehension_over_an_inline_list_moves_the_element_in_it() -> None:
+    text = 'Column(children=[Text(t) for t in ["a", "b", "c"]])'
+    assert _moved(text, text, 1, 0) == 'Column(children=[Text(t) for t in ["b", "a", "c"]])'
+
+
+def test_a_tuple_literal_owns_an_order_too() -> None:
+    text = 'Row(children=[Text(t) for t in ("a", "b", "c")])'
+    assert _moved(text, text, 0, 2) == 'Row(children=[Text(t) for t in ("b", "c", "a")])'
+
+
+def test_builder_items_may_be_a_keyword() -> None:
+    call = "Column.builder(items=TAGS, builder=make)"
+    text = 'TAGS = ["a", "b", "c"]\n' + call + "\n"
+    assert _moved(text, call, 0, 1).startswith('TAGS = ["b", "a", "c"]\n')
+
+
+def test_an_explicit_for_each_child_is_read_like_a_builder() -> None:
+    call = "Column(children=[ForEach(TAGS, make)])"
+    text = 'TAGS = ["a", "b", "c"]\n' + call + "\n"
+    assert _moved(text, call, 0, 1).startswith('TAGS = ["b", "a", "c"]\n')
+
+
+_FILTERED = "Column(children=[Text(t) for t in tags if t])"
+_NESTED = "Column(children=[Text(t) for row in tags for t in row])"
+_CALLED = "Column.builder(load(), make)"
+
+
+@pytest.mark.parametrize(
+    ("text", "call", "reason"),
+    [
+        ("def build(tags):\n    return " + _COMP + "\n", _COMP, "tags is a parameter of build"),
+        (
+            'def build():\n    tags = ["a"]\n    tags = ["a", "b", "c"]\n    return ' + _COMP + "\n",
+            _COMP,
+            "tags is bound more than once",
+        ),
+        (
+            'def build():\n    tags = ["a", "b", "c"]\n    tags.append("d")\n    return ' + _COMP + "\n",
+            _COMP,
+            "tags is used again after tags = [...]",
+        ),
+        ("def build():\n    tags = load()\n    return " + _COMP + "\n", _COMP, "tags is bound to load(), not one list"),
+        (
+            "def build():\n    for tags in rows:\n        pass\n    return " + _COMP + "\n",
+            _COMP,
+            "tags is bound to rows, not one list",
+        ),
+        ("def build():\n    return " + _COMP + "\n", _COMP, "tags is not bound to a list literal in this file"),
+        (
+            'TAGS = ["a", "b", "c"]\n\n\ndef other():\n    return TAGS\n\n\ndef build():\n    return '
+            + _BUILDER
+            + "\n",
+            _BUILDER,
+            "TAGS is used again after TAGS = [...]",
+        ),
+        ('tags = ["a", "b", "c"]\n' + _FILTERED, _FILTERED, "the comprehension filters its items"),
+        ('tags = ["a", "b", "c"]\n' + _NESTED, _NESTED, "the comprehension has more than one for"),
+        (_CALLED, _CALLED, "items are the result of load(...), not one list"),
+    ],
+)
+def test_an_order_that_is_not_in_one_literal_is_refused_by_name(text: str, call: str, reason: str) -> None:
+    assert _refused(text, call, 0, 1) == reason
 
 
 @pytest.fixture

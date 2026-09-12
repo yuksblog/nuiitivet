@@ -92,10 +92,21 @@ def locate_call(text: str, site: Frame) -> Optional[ast.Call]:
     Without a recorded column the line's only call is accepted; two calls on
     the line cannot be told apart, and neither is guessed.
     """
+    located = _locate(text, site)
+    return located[1] if located is not None else None
+
+
+def _locate(text: str, site: Frame) -> Optional[tuple[ast.Module, ast.Call]]:
+    """The parsed module and the call at ``site`` in it, or ``None``."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
         return None
+    call = _call_at(tree, site)
+    return (tree, call) if call is not None else None
+
+
+def _call_at(tree: ast.Module, site: Frame) -> Optional[ast.Call]:
     on_line: list[ast.Call] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or node.lineno != site.line:
@@ -146,29 +157,28 @@ def plan_keywords(text: str, site: Frame, changes: Mapping[str, Value]) -> Union
 
 
 def plan_move(text: str, site: Frame, index: int, slot: int, count: int) -> Union[tuple[SpanEdit, ...], Refusal]:
-    """The spans that move element ``index`` of the ``children`` list at ``site`` to ``slot``.
+    """The spans that move the child at ``index`` of the container at ``site`` to ``slot``.
 
-    ``slot`` is the element's position in the list without it, and ``count`` is
-    how many children layout saw: only when the list is one literal with
-    exactly that many elements does a layout index name a source span, so
-    anything else -- a comprehension, an expression, a spread, a mismatch -- is
-    refused. The element travels with one of its separators, so the list's
-    formatting comes along.
+    The edit lands in the list literal that owns the children's order: the
+    ``children`` list itself, or the list a comprehension or a ``ForEach``
+    iterates -- inline, or bound once to a name in the enclosing function or
+    module and never mentioned again. ``slot`` is the element's position in
+    the list without it, and ``count`` is how many children layout saw: only
+    when that literal has exactly ``count`` elements does a layout index name
+    a source span, so anything else is refused. The element travels with one
+    of its separators, so the list's formatting comes along.
     """
-    call = locate_call(text, site)
-    if call is None:
+    located = _locate(text, site)
+    if located is None:
         return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
-    children = next((kw.value for kw in call.keywords if kw.arg == "children"), None)
-    if children is None and call.args:
-        children = call.args[0]
-    if children is None:
-        return Refusal("no children are written on this call")
-    if not isinstance(children, ast.List):
-        return Refusal(f"children are {_describe_children(text, children)}, not one list")
-    spread = next((elt for elt in children.elts if isinstance(elt, ast.Starred)), None)
+    tree, call = located
+    owner = _order_owner(text, tree, call)
+    if isinstance(owner, Refusal):
+        return owner
+    spread = next((elt for elt in owner.elts if isinstance(elt, ast.Starred)), None)
     if spread is not None:
-        return Refusal(f"children spread {_segment(text, spread.value)}")
-    elts = children.elts
+        return Refusal(f"the list spreads {_segment(text, spread.value)}")
+    elts = owner.elts
     if len(elts) != count:
         return Refusal(f"the list holds {len(elts)} elements but layout saw {count} children")
     if not 0 <= index < len(elts) or not 0 <= slot < len(elts):
@@ -193,6 +203,131 @@ def plan_move(text: str, site: Frame, index: int, slot: int, count: int) -> Unio
         insertion = SpanEdit(ends[last], ends[last], separator + element)
     removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
     return (removal, insertion)
+
+
+Literal = Union[ast.List, ast.Tuple]
+
+
+def _order_owner(text: str, tree: ast.Module, call: ast.Call) -> Union[Literal, Refusal]:
+    """The list literal whose element order is the order of ``call``'s children."""
+    if isinstance(call.func, ast.Attribute) and call.func.attr == "builder":
+        items = _argument(call, "items")
+        if items is None:
+            return Refusal("no items are written on this call")
+        return _literal_behind(text, tree, call, items, "items")
+    children = _argument(call, "children")
+    if children is None:
+        return Refusal("no children are written on this call")
+    if isinstance(children, ast.List) and len(children.elts) == 1 and isinstance(children.elts[0], ast.Call):
+        provider = children.elts[0]
+        if _is_for_each(provider):
+            items = _argument(provider, "items")
+            if items is None:
+                return Refusal("no items are written on the ForEach")
+            return _literal_behind(text, tree, call, items, "items")
+    return _literal_behind(text, tree, call, children, "children")
+
+
+def _literal_behind(text: str, tree: ast.Module, call: ast.Call, expr: ast.expr, what: str) -> Union[Literal, Refusal]:
+    """``expr`` as the list literal it iterates in order, or why it has none."""
+    if isinstance(expr, (ast.List, ast.Tuple)):
+        return expr
+    if isinstance(expr, ast.ListComp):
+        if len(expr.generators) != 1:
+            return Refusal("the comprehension has more than one for")
+        generator = expr.generators[0]
+        if generator.ifs:
+            return Refusal("the comprehension filters its items")
+        return _literal_behind(text, tree, call, generator.iter, what)
+    if isinstance(expr, ast.Name):
+        return _binding_of(text, tree, call, expr)
+    return Refusal(f"{what} are {_describe_children(text, expr)}, not one list")
+
+
+def _binding_of(text: str, tree: ast.Module, call: ast.Call, use: ast.Name) -> Union[Literal, Refusal]:
+    """The list literal ``use`` names, or why the name's order cannot be trusted.
+
+    The name must be bound exactly once in the innermost scope that binds it
+    -- the function holding the call, else the module -- by a plain assignment
+    of a literal, and mentioned nowhere else in that scope: a second binding,
+    an ``append``, a parameter, or a read from another function could each put
+    the order somewhere other than the literal.
+    """
+    name = use.id
+    scope: ast.AST = tree
+    function = _enclosing_function(tree, call)
+    if function is not None:
+        if any(arg.arg == name for arg in function.args.args + function.args.kwonlyargs):
+            return Refusal(f"{name} is a parameter of {function.name}")
+        if _bindings(function, name):
+            scope = function
+    bindings = _bindings(scope, name)
+    if not bindings:
+        return Refusal(f"{name} is not bound to a list literal in this file")
+    if len(bindings) > 1:
+        return Refusal(f"{name} is bound more than once")
+    target, value = bindings[0]
+    if not isinstance(value, (ast.List, ast.Tuple)):
+        return Refusal(f"{name} is bound to {_segment(text, value)}, not one list")
+    mentions = [node for node in ast.walk(scope) if isinstance(node, ast.Name) and node.id == name]
+    if any(node is not target and node is not use for node in mentions):
+        return Refusal(f"{name} is used again after {name} = [...]")
+    return value
+
+
+def _enclosing_function(tree: ast.Module, call: ast.Call) -> Optional[Union[ast.FunctionDef, ast.AsyncFunctionDef]]:
+    """The innermost function whose body holds ``call``, or ``None`` at module level."""
+    start, end = (call.lineno, call.col_offset), (call.end_lineno or call.lineno, call.end_col_offset or 0)
+    innermost: Optional[Union[ast.FunctionDef, ast.AsyncFunctionDef]] = None
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if (node.lineno, node.col_offset) <= start and end <= (node.end_lineno or 0, node.end_col_offset or 0):
+            if innermost is None or node.lineno >= innermost.lineno:
+                innermost = node
+    return innermost
+
+
+def _bindings(scope: ast.AST, name: str) -> list[tuple[ast.Name, ast.expr]]:
+    """Every statement in ``scope``'s own body that binds ``name``, as ``(target, value)``.
+
+    Nested functions, classes and lambdas are scopes of their own and are not
+    entered. A loop target or an augmented assignment counts as a binding too,
+    with the expression it draws from as its value.
+    """
+    found: list[tuple[ast.Name, ast.expr]] = []
+    stack: list[ast.AST] = list(ast.iter_child_nodes(scope))
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    found.append((target, node.value))
+        elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
+            if isinstance(node.target, ast.Name) and node.target.id == name:
+                found.append((node.target, node.value or node.target))
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            if isinstance(node.target, ast.Name) and node.target.id == name:
+                found.append((node.target, node.iter))
+        stack.extend(ast.iter_child_nodes(node))
+    return found
+
+
+def _argument(call: ast.Call, keyword: str) -> Optional[ast.expr]:
+    """The value of ``keyword`` on ``call``, else its first positional argument."""
+    for kw in call.keywords:
+        if kw.arg == keyword:
+            return kw.value
+    return call.args[0] if call.args else None
+
+
+def _is_for_each(node: ast.Call) -> bool:
+    func = node.func
+    return (isinstance(func, ast.Name) and func.id == "ForEach") or (
+        isinstance(func, ast.Attribute) and func.attr == "ForEach"
+    )
 
 
 def apply_spans(text: str, spans: Iterable[SpanEdit]) -> tuple[str, tuple[SpanEdit, ...]]:
@@ -338,10 +473,12 @@ def _check_slot(container: Any, slot: int, child: str) -> Optional[str]:
     """
     from nuiitivet.layout.layout_utils import expand_layout_children
 
+    from .reorder import visible
+
     children = expand_layout_children(container.children_snapshot())
     if slot >= len(children):
         return f"reloaded, but {type(container).__name__} has {len(children)} children, expected {slot + 1} or more"
-    got = type(children[slot]).__name__
+    got = type(visible(children[slot])).__name__
     if child and got != child:
         return f"position {slot + 1} holds {got}, expected {child}"
     return None
@@ -356,6 +493,8 @@ def _summary(edit: Edit) -> str:
 def _describe_children(text: str, node: ast.expr) -> str:
     if isinstance(node, (ast.ListComp, ast.GeneratorExp)):
         return "a comprehension"
+    if isinstance(node, ast.Starred):
+        return "a spread"
     if isinstance(node, (ast.Name, ast.Attribute)):
         return f"bound to {_segment(text, node)}"
     if isinstance(node, ast.Call):

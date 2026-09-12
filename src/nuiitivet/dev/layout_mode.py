@@ -478,10 +478,6 @@ class LayoutMode:
             self._notice = f"{type(node).__name__} is not in a Column, Row, Flow or UniformFlow"
             invalidate(app)
             return
-        if reorder.data_driven(container):
-            self._notice = f"{type(container).__name__}'s children come from a ForEach; their order is its data's"
-            invalidate(app)
-            return
         children = reorder.siblings(container)
         if member not in children:
             return
@@ -534,7 +530,7 @@ class LayoutMode:
             instances=len(drag.instances),
             spans=spans,
             widget=type(container).__name__,
-            child=type(drag.member).__name__,
+            child=type(reorder.visible(drag.member)).__name__,
         )
 
     def _move_ghosts(self, drag: _Move) -> list[Ghost]:
@@ -636,7 +632,7 @@ def _move_caption(drag: _Move) -> str:
     """Which sibling the child lands before, and the instance count past one."""
     others = [child for child in drag.siblings if child is not drag.member]
     slot = drag.slot if drag.slot is not None else drag.index
-    parts = [f"before {_name(others[slot])}" if slot < len(others) else "to the end"]
+    parts = [f"before {_name(reorder.visible(others[slot]))}" if slot < len(others) else "to the end"]
     if len(drag.instances) > 1:
         parts.append(f"{len(drag.instances)} widgets")
     return "  ·  ".join(parts)

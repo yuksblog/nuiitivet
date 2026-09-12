@@ -133,7 +133,9 @@ def _capture(widget: Any) -> Site:
     # Still inside the widget's own constructor chain, so the next user frame
     # is the call that built it. Another widget's ``__init__`` on the way out
     # -- a button building its label -- ends that: the user call built the
-    # button, not the label.
+    # button, not the label. A classmethod of the widget's own class
+    # (``Column.builder(...)``) is part of the chain: the call naming the
+    # factory is the one that built it.
     constructing = True
     for _ in range(_MAX_DEPTH):
         if frame is None:
@@ -144,10 +146,20 @@ def _capture(widget: Any) -> Site:
             frames.append(Frame(code.co_filename, line, column, end_line, end_column, code.co_name, constructing))
             if len(frames) >= _MAX_FRAMES:
                 break
-        constructing = constructing and code.co_name == "__init__" and frame.f_locals.get("self") is widget
+        own = (code.co_name == "__init__" and frame.f_locals.get("self") is widget) or _own_classmethod(frame, widget)
+        constructing = constructing and own
         frame = frame.f_back
     site: Site = tuple(frames)
     return _interned.setdefault(site, site)
+
+
+def _own_classmethod(frame: Any, widget: Any) -> bool:
+    """Whether ``frame`` runs a classmethod of ``widget``'s own class, such as ``Column.builder``."""
+    code = frame.f_code
+    if not code.co_varnames or code.co_varnames[0] != "cls" or frame.f_locals.get("cls") is not type(widget):
+        return False
+    method = getattr(type(widget), code.co_name, None)
+    return getattr(method, "__code__", None) is code
 
 
 def site_of(node: Any) -> Site:
