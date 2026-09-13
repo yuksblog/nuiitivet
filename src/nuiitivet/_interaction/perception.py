@@ -589,6 +589,21 @@ def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
     return _pick(root, root, float(x), float(y), set())
 
 
+def pick_within(node: Any, x: float, y: float) -> Optional[Any]:
+    """Return the widget under ``node`` a human pointing at root-space ``(x, y)`` means, or ``None``.
+
+    :func:`pick_at` confined to one subtree, and blind to what lies on top of
+    it: the caller has already chosen ``node``'s layer -- a ``Stack`` child
+    under another -- so a sibling painted over it must not hide it. Clipping
+    still counts, since a scrolled-out child is painted nowhere.
+
+    Must be called on the UI thread (it reads live layout state).
+    """
+    if node is None:
+        return None
+    return _pick(None, node, float(x), float(y), set())
+
+
 def _rect_intersects(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
     ax, ay, aw, ah = a
     bx, by, bw, bh = b

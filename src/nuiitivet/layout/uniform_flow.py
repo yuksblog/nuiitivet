@@ -52,6 +52,18 @@ class UniformFlow(Widget):
         self.main_alignment = main_alignment or "start"
         self.run_alignment = run_alignment or "start"
         self.item_alignment = self._normalize_align_pair(item_alignment)
+        self._row_tracks: List[Tuple[float, float]] = []
+        self._column_tracks: List[Tuple[float, float]] = []
+
+    @property
+    def row_tracks(self) -> List[Tuple[float, float]]:
+        """Each row's ``(offset, length)`` from the last layout, relative to the flow; empty before one."""
+        return list(self._row_tracks)
+
+    @property
+    def column_tracks(self) -> List[Tuple[float, float]]:
+        """Each column's ``(offset, length)`` from the last layout, relative to the flow; empty before one."""
+        return list(self._column_tracks)
 
     @classmethod
     def builder(
@@ -177,6 +189,8 @@ class UniformFlow(Widget):
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         children = expand_layout_children(self.children_snapshot())
+        self._row_tracks = []
+        self._column_tracks = []
         if not children:
             return
 
@@ -200,6 +214,8 @@ class UniformFlow(Widget):
 
         col_offsets = compute_prefix_offsets(col_widths, self.main_gap)
         row_offsets = compute_prefix_offsets(row_heights, self.cross_gap)
+        self._row_tracks = [(float(start_y + row_offsets[r]), float(row_heights[r])) for r in range(rows)]
+        self._column_tracks = [(float(start_x + col_offsets[c]), float(col_widths[c])) for c in range(cols)]
 
         for i, child in enumerate(children):
             r = i // cols

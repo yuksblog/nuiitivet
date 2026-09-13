@@ -8,10 +8,17 @@ Enter layout mode with Cmd+Shift+E (Ctrl+Shift+E), then drag a card by its
 body. Each container below exercises one reading:
 
 - ``top`` / ``left``: drag along the main axis to reorder in place; drag over
-  the other one to move across (the destination is washed and shows the slot)
+  the other one to move across (the destination is washed and shows the slot);
+  drag across the axis and the whole container aligns -- every card gets a
+  dashed rect, and the container's ``cross_alignment`` is written
 - ``empty``: an empty destination; the line sits at its start
-- ``stacked``: a ``Stack`` child can leave but not reorder; a badge says so
-  while it is dragged inside the ``Stack``
+- ``stacked``: a ``Stack`` child can leave; dragged inside the ``Stack`` it
+  aligns, and both cards snap together since the ``Stack``'s ``alignment`` is
+  what is written; a card dropped onto the ``Stack`` from outside goes on top,
+  not into the background box
+- ``boxed``: a ``Container``'s only child; it aligns in the box, dragged out
+  it leaves the box empty (its ``child`` argument goes with it), and any card
+  dropped on the empty box becomes its child again
 - ``from_data`` / ``comprehension``: children not written as a list literal
   (``Column.builder``, a comprehension); a badge appears while a card hovers
   over them and no line is drawn, and their own cards cannot leave
@@ -50,6 +57,7 @@ def build_root() -> nv.Widget:
         ],
         gap=8,
         padding=8,
+        height=100,
     )
     left = nv.Column(
         children=[
@@ -57,6 +65,7 @@ def build_root() -> nv.Widget:
             card("two"),
             card("three"),
         ],
+        width=200,
         gap=8,
         padding=8,
     )
@@ -71,8 +80,14 @@ def build_root() -> nv.Widget:
         children=[
             nv.Container(width=140, height=200).modifier(nv.background("#e3e6f0")),
             card("floating"),
+            nv.Text("tag", padding=4),
         ],
         alignment="center",
+    )
+    boxed = nv.Container(
+        width=140,
+        height=200,
+        alignment="center", child=card("boxed"),
     )
     from_data = nv.Column.builder(
         ["x", "y"],
@@ -112,8 +127,8 @@ def build_root() -> nv.Widget:
         children=[
             nv.Text("top: Row", padding=(8, 0)),
             panel(top),
-            nv.Text("left: Column / empty: Column / stacked: Stack", padding=(8, 0)),
-            nv.Row(children=[panel(left), panel(empty), panel(stacked)], gap=16),
+            nv.Text("left: Column / empty: Column / stacked: Stack / boxed: Container", padding=(8, 0)),
+            nv.Row(children=[panel(left), panel(empty), panel(stacked), panel(boxed)], gap=16),
             nv.Text("from_data: Column.builder / comprehension: Row", padding=(8, 0)),
             nv.Row(children=[panel(from_data), panel(comprehension)], gap=16),
             nv.Text("grid: Grid / areas: Grid.named_areas", padding=(8, 0)),

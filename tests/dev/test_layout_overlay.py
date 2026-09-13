@@ -227,7 +227,7 @@ def test_the_hud_names_every_gesture_the_mode_binds() -> None:
     """The badge is the only place a human can learn these."""
     assert set(lo._HINTS) == {
         "drag a corner resize",
-        "drag reorder / move",
+        "drag reorder / move / align",
         "click select",
         "↑/↓ parent/child",
         "Alt no snap",

@@ -40,7 +40,7 @@ _DASH = (6.0, 4.0)
 # them, so an omission hides the gesture completely.
 _HINTS = (
     "drag a corner resize",
-    "drag reorder / move",
+    "drag reorder / move / align",
     "click select",
     "↑/↓ parent/child",
     "Alt no snap",

@@ -26,12 +26,14 @@ from nuiitivet.dev.source_edit import (
     discarded_keywords,
     grid_item_name,
     locate_call,
+    plan_alignment,
     plan_area,
     plan_cell,
     plan_keywords,
     plan_move,
     plan_move_across,
     still_applies,
+    written_alignment,
 )
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
@@ -701,6 +703,50 @@ def test_leaving_a_grid_moves_only_the_items_child() -> None:
     assert apply_spans(text, removal + insertion)[0] == "Row(children=[Grid(children=[]), Column(children=[c(), a()])])"
 
 
+@pytest.mark.parametrize(
+    ("host", "left"),
+    [
+        ("Container(child=a(), width=100)", "Container(width=100)"),
+        ("Container(a(), width=100)", "Container(width=100)"),
+        ("Container(width=100, child=a())", "Container(width=100)"),
+        ("Container(child=a())", "Container()"),
+        ("Box(a(), padding=4, alignment='center')", "Box(padding=4, alignment='center')"),
+    ],
+)
+def test_a_single_child_container_gives_up_its_child_argument(host: str, left: str) -> None:
+    text = f"Row(children=[{host}, Column(children=[c()])])"
+    planned = plan_move_across(
+        text, _site(text, host), 0, 1, text, _site(text, "Column(children=[c()])"), 1, 1, from_host=True
+    )
+    assert not isinstance(planned, Refusal), planned.reason
+    removal, insertion = planned
+    assert apply_spans(text, removal + insertion)[0] == f"Row(children=[{left}, Column(children=[c(), a()])])"
+
+
+@pytest.mark.parametrize(
+    ("host", "filled"),
+    [
+        ("Container(width=100)", "Container(width=100, child=c())"),
+        ("Container()", "Container(child=c())"),
+    ],
+)
+def test_an_empty_single_child_container_takes_the_expression_as_its_child(host: str, filled: str) -> None:
+    text = f"Row(children=[Column(children=[c()]), {host}])"
+    planned = plan_move_across(
+        text, _site(text, "Column(children=[c()])"), 0, 1, text, _site(text, host), 0, 0, into_host=True
+    )
+    assert not isinstance(planned, Refusal), planned.reason
+    removal, insertion = planned
+    assert apply_spans(text, removal + insertion)[0] == f"Row(children=[Column(children=[]), {filled}])"
+
+
+def test_a_container_with_a_child_written_cannot_take_another() -> None:
+    text = "Row(children=[Column(children=[c()]), Container(child=a())])"
+    source, dest = _site(text, "Column(children=[c()])"), _site(text, "Container(child=a())")
+    planned = plan_move_across(text, source, 0, 1, text, dest, 0, 0, into_host=True)
+    assert isinstance(planned, Refusal) and planned.reason == "Container already has a child written"
+
+
 def test_entering_a_grid_wraps_the_expression_in_a_grid_item() -> None:
     text = "Row(children=[Column(children=[c()]), Grid(children=[])])"
     planned = plan_move_across(
@@ -719,6 +765,79 @@ def test_entering_a_grid_wraps_the_expression_in_a_grid_item() -> None:
     assert apply_spans(text, removal + insertion)[0] == (
         "Row(children=[Column(children=[]), Grid(children=[GridItem(c(), row=0, column=1)])])"
     )
+
+
+# --- alignment ----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "keyword", "position", "value", "expected"),
+    [
+        ("Stack(children=[])", "alignment", None, "center", 'Stack(children=[], alignment="center")'),
+        (
+            "Stack(children=[], alignment='top-left')",
+            "alignment",
+            None,
+            "center",
+            "Stack(children=[], alignment='center')",
+        ),
+        (
+            'Stack(children=[], alignment=("start", "end"))',
+            "alignment",
+            None,
+            ("center", "end"),
+            'Stack(children=[], alignment=("center", "end"))',
+        ),
+        ('CrossAligned(a(), "center")', "alignment", 1, "end", 'CrossAligned(a(), "end")'),
+        (
+            "Column(children=[], gap=0)",
+            "cross_alignment",
+            None,
+            "end",
+            'Column(children=[], gap=0, cross_alignment="end")',
+        ),
+    ],
+)
+def test_an_alignment_is_written_in_the_spelling_already_there(
+    text: str, keyword: str, position: Any, value: Any, expected: str
+) -> None:
+    planned = plan_alignment(text, _site(text, text), keyword, position, value)
+    assert not isinstance(planned, Refusal), planned.reason
+    assert apply_spans(text, planned)[0] == expected
+
+
+def test_the_written_alignment_is_read_back_in_its_own_shape() -> None:
+    text = "Stack(children=[])"
+    assert written_alignment(text, _site(text, text), "alignment", None) is None
+    text = 'Stack(children=[], alignment=("start", "end"))'
+    assert written_alignment(text, _site(text, text), "alignment", None) == ("start", "end")
+    text = 'CrossAligned(a(), "center")'
+    assert written_alignment(text, _site(text, text), "alignment", 1) == "center"
+    text = "Stack(children=[], alignment=where)"
+    found = written_alignment(text, _site(text, text), "alignment", None)
+    assert isinstance(found, Refusal) and found.reason == "alignment is bound to where"
+    planned = plan_alignment(text, _site(text, text), "alignment", None, "center")
+    assert isinstance(planned, Refusal) and planned.reason == "alignment is bound to where"
+
+
+def test_the_reload_check_reports_a_child_that_did_not_land_where_the_alignment_said() -> None:
+    source.install()
+    try:
+        column = Column(children=[Text("a", width=100, height=40)])
+    finally:
+        source.uninstall()
+    site = source.construction_frame(column)
+    assert site is not None
+    log = EditLog()
+    place = {"x": 100, "y": 0, "index": 0}
+    after: dict[str, Any] = {"cross_alignment": "center"}
+    edit = Edit("align", site.file, site, "Column", place, after, place, 1, (), "Column", "TextBase")
+    log._pending = (edit, False)
+
+    with mount(column) as host:
+        host.layout(300, 200)
+
+        assert log.after_reload([host.root]) == "x landed at 0, expected 100"
 
 
 def test_the_reload_check_reports_an_empty_cell() -> None:

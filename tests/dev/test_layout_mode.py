@@ -29,10 +29,13 @@ _CHORD = MOD_CTRL | MOD_SHIFT
 _APP = '''
 import nuiitivet.layout.grid as grid_mod
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
+from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
+from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.modifiers.border import border
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.text import TextBase as Text
@@ -181,6 +184,67 @@ def build_into_bare_grid():
 
 def build_padded_grid():
     return Row(children=[Column(children=[t("AAA")], gap=0), Grid(children=[GridItem(t("BBB"), row=0, column=0)], rows=[40], columns=[100], padding=20)], gap=0)  # noqa: E501
+
+
+def small(label):
+    return Text(label, width=50, height=20)
+
+
+def build_stack_align():
+    return Stack(children=[t("AAA"), small("BBB")], width=300, height=200)
+
+
+def build_stack_over_box():
+    return Stack(children=[Container(width=300, height=200), small("BBB")], width=300, height=200)
+
+
+def build_column_and_stack():
+    return Row(children=[Column(children=[t("CCC")], gap=0), Stack(children=[Container(width=100, height=40), small("AAA")], width=100, height=40)], gap=0)  # noqa: E501
+
+
+def build_column_and_stack_topped_by_row():
+    return Row(children=[Column(children=[t("CCC")], gap=0), Stack(children=[Container(width=100, height=40), Row(children=[small("AAA")], gap=0)], width=100, height=40)], gap=0)  # noqa: E501
+
+
+def build_covered_layer():
+    return Stack(children=[Column(children=[t("AAA"), t("BBB")], gap=0), Container(width=100, height=40, child=small("FAB"))], width=300, height=200)  # noqa: E501
+
+
+def build_container():
+    return Container(child=t("AAA"), width=300, height=200)
+
+
+def build_container_and_column():
+    return Row(children=[Container(child=t("AAA"), width=100, height=40), Column(children=[t("CCC")], gap=0)], gap=0)
+
+
+def build_column_and_empty_container():
+    return Row(children=[Column(children=[t("AAA")], gap=0), Container(width=200, height=80, alignment="center")], gap=0)  # noqa: E501
+
+
+def build_cross_aligned():
+    return Column(children=[CrossAligned(t("AAA"), "center"), t("BBB")], gap=0)
+
+
+def build_beside_cross_aligned():
+    return Column(children=[t("AAA"), CrossAligned(t("BBB"), "center")], gap=0)
+
+
+def build_bound_alignment():
+    ca = "start"
+    return Column(children=[t("AAA")], gap=0, cross_alignment=ca)
+
+
+def build_grid_align():
+    return Grid(children=[GridItem(t("AAA"), row=0, column=0)], rows=[80], columns=[200])
+
+
+def build_flow_align():
+    return Flow(children=[t("AAA"), small("BBB")], main_gap=0, cross_gap=0, width=300)
+
+
+def build_uniform_align():
+    return UniformFlow(children=[t("AAA"), small("BBB")], columns=2, width=300, item_alignment="start")
 '''
 
 _SIDE = '''
@@ -719,15 +783,43 @@ def test_the_last_slot_is_captioned_to_the_end(app_file: Path) -> None:
         s.close()
 
 
-def test_cross_axis_travel_in_a_column_has_no_reading(app_file: Path) -> None:
+def test_cross_axis_travel_in_a_column_aligns_the_whole_column(app_file: Path) -> None:
+    """Sideways in a Column is not a reorder: the child snaps to start / center / end of the
+    column's width, and what is written is the Column's own cross_alignment, so every child
+    moves and the ghost shows each of them."""
     s = _list(app_file, "build_list")
     before = s.text()
     try:
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 200, 30)
-        assert s.mode.dragging and [g.shape for g in s.mode.ghosts] == ["wash"], "the column washed, no line"
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect", "rect", "rect"], "the column and every child"
+        rects = [g for g in s.mode.ghosts if g.shape == "rect"]
+        assert [g.rect[0] for g in rects] == [100.0, 100.0, 100.0], "each child centred in the 300 wide column"
+        assert rects[0].caption == "center  ·  all 3 children"
 
         s.mode.on_mouse_release(s.app, 200, 30)
+
+        assert 'cross_alignment="center"' in s.text() and s.text() != before
+        assert s.edits.pending is not None and s.edits.pending.kind == "align"
+        assert s.edits.pending.expected == {"x": 100, "y": 0, "index": 0}
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+        assert s.text() == before
+        assert s.mode.notice == "undoing cross_alignment → center"
+    finally:
+        s.close()
+
+
+def test_releasing_on_the_alignment_already_there_writes_nothing(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 60, 22)
+        assert s.mode.dragging and [g.shape for g in s.mode.ghosts] == ["wash"], "start is where it is"
+
+        s.mode.on_mouse_release(s.app, 60, 22)
 
         assert s.text() == before
         assert s.mode.notice is None
@@ -961,16 +1053,14 @@ def test_an_empty_container_takes_the_child_at_its_one_slot(app_file: Path) -> N
         s.close()
 
 
-def test_a_stack_child_cannot_be_reordered_but_can_leave(app_file: Path) -> None:
+def test_a_stack_child_that_fills_the_stack_has_nothing_to_align_but_can_leave(app_file: Path) -> None:
     s = _Session(app_file, "build_from_stack")
     try:
         s.hover(50, 20)
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 30)
-        assert s.mode.ghosts == [], "no in-place reading inside a Stack"
-        assert s.mode.notice == (
-            "Stack children have no order to drag; drop it in a Column, Row, Flow, UniformFlow or Grid"
-        )
+        assert s.mode.ghosts == [], "no reading inside the Stack: the child is as big as it"
+        assert s.mode.notice == "TextBase BBB fills Stack; nothing to align", "BBB is on top"
 
         s.mode.on_mouse_motion(s.app, 150, 30)
         assert s.mode.notice is None and any(g.shape == "wash" for g in s.mode.ghosts), "over the Column, a move"
@@ -1157,11 +1247,12 @@ def test_releasing_in_the_items_own_cell_writes_nothing(app_file: Path) -> None:
     try:
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 60, 25)
-        assert [g.shape for g in s.mode.ghosts] == ["wash"], "no cell: the item is where it is"
+        assert s.mode.ghosts == [], "in its own cell the reading is alignment, and AAA fills the cell"
+        assert s.mode.notice == "TextBase AAA fills its cell; nothing to align"
 
         s.mode.on_mouse_release(s.app, 60, 25)
 
-        assert s.text() == before and s.mode.notice is None
+        assert s.text() == before
     finally:
         s.close()
 
@@ -1296,6 +1387,305 @@ def test_the_reload_check_finds_the_child_at_its_cell(app_file: Path) -> None:
     try:
         s.drag_body((50, 20), (150, 20))
         rebuilt = _load(s.path).build_grid()
+        with mount(rebuilt) as host:
+            host.layout(300, 200)
+            assert s.edits.after_reload([host.root]) is None
+    finally:
+        s.close()
+
+
+# --- alignment ----------------------------------------------------------------
+
+
+def _rects(ghosts: list[Any]) -> list[Any]:
+    return [g for g in ghosts if g.shape == "rect"]
+
+
+def test_a_stack_child_aligns_every_child_of_the_stack(app_file: Path) -> None:
+    s = _list(app_file, "build_stack_align")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 100)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect", "rect"], "the stack and both children"
+        rects = _rects(s.mode.ghosts)
+        assert rects[0].rect == (100.0, 80.0, 100.0, 40.0) and rects[0].caption == "center  ·  all 2 children"
+        assert rects[1].rect == (125.0, 90.0, 50.0, 20.0) and rects[1].caption == ""
+
+        s.mode.on_mouse_release(s.app, 150, 100)
+
+        assert 'Stack(children=[t("AAA"), small("BBB")], width=300, height=200, alignment="center")' in s.text()
+    finally:
+        s.close()
+
+
+def test_inside_a_stack_the_alignment_wins_over_an_empty_sibling_box(app_file: Path) -> None:
+    """A stack's background is an empty Container under everything; a drag over it still aligns."""
+    s = _Session(app_file, "build_stack_over_box")
+    try:
+        s.hover(25, 10)
+        s.mode.on_mouse_press(s.app, 25, 10)
+        s.mode.on_mouse_motion(s.app, 150, 100)
+
+        assert s.mode.notice is None
+        rects = _rects(s.mode.ghosts)
+        assert len(rects) == 1 and rects[0].caption == "center", "the Stack's alignment, not a drop into the box"
+
+        s.mode.on_mouse_release(s.app, 150, 100)
+
+        assert 'Stack(children=[Container(width=300, height=200), small("BBB")], width=300, height=200, alignment="center")' in s.text()  # noqa: E501
+    finally:
+        s.close()
+
+
+def test_a_widget_dropped_on_a_stack_goes_on_top_not_into_its_background_box(app_file: Path) -> None:
+    """The stack's top layer is a small Text over an empty box; the drop lands on the stack, not in the box."""
+    s = _Session(app_file, "build_column_and_stack")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+
+        assert s.mode.notice is None
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect"], "the stack washed, the child placed in it"
+        placed = _rects(s.mode.ghosts)[0]
+        assert placed.rect == (100.0, 0.0, 100.0, 40.0) and placed.caption == "into Stack, on top"
+
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        text = s.text()
+        assert 'Stack(children=[Container(width=100, height=40), small("AAA"), t("CCC")], width=100, height=40)' in text
+        assert "Column(children=[], gap=0)" in text
+    finally:
+        s.close()
+
+
+def test_a_stacks_top_layer_takes_the_drop_when_it_can_even_past_its_own_rect(app_file: Path) -> None:
+    """The top layer is a small Row; the pointer over the background box beside it still reads as the Row."""
+    s = _Session(app_file, "build_column_and_stack_topped_by_row")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+
+        assert s.mode.notice is None
+        lines = _lines(s.mode.ghosts)
+        assert len(lines) == 1 and lines[0].caption == "into Row, to the end"
+
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        assert 'Row(children=[small("AAA"), t("CCC")], gap=0)' in s.text()
+    finally:
+        s.close()
+
+
+def test_inside_a_stack_a_drag_reads_its_own_layer_under_the_ones_above(app_file: Path) -> None:
+    """BBB is grabbed below a box covering AAA; dragged up under the box, it still reorders in its Column."""
+    s = _Session(app_file, "build_covered_layer")
+    try:
+        s.hover(50, 60)
+        s.mode.on_mouse_press(s.app, 50, 60)
+        s.mode.on_mouse_motion(s.app, 50, 15)
+
+        assert s.mode.notice is None
+        lines = _lines(s.mode.ghosts)
+        assert len(lines) == 1 and lines[0].caption == "before TextBase AAA"
+
+        s.mode.on_mouse_release(s.app, 50, 15)
+
+        assert 'Column(children=[t("BBB"), t("AAA")], gap=0)' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_containers_only_child_leaves_as_its_child_argument(app_file: Path) -> None:
+    """The argument goes with its separator; the box keeps its other arguments and stays, empty."""
+    s = _list(app_file, "build_container_and_column")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "line"], "over the Column, a move"
+
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        text = s.text()
+        assert 'Container(width=100, height=40), Column(children=[t("CCC"), t("AAA")], gap=0)' in text
+        assert s.edits.pending is not None and s.edits.pending.before == {"count": 1, "slot": 0}
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_an_empty_container_takes_a_widget_as_its_child_argument(app_file: Path) -> None:
+    """The box is washed and a dashed rect shows where its alignment will put the child."""
+    s = _list(app_file, "build_column_and_empty_container")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 200, 40)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect"]
+        assert _rects(s.mode.ghosts)[0].rect == (150.0, 20.0, 100.0, 40.0), "centred in the 200 × 80 box"
+        assert _rects(s.mode.ghosts)[0].caption == "into Container"
+
+        s.mode.on_mouse_release(s.app, 200, 40)
+
+        text = s.text()
+        assert 'Column(children=[], gap=0), Container(width=200, height=80, alignment="center", child=t("AAA"))' in text
+        assert s.edits.pending is not None and s.edits.pending.expected == {"slot": 0}
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_a_box_that_already_has_a_child_is_passed_over(app_file: Path) -> None:
+    """Dropping on a full Container lands in the list around it, not in the box."""
+    s = _Session(app_file, "build_container_and_column")
+    try:
+        s.hover(150, 20)
+        s.mode.on_mouse_press(s.app, 150, 20)
+        s.mode.on_mouse_motion(s.app, 40, 20)
+
+        assert s.mode.notice is None
+        line = next(g for g in s.mode.ghosts if g.shape == "line")
+        assert line.caption == "into Row, before Container", "the Row around the box, not the box"
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_a_containers_sole_child_aligns_within_it(app_file: Path) -> None:
+    s = _list(app_file, "build_container")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 250, 20)
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect"]
+        assert _rects(s.mode.ghosts)[0].rect == (200.0, 0.0, 100.0, 40.0)
+        assert _rects(s.mode.ghosts)[0].caption == "top-right"
+
+        s.mode.on_mouse_release(s.app, 250, 20)
+
+        assert 'Container(child=t("AAA"), width=300, height=200, alignment="top-right")' in s.text()
+        assert s.edits.pending is not None and s.edits.pending.expected == {"x": 200, "y": 0, "index": 0}
+    finally:
+        s.close()
+
+
+def test_a_child_with_its_own_cross_aligned_has_that_value_rewritten(app_file: Path) -> None:
+    s = _Session(app_file, "build_cross_aligned")
+    try:
+        s.hover(150, 20)
+        s.mode.on_mouse_press(s.app, 150, 20)
+        s.mode.on_mouse_motion(s.app, 250, 25)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect"], "only the wrapped child moves"
+        assert _rects(s.mode.ghosts)[0].rect == (200.0, 0.0, 100.0, 40.0)
+        assert _rects(s.mode.ghosts)[0].caption == "end"
+
+        s.mode.on_mouse_release(s.app, 250, 25)
+
+        assert 'CrossAligned(t("AAA"), "end"), t("BBB")], gap=0)' in s.text()
+        assert s.edits.pending is not None and s.edits.pending.expected["index"] == -1
+    finally:
+        s.close()
+
+
+def test_a_sibling_with_its_own_cross_aligned_stays_where_it_is(app_file: Path) -> None:
+    s = _list(app_file, "build_beside_cross_aligned")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 250, 25)
+
+        rects = _rects(s.mode.ghosts)
+        assert len(rects) == 1 and rects[0].rect[1] == 0.0, "AAA moves; BBB keeps its own center"
+        assert rects[0].caption == "end", "one child moving gets no count"
+
+        s.mode.on_mouse_release(s.app, 250, 25)
+
+        assert 'CrossAligned(t("BBB"), "center")], gap=0, cross_alignment="end")' in s.text()
+    finally:
+        s.close()
+
+
+def test_an_alignment_bound_to_a_name_is_a_badge_while_the_reading_is_live(app_file: Path) -> None:
+    s = _list(app_file, "build_bound_alignment")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 200, 30)
+        assert s.mode.ghosts == [] and s.mode.notice == "cross_alignment is bound to ca"
+
+        s.mode.on_mouse_release(s.app, 200, 30)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_a_grid_items_child_aligns_within_its_cell(app_file: Path) -> None:
+    s = _list(app_file, "build_grid_align")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 60)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "rect"]
+        assert _rects(s.mode.ghosts)[0].rect == (100.0, 40.0, 100.0, 40.0)
+        assert _rects(s.mode.ghosts)[0].caption == "bottom-right"
+
+        s.mode.on_mouse_release(s.app, 150, 60)
+
+        assert 'GridItem(t("AAA"), row=0, column=0, alignment="bottom-right")' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_flow_child_that_keeps_its_slot_aligns_the_row(app_file: Path) -> None:
+    """BBB is shorter than its row; pulled down without leaving its slot, it snaps within the
+    row and the Flow's cross_alignment is written. AAA fills the row and stays."""
+    s = _Session(app_file, "build_flow_align")
+    try:
+        s.hover(125, 10)
+        s.mode.on_mouse_press(s.app, 125, 10)
+        s.mode.on_mouse_motion(s.app, 125, 40)
+
+        rects = _rects(s.mode.ghosts)
+        assert len(rects) == 1 and rects[0].rect == (100.0, 20.0, 50.0, 20.0), "only BBB moves"
+        assert rects[0].caption == "end"
+
+        s.mode.on_mouse_release(s.app, 125, 40)
+
+        assert 'main_gap=0, cross_gap=0, width=300, cross_alignment="end")' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_uniform_flow_child_aligns_within_its_cell(app_file: Path) -> None:
+    s = _Session(app_file, "build_uniform_align")
+    try:
+        s.hover(175, 10)
+        s.mode.on_mouse_press(s.app, 175, 10)
+        s.mode.on_mouse_motion(s.app, 290, 30)
+
+        rects = _rects(s.mode.ghosts)
+        assert [g.rect for g in rects] == [(50.0, 0.0, 100.0, 40.0), (250.0, 20.0, 50.0, 20.0)], "each in its cell"
+        assert [g.caption for g in rects] == ["", "end  ·  all 2 children"]
+
+        s.mode.on_mouse_release(s.app, 290, 30)
+
+        assert 'item_alignment="end"' in s.text()
+    finally:
+        s.close()
+
+
+def test_the_reload_check_finds_the_child_where_the_alignment_put_it(app_file: Path) -> None:
+    s = _list(app_file, "build_list")
+    try:
+        s.drag_body((50, 20), (200, 30))
+        rebuilt = _load(s.path).build_list()
         with mount(rebuilt) as host:
             host.layout(300, 200)
             assert s.edits.after_reload([host.root]) is None

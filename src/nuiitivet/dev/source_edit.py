@@ -229,6 +229,8 @@ def plan_move_across(
     *,
     unwrap: bool = False,
     wrap: Optional[tuple[str, str]] = None,
+    from_host: bool = False,
+    into_host: bool = False,
 ) -> Union[tuple[tuple[SpanEdit, ...], tuple[SpanEdit, ...]], Refusal]:
     """The spans that move child ``index`` of the container at ``site`` into the one at ``dest_site``.
 
@@ -240,19 +242,68 @@ def plan_move_across(
     destination's, and its continuation lines take the destination's
     indentation. With ``unwrap`` the element is a ``GridItem`` call and only
     its child expression travels; ``wrap`` is the text put before and after
-    the expression at the destination, a ``GridItem`` call around it.
+    the expression at the destination, a ``GridItem`` call around it. With
+    ``from_host`` the source is a single-child container, and its ``child``
+    argument leaves the call, which keeps everything else it was given; with
+    ``into_host`` the destination is an empty one, and the expression becomes
+    its ``child`` argument.
     """
+    if into_host:
+        placing = _host_insertion(dest_text, dest_site)
+    else:
+        placing = _list_insertion(dest_text, dest_site, slot, dest_count)
+    if isinstance(placing, Refusal):
+        return placing
+    taken = _host_removal(text, site) if from_host else _list_removal(text, site, index, count, unwrap)
+    if isinstance(taken, Refusal):
+        return taken
+    removal, moved_from, moved_to = taken
+    element = _reindent(text[moved_from:moved_to], _indent_at(text, moved_from), placing.indent)
+    if wrap is not None:
+        element = wrap[0] + element + wrap[1]
+    return ((removal,), (placing.insert(element),))
+
+
+@dataclass(frozen=True)
+class _Placing:
+    """Where a moved expression enters a destination: how to insert it, and the indentation it takes."""
+
+    insert: Callable[[str], SpanEdit]
+    indent: str
+
+
+def _list_insertion(text: str, site: Frame, slot: int, count: int) -> Union[_Placing, Refusal]:
+    target = children_list(text, site, "destination")
+    if isinstance(target, Refusal):
+        return target
+    if len(target.elts) != count:
+        return Refusal(f"the destination holds {len(target.elts)} elements but layout saw {count} children")
+    if not 0 <= slot <= count:
+        return Refusal("the slot is outside the list")
+    return _Placing(lambda element: _insert_element(text, target, slot, element), _dest_indent(text, target, slot))
+
+
+def _host_insertion(text: str, site: Frame) -> Union[_Placing, Refusal]:
+    """The ``child`` keyword an empty single-child container at ``site`` gains."""
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    if _placement_argument(call, "child", 0) is not None:
+        return Refusal(f"{_segment(text, call.func)} already has a child written")
+    at, prefix = _insertion_point(text, call, _Offsets(text))
+    return _Placing(lambda element: SpanEdit(at, at, f"{prefix}child={element}"), _indent_at(text, at))
+
+
+def _list_removal(
+    text: str, site: Frame, index: int, count: int, unwrap: bool
+) -> Union[tuple[SpanEdit, int, int], Refusal]:
+    """The span that takes element ``index`` out of the children list at ``site``, and the span of what travels."""
     source = children_list(text, site, "source")
     if isinstance(source, Refusal):
         return source
-    target = children_list(dest_text, dest_site, "destination")
-    if isinstance(target, Refusal):
-        return target
     if len(source.elts) != count:
         return Refusal(f"the list holds {len(source.elts)} elements but layout saw {count} children")
-    if len(target.elts) != dest_count:
-        return Refusal(f"the destination holds {len(target.elts)} elements but layout saw {dest_count} children")
-    if not 0 <= index < count or not 0 <= slot <= dest_count:
+    if not 0 <= index < count:
         return Refusal("the slot is outside the list")
     offsets = _Offsets(text)
     starts = [offsets.of(elt.lineno, elt.col_offset) for elt in source.elts]
@@ -264,7 +315,6 @@ def plan_move_across(
             return Refusal("the element is not a GridItem call with a child to unwrap")
         moved_from = offsets.of(child.lineno, child.col_offset)
         moved_to = offsets.of(child.end_lineno or child.lineno, child.end_col_offset or 0)
-    element = text[moved_from:moved_to]
     if count == 1:
         # The only element leaves with everything inside the brackets, a
         # trailing comma included, so ``[]`` is what remains.
@@ -274,11 +324,54 @@ def plan_move_across(
         cut = (starts[index], starts[index + 1])
     else:
         cut = (ends[index - 1], ends[index])
-    removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
-    moved = _reindent(element, _indent_at(text, moved_from), _dest_indent(dest_text, target, slot))
-    if wrap is not None:
-        moved = wrap[0] + moved + wrap[1]
-    return ((removal,), (_insert_element(dest_text, target, slot, moved),))
+    return (SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]]), moved_from, moved_to)
+
+
+def _host_removal(text: str, site: Frame) -> Union[tuple[SpanEdit, int, int], Refusal]:
+    """The span that takes the ``child`` argument off the container at ``site``, and the child's own span.
+
+    The argument leaves with one of its separators, as a list element does;
+    the call keeps every other argument.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    child = _placement_argument(call, "child", 0)
+    if child is None:
+        return Refusal(f"no child is written on {_segment(text, call.func)}")
+    offsets = _Offsets(text)
+    arguments = [_span_of(offsets, node) for node in call.args] + [_span_of(offsets, kw) for kw in call.keywords]
+    moved_from = offsets.of(child.lineno, child.col_offset)
+    moved_to = offsets.of(child.end_lineno or child.lineno, child.end_col_offset or 0)
+    arguments.sort()
+    index = next(i for i, (start, end) in enumerate(arguments) if start <= moved_from and moved_to <= end)
+    if len(arguments) == 1:
+        func_end = offsets.of(call.func.end_lineno or call.func.lineno, call.func.end_col_offset or 0)
+        cut = (text.index("(", func_end) + 1, offsets.of(call.end_lineno or call.lineno, call.end_col_offset or 0) - 1)
+    elif index < len(arguments) - 1:
+        cut = (arguments[index][0], arguments[index + 1][0])
+    else:
+        cut = (arguments[index - 1][1], arguments[index][1])
+    return (SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]]), moved_from, moved_to)
+
+
+def _span_of(offsets: "_Offsets", node: Union[ast.expr, ast.keyword]) -> tuple[int, int]:
+    """The character span of an argument: a positional expression, or a keyword with its name."""
+    start = offsets.of(node.lineno, node.col_offset)
+    return (start, offsets.of(node.end_lineno or node.lineno, node.end_col_offset or 0))
+
+
+def host_child_refusal(text: str, site: Frame, role: str) -> Optional[Refusal]:
+    """Why the box at ``site`` cannot give its child (``role`` ``"source"``) or take one, or ``None``."""
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    written = _placement_argument(call, "child", 0) is not None
+    if role == "source" and not written:
+        return Refusal(f"no child is written on {_segment(text, call.func)}")
+    if role == "destination" and written:
+        return Refusal(f"{_segment(text, call.func)} already has a child written")
+    return None
 
 
 def plan_cell(text: str, site: Frame, row: int, column: int) -> Union[tuple[SpanEdit, ...], Refusal]:
@@ -433,6 +526,73 @@ def _respell_index(text: str, node: ast.expr, start: int) -> Optional[str]:
         inside = ", ".join(str(value + shift) for value in values)
         return f"[{inside}]" if isinstance(node, ast.List) else f"({inside})"
     return None
+
+
+Spelled = Union[str, tuple[str, str]]
+
+
+def written_alignment(
+    text: str, site: Frame, keyword: str, position: Optional[int]
+) -> Union[None, Spelled, Refusal]:
+    """The alignment written on the call at ``site``: a string, a pair, ``None`` when absent, or a refusal.
+
+    The gate an alignment drag passes before its badge: a value that is a
+    name or an expression has no literal to write over.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    node = _placement_argument(call, keyword, position if position is not None else len(call.args))
+    if node is None:
+        return None
+    spelled = _alignment_literal(node)
+    if spelled is None:
+        return Refusal(f"{keyword} is bound to {_segment(text, node)}")
+    return spelled
+
+
+def plan_alignment(
+    text: str, site: Frame, keyword: str, position: Optional[int], value: Spelled
+) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that set ``keyword`` on the call at ``site`` to ``value``, a name or an ``(h, v)`` pair.
+
+    A literal is replaced in its own quotes; an absent keyword is inserted
+    after the last argument. A value that is not a literal is refused.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    offsets = _Offsets(text)
+    node = _placement_argument(call, keyword, position if position is not None else len(call.args))
+    if node is None:
+        at, prefix = _insertion_point(text, call, offsets)
+        return (SpanEdit(at, at, f"{prefix}{keyword}={_spell_alignment(value, None)}"),)
+    if _alignment_literal(node) is None:
+        return Refusal(f"{keyword} is bound to {_segment(text, node)}")
+    start = offsets.of(node.lineno, node.col_offset)
+    end = offsets.of(node.end_lineno or node.lineno, node.end_col_offset or 0)
+    old = text[start:end]
+    return (SpanEdit(start, end, _spell_alignment(value, old), replaces=old),)
+
+
+def _alignment_literal(node: ast.expr) -> Optional[Spelled]:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, (ast.Tuple, ast.List)) and len(node.elts) == 2:
+        if all(isinstance(elt, ast.Constant) and isinstance(elt.value, str) for elt in node.elts):
+            return (str(node.elts[0].value), str(node.elts[1].value))  # type: ignore[attr-defined]
+    return None
+
+
+def _spell_alignment(value: Spelled, like: Optional[str]) -> str:
+    quote = '"'
+    if like:
+        inner = like.lstrip("([ ")
+        if inner and inner[0] in "'\"":
+            quote = inner[0]
+    if isinstance(value, str):
+        return f"{quote}{value}{quote}"
+    return f"({quote}{value[0]}{quote}, {quote}{value[1]}{quote})"
 
 
 def children_list(text: str, site: Frame, role: str) -> Union[ast.List, Refusal]:
@@ -772,6 +932,8 @@ class EditLog:
             return _check_move_across(roots, edit, undone, instances[0])
         if edit.kind == "move":
             return _check_placed(instances[0], expected, edit.child)
+        if edit.kind == "align":
+            return _check_aligned(instances[0], expected)
         rect = getattr(instances[0], "layout_rect", None)
         if rect is None:
             return None
@@ -789,6 +951,31 @@ class EditLog:
         last = traceback_text.strip().splitlines()[-1] if traceback_text.strip() else "unknown error"
         self.outcome = f"reload failed: {last}"
         return self.outcome
+
+
+def _check_aligned(host: Any, place: Mapping[str, Any]) -> Optional[str]:
+    """Whether the aligned widget sits where the ghost said.
+
+    The widget is ``host``'s child at ``index``, or ``host`` itself at ``-1``.
+    """
+    from nuiitivet._interaction.perception import global_visual_rect
+
+    from .reorder import siblings
+
+    index = int(place["index"])
+    node = host
+    if index >= 0:
+        children = siblings(host)
+        if index >= len(children):
+            return f"reloaded, but {type(host).__name__} has {len(children)} children, expected {index + 1} or more"
+        node = children[index]
+    rect = global_visual_rect(node)
+    if rect is None:
+        return None
+    for axis, at in (("x", rect[0]), ("y", rect[1])):
+        if axis in place and abs(at - int(place[axis])) > SNAP_BAND:
+            return f"{axis} landed at {int(at)}, expected {int(place[axis])}"
+    return None
 
 
 def _check_placed(container: Any, place: Mapping[str, Any], child: str) -> Optional[str]:
@@ -974,12 +1161,15 @@ __all__ = [
     "children_list",
     "discarded_keywords",
     "grid_item_name",
+    "host_child_refusal",
     "is_project_file",
     "locate_call",
+    "plan_alignment",
     "plan_area",
     "plan_cell",
     "plan_keywords",
     "plan_move",
     "plan_move_across",
     "still_applies",
+    "written_alignment",
 ]
