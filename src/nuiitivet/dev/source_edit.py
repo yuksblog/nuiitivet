@@ -82,6 +82,18 @@ class Edit:
     #: the reload.
     child: str = ""
     inverse: tuple[SpanEdit, ...] = field(default_factory=tuple)
+    #: For a move into another container: its site and class name, and -- when
+    #: it lives in another file -- that file and the spans written there.
+    destination: Optional[Frame] = None
+    dest_widget: str = ""
+    other_file: str = ""
+    other_spans: tuple[SpanEdit, ...] = field(default_factory=tuple)
+    other_inverse: tuple[SpanEdit, ...] = field(default_factory=tuple)
+
+    @property
+    def files(self) -> tuple[str, ...]:
+        """The files this edit writes, the site's first."""
+        return (self.file, self.other_file) if self.other_file else (self.file,)
 
 
 def locate_call(text: str, site: Frame) -> Optional[ast.Call]:
@@ -203,6 +215,137 @@ def plan_move(text: str, site: Frame, index: int, slot: int, count: int) -> Unio
         insertion = SpanEdit(ends[last], ends[last], separator + element)
     removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
     return (removal, insertion)
+
+
+def plan_move_across(
+    text: str,
+    site: Frame,
+    index: int,
+    count: int,
+    dest_text: str,
+    dest_site: Frame,
+    slot: int,
+    dest_count: int,
+) -> Union[tuple[tuple[SpanEdit, ...], tuple[SpanEdit, ...]], Refusal]:
+    """The spans that move child ``index`` of the container at ``site`` into the one at ``dest_site``.
+
+    Returned as two span sets, one per text; when both containers live in one
+    file the caller applies both to it. Both ``children`` must be list
+    literals written in place: a child built from data has no expression of
+    its own to move, and a data-driven list has nowhere to receive one. The
+    element leaves with one of its separators, enters with one of the
+    destination's, and its continuation lines take the destination's
+    indentation.
+    """
+    source = children_list(text, site, "source")
+    if isinstance(source, Refusal):
+        return source
+    target = children_list(dest_text, dest_site, "destination")
+    if isinstance(target, Refusal):
+        return target
+    if len(source.elts) != count:
+        return Refusal(f"the list holds {len(source.elts)} elements but layout saw {count} children")
+    if len(target.elts) != dest_count:
+        return Refusal(f"the destination holds {len(target.elts)} elements but layout saw {dest_count} children")
+    if not 0 <= index < count or not 0 <= slot <= dest_count:
+        return Refusal("the slot is outside the list")
+    offsets = _Offsets(text)
+    starts = [offsets.of(elt.lineno, elt.col_offset) for elt in source.elts]
+    ends = [offsets.of(elt.end_lineno or elt.lineno, elt.end_col_offset or 0) for elt in source.elts]
+    element = text[starts[index] : ends[index]]
+    if count == 1:
+        # The only element leaves with everything inside the brackets, a
+        # trailing comma included, so ``[]`` is what remains.
+        open_at = offsets.of(source.lineno, source.col_offset) + 1
+        cut = (open_at, offsets.of(source.end_lineno or source.lineno, source.end_col_offset or 0) - 1)
+    elif index < count - 1:
+        cut = (starts[index], starts[index + 1])
+    else:
+        cut = (ends[index - 1], ends[index])
+    removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
+    moved = _reindent(element, _indent_at(text, starts[index]), _dest_indent(dest_text, target, slot))
+    return ((removal,), (_insert_element(dest_text, target, slot, moved),))
+
+
+def children_list(text: str, site: Frame, role: str) -> Union[ast.List, Refusal]:
+    """The ``children`` list literal written on the call at ``site``, or why there is none.
+
+    The gate a move across containers passes on each side, ``role`` being
+    ``"source"`` or ``"destination"``: a list built by ``builder()``, a
+    ``ForEach``, a comprehension or any other expression is refused with
+    the reason that side has.
+    """
+    located = _locate(text, site)
+    if located is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    _tree, call = located
+    name = _segment(text, call.func)
+    if isinstance(call.func, ast.Attribute) and call.func.attr == "builder":
+        return _data_refusal(f"{name}()", role)
+    children = _argument(call, "children")
+    if children is None:
+        return Refusal(f"no children are written on {name}")
+    if isinstance(children, ast.List) and not any(isinstance(elt, ast.Starred) for elt in children.elts):
+        if not (len(children.elts) == 1 and isinstance(children.elts[0], ast.Call) and _is_for_each(children.elts[0])):
+            return children
+        return _data_refusal("a ForEach", role)
+    return _data_refusal(_describe_children(text, children), role)
+
+
+def _data_refusal(what: str, role: str) -> Refusal:
+    if role == "source":
+        return Refusal(f"the children come from {what}; the child has no expression of its own to move")
+    return Refusal(f"the destination's children come from {what}; it cannot take a widget")
+
+
+def _insert_element(text: str, target: ast.List, slot: int, element: str) -> SpanEdit:
+    """Insert ``element`` at ``slot`` of ``target``, with a separator like its neighbours'."""
+    offsets = _Offsets(text)
+    open_at = offsets.of(target.lineno, target.col_offset) + 1
+    elts = target.elts
+    if not elts:
+        return SpanEdit(open_at, open_at, element)
+    starts = [offsets.of(elt.lineno, elt.col_offset) for elt in elts]
+    ends = [offsets.of(elt.end_lineno or elt.lineno, elt.end_col_offset or 0) for elt in elts]
+    if slot < len(elts):
+        gap = text[(ends[slot - 1] if slot > 0 else open_at) : starts[slot]]
+        return SpanEdit(starts[slot], starts[slot], element + _separator(gap))
+    gap = text[(ends[-2] if len(elts) > 1 else open_at) : starts[-1]]
+    return SpanEdit(ends[-1], ends[-1], _separator(gap) + element)
+
+
+def _separator(gap: str) -> str:
+    """A separator like the one in ``gap``: the gap itself when it holds a comma,
+    a comma before it when it is a line break, ``", "`` otherwise."""
+    if "," in gap:
+        return gap
+    return "," + gap if "\n" in gap else ", "
+
+
+def _indent_at(text: str, offset: int) -> str:
+    """The leading whitespace of the line holding ``offset``."""
+    start = text.rfind("\n", 0, offset) + 1
+    line = text[start : text.find("\n", start) if "\n" in text[start:] else len(text)]
+    return line[: len(line) - len(line.lstrip())]
+
+
+def _dest_indent(text: str, target: ast.List, slot: int) -> str:
+    offsets = _Offsets(text)
+    if target.elts:
+        anchor = target.elts[slot] if slot < len(target.elts) else target.elts[-1]
+        return _indent_at(text, offsets.of(anchor.lineno, anchor.col_offset))
+    return _indent_at(text, offsets.of(target.lineno, target.col_offset))
+
+
+def _reindent(element: str, source: str, dest: str) -> str:
+    """Shift the continuation lines of ``element`` from ``source`` indentation to ``dest``."""
+    if source == dest:
+        return element
+    lines = element.split("\n")
+    for i in range(1, len(lines)):
+        if lines[i].startswith(source):
+            lines[i] = dest + lines[i][len(source) :]
+    return "\n".join(lines)
 
 
 Literal = Union[ast.List, ast.Tuple]
@@ -395,11 +538,23 @@ class EditLog:
                 logger.debug("edit log: a reload listener failed", exc_info=True)
 
     def apply(self, edit: Edit) -> None:
-        """Write ``edit`` to its file and remember how to undo it."""
+        """Write ``edit`` to its file -- or its two files -- and remember how to undo it.
+
+        A second file that cannot be written leaves the first as it was.
+        """
         text = _read(edit.file)
-        new_text, inverse = apply_spans(text, edit.spans)
-        edit.inverse = inverse
-        _write(edit.file, new_text)
+        new_text, edit.inverse = apply_spans(text, edit.spans)
+        if edit.other_file:
+            other_text = _read(edit.other_file)
+            new_other, edit.other_inverse = apply_spans(other_text, edit.other_spans)
+            _write(edit.file, new_text)
+            try:
+                _write(edit.other_file, new_other)
+            except OSError:
+                _write(edit.file, text)
+                raise
+        else:
+            _write(edit.file, new_text)
         self._edits.append(edit)
         self._pending = (edit, False)
         self.outcome = None
@@ -414,11 +569,13 @@ class EditLog:
         if not self._edits:
             return (None, "nothing to undo")
         edit = self._edits[-1]
-        text = _read(edit.file)
-        if not still_applies(text, edit.inverse):
-            return (None, f"cannot undo: {os.path.basename(edit.file)} changed under the edit")
-        new_text, _forward = apply_spans(text, edit.inverse)
-        _write(edit.file, new_text)
+        texts = [_read(path) for path in edit.files]
+        inverses = (edit.inverse, edit.other_inverse)
+        for path, text, inverse in zip(edit.files, texts, inverses):
+            if not still_applies(text, inverse):
+                return (None, f"cannot undo: {os.path.basename(path)} changed under the edit")
+        for path, text, inverse in zip(edit.files, texts, inverses):
+            _write(path, apply_spans(text, inverse)[0])
         self._edits.pop()
         self._pending = (edit, True)
         self.outcome = None
@@ -443,6 +600,8 @@ class EditLog:
         instances = [node for root in roots for node in widgets_built_at(root, edit.site, edit.widget or None)]
         if not instances:
             return f"reloaded, but no widget is built at {os.path.basename(edit.file)}:{edit.site.line}"
+        if edit.kind == "move" and edit.destination is not None:
+            return _check_move_across(roots, edit, undone, instances[0])
         if edit.kind == "move":
             return _check_slot(instances[0], int(expected["slot"]), edit.child)
         rect = getattr(instances[0], "layout_rect", None)
@@ -484,7 +643,25 @@ def _check_slot(container: Any, slot: int, child: str) -> Optional[str]:
     return None
 
 
+def _check_move_across(roots: list[Any], edit: Edit, undone: bool, source: Any) -> Optional[str]:
+    """Whether the child left its source and sits at its slot in the destination, or the reverse."""
+    from nuiitivet.layout.layout_utils import expand_layout_children
+
+    if undone:
+        return _check_slot(source, int(edit.before["slot"]), edit.child)
+    assert edit.destination is not None
+    targets = [node for root in roots for node in widgets_built_at(root, edit.destination, edit.dest_widget or None)]
+    if not targets:
+        return f"reloaded, but no widget is built at {os.path.basename(edit.destination.file)}:{edit.destination.line}"
+    remaining = len(expand_layout_children(source.children_snapshot()))
+    if remaining != int(edit.before["count"]) - 1:
+        return f"{edit.parent_layout} still has {remaining} children, expected {int(edit.before['count']) - 1}"
+    return _check_slot(targets[0], int(edit.expected["slot"]), edit.child)
+
+
 def _summary(edit: Edit) -> str:
+    if edit.kind == "move" and edit.destination is not None:
+        return f"{edit.child} → {edit.dest_widget}"
     if edit.kind == "move":
         return f"{edit.child} → position {int(edit.after['slot']) + 1}"
     return ", ".join(f"{name} → {value}" for name, value in edit.after.items())
@@ -598,9 +775,11 @@ __all__ = [
     "SpanEdit",
     "Value",
     "apply_spans",
+    "children_list",
     "is_project_file",
     "locate_call",
     "plan_keywords",
     "plan_move",
+    "plan_move_across",
     "still_applies",
 ]

@@ -1,10 +1,12 @@
-"""Where a body drag lands: a slot among the siblings of one container.
+"""Where a body drag lands: a slot among the children of one container.
 
 A dragged widget is a position in pixels, but a ``Column`` / ``Row`` / ``Flow``
 / ``UniformFlow`` orders its children by their place in a list, so a body drag
 resolves to a slot -- the sibling gap the pointer is over, read from the rects
-layout gave the siblings -- and the edit that lands it is one element moved in
-the ``children`` list literal. What is written is never a coordinate.
+layout gave the children -- and the edit that lands it is one element moved in
+a ``children`` list literal: the widget's own container's when the pointer is
+over it, another container's when it is over that. What is written is never a
+coordinate.
 
 Whether such an edit exists at all is the source's question
 (:func:`.source_edit.plan_move`): the list literal that owns the order -- the
@@ -23,17 +25,23 @@ from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.layout_utils import expand_layout_children
 from nuiitivet.layout.row import Row
+from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.widgeting.widget import ComposableWidget
+from nuiitivet.widgets.box import ModifierBox
 
+from .gesture import pick
 from .source import construction_frame
 
 logger = logging.getLogger(__name__)
 
 Rect = tuple[float, float, float, float]
 
-#: The containers whose children a body drag can reorder.
+#: The containers a body drag can land in.
 REORDERABLE = (Column, Row, Flow, UniformFlow)
+#: The containers a body drag can start from: a ``Stack`` child cannot be
+#: reordered, since stacked children share no axis, but it can leave.
+SOURCES = REORDERABLE + (Stack,)
 
 # How far an insertion line at a list's edge sits outside the first or last
 # child, in logical pixels, so it is not lost under the child's own outline.
@@ -41,23 +49,46 @@ _EDGE = 3.0
 
 
 def container_of(node: Any) -> tuple[Optional[Any], Any]:
-    """The reorderable container laying ``node`` out, and its direct child on ``node``'s path.
+    """The container a drag can move ``node`` out of, and its direct child on ``node``'s path.
 
-    Composable wrappers are transparent; any other container in between means
-    ``node`` is not a child of a list a drag can reorder, and the answer is
-    ``(None, member)``. A ``ForEach`` is transparent too, but its children are
-    the ones layout places, so the member stays below it.
+    Composable wrappers and the box a ``.modifier()`` wraps a widget in are
+    transparent, the member being the wrapper, since that is the list element;
+    any other container in between means ``node`` is not a child of a list a
+    drag can move, and the answer is ``(None, member)``. A ``ForEach`` is
+    transparent too, but its children are the ones layout places, so the
+    member stays below it.
     """
     member = node
     for ancestor in ancestors(node):
-        if isinstance(ancestor, REORDERABLE):
+        if isinstance(ancestor, SOURCES):
             return (ancestor, member)
         if isinstance(ancestor, ForEach):
             continue
-        if not isinstance(ancestor, ComposableWidget):
+        if not isinstance(ancestor, (ComposableWidget, ModifierBox)):
             return (None, member)
         member = ancestor
     return (None, member)
+
+
+def destination_at(app: Any, x: float, y: float, exclude: Any, own: Any) -> Optional[Any]:
+    """The container a drag over ``(x, y)`` would land in, or ``None``.
+
+    The deepest container under the pointer that can take a child, looking
+    past the dragged subtree -- ``exclude`` and everything under it -- since a
+    widget cannot move into itself. The widget's ``own`` container ends the
+    walk even when it cannot take a child (a ``Stack``): while the pointer is
+    inside it, the reading is its own, not an ancestor's.
+    """
+    picked = pick(app, x, y)
+    if picked is None:
+        return None
+    chain = [picked, *ancestors(picked)]
+    if exclude in chain:
+        chain = chain[chain.index(exclude) + 1 :]
+    for node in chain:
+        if node is own or isinstance(node, REORDERABLE):
+            return node
+    return None
 
 
 def visible(node: Any) -> Any:
@@ -95,7 +126,16 @@ def reorder_reading(container: Any, dx: float, dy: float) -> bool:
         return abs(dy) >= abs(dx)
     if isinstance(container, Row):
         return abs(dx) >= abs(dy)
-    return True
+    return not isinstance(container, Stack)
+
+
+def main_axis(container: Any) -> Optional[str]:
+    """``"height"`` for a ``Column``, ``"width"`` for a ``Row``; ``None`` where no axis is main."""
+    if isinstance(container, Column):
+        return "height"
+    if isinstance(container, Row):
+        return "width"
+    return None
 
 
 def slot_at(container: Any, children: list[Any], member: Any, x: float, y: float) -> int:
@@ -140,11 +180,12 @@ def insertion_line(
     sibling's own height in a wrapping flow, where a row is the extent that
     means anything. A slot at a flow's line break is one slot with two places
     to draw it, the end of one row and the start of the next; with ``pointer``
-    given, the line is drawn on the row the pointer is on.
+    given, the line is drawn on the row the pointer is on. An empty
+    container's one slot is drawn at the start of its content box.
     """
     others = [child for child in children if child is not member]
     if not others:
-        return None
+        return _empty_line(container)
     if slot < len(others):
         anchor, edge = global_visual_rect(others[slot]), -1
     else:
@@ -167,6 +208,17 @@ def insertion_line(
     return (line_x, ay, 0.0, ah)
 
 
+def _empty_line(container: Any) -> Optional[Rect]:
+    rect = global_visual_rect(container)
+    if rect is None:
+        return None
+    left, top, right, bottom = getattr(container, "padding", (0, 0, 0, 0))
+    x, y, w, h = rect[0] + left, rect[1] + top, max(0.0, rect[2] - left - right), max(0.0, rect[3] - top - bottom)
+    if isinstance(container, Column):
+        return (x, y + _EDGE, w, 0.0)
+    return (x + _EDGE, y, 0.0, h)
+
+
 def _rows_apart(first: Rect, second: Rect) -> bool:
     """Whether two flow children sit on different rows: their vertical ranges do not overlap."""
     return first[1] + first[3] <= second[1] or second[1] + second[3] <= first[1]
@@ -179,8 +231,11 @@ def _nearer(y: float, first: Rect, second: Rect) -> bool:
 
 __all__ = [
     "REORDERABLE",
+    "SOURCES",
     "container_of",
+    "destination_at",
     "insertion_line",
+    "main_axis",
     "reorder_reading",
     "siblings",
     "slot_at",

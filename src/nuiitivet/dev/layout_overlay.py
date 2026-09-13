@@ -40,7 +40,7 @@ _DASH = (6.0, 4.0)
 # them, so an omission hides the gesture completely.
 _HINTS = (
     "drag a corner resize",
-    "drag reorder",
+    "drag reorder / move",
     "click select",
     "↑/↓ parent/child",
     "Alt no snap",
@@ -84,8 +84,10 @@ def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
         if active and not mode.dragging and jump_target is None:
             _paint_candidate(skia, canvas, mode, font, typeface)
         for ghost in ghosts:
-            if ghost.line:
+            if ghost.shape == "line":
                 _paint_insertion_line(skia, canvas, ghost.rect, ghost.caption, font, typeface)
+            elif ghost.shape == "wash":
+                _paint_wash(skia, canvas, ghost.rect)
             else:
                 _paint_ghost(skia, canvas, ghost.rect, ghost.caption, font, typeface)
         if active:
@@ -141,6 +143,19 @@ def _paint_insertion_line(
     canvas.drawLine(x, y, x + w, y + h, stroke)
     if caption:
         paint_caption(skia, canvas, caption, font, typeface, x, y + h + 4.0)
+
+
+def _paint_wash(skia: Any, canvas: Any, rect: tuple[float, ...]) -> None:
+    """The container a move will land in: a tint with a thin solid edge."""
+    x, y, w, h = rect
+    fill = skia.Paint(AntiAlias=True)
+    fill.setColor(color(skia, _ACCENT, 0.10))
+    canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), fill)
+    edge = skia.Paint(AntiAlias=True)
+    edge.setStyle(skia.Paint.kStroke_Style)
+    edge.setStrokeWidth(1.0)
+    edge.setColor(color(skia, _ACCENT, 0.7))
+    canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), edge)
 
 
 def _paint_hud(skia: Any, canvas: Any, font: Any, typeface: Any, width: int) -> None:

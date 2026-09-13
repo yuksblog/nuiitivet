@@ -25,6 +25,7 @@ from nuiitivet.dev.source_edit import (
     locate_call,
     plan_keywords,
     plan_move,
+    plan_move_across,
     still_applies,
 )
 from nuiitivet.layout.column import Column
@@ -269,6 +270,123 @@ def test_children_that_are_not_one_list_literal_are_refused(text: str, reason: s
 
 def test_a_list_whose_length_disagrees_with_layout_is_refused() -> None:
     assert _refused(_LIST, _LIST, 0, 1, count=2) == "the list holds 3 elements but layout saw 2 children"
+
+
+# --- moving between two lists -----------------------------------------------
+
+
+def _across(text: str, source: str, index: int, count: int, dest: str, slot: int, dest_count: int) -> str:
+    """Move within one text; both span sets apply to it."""
+    planned = plan_move_across(text, _site(text, source), index, count, text, _site(text, dest), slot, dest_count)
+    assert not isinstance(planned, Refusal), planned.reason
+    removal, insertion = planned
+    return apply_spans(text, removal + insertion)[0]
+
+
+_TWO = "Column(children=[Row(children=[a(), b()]), Row(children=[c()])])"
+
+
+def test_an_element_moves_from_one_list_to_another_with_the_destinations_separator() -> None:
+    moved = _across(_TWO, "Row(children=[a(), b()])", 0, 2, "Row(children=[c()])", 1, 1)
+    assert moved == "Column(children=[Row(children=[b()]), Row(children=[c(), a()])])"
+
+
+def test_an_element_moves_to_the_front_of_another_list() -> None:
+    moved = _across(_TWO, "Row(children=[a(), b()])", 1, 2, "Row(children=[c()])", 0, 1)
+    assert moved == "Column(children=[Row(children=[a()]), Row(children=[b(), c()])])"
+
+
+def test_the_only_element_leaves_an_empty_list_behind() -> None:
+    text = "Column(children=[Row(children=[a(),]), Row(children=[c()])])"
+    moved = _across(text, "Row(children=[a(),])", 0, 1, "Row(children=[c()])", 1, 1)
+    assert moved == "Column(children=[Row(children=[]), Row(children=[c(), a()])])"
+
+
+def test_an_empty_list_takes_the_element_bare() -> None:
+    text = "Column(children=[Row(children=[a(), b()]), Row(children=[])])"
+    moved = _across(text, "Row(children=[a(), b()])", 0, 2, "Row(children=[])", 0, 0)
+    assert moved == "Column(children=[Row(children=[b()]), Row(children=[a()])])"
+
+
+def test_a_multi_line_element_takes_the_destinations_indentation() -> None:
+    text = (
+        "Column(\n"
+        "    children=[\n"
+        "        Row(children=[\n"
+        "            a(\n"
+        "                1,\n"
+        "            ),\n"
+        "            b(),\n"
+        "        ]),\n"
+        "        Row(\n"
+        "            children=[\n"
+        "                c(),\n"
+        "            ],\n"
+        "        ),\n"
+        "    ],\n"
+        ")"
+    )
+    source = "Row(children=[\n            a(\n                1,\n            ),\n            b(),\n        ])"
+    dest = "Row(\n            children=[\n                c(),\n            ],\n        )"
+
+    moved = _across(text, source, 0, 2, dest, 1, 1)
+
+    assert moved == (
+        "Column(\n"
+        "    children=[\n"
+        "        Row(children=[\n"
+        "            b(),\n"
+        "        ]),\n"
+        "        Row(\n"
+        "            children=[\n"
+        "                c(),\n"
+        "                a(\n"
+        "                    1,\n"
+        "                ),\n"
+        "            ],\n"
+        "        ),\n"
+        "    ],\n"
+        ")"
+    )
+
+
+def test_a_move_between_files_yields_one_span_set_per_file() -> None:
+    src = "Row(children=[a(), b()])"
+    dst = "Row(children=[c()])"
+    planned = plan_move_across(src, _site(src, src), 0, 2, dst, _site(dst, dst, file="side.py"), 0, 1)
+    assert not isinstance(planned, Refusal)
+    removal, insertion = planned
+
+    assert apply_spans(src, removal)[0] == "Row(children=[b()])"
+    assert apply_spans(dst, insertion)[0] == "Row(children=[a(), c()])"
+
+
+@pytest.mark.parametrize(
+    ("text", "source", "dest", "reason"),
+    [
+        (
+            "Column(children=[Row(children=[a() for a in items]), Row(children=[c()])])",
+            "Row(children=[a() for a in items])",
+            "Row(children=[c()])",
+            "the children come from a comprehension; the child has no expression of its own to move",
+        ),
+        (
+            "Column(children=[Row(children=[a(), b()]), Row.builder(items, make)])",
+            "Row(children=[a(), b()])",
+            "Row.builder(items, make)",
+            "the destination's children come from Row.builder(); it cannot take a widget",
+        ),
+        (
+            "Column(children=[Row(children=[a(), b()]), Row(children=[ForEach(items, make)])])",
+            "Row(children=[a(), b()])",
+            "Row(children=[ForEach(items, make)])",
+            "the destination's children come from a ForEach; it cannot take a widget",
+        ),
+    ],
+)
+def test_a_list_not_written_in_place_cannot_give_or_take(text: str, source: str, dest: str, reason: str) -> None:
+    planned = plan_move_across(text, _site(text, source), 0, 2, text, _site(text, dest), 0, 1)
+    assert isinstance(planned, Refusal) and planned.reason == reason
 
 
 # --- the literal that owns the order ----------------------------------------

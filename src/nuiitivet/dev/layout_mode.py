@@ -5,9 +5,10 @@ opposite division of labour. Select mode is how the human *says* something to
 the assistant; this is how they *do* something with no assistant in the loop.
 A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
 ``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
-the widget's siblings (:mod:`.reorder`). Release writes the keyword, or moves
-the element, in the call that built it (:mod:`.source_edit`), and the hot
-reload that follows is what applies it. The tree is never touched directly:
+the widget's siblings, or among another container's children
+(:mod:`.reorder`). Release writes the keyword, or moves the element, in the
+calls that built them (:mod:`.source_edit`), and the hot reload that follows
+is what applies it. The tree is never touched directly:
 what is on screen always came from the code.
 
 Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and select mode's
@@ -29,7 +30,17 @@ from . import landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
-from .source_edit import Edit, EditLog, Refusal, Value, is_project_file, plan_keywords, plan_move
+from .source_edit import (
+    Edit,
+    EditLog,
+    Refusal,
+    Value,
+    children_list,
+    is_project_file,
+    plan_keywords,
+    plan_move,
+    plan_move_across,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +62,15 @@ _CORNER_GRAB = 10.0
 class Ghost:
     """One shape the overlay draws for a proposed edit, with its caption.
 
-    A resize's ghost is the proposed rect. A reorder's is an insertion line,
-    given as a rect with no thickness on the axis it crosses.
+    A resize's ghost is a ``"rect"``, the proposed one. A reorder's is a
+    ``"line"`` -- the insertion line, given as a rect with no thickness on the
+    axis it crosses -- and a move into another container adds a ``"wash"``
+    over that container.
     """
 
     rect: Rect
     caption: str
-    line: bool = False
+    shape: str = "rect"
 
 
 @dataclass
@@ -94,13 +107,29 @@ class _Move:
     # when a slot has two places.
     slot: Optional[int] = None
     pointer: tuple[float, float] = (0.0, 0.0)
+    # Set instead of ``slot`` while the pointer is over another container:
+    # the drag reads as a move into it, at ``dest_slot`` among its children.
+    destination: Optional[Any] = None
+    dest_children: list[Any] = field(default_factory=list)
+    dest_slot: Optional[int] = None
+    # Every container built from the destination's site, itself included,
+    # found once per destination rather than once per frame.
+    dest_instances: list[Any] = field(default_factory=list)
+    # Why the child cannot leave its list, read from the source once at the
+    # start; and the last container the pointer entered with why it cannot
+    # take a child, read once on entry. Either is the badge while the pointer
+    # is over another container, so the human learns it before releasing.
+    leave: Optional[str] = None
+    target: Optional[Any] = None
+    target_refusal: Optional[str] = None
+    blocked: Optional[str] = None
 
 
 _Drag = Union[_Resize, _Move]
 
 
 class LayoutMode:
-    """Latched layout mode for one window: corner drags resize, body drags reorder.
+    """Latched layout mode for one window: corner drags resize, body drags reorder or move.
 
     Attach as ``app._layout_mode``; the backend's real input handlers call the
     ``on_*`` hooks and honour a ``True`` return as "consumed". While latched
@@ -475,7 +504,7 @@ class LayoutMode:
             return
         container, member = reorder.container_of(node)
         if container is None:
-            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow or UniformFlow"
+            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow, UniformFlow or Stack"
             invalidate(app)
             return
         children = reorder.siblings(container)
@@ -484,20 +513,56 @@ class LayoutMode:
         frame = construction_frame(container)
         instances = widgets_built_at(self._root(), frame, type(container).__name__) if frame else []
         drag = _Move(node, member, container, children, children.index(member), press, instances or [container])
+        drag.leave = _list_refusal(container, "source")
         self._update_move(app, drag, x, y)
         self._drag = drag
 
     def _update_move(self, app: Any, drag: _Move, x: float, y: float) -> None:
+        """Read the drag from where the pointer is: its own container, another, or neither.
+
+        The deepest container under the pointer decides. The widget's own
+        gives the in-place reading, a reorder along the main axis; any other
+        makes the drag a move into it; none at all keeps the in-place reading,
+        so a drag past the end of a list still lands at the end.
+        """
         drag.pointer = (x, y)
-        dx, dy = x - drag.start[0], y - drag.start[1]
-        if reorder.reorder_reading(drag.container, dx, dy):
-            drag.slot = reorder.slot_at(drag.container, drag.siblings, drag.member, x, y)
+        drag.slot = drag.destination = drag.dest_slot = drag.blocked = None
+        drag.dest_children = []
+        target = reorder.destination_at(app, x, y, exclude=drag.member, own=drag.container)
+        if target is None or target is drag.container:
+            dx, dy = x - drag.start[0], y - drag.start[1]
+            if not isinstance(drag.container, reorder.REORDERABLE):
+                drag.blocked = "Stack children have no order to drag; drop it in a Column, Row, Flow or UniformFlow"
+            elif reorder.reorder_reading(drag.container, dx, dy):
+                drag.slot = reorder.slot_at(drag.container, drag.siblings, drag.member, x, y)
         else:
-            drag.slot = None
+            if target is not drag.target:
+                self._enter_container(drag, target)
+            drag.blocked = drag.leave or drag.target_refusal
+            if drag.blocked is None:
+                drag.destination = target
+                drag.dest_children = reorder.siblings(target)
+                drag.dest_slot = reorder.slot_at(target, drag.dest_children, None, x, y)
+        self._notice = drag.blocked
         invalidate(app)
+
+    def _enter_container(self, drag: _Move, target: Any) -> None:
+        """Once per container the pointer enters: whether its list can take a child, and what else its site built."""
+        drag.target = target
+        drag.target_refusal = _list_refusal(target, "destination")
+        frame = construction_frame(target)
+        found = widgets_built_at(self._root(), frame, type(target).__name__) if frame else []
+        drag.dest_instances = found or [target]
 
     def _finish_move(self, app: Any, drag: _Move, x: float, y: float) -> None:
         self._update_move(app, drag, x, y)
+        if drag.destination is not None:
+            planned = self._plan_move_across(drag)
+            if self._write(app, planned, self._move_ghosts(drag)):
+                self._select(None, None)
+                self._notice = _axis_note(drag.node, drag.container, drag.destination)
+            invalidate(app)
+            return
         if drag.slot is None or drag.slot == drag.index:
             invalidate(app)
             return
@@ -533,27 +598,103 @@ class LayoutMode:
             child=type(reorder.visible(drag.member)).__name__,
         )
 
-    def _move_ghosts(self, drag: _Move) -> list[Ghost]:
-        """An insertion line per instance of the container; the dragged one carries the caption.
+    def _plan_move_across(self, drag: _Move) -> Edit | Refusal:
+        """The edit a body drag into another container asks for, or why there is none."""
+        assert drag.destination is not None and drag.dest_slot is not None
+        container, target = drag.container, drag.destination
+        located = _source_of(container, f"this {type(container).__name__}")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        landed = _source_of(target, f"the {type(target).__name__}")
+        if isinstance(landed, Refusal):
+            return landed
+        dest_frame, dest_text = landed
+        same_file = dest_frame.file == frame.file
+        planned = plan_move_across(
+            text,
+            frame,
+            drag.index,
+            len(drag.siblings),
+            text if same_file else dest_text,
+            dest_frame,
+            drag.dest_slot,
+            len(drag.dest_children),
+        )
+        if isinstance(planned, Refusal):
+            return planned
+        removal, insertion = planned
+        return Edit(
+            kind="move",
+            file=frame.file,
+            site=frame,
+            parent_layout=type(container).__name__,
+            before={"slot": drag.index, "count": len(drag.siblings)},
+            after={"slot": drag.dest_slot},
+            expected={"slot": drag.dest_slot},
+            instances=len(drag.instances),
+            spans=removal + insertion if same_file else removal,
+            widget=type(container).__name__,
+            child=type(reorder.visible(drag.member)).__name__,
+            destination=dest_frame,
+            dest_widget=type(target).__name__,
+            other_file="" if same_file else dest_frame.file,
+            other_spans=() if same_file else insertion,
+        )
 
-        None while the pointer is over the child's own slot: a line there would
-        promise a change that release does not make.
+    def _move_ghosts(self, drag: _Move) -> list[Ghost]:
+        """A wash over the list the child would land in, and an insertion line in its slot.
+
+        The wash is on the child's own container from the moment the drag
+        starts, and on another container while the pointer is over it, so it
+        reads as "this list" and shows the grab took; both cover every
+        instance of the site. The line is per instance too, the dragged one
+        carrying the caption, and is left out while the pointer is over the
+        child's own slot: a line there would promise a change that release
+        does not make. A ``Stack`` orders nothing, so it is never washed.
         """
+        if drag.blocked is not None:
+            return []
+        if drag.destination is not None:
+            return self._across_ghosts(drag)
+        ghosts: list[Ghost] = []
+        instances = [c for c in drag.instances if c is drag.container or len(reorder.siblings(c)) == len(drag.siblings)]
+        if isinstance(drag.container, reorder.REORDERABLE):
+            for container in instances:
+                rect = global_visual_rect(container)
+                if rect is not None:
+                    ghosts.append(Ghost(rect, "", shape="wash"))
         if drag.slot is None or drag.slot == drag.index:
-            return []
-        line = reorder.insertion_line(drag.container, drag.siblings, drag.member, drag.slot, drag.pointer)
-        if line is None:
-            return []
-        ghosts = [Ghost(line, _move_caption(drag), line=True)]
-        for container in drag.instances:
+            return ghosts
+        for container in instances:
             if container is drag.container:
+                line = reorder.insertion_line(container, drag.siblings, drag.member, drag.slot, drag.pointer)
+                caption = _move_caption(drag)
+            else:
+                children = reorder.siblings(container)
+                line = reorder.insertion_line(container, children, children[drag.index], drag.slot)
+                caption = ""
+            if line is not None:
+                ghosts.append(Ghost(line, caption, shape="line"))
+        return ghosts
+
+    def _across_ghosts(self, drag: _Move) -> list[Ghost]:
+        target, slot = drag.destination, drag.dest_slot
+        if target is None or slot is None:
+            return []
+        ghosts: list[Ghost] = []
+        for container in drag.dest_instances:
+            children = drag.dest_children if container is target else reorder.siblings(container)
+            if len(children) != len(drag.dest_children):
                 continue
-            children = reorder.siblings(container)
-            if len(children) != len(drag.siblings):
-                continue
-            other = reorder.insertion_line(container, children, children[drag.index], drag.slot)
-            if other is not None:
-                ghosts.append(Ghost(other, "", line=True))
+            rect = global_visual_rect(container)
+            pointer = drag.pointer if container is target else None
+            line = reorder.insertion_line(container, children, None, slot, pointer)
+            if rect is not None:
+                ghosts.append(Ghost(rect, "", shape="wash"))
+            if line is not None:
+                caption = _across_caption(drag, len(drag.dest_instances)) if container is target else ""
+                ghosts.append(Ghost(line, caption, shape="line"))
         return ghosts
 
     def _root(self) -> Any:
@@ -614,6 +755,16 @@ def _source_of(node: Any, what: str) -> tuple[Frame, str] | Refusal:
         return Refusal(f"cannot read {frame.file}: {exc}")
 
 
+def _list_refusal(container: Any, role: str) -> Optional[str]:
+    """Why ``container``'s children list cannot give (``role`` ``"source"``) or take a child, or ``None``."""
+    located = _source_of(container, f"the {type(container).__name__}")
+    if isinstance(located, Refusal):
+        return located.reason
+    frame, text = located
+    found = children_list(text, frame, role)
+    return found.reason if isinstance(found, Refusal) else None
+
+
 def _caption(drag: _Resize) -> str:
     """The landing values, the instance count past one, and whether snapping is off."""
     parts: list[str] = []
@@ -626,6 +777,36 @@ def _caption(drag: _Resize) -> str:
     if not drag.snap:
         parts.append("no snap")
     return "  ·  ".join(parts)
+
+
+def _across_caption(drag: _Move, instances: int) -> str:
+    """The destination, which child the widget lands before, and the instance count past one."""
+    target, slot = drag.destination, drag.dest_slot
+    assert target is not None and slot is not None
+    children = drag.dest_children
+    where = f"before {_name(reorder.visible(children[slot]))}" if slot < len(children) else "to the end"
+    parts = [f"into {type(target).__name__}, {where}"]
+    if instances > 1:
+        parts.append(f"{instances} widgets")
+    return "  ·  ".join(parts)
+
+
+def _axis_note(node: Any, source: Any, target: Any) -> Optional[str]:
+    """What a weight means after the move, when an axis changed from main to cross or back.
+
+    The sizing moves as written; ``"wt"`` on a column child's width filled the
+    cross axis, on a row child's it is a share of the main-axis leftover, and
+    the human may want the corner next.
+    """
+    for axis in ("width", "height"):
+        sizing = getattr(node, f"{axis}_sizing", None)
+        if sizing is None or sizing.kind in ("fixed", "auto"):
+            continue
+        was, now = reorder.main_axis(source) == axis, reorder.main_axis(target) == axis
+        if was != now:
+            meaning = "a share of the leftover" if now else "the full cross axis"
+            return f'{axis}="wt" now means {meaning} in {type(target).__name__}'
+    return None
 
 
 def _move_caption(drag: _Move) -> str:
