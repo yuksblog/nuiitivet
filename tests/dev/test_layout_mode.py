@@ -210,6 +210,18 @@ def build_covered_layer():
     return Stack(children=[Column(children=[t("AAA"), t("BBB")], gap=0), Container(width=100, height=40, child=small("FAB"))], width=300, height=200)  # noqa: E501
 
 
+def build_column_and_covered_stack():
+    return Row(children=[Column(children=[t("CCC")], gap=0), Stack(children=[Column(children=[t("AAA")], gap=0), Container(width=100, height=40, child=small("FAB"))], width=100, height=40)], gap=0)  # noqa: E501
+
+
+def build_three_layers():
+    return Stack(children=[t("AAA"), t("CCC"), small("BBB")], width=300, height=200)
+
+
+def build_nested_stacks():
+    return Row(children=[Column(children=[t("AAA")], gap=0), Stack(children=[t("DDD"), Stack(children=[Column(children=[t("BBB")], gap=0), small("CCC")], width=100, height=40)], width=200, height=200)], gap=0)  # noqa: E501
+
+
 def build_container():
     return Container(child=t("AAA"), width=300, height=200)
 
@@ -1470,7 +1482,7 @@ def test_a_stacks_top_layer_takes_the_drop_when_it_can_even_past_its_own_rect(ap
 
         assert s.mode.notice is None
         lines = _lines(s.mode.ghosts)
-        assert len(lines) == 1 and lines[0].caption == "into Row, to the end"
+        assert len(lines) == 1 and lines[0].caption == "into Row, to the end  ·  layer 1"
 
         s.mode.on_mouse_release(s.app, 150, 30)
 
@@ -1494,6 +1506,129 @@ def test_inside_a_stack_a_drag_reads_its_own_layer_under_the_ones_above(app_file
         s.mode.on_mouse_release(s.app, 50, 15)
 
         assert 'Column(children=[t("BBB"), t("AAA")], gap=0)' in s.text()
+    finally:
+        s.close()
+
+
+def test_over_a_stack_the_layers_are_listed_and_a_key_picks_the_one_under_the_cover(app_file: Path) -> None:
+    """A full box on top takes nothing, so the default is on top; ``↓`` reaches the Column under it."""
+    s = _Session(app_file, "build_column_and_covered_stack")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+
+        layers = s.mode.layers
+        assert layers is not None and layers.names == ["Column", "Container"] and layers.own is None
+        assert layers.landing == 2, "nothing in the top layer takes a child, so a new layer on top"
+        assert _rects(s.mode.ghosts)[0].caption == "into Stack, on top"
+
+        s.mode.on_key_press(s.app, "down", 0)
+        assert s.mode.layers is not None and s.mode.layers.landing == 1
+        assert _rects(s.mode.ghosts)[0].caption == "into Stack, below Container", "a leaf layer gives its place"
+
+        s.mode.on_key_press(s.app, "down", 0)
+        assert s.mode.layers is not None and s.mode.layers.landing == 0
+        lines = _lines(s.mode.ghosts)
+        assert len(lines) == 1 and lines[0].caption == "into Column, to the end  ·  layer 0"
+
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        assert 'Column(children=[t("AAA"), t("CCC")], gap=0)' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_digit_picks_a_layer_and_the_choice_resets_when_the_pointer_leaves_the_stack(app_file: Path) -> None:
+    s = _Session(app_file, "build_column_and_covered_stack")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+        s.mode.on_key_press(s.app, "_0", 0)
+        assert s.mode.layers is not None and s.mode.layers.landing == 0, "pyglet names the digit key _0"
+
+        s.mode.on_mouse_motion(s.app, 50, 30)
+        assert s.mode.layers is None, "outside the stack there is no list"
+        s.mode.on_mouse_motion(s.app, 150, 30)
+        assert s.mode.layers is not None and s.mode.layers.landing == 2, "back to the default"
+
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_a_stack_child_chooses_another_layer_to_take_its_place(app_file: Path) -> None:
+    """BBB is the top layer; choosing AAA moves BBB to its index, the z-order edit a stack has no gesture for."""
+    s = _Session(app_file, "build_three_layers")
+    try:
+        s.hover(25, 10)
+        s.mode.on_mouse_press(s.app, 25, 10)
+        s.mode.on_mouse_motion(s.app, 150, 100)
+
+        layers = s.mode.layers
+        assert layers is not None and layers.names == ["TextBase AAA", "TextBase CCC", "TextBase BBB"]
+        assert layers.landing == 2 and layers.own == 2
+        captions = [g.caption for g in _rects(s.mode.ghosts)]
+        assert "center  ·  all 3 children" in captions, "the own layer is the stack's alignment"
+
+        s.mode.on_key_press(s.app, "up", 0)
+        assert s.mode.layers is not None and s.mode.layers.landing == 3
+        assert _rects(s.mode.ghosts) == [], "on top is where the top layer already is"
+
+        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "down", 0)
+        assert s.mode.layers is not None and s.mode.layers.landing == 1
+        assert _rects(s.mode.ghosts)[0].caption == "below TextBase CCC"
+
+        s.mode.on_key_press(s.app, "down", 0)
+        assert _rects(s.mode.ghosts)[0].caption == "below TextBase AAA"
+
+        s.mode.on_mouse_release(s.app, 150, 100)
+
+        assert 'Stack(children=[small("BBB"), t("AAA"), t("CCC")], width=300, height=200)' in s.text()
+    finally:
+        s.close()
+
+
+def test_choosing_the_own_layer_again_is_the_in_place_reading(app_file: Path) -> None:
+    s = _Session(app_file, "build_three_layers")
+    try:
+        s.hover(25, 10)
+        s.mode.on_mouse_press(s.app, 25, 10)
+        s.mode.on_mouse_motion(s.app, 150, 100)
+        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "_2", 0)
+
+        assert s.mode.layers is not None and s.mode.layers.landing == 2
+        assert "center  ·  all 3 children" in [g.caption for g in _rects(s.mode.ghosts)]
+
+        s.mode.on_mouse_release(s.app, 150, 100)
+
+        assert 'Stack(children=[t("AAA"), t("CCC"), small("BBB")], width=300, height=200, alignment="center")' in s.text()  # noqa: E501
+    finally:
+        s.close()
+
+
+def test_the_list_is_the_innermost_stacks_and_its_keys_stay_there(app_file: Path) -> None:
+    """The inner stack is the outer one's top layer; over it, the list and the keys are the inner one's."""
+    s = _Session(app_file, "build_nested_stacks")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+
+        layers = s.mode.layers
+        assert layers is not None and layers.names == ["Column", "TextBase CCC"] and layers.own is None
+        assert layers.landing == 2
+
+        s.mode.on_key_press(s.app, "_0", 0)
+        lines = _lines(s.mode.ghosts)
+        assert len(lines) == 1 and lines[0].caption == "into Column, before TextBase BBB  ·  layer 0"
+
+        s.mode.on_mouse_release(s.app, 150, 20)
+
+        assert 'Column(children=[t("AAA"), t("BBB")], gap=0)' in s.text()
     finally:
         s.close()
 

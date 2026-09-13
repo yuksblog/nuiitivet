@@ -16,6 +16,11 @@ body. Each container below exercises one reading:
   aligns, and both cards snap together since the ``Stack``'s ``alignment`` is
   what is written; a card dropped onto the ``Stack`` from outside goes on top,
   not into the background box
+- ``layered``: a content ``Column`` under a full-size box holding a ``fab``
+  card; a card dragged over it from ``top`` lands on top by default, and the
+  list beside the ``Stack`` shows the layers -- ``↓`` or ``0`` moves the
+  landing into the ``Column`` under the box, ``↑`` back on top; a card in the
+  ``Column`` reorders under the box without a key
 - ``boxed``: a ``Container``'s only child; it aligns in the box, dragged out
   it leaves the box empty (its ``child`` argument goes with it), and any card
   dropped on the empty box becomes its child again
@@ -84,6 +89,18 @@ def build_root() -> nv.Widget:
         ],
         alignment="center",
     )
+    layered = nv.Stack(
+        children=[
+            nv.Column(
+                children=[card("note 1"), card("note 2")],
+                gap=8,
+                padding=8,
+                width=180,
+                height=200,
+            ),
+            nv.Container(width=180, height=200, alignment="bottom-right", padding=8, child=card("fab")),
+        ],
+    )
     boxed = nv.Container(
         width=140,
         height=200,
@@ -127,8 +144,8 @@ def build_root() -> nv.Widget:
         children=[
             nv.Text("top: Row", padding=(8, 0)),
             panel(top),
-            nv.Text("left: Column / empty: Column / stacked: Stack / boxed: Container", padding=(8, 0)),
-            nv.Row(children=[panel(left), panel(empty), panel(stacked), panel(boxed)], gap=16),
+            nv.Text("left: Column / empty: Column / stacked: Stack / layered: Stack / boxed: Container", padding=(8, 0)),
+            nv.Row(children=[panel(left), panel(empty), panel(stacked), panel(layered), panel(boxed)], gap=16),
             nv.Text("from_data: Column.builder / comprehension: Row", padding=(8, 0)),
             nv.Row(children=[panel(from_data), panel(comprehension)], gap=16),
             nv.Text("grid: Grid / areas: Grid.named_areas", padding=(8, 0)),
@@ -140,7 +157,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="Layout mode: move across", width=720, height=900))
+    app = nv.App(nv.Window(content=build_root, title="Layout mode: move across", width=900, height=900))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

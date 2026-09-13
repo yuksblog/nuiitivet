@@ -208,6 +208,7 @@ container's alignment. Hot reload applies the edit.
 | Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
 | Drag the body | Reorder among its siblings, or move it into the container under the pointer. The container it would land in — its own, or another under the pointer — is **tinted**, and an **insertion line** marks the slot, captioned with the sibling it goes before. In a `Grid` the **cell** under the pointer is tinted instead, captioned with its row and column, or its area name, and with whoever already sits there. A drag that keeps the widget's place **aligns** it instead: it snaps to `start` / `center` / `end` on each axis, a dashed rect marks where every child of the container will land, and the caption names the value (`center`, `bottom-right`) and how many children move — the alignment written is the container's, so the whole column or stack moves with it. |
+| `↑` / `↓` / `0`–`9` while dragging over a `Stack` | Pick the layer the widget lands in. A list beside the stack names its layers, bottom to top, with the landing marked; a layer that is a container takes the widget inside, any other gives the widget its place in the stack, and past the top layer is a new one on top. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
@@ -271,11 +272,14 @@ that leaves the widget's slot reorders, and one that stays in it aligns — a
 is respected: dragging its child rewrites that value, and other children with
 their own `CrossAligned` stay put when the container's alignment changes.
 
-Over a `Stack`, only its top layer is read: a widget dragged in from outside
-goes into the top layer if that is a container, and onto the stack — on top —
-otherwise, never into the background box underneath. A widget that started
-inside the stack keeps reading its own layer wherever the pointer is in the
-stack, so a card under a floating button still reorders in its column.
+Over a `Stack`, one layer is read at a time, and the list beside the stack
+says which. A widget dragged in from outside reads the top layer: into it if
+that is a container, onto the stack — on top — otherwise, never into the
+background box underneath. A widget that started inside the stack reads its
+own layer wherever the pointer is, so a card under a floating button still
+reorders in its column. `↑` / `↓` or a digit moves the landing to another
+layer — the content column under a floating button, say — and the choice
+holds until the pointer leaves the stack.
 
 After the reload, the badge also reports a size that did not land where the
 ghost said, a reload that failed on the edit, or a `"wt"` whose meaning
