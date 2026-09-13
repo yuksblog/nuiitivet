@@ -1,6 +1,6 @@
 # Dev Modes
 
-> Status: Implemented (select mode, source jump, layout mode increments 1–4)
+> Status: Implemented (select mode, source jump, layout mode)
 > User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
@@ -244,12 +244,11 @@ The sibling of select mode with the opposite division of labour: the human
 drags a widget and the **dev runner edits the source itself** — no assistant,
 no turn. A corner drag writes `width` / `height` / `size` into the call that
 built the widget; a body drag moves the widget's element within its
-container's `children` list, or into another container's. The hot reload that
-follows is the apply step. The tree is never mutated: what is on screen always
-came from the code, and during the gesture only the overlay moves. Increments
-1–3 ship the corner resize, the reorder within a `Column` / `Row` / `Flow` /
-`UniformFlow`, and the move between them; grids and alignment are later
-increments.
+container's `children` list, into another container's, or into a grid cell —
+or, when it keeps the widget's place, rewrites the container's alignment. The
+hot reload that follows is the apply step. The tree is never mutated: what is
+on screen always came from the code, and during the gesture only the overlay
+moves.
 
 - **No commit.** Every release writes, so `Ctrl+Z` is what "I did not mean
   that" reaches for. Undo is the inverse span, and it refuses when the text it
@@ -288,14 +287,36 @@ increments.
   makes the drag a move into it, and none at all keeps the in-place reading so
   a drag past the end of a list still lands at its end. "Deepest" rather than
   "the one the pointer left" is what lets a widget move into a sibling
-  container nested inside its own. A `Stack` child has no in-place reading —
-  stacked children share no axis — so the badge says so while the pointer is
-  inside the `Stack`, but it can leave.
+  container nested inside its own.
+- **In a `Stack` the layer decides, not the point.** A point over a stack
+  names every layer under it at once, so the mode picks one layer and reads
+  within it as if nothing lay on top. A drag that started inside the stack
+  reads its own layer: a stack child aligns, a child of a column in a layer
+  reorders in that column, even under a layer that covers it. A drag arriving
+  from outside reads the top layer — into it when it can take a child, else
+  onto the stack, on top, which is the end of its list — so the empty box
+  most stacks put underneath is never the landing. The layer holds while the
+  pointer is anywhere in the stack, and the point only picks the slot; a
+  layer below the top one is out of a drag's reach from outside.
 - **The axis decides the in-place reading.** In a `Column` or `Row` the
   dominant axis of the travel at release decides: along the main axis is a
-  reorder, across it is alignment's and has no reading yet. Fixing that here
-  keeps alignment from reopening the gesture later. A wrapping flow has no
-  per-child cross reading, so every travel in it is a reorder, row by row.
+  reorder, across it is alignment. In a wrapping flow every travel that
+  leaves the slot is a reorder, row by row, and travel that keeps it is
+  alignment — for a `Flow`, only when the cross axis dominates.
+- **Staying put is alignment, and the alignment is the container's.** A drag
+  that does not change the widget's place — its own slot or cell, a `Stack`
+  or a `Container` with no order — snaps the widget to `start` / `center` /
+  `end` on each axis of the box its container aligns it in, and writes the
+  container's keyword (`alignment`, `cross_alignment`, `item_alignment`), so
+  every child of the container moves and the ghost shows each one where the
+  new value puts it. Writing the container's value rather than a per-child
+  wrapper is what keeps one rule for every container, and aligning a whole
+  column is what a drag most often means; a per-child override is asked for
+  in words. A `CrossAligned` the human wrote is theirs: a drag on its child
+  rewrites that value, other wrapped children stay where they are, and the
+  mode never adds or removes one — `GridItem` is the only wrapper it writes.
+  An axis the widget already fills has no alignment to write; a widget that
+  fills every axis is a badge.
 - **A reorder moves a span.** The runner locates, through the container's
   site, the list literal that owns the children's order — `children` itself,
   or the list a comprehension or a `ForEach` iterates, inline or bound once to
@@ -313,7 +334,12 @@ increments.
   together and undone together, the second refusing when either has moved.
   Both `children` must be list literals written in place: a child built from
   data is a template with no expression of its own, and a data-driven list has
-  nowhere to put one. Only the source can tell — the tree sees the same
+  nowhere to put one. The only child of a `Container` or `Box` leaves as its
+  `child` argument, taken off the call with one separator, and an empty box
+  takes one back the same way; the box stays through both, since an edit that
+  exists is not refused for being a box. A box with a child is passed over by
+  the destination walk — replacing it would be a choice, not a move — so a
+  drop on it lands in the list around it. Only the source can tell — the tree sees the same
   children either way — so it is read once when the drag starts and once per
   container the pointer enters, and the badge says it while the pointer is
   there, before release. Sizing is not fixed up
@@ -357,8 +383,9 @@ In layout mode the candidate's corner brackets *are* the grab zones, the ghost
 is a dashed outline captioned with the landing values — or, for a reorder, an
 insertion line in the slot, captioned with the sibling it lands before, plus a
 tint over the list it would land in, its own or another's; in a grid a deeper
-tint over the cell instead of a line — and the badge lists every gesture,
-since the badge is the only place a human can learn them.
+tint over the cell instead of a line; for an alignment a dashed rect per child
+the value moves, the dragged one captioned — and the badge lists every
+gesture, since the badge is the only place a human can learn them.
 
 ## 8. Implementation map
 

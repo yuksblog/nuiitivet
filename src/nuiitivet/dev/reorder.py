@@ -1,4 +1,4 @@
-"""Where a body drag lands: a slot among the children of one container, or a grid cell.
+"""Where a body drag lands: a slot among the children of one container, a grid cell, or the top of a stack.
 
 A dragged widget is a position in pixels, but a ``Column`` / ``Row`` / ``Flow``
 / ``UniformFlow`` orders its children by their place in a list, so a body drag
@@ -7,8 +7,9 @@ layout gave the children -- and the edit that lands it is one element moved in
 a ``children`` list literal: the widget's own container's when the pointer is
 over it, another container's when it is over that. A ``Grid`` places its
 children by cell, not by order, so over a grid the drag resolves to the cell
-under the pointer, read from the tracks layout computed. What is written is
-never a coordinate.
+under the pointer, read from the tracks layout computed. A ``Stack`` has no
+order to read, only layers, so a widget arriving goes on top: the end of its
+list. What is written is never a coordinate.
 
 Whether such an edit exists at all is the source's question
 (:func:`.source_edit.plan_move`): the list literal that owns the order -- the
@@ -21,8 +22,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
-from nuiitivet._interaction.perception import ancestors, global_visual_rect
+from nuiitivet._interaction.perception import ancestors, global_visual_rect, pick_within
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
+from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.grid import Grid, GridItem
@@ -31,7 +34,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.widgeting.widget import ComposableWidget
-from nuiitivet.widgets.box import ModifierBox
+from nuiitivet.widgets.box import Box, ModifierBox
 
 from .gesture import pick
 from .source import construction_frame
@@ -43,15 +46,17 @@ Cell = tuple[int, int]
 
 #: The containers that order their children, where a body drag lands in a slot.
 REORDERABLE = (Column, Row, Flow, UniformFlow)
-#: The containers a body drag can land in: the ordered ones, and a grid's cells.
-DESTINATIONS = REORDERABLE + (Grid,)
-#: The containers a body drag can start from: a ``Stack`` child cannot be
-#: reordered, since stacked children share no axis, but it can leave.
-SOURCES = DESTINATIONS + (Stack,)
+#: The containers a body drag can start from and land in: the ordered ones, a
+#: grid's cells, and a stack, where a child cannot be reordered -- stacked
+#: children share no axis -- but can leave, and one arriving goes on top.
+DESTINATIONS = REORDERABLE + (Grid, Stack)
+#: Containers with one child and no list: the child cannot move, but it can
+#: be aligned within them.
+HOSTS = (Container, Box)
 #: Wrappers the container walk sees through: the list element is the wrapper,
 #: since that is what the source names, and the widget inside is what the
 #: human grabbed.
-_TRANSPARENT = (ComposableWidget, ModifierBox, GridItem)
+_TRANSPARENT = (ComposableWidget, ModifierBox, GridItem, CrossAligned)
 
 # How far an insertion line at a list's edge sits outside the first or last
 # child, in logical pixels, so it is not lost under the child's own outline.
@@ -59,46 +64,102 @@ _EDGE = 3.0
 
 
 def container_of(node: Any) -> tuple[Optional[Any], Any]:
-    """The container a drag can move ``node`` out of, and its direct child on ``node``'s path.
+    """The container a drag can move ``node`` out of -- or align it in -- and its direct child on ``node``'s path.
 
-    Composable wrappers, the box a ``.modifier()`` wraps a widget in and a
-    ``GridItem`` are transparent, the member being the wrapper, since that is
-    the list element; any other container in between means ``node`` is not a
-    child of a list a drag can move, and the answer is ``(None, member)``. A
-    ``ForEach`` is transparent too, but its children are the ones layout
-    places, so the member stays below it.
+    Composable wrappers, the box a ``.modifier()`` wraps a widget in, a
+    ``GridItem`` and a ``CrossAligned`` are transparent, the member being the
+    wrapper, since that is the list element; a ``Container`` or ``Box`` is a
+    host whose sole child can be aligned but not moved; any other container in
+    between means ``node`` is not a child of a list a drag can read, and the
+    answer is ``(None, member)``. A ``ForEach`` is transparent too, but its
+    children are the ones layout places, so the member stays below it.
     """
     member = node
     for ancestor in ancestors(node):
-        if isinstance(ancestor, SOURCES):
+        if isinstance(ancestor, DESTINATIONS):
             return (ancestor, member)
         if isinstance(ancestor, ForEach):
             continue
         if not isinstance(ancestor, _TRANSPARENT):
-            return (None, member)
+            return (ancestor, member) if is_host(ancestor) else (None, member)
         member = ancestor
     return (None, member)
+
+
+def is_host(node: Any) -> bool:
+    """Whether ``node`` is a single-child container of the human's own: a ``Container`` or a plain ``Box``."""
+    return isinstance(node, HOSTS) and not isinstance(node, _TRANSPARENT)
+
+
+def is_empty_host(node: Any) -> bool:
+    """Whether ``node`` is a host with no child, which a drag can drop one into."""
+    return is_host(node) and not siblings(node)
 
 
 def destination_at(app: Any, x: float, y: float, exclude: Any, own: Any) -> Optional[Any]:
     """The container a drag over ``(x, y)`` would land in, or ``None``.
 
-    The deepest container under the pointer that can take a child, looking
-    past the dragged subtree -- ``exclude`` and everything under it -- since a
-    widget cannot move into itself. The widget's ``own`` container ends the
-    walk even when it cannot take a child (a ``Stack``): while the pointer is
-    inside it, the reading is its own, not an ancestor's.
+    The deepest container under the pointer that can take a child -- an
+    ordered container, a grid, a stack, or an empty ``Container`` / ``Box``
+    -- looking past the dragged subtree -- ``exclude`` and everything under
+    it -- since a widget cannot move into itself. A box that already has a
+    child is passed over, so a drop on it lands in the list around it. The
+    widget's ``own`` container ends the walk: while the pointer is inside it,
+    the reading is its own, not an ancestor's.
+
+    A ``Stack`` is where a point names several containers at once, so one
+    layer is chosen for it and the pick is redone within that layer, blind to
+    what lies on top: the layer the widget lives in while the drag started
+    inside the stack, and the top layer otherwise -- the drop goes into it if
+    it can take a child, and onto the stack, on top, if not. Inside the stack
+    the layer holds even where the pointer leaves its rect, and the pointer's
+    position picks the slot; a stack nested in the layer is resolved the same
+    way in turn.
     """
     picked = pick(app, x, y)
     if picked is None:
         return None
-    chain = [picked, *ancestors(picked)]
-    if exclude in chain:
-        chain = chain[chain.index(exclude) + 1 :]
+    chain = _chain(picked, exclude)
+    lineage = [own, *ancestors(own)]
+    settled: set[int] = set()
+    while True:
+        stacks = [node for node in chain if isinstance(node, Stack) and id(node) not in settled]
+        if not stacks:
+            break
+        stack = stacks[-1]
+        settled.add(id(stack))
+        layer = _layer_of(stack, lineage, exclude)
+        if layer is None:
+            chain = [stack, *ancestors(stack)]
+            continue
+        inside = pick_within(layer, x, y)
+        chain = _chain(inside, exclude) if inside is not None else [layer, *ancestors(layer)]
     for node in chain:
-        if node is own or isinstance(node, DESTINATIONS):
+        if node is own or isinstance(node, DESTINATIONS) or is_empty_host(node):
             return node
     return None
+
+
+def _chain(node: Any, exclude: Any) -> list[Any]:
+    """``node`` and its ancestors, from ``exclude``'s parent up when ``node`` is under it."""
+    chain = [node, *ancestors(node)]
+    if exclude in chain:
+        chain = chain[chain.index(exclude) + 1 :]
+    return chain
+
+
+def _layer_of(stack: Any, lineage: list[Any], exclude: Any) -> Optional[Any]:
+    """The child of ``stack`` a drag reads within, or ``None`` when the stack itself is the reading.
+
+    The widget's own layer while the drag started inside the stack -- none
+    when the widget is a layer, since then the reading is the stack's
+    alignment -- and the top layer otherwise, none when the stack is empty.
+    """
+    if stack in lineage:
+        depth = lineage.index(stack)
+        return lineage[depth - 1] if depth > 0 else None
+    layers = [child for child in siblings(stack) if child is not exclude]
+    return layers[-1] if layers else None
 
 
 def visible(node: Any) -> Any:
@@ -155,6 +216,11 @@ def main_axis(container: Any) -> Optional[str]:
     if isinstance(container, Row):
         return "width"
     return None
+
+
+def one_axis(container: Any) -> bool:
+    """Whether ``container`` aligns its children on one axis only, the cross one: a wrapping ``Flow``."""
+    return isinstance(container, Flow)
 
 
 def slot_at(container: Any, children: list[Any], member: Any, x: float, y: float) -> int:
@@ -324,8 +390,8 @@ def area_at(grid: Any, cell: Cell) -> Optional[str]:
 
 __all__ = [
     "DESTINATIONS",
+    "HOSTS",
     "REORDERABLE",
-    "SOURCES",
     "area_at",
     "cell_at",
     "cell_rect",
@@ -333,8 +399,11 @@ __all__ = [
     "destination_at",
     "inner",
     "insertion_line",
+    "is_empty_host",
+    "is_host",
     "main_axis",
     "occupants",
+    "one_axis",
     "placement",
     "reorder_reading",
     "siblings",

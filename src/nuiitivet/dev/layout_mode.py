@@ -5,11 +5,12 @@ opposite division of labour. Select mode is how the human *says* something to
 the assistant; this is how they *do* something with no assistant in the loop.
 A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
 ``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
-the widget's siblings, or among another container's children
-(:mod:`.reorder`). Release writes the keyword, or moves the element, in the
-calls that built them (:mod:`.source_edit`), and the hot reload that follows
-is what applies it. The tree is never touched directly:
-what is on screen always came from the code.
+the widget's siblings, a cell, or another container's children
+(:mod:`.reorder`) -- or, when it keeps the widget's place, to its container's
+alignment (:mod:`.align`). Release writes the keyword, or moves the element,
+in the calls that built them (:mod:`.source_edit`), and the hot reload that
+follows is what applies it. The tree is never touched directly: what is on
+screen always came from the code.
 
 Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and select mode's
 switch directly, each mode closing the other on entry. There is no commit:
@@ -25,9 +26,11 @@ from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import global_visual_rect
 from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
+from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.grid import Grid
+from nuiitivet.layout.stack import Stack
 
-from . import landing, reorder
+from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
@@ -40,12 +43,15 @@ from .source_edit import (
     children_list,
     discarded_keywords,
     grid_item_name,
+    host_child_refusal,
     is_project_file,
+    plan_alignment,
     plan_area,
     plan_cell,
     plan_keywords,
     plan_move,
     plan_move_across,
+    written_alignment,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,15 +146,23 @@ class _Move:
     cell_block: Optional[str] = None
     dest_wrapper: str = ""
     discards: list[str] = field(default_factory=list)
+    # The alignment reading, live while the drag keeps the child's place:
+    # what it writes and where, the box the child aligns in, why the value
+    # cannot be written, and -- while the reading is live -- the new value per
+    # axis, ``None`` when it is the value already there.
+    align_target: Optional[align.Target] = None
+    align_box: Optional[Rect] = None
+    align_written: Optional[align.Spelled] = None
+    align_block: Optional[str] = None
+    aligning: bool = False
+    alignment: Optional[dict[str, str]] = None
 
 
 _Drag = Union[_Resize, _Move]
 
-_STACK_BLOCKED = "Stack children have no order to drag; drop it in a Column, Row, Flow, UniformFlow or Grid"
-
 
 class LayoutMode:
-    """Latched layout mode for one window: corner drags resize, body drags reorder or move.
+    """Latched layout mode for one window: corner drags resize, body drags reorder, move or align.
 
     Attach as ``app._layout_mode``; the backend's real input handlers call the
     ``on_*`` hooks and honour a ``True`` return as "consumed". While latched
@@ -523,7 +537,7 @@ class LayoutMode:
             return
         container, member = reorder.container_of(node)
         if container is None:
-            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow, UniformFlow, Grid or Stack"
+            self._notice = f"{type(node).__name__} is not in a container a drag can read"
             invalidate(app)
             return
         children = reorder.siblings(container)
@@ -532,12 +546,19 @@ class LayoutMode:
         frame = construction_frame(container)
         instances = widgets_built_at(self._root(), frame, type(container).__name__) if frame else []
         drag = _Move(node, member, container, children, children.index(member), press, instances or [container])
-        drag.leave = _list_refusal(container, "source")
+        if reorder.is_host(container):
+            drag.leave = _host_refusal(container, "source")
+        else:
+            drag.leave = _list_refusal(container, "source")
         if isinstance(container, Grid):
             drag.home = reorder.placement(container, member)
             drag.cell_block = _item_refusal(member)
             drag.leave = drag.leave or drag.cell_block
             drag.discards = _discards(member)
+        drag.align_target = align.target(container, member)
+        if drag.align_target is not None:
+            drag.align_box = align.box(container, member)
+            drag.align_written, drag.align_block = _align_written(drag.align_target)
         self._update_move(app, drag, x, y)
         self._drag = drag
 
@@ -545,26 +566,40 @@ class LayoutMode:
         """Read the drag from where the pointer is: its own container, another, or neither.
 
         The deepest container under the pointer decides. The widget's own
-        gives the in-place reading, a reorder along the main axis -- or, in a
-        grid, the cell under the pointer; any other makes the drag a move
-        into it; none at all keeps the in-place reading, so a drag past the
-        end of a list still lands at the end.
+        gives the in-place reading: a reorder along the main axis, the cell
+        under the pointer in a grid, and -- whenever the drag keeps the
+        child's place -- the alignment its container gives it. Any other
+        container makes the drag a move into it, a stack taking the widget on
+        top; none at all keeps the in-place reading, so a drag past the end
+        of a list still lands at the end.
         """
         drag.pointer = (x, y)
         drag.slot = drag.destination = drag.dest_slot = drag.blocked = None
-        drag.cell = drag.dest_cell = None
+        drag.cell = drag.dest_cell = drag.alignment = None
+        drag.aligning = False
         drag.dest_children = []
         target = reorder.destination_at(app, x, y, exclude=drag.member, own=drag.container)
         if target is None or target is drag.container:
             dx, dy = x - drag.start[0], y - drag.start[1]
-            if isinstance(drag.container, Grid):
-                drag.cell = reorder.cell_at(drag.container, x, y)
-                if drag.cell is not None:
+            container = drag.container
+            if isinstance(container, Grid):
+                drag.cell = reorder.cell_at(container, x, y)
+                if drag.cell is not None and drag.home is not None and drag.cell == drag.home[:2]:
+                    self._read_alignment(drag, dx, dy)
+                elif drag.cell is not None:
                     drag.blocked = drag.cell_block
-            elif not isinstance(drag.container, reorder.REORDERABLE):
-                drag.blocked = _STACK_BLOCKED
-            elif reorder.reorder_reading(drag.container, dx, dy):
-                drag.slot = reorder.slot_at(drag.container, drag.siblings, drag.member, x, y)
+            elif isinstance(container, reorder.REORDERABLE):
+                slot = reorder.slot_at(container, drag.siblings, drag.member, x, y)
+                if reorder.main_axis(container) is not None:
+                    stays = not reorder.reorder_reading(container, dx, dy)
+                else:
+                    stays = slot == drag.index and (abs(dy) > abs(dx) or not reorder.one_axis(container))
+                if stays:
+                    self._read_alignment(drag, dx, dy)
+                else:
+                    drag.slot = slot
+            else:
+                self._read_alignment(drag, dx, dy)
         else:
             if target is not drag.target:
                 self._enter_container(drag, target)
@@ -574,15 +609,44 @@ class LayoutMode:
                 drag.dest_children = reorder.siblings(target)
                 if isinstance(target, Grid):
                     drag.dest_cell = reorder.cell_at(target, x, y)
+                elif reorder.is_host(target):
+                    drag.dest_slot = 0
+                elif isinstance(target, Stack):
+                    drag.dest_slot = len(drag.dest_children)
                 else:
                     drag.dest_slot = reorder.slot_at(target, drag.dest_children, None, x, y)
         self._notice = drag.blocked
         invalidate(app)
 
+    def _read_alignment(self, drag: _Move, dx: float, dy: float) -> None:
+        """Snap the dragged child within its box; the reading is live even when nothing would change."""
+        target = drag.align_target
+        if target is None or drag.align_box is None:
+            return
+        drag.aligning = True
+        if drag.align_block is not None:
+            drag.blocked = drag.align_block
+            return
+        child = align.aligned(drag.container, drag.member)
+        rect = global_visual_rect(child)
+        if rect is None:
+            return
+        axes = tuple(axis for axis in target.axes if not align.fills(child, drag.align_box, axis))
+        if not axes:
+            where = "its cell" if isinstance(drag.container, Grid) else type(drag.container).__name__
+            drag.blocked = f"{_name(child)} fills {where}; nothing to align"
+            return
+        found = align.snap(drag.align_box, rect, (dx, dy), axes)
+        now = align.current(target)
+        drag.alignment = found if any(found[axis] != now.get(axis) for axis in axes) else None
+
     def _enter_container(self, drag: _Move, target: Any) -> None:
         """Once per container the pointer enters: whether its list can take a child, and what else its site built."""
         drag.target = target
-        drag.target_refusal = _list_refusal(target, "destination")
+        if reorder.is_host(target):
+            drag.target_refusal = _host_refusal(target, "destination")
+        else:
+            drag.target_refusal = _list_refusal(target, "destination")
         if isinstance(target, Grid) and drag.target_refusal is None:
             drag.dest_wrapper, drag.target_refusal = _wrapper_of(target)
         frame = construction_frame(target)
@@ -602,6 +666,12 @@ class LayoutMode:
                 self._notice = "  ·  ".join(note for note in notes if note) or None
             invalidate(app)
             return
+        if drag.aligning:
+            if drag.alignment is not None and self._write(app, self._plan_align(drag), self._move_ghosts(drag)):
+                # The aligned widget keeps its path, so it stays the candidate.
+                self._select(drag.node, getattr(app, "root", None))
+            invalidate(app)
+            return
         if isinstance(drag.container, Grid):
             if drag.cell is not None and drag.home is not None and drag.cell != drag.home[:2]:
                 if self._write(app, self._plan_cell(drag), self._move_ghosts(drag)):
@@ -616,6 +686,46 @@ class LayoutMode:
             # is let go and hover takes over where the pointer is.
             self._select(None, None)
         invalidate(app)
+
+    def _plan_align(self, drag: _Move) -> Edit | Refusal:
+        """The edit a body drag that stayed put asks for, or why there is none."""
+        target, value = drag.align_target, drag.alignment
+        assert target is not None and value is not None
+        located = _source_of(target.host, f"this {type(target.host).__name__}")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        written = written_alignment(text, frame, target.keyword, target.position)
+        if isinstance(written, Refusal):
+            return written
+        spelled = align.spell(target, written, value)
+        spans = plan_alignment(text, frame, target.keyword, target.position, spelled)
+        if isinstance(spans, Refusal):
+            return spans
+        child = align.aligned(drag.container, drag.member)
+        rect = global_visual_rect(child) or (0.0, 0.0, 0.0, 0.0)
+        landed = align.placed(drag.align_box or rect, rect, value)
+        # What the check measures after the reload: the wrapper itself when it
+        # is what the container places, else the host's child at its index.
+        if isinstance(target.host, CrossAligned):
+            index = -1
+        elif target.host is not drag.container:
+            index = 0
+        else:
+            index = drag.index
+        return Edit(
+            kind="align",
+            file=frame.file,
+            site=frame,
+            parent_layout=type(drag.container).__name__,
+            before={"x": int(rect[0]), "y": int(rect[1]), "index": index},
+            after={target.keyword: align.describe(spelled)},
+            expected={"x": int(landed[0]), "y": int(landed[1]), "index": index},
+            instances=len(drag.instances),
+            spans=spans,
+            widget=type(target.host).__name__,
+            child=type(child).__name__,
+        )
 
     def _plan_cell(self, drag: _Move) -> Edit | Refusal:
         """The edit a body drag to another cell of its own grid asks for, or why there is none."""
@@ -716,6 +826,8 @@ class LayoutMode:
             len(drag.dest_children),
             unwrap=isinstance(container, Grid),
             wrap=wrap,
+            from_host=reorder.is_host(container),
+            into_host=reorder.is_host(target),
         )
         if isinstance(planned, Refusal):
             return planned
@@ -741,15 +853,16 @@ class LayoutMode:
         )
 
     def _move_ghosts(self, drag: _Move) -> list[Ghost]:
-        """A wash over the list the child would land in, and an insertion line in its slot.
+        """A wash over the container the child would land in, and the change inside it.
 
         The wash is on the child's own container from the moment the drag
         starts, and on another container while the pointer is over it, so it
-        reads as "this list" and shows the grab took; both cover every
-        instance of the site. The line is per instance too, the dragged one
-        carrying the caption, and is left out while the pointer is over the
-        child's own slot: a line there would promise a change that release
-        does not make. A ``Stack`` orders nothing, so it is never washed.
+        reads as "this container" and shows the grab took; both cover every
+        instance of the site. Inside it: an insertion line in the slot, a
+        cell, or -- for an alignment -- a dashed rect where each moved child
+        lands. The dragged one carries the caption. Nothing is drawn while
+        the release would change nothing: the child's own slot, or the
+        alignment already there.
         """
         if drag.blocked is not None:
             return []
@@ -757,11 +870,14 @@ class LayoutMode:
             return self._across_ghosts(drag)
         ghosts: list[Ghost] = []
         instances = [c for c in drag.instances if c is drag.container or len(reorder.siblings(c)) == len(drag.siblings)]
-        if isinstance(drag.container, reorder.DESTINATIONS):
-            for container in instances:
-                rect = global_visual_rect(container)
-                if rect is not None:
-                    ghosts.append(Ghost(rect, "", shape="wash"))
+        for container in instances:
+            rect = global_visual_rect(container)
+            if rect is not None:
+                ghosts.append(Ghost(rect, "", shape="wash"))
+        if drag.aligning:
+            if drag.alignment is not None:
+                ghosts.extend(_align_ghosts(drag, instances))
+            return ghosts
         if isinstance(drag.container, Grid):
             if drag.cell is not None and drag.home is not None and drag.cell != drag.home[:2]:
                 ghosts.extend(_cell_ghosts(drag, instances, drag.container, drag.cell, drag.home[2:], into=False))
@@ -794,6 +910,8 @@ class LayoutMode:
             return ghosts
         if target is None or slot is None:
             return []
+        if reorder.is_host(target) or isinstance(target, Stack):
+            return _placed_ghosts(drag, target)
         for container in drag.dest_instances:
             children = drag.dest_children if container is target else reorder.siblings(container)
             if len(children) != len(drag.dest_children):
@@ -874,6 +992,81 @@ def _list_refusal(container: Any, role: str) -> Optional[str]:
     frame, text = located
     found = children_list(text, frame, role)
     return found.reason if isinstance(found, Refusal) else None
+
+
+def _align_written(target: align.Target) -> tuple[Optional[align.Spelled], Optional[str]]:
+    """The alignment written where ``target`` writes, and why it cannot be rewritten, from its source."""
+    located = _source_of(target.host, f"this {type(target.host).__name__}")
+    if isinstance(located, Refusal):
+        return (None, located.reason)
+    frame, text = located
+    written = written_alignment(text, frame, target.keyword, target.position)
+    if isinstance(written, Refusal):
+        return (None, written.reason)
+    return (written, None)
+
+
+def _align_ghosts(drag: _Move, instances: list[Any]) -> list[Ghost]:
+    """A dashed rect where every moved child lands, per instance; the dragged child carries the caption."""
+    target, value = drag.align_target, drag.alignment
+    assert target is not None and value is not None
+    ghosts = []
+    for container in instances:
+        if container is drag.container:
+            member, own = drag.member, True
+        else:
+            children = reorder.siblings(container)
+            member, own = children[drag.index], False
+        host = align.target(container, member)
+        if host is None:
+            continue
+        dragged = align.aligned(container, member)
+        moved = align.moved(host, container, member, value)
+        for child, rect in moved:
+            caption = _align_caption(drag, target, value, len(moved)) if own and child is dragged else ""
+            ghosts.append(Ghost(rect, caption, shape="rect"))
+    return ghosts
+
+
+def _placed_ghosts(drag: _Move, target: Any) -> list[Ghost]:
+    """A wash over each empty box or stack built at the destination's site, and a dashed rect where the child lands."""
+    child = align.aligned(drag.container, drag.member)
+    rect = global_visual_rect(child)
+    ghosts = []
+    for host in drag.dest_instances:
+        extent = global_visual_rect(host)
+        if extent is None:
+            continue
+        ghosts.append(Ghost(extent, "", shape="wash"))
+        placed = align.target(host, None)
+        box = align.box(host, None)
+        if rect is None or placed is None or box is None:
+            continue
+        landed = align.placed(box, rect, align.current(placed))
+        caption = _across_caption(drag, len(drag.dest_instances)) if host is target else ""
+        ghosts.append(Ghost(landed, caption, shape="rect"))
+    return ghosts
+
+
+def _align_caption(drag: _Move, target: align.Target, value: dict[str, str], moving: int) -> str:
+    """The value that will be written, how many children move with it, and the instance count past one."""
+    parts = [align.describe(align.spell(target, drag.align_written, value))]
+    if target.container_level and moving > 1:
+        total = len(drag.siblings)
+        parts.append(f"all {total} children" if moving == total else f"{moving} of {total} children")
+    if len(drag.instances) > 1:
+        parts.append(f"{len(drag.instances)} widgets")
+    return "  ·  ".join(parts)
+
+
+def _host_refusal(host: Any, role: str) -> Optional[str]:
+    """Why ``host`` cannot give its only child (``role`` ``"source"``) or take one, from its source, or ``None``."""
+    located = _source_of(host, f"this {type(host).__name__}")
+    if isinstance(located, Refusal):
+        return located.reason
+    frame, text = located
+    found = host_child_refusal(text, frame, role)
+    return found.reason if found is not None else None
 
 
 def _item_refusal(item: Any) -> Optional[str]:
@@ -969,8 +1162,13 @@ def _across_caption(drag: _Move, instances: int) -> str:
     target, slot = drag.destination, drag.dest_slot
     assert target is not None and slot is not None
     children = drag.dest_children
-    where = f"before {_name(reorder.visible(children[slot]))}" if slot < len(children) else "to the end"
-    parts = [f"into {type(target).__name__}, {where}"]
+    if reorder.is_host(target):
+        parts = [f"into {type(target).__name__}"]
+    elif isinstance(target, Stack):
+        parts = ["into Stack, on top"]
+    else:
+        where = f"before {_name(reorder.visible(children[slot]))}" if slot < len(children) else "to the end"
+        parts = [f"into {type(target).__name__}, {where}"]
     if instances > 1:
         parts.append(f"{instances} widgets")
     return "  ·  ".join(parts)

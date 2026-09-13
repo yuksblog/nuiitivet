@@ -58,6 +58,11 @@ class Container(Widget):
             self.add_child(child)
         self._layout = LayoutEngine(self)
 
+    @property
+    def alignment(self) -> Tuple[str, str]:
+        """Where the child sits in the content box, as an ``(horizontal, vertical)`` pair."""
+        return self._align
+
     def add_child(self, w: "Widget"):
         """Keep at most one child; call ChildContainerMixin directly to bypass overrides."""
         ChildContainerMixin.add_child(self, w)
