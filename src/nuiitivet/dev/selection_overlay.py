@@ -381,7 +381,7 @@ def _paint_hud(
     if regions:
         parts.append(_plural(regions, "region"))
 
-    lines = ["SELECT" + _SEPARATOR + _SEPARATOR.join(parts)]
+    lines = ["SELECT" + _SEPARATOR + "designate for the assistant" + _SEPARATOR + _SEPARATOR.join(parts)]
     lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
         paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)

@@ -43,7 +43,7 @@ def _click(mode: SelectMode, app: _App, x: float, y: float) -> None:
 def test_the_shortcut_latches_the_mode_on() -> None:
     mode, selection, app = _mode()
 
-    assert mode.on_key_press(app, "c", _ENTER) is True
+    assert mode.on_key_press(app, "d", _ENTER) is True
     assert selection.active is True
 
 
@@ -51,7 +51,7 @@ def test_the_meta_accelerator_also_enters() -> None:
     """Ctrl on Windows/Linux, Cmd on macOS -- one shortcut, spelled per platform."""
     mode, selection, app = _mode()
 
-    mode.on_key_press(app, "c", MOD_META | MOD_SHIFT)
+    mode.on_key_press(app, "d", MOD_META | MOD_SHIFT)
 
     assert selection.active is True
 
@@ -59,14 +59,14 @@ def test_the_meta_accelerator_also_enters() -> None:
 def test_a_bare_c_does_not_enter() -> None:
     mode, selection, app = _mode()
 
-    assert mode.on_key_press(app, "c", 0) is False
+    assert mode.on_key_press(app, "d", 0) is False
     assert selection.active is False
 
 
 def test_the_wrong_chord_does_not_enter() -> None:
     mode, selection, app = _mode()
 
-    assert mode.on_key_press(app, "c", MOD_CTRL | MOD_ALT) is False
+    assert mode.on_key_press(app, "d", MOD_CTRL | MOD_ALT) is False
     assert selection.active is False
 
 
@@ -77,7 +77,7 @@ def test_enter_commits_and_leaves() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
 
         mode.on_key_press(app, "enter", 0)
@@ -95,7 +95,7 @@ def test_keys_pass_through_while_the_mode_is_off() -> None:
 def test_every_key_is_consumed_while_latched() -> None:
     """A half-passed-through keyboard would let the app act on picker input."""
     mode, _selection, app = _mode()
-    mode.on_key_press(app, "c", _ENTER)
+    mode.on_key_press(app, "d", _ENTER)
 
     assert mode.on_key_press(app, "tab", 0) is True
     assert mode.on_key_press(app, "a", 0) is True
@@ -110,7 +110,7 @@ def test_a_click_designates_the_widget_under_the_cursor() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         _click(mode, app, 2, 2)
 
@@ -123,7 +123,7 @@ def test_clicking_a_designated_widget_removes_it() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         _click(mode, app, 2, 2)
         _click(mode, app, 2, 2)
@@ -151,7 +151,7 @@ def test_a_drag_does_not_fall_back_to_a_click() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         mode.on_mouse_press(app, 2, 2)
         mode.on_mouse_release(app, 80, 60)
@@ -165,7 +165,7 @@ def test_backspace_removes_the_newest_designation() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         first_rect = first.global_layout_rect
         assert first_rect is not None
         _click(mode, app, 2, 2)
@@ -183,7 +183,7 @@ def test_hover_tracks_the_pick_candidate() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         assert mode.on_mouse_motion(app, 2, 2) is True
         assert mode.hovered is leaf
@@ -199,7 +199,7 @@ def test_up_replaces_the_member_with_its_parent() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
 
         mode.on_key_press(app, "up", 0)
@@ -216,7 +216,7 @@ def test_down_retraces_the_way_up_came() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "up", 0)
         mode.on_key_press(app, "up", 0)
@@ -233,7 +233,7 @@ def test_down_without_a_walk_does_nothing() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode, selection, _stub = _mode()
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
 
         mode.on_key_press(app, "down", 0)
@@ -251,7 +251,7 @@ def test_a_designation_leaves_a_content_free_marker() -> None:
         app = _App(host.root)
         journal = InteractionJournal()
         mode = SelectMode(Selection(), journal=journal)
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         _click(mode, app, 2, 2)
 
@@ -272,7 +272,7 @@ def test_latching_the_mode_asks_for_a_frame() -> None:
     """
     mode, _selection, app = _mode()
 
-    mode.on_key_press(app, "c", _ENTER)
+    mode.on_key_press(app, "d", _ENTER)
 
     assert app.invalidated > 0
 
@@ -283,7 +283,7 @@ def test_every_designation_change_asks_for_a_frame() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         for act in (
             lambda: _click(mode, app, 2, 2),
@@ -304,7 +304,7 @@ def test_hovering_the_same_candidate_does_not_repaint() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
 
         settled = app.invalidated
@@ -322,7 +322,7 @@ def test_key_releases_are_swallowed_while_latched() -> None:
     mode, _selection, app = _mode()
 
     assert mode.on_key_release(app, "c", _ENTER) is False
-    mode.on_key_press(app, "c", _ENTER)
+    mode.on_key_press(app, "d", _ENTER)
     assert mode.on_key_release(app, "c", _ENTER) is True
 
 
@@ -331,7 +331,7 @@ def test_escape_release_passes_through_after_leaving() -> None:
     off -- and must not be swallowed, or the app's own escape latch never sees
     the key-up it gates on."""
     mode, _selection, app = _mode()
-    mode.on_key_press(app, "c", _ENTER)
+    mode.on_key_press(app, "d", _ENTER)
     mode.on_key_press(app, "escape", 0)
 
     assert mode.on_key_release(app, "escape", 0) is False
@@ -351,7 +351,7 @@ def test_a_walked_designation_still_survives_a_reload() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(selection)
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "up", 0)
         assert selection.members() == [column]
@@ -374,7 +374,7 @@ def test_a_drag_designates_the_area_it_swept() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
@@ -389,7 +389,7 @@ def test_a_drag_normalizes_whichever_way_it_went() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         mode.on_mouse_press(app, 60, 40)
         mode.on_mouse_release(app, 10, 10)
@@ -402,7 +402,7 @@ def test_the_rubber_band_tracks_the_drag_and_clears_on_release() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
@@ -419,7 +419,7 @@ def test_a_drag_does_not_move_the_hover_candidate() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
         assert mode.hovered is leaf
 
@@ -434,7 +434,7 @@ def test_leaving_clears_an_abandoned_band() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
 
@@ -454,7 +454,7 @@ def test_escape_discards_the_session() -> None:
         app = _App(host.root)
         mode = SelectMode(Selection())
         selection = mode.selection
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         assert selection.members() == [leaf]
 
@@ -475,11 +475,11 @@ def test_escape_rolls_back_only_the_session() -> None:
         first_rect = first.global_layout_rect
         assert first_rect is not None
 
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "enter", 0)
 
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, first_rect[3] + 2)
         assert len(mode.selection.members()) == 2
         mode.on_key_press(app, "escape", 0)
@@ -492,7 +492,7 @@ def test_escape_discards_regions_too() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_release(app, 60, 40)
         assert mode.selection.regions()
@@ -510,7 +510,7 @@ def test_a_discarded_session_still_moves_seq() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         before = mode.selection.summary()["seq"]
 
@@ -537,10 +537,10 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.selection.toggle(old.children[0], root=host.root)
         mode.on_key_press(app, "enter", 0)
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
 
     rebuilt = Column(children=[Text("HEADER", key="header")])
     with mount(rebuilt) as host:
@@ -562,7 +562,7 @@ def test_ctrl_backspace_clears_every_designation() -> None:
         mode = SelectMode(Selection())
         rect = first.global_layout_rect
         assert rect is not None
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         _click(mode, app, 2, rect[3] + 2)
         mode.on_mouse_press(app, 100, 100)
@@ -581,11 +581,11 @@ def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "enter", 0)
 
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
         assert mode.selection.members() == []
         mode.on_key_press(app, "escape", 0)
@@ -600,11 +600,11 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         mode = SelectMode(Selection())
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "enter", 0)
 
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
         mode.on_key_press(app, "enter", 0)
 

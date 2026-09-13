@@ -92,8 +92,8 @@ Naming a location in prose is the weak link. An inner widget with no `key`
 and no distinctive text is hard; **a gap, where nothing was painted at all**,
 is nearly impossible.
 
-`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters select mode. **Click to
-designate a widget, drag to designate an area.** Each designation gets a
+`Ctrl+Shift+D` (`Cmd+Shift+D` on macOS) enters select mode — `D` for
+*designate*. **Click to designate a widget, drag to designate an area.** Each designation gets a
 numbered badge, and the assistant sees the same numbers — so "fix the second
 one" simply works.
 

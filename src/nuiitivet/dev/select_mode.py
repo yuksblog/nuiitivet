@@ -6,16 +6,15 @@ bypass -- so a designation is always the human's, with no need to tag synthetic
 events. Same placement, and the same reason, as
 :class:`~nuiitivet.dev.interaction.InteractionRecorder`.
 
-The mode is **latched** (``Ctrl+Shift+C`` on, ``Enter`` or ``Esc`` off) rather
-than held. A
-held modifier cannot carry a persistent affordance and cannot survive a
-multi-pick sequence, and ``Shift`` -- the obvious candidate -- is the modifier
-applications own most (see ``_COMMAND_MODS`` in :mod:`.interaction`). The
-shortcut matches the one Chrome DevTools uses for the same gesture, and
-``Ctrl+Shift`` is the dev runner's prefix: every chord the runner claims -- this
-one, layout mode's (:mod:`.layout_mode`), and the source jump's click
-(:mod:`.source_jump`) -- starts with it, so an app never has to guess which
-chords are taken.
+The mode is **latched** (``Ctrl+Shift+D`` on, ``Enter`` or ``Esc`` off) rather
+than held. A held modifier cannot carry a persistent affordance and cannot
+survive a multi-pick sequence, and ``Shift`` -- the obvious candidate -- is the
+modifier applications own most (see ``_COMMAND_MODS`` in :mod:`.interaction`).
+``D`` is for *designate*, what the human does here, and sits next to layout
+edit mode's ``E`` under the left hand. ``Ctrl+Shift`` is the dev runner's
+prefix: every chord the runner claims -- this one, layout edit mode's
+(:mod:`.layout_edit_mode`), and the source jump's click (:mod:`.source_jump`)
+-- starts with it, so an app never has to guess which chords are taken.
 
 While latched, input is **consumed**: a click is a designation, not an
 interaction, and letting it also reach the app would fire the button the human
@@ -39,10 +38,10 @@ from .selection import Selection
 logger = logging.getLogger(__name__)
 
 # The key that enters the mode, with either accelerator -- Ctrl on Windows/Linux,
-# Cmd on macOS -- matching how the same shortcut is spelled per platform.
-_ENTER_KEY = "c"
-# Layout mode's key. Its chord is let through while this mode is latched, so
-# the two switch directly; the mode that enters closes the other.
+# Cmd on macOS. ``D`` for *designate*: what the human does in this mode.
+_ENTER_KEY = "d"
+# Layout edit mode's key. Its chord is let through while this mode is latched,
+# so the two switch directly; the mode that enters closes the other.
 _LAYOUT_KEY = "e"
 
 
@@ -115,7 +114,7 @@ class SelectMode:
                 return True
             return False
 
-        if key == _LAYOUT_KEY and chord and getattr(app, "_layout_mode", None) is not None:
+        if key == _LAYOUT_KEY and chord and getattr(app, "_layout_edit_mode", None) is not None:
             return False
         if key == "escape":
             self._discard(app)
@@ -147,7 +146,7 @@ class SelectMode:
         return self.active
 
     def _enter(self, app: Any) -> None:
-        other = getattr(app, "_layout_mode", None)
+        other = getattr(app, "_layout_edit_mode", None)
         if other is not None and other.active:
             other.leave(app)
         self._selection.enter()

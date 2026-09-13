@@ -15,7 +15,7 @@ from typing import Any, Iterator
 import pytest
 
 from nuiitivet.dev import landing, source
-from nuiitivet.dev.layout_mode import LayoutMode
+from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.select_mode import SelectMode
 from nuiitivet.dev.selection import Selection
 from nuiitivet.dev.source_edit import EditLog
@@ -279,7 +279,7 @@ class _App:
         self.root = root
         self.invalidated = 0
         self._select_mode: Any = None
-        self._layout_mode: Any = None
+        self._layout_edit_mode: Any = None
 
     def invalidate(self) -> None:
         self.invalidated += 1
@@ -319,13 +319,13 @@ class _Session:
         self.path = path
         self.reloads: list[str] = []
         self.edits = EditLog()
-        self.mode = LayoutMode(self.edits, request_reload=self.reloads.append)
+        self.mode = LayoutEditMode(self.edits, request_reload=self.reloads.append)
         self.column = getattr(_load(path), factory)()
         self.host = mount(self.column)
         self.root = self.host.__enter__().root
         self.host.layout(width, 200)
         self.app = _App(self.root)
-        self.app._layout_mode = self.mode
+        self.app._layout_edit_mode = self.mode
         self.mode.on_key_press(self.app, "e", _CHORD)
 
     def close(self) -> None:
@@ -361,14 +361,14 @@ def session(app_file: Path) -> Iterator[_Session]:
 
 
 def test_the_chord_latches_the_mode_on() -> None:
-    mode, app = LayoutMode(EditLog()), _App()
+    mode, app = LayoutEditMode(EditLog()), _App()
 
     assert mode.on_key_press(app, "e", _CHORD) is True
     assert mode.active is True
 
 
 def test_the_meta_accelerator_also_enters() -> None:
-    mode, app = LayoutMode(EditLog()), _App()
+    mode, app = LayoutEditMode(EditLog()), _App()
 
     mode.on_key_press(app, "e", MOD_META | MOD_SHIFT)
 
@@ -376,14 +376,14 @@ def test_the_meta_accelerator_also_enters() -> None:
 
 
 def test_a_bare_e_does_not_enter() -> None:
-    mode, app = LayoutMode(EditLog()), _App()
+    mode, app = LayoutEditMode(EditLog()), _App()
 
     assert mode.on_key_press(app, "e", 0) is False
     assert mode.active is False
 
 
 def test_escape_leaves() -> None:
-    mode, app = LayoutMode(EditLog()), _App()
+    mode, app = LayoutEditMode(EditLog()), _App()
     mode.on_key_press(app, "e", _CHORD)
 
     assert mode.on_key_press(app, "escape", 0) is True
@@ -391,7 +391,7 @@ def test_escape_leaves() -> None:
 
 
 def test_every_key_is_consumed_while_latched_and_none_before() -> None:
-    mode, app = LayoutMode(EditLog()), _App()
+    mode, app = LayoutEditMode(EditLog()), _App()
     assert mode.on_key_press(app, "a", 0) is False
     assert mode.on_key_release(app, "a", 0) is False
     mode.on_key_press(app, "e", _CHORD)
@@ -405,7 +405,7 @@ def test_every_key_is_consumed_while_latched_and_none_before() -> None:
 
 def _through_layers(app: _App, key: str) -> None:
     """Offer a key the way the runner does: to each layer until one takes it."""
-    for layer in (app._select_mode, app._layout_mode):
+    for layer in (app._select_mode, app._layout_edit_mode):
         if layer.on_key_press(app, key, _CHORD):
             return
 
@@ -416,8 +416,8 @@ def test_the_layout_chord_switches_out_of_select_mode_keeping_its_marks() -> Non
         app = _App(host.root)
         selection = Selection()
         app._select_mode = SelectMode(selection)
-        app._layout_mode = LayoutMode(EditLog())
-        app._select_mode.on_key_press(app, "c", _CHORD)
+        app._layout_edit_mode = LayoutEditMode(EditLog())
+        app._select_mode.on_key_press(app, "d", _CHORD)
         app._select_mode.on_mouse_press(app, 2, 2)
         app._select_mode.on_mouse_release(app, 2, 2)
         assert selection.members()
@@ -425,26 +425,26 @@ def test_the_layout_chord_switches_out_of_select_mode_keeping_its_marks() -> Non
         _through_layers(app, "e")
 
         assert app._select_mode.active is False
-        assert app._layout_mode.active is True
+        assert app._layout_edit_mode.active is True
         assert selection.members(), "switching keeps the marks, as Enter does"
 
 
-def test_the_select_chord_switches_out_of_layout_mode() -> None:
+def test_the_select_chord_switches_out_of_layout_edit_mode() -> None:
     app = _App()
     app._select_mode = SelectMode(Selection())
-    app._layout_mode = LayoutMode(EditLog())
-    app._layout_mode.on_key_press(app, "e", _CHORD)
+    app._layout_edit_mode = LayoutEditMode(EditLog())
+    app._layout_edit_mode.on_key_press(app, "e", _CHORD)
 
-    _through_layers(app, "c")
+    _through_layers(app, "d")
 
-    assert app._layout_mode.active is False
+    assert app._layout_edit_mode.active is False
     assert app._select_mode.active is True
 
 
 def test_without_a_layout_mode_select_mode_keeps_consuming_the_chord() -> None:
     app = _App()
     app._select_mode = SelectMode(Selection())
-    app._select_mode.on_key_press(app, "c", _CHORD)
+    app._select_mode.on_key_press(app, "d", _CHORD)
 
     assert app._select_mode.on_key_press(app, "e", _CHORD) is True
     assert app._select_mode.active is True
@@ -652,7 +652,7 @@ def test_a_widget_without_a_site_is_refused() -> None:
     with mount(Column(children=[leaf], gap=0)) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = LayoutMode(EditLog())
+        mode = LayoutEditMode(EditLog())
         mode.on_key_press(app, "e", _CHORD)
         mode.on_mouse_motion(app, 50, 20)
 

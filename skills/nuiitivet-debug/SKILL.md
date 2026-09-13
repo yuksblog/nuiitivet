@@ -154,7 +154,7 @@ what they *meant*, not what the app is.
     `container` names what should have been.
   - Re-derived on every call, so read one again after your fix.
 - You cannot arm it and cannot clear it. If nothing is designated, ask them to
-  press `Ctrl+Shift+C`, click a widget or drag a box over the area, then `Enter`.
+  press `Ctrl+Shift+D`, click a widget or drag a box over the area, then `Enter`.
 
 ### Blind spots
 

@@ -1,6 +1,6 @@
 """Mechanics shared by the dev input layers.
 
-Select mode, layout mode and the source jump all sit on the backend's real
+Select mode, layout edit mode and the source jump all sit on the backend's real
 input handlers and read the same things off them: whether the runner's
 ``Ctrl+Shift`` prefix is down, whether a press travelled far enough to be a
 drag, which widget the pointer is over, and how to step a chosen widget up to

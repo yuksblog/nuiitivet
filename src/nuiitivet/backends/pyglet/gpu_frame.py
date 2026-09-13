@@ -204,10 +204,10 @@ def _paint_dev_selection_overlay(app: Any, canvas: Any) -> None:
     reach ``screenshot``, or the assistant would read them back as app content.
     """
     try:
-        from nuiitivet.dev import layout_overlay, selection_overlay
+        from nuiitivet.dev import layout_edit_overlay, selection_overlay
 
         selection_overlay.paint_selection(app, canvas, int(app.width), int(app.height))
-        layout_overlay.paint_layout(app, canvas, int(app.width), int(app.height))
+        layout_edit_overlay.paint_layout_edit(app, canvas, int(app.width), int(app.height))
     except Exception:
         exception_once(logger, "gpu_frame_dev_selection_overlay_exc", "dev selection overlay paint raised")
 

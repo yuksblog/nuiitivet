@@ -143,7 +143,7 @@ painted and there is no widget to name at all.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+C` | Enter select mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). The shortcut Chrome DevTools uses. |
+| `Ctrl+Shift+D` | Enter select mode (`Cmd+Shift+D` on macOS — either accelerator works throughout). `D` for *designate*: point things out for the assistant. |
 | Click | Designate the widget under the cursor; click it again to remove it. |
 | Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
 | `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
@@ -151,7 +151,7 @@ painted and there is no widget to name at all.
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
 | `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
-| `Ctrl+Shift+E` | Keep them and switch to [layout mode](#resize-or-reorder-a-widget-by-dragging-layout-mode). |
+| `Ctrl+Shift+E` | Keep them and switch to [layout edit mode](#resize-or-reorder-a-widget-by-dragging-layout-edit-mode). |
 
 Every designation and both removals take effect *inside* the session, so `Esc`
 undoes any of them.
@@ -189,9 +189,9 @@ fix to see what is there now.
 > content-free marker that you designated *something*; the payload goes out only
 > when the assistant asks for it.
 
-## Resize or reorder a widget by dragging (layout mode)
+## Resize or reorder a widget by dragging (layout edit mode)
 
-Select mode tells the assistant what you mean. Layout mode needs no assistant:
+Select mode tells the assistant what you mean. Layout Edit mode needs no assistant:
 drag a widget's corner, and on release the dev runner writes the new `width` /
 `height` / `size` into the call that built it; drag its body along a `Column`
 or `Row`, and the runner moves it in the `children` list; drag it onto another
@@ -203,7 +203,7 @@ container's alignment. Hot reload applies the edit.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+E` | Enter layout mode (`Cmd+Shift+E` on macOS). Inside select mode it switches directly, keeping your designations as `Enter` would; `Ctrl+Shift+C` switches back. |
+| `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside select mode it switches directly, keeping your designations as `Enter` would; `Ctrl+Shift+D` switches back. |
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
@@ -306,7 +306,7 @@ change in code.
 
 `Ctrl+Shift+Click` (`Cmd+Shift+Click` on macOS) on a widget **opens the code
 that built it**, in your editor. It is not a mode: it works with no mode on, and
-inside select mode or layout mode, where it opens the code instead of
+inside select mode or layout edit mode, where it opens the code instead of
 designating or selecting — so you can read through several widgets without
 leaving marks behind.
 
@@ -326,7 +326,7 @@ python -m nuiitivet.dev run app.py \
   --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
 ```
 
-`Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+C`,
+`Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+D`,
 `Ctrl+Shift+E`, `Ctrl+Shift+Click` — starts with it, and nothing else does.
 
 ## Watch the assistant act (on-screen)
@@ -344,7 +344,7 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
-These markers are **indigo**; select mode's are **amber**; layout mode's ghosts
+These markers are **indigo**; select mode's are **amber**; layout edit mode's ghosts
 are **teal**; the source jump's brackets are **rose**. What the assistant did,
 what you pointed at, what is about to change in your file, and where a click
 would take you must never be confusable.

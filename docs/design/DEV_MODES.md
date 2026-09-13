@@ -1,6 +1,6 @@
 # Dev Modes
 
-> Status: Implemented (select mode, source jump, layout mode)
+> Status: Implemented (select mode, source jump, layout edit mode)
 > User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
@@ -17,12 +17,15 @@ Three gestures share one input layer and one prefix:
 
 | Gesture | Chord | Kind | Effect |
 | --- | --- | --- | --- |
-| Select mode | `Ctrl+Shift+C` | latched mode | marks widgets and regions for the assistant (a *designation*) |
-| Layout mode | `Ctrl+Shift+E` | latched mode | a corner drag rewrites `width` / `height` / `size` in the source |
+| Select mode | `Ctrl+Shift+D` | latched mode | marks widgets and regions for the assistant (a *designation*) |
+| Layout Edit mode | `Ctrl+Shift+E` | latched mode | a corner drag rewrites `width` / `height` / `size` in the source |
 | Source jump | `Ctrl+Shift+Click` | modeless | opens the widget's construction site in the editor |
 
 `Ctrl+Shift` is the dev runner's prefix: every chord it claims starts with it,
-so an app never has to guess which are taken.
+so an app never has to guess which are taken. The letters name what the human
+does in the mode — `D` *designates*, `E` *edits* — and sit side by side under
+the left hand while the right is on the mouse; every mention of a chord in the
+HUD and the guide carries its verb, so the letter is learned with the word.
 
 ## 2. Structure
 
@@ -35,7 +38,7 @@ flowchart TB
         subgraph layers[dev input layers · offered in this order]
             jump[source jump]
             select[select mode]
-            layout[layout mode]
+            layout[layout edit mode]
         end
     end
     dispatch["app._dispatch_* (widget tree)"]
@@ -64,10 +67,10 @@ reload that follows.
 ### 2.1 The input layer
 
 - **Order.** The jump is offered every event ahead of the modes, because it
-  works in any state; then select mode, then layout mode. A layer that
+  works in any state; then select mode, then layout edit mode. A layer that
   consumes an event ends the walk.
 - **Two modes, one switch rule.** Each mode lets the *other's* chord pass, and
-  the entering mode closes the other — select mode commits, layout mode drops
+  the entering mode closes the other — select mode commits, layout edit mode drops
   its drag. The rule holds whatever order the layers run in, and neither mode
   needs the other to exist. While a mode is latched, every other key is
   consumed, so a mode never leaks a keystroke into the app.
@@ -196,7 +199,7 @@ same thing.
 - **Direct or owned.** A frame also records whether it built the widget
   *directly*. A label a button builds for itself, in its constructor or during
   layout, has no user call of its own, so a pointer on it means the nearest
-  ancestor a user call did build — the button. That owner is what layout mode
+  ancestor a user call did build — the button. That owner is what layout edit mode
   edits.
 
 ## 5. Source jump
@@ -238,7 +241,7 @@ that deliberately has none.
 None of this is checkable in CI, which is headless where the question is where
 the cursor landed; each platform's opener was confirmed against a real editor.
 
-## 6. Layout mode
+## 6. Layout Edit mode
 
 The sibling of select mode with the opposite division of labour: the human
 drags a widget and the **dev runner edits the source itself** — no assistant,
@@ -268,7 +271,7 @@ moves.
 - **Refusals are badges, not marks.** A value that is a name or expression, a
   keyword that may come through `**kwargs`, a constructor without the keyword,
   a call that cannot be located: nothing is written and the badge names the
-  reason. Layout mode never touches the `Selection`; a refusal is not handed
+  reason. Layout Edit mode never touches the `Selection`; a refusal is not handed
   to the assistant.
 - **Landing values are measured, not guessed.** The `auto` band is the
   widget's own intrinsic size measured at the proposed width, and the `wt`
@@ -380,10 +383,10 @@ because one visual language for opposite directions would mislead:
 | --- | --- |
 | indigo (action overlay) | the assistant did this |
 | amber (select mode) | the human means this |
-| teal (layout mode) | a change about to be made to a file |
+| teal (layout edit mode) | a change about to be made to a file |
 | rose (source jump) | a jump, not a mark — under a held chord inside select mode, amber brackets would read as a designation about to be made |
 
-In layout mode the candidate's corner brackets *are* the grab zones, the ghost
+In layout edit mode the candidate's corner brackets *are* the grab zones, the ghost
 is a dashed outline captioned with the landing values — or, for a reorder, an
 insertion line in the slot, captioned with the sibling it lands before, plus a
 tint over the list it would land in, its own or another's; in a grid a deeper
@@ -401,5 +404,5 @@ gesture, since the badge is the only place a human can learn them.
 | geometry picker, visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`) |
 | construction sites | `dev/source.py` |
 | source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
-| layout mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
+| layout edit mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
 | edit log and reload request | `dev/source_edit.py` (`EditLog`), `dev/controller.py` |

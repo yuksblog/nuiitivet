@@ -72,7 +72,7 @@ class HotReloadController:
         # below like observable state and the navigation stack, because a reload
         # lands in the middle of essentially every use of it.
         self._selection = selection
-        # Layout mode's edits. Told after every reload whether its pending edit
+        # Layout edit mode's edits. Told after every reload whether its pending edit
         # landed, since a reload is how an edit takes effect at all.
         self._edits = edits
         # Per-module source hashes from the last reload, so the next one can

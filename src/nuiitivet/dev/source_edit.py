@@ -1,6 +1,6 @@
 """Span surgery on the file that built a widget.
 
-Layout mode's edits are written here. Each one is a handful of character
+Layout edit mode's edits are written here. Each one is a handful of character
 spans replaced in one file -- the value of a ``width=`` keyword, a keyword
 inserted after the last argument, an element moved within a ``children`` list
 -- located by re-parsing the file with :mod:`ast` and matching the call at the
@@ -59,7 +59,7 @@ class Refusal:
 
 @dataclass
 class Edit:
-    """One edit layout mode wrote, with everything undo and the badge need."""
+    """One edit layout edit mode wrote, with everything undo and the badge need."""
 
     kind: str
     file: str
@@ -826,7 +826,7 @@ def still_applies(text: str, spans: Iterable[SpanEdit]) -> bool:
 
 
 class EditLog:
-    """The edits layout mode wrote this process, newest last, and what each did.
+    """The edits layout edit mode wrote this process, newest last, and what each did.
 
     One per dev runner, shared by every window's mode. ``undo`` reverts the
     newest edit only if the text it wrote is still at its spans; ``outcome``

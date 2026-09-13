@@ -49,7 +49,7 @@ from .client import BridgeClient, BridgeNotFoundError
 from .controller import HotReloadController
 from .interaction import InteractionJournal, InteractionRecorder, window_identity
 from .journal import ReloadJournal
-from .layout_mode import LayoutMode
+from .layout_edit_mode import LayoutEditMode
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
@@ -464,7 +464,7 @@ def _run(args: argparse.Namespace) -> int:
         # the real input path; the controller re-resolves them across a reload;
         # the bridge serves them at ``/describe_selection``.
         selection = Selection()
-        # What the human *changes* without an assistant: layout mode's edits to
+        # What the human *changes* without an assistant: layout edit mode's edits to
         # the source, applied by the reload the controller runs, so the
         # controller is what tells the log whether an edit landed.
         edits = EditLog()
@@ -490,7 +490,7 @@ def _run(args: argparse.Namespace) -> int:
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
             win._select_mode = SelectMode(selection, journal=interaction_journal)
-            win._layout_mode = LayoutMode(edits, request_reload=controller.request_reload)
+            win._layout_edit_mode = LayoutEditMode(edits, request_reload=controller.request_reload)
             win._source_jump = SourceJump()
             # Window lifecycle joins the same timeline: the register
             # hook covers every open path, and the loop below back-fills the

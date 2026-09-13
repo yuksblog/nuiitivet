@@ -1,10 +1,10 @@
-"""Layout mode playground: Rows and Columns to drag cards between.
+"""Layout Edit mode playground: Rows and Columns to drag cards between.
 
 Run with hot reload::
 
     python -m nuiitivet.dev run scripts/debug/layout_mode_move.py
 
-Enter layout mode with Cmd+Shift+E (Ctrl+Shift+E), then drag a card by its
+Enter layout edit mode with Cmd+Shift+E (Ctrl+Shift+E), then drag a card by its
 body. Each container below exercises one reading:
 
 - ``top`` / ``left``: drag along the main axis to reorder in place; drag over
@@ -157,7 +157,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="Layout mode: move across", width=900, height=900))
+    app = nv.App(nv.Window(content=build_root, title="Layout Edit mode: move across", width=900, height=900))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
