@@ -1,6 +1,6 @@
-"""Human-facing feedback for layout mode.
+"""Human-facing feedback for layout edit mode.
 
-The visual half of :mod:`nuiitivet.dev.layout_mode`, drawn under the same rules
+The visual half of :mod:`nuiitivet.dev.layout_edit_mode`, drawn under the same rules
 as :mod:`.selection_overlay`: from the live frame paths only, never from
 ``App._render_snapshot``, and as a pure function of the mode's state read at
 paint time.
@@ -49,12 +49,12 @@ _HINTS = (
     "Alt no snap",
     "Ctrl+Z undo",
     "Esc leave",
-    "Ctrl+Shift+C select mode",
+    "Ctrl+Shift+D designate",
     "Ctrl+Shift+Click source",
 )
 
 
-def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
+def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
     """Paint layout-mode feedback over the just-painted tree.
 
     Ghosts outlive the mode: an edit written just before leaving still needs
@@ -62,7 +62,7 @@ def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
     """
     if not _overlays_enabled():
         return
-    mode = getattr(app, "_layout_mode", None)
+    mode = getattr(app, "_layout_edit_mode", None)
     if mode is None:
         return
     try:
@@ -103,7 +103,7 @@ def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
         if notice:
             paint_caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
     except Exception:
-        logger.debug("layout_overlay: paint failed", exc_info=True)
+        logger.debug("layout_edit_overlay: paint failed", exc_info=True)
 
 
 def _paint_candidate(skia: Any, canvas: Any, mode: Any, font: Any, typeface: Any) -> None:
@@ -195,10 +195,10 @@ def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any,
 
 def _paint_hud(skia: Any, canvas: Any, font: Any, typeface: Any, width: int) -> None:
     """The badge that says a release will change the file."""
-    lines = ["LAYOUT" + _SEPARATOR + "release writes the source"]
+    lines = ["LAYOUT EDIT" + _SEPARATOR + "release writes the source"]
     lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
         paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
 
 
-__all__ = ["paint_layout"]
+__all__ = ["paint_layout_edit"]

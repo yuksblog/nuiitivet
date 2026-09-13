@@ -144,7 +144,7 @@ def test_keys_are_never_consumed() -> None:
     app = _App()
 
     assert jump.on_key_press(app, "lctrl", MOD_CTRL) is False
-    assert jump.on_key_press(app, "c", _CHORD) is False
+    assert jump.on_key_press(app, "d", _CHORD) is False
     assert jump.on_key_release(app, "c", _CHORD) is False
 
 
@@ -166,7 +166,7 @@ def test_inside_select_mode_the_chord_jumps_instead_of_designating(monkeypatch: 
             mode = SelectMode(selection)
             jump = SourceJump()
             app = _App(host.root)
-            mode.on_key_press(app, "c", _CHORD)
+            mode.on_key_press(app, "d", _CHORD)
 
             if not jump.on_mouse_press(app, 2, 2, _CHORD):
                 mode.on_mouse_press(app, 2, 2, _CHORD)
@@ -194,7 +194,7 @@ def test_select_mode_no_longer_jumps_on_ctrl_click(monkeypatch: Any) -> None:
             selection = Selection()
             mode = SelectMode(selection)
             app = _App(host.root)
-            mode.on_key_press(app, "c", _CHORD)
+            mode.on_key_press(app, "d", _CHORD)
 
             mode.on_mouse_press(app, 2, 2, MOD_CTRL)
             mode.on_mouse_release(app, 2, 2, MOD_CTRL)

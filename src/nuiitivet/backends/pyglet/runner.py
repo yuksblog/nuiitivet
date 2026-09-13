@@ -60,7 +60,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 # source jump goes first so its chord means the same thing inside a mode as
 # outside one; it never consumes a key, so the order is moot for the keyboard.
 # The two modes are never latched at once, so their order is moot as well.
-_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode", "_layout_mode")
+_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode", "_layout_edit_mode")
 
 
 def _dev_consumed(app: Any, hook: str, *args: Any) -> bool:

@@ -1,4 +1,4 @@
-"""Layout mode: the human drags a widget, and the runner edits the source.
+"""Layout edit mode: the human drags a widget, and the runner edits the source.
 
 The sibling of :mod:`.select_mode`, on the same real input handlers, with the
 opposite division of labour. Select mode is how the human *says* something to
@@ -58,13 +58,13 @@ logger = logging.getLogger(__name__)
 
 Rect = tuple[float, float, float, float]
 
-# The key that enters the mode. ``E`` keeps the chord under the left hand while
-# the right is on the mouse, and reads as *edit*, which is the name the mode
-# takes if it ever grows past layout.
+# The key that enters the mode. ``E`` for *edit*, and it keeps the chord under
+# the left hand while the right is on the mouse.
 _ENTER_KEY = "e"
-# Select mode's key. Its chord is let through while this mode is latched, so
-# the two switch directly; the mode that enters closes the other.
-_SELECT_KEY = "c"
+# Select mode's key, ``D`` for *designate*. Its chord is let through while this
+# mode is latched, so the two switch directly; the mode that enters closes the
+# other.
+_SELECT_KEY = "d"
 # Logical pixels around each corner of the candidate within which a press is a
 # grab of that corner rather than a click.
 _CORNER_GRAB = 10.0
@@ -184,10 +184,10 @@ class LayerList:
 _Drag = Union[_Resize, _Move]
 
 
-class LayoutMode:
-    """Latched layout mode for one window: corner drags resize, body drags reorder, move or align.
+class LayoutEditMode:
+    """Latched layout edit mode for one window: corner drags resize, body drags reorder, move or align.
 
-    Attach as ``app._layout_mode``; the backend's real input handlers call the
+    Attach as ``app._layout_edit_mode``; the backend's real input handlers call the
     ``on_*`` hooks and honour a ``True`` return as "consumed". While latched
     every event is consumed, like select mode. All hooks run on the UI thread.
     """
@@ -1347,4 +1347,4 @@ def _anchored(origin: Rect, corner: tuple[int, int], size: tuple[float, float]) 
     return (x if sx > 0 else x + w - nw, y if sy > 0 else y + h - nh, nw, nh)
 
 
-__all__ = ["Ghost", "LayerList", "LayoutMode"]
+__all__ = ["Ghost", "LayerList", "LayoutEditMode"]

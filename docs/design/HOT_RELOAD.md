@@ -3,7 +3,7 @@
 > Status: Implemented
 > Related: [#359](https://github.com/yuksblog/nuiitivet/issues/359)
 > User guide: [docs/guide/ai_pair_programming/hot_reload.md](../guide/ai_pair_programming/hot_reload.md)
-> Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (a tool sees and drives the reloaded app), [DEV_MODES.md](DEV_MODES.md) (the human points; layout mode applies its edit through this reload)
+> Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (a tool sees and drives the reloaded app), [DEV_MODES.md](DEV_MODES.md) (the human points; layout edit mode applies its edit through this reload)
 
 ## 1. Goal
 

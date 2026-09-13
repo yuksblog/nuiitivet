@@ -61,7 +61,7 @@ def designating() -> Iterator[tuple[_App, SelectMode]]:
         host.layout(300, 200)
         mode = SelectMode(Selection())
         app = _App(host.root, mode)
-        mode.on_key_press(app, "c", _ENTER)
+        mode.on_key_press(app, "d", _ENTER)
         mode.on_mouse_press(app, 2, 2)
         mode.on_mouse_release(app, 2, 2)
         yield (app, mode)
