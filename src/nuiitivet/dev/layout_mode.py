@@ -25,6 +25,7 @@ from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import global_visual_rect
 from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
+from nuiitivet.layout.grid import Grid
 
 from . import landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
@@ -35,8 +36,13 @@ from .source_edit import (
     EditLog,
     Refusal,
     Value,
+    cell_refusal,
     children_list,
+    discarded_keywords,
+    grid_item_name,
     is_project_file,
+    plan_area,
+    plan_cell,
     plan_keywords,
     plan_move,
     plan_move_across,
@@ -64,8 +70,8 @@ class Ghost:
 
     A resize's ghost is a ``"rect"``, the proposed one. A reorder's is a
     ``"line"`` -- the insertion line, given as a rect with no thickness on the
-    axis it crosses -- and a move into another container adds a ``"wash"``
-    over that container.
+    axis it crosses -- under a ``"wash"`` over the list the child would land
+    in; in a grid the line is a ``"cell"``, the one it would take.
     """
 
     rect: Rect
@@ -123,9 +129,22 @@ class _Move:
     target: Optional[Any] = None
     target_refusal: Optional[str] = None
     blocked: Optional[str] = None
+    # In a grid: where the item sits -- ``(row, column, row_span,
+    # column_span)`` -- the cell under the pointer in its own grid, or in the
+    # destination grid, and why its placement cannot be rewritten. The
+    # destination's ``GridItem`` spelling is read once on entry, and the
+    # keywords an unwrap would drop are noted after the write.
+    home: Optional[tuple[int, int, int, int]] = None
+    cell: Optional[reorder.Cell] = None
+    dest_cell: Optional[reorder.Cell] = None
+    cell_block: Optional[str] = None
+    dest_wrapper: str = ""
+    discards: list[str] = field(default_factory=list)
 
 
 _Drag = Union[_Resize, _Move]
+
+_STACK_BLOCKED = "Stack children have no order to drag; drop it in a Column, Row, Flow, UniformFlow or Grid"
 
 
 class LayoutMode:
@@ -504,7 +523,7 @@ class LayoutMode:
             return
         container, member = reorder.container_of(node)
         if container is None:
-            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow, UniformFlow or Stack"
+            self._notice = f"{type(node).__name__} is not in a Column, Row, Flow, UniformFlow, Grid or Stack"
             invalidate(app)
             return
         children = reorder.siblings(container)
@@ -514,6 +533,11 @@ class LayoutMode:
         instances = widgets_built_at(self._root(), frame, type(container).__name__) if frame else []
         drag = _Move(node, member, container, children, children.index(member), press, instances or [container])
         drag.leave = _list_refusal(container, "source")
+        if isinstance(container, Grid):
+            drag.home = reorder.placement(container, member)
+            drag.cell_block = _item_refusal(member)
+            drag.leave = drag.leave or drag.cell_block
+            drag.discards = _discards(member)
         self._update_move(app, drag, x, y)
         self._drag = drag
 
@@ -521,18 +545,24 @@ class LayoutMode:
         """Read the drag from where the pointer is: its own container, another, or neither.
 
         The deepest container under the pointer decides. The widget's own
-        gives the in-place reading, a reorder along the main axis; any other
-        makes the drag a move into it; none at all keeps the in-place reading,
-        so a drag past the end of a list still lands at the end.
+        gives the in-place reading, a reorder along the main axis -- or, in a
+        grid, the cell under the pointer; any other makes the drag a move
+        into it; none at all keeps the in-place reading, so a drag past the
+        end of a list still lands at the end.
         """
         drag.pointer = (x, y)
         drag.slot = drag.destination = drag.dest_slot = drag.blocked = None
+        drag.cell = drag.dest_cell = None
         drag.dest_children = []
         target = reorder.destination_at(app, x, y, exclude=drag.member, own=drag.container)
         if target is None or target is drag.container:
             dx, dy = x - drag.start[0], y - drag.start[1]
-            if not isinstance(drag.container, reorder.REORDERABLE):
-                drag.blocked = "Stack children have no order to drag; drop it in a Column, Row, Flow or UniformFlow"
+            if isinstance(drag.container, Grid):
+                drag.cell = reorder.cell_at(drag.container, x, y)
+                if drag.cell is not None:
+                    drag.blocked = drag.cell_block
+            elif not isinstance(drag.container, reorder.REORDERABLE):
+                drag.blocked = _STACK_BLOCKED
             elif reorder.reorder_reading(drag.container, dx, dy):
                 drag.slot = reorder.slot_at(drag.container, drag.siblings, drag.member, x, y)
         else:
@@ -542,7 +572,10 @@ class LayoutMode:
             if drag.blocked is None:
                 drag.destination = target
                 drag.dest_children = reorder.siblings(target)
-                drag.dest_slot = reorder.slot_at(target, drag.dest_children, None, x, y)
+                if isinstance(target, Grid):
+                    drag.dest_cell = reorder.cell_at(target, x, y)
+                else:
+                    drag.dest_slot = reorder.slot_at(target, drag.dest_children, None, x, y)
         self._notice = drag.blocked
         invalidate(app)
 
@@ -550,6 +583,8 @@ class LayoutMode:
         """Once per container the pointer enters: whether its list can take a child, and what else its site built."""
         drag.target = target
         drag.target_refusal = _list_refusal(target, "destination")
+        if isinstance(target, Grid) and drag.target_refusal is None:
+            drag.dest_wrapper, drag.target_refusal = _wrapper_of(target)
         frame = construction_frame(target)
         found = widgets_built_at(self._root(), frame, type(target).__name__) if frame else []
         drag.dest_instances = found or [target]
@@ -557,10 +592,20 @@ class LayoutMode:
     def _finish_move(self, app: Any, drag: _Move, x: float, y: float) -> None:
         self._update_move(app, drag, x, y)
         if drag.destination is not None:
+            if isinstance(drag.destination, Grid) and drag.dest_cell is None:
+                invalidate(app)
+                return
             planned = self._plan_move_across(drag)
             if self._write(app, planned, self._move_ghosts(drag)):
                 self._select(None, None)
-                self._notice = _axis_note(drag.node, drag.container, drag.destination)
+                notes = [_axis_note(drag.node, drag.container, drag.destination), _discard_note(drag)]
+                self._notice = "  ·  ".join(note for note in notes if note) or None
+            invalidate(app)
+            return
+        if isinstance(drag.container, Grid):
+            if drag.cell is not None and drag.home is not None and drag.cell != drag.home[:2]:
+                if self._write(app, self._plan_cell(drag), self._move_ghosts(drag)):
+                    self._select(None, None)
             invalidate(app)
             return
         if drag.slot is None or drag.slot == drag.index:
@@ -571,6 +616,43 @@ class LayoutMode:
             # is let go and hover takes over where the pointer is.
             self._select(None, None)
         invalidate(app)
+
+    def _plan_cell(self, drag: _Move) -> Edit | Refusal:
+        """The edit a body drag to another cell of its own grid asks for, or why there is none."""
+        assert drag.cell is not None and drag.home is not None
+        grid, item = drag.container, drag.member
+        frame = construction_frame(grid)
+        if frame is None:
+            return Refusal("no source recorded for this Grid")
+        located = _source_of(item, "this GridItem")
+        if isinstance(located, Refusal):
+            return located
+        item_frame, text = located
+        row, column = drag.cell
+        area = reorder.area_at(grid, drag.cell)
+        if getattr(item, "area", None):
+            if area is None:
+                return Refusal("the grid declares no area there")
+            spans = plan_area(text, item_frame, area)
+            after: dict[str, Value] = {"area": area}
+        else:
+            spans = plan_cell(text, item_frame, row, column)
+            after = {"row": row, "column": column}
+        if isinstance(spans, Refusal):
+            return spans
+        return Edit(
+            kind="move",
+            file=item_frame.file,
+            site=frame,
+            parent_layout="Grid",
+            before={"row": drag.home[0], "column": drag.home[1]},
+            after=after,
+            expected={"row": row, "column": column},
+            instances=len(drag.instances),
+            spans=spans,
+            widget="Grid",
+            child=type(reorder.inner(item)).__name__,
+        )
 
     def _plan_move(self, drag: _Move) -> Edit | Refusal:
         """The edit a finished body drag asks for, or why there is none."""
@@ -599,8 +681,12 @@ class LayoutMode:
         )
 
     def _plan_move_across(self, drag: _Move) -> Edit | Refusal:
-        """The edit a body drag into another container asks for, or why there is none."""
-        assert drag.destination is not None and drag.dest_slot is not None
+        """The edit a body drag into another container asks for, or why there is none.
+
+        Into a grid the element lands wrapped in a ``GridItem`` at the cell;
+        out of one only the item's child travels.
+        """
+        assert drag.destination is not None
         container, target = drag.container, drag.destination
         located = _source_of(container, f"this {type(container).__name__}")
         if isinstance(located, Refusal):
@@ -611,6 +697,14 @@ class LayoutMode:
             return landed
         dest_frame, dest_text = landed
         same_file = dest_frame.file == frame.file
+        wrap: Optional[tuple[str, str]] = None
+        if isinstance(target, Grid):
+            assert drag.dest_cell is not None
+            slot, place = len(drag.dest_children), _place(drag.dest_cell)
+            wrap = _wrapper(drag.dest_wrapper, drag.dest_cell, reorder.area_at(target, drag.dest_cell))
+        else:
+            assert drag.dest_slot is not None
+            slot, place, wrap = drag.dest_slot, {"slot": drag.dest_slot}, None
         planned = plan_move_across(
             text,
             frame,
@@ -618,24 +712,28 @@ class LayoutMode:
             len(drag.siblings),
             text if same_file else dest_text,
             dest_frame,
-            drag.dest_slot,
+            slot,
             len(drag.dest_children),
+            unwrap=isinstance(container, Grid),
+            wrap=wrap,
         )
         if isinstance(planned, Refusal):
             return planned
         removal, insertion = planned
+        before: dict[str, int] = {"count": len(drag.siblings)}
+        before.update(_place(drag.home[:2]) if drag.home is not None else {"slot": drag.index})
         return Edit(
             kind="move",
             file=frame.file,
             site=frame,
             parent_layout=type(container).__name__,
-            before={"slot": drag.index, "count": len(drag.siblings)},
-            after={"slot": drag.dest_slot},
-            expected={"slot": drag.dest_slot},
+            before=before,
+            after=dict(place),
+            expected=place,
             instances=len(drag.instances),
             spans=removal + insertion if same_file else removal,
             widget=type(container).__name__,
-            child=type(reorder.visible(drag.member)).__name__,
+            child=type(reorder.inner(drag.member)).__name__,
             destination=dest_frame,
             dest_widget=type(target).__name__,
             other_file="" if same_file else dest_frame.file,
@@ -659,11 +757,15 @@ class LayoutMode:
             return self._across_ghosts(drag)
         ghosts: list[Ghost] = []
         instances = [c for c in drag.instances if c is drag.container or len(reorder.siblings(c)) == len(drag.siblings)]
-        if isinstance(drag.container, reorder.REORDERABLE):
+        if isinstance(drag.container, reorder.DESTINATIONS):
             for container in instances:
                 rect = global_visual_rect(container)
                 if rect is not None:
                     ghosts.append(Ghost(rect, "", shape="wash"))
+        if isinstance(drag.container, Grid):
+            if drag.cell is not None and drag.home is not None and drag.cell != drag.home[:2]:
+                ghosts.extend(_cell_ghosts(drag, instances, drag.container, drag.cell, drag.home[2:], into=False))
+            return ghosts
         if drag.slot is None or drag.slot == drag.index:
             return ghosts
         for container in instances:
@@ -680,9 +782,18 @@ class LayoutMode:
 
     def _across_ghosts(self, drag: _Move) -> list[Ghost]:
         target, slot = drag.destination, drag.dest_slot
+        ghosts: list[Ghost] = []
+        if isinstance(target, Grid):
+            for grid in drag.dest_instances:
+                rect = global_visual_rect(grid)
+                if rect is not None:
+                    ghosts.append(Ghost(rect, "", shape="wash"))
+            if drag.dest_cell is not None:
+                span = drag.home[2:] if drag.home is not None else (1, 1)
+                ghosts.extend(_cell_ghosts(drag, drag.dest_instances, target, drag.dest_cell, span, into=True))
+            return ghosts
         if target is None or slot is None:
             return []
-        ghosts: list[Ghost] = []
         for container in drag.dest_instances:
             children = drag.dest_children if container is target else reorder.siblings(container)
             if len(children) != len(drag.dest_children):
@@ -763,6 +874,80 @@ def _list_refusal(container: Any, role: str) -> Optional[str]:
     frame, text = located
     found = children_list(text, frame, role)
     return found.reason if isinstance(found, Refusal) else None
+
+
+def _item_refusal(item: Any) -> Optional[str]:
+    """Why the ``GridItem`` ``item`` cannot be placed elsewhere by an edit, or ``None``."""
+    located = _source_of(item, "this GridItem")
+    if isinstance(located, Refusal):
+        return located.reason
+    frame, text = located
+    found = cell_refusal(text, frame)
+    return found.reason if found is not None else None
+
+
+def _discards(item: Any) -> list[str]:
+    """The keywords unwrapping ``item`` would drop, read from its source."""
+    located = _source_of(item, "this GridItem")
+    if isinstance(located, Refusal):
+        return []
+    frame, text = located
+    return discarded_keywords(text, frame)
+
+
+def _wrapper_of(grid: Any) -> tuple[str, Optional[str]]:
+    """How a ``GridItem`` is spelled where ``grid`` is written, or why it cannot be."""
+    located = _source_of(grid, "the Grid")
+    if isinstance(located, Refusal):
+        return ("", located.reason)
+    frame, text = located
+    name = grid_item_name(text, frame)
+    return ("", name.reason) if isinstance(name, Refusal) else (name, None)
+
+
+def _wrapper(name: str, cell: reorder.Cell, area: Optional[str]) -> tuple[str, str]:
+    """The text before and after an expression that puts it at ``cell`` -- or in ``area`` -- as a ``GridItem``."""
+    if area is not None:
+        return (f"{name}.named_area(", f', "{area}")')
+    return (f"{name}(", f", row={cell[0]}, column={cell[1]})")
+
+
+def _place(cell: tuple[int, ...]) -> dict[str, int]:
+    return {"row": cell[0], "column": cell[1]}
+
+
+def _discard_note(drag: _Move) -> Optional[str]:
+    """That the unwrap dropped the item's own keywords, if it had any."""
+    if not drag.discards or not isinstance(drag.container, Grid):
+        return None
+    return f"the GridItem's {', '.join(drag.discards)} did not move with it"
+
+
+def _cell_ghosts(
+    drag: _Move, grids: list[Any], target: Any, cell: reorder.Cell, span: tuple[int, ...], into: bool
+) -> list[Ghost]:
+    """One cell ghost per grid instance; the one under the pointer carries the caption."""
+    ghosts = []
+    for grid in grids:
+        rect = reorder.cell_rect(grid, cell[0], cell[1], span[0], span[1])
+        if rect is None:
+            continue
+        caption = _cell_caption(drag, target, cell, len(grids), into) if grid is target else ""
+        ghosts.append(Ghost(rect, caption, shape="cell"))
+    return ghosts
+
+
+def _cell_caption(drag: _Move, grid: Any, cell: reorder.Cell, instances: int, into: bool) -> str:
+    """The cell or area, who already sits there, and the instance count past one."""
+    area = reorder.area_at(grid, cell)
+    where = f"area {area}" if area is not None else f"row {cell[0]}, column {cell[1]}"
+    parts = [f"into Grid, {where}" if into else where]
+    others = reorder.occupants(grid, cell, drag.member)
+    if others:
+        parts.append("over " + ", ".join(_name(reorder.inner(item)) for item in others))
+    if instances > 1:
+        parts.append(f"{instances} widgets")
+    return "  ·  ".join(parts)
 
 
 def _caption(drag: _Resize) -> str:

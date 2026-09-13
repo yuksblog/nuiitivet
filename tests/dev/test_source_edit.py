@@ -22,7 +22,12 @@ from nuiitivet.dev.source_edit import (
     Refusal,
     SpanEdit,
     apply_spans,
+    cell_refusal,
+    discarded_keywords,
+    grid_item_name,
     locate_call,
+    plan_area,
+    plan_cell,
     plan_keywords,
     plan_move,
     plan_move_across,
@@ -602,3 +607,135 @@ def test_only_files_outside_the_install_directories_are_the_humans_to_edit(tmp_p
 
 def test_span_edit_is_a_value() -> None:
     assert SpanEdit(1, 2, "x") == SpanEdit(1, 2, "x")
+
+
+# --- grids --------------------------------------------------------------------
+
+
+_GRID = "Grid(children=[GridItem(a(), row=0, column=0), GridItem(b(), row=1, column=[0, 1])], rows=[40, 40], columns=[100, 100])"  # noqa: E501
+
+
+def _placed(text: str, snippet: str, row: int, column: int) -> str:
+    planned = plan_cell(text, _site(text, snippet), row, column)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def test_a_cell_move_rewrites_row_and_column_in_place() -> None:
+    assert "GridItem(a(), row=1, column=1)" in _placed(_GRID, "GridItem(a(), row=0, column=0)", 1, 1)
+
+
+def test_a_span_keeps_its_length_and_moves_its_start() -> None:
+    assert "GridItem(b(), row=0, column=[1, 2])" in _placed(_GRID, "GridItem(b(), row=1, column=[0, 1])", 0, 1)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("GridItem(a(), 0, 0)", "GridItem(a(), 1, 2)"),
+        ("GridItem(a(), row=(0, 1), column=0)", "GridItem(a(), row=(1, 2), column=2)"),
+        ("GridItem(a())", "GridItem(a(), row=1, column=2)"),
+    ],
+)
+def test_positional_tuple_and_absent_placements_are_written_too(text: str, expected: str) -> None:
+    assert _placed(text, text, 1, 2) == expected
+
+
+def test_a_placement_bound_to_a_name_is_refused_before_and_at_the_edit() -> None:
+    text = "GridItem(a(), row=r, column=0)"
+    refusal = cell_refusal(text, _site(text, text))
+    assert refusal is not None and refusal.reason == "row is bound to r"
+    planned = plan_cell(text, _site(text, text), 1, 1)
+    assert isinstance(planned, Refusal) and planned.reason == "row is bound to r"
+
+
+def test_an_area_item_is_moved_by_name_and_has_no_cell_to_write() -> None:
+    text = 'GridItem.named_area(a(), "header")'
+    planned = plan_area(text, _site(text, text), "sidebar")
+    assert not isinstance(planned, Refusal)
+    assert apply_spans(text, planned)[0] == 'GridItem.named_area(a(), "sidebar")'
+    refused = plan_cell(text, _site(text, text), 0, 0)
+    assert isinstance(refused, Refusal) and refused.reason == "the item is placed by area; a cell has no name to write"
+    assert cell_refusal(text, _site(text, text)) is None
+
+
+def test_unwrapping_notes_the_keywords_the_item_carried() -> None:
+    text = 'GridItem(a(), row=0, column=0, padding=4, alignment="center")'
+    assert discarded_keywords(text, _site(text, text)) == ["padding", "alignment"]
+
+
+@pytest.mark.parametrize(
+    ("text", "grid", "expected"),
+    [
+        ("nv.Grid(children=[])", "nv.Grid(children=[])", "nv.GridItem"),
+        ("nv.Grid.named_areas(children=[], areas=[])", "nv.Grid.named_areas(children=[], areas=[])", "nv.GridItem"),
+        ("from nuiitivet.layout.grid import Grid, GridItem\nGrid(children=[])", "Grid(children=[])", "GridItem"),
+        ("import nuiitivet.layout.grid as g\ng.Grid(children=[])", "g.Grid(children=[])", "g.GridItem"),
+    ],
+)
+def test_the_wrapper_is_spelled_the_way_the_grid_is(text: str, grid: str, expected: str) -> None:
+    assert grid_item_name(text, _site(text, grid)) == expected
+
+
+def test_a_bare_grid_item_the_module_does_not_bind_is_refused() -> None:
+    text = "from nuiitivet.layout.grid import Grid\nGrid(children=[])"
+    name = grid_item_name(text, _site(text, "Grid(children=[])"))
+    assert isinstance(name, Refusal) and name.reason == "GridItem is not imported in app.py"
+
+
+def test_leaving_a_grid_moves_only_the_items_child() -> None:
+    text = "Row(children=[Grid(children=[GridItem(a(), row=0, column=0)]), Column(children=[c()])])"
+    planned = plan_move_across(
+        text,
+        _site(text, "Grid(children=[GridItem(a(), row=0, column=0)])"),
+        0,
+        1,
+        text,
+        _site(text, "Column(children=[c()])"),
+        1,
+        1,
+        unwrap=True,
+    )
+    assert not isinstance(planned, Refusal), planned.reason
+    removal, insertion = planned
+    assert apply_spans(text, removal + insertion)[0] == "Row(children=[Grid(children=[]), Column(children=[c(), a()])])"
+
+
+def test_entering_a_grid_wraps_the_expression_in_a_grid_item() -> None:
+    text = "Row(children=[Column(children=[c()]), Grid(children=[])])"
+    planned = plan_move_across(
+        text,
+        _site(text, "Column(children=[c()])"),
+        0,
+        1,
+        text,
+        _site(text, "Grid(children=[])"),
+        0,
+        0,
+        wrap=("GridItem(", ", row=0, column=1)"),
+    )
+    assert not isinstance(planned, Refusal), planned.reason
+    removal, insertion = planned
+    assert apply_spans(text, removal + insertion)[0] == (
+        "Row(children=[Column(children=[]), Grid(children=[GridItem(c(), row=0, column=1)])])"
+    )
+
+
+def test_the_reload_check_reports_an_empty_cell() -> None:
+    from nuiitivet.layout.grid import Grid, GridItem
+
+    source.install()
+    try:
+        grid = Grid(children=[GridItem(Text("a", width=100, height=40), row=0, column=0)], rows=[40], columns=[100])
+    finally:
+        source.uninstall()
+    site = source.construction_frame(grid)
+    assert site is not None
+    log = EditLog()
+    edit = Edit("move", site.file, site, "Grid", {"row": 0, "column": 0}, {"row": 1, "column": 1}, {"row": 1, "column": 1}, 1, (), "Grid", "TextBase")  # noqa: E501
+    log._pending = (edit, False)
+
+    with mount(grid) as host:
+        host.layout(300, 200)
+
+        assert log.after_reload([host.root]) == "reloaded, but nothing starts at row 1, column 1"

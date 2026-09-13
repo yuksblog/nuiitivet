@@ -1,6 +1,6 @@
 # Dev Modes
 
-> Status: Implemented (select mode, source jump, layout mode increments 1–3)
+> Status: Implemented (select mode, source jump, layout mode increments 1–4)
 > User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
@@ -279,8 +279,9 @@ increments.
   what is declared is not rewritten.
 - **A drag is not a coordinate.** A corner drag resolves to one of the three
   size spellings, a body drag to a slot among the siblings — the sibling gap
-  the pointer is over, read from the rects layout gave them. What is written is
-  a landing value or a list position, never a delta.
+  the pointer is over, read from the rects layout gave them — or, in a grid,
+  to the cell under the pointer, read from the tracks layout computed. What is
+  written is a landing value, a list position or a cell, never a delta.
 - **The container under the pointer decides the reading.** The deepest
   container under the pointer, looking past the dragged subtree, is where the
   drag lands: the widget's own container gives the in-place reading, any other
@@ -318,10 +319,21 @@ increments.
   there, before release. Sizing is not fixed up
   — `"wt"` moves as written and the badge notes when its axis changed
   meaning — since the corner is one drag away.
+- **A grid drop is a cell, and the wrapper is the destination's.** A `Grid`
+  places by `GridItem(child, row=…, column=…)` or by area name, never by
+  order, so inside a grid the in-place reading is a cell change — the item's
+  indices or area rewritten, a span keeping its length — and a move across a
+  grid's edge adds or removes the wrapper: only the item's child leaves, and
+  what enters is wrapped at the cell, or in the area the grid declares there.
+  The wrapper is spelled the way the grid is (`nv.Grid` gives `nv.GridItem`)
+  and never imported, so a bare `Grid` in a module that does not bind
+  `GridItem` refuses. An occupied cell is allowed — overlap is the grid's
+  business — and the caption names who is there; the keywords an unwrap drops
+  are named after the write, not refused.
 - **Write, reload, check.** The ghost is a prediction: after the reload the
   edit log finds the instances rebuilt at the site and compares their rect —
-  or, for a move, the class at the slot — with it, and a miss, a site that now
-  builds nothing, or a failed reload becomes the badge.
+  or, for a move, the class at the slot or in the cell — with it, and a miss,
+  a site that now builds nothing, or a failed reload becomes the badge.
 - **Shared sites.** One helper builds fourteen cards; the edit is to the
   helper and changes them all. What makes that honest is the ghost: every
   instance of the site gets one before release, and the caption carries the
@@ -344,8 +356,9 @@ because one visual language for opposite directions would mislead:
 In layout mode the candidate's corner brackets *are* the grab zones, the ghost
 is a dashed outline captioned with the landing values — or, for a reorder, an
 insertion line in the slot, captioned with the sibling it lands before, plus a
-tint over the list it would land in, its own or another's — and the badge
-lists every gesture, since the badge is the only place a human can learn them.
+tint over the list it would land in, its own or another's; in a grid a deeper
+tint over the cell instead of a line — and the badge lists every gesture,
+since the badge is the only place a human can learn them.
 
 ## 8. Implementation map
 

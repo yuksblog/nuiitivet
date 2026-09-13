@@ -88,6 +88,8 @@ def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
                 _paint_insertion_line(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             elif ghost.shape == "wash":
                 _paint_wash(skia, canvas, ghost.rect)
+            elif ghost.shape == "cell":
+                _paint_cell(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             else:
                 _paint_ghost(skia, canvas, ghost.rect, ghost.caption, font, typeface)
         if active:
@@ -147,13 +149,24 @@ def _paint_insertion_line(
 
 def _paint_wash(skia: Any, canvas: Any, rect: tuple[float, ...]) -> None:
     """The container a move will land in: a tint with a thin solid edge."""
+    _paint_tint(skia, canvas, rect, 0.10, 1.0)
+
+
+def _paint_cell(skia: Any, canvas: Any, rect: tuple[float, ...], caption: str, font: Any, typeface: Any) -> None:
+    """The grid cell a move will take: a deeper tint inside the grid's wash, captioned."""
+    _paint_tint(skia, canvas, rect, 0.22, 2.0)
+    if caption:
+        paint_caption(skia, canvas, caption, font, typeface, rect[0], rect[1] + rect[3] + 4.0)
+
+
+def _paint_tint(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float, edge_width: float) -> None:
     x, y, w, h = rect
     fill = skia.Paint(AntiAlias=True)
-    fill.setColor(color(skia, _ACCENT, 0.10))
+    fill.setColor(color(skia, _ACCENT, alpha))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), fill)
     edge = skia.Paint(AntiAlias=True)
     edge.setStyle(skia.Paint.kStroke_Style)
-    edge.setStrokeWidth(1.0)
+    edge.setStrokeWidth(edge_width)
     edge.setColor(color(skia, _ACCENT, 0.7))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), edge)
 

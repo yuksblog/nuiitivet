@@ -195,8 +195,8 @@ Select mode tells the assistant what you mean. Layout mode needs no assistant:
 drag a widget's corner, and on release the dev runner writes the new `width` /
 `height` / `size` into the call that built it; drag its body along a `Column`
 or `Row`, and the runner moves it in the `children` list; drag it onto another
-container, and the runner moves it into that container's list. Hot reload
-applies the edit.
+container, and the runner moves it into that container's list — or, for a
+`Grid`, into the cell under the pointer. Hot reload applies the edit.
 
 | Gesture | What it does |
 | --- | --- |
@@ -204,7 +204,7 @@ applies the edit.
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
-| Drag the body | Reorder among its siblings, or move it into the container under the pointer. The container it would land in — its own, or another under the pointer — is **tinted**, and an **insertion line** marks the slot, captioned with the sibling it goes before. |
+| Drag the body | Reorder among its siblings, or move it into the container under the pointer. The container it would land in — its own, or another under the pointer — is **tinted**, and an **insertion line** marks the slot, captioned with the sibling it goes before. In a `Grid` the **cell** under the pointer is tinted instead, captioned with its row and column, or its area name, and with whoever already sits there. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
@@ -240,6 +240,11 @@ alone. That happens for:
   - a move out of, or into, a container whose `children` are not written as a
     list literal — `Column.builder()`, a `ForEach`, a comprehension. The badge
     says so while you hover, before you release;
+  - a `GridItem` whose `row` / `column` or area name is bound to a name or an
+    expression; it can neither change cell nor leave the grid;
+  - a move into a `Grid` written as a bare `Grid(...)` in a module that does
+    not import `GridItem`: the runner adds no import, so the badge asks for
+    one;
 - Either
   - a call the runner cannot find at the recorded line, or a widget built with
     no source recorded.
@@ -248,23 +253,27 @@ Other drags are not refused but simply **do nothing** — no badge, because no
 line was ever drawn to promise a change:
 
 - Reorder
-  - releasing the widget in its own slot;
+  - releasing the widget in its own slot, or its own grid cell;
   - a body drag across the axis — sideways in a `Column`, up or down in a
     `Row`. Only travel along the axis reorders; in a `Flow` or `UniformFlow` any
-    direction does.
+    direction does;
+  - releasing over a `Grid`'s padding, where there is no cell.
 
 After the reload, the badge also reports a size that did not land where the
 ghost said, a reload that failed on the edit, or a `"wt"` whose meaning
 changed with the move — a share of the `Row`'s leftover where it filled the
-`Column`'s width. Either way `Ctrl+Z` still reverts it — unless you have
-edited that line by hand since, in which case the undo is refused rather than
-applied to the wrong text.
+`Column`'s width. A widget leaving a `Grid` leaves its `GridItem` behind, and
+the badge names the `width` / `height` / `padding` / `alignment` the item
+carried, since those stay with it. Either way `Ctrl+Z` still reverts it —
+unless you have edited that line by hand since, in which case the undo is
+refused rather than applied to the wrong text.
 
-Only `width`, `height`, `size` and the place of a child in the list that
-orders the children — `children=[...]`, or the data a comprehension or
-`Column.builder()` iterates, even one bound to a name (`tags = [...]`) — are
-ever written. `padding`, `gap`, colours and every other style value are yours
-to change in code.
+Only `width`, `height`, `size`, the place of a child in the list that orders
+the children — `children=[...]`, or the data a comprehension or
+`Column.builder()` iterates, even one bound to a name (`tags = [...]`) — and
+a `GridItem`'s `row` / `column` or area, added or removed with the wrapper
+itself as a widget enters or leaves a `Grid`, are ever written. `padding`,
+`gap`, colours and every other style value are yours to change in code.
 
 ## Jump to the source
 

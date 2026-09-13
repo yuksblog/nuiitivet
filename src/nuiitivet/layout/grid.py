@@ -163,6 +163,8 @@ class Grid(Widget):
         self.areas: Optional[List[List[str]]] = None
         self.row_gap = normalize_gap(row_gap)
         self.column_gap = normalize_gap(column_gap)
+        self._row_tracks: List[Tuple[float, float]] = []
+        self._column_tracks: List[Tuple[float, float]] = []
 
         if children:
             for child in children:
@@ -251,6 +253,8 @@ class Grid(Widget):
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         placements, rows, columns = self._prepare_layout()
+        self._row_tracks = []
+        self._column_tracks = []
         if not placements and not rows and not columns:
             return
 
@@ -268,6 +272,8 @@ class Grid(Widget):
         # Start positions relative to self
         row_positions = self._accumulate_positions(t, row_sizes, self.row_gap)
         col_positions = self._accumulate_positions(l, col_sizes, self.column_gap)
+        self._row_tracks = list(zip(row_positions, row_sizes))
+        self._column_tracks = list(zip(col_positions, col_sizes))
 
         for placement in placements:
             row = placement.row
@@ -324,26 +330,39 @@ class Grid(Widget):
 
         return placements, rows, columns
 
+    @property
+    def row_tracks(self) -> List[Tuple[float, float]]:
+        """Each row's ``(offset, length)`` from the last layout, relative to the grid; empty before one."""
+        return list(self._row_tracks)
+
+    @property
+    def column_tracks(self) -> List[Tuple[float, float]]:
+        """Each column's ``(offset, length)`` from the last layout, relative to the grid; empty before one."""
+        return list(self._column_tracks)
+
+    def placement_of(self, child: Widget) -> Tuple[int, int, int, int]:
+        """The ``(row, column, row_span, column_span)`` a child occupies.
+
+        Raises ``TypeError`` for a child that is not a ``GridItem`` and
+        ``ValueError`` for one placed nowhere.
+        """
+        if not isinstance(child, GridItem):
+            raise TypeError("Grid children must be GridItem instances with explicit placement")
+        if child.area:
+            return self._area_to_rect(child.area)
+        row_start, row_span = child.resolve_row()
+        col_start, col_span = child.resolve_column()
+        if row_start is None or col_start is None:
+            raise ValueError("GridItem requires 'area' or both 'row' and 'column' to be set")
+        return row_start, col_start, max(1, row_span), max(1, col_span)
+
     def _resolve_child_placement(
         self,
         child: Widget,
         rows: List[Sizing],
         columns: List[Sizing],
     ) -> Optional[_ResolvedPlacement]:
-        if isinstance(child, GridItem):
-            if child.area:
-                row, column, row_span, column_span = self._area_to_rect(child.area)
-            else:
-                row_start, row_span = child.resolve_row()
-                col_start, col_span = child.resolve_column()
-                if row_start is None or col_start is None:
-                    raise ValueError("GridItem requires 'area' or both 'row' and 'column' to be set")
-                row = row_start
-                column = col_start
-                row_span = max(1, row_span)
-                column_span = max(1, col_span)
-        else:
-            raise TypeError("Grid children must be GridItem instances with explicit placement")
+        row, column, row_span, column_span = self.placement_of(child)
 
         if row < 0 or column < 0:
             raise ValueError("Grid indices must be non-negative")

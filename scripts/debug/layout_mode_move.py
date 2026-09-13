@@ -15,6 +15,12 @@ body. Each container below exercises one reading:
 - ``from_data`` / ``comprehension``: children not written as a list literal
   (``Column.builder``, a comprehension); a badge appears while a card hovers
   over them and no line is drawn, and their own cards cannot leave
+- ``grid``: a 2×2 grid with an empty cell and an item spanning two columns;
+  drag a card to another cell (the tint marks it, the caption names the cell
+  and whoever is there), out of the grid into ``top`` (only the card leaves,
+  the ``GridItem`` stays behind), or a card from ``top`` into the empty cell
+  (it arrives wrapped in a ``GridItem``)
+- ``areas``: a grid placed by named areas; a card moves by area name
 
 The panels themselves are children of the outer Rows: press one's padding,
 between the cards, to reorder it there or move it into ``top``.
@@ -79,6 +85,29 @@ def build_root() -> nv.Widget:
         gap=8,
         padding=8,
     )
+    grid = nv.Grid(
+        children=[
+            nv.GridItem(card("g1"), row=0, column=0),
+            nv.GridItem(card("g2"), row=1, column=[0, 1]),
+        ],
+        rows=[60, 60],
+        columns=[100, 100],
+        row_gap=8,
+        column_gap=8,
+        padding=8,
+    )
+    areas = nv.Grid.named_areas(
+        children=[
+            nv.GridItem.named_area(card("head"), "header"),
+            nv.GridItem.named_area(card("side"), "sidebar"),
+        ],
+        areas=[["header", "header"], ["sidebar", "content"]],
+        rows=[60, 60],
+        columns=[100, 100],
+        row_gap=8,
+        column_gap=8,
+        padding=8,
+    )
     return nv.Column(
         children=[
             nv.Text("top: Row", padding=(8, 0)),
@@ -87,6 +116,8 @@ def build_root() -> nv.Widget:
             nv.Row(children=[panel(left), panel(empty), panel(stacked)], gap=16),
             nv.Text("from_data: Column.builder / comprehension: Row", padding=(8, 0)),
             nv.Row(children=[panel(from_data), panel(comprehension)], gap=16),
+            nv.Text("grid: Grid / areas: Grid.named_areas", padding=(8, 0)),
+            nv.Row(children=[panel(grid), panel(areas)], gap=16),
         ],
         padding=16,
         gap=8,
@@ -94,7 +125,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="Layout mode: move across", width=720, height=720))
+    app = nv.App(nv.Window(content=build_root, title="Layout mode: move across", width=720, height=900))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
