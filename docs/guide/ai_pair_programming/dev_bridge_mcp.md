@@ -194,8 +194,9 @@ fix to see what is there now.
 Select mode tells the assistant what you mean. Layout mode needs no assistant:
 drag a widget's corner, and on release the dev runner writes the new `width` /
 `height` / `size` into the call that built it; drag its body along a `Column`
-or `Row`, and the runner moves it in the `children` list. Hot reload applies
-the edit.
+or `Row`, and the runner moves it in the `children` list; drag it onto another
+container, and the runner moves it into that container's list. Hot reload
+applies the edit.
 
 | Gesture | What it does |
 | --- | --- |
@@ -203,7 +204,7 @@ the edit.
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
-| Drag the body | Reorder among its siblings. An **insertion line** marks the slot it will land in, captioned with the sibling it goes before. |
+| Drag the body | Reorder among its siblings, or move it into the container under the pointer. The container it would land in — its own, or another under the pointer — is **tinted**, and an **insertion line** marks the slot, captioned with the sibling it goes before. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
@@ -223,33 +224,47 @@ When one call builds many widgets — a helper returning a card, called from a
 loop — every one of them gets a ghost and the caption counts them
 (`14 widgets`), because the edit changes them all.
 
-A body drag moves the widget in the list that orders it: the `children` list,
-or the list a comprehension or `Column.builder()` iterates — written inline,
-or bound once to a name in the same function or module (`tags = [...]`). In a
-`Column` only up-and-down travel reorders and in a `Row` only left-and-right;
-drag across the axis and nothing happens on release. In a `Flow` or
-`UniformFlow` any direction reorders, row by row. Dragging a card's title
-moves it within every card built by the same helper, as with a resize.
+Some drags are **refused**: the corner badge says why, and the file is left
+alone. That happens for:
 
-Some drags are refused, and the corner badge says why. Nothing is written for:
+- Resize
+  - a size bound to a name or an expression (`width=self.card_w`);
+  - a widget whose constructor takes no `width`, `height` or `size`;
+- Reorder
+  - a reorder whose order is not in one list literal in the file — `head +
+    tail`, `[first, *rest]`, a filtered comprehension, items from a call or a
+    view model, a name that is assigned twice or used again after its list. The
+    badge names the list;
+  - a reorder inside a `Stack`, whose children have no order; the badge says so
+    while you drag, and the child can still be dropped in another container;
+  - a move out of, or into, a container whose `children` are not written as a
+    list literal — `Column.builder()`, a `ForEach`, a comprehension. The badge
+    says so while you hover, before you release;
+- Either
+  - a call the runner cannot find at the recorded line, or a widget built with
+    no source recorded.
 
-- a size bound to a name or an expression (`width=self.card_w`);
-- a widget whose constructor takes no `width`, `height` or `size`;
-- a reorder whose order is not in one list literal in the file — `head +
-  tail`, `[first, *rest]`, a filtered comprehension, items from a call or a
-  view model, a name that is assigned twice or used again after its list. The
-  badge names the list;
-- a call the runner cannot find at the recorded line, or a widget built with
-  no source recorded.
+Other drags are not refused but simply **do nothing** — no badge, because no
+line was ever drawn to promise a change:
+
+- Reorder
+  - releasing the widget in its own slot;
+  - a body drag across the axis — sideways in a `Column`, up or down in a
+    `Row`. Only travel along the axis reorders; in a `Flow` or `UniformFlow` any
+    direction does.
 
 After the reload, the badge also reports a size that did not land where the
-ghost said, or a reload that failed on the edit. Either way `Ctrl+Z` still
-reverts it — unless you have edited that line by hand since, in which case the
-undo is refused rather than applied to the wrong text.
+ghost said, a reload that failed on the edit, or a `"wt"` whose meaning
+changed with the move — a share of the `Row`'s leftover where it filled the
+`Column`'s width. Either way `Ctrl+Z` still reverts it — unless you have
+edited that line by hand since, in which case the undo is refused rather than
+applied to the wrong text.
 
-Only `width`, `height`, `size` and the order of `children` are ever written.
-`padding`, `gap`, colours and every other style value are yours to change in
-code.
+Only `width`, `height`, `size` and the place of a child in the list that
+orders the children — `children=[...]`, or the data a comprehension or
+`Column.builder()` iterates, even one bound to a name (`tags = [...]`) — are
+ever written. `padding`, `gap`, colours and every other style value are yours
+to change in code.
 
 ## Jump to the source
 

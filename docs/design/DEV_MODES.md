@@ -1,6 +1,6 @@
 # Dev Modes
 
-> Status: Implemented (select mode, source jump, layout mode increments 1–2)
+> Status: Implemented (select mode, source jump, layout mode increments 1–3)
 > User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
@@ -243,12 +243,13 @@ the cursor landed; each platform's opener was confirmed against a real editor.
 The sibling of select mode with the opposite division of labour: the human
 drags a widget and the **dev runner edits the source itself** — no assistant,
 no turn. A corner drag writes `width` / `height` / `size` into the call that
-built the widget; a body drag moves the widget's element in its container's
-`children` list. The hot reload that follows is the apply step. The tree is
-never mutated: what is on screen always came from the code, and during the
-gesture only the overlay moves. Increments 1 and 2 ship the corner resize and
-the reorder within one `Column` / `Row` / `Flow` / `UniformFlow`; moves across
-containers, grids and alignment are later increments.
+built the widget; a body drag moves the widget's element within its
+container's `children` list, or into another container's. The hot reload that
+follows is the apply step. The tree is never mutated: what is on screen always
+came from the code, and during the gesture only the overlay moves. Increments
+1–3 ship the corner resize, the reorder within a `Column` / `Row` / `Flow` /
+`UniformFlow`, and the move between them; grids and alignment are later
+increments.
 
 - **No commit.** Every release writes, so `Ctrl+Z` is what "I did not mean
   that" reaches for. Undo is the inverse span, and it refuses when the text it
@@ -280,11 +281,20 @@ containers, grids and alignment are later increments.
   size spellings, a body drag to a slot among the siblings — the sibling gap
   the pointer is over, read from the rects layout gave them. What is written is
   a landing value or a list position, never a delta.
-- **The axis decides the reading.** In a `Column` or `Row` the dominant axis of
-  the travel at release decides: along the main axis is a reorder, across it is
-  alignment's and has no reading yet. Fixing that here keeps alignment from
-  reopening the gesture later. A wrapping flow has no per-child cross reading,
-  so every travel in it is a reorder, row by row.
+- **The container under the pointer decides the reading.** The deepest
+  container under the pointer, looking past the dragged subtree, is where the
+  drag lands: the widget's own container gives the in-place reading, any other
+  makes the drag a move into it, and none at all keeps the in-place reading so
+  a drag past the end of a list still lands at its end. "Deepest" rather than
+  "the one the pointer left" is what lets a widget move into a sibling
+  container nested inside its own. A `Stack` child has no in-place reading —
+  stacked children share no axis — so the badge says so while the pointer is
+  inside the `Stack`, but it can leave.
+- **The axis decides the in-place reading.** In a `Column` or `Row` the
+  dominant axis of the travel at release decides: along the main axis is a
+  reorder, across it is alignment's and has no reading yet. Fixing that here
+  keeps alignment from reopening the gesture later. A wrapping flow has no
+  per-child cross reading, so every travel in it is a reorder, row by row.
 - **A reorder moves a span.** The runner locates, through the container's
   site, the list literal that owns the children's order — `children` itself,
   or the list a comprehension or a `ForEach` iterates, inline or bound once to
@@ -295,6 +305,19 @@ containers, grids and alignment are later increments.
   view model, a name bound twice or used again, each leave the order somewhere
   the runner cannot see, and are refused by name. Tree indices are never
   trusted past that gate.
+- **A move between containers is two lists, one edit.** The element leaves
+  the source list with one of its separators, enters the destination with one
+  of the destination's, and its continuation lines take the destination's
+  indentation; the two lists may be in different files, which are written
+  together and undone together, the second refusing when either has moved.
+  Both `children` must be list literals written in place: a child built from
+  data is a template with no expression of its own, and a data-driven list has
+  nowhere to put one. Only the source can tell — the tree sees the same
+  children either way — so it is read once when the drag starts and once per
+  container the pointer enters, and the badge says it while the pointer is
+  there, before release. Sizing is not fixed up
+  — `"wt"` moves as written and the badge notes when its axis changed
+  meaning — since the corner is one drag away.
 - **Write, reload, check.** The ghost is a prediction: after the reload the
   edit log finds the instances rebuilt at the site and compares their rect —
   or, for a move, the class at the slot — with it, and a miss, a site that now
@@ -320,9 +343,9 @@ because one visual language for opposite directions would mislead:
 
 In layout mode the candidate's corner brackets *are* the grab zones, the ghost
 is a dashed outline captioned with the landing values — or, for a reorder, an
-insertion line in the slot, captioned with the sibling it lands before — and
-the badge lists every gesture, since the badge is the only place a human can
-learn them.
+insertion line in the slot, captioned with the sibling it lands before, plus a
+tint over the list it would land in, its own or another's — and the badge
+lists every gesture, since the badge is the only place a human can learn them.
 
 ## 8. Implementation map
 

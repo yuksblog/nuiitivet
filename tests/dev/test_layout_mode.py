@@ -30,8 +30,12 @@ _APP = '''
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.row import Row
+from nuiitivet.layout.stack import Stack
+from nuiitivet.modifiers.border import border
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.text import TextBase as Text
+
+from layout_side import side
 
 w = 100
 
@@ -109,6 +113,48 @@ def card(label):
 
 def build_cards():
     return Column(children=[card("a"), card("b")], gap=0)
+
+
+def t(label):
+    return Text(label, width=100, height=40)
+
+
+def build_rows():
+    return Column(children=[Row(children=[t("AAA"), t("BBB")], gap=0), Row(children=[t("CCC")], gap=0)], gap=0)
+
+
+def build_empty_row():
+    return Column(children=[Row(children=[t("AAA")], gap=0), Row(children=[], gap=0, width=100, height=40)], gap=0)
+
+
+def build_from_stack():
+    return Row(children=[Stack(children=[t("AAA"), t("BBB")], width=100, height=40), Column(children=[t("CCC")], gap=0)], gap=0)  # noqa: E501
+
+
+def build_from_builder():
+    return Column(children=[Row.builder(["a", "b"], lambda item, index: t(item), gap=0), Row(children=[t("CCC")], gap=0)], gap=0)  # noqa: E501
+
+
+def build_into_comprehension():
+    tags = ["a"]
+    return Column(children=[Row(children=[t("AAA")], gap=0), Row(children=[t(tag) for tag in tags], gap=0)], gap=0)
+
+
+def build_two_files():
+    return Column(children=[Row(children=[t("AAA")], gap=0), side()], gap=0)
+
+
+def build_wrapped():
+    return Row(children=[Column(children=[t("AAA")], padding=10).modifier(border("#000", width=1)), Column(children=[t("BBB")], padding=10)], gap=0)  # noqa: E501
+'''
+
+_SIDE = '''
+from nuiitivet.layout.row import Row
+from nuiitivet.widgets.text import TextBase as Text
+
+
+def side():
+    return Row(children=[Text("SSS", width=100, height=40)], gap=0)
 '''
 
 
@@ -128,12 +174,16 @@ def app_file(tmp_path: Path) -> Iterator[Path]:
     """A user module on disk, imported with site capture on."""
     path = tmp_path / "layout_app.py"
     path.write_text(_APP, encoding="utf-8")
+    (tmp_path / "layout_side.py").write_text(_SIDE, encoding="utf-8")
+    sys.path.insert(0, str(tmp_path))
     source.install()
     try:
         yield path
     finally:
         source.uninstall()
+        sys.path.remove(str(tmp_path))
         sys.modules.pop("layout_app", None)
+        sys.modules.pop("layout_side", None)
 
 
 def _load(path: Path) -> Any:
@@ -579,6 +629,11 @@ def _written(s: _Session, factory: str) -> str:
     return " ".join(text[start : text.index("]", start) + 1].split())
 
 
+def _lines(ghosts: list[Any]) -> list[Any]:
+    """The insertion lines among the ghosts, the wash over the landing list left out."""
+    return [g for g in ghosts if g.shape == "line"]
+
+
 def test_a_body_drag_down_a_column_moves_the_child_past_the_siblings_it_crossed(app_file: Path) -> None:
     s = _list(app_file, "build_list")
     try:
@@ -588,7 +643,7 @@ def test_a_body_drag_down_a_column_moves_the_child_past_the_siblings_it_crossed(
         assert s.reloads == [str(s.path)]
         assert s.edits.pending is not None and s.edits.pending.kind == "move"
         assert s.mode.selected is None, "the moved widget's path changes with the reload"
-        assert s.mode.ghosts and s.mode.ghosts[0].line, "the ghost stays until the reload lands"
+        assert _lines(s.mode.ghosts), "the ghost stays until the reload lands"
     finally:
         s.close()
 
@@ -599,9 +654,8 @@ def test_the_ghost_is_an_insertion_line_before_the_next_sibling(app_file: Path) 
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 100)
 
-        ghosts = s.mode.ghosts
-
-        assert len(ghosts) == 1 and ghosts[0].line
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "line"], "the column washed, one line in it"
+        ghosts = _lines(s.mode.ghosts)
         x, y, w, h = ghosts[0].rect
         assert (x, w, h) == (0.0, 300.0, 0.0), "across the column, no thickness"
         assert 77.0 <= y <= 80.0, "in the gap above CCC"
@@ -617,7 +671,7 @@ def test_the_last_slot_is_captioned_to_the_end(app_file: Path) -> None:
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 119)
 
-        assert s.mode.ghosts[0].caption == "to the end"
+        assert _lines(s.mode.ghosts)[0].caption == "to the end"
         s.mode.on_mouse_release(s.app, 50, 119)
         assert _written(s, "build_list").endswith('Text("AAA", width=100, height=40)]')
     finally:
@@ -630,7 +684,7 @@ def test_cross_axis_travel_in_a_column_has_no_reading(app_file: Path) -> None:
     try:
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 200, 30)
-        assert s.mode.dragging and s.mode.ghosts == []
+        assert s.mode.dragging and [g.shape for g in s.mode.ghosts] == ["wash"], "the column washed, no line"
 
         s.mode.on_mouse_release(s.app, 200, 30)
 
@@ -647,7 +701,7 @@ def test_the_childs_own_slot_shows_no_line_and_release_there_is_silent(app_file:
     try:
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 30)
-        assert s.mode.dragging and s.mode.ghosts == []
+        assert s.mode.dragging and [g.shape for g in s.mode.ghosts] == ["wash"], "the column washed, no line"
 
         s.mode.on_mouse_release(s.app, 50, 30)
 
@@ -663,6 +717,26 @@ def test_a_body_drag_along_a_row_reorders_too(app_file: Path) -> None:
         s.drag_body((50, 20), (250, 20))
 
         assert _written(s, "build_row").startswith('[Text("BBB", width=100, height=40), Text("AAA"')
+    finally:
+        s.close()
+
+
+def test_a_container_wrapped_by_a_modifier_moves_as_its_wrapped_element(app_file: Path) -> None:
+    """Pressing a Column's own padding grabs the Column; the ``.modifier()`` box around it is
+    the list element, so the whole expression moves. The pointer lands past the
+    other Column, over the Row, since inside it the drag would read as a move
+    into it."""
+    s = _Session(app_file, "build_wrapped")
+    try:
+        s.hover(60, 5)
+        s.drag_body((60, 5), (250, 5))
+
+        text = s.text()
+        line = text[text.index("return Row", text.index("def build_wrapped")) :].splitlines()[0]
+        assert line.startswith(
+            'return Row(children=[Column(children=[t("BBB")], padding=10), '
+            'Column(children=[t("AAA")], padding=10).modifier(border("#000", width=1))], gap=0)'
+        )
     finally:
         s.close()
 
@@ -689,13 +763,13 @@ def test_the_line_at_a_flows_line_break_follows_the_pointers_row(app_file: Path)
         s.mode.on_mouse_press(s.app, 150, 60)
 
         s.mode.on_mouse_motion(s.app, 230, 20)
-        end_of_row = s.mode.ghosts[0].rect
+        end_of_row = _lines(s.mode.ghosts)[0].rect
         s.mode.on_mouse_motion(s.app, 5, 45)
-        start_of_row = s.mode.ghosts[0].rect
+        start_of_row = _lines(s.mode.ghosts)[0].rect
 
         assert end_of_row == (203.0, 0.0, 0.0, 40.0), "after BBB, on the first row"
         assert start_of_row == (-3.0, 40.0, 0.0, 40.0), "before CCC, on the second"
-        assert s.mode.ghosts[0].caption == "before TextBase CCC"
+        assert _lines(s.mode.ghosts)[0].caption == "before TextBase CCC"
         s.mode.on_key_press(s.app, "escape", 0)
     finally:
         s.close()
@@ -754,9 +828,8 @@ def test_a_shared_container_site_ghosts_every_instance_and_moves_them_all(app_fi
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 70)
 
-        ghosts = s.mode.ghosts
-
-        assert len(ghosts) == 2 and all(g.line for g in ghosts)
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "wash", "line", "line"], "both cards washed and lined"
+        ghosts = _lines(s.mode.ghosts)
         assert ghosts[0].caption == "to the end  ·  2 widgets"
         assert ghosts[1].rect[1] > 80.0, "the second card's line"
 
@@ -778,6 +851,176 @@ def test_ctrl_z_reverts_a_move(app_file: Path) -> None:
 
         assert s.text() == before
         assert s.mode.notice == "undoing TextBase → position 2"
+    finally:
+        s.close()
+
+
+# --- the move into another container ----------------------------------------------
+
+
+def _rows(s: _Session) -> str:
+    """The two rows of ``build_rows`` as written, whitespace collapsed."""
+    text = s.text()
+    start = text.index("Column(children=[Row(", text.index("def build_rows"))
+    return " ".join(text[start : text.index("\n", start)].split())
+
+
+def test_a_body_drag_over_another_row_moves_the_child_into_it(app_file: Path) -> None:
+    """AAA leaves the first row for the second, after CCC; the second row is
+    the deepest container under the pointer, so the drag is a move."""
+    s = _list(app_file, "build_rows")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 90, 60)
+        shapes = [g.shape for g in s.mode.ghosts]
+        assert shapes == ["wash", "line"], "the destination is washed and the slot marked"
+        assert s.mode.ghosts[1].caption == "into Row, to the end"
+
+        s.mode.on_mouse_release(s.app, 90, 60)
+
+        assert _rows(s) == (
+            'Column(children=[Row(children=[t("BBB")], gap=0), Row(children=[t("CCC"), t("AAA")], gap=0)], gap=0)'
+        )
+        assert s.edits.pending is not None and s.edits.pending.destination is not None
+        assert s.mode.selected is None
+    finally:
+        s.close()
+
+
+def test_returning_to_the_own_row_restores_the_reorder_reading(app_file: Path) -> None:
+    s = _list(app_file, "build_rows")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 60)
+        washes = [g.rect for g in s.mode.ghosts if g.shape == "wash"]
+        assert washes and washes[0][1] == 40.0, "the wash is over the other row"
+
+        s.mode.on_mouse_motion(s.app, 190, 20)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "line"]
+        assert s.mode.ghosts[0].rect[1] == 0.0, "the wash is back over the own row"
+        assert s.mode.ghosts[1].caption == "to the end"
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_an_empty_container_takes_the_child_at_its_one_slot(app_file: Path) -> None:
+    s = _list(app_file, "build_empty_row")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 60)
+        line = next(g for g in s.mode.ghosts if g.shape == "line")
+        assert line.rect == (3.0, 40.0, 0.0, 40.0), "at the start of the empty row's content box"
+
+        s.mode.on_mouse_release(s.app, 50, 60)
+
+        assert 'Row(children=[], gap=0), Row(children=[t("AAA")], gap=0, width=100, height=40)' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_stack_child_cannot_be_reordered_but_can_leave(app_file: Path) -> None:
+    s = _Session(app_file, "build_from_stack")
+    try:
+        s.hover(50, 20)
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 30)
+        assert s.mode.ghosts == [], "no in-place reading inside a Stack"
+        assert s.mode.notice == "Stack children have no order to drag; drop it in a Column, Row, Flow or UniformFlow"
+
+        s.mode.on_mouse_motion(s.app, 150, 30)
+        assert s.mode.notice is None and any(g.shape == "wash" for g in s.mode.ghosts), "over the Column, a move"
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        text = s.text()
+        assert "Stack(children=[t(" in text and text.count('t("CCC"), t("') == 1
+        assert 'Column(children=[t("CCC"), t("' in text
+    finally:
+        s.close()
+
+
+def test_a_child_built_from_data_is_blocked_from_leaving_while_the_pointer_is_elsewhere(app_file: Path) -> None:
+    s = _list(app_file, "build_from_builder")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 60)
+
+        assert s.mode.ghosts == []
+        assert s.mode.notice == "the children come from Row.builder(); the child has no expression of its own to move"
+
+        s.mode.on_mouse_release(s.app, 50, 60)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_a_destination_built_from_data_is_blocked_while_the_pointer_is_over_it(app_file: Path) -> None:
+    """The reverse: dragging CCC into the builder-built row."""
+    s = _Session(app_file, "build_from_builder")
+    try:
+        s.hover(50, 60)
+        s.mode.on_mouse_press(s.app, 50, 60)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+
+        assert s.mode.ghosts == []
+        assert s.mode.notice == "the destination's children come from Row.builder(); it cannot take a widget"
+        s.mode.on_key_press(s.app, "escape", 0)
+    finally:
+        s.close()
+
+
+def test_a_comprehension_destination_is_blocked_while_the_pointer_is_over_it(app_file: Path) -> None:
+    """The tree sees a plain row; the source, read as the pointer enters, says otherwise."""
+    s = _list(app_file, "build_into_comprehension")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 90, 60)
+
+        assert s.mode.ghosts == []
+        assert s.mode.notice == "the destination's children come from a comprehension; it cannot take a widget"
+
+        s.mode.on_mouse_release(s.app, 90, 60)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_a_move_into_a_container_built_in_another_file_writes_both_and_undoes_both(app_file: Path) -> None:
+    s = _list(app_file, "build_two_files")
+    side_path = app_file.parent / "layout_side.py"
+    before_app, before_side = s.text(), side_path.read_text(encoding="utf-8")
+    try:
+        s.drag_body((50, 20), (90, 60))
+
+        assert 'Row(children=[], gap=0), side()' in s.text()
+        side_after = side_path.read_text(encoding="utf-8")
+        assert 'Row(children=[Text("SSS", width=100, height=40), t("AAA")], gap=0)' in side_after
+        assert s.reloads == [str(s.path)]
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+
+        assert s.text() == before_app
+        assert side_path.read_text(encoding="utf-8") == before_side
+        assert s.mode.notice == "undoing TextBase → Row"
+    finally:
+        s.close()
+
+
+def test_an_undo_across_two_files_is_refused_when_either_moved(app_file: Path) -> None:
+    s = _list(app_file, "build_two_files")
+    side_path = app_file.parent / "layout_side.py"
+    try:
+        s.drag_body((50, 20), (90, 60))
+        side_path.write_text("# a hand edit\n" + side_path.read_text(encoding="utf-8"), encoding="utf-8")
+        app_after = s.text()
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+
+        assert s.text() == app_after, "neither file is touched"
+        assert s.mode.notice == "cannot undo: layout_side.py changed under the edit"
     finally:
         s.close()
 
