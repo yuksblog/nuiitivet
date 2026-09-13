@@ -296,8 +296,12 @@ moves.
   from outside reads the top layer — into it when it can take a child, else
   onto the stack, on top, which is the end of its list — so the empty box
   most stacks put underneath is never the landing. The layer holds while the
-  pointer is anywhere in the stack, and the point only picks the slot; a
-  layer below the top one is out of a drag's reach from outside.
+  pointer is anywhere in the stack, and the point only picks the slot. Since
+  no default can name the layer a point means, the overlay lists the stack's
+  layers with the landing marked, and `↑` / `↓` or a digit moves it: a layer
+  that takes a child is read within, any other gives the widget its place in
+  the stack — the z-order edit a stack has no gesture for — and past the top
+  is a new layer. The choice holds until the pointer leaves the stack.
 - **The axis decides the in-place reading.** In a `Column` or `Row` the
   dominant axis of the travel at release decides: along the main axis is a
   reorder, across it is alignment. In a wrapping flow every travel that

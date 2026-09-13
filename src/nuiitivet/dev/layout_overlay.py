@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 # Teal: distant from amber and from indigo alike.
 _ACCENT = (0, 168, 160)
+# Room a layer list needs beside its stack before it moves inside it.
+_LAYERS_WIDTH = 220.0
 _DASH = (6.0, 4.0)
 
 # Every gesture the mode binds. The badge is the only place a human can learn
@@ -43,6 +45,7 @@ _HINTS = (
     "drag reorder / move / align",
     "click select",
     "↑/↓ parent/child",
+    "↑/↓/0-9 Stack layer while dragging",
     "Alt no snap",
     "Ctrl+Z undo",
     "Esc leave",
@@ -92,6 +95,9 @@ def paint_layout(app: Any, canvas: Any, width: int, height: int) -> None:
                 _paint_cell(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             else:
                 _paint_ghost(skia, canvas, ghost.rect, ghost.caption, font, typeface)
+        layers = mode.layers if active else None
+        if layers is not None:
+            _paint_layers(skia, canvas, layers, font, typeface, width)
         if active:
             _paint_hud(skia, canvas, font, typeface, width)
         if notice:
@@ -169,6 +175,22 @@ def _paint_tint(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float, e
     edge.setStrokeWidth(edge_width)
     edge.setColor(color(skia, _ACCENT, 0.7))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), edge)
+
+
+def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any, width: int) -> None:
+    """The stack's layers, top first, beside the stack: the landing marked, the dragged widget's own layer named."""
+    x, y, w, _h = layers.rect
+    left = x + w + 6.0
+    if left + _LAYERS_WIDTH > width:
+        left = x + 6.0
+    lines = [(len(layers.names), "on top")]
+    lines.extend((index, name) for index, name in reversed(list(enumerate(layers.names))))
+    for row, (index, name) in enumerate(lines):
+        mark = "▸" if index == layers.landing else " "
+        label = f"{mark} {index} {name}" if index < len(layers.names) else f"{mark} + {name}"
+        if index == layers.own:
+            label += "  (own)"
+        paint_caption(skia, canvas, label, font, typeface, left, y + row * 24.0)
 
 
 def _paint_hud(skia: Any, canvas: Any, font: Any, typeface: Any, width: int) -> None:

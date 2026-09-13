@@ -20,6 +20,7 @@ must be found, and every laid-out child must map to one of its elements.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from nuiitivet._interaction.perception import ancestors, global_visual_rect, pick_within
@@ -96,8 +97,36 @@ def is_empty_host(node: Any) -> bool:
     return is_host(node) and not siblings(node)
 
 
+@dataclass
+class Landing:
+    """Where a drag over a point lands, and the stack it is read in.
+
+    ``container`` is the one the drag would land in, or ``None``. When the
+    point is inside a ``Stack``, ``stack`` is the innermost one, ``layers``
+    its children bottom to top, and ``layer`` the one the drag reads within
+    -- ``len(layers)`` for a new layer on top. ``slot`` is set when the
+    landing is the stack's own list: the place among the other layers the
+    widget takes. ``path`` is every stack resolved on the way, outermost
+    first.
+    """
+
+    container: Optional[Any]
+    stack: Optional[Any] = None
+    layers: list[Any] = field(default_factory=list)
+    layer: int = 0
+    slot: Optional[int] = None
+    path: list[Any] = field(default_factory=list)
+
+
 def destination_at(app: Any, x: float, y: float, exclude: Any, own: Any) -> Optional[Any]:
-    """The container a drag over ``(x, y)`` would land in, or ``None``.
+    """The container a drag over ``(x, y)`` would land in, or ``None``: :func:`resolve` without a layer choice."""
+    return resolve(app, x, y, exclude, own).container
+
+
+def resolve(
+    app: Any, x: float, y: float, exclude: Any, own: Any, choices: Optional[dict[int, int]] = None
+) -> Landing:
+    """Where a drag over ``(x, y)`` lands.
 
     The deepest container under the pointer that can take a child -- an
     ordered container, a grid, a stack, or an empty ``Container`` / ``Box``
@@ -109,35 +138,67 @@ def destination_at(app: Any, x: float, y: float, exclude: Any, own: Any) -> Opti
 
     A ``Stack`` is where a point names several containers at once, so one
     layer is chosen for it and the pick is redone within that layer, blind to
-    what lies on top: the layer the widget lives in while the drag started
-    inside the stack, and the top layer otherwise -- the drop goes into it if
-    it can take a child, and onto the stack, on top, if not. Inside the stack
-    the layer holds even where the pointer leaves its rect, and the pointer's
-    position picks the slot; a stack nested in the layer is resolved the same
-    way in turn.
+    what lies on top. By default it is the layer the widget lives in while the
+    drag started inside the stack, and the top layer otherwise -- the drop
+    goes into it if it can take a child, and onto the stack, on top, if not.
+    ``choices`` maps a stack's ``id`` to a layer index chosen instead: a layer
+    that cannot take a child means the widget takes that layer's place in the
+    stack, and an index past the last layer means on top. Inside the stack the layer
+    holds even where the pointer leaves its rect, and the pointer's position
+    picks the slot; a stack nested in the layer is resolved the same way in
+    turn.
     """
     picked = pick(app, x, y)
     if picked is None:
-        return None
+        return Landing(None)
     chain = _chain(picked, exclude)
     lineage = [own, *ancestors(own)]
-    settled: set[int] = set()
+    landing = Landing(None)
+    path: list[Any] = []
     while True:
-        stacks = [node for node in chain if isinstance(node, Stack) and id(node) not in settled]
+        stacks = [node for node in chain if isinstance(node, Stack) and not any(node is seen for seen in path)]
         if not stacks:
             break
         stack = stacks[-1]
-        settled.add(id(stack))
-        layer = _layer_of(stack, lineage, exclude)
-        if layer is None:
+        path.append(stack)
+        layers = siblings(stack)
+        others = [layer for layer in layers if layer is not exclude]
+        chosen = choices.get(id(stack)) if choices else None
+        index = _default_layer(layers, lineage, exclude) if chosen is None else max(0, min(chosen, len(layers)))
+        landing = Landing(None, stack, layers, index, path=path)
+        if index >= len(layers):
+            chain = [stack, *ancestors(stack)]
+            landing.slot = len(others)
+            continue
+        layer = layers[index]
+        if layer is exclude:
             chain = [stack, *ancestors(stack)]
             continue
         inside = pick_within(layer, x, y)
         chain = _chain(inside, exclude) if inside is not None else [layer, *ancestors(layer)]
+        # The place the widget takes when nothing in the layer takes it: the
+        # layer's own by choice, on top by default.
+        landing.slot = others.index(layer) if chosen is not None else len(others)
+        if chosen is None:
+            landing.layer = len(layers) if _takes_nothing(chain, stack, own) else index
     for node in chain:
         if node is own or isinstance(node, DESTINATIONS) or is_empty_host(node):
-            return node
-    return None
+            landing.container = node
+            if node is not landing.stack:
+                landing.slot = None
+            return landing
+    landing.slot = None
+    return landing
+
+
+def _takes_nothing(chain: list[Any], stack: Any, own: Any) -> bool:
+    """Whether the walk up ``chain`` reaches ``stack`` before anything that takes a child."""
+    for node in chain:
+        if node is stack:
+            return True
+        if node is own or isinstance(node, DESTINATIONS) or is_empty_host(node):
+            return False
+    return True
 
 
 def _chain(node: Any, exclude: Any) -> list[Any]:
@@ -148,18 +209,14 @@ def _chain(node: Any, exclude: Any) -> list[Any]:
     return chain
 
 
-def _layer_of(stack: Any, lineage: list[Any], exclude: Any) -> Optional[Any]:
-    """The child of ``stack`` a drag reads within, or ``None`` when the stack itself is the reading.
-
-    The widget's own layer while the drag started inside the stack -- none
-    when the widget is a layer, since then the reading is the stack's
-    alignment -- and the top layer otherwise, none when the stack is empty.
-    """
-    if stack in lineage:
-        depth = lineage.index(stack)
-        return lineage[depth - 1] if depth > 0 else None
-    layers = [child for child in siblings(stack) if child is not exclude]
-    return layers[-1] if layers else None
+def _default_layer(layers: list[Any], lineage: list[Any], exclude: Any) -> int:
+    """The layer a drag reads within when none is chosen: the widget's own, else the top one."""
+    for node in lineage:
+        if node in layers:
+            return layers.index(node)
+    if exclude in layers:
+        return layers.index(exclude)
+    return max(0, len(layers) - 1)
 
 
 def visible(node: Any) -> Any:
@@ -177,6 +234,16 @@ def visible(node: Any) -> Any:
                 break
             child = children[0]
         node = child
+    return node
+
+
+def unwrapped(node: Any) -> Any:
+    """``node`` with the boxes ``.modifier()`` and ``CrossAligned`` wrap it in taken off."""
+    while isinstance(node, (ModifierBox, CrossAligned)):
+        children = list(node.children_snapshot())
+        if len(children) != 1:
+            break
+        node = children[0]
     return node
 
 
@@ -391,6 +458,7 @@ def area_at(grid: Any, cell: Cell) -> Optional[str]:
 __all__ = [
     "DESTINATIONS",
     "HOSTS",
+    "Landing",
     "REORDERABLE",
     "area_at",
     "cell_at",
@@ -406,7 +474,9 @@ __all__ = [
     "one_axis",
     "placement",
     "reorder_reading",
+    "resolve",
     "siblings",
     "slot_at",
+    "unwrapped",
     "visible",
 ]

@@ -24,7 +24,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Union
 
-from nuiitivet._interaction.perception import global_visual_rect
+from nuiitivet._interaction.perception import ancestors, global_visual_rect
 from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
 from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.grid import Grid
@@ -156,6 +156,29 @@ class _Move:
     align_block: Optional[str] = None
     aligning: bool = False
     alignment: Optional[dict[str, str]] = None
+    # The stack the pointer is in, its layers bottom to top, the layer the
+    # drag reads within (``len(layers)`` for a new one on top), and the layers
+    # the human chose with a key, per stack by ``id``, each kept until the
+    # pointer leaves that stack.
+    stack: Optional[Any] = None
+    layers: list[Any] = field(default_factory=list)
+    layer: int = 0
+    choices: dict[int, int] = field(default_factory=dict)
+
+
+@dataclass
+class LayerList:
+    """The layers of the stack a body drag is over, for the overlay to list.
+
+    ``names`` run bottom to top, ``landing`` indexes the one the drag reads
+    within -- ``len(names)`` for a new layer on top -- and ``own`` the layer
+    the dragged widget lives in, or ``None`` when it comes from outside.
+    """
+
+    rect: Rect
+    names: list[str]
+    landing: int
+    own: Optional[int]
 
 
 _Drag = Union[_Resize, _Move]
@@ -242,6 +265,25 @@ class LayoutMode:
         """A refusal, an undo, or what the last reload reported. Transient."""
         return self._notice or self._edits.outcome
 
+    @property
+    def layers(self) -> Optional[LayerList]:
+        """The layers of the stack a body drag is over, or ``None``."""
+        drag = self._drag
+        if not isinstance(drag, _Move) or drag.stack is None:
+            return None
+        rect = global_visual_rect(drag.stack)
+        if rect is None:
+            return None
+        own = None
+        if drag.stack is drag.container:
+            own = drag.layers.index(drag.member) if drag.member in drag.layers else None
+        else:
+            for node in (drag.container, *ancestors(drag.container)):
+                if node in drag.layers:
+                    own = drag.layers.index(node)
+                    break
+        return LayerList(rect, [_name(_shown(layer)) for layer in drag.layers], drag.layer, own)
+
     # --- keys -------------------------------------------------------------
 
     def on_key_press(self, app: Any, name: str, modifier_keys: int) -> bool:
@@ -267,6 +309,8 @@ class LayoutMode:
                 self.leave(app)
         elif key == "z" and accel:
             self._undo(app)
+        elif isinstance(self._drag, _Move) and self._drag.stack is not None:
+            self._pick_layer(app, self._drag, key)
         elif key == "up":
             self._walk_up(app)
         elif key == "down":
@@ -571,18 +615,24 @@ class LayoutMode:
         child's place -- the alignment its container gives it. Any other
         container makes the drag a move into it, a stack taking the widget on
         top; none at all keeps the in-place reading, so a drag past the end
-        of a list still lands at the end.
+        of a list still lands at the end. Over a stack a key can choose the
+        layer, and a layer that takes nothing gives its place in the stack.
         """
         drag.pointer = (x, y)
         drag.slot = drag.destination = drag.dest_slot = drag.blocked = None
         drag.cell = drag.dest_cell = drag.alignment = None
         drag.aligning = False
         drag.dest_children = []
-        target = reorder.destination_at(app, x, y, exclude=drag.member, own=drag.container)
+        landing = reorder.resolve(app, x, y, exclude=drag.member, own=drag.container, choices=drag.choices)
+        drag.choices = {id(stack): drag.choices[id(stack)] for stack in landing.path if id(stack) in drag.choices}
+        drag.stack, drag.layers, drag.layer = landing.stack, landing.layers, landing.layer
+        target = landing.container
         if target is None or target is drag.container:
             dx, dy = x - drag.start[0], y - drag.start[1]
             container = drag.container
-            if isinstance(container, Grid):
+            if landing.slot is not None:
+                drag.slot = landing.slot
+            elif isinstance(container, Grid):
                 drag.cell = reorder.cell_at(container, x, y)
                 if drag.cell is not None and drag.home is not None and drag.cell == drag.home[:2]:
                     self._read_alignment(drag, dx, dy)
@@ -612,7 +662,7 @@ class LayoutMode:
                 elif reorder.is_host(target):
                     drag.dest_slot = 0
                 elif isinstance(target, Stack):
-                    drag.dest_slot = len(drag.dest_children)
+                    drag.dest_slot = landing.slot if landing.slot is not None else len(drag.dest_children)
                 else:
                     drag.dest_slot = reorder.slot_at(target, drag.dest_children, None, x, y)
         self._notice = drag.blocked
@@ -884,6 +934,13 @@ class LayoutMode:
             return ghosts
         if drag.slot is None or drag.slot == drag.index:
             return ghosts
+        if isinstance(drag.container, Stack):
+            for container in instances:
+                landed = _landing_rect(drag, container)
+                caption = _move_caption(drag) if container is drag.container else ""
+                if landed is not None:
+                    ghosts.append(Ghost(landed, caption, shape="rect"))
+            return ghosts
         for container in instances:
             if container is drag.container:
                 line = reorder.insertion_line(container, drag.siblings, drag.member, drag.slot, drag.pointer)
@@ -950,6 +1007,20 @@ class LayoutMode:
         parent = parent_of(current) if current is not None else None
         if parent is not None:
             self._step(app, site_owner(parent))
+
+    def _pick_layer(self, app: Any, drag: _Move, key: str) -> None:
+        """Move the landing to another layer of the stack the drag is over: a step, or a layer by number."""
+        top = len(drag.layers)
+        if key == "up":
+            index = min(top, drag.layer + 1)
+        elif key == "down":
+            index = max(0, drag.layer - 1)
+        elif key.lstrip("_").isdigit():
+            index = min(top, int(key.lstrip("_")))
+        else:
+            return
+        drag.choices[id(drag.stack)] = index
+        self._update_move(app, drag, *drag.pointer)
 
     def _walk_down(self, app: Any) -> None:
         """Step back toward the anchor, skipping widgets with no call of their own."""
@@ -1030,22 +1101,28 @@ def _align_ghosts(drag: _Move, instances: list[Any]) -> list[Ghost]:
 
 def _placed_ghosts(drag: _Move, target: Any) -> list[Ghost]:
     """A wash over each empty box or stack built at the destination's site, and a dashed rect where the child lands."""
-    child = align.aligned(drag.container, drag.member)
-    rect = global_visual_rect(child)
     ghosts = []
     for host in drag.dest_instances:
         extent = global_visual_rect(host)
         if extent is None:
             continue
         ghosts.append(Ghost(extent, "", shape="wash"))
-        placed = align.target(host, None)
-        box = align.box(host, None)
-        if rect is None or placed is None or box is None:
-            continue
-        landed = align.placed(box, rect, align.current(placed))
-        caption = _across_caption(drag, len(drag.dest_instances)) if host is target else ""
-        ghosts.append(Ghost(landed, caption, shape="rect"))
+        landed = _landing_rect(drag, host)
+        if landed is not None:
+            caption = _across_caption(drag, len(drag.dest_instances)) if host is target else ""
+            ghosts.append(Ghost(landed, caption, shape="rect"))
     return ghosts
+
+
+def _landing_rect(drag: _Move, host: Any) -> Optional[Rect]:
+    """Where the dragged child sits once ``host`` -- a box or a stack -- aligns it, or ``None``."""
+    child = align.aligned(drag.container, drag.member)
+    rect = global_visual_rect(child)
+    placed = align.target(host, None)
+    box = align.box(host, None)
+    if rect is None or placed is None or box is None:
+        return None
+    return align.placed(box, rect, align.current(placed))
 
 
 def _align_caption(drag: _Move, target: align.Target, value: dict[str, str], moving: int) -> str:
@@ -1165,13 +1242,25 @@ def _across_caption(drag: _Move, instances: int) -> str:
     if reorder.is_host(target):
         parts = [f"into {type(target).__name__}"]
     elif isinstance(target, Stack):
-        parts = ["into Stack, on top"]
+        parts = [f"into Stack, {_stack_place(children, slot)}"]
     else:
         where = f"before {_name(reorder.visible(children[slot]))}" if slot < len(children) else "to the end"
         parts = [f"into {type(target).__name__}, {where}"]
+    if drag.stack is not None and target is not drag.stack and drag.layer < len(drag.layers):
+        parts.append(f"layer {drag.layer}")
     if instances > 1:
         parts.append(f"{instances} widgets")
     return "  ·  ".join(parts)
+
+
+def _stack_place(others: list[Any], slot: int) -> str:
+    """Where in a stack's layers the widget lands: below the one at ``slot``, or on top."""
+    return f"below {_name(_shown(others[slot]))}" if slot < len(others) else "on top"
+
+
+def _shown(layer: Any) -> Any:
+    """The widget a layer reads as: what a ``.modifier()`` or a ``ForEach`` wraps, else the layer itself."""
+    return reorder.inner(reorder.visible(reorder.unwrapped(layer)))
 
 
 def _axis_note(node: Any, source: Any, target: Any) -> Optional[str]:
@@ -1196,7 +1285,10 @@ def _move_caption(drag: _Move) -> str:
     """Which sibling the child lands before, and the instance count past one."""
     others = [child for child in drag.siblings if child is not drag.member]
     slot = drag.slot if drag.slot is not None else drag.index
-    parts = [f"before {_name(reorder.visible(others[slot]))}" if slot < len(others) else "to the end"]
+    if isinstance(drag.container, Stack):
+        parts = [_stack_place(others, slot)]
+    else:
+        parts = [f"before {_name(reorder.visible(others[slot]))}" if slot < len(others) else "to the end"]
     if len(drag.instances) > 1:
         parts.append(f"{len(drag.instances)} widgets")
     return "  ·  ".join(parts)
@@ -1255,4 +1347,4 @@ def _anchored(origin: Rect, corner: tuple[int, int], size: tuple[float, float]) 
     return (x if sx > 0 else x + w - nw, y if sy > 0 else y + h - nh, nw, nh)
 
 
-__all__ = ["Ghost", "LayoutMode"]
+__all__ = ["Ghost", "LayerList", "LayoutMode"]

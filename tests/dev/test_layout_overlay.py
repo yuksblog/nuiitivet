@@ -230,6 +230,7 @@ def test_the_hud_names_every_gesture_the_mode_binds() -> None:
         "drag reorder / move / align",
         "click select",
         "↑/↓ parent/child",
+        "↑/↓/0-9 Stack layer while dragging",
         "Alt no snap",
         "Ctrl+Z undo",
         "Esc leave",
