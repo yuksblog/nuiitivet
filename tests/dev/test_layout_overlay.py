@@ -156,6 +156,31 @@ def test_a_move_into_another_container_washes_it_and_marks_the_slot(monkeypatch:
         mode.on_key_press(app, "escape", 0)
 
 
+def test_a_move_to_another_grid_cell_paints_the_cell_inside_the_wash(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nuiitivet.dev import layout_mode
+    from nuiitivet.layout.grid import Grid, GridItem
+
+    # No source is recorded here; the gate that reads it is the mode's test.
+    monkeypatch.setattr(layout_mode, "_item_refusal", lambda item: None)
+    monkeypatch.setattr(layout_mode, "_list_refusal", lambda container, role: None)
+    grid = Grid(children=[GridItem(Text("AAA", width=100, height=40), row=0, column=0)], rows=[40, 40], columns=[100])
+    with mount(grid) as host:
+        host.layout(300, 200)
+        mode = LayoutMode(EditLog())
+        app = _App(host.root, mode)
+        mode.on_key_press(app, "e", _ENTER)
+        mode.on_mouse_motion(app, 50, 20)
+        mode.on_mouse_press(app, 50, 20)
+        mode.on_mouse_motion(app, 50, 60)
+        canvas = _Canvas()
+
+        lo.paint_layout(app, canvas, app.width, app.height)
+
+        assert canvas.calls.count("drawRect") == 4, "the grid's wash and the cell's tint, each a fill and an edge"
+        assert "drawLine" not in canvas.calls, "a cell, not a slot"
+        mode.on_key_press(app, "escape", 0)
+
+
 def test_the_candidate_yields_to_the_source_jump_while_its_chord_is_held() -> None:
     """The jump's rose brackets are painted underneath; a teal wash over them
     reads as grey, and the click is a jump anyway."""

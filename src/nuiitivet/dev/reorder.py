@@ -1,12 +1,14 @@
-"""Where a body drag lands: a slot among the children of one container.
+"""Where a body drag lands: a slot among the children of one container, or a grid cell.
 
 A dragged widget is a position in pixels, but a ``Column`` / ``Row`` / ``Flow``
 / ``UniformFlow`` orders its children by their place in a list, so a body drag
 resolves to a slot -- the sibling gap the pointer is over, read from the rects
 layout gave the children -- and the edit that lands it is one element moved in
 a ``children`` list literal: the widget's own container's when the pointer is
-over it, another container's when it is over that. What is written is never a
-coordinate.
+over it, another container's when it is over that. A ``Grid`` places its
+children by cell, not by order, so over a grid the drag resolves to the cell
+under the pointer, read from the tracks layout computed. What is written is
+never a coordinate.
 
 Whether such an edit exists at all is the source's question
 (:func:`.source_edit.plan_move`): the list literal that owns the order -- the
@@ -23,6 +25,7 @@ from nuiitivet._interaction.perception import ancestors, global_visual_rect
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.for_each import ForEach
+from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.layout_utils import expand_layout_children
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
@@ -36,12 +39,19 @@ from .source import construction_frame
 logger = logging.getLogger(__name__)
 
 Rect = tuple[float, float, float, float]
+Cell = tuple[int, int]
 
-#: The containers a body drag can land in.
+#: The containers that order their children, where a body drag lands in a slot.
 REORDERABLE = (Column, Row, Flow, UniformFlow)
+#: The containers a body drag can land in: the ordered ones, and a grid's cells.
+DESTINATIONS = REORDERABLE + (Grid,)
 #: The containers a body drag can start from: a ``Stack`` child cannot be
 #: reordered, since stacked children share no axis, but it can leave.
-SOURCES = REORDERABLE + (Stack,)
+SOURCES = DESTINATIONS + (Stack,)
+#: Wrappers the container walk sees through: the list element is the wrapper,
+#: since that is what the source names, and the widget inside is what the
+#: human grabbed.
+_TRANSPARENT = (ComposableWidget, ModifierBox, GridItem)
 
 # How far an insertion line at a list's edge sits outside the first or last
 # child, in logical pixels, so it is not lost under the child's own outline.
@@ -51,12 +61,12 @@ _EDGE = 3.0
 def container_of(node: Any) -> tuple[Optional[Any], Any]:
     """The container a drag can move ``node`` out of, and its direct child on ``node``'s path.
 
-    Composable wrappers and the box a ``.modifier()`` wraps a widget in are
-    transparent, the member being the wrapper, since that is the list element;
-    any other container in between means ``node`` is not a child of a list a
-    drag can move, and the answer is ``(None, member)``. A ``ForEach`` is
-    transparent too, but its children are the ones layout places, so the
-    member stays below it.
+    Composable wrappers, the box a ``.modifier()`` wraps a widget in and a
+    ``GridItem`` are transparent, the member being the wrapper, since that is
+    the list element; any other container in between means ``node`` is not a
+    child of a list a drag can move, and the answer is ``(None, member)``. A
+    ``ForEach`` is transparent too, but its children are the ones layout
+    places, so the member stays below it.
     """
     member = node
     for ancestor in ancestors(node):
@@ -64,7 +74,7 @@ def container_of(node: Any) -> tuple[Optional[Any], Any]:
             return (ancestor, member)
         if isinstance(ancestor, ForEach):
             continue
-        if not isinstance(ancestor, (ComposableWidget, ModifierBox)):
+        if not isinstance(ancestor, _TRANSPARENT):
             return (None, member)
         member = ancestor
     return (None, member)
@@ -86,7 +96,7 @@ def destination_at(app: Any, x: float, y: float, exclude: Any, own: Any) -> Opti
     if exclude in chain:
         chain = chain[chain.index(exclude) + 1 :]
     for node in chain:
-        if node is own or isinstance(node, REORDERABLE):
+        if node is own or isinstance(node, DESTINATIONS):
             return node
     return None
 
@@ -107,6 +117,15 @@ def visible(node: Any) -> Any:
             child = children[0]
         node = child
     return node
+
+
+def inner(member: Any) -> Any:
+    """The widget a list element stands for: a ``GridItem``'s child, else the element itself."""
+    if isinstance(member, GridItem):
+        children = list(member.children_snapshot())
+        if len(children) == 1:
+            return visible(children[0])
+    return visible(member)
 
 
 def siblings(container: Any) -> list[Any]:
@@ -229,13 +248,94 @@ def _nearer(y: float, first: Rect, second: Rect) -> bool:
     return abs(y - (first[1] + first[3] / 2.0)) < abs(y - (second[1] + second[3] / 2.0))
 
 
+# --- grids ----------------------------------------------------------------
+
+
+def cell_at(grid: Any, x: float, y: float) -> Optional[Cell]:
+    """The ``(row, column)`` of ``grid`` under the pointer, or ``None`` over its padding.
+
+    Read from the tracks layout computed; a pointer in the gap between two
+    tracks belongs to the nearer one. Only tracks layout resolved exist: a
+    cell beyond them would be one the grid has not drawn.
+    """
+    rect = global_visual_rect(grid)
+    if rect is None:
+        return None
+    row = _track_at(grid.row_tracks, y - rect[1])
+    column = _track_at(grid.column_tracks, x - rect[0])
+    if row is None or column is None:
+        return None
+    return (row, column)
+
+
+def _track_at(tracks: list[tuple[float, float]], v: float) -> Optional[int]:
+    for index, (offset, length) in enumerate(tracks):
+        if v < offset:
+            if index == 0:
+                return None
+            previous_end = tracks[index - 1][0] + tracks[index - 1][1]
+            return index - 1 if v - previous_end < offset - v else index
+        if v < offset + length:
+            return index
+    return None
+
+
+def cell_rect(grid: Any, row: int, column: int, row_span: int = 1, column_span: int = 1) -> Optional[Rect]:
+    """The global rect of the cells from ``(row, column)`` spanning ``row_span`` × ``column_span``, or ``None``."""
+    rect = global_visual_rect(grid)
+    rows, columns = grid.row_tracks, grid.column_tracks
+    if rect is None or row >= len(rows) or column >= len(columns):
+        return None
+    top, bottom = rows[row], rows[min(row + row_span, len(rows)) - 1]
+    left, right = columns[column], columns[min(column + column_span, len(columns)) - 1]
+    return (rect[0] + left[0], rect[1] + top[0], right[0] + right[1] - left[0], bottom[0] + bottom[1] - top[0])
+
+
+def placement(grid: Any, member: Any) -> Optional[tuple[int, int, int, int]]:
+    """Where ``member`` sits in ``grid`` as ``(row, column, row_span, column_span)``, or ``None``."""
+    try:
+        return grid.placement_of(member)
+    except (TypeError, ValueError):
+        return None
+
+
+def occupants(grid: Any, cell: Cell, exclude: Any) -> list[Any]:
+    """The children of ``grid`` other than ``exclude`` whose placement covers ``cell``."""
+    found = []
+    for child in siblings(grid):
+        if child is exclude:
+            continue
+        placed = placement(grid, child)
+        if placed is None:
+            continue
+        row, column, row_span, column_span = placed
+        if row <= cell[0] < row + row_span and column <= cell[1] < column + column_span:
+            found.append(child)
+    return found
+
+
+def area_at(grid: Any, cell: Cell) -> Optional[str]:
+    """The name of the template area covering ``cell``, or ``None`` when the grid declares none."""
+    areas = getattr(grid, "areas", None)
+    if not areas or cell[0] >= len(areas) or cell[1] >= len(areas[cell[0]]):
+        return None
+    return str(areas[cell[0]][cell[1]])
+
+
 __all__ = [
+    "DESTINATIONS",
     "REORDERABLE",
     "SOURCES",
+    "area_at",
+    "cell_at",
+    "cell_rect",
     "container_of",
     "destination_at",
+    "inner",
     "insertion_line",
     "main_axis",
+    "occupants",
+    "placement",
     "reorder_reading",
     "siblings",
     "slot_at",

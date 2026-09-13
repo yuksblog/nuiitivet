@@ -7,8 +7,8 @@ ends up written there.
 
 from __future__ import annotations
 
-import importlib.util
 import sys
+import types
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -27,15 +27,17 @@ from nuiitivet.widgets.text import TextBase as Text
 _CHORD = MOD_CTRL | MOD_SHIFT
 
 _APP = '''
+import nuiitivet.layout.grid as grid_mod
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.flow import Flow
+from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.modifiers.border import border
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.text import TextBase as Text
 
-from layout_side import side
+from layout_side import bare_grid, side
 
 w = 100
 
@@ -146,15 +148,53 @@ def build_two_files():
 
 def build_wrapped():
     return Row(children=[Column(children=[t("AAA")], padding=10).modifier(border("#000", width=1)), Column(children=[t("BBB")], padding=10)], gap=0)  # noqa: E501
+
+
+def build_grid():
+    return Grid(children=[GridItem(t("AAA"), row=0, column=0), GridItem(t("BBB"), row=1, column=[0, 1])], rows=[40, 40], columns=[100, 100])  # noqa: E501
+
+
+def build_grid_and_column():
+    return Row(children=[Grid(children=[GridItem(t("AAA"), row=0, column=0, padding=0)], rows=[40], columns=[100]), Column(children=[t("CCC")], gap=0)], gap=0)  # noqa: E501
+
+
+def build_column_and_grid():
+    return Row(children=[Column(children=[t("AAA")], gap=0), Grid(children=[GridItem(t("BBB"), row=0, column=0)], rows=[40], columns=[100, 100])], gap=0)  # noqa: E501
+
+
+def build_two_grids():
+    return Row(children=[Grid(children=[GridItem(t("AAA"), row=0, column=0)], rows=[40], columns=[100]), grid_mod.Grid(children=[], rows=[40], columns=[100], width=100, height=40)], gap=0)  # noqa: E501
+
+
+def build_areas():
+    return Grid.named_areas(children=[GridItem.named_area(t("AAA"), "a")], areas=[["a", "b"]], rows=[40], columns=[100, 100])  # noqa: E501
+
+
+def build_bound_cell():
+    r = 0
+    return Grid(children=[GridItem(t("AAA"), row=r, column=0), GridItem(t("BBB"), row=1, column=0)], rows=[40, 40], columns=[100])  # noqa: E501
+
+
+def build_into_bare_grid():
+    return Row(children=[Column(children=[t("AAA")], gap=0), bare_grid()], gap=0)
+
+
+def build_padded_grid():
+    return Row(children=[Column(children=[t("AAA")], gap=0), Grid(children=[GridItem(t("BBB"), row=0, column=0)], rows=[40], columns=[100], padding=20)], gap=0)  # noqa: E501
 '''
 
 _SIDE = '''
+from nuiitivet.layout.grid import Grid
 from nuiitivet.layout.row import Row
 from nuiitivet.widgets.text import TextBase as Text
 
 
 def side():
     return Row(children=[Text("SSS", width=100, height=40)], gap=0)
+
+
+def bare_grid():
+    return Grid(children=[], rows=[40], columns=[100], width=100, height=40)
 '''
 
 
@@ -187,11 +227,12 @@ def app_file(tmp_path: Path) -> Iterator[Path]:
 
 
 def _load(path: Path) -> Any:
-    spec = importlib.util.spec_from_file_location("layout_app", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
+    """Import ``path`` as ``layout_app`` from its text, so an edit that kept the
+    file's size and mtime second is not served from a stale bytecode cache."""
+    module = types.ModuleType("layout_app")
+    module.__file__ = str(path)
     sys.modules["layout_app"] = module
-    spec.loader.exec_module(module)
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), module.__dict__)
     return module
 
 
@@ -927,7 +968,9 @@ def test_a_stack_child_cannot_be_reordered_but_can_leave(app_file: Path) -> None
         s.mode.on_mouse_press(s.app, 50, 20)
         s.mode.on_mouse_motion(s.app, 50, 30)
         assert s.mode.ghosts == [], "no in-place reading inside a Stack"
-        assert s.mode.notice == "Stack children have no order to drag; drop it in a Column, Row, Flow or UniformFlow"
+        assert s.mode.notice == (
+            "Stack children have no order to drag; drop it in a Column, Row, Flow, UniformFlow or Grid"
+        )
 
         s.mode.on_mouse_motion(s.app, 150, 30)
         assert s.mode.notice is None and any(g.shape == "wash" for g in s.mode.ghosts), "over the Column, a move"
@@ -1076,3 +1119,185 @@ def test_a_reload_outcome_shows_as_the_notice(session: _Session) -> None:
     session.edits.after_reload([session.root])
 
     assert session.mode.notice == "width landed at 100, expected 160"
+
+
+# --- grids --------------------------------------------------------------------
+
+
+def _cells(ghosts: list[Any]) -> list[Any]:
+    return [g for g in ghosts if g.shape == "cell"]
+
+
+def test_a_body_drag_to_another_cell_rewrites_row_and_column(app_file: Path) -> None:
+    s = _list(app_file, "build_grid")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "cell"], "the grid washed, the cell marked"
+        cell = _cells(s.mode.ghosts)[0]
+        assert cell.rect == (100.0, 0.0, 100.0, 40.0) and cell.caption == "row 0, column 1"
+
+        s.mode.on_mouse_release(s.app, 150, 20)
+
+        assert 'GridItem(t("AAA"), row=0, column=1)' in s.text()
+        assert s.edits.pending is not None and s.edits.pending.expected == {"row": 0, "column": 1}
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+        assert s.text() == before
+        assert s.mode.notice == "undoing TextBase → row 0, column 1"
+    finally:
+        s.close()
+
+
+def test_releasing_in_the_items_own_cell_writes_nothing(app_file: Path) -> None:
+    s = _list(app_file, "build_grid")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 60, 25)
+        assert [g.shape for g in s.mode.ghosts] == ["wash"], "no cell: the item is where it is"
+
+        s.mode.on_mouse_release(s.app, 60, 25)
+
+        assert s.text() == before and s.mode.notice is None
+    finally:
+        s.close()
+
+
+def test_a_spanning_item_keeps_its_span_and_the_caption_names_who_is_under_it(app_file: Path) -> None:
+    s = _Session(app_file, "build_grid")
+    try:
+        s.hover(50, 60)
+        s.mode.on_mouse_press(s.app, 50, 60)
+        s.mode.on_mouse_motion(s.app, 50, 20)
+
+        cell = _cells(s.mode.ghosts)[0]
+        assert cell.rect == (0.0, 0.0, 200.0, 40.0), "two columns wide, as the item is"
+        assert cell.caption == "row 0, column 0  ·  over TextBase AAA"
+
+        s.mode.on_mouse_release(s.app, 50, 20)
+
+        assert 'GridItem(t("BBB"), row=0, column=[0, 1])' in s.text()
+    finally:
+        s.close()
+
+
+def test_an_item_placed_by_area_moves_to_the_area_under_the_pointer(app_file: Path) -> None:
+    s = _list(app_file, "build_areas")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+        assert _cells(s.mode.ghosts)[0].caption == "area b"
+
+        s.mode.on_mouse_release(s.app, 150, 20)
+
+        assert 'GridItem.named_area(t("AAA"), "b")' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_placement_bound_to_a_name_is_a_badge_inside_and_outside_the_grid(app_file: Path) -> None:
+    s = _list(app_file, "build_bound_cell")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 50, 60)
+        assert s.mode.ghosts == [] and s.mode.notice == "row is bound to r"
+
+        s.mode.on_mouse_release(s.app, 50, 60)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_an_item_leaves_its_grid_as_its_child_and_the_badge_notes_what_stayed(app_file: Path) -> None:
+    s = _list(app_file, "build_grid_and_column")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 30)
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "line"], "the column washed and lined"
+
+        s.mode.on_mouse_release(s.app, 150, 30)
+
+        text = s.text()
+        assert "Grid(children=[], rows=[40]" in text
+        assert 'Column(children=[t("CCC"), t("AAA")], gap=0)' in text
+        assert s.mode.notice == "the GridItem's padding did not move with it"
+        assert s.edits.pending is not None and s.edits.pending.before == {"count": 1, "row": 0, "column": 0}
+    finally:
+        s.close()
+
+
+def test_a_widget_entering_a_grid_is_wrapped_in_a_grid_item_at_the_cell(app_file: Path) -> None:
+    s = _list(app_file, "build_column_and_grid")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 250, 20)
+
+        assert [g.shape for g in s.mode.ghosts] == ["wash", "cell"]
+        assert _cells(s.mode.ghosts)[0].caption == "into Grid, row 0, column 1"
+
+        s.mode.on_mouse_release(s.app, 250, 20)
+
+        text = s.text()
+        assert 'Column(children=[], gap=0)' in text
+        assert 'GridItem(t("BBB"), row=0, column=0), GridItem(t("AAA"), row=0, column=1)]' in text
+        assert s.edits.pending is not None and s.edits.pending.expected == {"row": 0, "column": 1}
+    finally:
+        s.close()
+
+
+def test_a_grid_padding_takes_nothing(app_file: Path) -> None:
+    """Over the grid but on no track, the drag has no cell: a wash, no cell, and a silent release."""
+    s = _list(app_file, "build_padded_grid")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 110, 70)
+        assert [g.shape for g in s.mode.ghosts] == ["wash"]
+
+        s.mode.on_mouse_release(s.app, 110, 70)
+        assert s.text() == before and s.mode.notice is None
+    finally:
+        s.close()
+
+
+def test_an_item_crossing_to_another_grid_is_unwrapped_and_rewrapped_in_that_grids_spelling(app_file: Path) -> None:
+    s = _list(app_file, "build_two_grids")
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+        s.mode.on_mouse_release(s.app, 150, 20)
+
+        text = s.text()
+        assert 'Grid(children=[], rows=[40], columns=[100]), grid_mod.Grid(children=[grid_mod.GridItem(t("AAA"), row=0, column=0)]' in text  # noqa: E501
+    finally:
+        s.close()
+
+
+def test_a_grid_whose_module_does_not_bind_grid_item_cannot_take_a_widget(app_file: Path) -> None:
+    s = _list(app_file, "build_into_bare_grid")
+    before = s.text()
+    try:
+        s.mode.on_mouse_press(s.app, 50, 20)
+        s.mode.on_mouse_motion(s.app, 150, 20)
+        assert s.mode.ghosts == [] and s.mode.notice == "GridItem is not imported in layout_side.py"
+
+        s.mode.on_mouse_release(s.app, 150, 20)
+        assert s.text() == before
+    finally:
+        s.close()
+
+
+def test_the_reload_check_finds_the_child_at_its_cell(app_file: Path) -> None:
+    s = _list(app_file, "build_grid")
+    try:
+        s.drag_body((50, 20), (150, 20))
+        rebuilt = _load(s.path).build_grid()
+        with mount(rebuilt) as host:
+            host.layout(300, 200)
+            assert s.edits.after_reload([host.root]) is None
+    finally:
+        s.close()

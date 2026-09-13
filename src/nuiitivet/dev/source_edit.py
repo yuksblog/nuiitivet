@@ -226,6 +226,9 @@ def plan_move_across(
     dest_site: Frame,
     slot: int,
     dest_count: int,
+    *,
+    unwrap: bool = False,
+    wrap: Optional[tuple[str, str]] = None,
 ) -> Union[tuple[tuple[SpanEdit, ...], tuple[SpanEdit, ...]], Refusal]:
     """The spans that move child ``index`` of the container at ``site`` into the one at ``dest_site``.
 
@@ -235,7 +238,9 @@ def plan_move_across(
     its own to move, and a data-driven list has nowhere to receive one. The
     element leaves with one of its separators, enters with one of the
     destination's, and its continuation lines take the destination's
-    indentation.
+    indentation. With ``unwrap`` the element is a ``GridItem`` call and only
+    its child expression travels; ``wrap`` is the text put before and after
+    the expression at the destination, a ``GridItem`` call around it.
     """
     source = children_list(text, site, "source")
     if isinstance(source, Refusal):
@@ -252,7 +257,14 @@ def plan_move_across(
     offsets = _Offsets(text)
     starts = [offsets.of(elt.lineno, elt.col_offset) for elt in source.elts]
     ends = [offsets.of(elt.end_lineno or elt.lineno, elt.end_col_offset or 0) for elt in source.elts]
-    element = text[starts[index] : ends[index]]
+    moved_from, moved_to = starts[index], ends[index]
+    if unwrap:
+        child = _item_child(source.elts[index])
+        if child is None:
+            return Refusal("the element is not a GridItem call with a child to unwrap")
+        moved_from = offsets.of(child.lineno, child.col_offset)
+        moved_to = offsets.of(child.end_lineno or child.lineno, child.end_col_offset or 0)
+    element = text[moved_from:moved_to]
     if count == 1:
         # The only element leaves with everything inside the brackets, a
         # trailing comma included, so ``[]`` is what remains.
@@ -263,8 +275,164 @@ def plan_move_across(
     else:
         cut = (ends[index - 1], ends[index])
     removal = SpanEdit(cut[0], cut[1], "", replaces=text[cut[0] : cut[1]])
-    moved = _reindent(element, _indent_at(text, starts[index]), _dest_indent(dest_text, target, slot))
+    moved = _reindent(element, _indent_at(text, moved_from), _dest_indent(dest_text, target, slot))
+    if wrap is not None:
+        moved = wrap[0] + moved + wrap[1]
     return ((removal,), (_insert_element(dest_text, target, slot, moved),))
+
+
+def plan_cell(text: str, site: Frame, row: int, column: int) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that place the ``GridItem`` at ``site`` at ``(row, column)``.
+
+    A span written as a list or tuple of indices keeps its length and moves
+    its start. A ``row`` or ``column`` that is a name or an expression, or an
+    item placed by area, is refused: there is no literal to write over.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    if _is_named_area(call):
+        return Refusal("the item is placed by area; a cell has no name to write")
+    offsets = _Offsets(text)
+    edits: list[SpanEdit] = []
+    for name, position, start in (("row", 1, row), ("column", 2, column)):
+        node = _placement_argument(call, name, position)
+        if node is None:
+            at, prefix = _insertion_point(text, call, offsets)
+            edits.append(SpanEdit(at, at, f"{prefix}{name}={start}"))
+            continue
+        spelled = _respell_index(text, node, start)
+        if spelled is None:
+            return Refusal(f"{name} is bound to {_segment(text, node)}")
+        begin = offsets.of(node.lineno, node.col_offset)
+        end = offsets.of(node.end_lineno or node.lineno, node.end_col_offset or 0)
+        edits.append(SpanEdit(begin, end, spelled, replaces=text[begin:end]))
+    return tuple(edits)
+
+
+def plan_area(text: str, site: Frame, name: str) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that place the ``GridItem.named_area`` call at ``site`` in the area ``name``."""
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    if not _is_named_area(call):
+        return Refusal("the item is placed by row and column; the grid's areas have no cell to write")
+    node = _placement_argument(call, "name", 1)
+    if node is None or not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+        return Refusal(f"the area is bound to {_segment(text, node) if node is not None else 'nothing'}")
+    offsets = _Offsets(text)
+    begin = offsets.of(node.lineno, node.col_offset)
+    end = offsets.of(node.end_lineno or node.lineno, node.end_col_offset or 0)
+    old = text[begin:end]
+    return (SpanEdit(begin, end, _spell(name, old), replaces=old),)
+
+
+def cell_refusal(text: str, site: Frame) -> Optional[Refusal]:
+    """Why the ``GridItem`` at ``site`` cannot be placed elsewhere by an edit, or ``None``.
+
+    The gate a drag inside a grid passes before its badge: the placement must
+    be written as literals -- indices, or an area name -- and the item must
+    have a child expression to unwrap should it leave.
+    """
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    if _item_child(call) is None:
+        return Refusal("the GridItem has no child expression of its own")
+    if _is_named_area(call):
+        node = _placement_argument(call, "name", 1)
+        if node is None or not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            return Refusal(f"the area is bound to {_segment(text, node) if node is not None else 'nothing'}")
+        return None
+    for name, position in (("row", 1), ("column", 2)):
+        node = _placement_argument(call, name, position)
+        if node is not None and _respell_index(text, node, 0) is None:
+            return Refusal(f"{name} is bound to {_segment(text, node)}")
+    return None
+
+
+def discarded_keywords(text: str, site: Frame) -> list[str]:
+    """The keywords of the ``GridItem`` at ``site`` that unwrapping it would drop."""
+    call = locate_call(text, site)
+    if call is None:
+        return []
+    return [kw.arg for kw in call.keywords if kw.arg in ("width", "height", "padding", "alignment")]
+
+
+def grid_item_name(text: str, site: Frame) -> Union[str, Refusal]:
+    """How a ``GridItem`` is spelled where the grid at ``site`` is: ``nv.GridItem`` for ``nv.Grid``.
+
+    A bare ``Grid`` gives a bare ``GridItem``, which the module must bind --
+    an import or an assignment at its top level -- since the edit adds no
+    import of its own.
+    """
+    located = _locate(text, site)
+    if located is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    tree, call = located
+    func = call.func
+    if isinstance(func, ast.Attribute) and func.attr == "named_areas":
+        func = func.value
+    if isinstance(func, ast.Attribute) and func.attr == "Grid":
+        return f"{_segment(text, func.value)}.GridItem"
+    if isinstance(func, ast.Name) and func.id == "Grid":
+        if _binds_name(tree, "GridItem"):
+            return "GridItem"
+        return Refusal(f"GridItem is not imported in {os.path.basename(site.file)}")
+    return Refusal(f"{_segment(text, func)} is not spelled as a Grid; the wrapper cannot be named")
+
+
+def _binds_name(tree: ast.Module, name: str) -> bool:
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if any((alias.asname or alias.name.split(".")[0]) == name for alias in node.names):
+                return True
+        elif isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+                return True
+    return False
+
+
+def _is_named_area(call: ast.Call) -> bool:
+    return isinstance(call.func, ast.Attribute) and call.func.attr == "named_area"
+
+
+def _item_child(node: ast.expr) -> Optional[ast.expr]:
+    """The child expression of a ``GridItem`` call, or ``None`` when ``node`` is not one."""
+    if not isinstance(node, ast.Call):
+        return None
+    func = node.func
+    name = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else ""
+    if name == "named_area":
+        func = func.value if isinstance(func, ast.Attribute) else func
+        name = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else ""
+    if name != "GridItem":
+        return None
+    return _placement_argument(node, "child", 0)
+
+
+def _placement_argument(call: ast.Call, keyword: str, position: int) -> Optional[ast.expr]:
+    """The value of ``keyword`` on ``call``, else its positional argument at ``position``."""
+    for kw in call.keywords:
+        if kw.arg == keyword:
+            return kw.value
+    return call.args[position] if position < len(call.args) else None
+
+
+def _respell_index(text: str, node: ast.expr, start: int) -> Optional[str]:
+    """``node`` -- an index literal, or a list or tuple of them -- moved to ``start``, or ``None``."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(node.value, bool):
+        return str(start)
+    if isinstance(node, (ast.List, ast.Tuple)) and node.elts:
+        values = []
+        for elt in node.elts:
+            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, int)) or isinstance(elt.value, bool):
+                return None
+            values.append(int(elt.value))
+        shift = start - min(values)
+        inside = ", ".join(str(value + shift) for value in values)
+        return f"[{inside}]" if isinstance(node, ast.List) else f"({inside})"
+    return None
 
 
 def children_list(text: str, site: Frame, role: str) -> Union[ast.List, Refusal]:
@@ -603,7 +771,7 @@ class EditLog:
         if edit.kind == "move" and edit.destination is not None:
             return _check_move_across(roots, edit, undone, instances[0])
         if edit.kind == "move":
-            return _check_slot(instances[0], int(expected["slot"]), edit.child)
+            return _check_placed(instances[0], expected, edit.child)
         rect = getattr(instances[0], "layout_rect", None)
         if rect is None:
             return None
@@ -623,6 +791,13 @@ class EditLog:
         return self.outcome
 
 
+def _check_placed(container: Any, place: Mapping[str, Any], child: str) -> Optional[str]:
+    """Whether ``container`` holds a ``child`` where ``place`` says: at a slot, or in a grid cell."""
+    if "row" in place:
+        return _check_cell(container, int(place["row"]), int(place["column"]), child)
+    return _check_slot(container, int(place["slot"]), child)
+
+
 def _check_slot(container: Any, slot: int, child: str) -> Optional[str]:
     """Whether ``container``'s child at ``slot`` is of the class the move put there.
 
@@ -632,23 +807,39 @@ def _check_slot(container: Any, slot: int, child: str) -> Optional[str]:
     """
     from nuiitivet.layout.layout_utils import expand_layout_children
 
-    from .reorder import visible
+    from .reorder import inner
 
     children = expand_layout_children(container.children_snapshot())
     if slot >= len(children):
         return f"reloaded, but {type(container).__name__} has {len(children)} children, expected {slot + 1} or more"
-    got = type(visible(children[slot])).__name__
+    got = type(inner(children[slot])).__name__
     if child and got != child:
         return f"position {slot + 1} holds {got}, expected {child}"
     return None
 
 
+def _check_cell(grid: Any, row: int, column: int, child: str) -> Optional[str]:
+    """Whether a child of class ``child`` starts at ``(row, column)`` of ``grid``."""
+    from .reorder import inner, placement, siblings
+
+    found = []
+    for item in siblings(grid):
+        placed = placement(grid, item)
+        if placed is not None and placed[:2] == (row, column):
+            found.append(type(inner(item)).__name__)
+    if not found:
+        return f"reloaded, but nothing starts at row {row}, column {column}"
+    if child and child not in found:
+        return f"row {row}, column {column} holds {', '.join(found)}, expected {child}"
+    return None
+
+
 def _check_move_across(roots: list[Any], edit: Edit, undone: bool, source: Any) -> Optional[str]:
-    """Whether the child left its source and sits at its slot in the destination, or the reverse."""
+    """Whether the child left its source and sits at its place in the destination, or the reverse."""
     from nuiitivet.layout.layout_utils import expand_layout_children
 
     if undone:
-        return _check_slot(source, int(edit.before["slot"]), edit.child)
+        return _check_placed(source, edit.before, edit.child)
     assert edit.destination is not None
     targets = [node for root in roots for node in widgets_built_at(root, edit.destination, edit.dest_widget or None)]
     if not targets:
@@ -656,12 +847,16 @@ def _check_move_across(roots: list[Any], edit: Edit, undone: bool, source: Any) 
     remaining = len(expand_layout_children(source.children_snapshot()))
     if remaining != int(edit.before["count"]) - 1:
         return f"{edit.parent_layout} still has {remaining} children, expected {int(edit.before['count']) - 1}"
-    return _check_slot(targets[0], int(edit.expected["slot"]), edit.child)
+    return _check_placed(targets[0], edit.expected, edit.child)
 
 
 def _summary(edit: Edit) -> str:
     if edit.kind == "move" and edit.destination is not None:
         return f"{edit.child} → {edit.dest_widget}"
+    if edit.kind == "move" and "row" in edit.after:
+        return f"{edit.child} → row {edit.after['row']}, column {edit.after['column']}"
+    if edit.kind == "move" and "area" in edit.after:
+        return f"{edit.child} → area {edit.after['area']}"
     if edit.kind == "move":
         return f"{edit.child} → position {int(edit.after['slot']) + 1}"
     return ", ".join(f"{name} → {value}" for name, value in edit.after.items())
@@ -775,9 +970,14 @@ __all__ = [
     "SpanEdit",
     "Value",
     "apply_spans",
+    "cell_refusal",
     "children_list",
+    "discarded_keywords",
+    "grid_item_name",
     "is_project_file",
     "locate_call",
+    "plan_area",
+    "plan_cell",
     "plan_keywords",
     "plan_move",
     "plan_move_across",
