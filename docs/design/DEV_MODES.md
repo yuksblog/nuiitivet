@@ -255,7 +255,15 @@ moves.
 
 - **No commit.** Every release writes, so `Ctrl+Z` is what "I did not mean
   that" reaches for. Undo is the inverse span, and it refuses when the text it
-  expects has moved under a hand edit.
+  expects has moved under a hand edit; `Ctrl+Shift+Z` reapplies it under the
+  same check, and a new edit drops what was undone.
+- **Delete is a key, not a drag.** `Delete` / `Backspace` on the selection
+  removes its expression — the move's leaving half, under the move's gates —
+  with no confirmation, since `Ctrl+Z` is the confirmation for every write.
+  Only the expression goes: a handler it referenced stays, and cleaning up
+  after it is the assistant's job, like inserting or unwrapping. A widget in a
+  `GridItem` takes the item with it, since one without a child cannot be
+  built.
 - **The selection is held by the pointer.** A click selects, and `↑` / `↓`
   walk the selection so a container can be grabbed through its children. That
   is the selection's only job, so it lasts exactly as long as the pointer stays

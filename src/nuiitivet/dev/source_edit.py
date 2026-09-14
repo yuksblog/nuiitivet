@@ -264,6 +264,21 @@ def plan_move_across(
     return ((removal,), (placing.insert(element),))
 
 
+def plan_delete(
+    text: str, site: Frame, index: int, count: int, *, from_host: bool = False
+) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The span that removes child ``index`` of the container at ``site``, or its ``child`` argument with ``from_host``.
+
+    The element leaves with one of its separators, as a move takes it, under
+    the same gates. A grid's element is the whole ``GridItem`` call: one
+    without a child cannot be built.
+    """
+    taken = _host_removal(text, site) if from_host else _list_removal(text, site, index, count, False)
+    if isinstance(taken, Refusal):
+        return taken
+    return (taken[0],)
+
+
 @dataclass(frozen=True)
 class _Placing:
     """Where a moved expression enters a destination: how to insert it, and the indentation it takes."""
@@ -829,13 +844,18 @@ class EditLog:
     """The edits layout edit mode wrote this process, newest last, and what each did.
 
     One per dev runner, shared by every window's mode. ``undo`` reverts the
-    newest edit only if the text it wrote is still at its spans; ``outcome``
-    holds what the reload after an edit reported, for the mode's badge. All
-    methods run on the UI thread.
+    newest edit only if the text it wrote is still at its spans, and ``redo``
+    reapplies the newest undone one under the same check; a new edit drops
+    what was undone. ``outcome`` holds what the reload after an edit
+    reported, for the mode's badge. All methods run on the UI thread.
     """
 
     def __init__(self) -> None:
         self._edits: list[Edit] = []
+        # Undone edits, newest last, each with the spans that put it back --
+        # the inverse of its inverse, so they carry the offsets and the text
+        # expected at them the way a fresh plan would.
+        self._undone: list[tuple[Edit, tuple[tuple[SpanEdit, ...], ...]]] = []
         # The edit whose reload has not landed yet, and whether it was an undo,
         # so the check after the reload knows which sizes to expect.
         self._pending: Optional[tuple[Edit, bool]] = None
@@ -854,6 +874,11 @@ class EditLog:
     def undoable(self) -> bool:
         """Whether there is an edit left to undo."""
         return bool(self._edits)
+
+    @property
+    def redoable(self) -> bool:
+        """Whether there is an undone edit left to redo."""
+        return bool(self._undone)
 
     def on_reloaded(self, method: Callable[[], None]) -> None:
         """Call ``method`` -- a bound method -- after each reload lands."""
@@ -889,6 +914,7 @@ class EditLog:
         else:
             _write(edit.file, new_text)
         self._edits.append(edit)
+        self._undone.clear()
         self._pending = (edit, False)
         self.outcome = None
 
@@ -907,12 +933,43 @@ class EditLog:
         for path, text, inverse in zip(edit.files, texts, inverses):
             if not still_applies(text, inverse):
                 return (None, f"cannot undo: {os.path.basename(path)} changed under the edit")
+        forward: list[tuple[SpanEdit, ...]] = []
         for path, text, inverse in zip(edit.files, texts, inverses):
-            _write(path, apply_spans(text, inverse)[0])
+            new_text, again = apply_spans(text, inverse)
+            _write(path, new_text)
+            forward.append(again)
         self._edits.pop()
+        self._undone.append((edit, tuple(forward)))
         self._pending = (edit, True)
         self.outcome = None
         return (edit, "undoing " + _summary(edit))
+
+    def redo(self) -> tuple[Optional[Edit], str]:
+        """Reapply the newest undone edit. Returns it and a one-line notice.
+
+        Refused, with the edit left undone, when the text it would replace is
+        no longer at its spans.
+        """
+        if not self._undone:
+            return (None, "nothing to redo")
+        edit, forward = self._undone[-1]
+        texts = [_read(path) for path in edit.files]
+        for path, text, spans in zip(edit.files, texts, forward):
+            if not still_applies(text, spans):
+                return (None, f"cannot redo: {os.path.basename(path)} changed under the edit")
+        inverses: list[tuple[SpanEdit, ...]] = []
+        for path, text, spans in zip(edit.files, texts, forward):
+            new_text, inverse = apply_spans(text, spans)
+            _write(path, new_text)
+            inverses.append(inverse)
+        edit.inverse = inverses[0]
+        if edit.other_file:
+            edit.other_inverse = inverses[1]
+        self._undone.pop()
+        self._edits.append(edit)
+        self._pending = (edit, False)
+        self.outcome = None
+        return (edit, "redoing " + _summary(edit))
 
     def after_reload(self, roots: Iterable[Any]) -> Optional[str]:
         """Check the pending edit against the rebuilt trees; return a badge or ``None``.
@@ -935,6 +992,8 @@ class EditLog:
             return f"reloaded, but no widget is built at {os.path.basename(edit.file)}:{edit.site.line}"
         if edit.kind == "move" and edit.destination is not None:
             return _check_move_across(roots, edit, undone, instances[0])
+        if edit.kind == "delete":
+            return _check_deleted(instances[0], edit, undone)
         if edit.kind == "move":
             return _check_placed(instances[0], expected, edit.child)
         if edit.kind == "align":
@@ -1042,7 +1101,22 @@ def _check_move_across(roots: list[Any], edit: Edit, undone: bool, source: Any) 
     return _check_placed(targets[0], edit.expected, edit.child)
 
 
+def _check_deleted(container: Any, edit: Edit, undone: bool) -> Optional[str]:
+    """Whether the child is gone from ``container`` -- or, after an undo, back at its place."""
+    from nuiitivet.layout.layout_utils import expand_layout_children
+
+    if undone:
+        return _check_placed(container, edit.before, edit.child)
+    remaining = len(expand_layout_children(container.children_snapshot()))
+    expected = int(edit.before["count"]) - 1
+    if remaining != expected:
+        return f"{edit.parent_layout} still has {remaining} children, expected {expected}"
+    return None
+
+
 def _summary(edit: Edit) -> str:
+    if edit.kind == "delete":
+        return f"{edit.child} removed"
     if edit.kind == "move" and edit.destination is not None:
         return f"{edit.child} → {edit.dest_widget}"
     if edit.kind == "move" and "row" in edit.after:

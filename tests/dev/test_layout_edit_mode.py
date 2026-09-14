@@ -1190,12 +1190,12 @@ def test_hovering_teaches_the_drags_the_click_and_the_source_jump(session: _Sess
     )
 
 
-def test_a_selection_adds_the_walk(session: _Session) -> None:
+def test_a_selection_adds_the_walk_and_the_delete(session: _Session) -> None:
     session.hover(50, 20)
     session.mode.on_mouse_press(session.app, 50, 20)
     session.mode.on_mouse_release(session.app, 50, 20)
 
-    assert session.mode.hints[-1] == "↑/↓ parent/child"
+    assert session.mode.hints[-2:] == ("↑/↓ parent/child", "Del/Backspace delete")
 
 
 def test_a_corner_drag_offers_only_the_snap_and_the_way_back(session: _Session) -> None:
@@ -1232,6 +1232,10 @@ def test_undo_is_offered_once_there_is_an_edit_to_undo(session: _Session) -> Non
 
     session.mode.on_key_press(session.app, "z", MOD_CTRL)
     assert "Ctrl+Z undo" not in session.mode.hints
+    assert session.mode.hints[-1] == "Ctrl+Shift+Z redo"
+
+    session.mode.on_key_press(session.app, "z", _CHORD)
+    assert "Ctrl+Shift+Z redo" not in session.mode.hints
 
 
 def test_the_pointer_nearing_the_badge_asks_for_a_frame_even_over_the_same_candidate(session: _Session) -> None:
@@ -1264,8 +1268,155 @@ def test_every_key_the_mode_binds_is_taught_in_some_state(session: _Session) -> 
     session.mode.on_mouse_release(session.app, 160, 40)
     taught |= {session.mode.exit, *session.mode.hints}
 
-    for key in ("Esc", "Alt", "Ctrl+Z", "↑/↓", "click", "drag a corner", "drag reorder", "Ctrl+Shift+Click"):
+    session.mode.on_key_press(session.app, "z", MOD_CTRL)
+    taught |= {session.mode.exit, *session.mode.hints}
+
+    keys = ("Esc", "Alt", "Ctrl+Z", "Ctrl+Shift+Z", "Del", "↑/↓", "click", "drag a corner", "drag reorder")
+    for key in (*keys, "Ctrl+Shift+Click"):
         assert any(key in hint for hint in taught), key
+
+
+# --- delete ---------------------------------------------------------------------
+
+
+def _select(s: _Session, x: float, y: float) -> None:
+    s.hover(x, y)
+    s.mode.on_mouse_press(s.app, x, y)
+    s.mode.on_mouse_release(s.app, x, y)
+
+
+def test_delete_removes_the_selected_widgets_element(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 60)
+
+        assert s.mode.on_key_press(s.app, "delete", 0) is True
+
+        assert _written(s, "build_list") == '[Text("AAA", width=100, height=40), Text("CCC", width=100, height=40)]'
+        assert s.reloads == [str(s.path)]
+        assert s.edits.pending is not None and s.edits.pending.kind == "delete"
+        assert s.mode.selected is None, "the selection's path is gone with the reload"
+        assert [(g.shape, g.caption) for g in s.mode.ghosts] == [("rect", "delete")]
+        assert s.mode.ghosts[0].rect == (0.0, 40.0, 100.0, 40.0)
+    finally:
+        s.close()
+
+
+def test_backspace_deletes_too(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 20)
+
+        s.mode.on_key_press(s.app, "backspace", 0)
+
+        assert _written(s, "build_list").startswith('[Text("BBB"')
+    finally:
+        s.close()
+
+
+def test_delete_without_a_selection_does_nothing(session: _Session) -> None:
+    session.hover(50, 20)
+    before = session.text()
+
+    session.mode.on_key_press(session.app, "delete", 0)
+
+    assert session.text() == before and session.reloads == []
+
+
+def test_delete_takes_a_grid_item_with_its_child(app_file: Path) -> None:
+    s = _Session(app_file, "build_grid")
+    try:
+        _select(s, 50, 20)
+
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        assert 'children=[GridItem(t("BBB"), row=1, column=[0, 1])]' in s.text()
+        assert s.edits.pending is not None and s.edits.pending.before == {"count": 2, "row": 0, "column": 0}
+    finally:
+        s.close()
+
+
+def test_delete_takes_a_hosts_child_and_leaves_the_host(app_file: Path) -> None:
+    s = _Session(app_file, "build_container")
+    try:
+        _select(s, 50, 20)
+
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        assert "Container(width=300, height=200)" in s.text()
+    finally:
+        s.close()
+
+
+def test_delete_from_a_builder_is_refused(app_file: Path) -> None:
+    s = _Session(app_file, "build_for_each")
+    before = s.text()
+    try:
+        _select(s, 50, 20)
+
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        assert s.text() == before
+        assert s.mode.notice is not None and s.mode.notice.startswith("the children come from Column.builder()")
+    finally:
+        s.close()
+
+
+def test_the_root_cannot_be_deleted(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 20)
+        s.mode.on_key_press(s.app, "up", 0)
+        assert s.mode.selected is s.column
+
+        before = s.text()
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        assert s.text() == before and s.reloads == []
+        assert s.mode.notice, "refused, and the badge says why"
+    finally:
+        s.close()
+
+
+def test_a_delete_undoes_and_redoes(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 60)
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+        assert 'Text("BBB"' in _written(s, "build_list")
+        assert s.mode.notice == "undoing TextBase removed"
+
+        s.mode.on_key_press(s.app, "z", _CHORD)
+        assert 'Text("BBB"' not in _written(s, "build_list")
+        assert s.mode.notice == "redoing TextBase removed"
+        assert len(s.reloads) == 3
+    finally:
+        s.close()
+
+
+def test_a_deleted_child_still_there_after_the_reload_is_the_notice(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 60)
+        s.mode.on_key_press(s.app, "delete", 0)
+
+        assert s.edits.after_reload([s.root]) == "Column still has 3 children, expected 2"
+    finally:
+        s.close()
+
+
+def test_an_undone_delete_is_checked_at_its_slot(app_file: Path) -> None:
+    s = _Session(app_file, "build_list")
+    try:
+        _select(s, 50, 60)
+        s.mode.on_key_press(s.app, "delete", 0)
+        s.mode.on_key_press(s.app, "z", MOD_CTRL)
+
+        assert s.edits.after_reload([s.root]) is None, "the old tree still holds BBB at its slot"
+    finally:
+        s.close()
 
 
 # --- undo -----------------------------------------------------------------------
