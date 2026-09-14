@@ -13,6 +13,7 @@ import pytest
 
 from nuiitivet._interaction.perception import describe_tree
 from nuiitivet.dev import selection_overlay as so
+from nuiitivet.dev.hud import SEPARATOR
 from nuiitivet.dev.select_mode import SelectMode
 from nuiitivet.dev.selection import Selection
 from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
@@ -249,7 +250,7 @@ def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     """A production-shaped run reads exactly as it did before source capture."""
     leaf = Text("AAA")
 
-    assert "·" not in so.describe_node(leaf)
+    assert SEPARATOR not in so.describe_node(leaf)
 
 
 def test_a_node_mark_paints_only_in_its_own_window() -> None:

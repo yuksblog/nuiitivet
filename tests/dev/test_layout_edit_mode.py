@@ -808,7 +808,7 @@ def test_cross_axis_travel_in_a_column_aligns_the_whole_column(app_file: Path) -
         assert [g.shape for g in s.mode.ghosts] == ["wash", "rect", "rect", "rect"], "the column and every child"
         rects = [g for g in s.mode.ghosts if g.shape == "rect"]
         assert [g.rect[0] for g in rects] == [100.0, 100.0, 100.0], "each child centred in the 300 wide column"
-        assert rects[0].caption == "center  ·  all 3 children"
+        assert rects[0].caption == "center  |  all 3 children"
 
         s.mode.on_mouse_release(s.app, 200, 30)
 
@@ -975,7 +975,7 @@ def test_a_shared_container_site_ghosts_every_instance_and_moves_them_all(app_fi
 
         assert [g.shape for g in s.mode.ghosts] == ["wash", "wash", "line", "line"], "both cards washed and lined"
         ghosts = _lines(s.mode.ghosts)
-        assert ghosts[0].caption == "to the end  ·  2 widgets"
+        assert ghosts[0].caption == "to the end  |  2 widgets"
         assert ghosts[1].rect[1] > 80.0, "the second card's line"
 
         s.mode.on_mouse_release(s.app, 50, 70)
@@ -1278,7 +1278,7 @@ def test_a_spanning_item_keeps_its_span_and_the_caption_names_who_is_under_it(ap
 
         cell = _cells(s.mode.ghosts)[0]
         assert cell.rect == (0.0, 0.0, 200.0, 40.0), "two columns wide, as the item is"
-        assert cell.caption == "row 0, column 0  ·  over TextBase AAA"
+        assert cell.caption == "row 0, column 0  |  over TextBase AAA"
 
         s.mode.on_mouse_release(s.app, 50, 20)
 
@@ -1421,7 +1421,7 @@ def test_a_stack_child_aligns_every_child_of_the_stack(app_file: Path) -> None:
 
         assert [g.shape for g in s.mode.ghosts] == ["wash", "rect", "rect"], "the stack and both children"
         rects = _rects(s.mode.ghosts)
-        assert rects[0].rect == (100.0, 80.0, 100.0, 40.0) and rects[0].caption == "center  ·  all 2 children"
+        assert rects[0].rect == (100.0, 80.0, 100.0, 40.0) and rects[0].caption == "center  |  all 2 children"
         assert rects[1].rect == (125.0, 90.0, 50.0, 20.0) and rects[1].caption == ""
 
         s.mode.on_mouse_release(s.app, 150, 100)
@@ -1482,7 +1482,7 @@ def test_a_stacks_top_layer_takes_the_drop_when_it_can_even_past_its_own_rect(ap
 
         assert s.mode.notice is None
         lines = _lines(s.mode.ghosts)
-        assert len(lines) == 1 and lines[0].caption == "into Row, to the end  ·  layer 1"
+        assert len(lines) == 1 and lines[0].caption == "into Row, to the end  |  layer 1"
 
         s.mode.on_mouse_release(s.app, 150, 30)
 
@@ -1530,7 +1530,7 @@ def test_over_a_stack_the_layers_are_listed_and_a_key_picks_the_one_under_the_co
         s.mode.on_key_press(s.app, "down", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 0
         lines = _lines(s.mode.ghosts)
-        assert len(lines) == 1 and lines[0].caption == "into Column, to the end  ·  layer 0"
+        assert len(lines) == 1 and lines[0].caption == "into Column, to the end  |  layer 0"
 
         s.mode.on_mouse_release(s.app, 150, 30)
 
@@ -1570,7 +1570,7 @@ def test_a_stack_child_chooses_another_layer_to_take_its_place(app_file: Path) -
         assert layers is not None and layers.names == ["TextBase AAA", "TextBase CCC", "TextBase BBB"]
         assert layers.landing == 2 and layers.own == 2
         captions = [g.caption for g in _rects(s.mode.ghosts)]
-        assert "center  ·  all 3 children" in captions, "the own layer is the stack's alignment"
+        assert "center  |  all 3 children" in captions, "the own layer is the stack's alignment"
 
         s.mode.on_key_press(s.app, "up", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 3
@@ -1601,7 +1601,7 @@ def test_choosing_the_own_layer_again_is_the_in_place_reading(app_file: Path) ->
         s.mode.on_key_press(s.app, "_2", 0)
 
         assert s.mode.layers is not None and s.mode.layers.landing == 2
-        assert "center  ·  all 3 children" in [g.caption for g in _rects(s.mode.ghosts)]
+        assert "center  |  all 3 children" in [g.caption for g in _rects(s.mode.ghosts)]
 
         s.mode.on_mouse_release(s.app, 150, 100)
 
@@ -1624,7 +1624,7 @@ def test_the_list_is_the_innermost_stacks_and_its_keys_stay_there(app_file: Path
 
         s.mode.on_key_press(s.app, "_0", 0)
         lines = _lines(s.mode.ghosts)
-        assert len(lines) == 1 and lines[0].caption == "into Column, before TextBase BBB  ·  layer 0"
+        assert len(lines) == 1 and lines[0].caption == "into Column, before TextBase BBB  |  layer 0"
 
         s.mode.on_mouse_release(s.app, 150, 20)
 
@@ -1807,7 +1807,7 @@ def test_a_uniform_flow_child_aligns_within_its_cell(app_file: Path) -> None:
 
         rects = _rects(s.mode.ghosts)
         assert [g.rect for g in rects] == [(50.0, 0.0, 100.0, 40.0), (250.0, 20.0, 50.0, 20.0)], "each in its cell"
-        assert [g.caption for g in rects] == ["", "end  ·  all 2 children"]
+        assert [g.caption for g in rects] == ["", "end  |  all 2 children"]
 
         s.mode.on_mouse_release(s.app, 290, 30)
 

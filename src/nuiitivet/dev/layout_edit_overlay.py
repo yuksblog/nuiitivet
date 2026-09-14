@@ -18,9 +18,9 @@ from typing import Any
 
 from nuiitivet._interaction.perception import global_visual_rect
 
+from .hud import SEPARATOR
 from .selection_overlay import (
     _HUD_MARGIN,
-    _SEPARATOR,
     color,
     describe_node,
     hud_font,
@@ -195,7 +195,7 @@ def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any,
 
 def _paint_hud(skia: Any, canvas: Any, font: Any, typeface: Any, width: int) -> None:
     """The badge that says a release will change the file."""
-    lines = ["LAYOUT EDIT" + _SEPARATOR + "release writes the source"]
+    lines = ["LAYOUT EDIT" + SEPARATOR + "release writes the source"]
     lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
         paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)

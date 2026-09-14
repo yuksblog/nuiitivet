@@ -32,6 +32,7 @@ from nuiitivet.layout.stack import Stack
 
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
+from .hud import SEPARATOR
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
@@ -713,7 +714,7 @@ class LayoutEditMode:
             if self._write(app, planned, self._move_ghosts(drag)):
                 self._select(None, None)
                 notes = [_axis_note(drag.node, drag.container, drag.destination), _discard_note(drag)]
-                self._notice = "  ·  ".join(note for note in notes if note) or None
+                self._notice = SEPARATOR.join(note for note in notes if note) or None
             invalidate(app)
             return
         if drag.aligning:
@@ -1133,7 +1134,7 @@ def _align_caption(drag: _Move, target: align.Target, value: dict[str, str], mov
         parts.append(f"all {total} children" if moving == total else f"{moving} of {total} children")
     if len(drag.instances) > 1:
         parts.append(f"{len(drag.instances)} widgets")
-    return "  ·  ".join(parts)
+    return SEPARATOR.join(parts)
 
 
 def _host_refusal(host: Any, role: str) -> Optional[str]:
@@ -1217,7 +1218,7 @@ def _cell_caption(drag: _Move, grid: Any, cell: reorder.Cell, instances: int, in
         parts.append("over " + ", ".join(_name(reorder.inner(item)) for item in others))
     if instances > 1:
         parts.append(f"{instances} widgets")
-    return "  ·  ".join(parts)
+    return SEPARATOR.join(parts)
 
 
 def _caption(drag: _Resize) -> str:
@@ -1231,7 +1232,7 @@ def _caption(drag: _Resize) -> str:
         parts.append(f"{len(drag.instances)} widgets")
     if not drag.snap:
         parts.append("no snap")
-    return "  ·  ".join(parts)
+    return SEPARATOR.join(parts)
 
 
 def _across_caption(drag: _Move, instances: int) -> str:
@@ -1250,7 +1251,7 @@ def _across_caption(drag: _Move, instances: int) -> str:
         parts.append(f"layer {drag.layer}")
     if instances > 1:
         parts.append(f"{instances} widgets")
-    return "  ·  ".join(parts)
+    return SEPARATOR.join(parts)
 
 
 def _stack_place(others: list[Any], slot: int) -> str:
@@ -1291,7 +1292,7 @@ def _move_caption(drag: _Move) -> str:
         parts = [f"before {_name(reorder.visible(others[slot]))}" if slot < len(others) else "to the end"]
     if len(drag.instances) > 1:
         parts.append(f"{len(drag.instances)} widgets")
-    return "  ·  ".join(parts)
+    return SEPARATOR.join(parts)
 
 
 def _name(node: Any) -> str:

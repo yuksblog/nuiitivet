@@ -221,7 +221,7 @@ The value written is one of the three sizes a widget accepts:
   a `Column`, or its share of the leftover on the main axis;
 - the integer otherwise.
 
-The caption says which (`w 240  ·  h auto`). A widget with a `size` parameter
+The caption says which (`w 240  |  h auto`). A widget with a `size` parameter
 (`Icon`) stays square: the larger of the two deltas wins.
 
 When one call builds many widgets — a helper returning a card, called from a
