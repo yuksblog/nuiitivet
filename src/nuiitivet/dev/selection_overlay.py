@@ -52,6 +52,8 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
 
+from .hud import SEPARATOR
+
 logger = logging.getLogger(__name__)
 
 # Truthy/falsy spellings accepted for the disable env var, shared with the
@@ -305,7 +307,7 @@ def describe_node(node: Any) -> str:
     # location is what tells the human it can be reached. Basename only: the
     # caption has to stay readable in a window a few hundred pixels wide.
     where = _origin(node)
-    return f"{label}  ·  {where}" if where else label
+    return f"{label}{SEPARATOR}{where}" if where else label
 
 
 def _origin(node: Any) -> Optional[str]:
@@ -334,8 +336,6 @@ _HINTS = (
     "Ctrl+Shift+Click source",
 )
 
-_SEPARATOR = "  ·  "
-
 
 def wrap_hints(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
     """Greedily pack ``parts`` into lines that fit ``max_width``.
@@ -349,7 +349,7 @@ def wrap_hints(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[
     lines: list[str] = []
     current = ""
     for part in parts:
-        candidate = f"{current}{_SEPARATOR}{part}" if current else part
+        candidate = f"{current}{SEPARATOR}{part}" if current else part
         if current and measure_text_width(typeface, _FONT_SIZE, candidate) > max_width:
             lines.append(current)
             current = part
@@ -381,7 +381,7 @@ def _paint_hud(
     if regions:
         parts.append(_plural(regions, "region"))
 
-    lines = ["SELECT" + _SEPARATOR + "designate for the assistant" + _SEPARATOR + _SEPARATOR.join(parts)]
+    lines = ["SELECT" + SEPARATOR + "designate for the assistant" + SEPARATOR + SEPARATOR.join(parts)]
     lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
     for index, line in enumerate(lines):
         paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
