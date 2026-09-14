@@ -29,6 +29,7 @@ from nuiitivet.dev.source_edit import (
     plan_alignment,
     plan_area,
     plan_cell,
+    plan_delete,
     plan_keywords,
     plan_move,
     plan_move_across,
@@ -513,6 +514,58 @@ def test_undo_restores_the_file(app_file: Path) -> None:
     assert log.undo() == (None, "nothing to undo")
 
 
+def test_redo_reapplies_what_undo_reverted(app_file: Path) -> None:
+    log = EditLog()
+    edit = _edit(app_file, width=240)
+    log.apply(edit)
+    log.undo()
+    assert log.redoable is True
+
+    redone, notice = log.redo()
+
+    assert redone is edit
+    assert "redoing" in notice and "width → 240" in notice
+    assert app_file.read_text(encoding="utf-8") == 'root = Text("a", width=240)\n'
+    assert log.pending is edit and log.redoable is False and log.undoable is True
+    assert log.redo() == (None, "nothing to redo")
+
+
+def test_a_redone_edit_undoes_again(app_file: Path) -> None:
+    log = EditLog()
+    log.apply(_edit(app_file, width=240))
+    log.undo()
+    log.redo()
+
+    undone, _notice = log.undo()
+
+    assert undone is not None
+    assert app_file.read_text(encoding="utf-8") == 'root = Text("a", width=180)\n'
+
+
+def test_a_new_edit_drops_what_could_be_redone(app_file: Path) -> None:
+    log = EditLog()
+    log.apply(_edit(app_file, width=240))
+    log.undo()
+
+    log.apply(_edit(app_file, width=300))
+
+    assert log.redoable is False
+    assert log.redo() == (None, "nothing to redo")
+
+
+def test_redo_is_refused_once_the_reverted_text_has_moved(app_file: Path) -> None:
+    log = EditLog()
+    log.apply(_edit(app_file, width=240))
+    log.undo()
+    app_file.write_text('# a hand edit\nroot = Text("a", width=180)\n', encoding="utf-8")
+
+    redone, notice = log.redo()
+
+    assert redone is None
+    assert "cannot redo" in notice
+    assert log.redoable is True, "left for after the hand edit is reverted"
+
+
 def test_undoable_follows_the_stack(app_file: Path) -> None:
     log = EditLog()
     assert log.undoable is False
@@ -620,6 +673,57 @@ def test_only_files_outside_the_install_directories_are_the_humans_to_edit(tmp_p
 
 def test_span_edit_is_a_value() -> None:
     assert SpanEdit(1, 2, "x") == SpanEdit(1, 2, "x")
+
+
+# --- deleting ------------------------------------------------------------------
+
+
+def _deleted(text: str, snippet: str, index: int, count: int, *, from_host: bool = False) -> str:
+    planned = plan_delete(text, _site(text, snippet), index, count, from_host=from_host)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def test_a_middle_element_leaves_with_the_separator_after_it() -> None:
+    text = 'root = Column(children=[Text("a"), Text("b"), Text("c")])\n'
+
+    assert _deleted(text, 'Column(children=[Text("a"), Text("b"), Text("c")])', 1, 3) == (
+        'root = Column(children=[Text("a"), Text("c")])\n'
+    )
+
+
+def test_the_last_element_leaves_with_the_separator_before_it() -> None:
+    text = 'root = Column(children=[Text("a"), Text("b")])\n'
+
+    assert _deleted(text, 'Column(children=[Text("a"), Text("b")])', 1, 2) == 'root = Column(children=[Text("a")])\n'
+
+
+def test_the_only_element_leaves_an_empty_list() -> None:
+    text = 'root = Column(children=[\n    Text("a"),\n])\n'
+
+    assert _deleted(text, 'Column(children=[\n    Text("a"),\n])', 0, 1) == "root = Column(children=[])\n"
+
+
+def test_a_grid_element_leaves_as_the_whole_item() -> None:
+    text = 'root = Grid(children=[GridItem(Text("a"), row=0, column=0), GridItem(Text("b"), row=1, column=0)])\n'
+
+    assert _deleted(text, text[7:-1], 0, 2) == 'root = Grid(children=[GridItem(Text("b"), row=1, column=0)])\n'
+
+
+def test_a_hosts_child_leaves_the_call_with_its_other_arguments() -> None:
+    text = 'root = Container(child=Text("a"), width=100)\n'
+
+    assert _deleted(text, 'Container(child=Text("a"), width=100)', 0, 1, from_host=True) == (
+        "root = Container(width=100)\n"
+    )
+
+
+def test_a_delete_from_a_comprehension_is_refused() -> None:
+    text = 'root = Column(children=[Text(t) for t in tags])\n'
+
+    planned = plan_delete(text, _site(text, "Column(children=[Text(t) for t in tags])"), 0, 1)
+
+    assert isinstance(planned, Refusal) and "comprehension" in planned.reason
 
 
 # --- grids --------------------------------------------------------------------

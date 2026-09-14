@@ -212,7 +212,9 @@ container's alignment. Hot reload applies the edit.
 | `↑` / `↓` / `0`–`9` while dragging over a `Stack` | Pick the layer the widget lands in. A list beside the stack names its layers, bottom to top, with the landing marked; a layer that is a container takes the widget inside, any other gives the widget its place in the stack, and past the top layer is a new one on top. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
+| `Delete` / `Backspace` | Remove the selected widget from the source — its whole expression, children included. No confirmation: `Ctrl+Z` brings it back. A handler or import the widget used stays behind for you or the assistant to clean up. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
+| `Ctrl+Shift+Z` | Redo what `Ctrl+Z` undid. A new edit clears what could be redone. |
 | `Esc` | Cancel the drag in flight; otherwise leave. |
 
 The value written is one of the three sizes a widget accepts:

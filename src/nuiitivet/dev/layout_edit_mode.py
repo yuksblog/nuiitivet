@@ -12,9 +12,11 @@ in the calls that built them (:mod:`.source_edit`), and the hot reload that
 follows is what applies it. The tree is never touched directly: what is on
 screen always came from the code.
 
-Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and select mode's
-switch directly, each mode closing the other on entry. There is no commit:
-every release writes, so ``Ctrl+Z`` is what "I did not mean that" reaches for.
+``Delete`` on the selection removes its expression the same way, with no
+confirmation. Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and
+select mode's switch directly, each mode closing the other on entry. There is
+no commit: every release writes, so ``Ctrl+Z`` is what "I did not mean that"
+reaches for, and ``Ctrl+Shift+Z`` takes it back.
 """
 
 from __future__ import annotations
@@ -49,6 +51,7 @@ from .source_edit import (
     plan_alignment,
     plan_area,
     plan_cell,
+    plan_delete,
     plan_keywords,
     plan_move,
     plan_move_across,
@@ -69,6 +72,8 @@ _SELECT_KEY = "d"
 # Logical pixels around each corner of the candidate within which a press is a
 # grab of that corner rather than a click.
 _CORNER_GRAB = 10.0
+# Both, since a Mac keyboard has no Delete key.
+_DELETE_KEYS = ("delete", "backspace")
 
 
 @dataclass
@@ -258,9 +263,11 @@ class LayoutEditMode:
         if self.candidate is not None:
             parts += ["drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source"]
         if self.selected is not None:
-            parts.append("↑/↓ parent/child")
+            parts += ["↑/↓ parent/child", "Del/Backspace delete"]
         if self._edits.undoable:
             parts.append("Ctrl+Z undo")
+        if self._edits.redoable:
+            parts.append("Ctrl+Shift+Z redo")
         return tuple(parts)
 
     @property
@@ -346,8 +353,12 @@ class LayoutEditMode:
                 invalidate(app)
             else:
                 self.leave(app)
+        elif key == "z" and chord:
+            self._redo(app)
         elif key == "z" and accel:
             self._undo(app)
+        elif key in _DELETE_KEYS and self._drag is None:
+            self._delete(app)
         elif isinstance(self._drag, _Move) and self._drag.stack is not None:
             self._pick_layer(app, self._drag, key)
         elif key == "up":
@@ -1041,6 +1052,70 @@ class LayoutEditMode:
             self._request_reload(edit.file)
         invalidate(app)
 
+    def _redo(self, app: Any) -> None:
+        try:
+            edit, notice = self._edits.redo()
+        except OSError as exc:
+            edit, notice = None, f"cannot redo: {exc}"
+        self._notice = notice
+        if edit is not None and self._request_reload is not None:
+            self._request_reload(edit.file)
+        invalidate(app)
+
+    # --- delete -----------------------------------------------------------
+
+    def _delete(self, app: Any) -> None:
+        """Remove the selection's expression from its container's call. A refusal becomes the notice."""
+        node = self.selected
+        if node is None:
+            return
+        container, member = reorder.container_of(node)
+        if container is None:
+            self._notice = f"{type(node).__name__} is not in a container an edit can read"
+            invalidate(app)
+            return
+        children = reorder.siblings(container)
+        if member not in children:
+            return
+        index = children.index(member)
+        frame = construction_frame(container)
+        instances = widgets_built_at(self._root(), frame, type(container).__name__) if frame else []
+        planned = self._plan_delete(container, member, index, len(children), len(instances) or 1)
+        if self._write(app, planned, _delete_ghosts(member, instances or [container], index)):
+            self._select(None, None)
+        invalidate(app)
+
+    def _plan_delete(self, container: Any, member: Any, index: int, count: int, instances: int) -> Edit | Refusal:
+        """The edit a delete asks for, or why there is none: the move's leaving half, with nowhere to go."""
+        host = reorder.is_host(container)
+        blocked = _host_refusal(container, "source") if host else _list_refusal(container, "source")
+        if blocked is not None:
+            return Refusal(blocked)
+        located = _source_of(container, f"this {type(container).__name__}")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        spans = plan_delete(text, frame, index, count, from_host=host)
+        if isinstance(spans, Refusal):
+            return spans
+        before: dict[str, int] = {"count": count}
+        home = reorder.placement(container, member) if isinstance(container, Grid) else None
+        before.update(_place(home[:2]) if home is not None else {"slot": index})
+        child = reorder.inner(member) if isinstance(container, Grid) else reorder.visible(member)
+        return Edit(
+            kind="delete",
+            file=frame.file,
+            site=frame,
+            parent_layout=type(container).__name__,
+            before=before,
+            after={},
+            expected={},
+            instances=instances,
+            spans=spans,
+            widget=type(container).__name__,
+            child=type(child).__name__,
+        )
+
     # --- ancestor walk ----------------------------------------------------
 
     def _walk_up(self, app: Any) -> None:
@@ -1226,6 +1301,17 @@ def _wrapper(name: str, cell: reorder.Cell, area: Optional[str]) -> tuple[str, s
 
 def _place(cell: tuple[int, ...]) -> dict[str, int]:
     return {"row": cell[0], "column": cell[1]}
+
+
+def _delete_ghosts(member: Any, containers: list[Any], index: int) -> list[Ghost]:
+    """A dashed rect over the child at ``index`` of every container built at the site; the selected one captioned."""
+    ghosts = []
+    for container in containers:
+        children = reorder.siblings(container)
+        rect = global_visual_rect(children[index]) if index < len(children) else None
+        if rect is not None:
+            ghosts.append(Ghost(rect, "delete" if children[index] is member else ""))
+    return ghosts
 
 
 def _discard_note(drag: _Move) -> Optional[str]:
