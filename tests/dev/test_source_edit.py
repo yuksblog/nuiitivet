@@ -513,6 +513,17 @@ def test_undo_restores_the_file(app_file: Path) -> None:
     assert log.undo() == (None, "nothing to undo")
 
 
+def test_undoable_follows_the_stack(app_file: Path) -> None:
+    log = EditLog()
+    assert log.undoable is False
+
+    log.apply(_edit(app_file, width=240))
+    assert log.undoable is True
+
+    log.undo()
+    assert log.undoable is False
+
+
 def test_undo_is_refused_once_the_written_text_has_moved(app_file: Path) -> None:
     """Applying the inverse to text that moved would corrupt whatever replaced it."""
     log = EditLog()

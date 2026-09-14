@@ -223,17 +223,55 @@ def test_painting_never_raises_on_a_broken_canvas(latched: tuple[_App, LayoutEdi
     lo.paint_layout_edit(app, _Broken(), app.width, app.height)
 
 
-def test_the_hud_names_every_gesture_the_mode_binds() -> None:
-    """The badge is the only place a human can learn these."""
-    assert set(lo._HINTS) == {
-        "drag a corner resize",
-        "drag reorder / move / align",
-        "click select",
-        "↑/↓ parent/child",
-        "↑/↓/0-9 Stack layer while dragging",
-        "Alt no snap",
-        "Ctrl+Z undo",
-        "Esc leave",
-        "Ctrl+Shift+D designate",
-        "Ctrl+Shift+Click source",
-    }
+def test_the_badge_names_the_mode_its_exit_and_the_switch(
+    latched: tuple[_App, LayoutEditMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The first line is the one that never goes away, so the way out and the
+    way across live there."""
+    from nuiitivet.dev.hud import SEPARATOR
+
+    app, mode = latched
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(lo, "paint_hud", lambda *args, **kwargs: seen.update(kwargs))
+
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+
+    assert seen["mode_line"] == SEPARATOR.join(
+        ("LAYOUT EDIT", "release writes the source", "Esc leave", "Ctrl+Shift+D designate")
+    )
+    assert seen["hints"] == mode.hints
+    assert seen["placement"] is mode.placement
+
+
+def test_a_notice_outliving_the_mode_still_paints(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An edit written just before leaving reports through the same box."""
+    with mount(Column(children=[Text("AAA", width=100, height=40)])) as host:
+        host.layout(300, 200)
+        mode = LayoutEditMode(EditLog())
+        app = _App(host.root, mode)
+        mode.on_key_press(app, "e", _ENTER)
+        mode.on_key_press(app, "escape", 0)
+        monkeypatch.setattr(type(mode), "notice", property(lambda self: "width landed at 100, expected 160"))
+        seen: dict[str, Any] = {}
+        monkeypatch.setattr(lo, "paint_hud", lambda *args, **kwargs: seen.update(kwargs))
+
+        lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+
+        assert seen["mode_line"] is None and seen["notices"] == ["width landed at 100, expected 160"]
+
+
+def test_the_layer_list_ends_with_the_keys_that_pick_one() -> None:
+    """The keys act on the list, so they are taught beside it and nowhere else."""
+    from nuiitivet.dev.hud import hud_font
+    from nuiitivet.dev.layout_edit_mode import LayerList
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        pytest.skip("skia is not available")
+    font, typeface = hud_font(skia)
+    canvas = _Canvas()
+
+    lo._paint_layers(skia, canvas, LayerList((0.0, 0.0, 50.0, 50.0), ["AAA", "BBB"], 1, None), font, typeface, 900)
+
+    assert canvas.calls.count("drawTextBlob") == 4, "on top, two layers, and the hint"

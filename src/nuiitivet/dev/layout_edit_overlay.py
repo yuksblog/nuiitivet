@@ -14,21 +14,13 @@ on release, which is why it must never be mistaken for either of the others.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from nuiitivet._interaction.perception import global_visual_rect
 
-from .hud import SEPARATOR
-from .selection_overlay import (
-    _HUD_MARGIN,
-    color,
-    describe_node,
-    hud_font,
-    paint_brackets,
-    paint_caption,
-    wrap_hints,
-)
+from .hud import SEPARATOR, color, hud_font, paint_caption, paint_hud
 from .selection_overlay import _enabled as _overlays_enabled
+from .selection_overlay import describe_node, paint_brackets
 
 logger = logging.getLogger(__name__)
 
@@ -37,21 +29,8 @@ _ACCENT = (0, 168, 160)
 # Room a layer list needs beside its stack before it moves inside it.
 _LAYERS_WIDTH = 220.0
 _DASH = (6.0, 4.0)
-
-# Every gesture the mode binds. The badge is the only place a human can learn
-# them, so an omission hides the gesture completely.
-_HINTS = (
-    "drag a corner resize",
-    "drag reorder / move / align",
-    "click select",
-    "↑/↓ parent/child",
-    "↑/↓/0-9 Stack layer while dragging",
-    "Alt no snap",
-    "Ctrl+Z undo",
-    "Esc leave",
-    "Ctrl+Shift+D designate",
-    "Ctrl+Shift+Click source",
-)
+# Beside the layer list, since the keys act on it; the badge does not repeat them.
+_LAYER_HINT = "↑/↓/0-9 layer"
 
 
 def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
@@ -84,6 +63,7 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
         # them would turn them grey.
         jump = getattr(app, "_source_jump", None)
         jump_target = jump.hovered if jump is not None else None
+        jump_notice = jump.notice if jump is not None else None
         if active and not mode.dragging and jump_target is None:
             _paint_candidate(skia, canvas, mode, font, typeface)
         for ghost in ghosts:
@@ -99,9 +79,21 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
         if layers is not None:
             _paint_layers(skia, canvas, layers, font, typeface, width)
         if active:
-            _paint_hud(skia, canvas, font, typeface, width)
-        if notice:
-            paint_caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
+            _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
+        elif notice:
+            paint_hud(
+                skia,
+                canvas,
+                mode_line=None,
+                hints=(),
+                notices=[notice],
+                placement=None,
+                pointer=None,
+                font=font,
+                typeface=typeface,
+                width=width,
+                height=height,
+            )
     except Exception:
         logger.debug("layout_edit_overlay: paint failed", exc_info=True)
 
@@ -178,7 +170,10 @@ def _paint_tint(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float, e
 
 
 def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any, width: int) -> None:
-    """The stack's layers, top first, beside the stack: the landing marked, the dragged widget's own layer named."""
+    """The stack's layers, top first, beside the stack, and the keys that pick one.
+
+    The landing is marked and the dragged widget's own layer named.
+    """
     x, y, w, _h = layers.rect
     left = x + w + 6.0
     if left + _LAYERS_WIDTH > width:
@@ -191,14 +186,27 @@ def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any,
         if index == layers.own:
             label += "  (own)"
         paint_caption(skia, canvas, label, font, typeface, left, y + row * 24.0)
+    paint_caption(skia, canvas, _LAYER_HINT, font, typeface, left, y + len(lines) * 24.0)
 
 
-def _paint_hud(skia: Any, canvas: Any, font: Any, typeface: Any, width: int) -> None:
-    """The badge that says a release will change the file."""
-    lines = ["LAYOUT EDIT" + SEPARATOR + "release writes the source"]
-    lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
-    for index, line in enumerate(lines):
-        paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
+def _paint_hud(
+    skia: Any, canvas: Any, mode: Any, jump_notice: Optional[str], font: Any, typeface: Any, width: int, height: int
+) -> None:
+    """The badge that says a release will change the file, with the keys that apply now."""
+    mode_line = SEPARATOR.join(("LAYOUT EDIT", "release writes the source", mode.exit, "Ctrl+Shift+D designate"))
+    paint_hud(
+        skia,
+        canvas,
+        mode_line=mode_line,
+        hints=mode.hints,
+        notices=[mode.notice, jump_notice],
+        placement=mode.placement,
+        pointer=mode.pointer,
+        font=font,
+        typeface=typeface,
+        width=width,
+        height=height,
+    )
 
 
 __all__ = ["paint_layout_edit"]
