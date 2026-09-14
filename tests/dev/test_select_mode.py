@@ -189,6 +189,85 @@ def test_hover_tracks_the_pick_candidate() -> None:
         assert mode.hovered is leaf
 
 
+# --- the badge's hints ------------------------------------------------------
+
+
+def _latched() -> tuple[SelectMode, _App, Any]:
+    leaf = Text("AAA")
+    host = mount(Column(children=[leaf]))
+    root = host.__enter__().root
+    host.layout(300, 200)
+    app = _App(root)
+    mode = SelectMode(Selection())
+    mode.on_key_press(app, "d", _ENTER)
+    return (mode, app, host)
+
+
+def test_before_anything_is_designated_the_only_key_is_the_way_out() -> None:
+    mode, _app, host = _latched()
+    with host:
+        assert mode.exit == "Esc leave"
+        assert mode.hints == ()
+
+
+def test_hovering_teaches_the_click_and_the_source_jump() -> None:
+    mode, app, host = _latched()
+    with host:
+        mode.on_mouse_motion(app, 2, 2)
+
+        assert mode.hints == ("click / drag designate", "Ctrl+Shift+Click source")
+
+
+def test_a_designation_makes_leaving_a_decision_and_offers_the_ways_to_unmake_it() -> None:
+    mode, app, host = _latched()
+    with host:
+        _click(mode, app, 2, 2)
+
+        assert mode.exit == "Enter keep  |  Esc discard"
+        assert mode.hints == ("↑/↓ parent/child", "Backspace remove", "Ctrl+Backspace clear")
+
+
+def test_nothing_is_hinted_mid_drag() -> None:
+    mode, app, host = _latched()
+    with host:
+        mode.on_mouse_press(app, 10, 10)
+        mode.on_mouse_motion(app, 60, 40)
+
+        assert mode.hints == ()
+        assert mode.pointer == (60.0, 40.0)
+
+
+def test_the_pointer_nearing_the_badge_asks_for_a_frame_even_over_the_same_candidate() -> None:
+    """The badge dodges at paint time, so the frame has to be requested here."""
+    mode, app, host = _latched()
+    with host:
+        mode.on_mouse_motion(app, 150, 20)
+        mode.placement.place((200.0, 44.0), (300.0, 200.0), mode.pointer)
+        before = app.invalidated
+
+        mode.on_mouse_motion(app, 150, 150)
+        assert app.invalidated == before + 1, "one frame for the dodge"
+
+        mode.placement.place((200.0, 44.0), (300.0, 200.0), mode.pointer)
+        mode.on_mouse_motion(app, 151, 150)
+        assert app.invalidated == before + 1, "not one per motion"
+
+
+def test_every_key_the_mode_binds_is_taught_in_some_state() -> None:
+    """The badge is the only place a human can learn these; ``Backspace`` went
+    undiscovered in real use precisely because it never mentioned it."""
+    mode, app, host = _latched()
+    with host:
+        taught = {mode.exit, *mode.hints}
+        mode.on_mouse_motion(app, 2, 2)
+        taught |= {mode.exit, *mode.hints}
+        _click(mode, app, 2, 2)
+        taught |= {mode.exit, *mode.hints}
+
+    for key in ("Enter", "Esc", "Backspace", "Ctrl+Backspace", "↑/↓", "click", "Ctrl+Shift+Click"):
+        assert any(key in hint for hint in taught), key
+
+
 # --- ancestor walk ----------------------------------------------------------
 
 

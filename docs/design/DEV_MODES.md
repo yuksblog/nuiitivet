@@ -391,8 +391,21 @@ is a dashed outline captioned with the landing values — or, for a reorder, an
 insertion line in the slot, captioned with the sibling it lands before, plus a
 tint over the list it would land in, its own or another's; in a grid a deeper
 tint over the cell instead of a line; for an alignment a dashed rect per child
-the value moves, the dragged one captioned — and the badge lists every
-gesture, since the badge is the only place a human can learn them.
+the value moves, the dragged one captioned.
+
+The badge is the only place a human can learn the keys, and a box that lists
+them all is noise nobody reads. So:
+
+- **A key is shown only while pressing it would do something.** Every key
+  still appears in some state; a test walks them.
+- **The ways out stay on the first line.** The line that says the mode is on
+  says how to get off.
+- **The `Stack` layer keys sit beside the layer list**, where the eye is
+  mid-drag.
+- **One box at the bottom; it dodges, never hides.** A badge that vanished
+  would leave the mode's state in doubt. It flips sideways only when narrower
+  than half the window, and returns on a wider margin than it left on, so it
+  never flickers.
 
 ## 8. Implementation map
 
@@ -404,5 +417,6 @@ gesture, since the badge is the only place a human can learn them.
 | geometry picker, visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`) |
 | construction sites | `dev/source.py` |
 | source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
-| layout edit mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_overlay.py` |
+| layout edit mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_edit_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_edit_overlay.py` |
+| the badge both modes share: what it says, where it sits, how it is drawn | `dev/hud.py` |
 | edit log and reload request | `dev/source_edit.py` (`EditLog`), `dev/controller.py` |

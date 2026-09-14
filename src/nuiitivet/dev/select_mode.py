@@ -32,6 +32,7 @@ import logging
 from typing import Any, Callable, Optional
 
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
+from .hud import SEPARATOR, Placement
 from .interaction import InteractionJournal
 from .selection import Selection
 
@@ -75,6 +76,8 @@ class SelectMode:
         self._hover: Optional[Callable[[], Any]] = None
         # The rect a drag has swept so far, for the overlay's rubber band.
         self._band: Optional[tuple[float, float, float, float]] = None
+        self._pointer: Optional[tuple[float, float]] = None
+        self._placement = Placement()
 
     @property
     def selection(self) -> Selection:
@@ -95,6 +98,43 @@ class SelectMode:
     def band(self) -> Optional[tuple[float, float, float, float]]:
         """The rect a drag has swept so far, or ``None`` when not dragging."""
         return self._band
+
+    @property
+    def pointer(self) -> Optional[tuple[float, float]]:
+        """Where the pointer last was, for the badge to keep out of its way."""
+        return self._pointer
+
+    @property
+    def placement(self) -> Placement:
+        """Where the badge sits, kept across frames."""
+        return self._placement
+
+    @property
+    def exit(self) -> str:
+        """The ways out right now, for the badge's first line.
+
+        Leaving is a decision only once there is something to keep or throw
+        away; before that the two keys do the same thing.
+        """
+        if self._selection.marks():
+            return "Enter keep" + SEPARATOR + "Esc discard"
+        return "Esc leave"
+
+    @property
+    def hints(self) -> tuple[str, ...]:
+        """The gestures and keys that mean something right now, for the badge.
+
+        A key appears the moment pressing it would do something, and not
+        before: the badge is the only place a human can learn them, and one
+        that lists everything at once teaches nothing.
+        """
+        if self._band is not None:
+            return ()
+        if self._selection.marks():
+            return ("↑/↓ parent/child", "Backspace remove", "Ctrl+Backspace clear")
+        if self.hovered is not None:
+            return ("click / drag designate", "Ctrl+Shift+Click source")
+        return ()
 
     # --- keys -------------------------------------------------------------
 
@@ -153,6 +193,7 @@ class SelectMode:
         self._press = None
         self._hover = None
         self._band = None
+        self._placement.reset()
         self._changed(app, note=False)
 
     def commit(self, app: Any) -> None:
@@ -221,6 +262,9 @@ class SelectMode:
         """
         if not self.active:
             return False
+        self._pointer = (float(x), float(y))
+        if self._placement.crosses(self._pointer):
+            invalidate(app)
         if self._press is not None:
             band = _normalized(self._press, (float(x), float(y)))
             if band != self._band:

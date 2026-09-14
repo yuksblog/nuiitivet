@@ -32,7 +32,7 @@ from nuiitivet.layout.stack import Stack
 
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
-from .hud import SEPARATOR
+from .hud import SEPARATOR, Placement
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
@@ -217,6 +217,7 @@ class LayoutEditMode:
         # Ghosts kept after release until the reload lands.
         self._ghosts: list[Ghost] = []
         self._notice: Optional[str] = None
+        self._placement = Placement()
 
     # --- state for the overlay -------------------------------------------
 
@@ -224,6 +225,43 @@ class LayoutEditMode:
     def active(self) -> bool:
         """Whether the mode is latched on."""
         return self._active
+
+    @property
+    def pointer(self) -> Optional[tuple[float, float]]:
+        """Where the pointer last was, for the badge to keep out of its way."""
+        return self._pointer
+
+    @property
+    def placement(self) -> Placement:
+        """Where the badge sits, kept across frames."""
+        return self._placement
+
+    @property
+    def exit(self) -> str:
+        """What ``Esc`` does right now, for the badge's first line."""
+        return "Esc cancel" if self._drag is not None else "Esc leave"
+
+    @property
+    def hints(self) -> tuple[str, ...]:
+        """The gestures and keys that mean something right now, for the badge.
+
+        A key appears the moment pressing it would do something, and not
+        before: the badge is the only place a human can learn them, and one
+        that lists everything at once teaches nothing.
+        """
+        drag = self._drag
+        if isinstance(drag, _Resize):
+            return ("Alt no snap",)
+        if drag is not None:
+            return ()
+        parts: list[str] = []
+        if self.candidate is not None:
+            parts += ["drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source"]
+        if self.selected is not None:
+            parts.append("↑/↓ parent/child")
+        if self._edits.undoable:
+            parts.append("Ctrl+Z undo")
+        return tuple(parts)
 
     @property
     def hovered(self) -> Optional[Any]:
@@ -329,6 +367,7 @@ class LayoutEditMode:
         self._active = True
         self._app = weak(app)
         self._reset()
+        self._placement.reset()
         invalidate(app)
 
     def leave(self, app: Any) -> None:
@@ -420,6 +459,8 @@ class LayoutEditMode:
         if not self._active:
             return False
         self._pointer = (float(x), float(y))
+        if self._placement.crosses(self._pointer):
+            invalidate(app)
         if self._press is not None and self._drag is None and travelled(self._press, x, y):
             press, self._press = self._press, None
             self._begin_move(app, press, float(x), float(y))

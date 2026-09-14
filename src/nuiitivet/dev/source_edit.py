@@ -850,6 +850,11 @@ class EditLog:
         """The edit written but not yet reloaded, or ``None``."""
         return self._pending[0] if self._pending is not None else None
 
+    @property
+    def undoable(self) -> bool:
+        """Whether there is an edit left to undo."""
+        return bool(self._edits)
+
     def on_reloaded(self, method: Callable[[], None]) -> None:
         """Call ``method`` -- a bound method -- after each reload lands."""
         self._reloaded.append(weakref.WeakMethod(method))  # type: ignore[arg-type]

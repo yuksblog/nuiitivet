@@ -186,41 +186,44 @@ def test_the_rubber_band_is_drawn_while_dragging(
     assert "drawRect" in canvas.calls
 
 
-def test_the_hud_names_every_gesture_the_mode_binds() -> None:
-    """The badge is the only place a human can learn these, so an omission hides
-    a feature completely.
+def test_the_badge_names_the_mode_its_exit_and_the_switch(
+    designating: tuple[_App, SelectMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The first line is the one that never goes away, so the way out and the
+    way across live there."""
+    app, mode = designating
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(so, "paint_hud", lambda *args, **kwargs: seen.update(kwargs))
 
-    ``Backspace`` went undiscovered in real use precisely because the HUD never
-    mentioned it. The list has since widened past "ways to unmake a designation":
-    the source jump is discoverable the same way and nowhere else, which
-    is what let it be a modifier rather than a button on the glass.
-    """
-    assert set(so._HINTS) == {
-        "Enter keep",
-        "Esc discard",
-        "Backspace remove",
-        "Ctrl+Backspace clear",
-        "Ctrl+Shift+Click source",
-    }
+    so.paint_selection(app, _Canvas(), app.width, app.height)
 
-
-def test_the_hud_wraps_instead_of_running_off_a_narrow_window() -> None:
-    """A dev app is often a few hundred pixels wide; a hint off the edge teaches
-    nothing."""
-    from nuiitivet.rendering.skia.font import (
-        get_default_font_fallbacks,
-        get_typeface,
-        measure_text_width,
+    assert seen["mode_line"] == SEPARATOR.join(
+        ("SELECT", "designate for the assistant", "1 widget", "Enter keep", "Esc discard", "Ctrl+Shift+E edit")
     )
+    assert seen["hints"] == mode.hints
+    assert seen["placement"] is mode.placement
 
-    typeface = get_typeface(family_candidates=get_default_font_fallbacks(), fallback_to_default=True)
-    limit = 200.0
 
-    lines = so.wrap_hints(so._HINTS, typeface, limit)
+def test_the_jump_notice_rides_in_the_badge_while_the_mode_is_on(
+    designating: tuple[_App, SelectMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two boxes at the same corner would cover each other."""
+    from nuiitivet.dev.source_jump import SourceJump
 
-    assert len(lines) > 1
-    for line in lines:
-        assert measure_text_width(typeface, so._FONT_SIZE, line) <= limit
+    app, _mode = designating
+    jump = SourceJump()
+    app._source_jump = jump
+    monkeypatch.setattr("nuiitivet.dev.source_jump.open_at", lambda path, line: "no editor")
+    jump.on_mouse_press(app, 2, 2, _ENTER)
+    jump.on_mouse_release(app, 2, 2, _ENTER)
+    assert jump.notice
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(so, "paint_hud", lambda *args, **kwargs: calls.append(kwargs))
+
+    so.paint_selection(app, _Canvas(), app.width, app.height)
+
+    assert len(calls) == 1, "one badge, not a badge and a loose notice"
+    assert calls[0]["notices"] == [jump.notice]
 
 
 def test_the_hover_caption_shows_where_the_widget_was_built() -> None:

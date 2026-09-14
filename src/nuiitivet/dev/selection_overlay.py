@@ -20,13 +20,13 @@ time. There is nothing to expire and no repaint pump to run.
 **Two phases**, because what the human needs while designating and after
 committing are different things:
 
-* *While latched* -- a HUD badge, a hover highlight on the pick candidate, the
-  newest designation at full strength, and every earlier one dimmed to its badge.
-  Designation is sequential, so full legibility is only ever needed for the one
-  just made; this is what keeps the overlay readable as the count grows. The HUD
-  names **every** gesture that leaves or unmakes a designation, because it is the
-  only place a human can learn them -- there is no menu and no panel, and a key
-  the badge does not mention is a key nobody finds.
+* *While latched* -- the HUD badge (:mod:`.hud`), a hover highlight on the pick
+  candidate, the newest designation at full strength, and every earlier one
+  dimmed to its badge. Designation is sequential, so full legibility is only
+  ever needed for the one just made; this is what keeps the overlay readable as
+  the count grows. The HUD names each gesture at the moment it applies, because
+  it is the only place a human can learn them -- there is no menu and no panel,
+  and a key the badge never mentions is a key nobody finds.
 * *After committing* (``Enter``) -- **numbered badges only**. The human is done
   pointing and wants to see their app again; the durable record lives in the
   payload, not on the glass. It is the numbered-pin behaviour every annotation
@@ -52,7 +52,7 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
 
-from .hud import SEPARATOR
+from .hud import FONT_SIZE, SEPARATOR, color, hud_font, paint_caption, paint_hud
 
 logger = logging.getLogger(__name__)
 
@@ -67,26 +67,16 @@ _ACCENT = (255, 171, 0)
 # three -- not a note, not a report, not a change -- and the brackets it shows
 # under a held chord must not read as a designation about to be made.
 _JUMP_ACCENT = (236, 64, 122)
-# Ink and ground for badges and captions.
+# Ink for the numbered badges.
 _BADGE_INK = (32, 24, 0)
-_CAPTION_BG = (28, 24, 14, 220)
-_CAPTION_INK = (250, 244, 230)
 
 _BRACKET_LEN = 12.0
 _BRACKET_WIDTH = 2.5
 _BADGE_RADIUS = 10.0
-_FONT_SIZE = 12.0
-_HUD_MARGIN = 12.0
 
 
 def _enabled() -> bool:
     return os.environ.get("NUIITIVET_DEV_ACTION_OVERLAY", "1").strip().lower() not in _FALSY
-
-
-def color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
-    """A skia colour from an RGB triple and a 0..1 alpha."""
-    r, g, b = rgb
-    return skia.Color(r, g, b, max(0, min(255, int(round(alpha * 255)))))
 
 
 def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
@@ -153,23 +143,14 @@ def paint_selection(app: Any, canvas: Any, width: int, height: int) -> None:
             if band is not None:
                 _paint_band(skia, canvas, band)
             _paint_hover(skia, canvas, mode, font, typeface, selection.members(), skip=jump_target)
-            _paint_hud(skia, canvas, font, typeface, marks, width, height)
+            _paint_hud(skia, canvas, mode, marks, jump_notice, font, typeface, width, height)
         if jump_target is not None or jump_notice:
-            _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, height)
+            # A latched mode folds the jump's notice into its own badge.
+            editing = getattr(app, "_layout_edit_mode", None)
+            alone = not active and not (editing is not None and editing.active)
+            _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, width, height, alone=alone)
     except Exception:
         logger.debug("selection_overlay: paint failed", exc_info=True)
-
-
-def hud_font(skia: Any) -> tuple[Any, Any]:
-    """The overlay's ``(font, typeface)`` at the HUD size."""
-    from nuiitivet.rendering.skia.font import (
-        get_default_font_fallbacks,
-        get_typeface,
-        make_font,
-    )
-
-    typeface = get_typeface(family_candidates=get_default_font_fallbacks(), fallback_to_default=True)
-    return (make_font(typeface, _FONT_SIZE), typeface)
 
 
 def paint_brackets(
@@ -232,10 +213,10 @@ def _paint_badge(
     blob = make_text_blob(label, font)
     if blob is None:
         return
-    text_w = measure_text_width(typeface, _FONT_SIZE, label)
+    text_w = measure_text_width(typeface, FONT_SIZE, label)
     ink = skia.Paint(AntiAlias=True)
     ink.setColor(color(skia, _BADGE_INK, alpha))
-    canvas.drawTextBlob(blob, x - text_w / 2.0, y + _FONT_SIZE / 2.5, ink)
+    canvas.drawTextBlob(blob, x - text_w / 2.0, y + FONT_SIZE / 2.5, ink)
 
 
 def _paint_hover(
@@ -274,19 +255,35 @@ def _paint_jump(
     notice: Optional[str],
     font: Any,
     typeface: Any,
+    width: int,
     height: int,
+    *,
+    alone: bool,
 ) -> None:
     """Bracket the widget a chorded click would open, and say what the last jump did.
 
     The notice replaces the caption rather than sitting beside it: right after
     a jump, what happened is the only thing worth reading, and the next pointer
     move clears it. With the chord already released there is no widget to hang
-    it on, so it sits at the bottom corner, clear of the mode badge.
+    it on, so it takes the badge's place -- when ``alone``; a latched mode
+    carries it in its badge instead.
     """
     rect = visible_rect(target) if target is not None else None
     if rect is None:
-        if notice:
-            paint_caption(skia, canvas, notice, font, typeface, _HUD_MARGIN, height - _HUD_MARGIN - 20.0)
+        if notice and alone:
+            paint_hud(
+                skia,
+                canvas,
+                mode_line=None,
+                hints=(),
+                notices=[notice],
+                placement=None,
+                pointer=None,
+                font=font,
+                typeface=typeface,
+                width=width,
+                height=height,
+            )
         return
     x, y, _w, _h = rect
     paint_brackets(skia, canvas, rect, 0.8, _JUMP_ACCENT)
@@ -324,52 +321,18 @@ def _plural(count: int, noun: str) -> str:
     return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
-# Every gesture that leaves or unmakes a designation. The HUD is the only place
-# a human can learn these -- there is no menu and no panel -- and leaving one out
-# makes it effectively nonexistent: `Backspace` went undiscovered precisely
-# because the badge never mentioned it.
-_HINTS = (
-    "Enter keep",
-    "Esc discard",
-    "Backspace remove",
-    "Ctrl+Backspace clear",
-    "Ctrl+Shift+Click source",
-)
-
-
-def wrap_hints(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
-    """Greedily pack ``parts`` into lines that fit ``max_width``.
-
-    Measured rather than split at a fixed point, because the hint has to stay
-    readable in a narrow window -- a dev app is often a few hundred pixels wide,
-    and a hint running off the edge teaches nothing.
-    """
-    from nuiitivet.rendering.skia.font import measure_text_width
-
-    lines: list[str] = []
-    current = ""
-    for part in parts:
-        candidate = f"{current}{SEPARATOR}{part}" if current else part
-        if current and measure_text_width(typeface, _FONT_SIZE, candidate) > max_width:
-            lines.append(current)
-            current = part
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    return lines
-
-
 def _paint_hud(
     skia: Any,
     canvas: Any,
+    mode: Any,
+    marks: list[tuple[int, str, Any]],
+    jump_notice: Optional[str],
     font: Any,
     typeface: Any,
-    marks: list[tuple[int, str, Any]],
     width: int,
     height: int,
 ) -> None:
-    """A persistent badge while the mode is latched.
+    """The badge while the mode is latched: the mode, its counts and exits, then the keys that apply now.
 
     A latched mode can be left on by accident, so it must be unmistakable that
     clicks are being taken as designations rather than reaching the app. The two
@@ -381,38 +344,24 @@ def _paint_hud(
     if regions:
         parts.append(_plural(regions, "region"))
 
-    lines = ["SELECT" + SEPARATOR + "designate for the assistant" + SEPARATOR + SEPARATOR.join(parts)]
-    lines.extend(wrap_hints(_HINTS, typeface, max(80.0, width - _HUD_MARGIN * 2 - 16.0)))
-    for index, line in enumerate(lines):
-        paint_caption(skia, canvas, line, font, typeface, _HUD_MARGIN, _HUD_MARGIN + index * 24.0)
-
-
-def paint_caption(skia: Any, canvas: Any, text: str, font: Any, typeface: Any, x: float, y: float) -> None:
-    """A one-line caption in a dark rounded box with its top-left at ``(x, y)``."""
-    if font is None:
-        return
-    from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
-
-    blob = make_text_blob(text, font)
-    if blob is None:
-        return
-    text_w = measure_text_width(typeface, _FONT_SIZE, text)
-    pad, box_h = 8.0, 20.0
-    bg = skia.Paint(AntiAlias=True)
-    r, g, b, a = _CAPTION_BG
-    bg.setColor(skia.Color(r, g, b, a))
-    canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, text_w + pad * 2, box_h), 5.0, 5.0, bg)
-    ink = skia.Paint(AntiAlias=True)
-    ink.setColor(color(skia, _CAPTION_INK, 1.0))
-    canvas.drawTextBlob(blob, x + pad, y + box_h - 6.0, ink)
+    mode_line = SEPARATOR.join(("SELECT", "designate for the assistant", *parts, mode.exit, "Ctrl+Shift+E edit"))
+    paint_hud(
+        skia,
+        canvas,
+        mode_line=mode_line,
+        hints=mode.hints,
+        notices=[jump_notice],
+        placement=mode.placement,
+        pointer=mode.pointer,
+        font=font,
+        typeface=typeface,
+        width=width,
+        height=height,
+    )
 
 
 __all__ = [
-    "color",
     "describe_node",
-    "hud_font",
     "paint_brackets",
-    "paint_caption",
     "paint_selection",
-    "wrap_hints",
 ]

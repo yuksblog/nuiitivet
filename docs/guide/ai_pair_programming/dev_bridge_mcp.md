@@ -157,8 +157,9 @@ Every designation and both removals take effect *inside* the session, so `Esc`
 undoes any of them.
 
 While the mode is on your clicks go to the picker, not the app, so you cannot
-fire the button you are pointing at. A corner badge shows the mode and lists the
-keys. Widgets get **corner brackets** and areas a **soft fill**, so they stay
+fire the button you are pointing at. A badge at the bottom-left shows the mode,
+the way out, and the keys that apply right now, and steps aside when the
+pointer comes near. Widgets get **corner brackets** and areas a **soft fill**, so they stay
 distinct when one sits inside the other, and each carries a **numbered badge**
 matching what the assistant sees — "fix the second one" is unambiguous.
 
@@ -228,7 +229,7 @@ When one call builds many widgets — a helper returning a card, called from a
 loop — every one of them gets a ghost and the caption counts them
 (`14 widgets`), because the edit changes them all.
 
-Some drags are **refused**: the corner badge says why, and the file is left
+Some drags are **refused**: the badge says why, and the file is left
 alone. That happens for:
 
 - Resize
