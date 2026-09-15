@@ -164,17 +164,20 @@ def weight_target(node: Any, axis: str) -> Optional[int]:
     return int(allocated[children.index(member)])
 
 
-def resolve(proposed: float, intrinsic: Optional[int], weight: Optional[int], *, snap: bool = True) -> Landing:
+def resolve(
+    proposed: float, intrinsic: Optional[int], weight: Optional[int], *, snap: bool = True, band: float = SNAP_BAND
+) -> Landing:
     """Turn a dragged size into the value to write and the pixels it will give.
 
     ``auto`` wins over ``wt`` when both bands cover the point: the intrinsic
     size is the one that keeps meaning something when the parent changes.
+    ``band`` is how close counts; zero means only the exact size.
     """
     pixels = max(1, int(round(proposed)))
     if snap:
-        if intrinsic is not None and abs(proposed - intrinsic) <= SNAP_BAND:
+        if intrinsic is not None and abs(proposed - intrinsic) <= band:
             return Landing("auto", intrinsic)
-        if weight is not None and abs(proposed - weight) <= SNAP_BAND:
+        if weight is not None and abs(proposed - weight) <= band:
             return Landing("wt", weight)
     return Landing(pixels, pixels)
 

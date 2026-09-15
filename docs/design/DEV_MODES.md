@@ -264,7 +264,7 @@ moves.
   after it is the assistant's job, like inserting or unwrapping. A widget in a
   `GridItem` takes the item with it, since one without a child cannot be
   built.
-- **The selection is held by the pointer.** A click selects, and `↑` / `↓`
+- **The selection is held by the pointer.** A click selects, and `W` / `S`
   walk the selection so a container can be grabbed through its children. That
   is the selection's only job, so it lasts exactly as long as the pointer stays
   on the selected widget and its grab zones, and inside that rect the
@@ -292,6 +292,15 @@ moves.
   the pointer is over, read from the rects layout gave them — or, in a grid,
   to the cell under the pointer, read from the tracks layout computed. What is
   written is a landing value, a list position or a cell, never a delta.
+- **A nudge is the drag, driven by keys.** During a corner drag `W` / `A` /
+  `S` / `D` move the grabbed corner a pixel, and from the first press the
+  pointer is theirs: the hand's motion and the release point are ignored, and
+  the snap bands close to the exact size — `auto` and `wt` are written only
+  when the corner sits on them, since a key that could not choose the pixel
+  beside them would adjust nothing. The release still writes, so nothing
+  else changes — ghosts, undo, the check. The keys a drag
+  answers to are one vocabulary under the left hand, which is why the stack's
+  layer keys are `W` / `S` and the arrows are the selection walk alone.
 - **The container under the pointer decides the reading.** The deepest
   container under the pointer, looking past the dragged subtree, is where the
   drag lands: the widget's own container gives the in-place reading, any other
@@ -309,7 +318,7 @@ moves.
   most stacks put underneath is never the landing. The layer holds while the
   pointer is anywhere in the stack, and the point only picks the slot. Since
   no default can name the layer a point means, the overlay lists the stack's
-  layers with the landing marked, and `↑` / `↓` or a digit moves it: a layer
+  layers with the landing marked, and `W` / `S` or a digit moves it: a layer
   that takes a child is read within, any other gives the widget its place in
   the stack — the z-order edit a stack has no gesture for — and past the top
   is a new layer. The choice holds until the pointer leaves the stack.

@@ -466,11 +466,11 @@ def test_a_click_selects_and_the_arrows_walk_the_tree(session: _Session) -> None
     session.mode.on_mouse_release(session.app, 50, 20)
     assert session.mode.selected is session.leaf()
 
-    session.mode.on_key_press(session.app, "up", 0)
+    session.mode.on_key_press(session.app, "w", 0)
     assert session.mode.selected is session.column
     assert session.mode.candidate is session.column, "the selection outranks the hover"
 
-    session.mode.on_key_press(session.app, "down", 0)
+    session.mode.on_key_press(session.app, "s", 0)
     assert session.mode.selected is session.leaf()
 
 
@@ -493,7 +493,7 @@ def test_the_selection_survives_the_pointer_crossing_its_children(session: _Sess
     session.hover(50, 20)
     session.mode.on_mouse_press(session.app, 50, 20)
     session.mode.on_mouse_release(session.app, 50, 20)
-    session.mode.on_key_press(session.app, "up", 0)
+    session.mode.on_key_press(session.app, "w", 0)
     assert session.mode.selected is session.column
 
     session.hover(80, 30)
@@ -703,7 +703,7 @@ def test_a_pointer_on_a_child_the_widget_built_for_itself_means_the_widget(app_f
         s.mode.on_mouse_press(s.app, 25, 10)
         s.mode.on_mouse_release(s.app, 25, 10)
         assert type(s.mode.selected).__name__ == "Labeled", "a click on the label selects the owner"
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         assert type(s.mode.selected).__name__ == "Labeled", "there is nothing below it with a call of its own"
     finally:
         s.close()
@@ -1195,7 +1195,7 @@ def test_a_selection_adds_the_walk_and_the_delete(session: _Session) -> None:
     session.mode.on_mouse_press(session.app, 50, 20)
     session.mode.on_mouse_release(session.app, 50, 20)
 
-    assert session.mode.hints[-2:] == ("↑/↓ parent/child", "Del/Backspace delete")
+    assert session.mode.hints[-2:] == ("W/S parent/child", "Del/Backspace delete")
 
 
 def test_a_corner_drag_offers_only_the_snap_and_the_way_back(session: _Session) -> None:
@@ -1204,7 +1204,7 @@ def test_a_corner_drag_offers_only_the_snap_and_the_way_back(session: _Session) 
     session.mode.on_mouse_motion(session.app, 160, 40)
 
     assert session.mode.exit == "Esc cancel"
-    assert session.mode.hints == ("Alt no snap",)
+    assert session.mode.hints == ("WASD nudge", "Alt no snap")
     session.mode.on_key_press(session.app, "escape", 0)
 
 
@@ -1271,9 +1271,94 @@ def test_every_key_the_mode_binds_is_taught_in_some_state(session: _Session) -> 
     session.mode.on_key_press(session.app, "z", MOD_CTRL)
     taught |= {session.mode.exit, *session.mode.hints}
 
-    keys = ("Esc", "Alt", "Ctrl+Z", "Ctrl+Shift+Z", "Del", "↑/↓", "click", "drag a corner", "drag reorder")
+    keys = ("Esc", "Alt", "WASD", "Ctrl+Z", "Ctrl+Shift+Z", "Del", "W/S", "click", "drag a corner", "drag reorder")
     for key in (*keys, "Ctrl+Shift+Click"):
         assert any(key in hint for hint in taught), key
+
+
+# --- the nudge ------------------------------------------------------------------
+
+
+def test_d_moves_the_grabbed_corner_a_pixel_right_without_the_mouse_moving(session: _Session) -> None:
+    session.hover(50, 20)
+    session.mode.on_mouse_press(session.app, 100, 40)
+    for _ in range(3):
+        session.mode.on_key_press(session.app, "d", 0)
+
+    session.mode.on_mouse_release(session.app, 100, 40)
+
+    assert 'Text("AAA", width=103, height=40)' in session.text()
+    assert session.reloads == [str(session.path)]
+
+
+def test_the_keys_move_the_corner_that_is_held(session: _Session) -> None:
+    """``D`` on the top-left corner narrows: the key moves the corner, not the size."""
+    session.hover(50, 20)
+    session.mode.on_mouse_press(session.app, 0, 0)
+    session.mode.on_key_press(session.app, "d", 0)
+    session.mode.on_key_press(session.app, "s", 0)
+    session.mode.on_key_press(session.app, "s", 0)
+
+    session.mode.on_mouse_release(session.app, 0, 0)
+
+    assert 'Text("AAA", width=99, height=38)' in session.text()
+
+
+def test_the_first_nudge_locks_the_mouse_out_release_point_included(session: _Session) -> None:
+    session.hover(50, 20)
+    session.mode.on_mouse_press(session.app, 100, 40)
+    session.mode.on_mouse_motion(session.app, 160, 40)
+    session.mode.on_key_press(session.app, "d", 0)
+    assert session.mode.ghosts[0].rect[2] == 161.0
+
+    session.mode.on_mouse_motion(session.app, 200, 40)
+    assert session.mode.ghosts[0].rect[2] == 161.0, "the hand no longer moves it"
+
+    session.mode.on_mouse_release(session.app, 200, 40)
+
+    assert 'Text("AAA", width=161, height=40)' in session.text()
+
+
+def test_a_nudge_reaches_auto_only_on_the_exact_size(session: _Session) -> None:
+    """The band would swallow the keys' steps, so once nudged it is the size itself or nothing."""
+    natural = landing.intrinsic_size(session.leaf())[0]
+    session.hover(50, 20)
+    session.mode.on_mouse_press(session.app, 100, 40)
+    session.mode.on_mouse_motion(session.app, natural + 3, 40)
+    assert session.mode.ghosts[0].caption.startswith("w auto"), "the mouse lands in the band"
+
+    session.mode.on_key_press(session.app, "a", 0)
+    assert session.mode.ghosts[0].caption.startswith(f"w {natural + 2}"), "a key does not"
+
+    session.mode.on_key_press(session.app, "a", 0)
+    session.mode.on_key_press(session.app, "a", 0)
+    assert session.mode.ghosts[0].caption.startswith("w auto"), "until it sits on the size itself"
+
+    session.mode.on_key_press(session.app, "a", MOD_ALT)
+    assert session.mode.ghosts[0].caption.startswith(f"w {natural - 1}")
+    session.mode.on_key_press(session.app, "escape", 0)
+
+
+def test_escape_cancels_a_nudged_drag(session: _Session) -> None:
+    session.hover(50, 20)
+    before = session.text()
+    session.mode.on_mouse_press(session.app, 100, 40)
+    session.mode.on_key_press(session.app, "d", 0)
+
+    session.mode.on_key_press(session.app, "escape", 0)
+
+    assert session.mode.dragging is False and session.text() == before
+    session.mode.on_mouse_release(session.app, 100, 40)
+    assert session.text() == before, "the release after a cancel writes nothing"
+
+
+def test_the_nudge_keys_do_nothing_outside_a_corner_drag(session: _Session) -> None:
+    session.hover(50, 20)
+    before = session.text()
+
+    session.mode.on_key_press(session.app, "d", 0)
+
+    assert session.text() == before and session.mode.dragging is False
 
 
 # --- delete ---------------------------------------------------------------------
@@ -1366,7 +1451,7 @@ def test_the_root_cannot_be_deleted(app_file: Path) -> None:
     s = _Session(app_file, "build_list")
     try:
         _select(s, 50, 20)
-        s.mode.on_key_press(s.app, "up", 0)
+        s.mode.on_key_press(s.app, "w", 0)
         assert s.mode.selected is s.column
 
         before = s.text()
@@ -1760,7 +1845,7 @@ def test_inside_a_stack_a_drag_reads_its_own_layer_under_the_ones_above(app_file
 
 
 def test_over_a_stack_the_layers_are_listed_and_a_key_picks_the_one_under_the_cover(app_file: Path) -> None:
-    """A full box on top takes nothing, so the default is on top; ``↓`` reaches the Column under it."""
+    """A full box on top takes nothing, so the default is on top; ``S`` reaches the Column under it."""
     s = _Session(app_file, "build_column_and_covered_stack")
     try:
         s.hover(50, 20)
@@ -1772,11 +1857,11 @@ def test_over_a_stack_the_layers_are_listed_and_a_key_picks_the_one_under_the_co
         assert layers.landing == 2, "nothing in the top layer takes a child, so a new layer on top"
         assert _rects(s.mode.ghosts)[0].caption == "into Stack, on top"
 
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 1
         assert _rects(s.mode.ghosts)[0].caption == "into Stack, below Container", "a leaf layer gives its place"
 
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 0
         lines = _lines(s.mode.ghosts)
         assert len(lines) == 1 and lines[0].caption == "into Column, to the end  |  layer 0"
@@ -1821,16 +1906,16 @@ def test_a_stack_child_chooses_another_layer_to_take_its_place(app_file: Path) -
         captions = [g.caption for g in _rects(s.mode.ghosts)]
         assert "center  |  all 3 children" in captions, "the own layer is the stack's alignment"
 
-        s.mode.on_key_press(s.app, "up", 0)
+        s.mode.on_key_press(s.app, "w", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 3
         assert _rects(s.mode.ghosts) == [], "on top is where the top layer already is"
 
-        s.mode.on_key_press(s.app, "down", 0)
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         assert s.mode.layers is not None and s.mode.layers.landing == 1
         assert _rects(s.mode.ghosts)[0].caption == "below TextBase CCC"
 
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         assert _rects(s.mode.ghosts)[0].caption == "below TextBase AAA"
 
         s.mode.on_mouse_release(s.app, 150, 100)
@@ -1846,7 +1931,7 @@ def test_choosing_the_own_layer_again_is_the_in_place_reading(app_file: Path) ->
         s.hover(25, 10)
         s.mode.on_mouse_press(s.app, 25, 10)
         s.mode.on_mouse_motion(s.app, 150, 100)
-        s.mode.on_key_press(s.app, "down", 0)
+        s.mode.on_key_press(s.app, "s", 0)
         s.mode.on_key_press(s.app, "_2", 0)
 
         assert s.mode.layers is not None and s.mode.layers.landing == 2

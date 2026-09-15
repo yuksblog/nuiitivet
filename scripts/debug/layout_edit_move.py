@@ -18,8 +18,8 @@ body. Each container below exercises one reading:
   not into the background box
 - ``layered``: a content ``Column`` under a full-size box holding a ``fab``
   card; a card dragged over it from ``top`` lands on top by default, and the
-  list beside the ``Stack`` shows the layers -- ``↓`` or ``0`` moves the
-  landing into the ``Column`` under the box, ``↑`` back on top; a card in the
+  list beside the ``Stack`` shows the layers -- ``S`` or ``0`` moves the
+  landing into the ``Column`` under the box, ``W`` back on top; a card in the
   ``Column`` reorders under the box without a key
 - ``boxed``: a ``Container``'s only child; it aligns in the box, dragged out
   it leaves the box empty (its ``child`` argument goes with it), and any card

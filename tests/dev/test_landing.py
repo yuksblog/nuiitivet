@@ -147,6 +147,12 @@ def test_anywhere_else_lands_on_the_rounded_int() -> None:
     assert landing.resolve(180.4, 60, 300) == landing.Landing(180, 180)
 
 
+def test_a_zero_band_lands_on_auto_or_wt_only_at_the_exact_size() -> None:
+    assert landing.resolve(60.0, 60, 300, band=0.0) == landing.Landing("auto", 60)
+    assert landing.resolve(61.0, 60, 300, band=0.0) == landing.Landing(61, 61)
+    assert landing.resolve(300.0, 60, 300, band=0.0) == landing.Landing("wt", 300)
+
+
 def test_the_band_edge_is_inclusive_and_snapping_can_be_off() -> None:
     assert landing.resolve(60 + SNAP_BAND, 60, None).value == "auto"
     assert landing.resolve(60 + SNAP_BAND + 0.6, 60, None).value == 60 + int(SNAP_BAND) + 1

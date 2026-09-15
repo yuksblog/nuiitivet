@@ -131,7 +131,7 @@ class SelectMode:
         if self._band is not None:
             return ()
         if self._selection.marks():
-            return ("↑/↓ parent/child", "Backspace remove", "Ctrl+Backspace clear")
+            return ("W/S parent/child", "Backspace remove", "Ctrl+Backspace clear")
         if self.hovered is not None:
             return ("click / drag designate", "Ctrl+Shift+Click source")
         return ()
@@ -170,9 +170,9 @@ class SelectMode:
             else:
                 self._selection.remove_last()
             self._changed(app)
-        elif key == "up":
+        elif key == "w":
             self._walk_up(app)
-        elif key == "down":
+        elif key == "s":
             self._walk_down(app)
         return True
 
