@@ -30,7 +30,7 @@ _ACCENT = (0, 168, 160)
 _LAYERS_WIDTH = 220.0
 _DASH = (6.0, 4.0)
 # Beside the layer list, since the keys act on it; the badge does not repeat them.
-_LAYER_HINT = "↑/↓/0-9 layer"
+_LAYER_HINT = "W/S/0-9 layer"
 
 
 def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:

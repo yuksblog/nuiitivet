@@ -224,7 +224,7 @@ def test_a_designation_makes_leaving_a_decision_and_offers_the_ways_to_unmake_it
         _click(mode, app, 2, 2)
 
         assert mode.exit == "Enter keep  |  Esc discard"
-        assert mode.hints == ("↑/↓ parent/child", "Backspace remove", "Ctrl+Backspace clear")
+        assert mode.hints == ("W/S parent/child", "Backspace remove", "Ctrl+Backspace clear")
 
 
 def test_nothing_is_hinted_mid_drag() -> None:
@@ -264,7 +264,7 @@ def test_every_key_the_mode_binds_is_taught_in_some_state() -> None:
         _click(mode, app, 2, 2)
         taught |= {mode.exit, *mode.hints}
 
-    for key in ("Enter", "Esc", "Backspace", "Ctrl+Backspace", "↑/↓", "click", "Ctrl+Shift+Click"):
+    for key in ("Enter", "Esc", "Backspace", "Ctrl+Backspace", "W/S", "click", "Ctrl+Shift+Click"):
         assert any(key in hint for hint in taught), key
 
 
@@ -281,7 +281,7 @@ def test_up_replaces_the_member_with_its_parent() -> None:
         mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
 
-        mode.on_key_press(app, "up", 0)
+        mode.on_key_press(app, "w", 0)
 
         assert selection.members() == [column]
 
@@ -297,12 +297,12 @@ def test_down_retraces_the_way_up_came() -> None:
         mode, selection, _stub = _mode()
         mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
-        mode.on_key_press(app, "up", 0)
-        mode.on_key_press(app, "up", 0)
+        mode.on_key_press(app, "w", 0)
+        mode.on_key_press(app, "w", 0)
 
-        mode.on_key_press(app, "down", 0)
+        mode.on_key_press(app, "s", 0)
         assert selection.members() == [column]
-        mode.on_key_press(app, "down", 0)
+        mode.on_key_press(app, "s", 0)
         assert selection.members() == [leaf]
 
 
@@ -315,7 +315,7 @@ def test_down_without_a_walk_does_nothing() -> None:
         mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
 
-        mode.on_key_press(app, "down", 0)
+        mode.on_key_press(app, "s", 0)
 
         assert selection.members() == [leaf]
 
@@ -366,8 +366,8 @@ def test_every_designation_change_asks_for_a_frame() -> None:
 
         for act in (
             lambda: _click(mode, app, 2, 2),
-            lambda: mode.on_key_press(app, "up", 0),
-            lambda: mode.on_key_press(app, "down", 0),
+            lambda: mode.on_key_press(app, "w", 0),
+            lambda: mode.on_key_press(app, "s", 0),
             lambda: mode.on_key_press(app, "backspace", 0),
             lambda: mode.on_key_press(app, "enter", 0),
         ):
@@ -432,7 +432,7 @@ def test_a_walked_designation_still_survives_a_reload() -> None:
         mode = SelectMode(selection)
         mode.on_key_press(app, "d", _ENTER)
         _click(mode, app, 2, 2)
-        mode.on_key_press(app, "up", 0)
+        mode.on_key_press(app, "w", 0)
         assert selection.members() == [column]
 
     rebuilt = Column(children=[Text("AAA")])

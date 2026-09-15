@@ -146,7 +146,7 @@ painted and there is no widget to name at all.
 | `Ctrl+Shift+D` | Enter select mode (`Cmd+Shift+D` on macOS — either accelerator works throughout). `D` for *designate*: point things out for the assistant. |
 | Click | Designate the widget under the cursor; click it again to remove it. |
 | Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
-| `↑` / `↓` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
+| `W` / `S` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
 | `Backspace` | Remove the newest designation. |
 | `Ctrl+Backspace` | Remove them all. |
 | `Enter` | Keep them and leave. |
@@ -206,10 +206,11 @@ container's alignment. Hot reload applies the edit.
 | --- | --- |
 | `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside select mode it switches directly, keeping your designations as `Enter` would; `Ctrl+Shift+D` switches back. |
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
-| Click | Select it. `↑` / `↓` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
+| Click | Select it. `W` / `S` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
+| `W` / `A` / `S` / `D` while dragging a corner | Move the grabbed corner by one pixel. From the first press the mouse no longer moves it, and `auto` / `wt` are written only when the corner lands exactly on them, not within the usual band; release writes as usual. |
 | Drag the body | Reorder among its siblings, or move it into the container under the pointer. The container it would land in — its own, or another under the pointer — is **tinted**, and an **insertion line** marks the slot, captioned with the sibling it goes before. In a `Grid` the **cell** under the pointer is tinted instead, captioned with its row and column, or its area name, and with whoever already sits there. A drag that keeps the widget's place **aligns** it instead: it snaps to `start` / `center` / `end` on each axis, a dashed rect marks where every child of the container will land, and the caption names the value (`center`, `bottom-right`) and how many children move — the alignment written is the container's, so the whole column or stack moves with it. |
-| `↑` / `↓` / `0`–`9` while dragging over a `Stack` | Pick the layer the widget lands in. A list beside the stack names its layers, bottom to top, with the landing marked; a layer that is a container takes the widget inside, any other gives the widget its place in the stack, and past the top layer is a new one on top. |
+| `W` / `S` / `0`–`9` while dragging over a `Stack` | Pick the layer the widget lands in. A list beside the stack names its layers, bottom to top, with the landing marked; a layer that is a container takes the widget inside, any other gives the widget its place in the stack, and past the top layer is a new one on top. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Delete` / `Backspace` | Remove the selected widget from the source — its whole expression, children included. No confirmation: `Ctrl+Z` brings it back. A handler or import the widget used stays behind for you or the assistant to clean up. |
@@ -280,7 +281,7 @@ says which. A widget dragged in from outside reads the top layer: into it if
 that is a container, onto the stack — on top — otherwise, never into the
 background box underneath. A widget that started inside the stack reads its
 own layer wherever the pointer is, so a card under a floating button still
-reorders in its column. `↑` / `↓` or a digit moves the landing to another
+reorders in its column. `W` / `S` or a digit moves the landing to another
 layer — the content column under a floating button, say — and the choice
 holds until the pointer leaves the stack.
 

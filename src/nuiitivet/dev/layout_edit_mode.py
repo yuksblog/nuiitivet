@@ -38,6 +38,7 @@ from .hud import SEPARATOR, Placement
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
+    SNAP_BAND,
     Edit,
     EditLog,
     Refusal,
@@ -74,6 +75,9 @@ _SELECT_KEY = "d"
 _CORNER_GRAB = 10.0
 # Both, since a Mac keyboard has no Delete key.
 _DELETE_KEYS = ("delete", "backspace")
+# The keys a drag answers to: under the left hand while the right holds the
+# mouse. During a corner drag each moves the grabbed corner one pixel.
+_NUDGE_KEYS = {"w": (0.0, -1.0), "a": (-1.0, 0.0), "s": (0.0, 1.0), "d": (1.0, 0.0)}
 
 
 @dataclass
@@ -105,6 +109,10 @@ class _Resize:
     proposed: tuple[float, float] = (0.0, 0.0)
     landings: dict[str, landing.Landing] = field(default_factory=dict)
     snap: bool = True
+    # The pointer the drag reads: the mouse until a key moves it, the keys'
+    # own from then on, so a nudge is never undone by the hand.
+    pointer: tuple[float, float] = (0.0, 0.0)
+    nudged: bool = False
 
 
 @dataclass
@@ -256,14 +264,14 @@ class LayoutEditMode:
         """
         drag = self._drag
         if isinstance(drag, _Resize):
-            return ("Alt no snap",)
+            return ("WASD nudge", "Alt no snap")
         if drag is not None:
             return ()
         parts: list[str] = []
         if self.candidate is not None:
             parts += ["drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source"]
         if self.selected is not None:
-            parts += ["↑/↓ parent/child", "Del/Backspace delete"]
+            parts += ["W/S parent/child", "Del/Backspace delete"]
         if self._edits.undoable:
             parts.append("Ctrl+Z undo")
         if self._edits.redoable:
@@ -277,7 +285,7 @@ class LayoutEditMode:
 
     @property
     def selected(self) -> Optional[Any]:
-        """The widget a click chose, walked by ``↑`` / ``↓``.
+        """The widget a click chose, walked by ``W`` / ``S``.
 
         Held only while the pointer stays on it: a selection exists so a
         container can be grabbed through its children, and moving off it is
@@ -359,11 +367,13 @@ class LayoutEditMode:
             self._undo(app)
         elif key in _DELETE_KEYS and self._drag is None:
             self._delete(app)
+        elif isinstance(self._drag, _Resize) and key in _NUDGE_KEYS:
+            self._nudge(app, self._drag, key, modifier_keys)
         elif isinstance(self._drag, _Move) and self._drag.stack is not None:
             self._pick_layer(app, self._drag, key)
-        elif key == "up":
+        elif key == "w":
             self._walk_up(app)
-        elif key == "down":
+        elif key == "s":
             self._walk_down(app)
         return True
 
@@ -515,6 +525,10 @@ class LayoutEditMode:
         self._drag = drag
 
     def _update_resize(self, app: Any, drag: _Resize, x: float, y: float, mods: int) -> None:
+        if drag.nudged:
+            x, y = drag.pointer
+        else:
+            drag.pointer = (x, y)
         sx, sy = drag.corner
         dx, dy = (x - drag.start[0]) * sx, (y - drag.start[1]) * sy
         _ox, _oy, ow, oh = drag.origin
@@ -526,11 +540,14 @@ class LayoutEditMode:
             height = max(1.0, oh + dy) if "height" in drag.axes else oh
         drag.snap = not (resolve_modifiers(int(mods)) & MOD_ALT)
         drag.proposed = (width, height)
-        drag.landings = self._land(drag.node, drag.axes, width, height, snap=drag.snap)
+        # A key moves one pixel at a time, so the bands would swallow its
+        # steps: once nudged, ``auto`` and ``wt`` are hit only exactly.
+        band = 0.0 if drag.nudged else SNAP_BAND
+        drag.landings = self._land(drag.node, drag.axes, width, height, snap=drag.snap, band=band)
         invalidate(app)
 
     def _land(
-        self, node: Any, axes: dict[str, str], width: float, height: float, *, snap: bool
+        self, node: Any, axes: dict[str, str], width: float, height: float, *, snap: bool, band: float
     ) -> dict[str, landing.Landing]:
         container, _member = landing.layout_container(node)
         extent = landing.content_extent(container) if container is not None else None
@@ -549,12 +566,20 @@ class LayoutEditMode:
             if axis not in axes:
                 continue
             weight = landing.weight_target(node, axis)
-            out[axis] = landing.resolve(proposed, natural, weight, snap=snap)
+            out[axis] = landing.resolve(proposed, natural, weight, snap=snap, band=band)
         return out
+
+    def _nudge(self, app: Any, drag: _Resize, key: str, mods: int) -> None:
+        """Move the grabbed corner one pixel; from the first press the keys are the pointer."""
+        dx, dy = _NUDGE_KEYS[key]
+        px, py = drag.pointer
+        drag.pointer = (px + dx, py + dy)
+        drag.nudged = True
+        self._update_resize(app, drag, px + dx, py + dy, mods)
 
     def _finish_resize(self, app: Any, drag: _Resize, x: float, y: float, mods: int) -> None:
         self._update_resize(app, drag, x, y, mods)
-        if not travelled(drag.start, x, y):
+        if not drag.nudged and not travelled(drag.start, x, y):
             self._select(drag.node, getattr(app, "root", None))
             invalidate(app)
             return
@@ -1128,9 +1153,9 @@ class LayoutEditMode:
     def _pick_layer(self, app: Any, drag: _Move, key: str) -> None:
         """Move the landing to another layer of the stack the drag is over: a step, or a layer by number."""
         top = len(drag.layers)
-        if key == "up":
+        if key == "w":
             index = min(top, drag.layer + 1)
-        elif key == "down":
+        elif key == "s":
             index = max(0, drag.layer - 1)
         elif key.lstrip("_").isdigit():
             index = min(top, int(key.lstrip("_")))
