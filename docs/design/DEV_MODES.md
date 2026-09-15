@@ -264,6 +264,17 @@ moves.
   after it is the assistant's job, like inserting or unwrapping. A widget in a
   `GridItem` takes the item with it, since one without a child cannot be
   built.
+- **Text is one literal.** `Enter` on the selection — or a second click on
+  it — opens a field over its text; `Enter` writes the string into the
+  literal the call was given (`text=` / `label=`, else its first argument),
+  spelled as it was, and `Esc` or a click away cancels. A name, an f-string,
+  a call, or a call that takes no text is a refusal. The field is painted by
+  the overlay and never enters the tree, like everything else the mode shows;
+  it takes typed text and the input method's composition from the runner the
+  way a text field does, and publishes its caret so the candidate window
+  opens beside it. Its caret, selection, composition and clipboard keys are
+  the operations `EditableText` runs (`widgets/text_editing.py`), so the
+  field behaves like the app's own fields and neither grows a second editor.
 - **The selection is held by the pointer.** A click selects, and `W` / `S`
   walk the selection so a container can be grabbed through its children. That
   is the selection's only job, so it lasts exactly as long as the pointer stays
@@ -436,4 +447,5 @@ them all is noise nobody reads. So:
 | source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
 | layout edit mode: mode, landing values, slots and gates, span surgery, overlay | `dev/layout_edit_mode.py`, `dev/landing.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_edit_overlay.py` |
 | the badge both modes share: what it says, where it sits, how it is drawn | `dev/hud.py` |
+| the editing operations the text field shares with `EditableText` | `widgets/text_editing.py` |
 | edit log and reload request | `dev/source_edit.py` (`EditLog`), `dev/controller.py` |

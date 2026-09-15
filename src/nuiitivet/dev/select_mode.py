@@ -176,6 +176,14 @@ class SelectMode:
             self._walk_down(app)
         return True
 
+    def on_text_motion(self, app: Any, motion: int, select: bool) -> bool:
+        """Swallow the motion half of an editing key while latched. ``True`` when consumed.
+
+        ``Backspace`` removes a mark; it must not also backspace a text field
+        behind the picker.
+        """
+        return self.active
+
     def on_key_release(self, app: Any, name: str, modifier_keys: int) -> bool:
         """Swallow the key-up half while latched. ``True`` when consumed.
 

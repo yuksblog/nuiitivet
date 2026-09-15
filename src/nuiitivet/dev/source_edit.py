@@ -65,8 +65,8 @@ class Edit:
     file: str
     site: Frame
     parent_layout: str
-    #: What layout gave before, in pixels, per axis.
-    before: dict[str, int]
+    #: What was there before: pixels per axis, a place, or the text.
+    before: Mapping[str, Value]
     #: The landing value written, per keyword.
     after: dict[str, Value]
     #: What the ghost predicted layout will give, in pixels, per axis.
@@ -277,6 +277,71 @@ def plan_delete(
     if isinstance(taken, Refusal):
         return taken
     return (taken[0],)
+
+
+# The keywords a widget's shown string is passed under; failing both, its
+# first positional argument.
+_TEXT_KEYWORDS = ("text", "label")
+
+
+def text_literal(text: str, site: Frame) -> Union[tuple[str, str], Refusal]:
+    """The string the call at ``site`` shows and its spelling, ``(value, source)``, or why it cannot be edited.
+
+    The string is the ``text=`` / ``label=`` argument, else the first
+    positional one. Refused when it is a name, an attribute, an f-string, a
+    call, a triple-quoted literal, or when the call takes no text.
+    """
+    found = _text_node(text, site)
+    if isinstance(found, Refusal):
+        return found
+    source = _segment(text, found)
+    if source.lstrip("rRuU")[:3] in ('"""', "'''"):
+        return Refusal("the text is triple-quoted")
+    return (str(found.value), source)
+
+
+def plan_text(text: str, site: Frame, value: str) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The span that makes ``value`` the string the call at ``site`` shows, spelled as the old one was."""
+    found = _text_node(text, site)
+    if isinstance(found, Refusal):
+        return found
+    offsets = _Offsets(text)
+    start, end = _span_of(offsets, found)
+    old = text[start:end]
+    if old.lstrip("rRuU")[:3] in ('"""', "'''"):
+        return Refusal("the text is triple-quoted")
+    return (SpanEdit(start, end, _spell_text(value, old), replaces=old),)
+
+
+def _text_node(text: str, site: Frame) -> Union[ast.Constant, Refusal]:
+    call = locate_call(text, site)
+    if call is None:
+        return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+    node = next((kw.value for name in _TEXT_KEYWORDS for kw in call.keywords if kw.arg == name), None)
+    if node is None:
+        node = call.args[0] if call.args else None
+    if node is None:
+        return Refusal(f"{_segment(text, call.func)} takes no text")
+    if isinstance(node, ast.JoinedStr):
+        return Refusal("the text is an f-string")
+    if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+        return Refusal(f"the text is {_describe_children(text, node)}")
+    return node
+
+
+def _spell_text(value: str, like: str) -> str:
+    """``value`` as a string literal spelled like ``like``: the same quote and prefix, escaped as needed.
+
+    A raw prefix is dropped when the new text needs an escape, since a raw
+    literal cannot carry one.
+    """
+    quote = like[-1]
+    prefix = like[: like.index(quote)]
+    if "r" in prefix.lower() and not any(ch in value for ch in ("\\", quote, "\n")):
+        return f"{prefix}{quote}{value}{quote}"
+    prefix = prefix.replace("r", "").replace("R", "")
+    body = value.replace("\\", "\\\\").replace(quote, "\\" + quote).replace("\n", "\\n")
+    return f"{prefix}{quote}{body}{quote}"
 
 
 @dataclass(frozen=True)
@@ -994,6 +1059,8 @@ class EditLog:
             return _check_move_across(roots, edit, undone, instances[0])
         if edit.kind == "delete":
             return _check_deleted(instances[0], edit, undone)
+        if edit.kind == "text":
+            return _check_text(instances[0], str(edit.before["text"] if undone else edit.after["text"]))
         if edit.kind == "move":
             return _check_placed(instances[0], expected, edit.child)
         if edit.kind == "align":
@@ -1003,7 +1070,7 @@ class EditLog:
             return None
         got = {"width": int(rect[2]), "height": int(rect[3])}
         for axis, want in expected.items():
-            if abs(got[axis] - want) > SNAP_BAND:
+            if abs(got[axis] - int(want)) > SNAP_BAND:
                 return f"{axis} landed at {got[axis]}, expected {want}"
         return None
 
@@ -1112,6 +1179,28 @@ def _check_deleted(container: Any, edit: Edit, undone: bool) -> Optional[str]:
     if remaining != expected:
         return f"{edit.parent_layout} still has {remaining} children, expected {expected}"
     return None
+
+
+def _check_text(node: Any, text: str) -> Optional[str]:
+    """Whether ``node`` -- or a widget it builds for itself -- shows ``text``."""
+    shown: list[str] = []
+    pending = [node]
+    while pending:
+        current = pending.pop()
+        for attr in ("label", "text", "title"):
+            value = getattr(current, attr, None)
+            value = getattr(value, "value", value)
+            if isinstance(value, str):
+                if value == text:
+                    return None
+                shown.append(value)
+        try:
+            pending.extend(current.children_snapshot())
+        except Exception:
+            continue
+    if shown:
+        return f"text landed as {shown[0]!r}, expected {text!r}"
+    return f"reloaded, but nothing shows {text!r}"
 
 
 def _summary(edit: Edit) -> str:

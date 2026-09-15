@@ -33,7 +33,9 @@ from nuiitivet.dev.source_edit import (
     plan_keywords,
     plan_move,
     plan_move_across,
+    plan_text,
     still_applies,
+    text_literal,
     written_alignment,
 )
 from nuiitivet.layout.column import Column
@@ -673,6 +675,62 @@ def test_only_files_outside_the_install_directories_are_the_humans_to_edit(tmp_p
 
 def test_span_edit_is_a_value() -> None:
     assert SpanEdit(1, 2, "x") == SpanEdit(1, 2, "x")
+
+
+# --- text ----------------------------------------------------------------------
+
+
+def _retexted(text: str, snippet: str, value: str) -> str:
+    planned = plan_text(text, _site(text, snippet), value)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def test_the_first_positional_string_is_the_text() -> None:
+    text = 'root = Text("AAA", width=100)\n'
+
+    assert text_literal(text, _site(text, 'Text("AAA", width=100)')) == ("AAA", '"AAA"')
+    assert _retexted(text, 'Text("AAA", width=100)', "Save") == 'root = Text("Save", width=100)\n'
+
+
+def test_a_text_or_label_keyword_wins_over_the_positional_argument() -> None:
+    text = "root = Button(icon, label='Go')\n"
+
+    assert _retexted(text, "Button(icon, label='Go')", "Stop") == "root = Button(icon, label='Stop')\n"
+
+
+def test_the_quote_is_kept_and_escaped_when_the_text_needs_it() -> None:
+    text = 'root = Text("a")\n'
+
+    assert _retexted(text, 'Text("a")', 'say "hi"') == 'root = Text("say \\"hi\\"")\n'
+
+
+def test_a_raw_prefix_is_kept_until_the_text_needs_an_escape() -> None:
+    text = 'root = Text(r"a")\n'
+
+    assert _retexted(text, 'Text(r"a")', "b") == 'root = Text(r"b")\n'
+    assert _retexted(text, 'Text(r"a")', "a\\b") == 'root = Text("a\\\\b")\n'
+
+
+@pytest.mark.parametrize(
+    "call, reason",
+    [
+        ("Text(title)", "bound to title"),
+        ("Text(vm.title)", "bound to vm.title"),
+        ('Text(f"{n} items")', "an f-string"),
+        ('Text(tr("save"))', "the result of tr(...)"),
+        ("Container(width=1)", "Container takes no text"),
+        ('Text("""a""")', "triple-quoted"),
+    ],
+)
+def test_text_that_is_not_one_plain_literal_is_refused(call: str, reason: str) -> None:
+    text = f"root = {call}\n"
+
+    found = text_literal(text, _site(text, call))
+    planned = plan_text(text, _site(text, call), "x")
+
+    assert isinstance(found, Refusal) and reason in found.reason
+    assert isinstance(planned, Refusal) and reason in planned.reason
 
 
 # --- deleting ------------------------------------------------------------------

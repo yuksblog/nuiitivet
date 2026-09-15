@@ -37,6 +37,10 @@ body. Each container below exercises one reading:
 The panels themselves are children of the outer Rows: press one's padding,
 between the cards, to reorder it there or move it into ``top``.
 
+- ``labels``: literal strings to edit in place -- select one and press
+  ``Enter`` (or click it again); the last two come from a variable and an
+  f-string, so the badge refuses them
+
 Every landed move rewrites this file and hot reload applies it; Cmd+Z undoes.
 """
 
@@ -140,16 +144,29 @@ def build_root() -> nv.Widget:
         column_gap=8,
         padding=8,
     )
+    title = "bound"
+    labels = nv.Row(
+        children=[
+            nv.Button("Save"),
+            nv.Text("Hello", padding=8),
+            nv.Text(title, padding=8),
+            nv.Text(f"{title} f-string", padding=8),
+        ],
+        gap=8,
+        padding=8,
+    )
     return nv.Column(
         children=[
             nv.Text("top: Row", padding=(8, 0)),
             panel(top),
-            nv.Text("left: Column / empty: Column / stacked: Stack / layered: Stack / boxed: Container", padding=(8, 0)),
+            nv.Text("left / empty: Column, stacked / layered: Stack, boxed: Container", padding=(8, 0)),
             nv.Row(children=[panel(left), panel(empty), panel(stacked), panel(layered), panel(boxed)], gap=16),
             nv.Text("from_data: Column.builder / comprehension: Row", padding=(8, 0)),
             nv.Row(children=[panel(from_data), panel(comprehension)], gap=16),
             nv.Text("grid: Grid / areas: Grid.named_areas", padding=(8, 0)),
             nv.Row(children=[panel(grid), panel(areas)], gap=16),
+            nv.Text("labels: Enter / a second click edits the text", padding=(8, 0)),
+            panel(labels),
         ],
         padding=16,
         gap=8,
@@ -157,7 +174,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="Layout Edit mode: move across", width=900, height=900))
+    app = nv.App(nv.Window(content=build_root, title="Layout Edit mode: move across", width=900, height=980))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")
