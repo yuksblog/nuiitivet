@@ -23,6 +23,7 @@ from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
+from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
 
 _CHORD = MOD_CTRL | MOD_SHIFT
 
@@ -60,6 +61,11 @@ def build():
 
 def build_bound():
     return Column(children=[Text("AAA", width=w, height=40)], gap=0)
+
+
+def build_bound_text():
+    title = "AAA"
+    return Column(children=[Text(title, width=100, height=40)], gap=0)
 
 
 def build_square():
@@ -1195,7 +1201,7 @@ def test_a_selection_adds_the_walk_and_the_delete(session: _Session) -> None:
     session.mode.on_mouse_press(session.app, 50, 20)
     session.mode.on_mouse_release(session.app, 50, 20)
 
-    assert session.mode.hints[-2:] == ("W/S parent/child", "Del/Backspace delete")
+    assert session.mode.hints[-3:] == ("W/S parent/child", "Del/Backspace delete", "Enter edit text")
 
 
 def test_a_corner_drag_offers_only_the_snap_and_the_way_back(session: _Session) -> None:
@@ -1271,8 +1277,11 @@ def test_every_key_the_mode_binds_is_taught_in_some_state(session: _Session) -> 
     session.mode.on_key_press(session.app, "z", MOD_CTRL)
     taught |= {session.mode.exit, *session.mode.hints}
 
+    session.mode.on_key_press(session.app, "enter", 0)
+    taught |= {session.mode.exit, *session.mode.hints}
+
     keys = ("Esc", "Alt", "WASD", "Ctrl+Z", "Ctrl+Shift+Z", "Del", "W/S", "click", "drag a corner", "drag reorder")
-    for key in (*keys, "Ctrl+Shift+Click"):
+    for key in (*keys, "Ctrl+Shift+Click", "Enter edit", "Enter write"):
         assert any(key in hint for hint in taught), key
 
 
@@ -1502,6 +1511,224 @@ def test_an_undone_delete_is_checked_at_its_slot(app_file: Path) -> None:
         assert s.edits.after_reload([s.root]) is None, "the old tree still holds BBB at its slot"
     finally:
         s.close()
+
+
+# --- the text field ------------------------------------------------------------
+
+
+def _editing(session: _Session) -> None:
+    _select(session, 50, 20)
+    session.mode.on_key_press(session.app, "enter", 0)
+
+
+def test_enter_opens_a_field_with_the_widgets_text(session: _Session) -> None:
+    _editing(session)
+
+    editor = session.mode.editor
+    assert editor is not None and editor.value == TextEditingValue("AAA", TextRange(3, 3))
+    assert editor.rect == (0.0, 0.0, 100.0, 40.0)
+    assert session.mode.exit == "Esc cancel"
+    assert session.mode.hints == ("Enter write", "Shift+←/→ select", "Ctrl+A/C/X/V")
+
+
+def test_typing_and_enter_rewrite_the_literal(session: _Session) -> None:
+    _editing(session)
+    assert session.mode.on_text(session.app, "!") is True
+
+    session.mode.on_key_press(session.app, "enter", 0)
+
+    assert 'Text("AAA!", width=100, height=40)' in session.text()
+    assert session.reloads == [str(session.path)]
+    assert session.edits.pending is not None and session.edits.pending.kind == "text"
+    assert session.mode.editor is None
+    assert [(g.shape, g.caption) for g in session.mode.ghosts] == [("rect", 'text "AAA!"')]
+    assert session.mode.selected is not None, "the widget keeps its path through the reload"
+
+
+def test_the_caret_and_the_editing_keys_edit_the_field_not_the_tree(session: _Session) -> None:
+    _editing(session)
+    before = session.text()
+    mode, app = session.mode, session.app
+
+    mode.on_key_press(app, "backspace", 0)
+    mode.on_key_press(app, "home", 0)
+    mode.on_text(app, "x")
+    mode.on_key_press(app, "right", 0)
+    mode.on_key_press(app, "delete", 0)
+    mode.on_key_press(app, "end", 0)
+    mode.on_text(app, "w")
+    mode.on_key_press(app, "left", 0)
+
+    editor = mode.editor
+    assert editor is not None and editor.value == TextEditingValue("xAw", TextRange(2, 2))
+    assert session.text() == before and mode.selected is session.leaf(), "no delete, no walk"
+
+
+def test_shift_extends_the_selection_and_typing_replaces_it(session: _Session) -> None:
+    _editing(session)
+    mode, app = session.mode, session.app
+
+    mode.on_key_press(app, "left", MOD_SHIFT)
+    mode.on_key_press(app, "left", MOD_SHIFT)
+    editor = mode.editor
+    assert editor is not None and editor.value.selection == TextRange(3, 1)
+
+    mode.on_text(app, "b")
+
+    editor = mode.editor
+    assert editor is not None and editor.value == TextEditingValue("Ab", TextRange(2, 2))
+
+
+def test_the_accelerator_shortcuts_select_all_and_reach_the_clipboard(
+    session: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class _Clipboard:
+        text = ""
+
+        def get_text(self) -> str:
+            return self.text
+
+        def set_text(self, text: str) -> None:
+            self.text = text
+
+    clipboard = _Clipboard()
+    monkeypatch.setattr("nuiitivet.dev.layout_edit_mode.get_system_clipboard", lambda: clipboard)
+    _editing(session)
+    mode, app = session.mode, session.app
+
+    mode.on_key_press(app, "a", MOD_CTRL)
+    mode.on_key_press(app, "x", MOD_CTRL)
+    editor = mode.editor
+    assert editor is not None and editor.value.text == "" and clipboard.text == "AAA"
+
+    mode.on_key_press(app, "v", MOD_META)
+    mode.on_key_press(app, "v", MOD_META)
+    editor = mode.editor
+    assert editor is not None and editor.value == TextEditingValue("AAAAAA", TextRange(6, 6))
+
+    mode.on_key_press(app, "a", MOD_CTRL)
+    mode.on_key_press(app, "c", MOD_CTRL)
+    assert clipboard.text == "AAAAAA" and mode.selected is session.leaf(), "the field took the keys, not the tree"
+
+
+def test_the_enter_that_confirms_a_composition_does_not_write(session: _Session) -> None:
+    _editing(session)
+    before = session.text()
+    mode, app = session.mode, session.app
+
+    mode.on_ime_composition(app, "か", 0, 1)
+    mode.on_key_press(app, "enter", 0)
+    assert mode.editor is not None, "the text is the input method's until it commits"
+
+    mode.on_text(app, "火")
+    mode.on_key_press(app, "enter", 0)
+    assert mode.editor is not None and session.text() == before, "the commit's own Enter"
+
+    mode.on_key_press(app, "enter", 0)
+    assert mode.editor is None and 'Text("AAA火"' in session.text()
+
+
+def test_text_motions_are_swallowed_while_latched(session: _Session) -> None:
+    from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE
+
+    assert session.mode.on_text_motion(session.app, TEXT_MOTION_BACKSPACE, False) is True
+
+    session.mode.on_key_press(session.app, "escape", 0)
+
+    assert session.mode.on_text_motion(session.app, TEXT_MOTION_BACKSPACE, False) is False
+
+
+def test_control_characters_are_not_typed(session: _Session) -> None:
+    _editing(session)
+
+    session.mode.on_text(session.app, "\r")
+
+    editor = session.mode.editor
+    assert editor is not None and editor.value.text == "AAA"
+
+
+def test_a_composition_shows_at_the_caret_until_its_commit_arrives_as_text(session: _Session) -> None:
+    _editing(session)
+
+    assert session.mode.on_ime_composition(session.app, "か", 0, 1) is True
+    editor = session.mode.editor
+    assert editor is not None and editor.value == TextEditingValue("AAAか", TextRange(3, 4), TextRange(3, 4))
+
+    session.mode.on_text(session.app, "火")
+    editor = session.mode.editor
+    assert editor is not None and editor.value == TextEditingValue("AAA火", TextRange(4, 4))
+
+
+def test_a_composition_without_a_field_open_is_not_consumed(session: _Session) -> None:
+    assert session.mode.on_ime_composition(session.app, "か", 0, 1) is False
+
+
+def test_escape_and_a_click_close_the_field_without_writing(session: _Session) -> None:
+    _editing(session)
+    before = session.text()
+    session.mode.on_text(session.app, "!")
+
+    session.mode.on_key_press(session.app, "escape", 0)
+    assert session.mode.editor is None and session.text() == before
+
+    _editing(session)
+    session.mode.on_mouse_press(session.app, 50, 20)
+    assert session.mode.editor is None and session.text() == before
+
+
+def test_a_second_click_on_the_selection_opens_the_field(session: _Session) -> None:
+    _select(session, 50, 20)
+    assert session.mode.editor is None
+
+    _select(session, 50, 20)
+
+    assert session.mode.editor is not None
+
+
+def test_text_without_a_field_open_is_not_consumed(session: _Session) -> None:
+    assert session.mode.on_text(session.app, "a") is False
+
+
+def test_bound_text_is_refused_when_the_field_would_open(app_file: Path) -> None:
+    s = _Session(app_file, "build_bound_text")
+    try:
+        _select(s, 50, 20)
+
+        s.mode.on_key_press(s.app, "enter", 0)
+
+        assert s.mode.editor is None and s.mode.notice == "the text is bound to title"
+    finally:
+        s.close()
+
+
+def test_a_text_edit_undoes(session: _Session) -> None:
+    _editing(session)
+    session.mode.on_text(session.app, "!")
+    session.mode.on_key_press(session.app, "enter", 0)
+
+    session.mode.on_key_press(session.app, "z", MOD_CTRL)
+
+    assert 'Text("AAA", width=100, height=40)' in session.text()
+    assert session.mode.notice == "undoing text → AAA!"
+
+
+def test_the_reload_check_reads_the_text_the_widget_shows(session: _Session) -> None:
+    _editing(session)
+    session.mode.on_text(session.app, "!")
+    session.mode.on_key_press(session.app, "enter", 0)
+
+    assert session.edits.after_reload([session.root]) == "text landed as 'AAA', expected 'AAA!'"
+
+    session.mode.on_key_press(session.app, "z", MOD_CTRL)
+    assert session.edits.after_reload([session.root]) is None, "the old tree shows the old text"
+
+
+def test_a_reload_closes_the_field(session: _Session) -> None:
+    _editing(session)
+
+    session.edits.after_reload([session.root])
+
+    assert session.mode.editor is None
 
 
 # --- undo -----------------------------------------------------------------------

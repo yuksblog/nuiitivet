@@ -13,7 +13,8 @@ follows is what applies it. The tree is never touched directly: what is on
 screen always came from the code.
 
 ``Delete`` on the selection removes its expression the same way, with no
-confirmation. Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and
+confirmation, and ``Enter`` opens a field over its text whose ``Enter``
+rewrites the string literal. Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and
 select mode's switch directly, each mode closing the other on entry. There is
 no commit: every release writes, so ``Ctrl+Z`` is what "I did not mean that"
 reaches for, and ``Ctrl+Shift+Z`` takes it back.
@@ -23,14 +24,24 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import ancestors, global_visual_rect
-from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
+from nuiitivet.input.codes import MOD_ALT, MOD_SHIFT, resolve_modifiers, text_motion_for_key
 from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.grid import Grid
 from nuiitivet.layout.stack import Stack
+from nuiitivet.platform import get_system_clipboard
+from nuiitivet.widgets.text_editing import (
+    TextEditingValue,
+    TextRange,
+    apply_motion,
+    apply_shortcut,
+    compose_text,
+    insert_text,
+)
 
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
@@ -56,6 +67,8 @@ from .source_edit import (
     plan_keywords,
     plan_move,
     plan_move_across,
+    plan_text,
+    text_literal,
     written_alignment,
 )
 
@@ -75,6 +88,8 @@ _SELECT_KEY = "d"
 _CORNER_GRAB = 10.0
 # Both, since a Mac keyboard has no Delete key.
 _DELETE_KEYS = ("delete", "backspace")
+# Seconds within which a second click on the selection opens its text.
+_DOUBLE_CLICK = 0.4
 # The keys a drag answers to: under the left hand while the right holds the
 # mouse. During a corner drag each moves the grabbed corner one pixel.
 _NUDGE_KEYS = {"w": (0.0, -1.0), "a": (-1.0, 0.0), "s": (0.0, 1.0), "d": (1.0, 0.0)}
@@ -93,6 +108,27 @@ class Ghost:
     rect: Rect
     caption: str
     shape: str = "rect"
+
+
+@dataclass
+class TextEditor:
+    """The inline field over a widget's text, for the overlay to draw.
+
+    ``value`` carries the text, the selection whose end is the caret, and the
+    input method's uncommitted text as the composing range.
+    """
+
+    rect: Rect
+    value: TextEditingValue
+
+
+@dataclass
+class _Editing:
+    node: Callable[[], Any]
+    value: TextEditingValue
+    # Set by the commit that confirms a composition, which on macOS lands
+    # before that Enter's key press; read once by the next key.
+    ime_just_committed: bool = False
 
 
 @dataclass
@@ -231,6 +267,9 @@ class LayoutEditMode:
         self._ghosts: list[Ghost] = []
         self._notice: Optional[str] = None
         self._placement = Placement()
+        self._editing: Optional[_Editing] = None
+        # The last click's time and target, so a second one can open its text.
+        self._last_click: Optional[tuple[float, Callable[[], Any]]] = None
 
     # --- state for the overlay -------------------------------------------
 
@@ -250,9 +289,19 @@ class LayoutEditMode:
         return self._placement
 
     @property
+    def editor(self) -> Optional[TextEditor]:
+        """The field open over the selection's text, or ``None``."""
+        editing = self._editing
+        node = editing.node() if editing is not None else None
+        rect = global_visual_rect(node) if node is not None else None
+        if editing is None or rect is None:
+            return None
+        return TextEditor(rect, editing.value)
+
+    @property
     def exit(self) -> str:
         """What ``Esc`` does right now, for the badge's first line."""
-        return "Esc cancel" if self._drag is not None else "Esc leave"
+        return "Esc cancel" if self._drag is not None or self._editing is not None else "Esc leave"
 
     @property
     def hints(self) -> tuple[str, ...]:
@@ -263,6 +312,8 @@ class LayoutEditMode:
         that lists everything at once teaches nothing.
         """
         drag = self._drag
+        if self._editing is not None:
+            return ("Enter write", "Shift+←/→ select", "Ctrl+A/C/X/V")
         if isinstance(drag, _Resize):
             return ("WASD nudge", "Alt no snap")
         if drag is not None:
@@ -271,7 +322,7 @@ class LayoutEditMode:
         if self.candidate is not None:
             parts += ["drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source"]
         if self.selected is not None:
-            parts += ["W/S parent/child", "Del/Backspace delete"]
+            parts += ["W/S parent/child", "Del/Backspace delete", "Enter edit text"]
         if self._edits.undoable:
             parts.append("Ctrl+Z undo")
         if self._edits.redoable:
@@ -355,6 +406,9 @@ class LayoutEditMode:
         if key == _SELECT_KEY and chord and getattr(app, "_select_mode", None) is not None:
             return False
         self._clear_notice()
+        if self._editing is not None:
+            self._edit_key(app, key, modifier_keys)
+            return True
         if key == "escape":
             if self._drag is not None:
                 self._drag = None
@@ -367,6 +421,8 @@ class LayoutEditMode:
             self._undo(app)
         elif key in _DELETE_KEYS and self._drag is None:
             self._delete(app)
+        elif key == "enter" and self._drag is None:
+            self._open_editor(app)
         elif isinstance(self._drag, _Resize) and key in _NUDGE_KEYS:
             self._nudge(app, self._drag, key, modifier_keys)
         elif isinstance(self._drag, _Move) and self._drag.stack is not None:
@@ -379,6 +435,41 @@ class LayoutEditMode:
 
     def on_key_release(self, app: Any, name: str, modifier_keys: int) -> bool:
         """Swallow the key-up half while latched. ``True`` when consumed."""
+        return self._active
+
+    def on_text(self, app: Any, text: str) -> bool:
+        """Type into the open field. ``True`` when consumed; ``False`` with no field open.
+
+        Text comes this way rather than as key names so that shifted keys,
+        symbols and composed input read as the platform spells them.
+        """
+        editing = self._editing
+        if not self._active or editing is None:
+            return False
+        editing.ime_just_committed = editing.value.is_composing
+        inserted = insert_text(editing.value, text)
+        if inserted is not None:
+            editing.value = inserted
+        invalidate(app)
+        return True
+
+    def on_ime_composition(self, app: Any, text: str, start: int, length: int) -> bool:
+        """Show the input method's uncommitted text at the caret. ``True`` when consumed."""
+        editing = self._editing
+        if not self._active or editing is None:
+            return False
+        composed = compose_text(editing.value, text, start, length)
+        if composed is not None:
+            editing.value = composed
+        invalidate(app)
+        return True
+
+    def on_text_motion(self, app: Any, motion: int, select: bool) -> bool:
+        """Swallow the motion half of an editing key while latched. ``True`` when consumed.
+
+        The field reads its keys by name from ``on_key_press``, and the key
+        that deleted a widget must not also backspace a text field behind it.
+        """
         return self._active
 
     def _enter(self, app: Any) -> None:
@@ -405,6 +496,8 @@ class LayoutEditMode:
         self._press_node = None
         self._drag = None
         self._hover = None
+        self._editing = None
+        self._last_click = None
         self._select(None, None)
 
     def _select(self, node: Optional[Any], root: Optional[Any]) -> None:
@@ -422,6 +515,9 @@ class LayoutEditMode:
         app = self._app() if self._app is not None else None
         if not self._active or app is None:
             return
+        # The field held a widget of the old tree; the text it showed is gone
+        # with it.
+        self._editing = None
         root = getattr(app, "root", None)
         selected = None
         if root is not None and self._selected_path is not None:
@@ -445,6 +541,8 @@ class LayoutEditMode:
         if not self._active:
             return False
         self._clear_notice()
+        # A click away from the field abandons it; only Enter writes.
+        self._editing = None
         candidate = self.candidate
         if candidate is not None:
             corner = _corner_at(candidate, float(x), float(y))
@@ -471,7 +569,13 @@ class LayoutEditMode:
             return True
         if press is None:
             return True
-        self._select(_target(app, press[0], press[1]), getattr(app, "root", None))
+        node = _target(app, press[0], press[1])
+        self._select(node, getattr(app, "root", None))
+        now, last, ref = time.monotonic(), self._last_click, weak(node)
+        self._last_click = (now, ref) if ref is not None else None
+        if node is not None and last is not None and last[1]() is node and now - last[0] <= _DOUBLE_CLICK:
+            self._last_click = None
+            self._open_editor(app)
         invalidate(app)
         return True
 
@@ -960,7 +1064,7 @@ class LayoutEditMode:
         if isinstance(planned, Refusal):
             return planned
         removal, insertion = planned
-        before: dict[str, int] = {"count": len(drag.siblings)}
+        before: dict[str, Value] = {"count": len(drag.siblings)}
         before.update(_place(drag.home[:2]) if drag.home is not None else {"slot": drag.index})
         return Edit(
             kind="move",
@@ -1087,6 +1191,91 @@ class LayoutEditMode:
             self._request_reload(edit.file)
         invalidate(app)
 
+    # --- the text field ---------------------------------------------------
+
+    def _open_editor(self, app: Any) -> None:
+        """Open the field over the selection's text. A refusal becomes the notice."""
+        node = self.selected
+        if node is None:
+            return
+        located = _source_of(node, "this widget")
+        if isinstance(located, Refusal):
+            self._notice = located.reason
+            invalidate(app)
+            return
+        frame, text = located
+        found = text_literal(text, frame)
+        if isinstance(found, Refusal):
+            self._notice = found.reason
+            invalidate(app)
+            return
+        value, _source = found
+        caret = TextRange(len(value), len(value))
+        self._editing = _Editing(weak(node) or (lambda: None), TextEditingValue(value, caret))
+        invalidate(app)
+
+    def _edit_key(self, app: Any, key: str, modifier_keys: int) -> None:
+        """One key in the field: a motion, a shortcut, a write or a cancel."""
+        editing = self._editing
+        assert editing is not None
+        just_committed, editing.ime_just_committed = editing.ime_just_committed, False
+        motion = text_motion_for_key(key)
+        if key == "escape":
+            self._editing = None
+        elif key == "enter":
+            # Not the Enter that confirms a composition: the text is the
+            # input method's until it commits, and its commit arrived just now.
+            if not (editing.value.is_composing or just_committed):
+                self._commit_text(app)
+                return
+        elif motion is not None:
+            select = bool(resolve_modifiers(int(modifier_keys)) & MOD_SHIFT)
+            moved = apply_motion(editing.value, motion, select=select)
+            if moved is not None:
+                editing.value = moved
+        elif accel_held(modifier_keys):
+            changed = apply_shortcut(editing.value, key, get_system_clipboard())
+            if changed is not None:
+                editing.value = changed
+        invalidate(app)
+
+    def _commit_text(self, app: Any) -> None:
+        editing, self._editing = self._editing, None
+        node = editing.node() if editing is not None else None
+        if editing is None or node is None:
+            return
+        rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
+        text = editing.value.text
+        self._write(app, self._plan_text(node, text), [Ghost(rect, f'text "{text}"')])
+        invalidate(app)
+
+    def _plan_text(self, node: Any, value: str) -> Edit | Refusal:
+        """The edit the field asks for, or why there is none."""
+        located = _source_of(node, "this widget")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        found = text_literal(text, frame)
+        if isinstance(found, Refusal):
+            return found
+        spans = plan_text(text, frame, value)
+        if isinstance(spans, Refusal):
+            return spans
+        root = self._root()
+        instances = widgets_built_at(root, frame, type(node).__name__) if root is not None else []
+        return Edit(
+            kind="text",
+            file=frame.file,
+            site=frame,
+            parent_layout="",
+            before={"text": found[0]},
+            after={"text": value},
+            expected={},
+            instances=len(instances) or 1,
+            spans=spans,
+            widget=type(node).__name__,
+        )
+
     # --- delete -----------------------------------------------------------
 
     def _delete(self, app: Any) -> None:
@@ -1123,7 +1312,7 @@ class LayoutEditMode:
         spans = plan_delete(text, frame, index, count, from_host=host)
         if isinstance(spans, Refusal):
             return spans
-        before: dict[str, int] = {"count": count}
+        before: dict[str, Value] = {"count": count}
         home = reorder.placement(container, member) if isinstance(container, Grid) else None
         before.update(_place(home[:2]) if home is not None else {"slot": index})
         child = reorder.inner(member) if isinstance(container, Grid) else reorder.visible(member)
@@ -1500,4 +1689,4 @@ def _anchored(origin: Rect, corner: tuple[int, int], size: tuple[float, float]) 
     return (x if sx > 0 else x + w - nw, y if sy > 0 else y + h - nh, nw, nh)
 
 
-__all__ = ["Ghost", "LayerList", "LayoutEditMode"]
+__all__ = ["Ghost", "LayerList", "LayoutEditMode", "TextEditor"]

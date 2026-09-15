@@ -688,3 +688,14 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
         mode.on_key_press(app, "enter", 0)
 
         assert mode.selection.members() == []
+
+
+def test_text_motions_are_swallowed_while_latched() -> None:
+    from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE
+
+    mode, _selection, app = _mode()
+    assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is False
+
+    mode.on_key_press(app, "d", _ENTER)
+
+    assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True

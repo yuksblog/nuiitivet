@@ -33,6 +33,14 @@ class _Canvas:
         return _record
 
 
+class _IME:
+    def __init__(self) -> None:
+        self.rects: list[tuple[float, float, float, float]] = []
+
+    def update_cursor_rect(self, x: float, y: float, width: float, height: float) -> None:
+        self.rects.append((x, y, width, height))
+
+
 class _App:
     def __init__(self, root: Any, mode: Any = None, jump: Any = None) -> None:
         self.root = root
@@ -41,6 +49,7 @@ class _App:
         self.modifier_keys = 0
         self._layout_edit_mode = mode
         self._source_jump = jump
+        self.ime = _IME()
 
     def invalidate(self) -> None:
         pass
@@ -258,6 +267,42 @@ def test_a_notice_outliving_the_mode_still_paints(monkeypatch: pytest.MonkeyPatc
         lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
 
         assert seen["mode_line"] is None and seen["notices"] == ["width landed at 100, expected 160"]
+
+
+def test_the_open_field_paints_over_the_widget() -> None:
+    """The field needs the widget's site, so the tree is built with capture on."""
+    from nuiitivet.dev import source
+
+    source.install()
+    try:
+        with mount(Column(children=[Text("AAA", width=100, height=40)])) as host:
+            host.layout(300, 200)
+            mode = LayoutEditMode(EditLog())
+            app = _App(host.root, mode)
+            mode.on_key_press(app, "e", _ENTER)
+            mode.on_mouse_motion(app, 50, 20)
+            mode.on_mouse_press(app, 50, 20)
+            mode.on_mouse_release(app, 50, 20)
+            mode.on_key_press(app, "enter", 0)
+            assert mode.editor is not None, mode.notice
+            canvas = _Canvas()
+
+            lo.paint_layout_edit(app, canvas, app.width, app.height)
+
+            assert canvas.calls.count("drawRoundRect") >= 3, "the field's box and edge, plus the badge"
+            assert "drawTextBlob" in canvas.calls and "drawLine" in canvas.calls, "the text and the caret"
+            assert app.ime.rects, "the caret's rect reaches the IME, so the candidate window opens beside it"
+            assert app.ime.rects[-1][0] > 0.0 and app.ime.rects[-1][3] > 0.0
+
+            lines_with_caret = canvas.calls.count("drawLine")
+            mode.on_key_press(app, "a", MOD_CTRL)
+            canvas = _Canvas()
+            lo.paint_layout_edit(app, canvas, app.width, app.height)
+
+            assert canvas.calls.count("drawRect") == 2, "the candidate's wash, and the selection's highlight"
+            assert canvas.calls.count("drawLine") == lines_with_caret - 1, "no caret while text is selected"
+    finally:
+        source.uninstall()
 
 
 def test_the_layer_list_ends_with_the_keys_that_pick_one() -> None:

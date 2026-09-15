@@ -214,6 +214,7 @@ container's alignment. Hot reload applies the edit.
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
 | `Delete` / `Backspace` | Remove the selected widget from the source — its whole expression, children included. No confirmation: `Ctrl+Z` brings it back. A handler or import the widget used stays behind for you or the assistant to clean up. |
+| `Enter`, or a second click on the selection | Edit its text in place. A field opens over the widget; `Enter` writes the new string into the literal the code passed (`text=` / `label=`, or the first argument), `Esc` or a click elsewhere cancels. The field edits like a text field: `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. Text that comes from a variable, an f-string or a function call cannot be edited here — the badge says so. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
 | `Ctrl+Shift+Z` | Redo what `Ctrl+Z` undid. A new edit clears what could be redone. |
 | `Esc` | Cancel the drag in flight; otherwise leave. |

@@ -68,16 +68,16 @@ def _dev_consumed(app: Any, hook: str, *args: Any) -> bool:
 
     Absent -- production, or any run without the dev runner -- this is three
     ``getattr`` calls returning ``None``, so the input path pays nothing for it.
-    A failure inside a layer must never swallow the human's input, so it
-    degrades to "not consumed" and the event continues to the next layer and
-    then to the app.
+    A layer without the hook is skipped. A failure inside a layer must never
+    swallow the human's input, so it degrades to "not consumed" and the event
+    continues to the next layer and then to the app.
     """
     for attr in _DEV_INPUT_LAYERS:
-        layer = getattr(app, attr, None)
-        if layer is None:
+        handler = getattr(getattr(app, attr, None), hook, None)
+        if handler is None:
             continue
         try:
-            if getattr(layer, hook)(*args):
+            if handler(*args):
                 return True
         except Exception:
             exception_once(logger, f"pyglet{attr}_exc", f"Dev input layer {attr} raised")
@@ -1206,6 +1206,12 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_text(text):
+        if _dev_consumed(win, "on_text", win, text):
+            try:
+                win.invalidate()
+            except Exception:
+                exception_once(logger, "pyglet_on_text_invalidate_exc", "win.invalidate raised")
+            return True
         try:
             handled = bool(win._dispatch_text(text))
         except Exception:
@@ -1232,6 +1238,12 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     @window.event
     def on_text_motion(motion):
         motion_code = _normalize_text_motion(motion)
+        if _dev_consumed(win, "on_text_motion", win, motion_code, False):
+            try:
+                win.invalidate()
+            except Exception:
+                exception_once(logger, "pyglet_on_text_motion_invalidate_exc", "win.invalidate raised")
+            return True
         try:
             handled = bool(win._dispatch_text_motion(motion_code, select=False))
         except Exception:
@@ -1246,6 +1258,12 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     @window.event
     def on_text_motion_select(motion):
         motion_code = _normalize_text_motion(motion)
+        if _dev_consumed(win, "on_text_motion", win, motion_code, True):
+            try:
+                win.invalidate()
+            except Exception:
+                exception_once(logger, "pyglet_on_text_motion_invalidate_exc", "win.invalidate raised")
+            return True
         try:
             handled = bool(win._dispatch_text_motion(motion_code, select=True))
         except Exception:
@@ -1259,6 +1277,12 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_ime_composition(text, start, length):
+        if _dev_consumed(win, "on_ime_composition", win, text, start, length):
+            try:
+                win.invalidate()
+            except Exception:
+                exception_once(logger, "pyglet_on_ime_composition_invalidate_exc", "win.invalidate raised")
+            return True
         try:
             handled = bool(win._dispatch_ime_composition(text, start, length))
         except Exception:

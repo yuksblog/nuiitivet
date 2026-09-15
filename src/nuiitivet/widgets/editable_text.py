@@ -1,22 +1,12 @@
 from __future__ import annotations
 
 import logging
-import unicodedata
 from typing import Optional, Tuple, Union, cast
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
-from nuiitivet.input.codes import (
-    MOD_CTRL,
-    MOD_META,
-    TEXT_MOTION_BACKSPACE,
-    TEXT_MOTION_DELETE,
-    TEXT_MOTION_END,
-    TEXT_MOTION_HOME,
-    TEXT_MOTION_LEFT,
-    TEXT_MOTION_RIGHT,
-)
+from nuiitivet.input.codes import MOD_CTRL, MOD_META
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.widgeting.context_lookup import find_window
@@ -29,7 +19,15 @@ from nuiitivet.widgets.interaction import (
     FocusSource,
 )
 from nuiitivet.widgets.input_filter import InputFilter, InputFilterLike, to_input_filter
-from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
+from nuiitivet.widgets.text_editing import (
+    TextEditingValue,
+    TextRange,
+    apply_motion,
+    apply_shortcut,
+    compose_text,
+    end_composition,
+    insert_text,
+)
 from nuiitivet.rendering.skia import (
     make_font,
     make_paint,
@@ -48,22 +46,6 @@ _logger = logging.getLogger(__name__)
 def _clamp_index(index: int, length: int) -> int:
     """Clamp a text index into ``[0, length]``."""
     return 0 if index < 0 else (length if index > length else index)
-
-
-def _strip_control_chars(text: str) -> str:
-    """Remove Unicode control characters (category ``Cc``) from ``text``.
-
-    Backends do not uniformly filter control characters out of the text they
-    deliver. On macOS, for example, pressing Return dispatches ``on_text('\\r')``
-    through a code path that bypasses the control-character guard applied to
-    every other key. Filtering here keeps the widget's value
-    free of stray control characters regardless of which backend feeds it.
-
-    ``EditableText`` is single-line only, so newlines are dropped as well. When
-    multi-line support lands, ``'\\r'`` should be normalized to ``'\\n'`` and only
-    ``'\\n'`` permitted, rather than allowing raw control characters through here.
-    """
-    return "".join(ch for ch in text if unicodedata.category(ch) != "Cc")
 
 
 class EditableText(InteractionHostMixin, Widget):
@@ -556,35 +538,15 @@ class EditableText(InteractionHostMixin, Widget):
             return new
 
     def _handle_text(self, text: str) -> bool:
-        text = _strip_control_chars(text)
-        if not text:
-            return False
-
         current_value = self._state_internal.value
-        selection = current_value.selection
-        full_text = current_value.text
-
+        new_value = insert_text(current_value, text, filter=self._filter_input)
+        if new_value is None:
+            return False
         # Committed text delivered while a composition is active means the IME
         # just confirmed the composition (e.g. pressing Enter on a converted
         # candidate). Remember it so the Enter that follows is treated as a
         # commit, not a submit. Plain typing clears any stale marker.
         self._ime_just_committed = current_value.is_composing
-
-        if current_value.is_composing:
-            range_to_replace = current_value.composing
-            new_text = range_to_replace.text_before(full_text) + text + range_to_replace.text_after(full_text)
-            new_cursor_pos = range_to_replace.start + len(text)
-        else:
-            new_text = selection.text_before(full_text) + text + selection.text_after(full_text)
-            new_cursor_pos = selection.min + len(text)
-
-        new_value = self._filter_input(
-            current_value,
-            current_value.copy_with(
-                text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos), composing=TextRange(-1, -1)
-            ),
-        )
-
         if new_value != current_value:
             self._update_value(new_value)
             return True
@@ -601,59 +563,16 @@ class EditableText(InteractionHostMixin, Widget):
         field is a genuine submit.
         """
         self._ime_just_committed = False
-        current_value = self._state_internal.value
-        if not current_value.is_composing:
+        new_value = end_composition(self._state_internal.value)
+        if new_value is None:
             return False
-        self._update_value(current_value.copy_with(composing=TextRange(-1, -1)))
+        self._update_value(new_value)
         return True
 
     def _handle_ime_composition(self, text: str, start: int, length: int) -> bool:
-        text = _strip_control_chars(text)
-
-        current_value = self._state_internal.value
-        full_text = current_value.text
-
-        # An empty update ends the composition rather than leaving an empty
-        # composing range active (which would keep holding back announcements
-        # and Enter handling): the IME cancelled, or echoed the discard that
-        # follows a focus-loss commit. With no composition open there is
-        # nothing to do at all.
-        if not text:
-            if not current_value.is_composing:
-                return False
-            range_to_replace = current_value.composing
-            caret = range_to_replace.min
-            self._update_value(
-                current_value.copy_with(
-                    text=range_to_replace.text_before(full_text) + range_to_replace.text_after(full_text),
-                    selection=TextRange(caret, caret),
-                    composing=TextRange(-1, -1),
-                )
-            )
-            return True
-
-        if current_value.is_composing:
-            range_to_replace = current_value.composing
-            prefix = range_to_replace.text_before(full_text)
-            suffix = range_to_replace.text_after(full_text)
-        else:
-            selection = current_value.selection
-            prefix = selection.text_before(full_text)
-            suffix = selection.text_after(full_text)
-            range_to_replace = selection
-
-        new_full_text = prefix + text + suffix
-
-        new_composing_start = len(prefix)
-        new_composing_end = new_composing_start + len(text)
-        new_composing_range = TextRange(new_composing_start, new_composing_end)
-
-        sel_start = new_composing_start + start
-        sel_end = sel_start + length
-        new_selection = TextRange(sel_start, sel_end)
-
-        new_value = current_value.copy_with(text=new_full_text, selection=new_selection, composing=new_composing_range)
-
+        new_value = compose_text(self._state_internal.value, text, start, length)
+        if new_value is None:
+            return False
         self._update_value(new_value)
         return True
 
@@ -661,80 +580,11 @@ class EditableText(InteractionHostMixin, Widget):
         # Cursor navigation ends any input burst; drop a pending IME-commit
         # marker so it cannot suppress a later Enter.
         self._ime_just_committed = False
-
-        current_value = self._state_internal.value
-        text = current_value.text
-        selection = current_value.selection
-
-        anchor = selection.start
-        focus = selection.end
-        new_focus = focus
-        handled = False
-
-        if motion == TEXT_MOTION_BACKSPACE:
-            if not selection.is_collapsed:
-                new_text = selection.text_before(text) + selection.text_after(text)
-                new_cursor_pos = selection.min
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
-                self._update_value(new_value)
-                return True
-            if selection.min > 0:
-                pos = selection.min
-                new_text = text[: pos - 1] + text[pos:]
-                new_cursor_pos = pos - 1
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
-                self._update_value(new_value)
-                return True
+        new_value = apply_motion(self._state_internal.value, motion, select=select)
+        if new_value is None:
             return False
-
-        if motion == TEXT_MOTION_DELETE:
-            if not selection.is_collapsed:
-                new_text = selection.text_before(text) + selection.text_after(text)
-                new_cursor_pos = selection.min
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
-                self._update_value(new_value)
-                return True
-            if selection.max < len(text):
-                pos = selection.max
-                new_text = text[:pos] + text[pos + 1 :]
-                new_cursor_pos = selection.min
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
-                self._update_value(new_value)
-                return True
-            return False
-
-        if motion == TEXT_MOTION_LEFT:
-            if not select and not selection.is_collapsed:
-                new_focus = selection.min
-                handled = True
-            elif focus > 0:
-                new_focus = focus - 1
-                handled = True
-        elif motion == TEXT_MOTION_RIGHT:
-            if not select and not selection.is_collapsed:
-                new_focus = selection.max
-                handled = True
-            elif focus < len(text):
-                new_focus = focus + 1
-                handled = True
-        elif motion == TEXT_MOTION_HOME:
-            new_focus = 0
-            handled = True
-        elif motion == TEXT_MOTION_END:
-            new_focus = len(text)
-            handled = True
-
-        if handled:
-            if select:
-                new_selection = TextRange(anchor, new_focus)
-            else:
-                new_selection = TextRange(new_focus, new_focus)
-
-            if new_selection != selection:
-                self._update_value(current_value.copy_with(selection=new_selection))
-                return True
-
-        return False
+        self._update_value(new_value)
+        return True
 
     def _handle_key(self, key: str, modifier_keys: int) -> bool:
         current_value = self._state_internal.value
@@ -767,54 +617,13 @@ class EditableText(InteractionHostMixin, Widget):
             )
             return True
 
-        is_ctrl = bool(modifier_keys & (MOD_CTRL | MOD_META))
-
-        if not is_ctrl:
+        if not modifier_keys & (MOD_CTRL | MOD_META):
             return False
-
-        text = current_value.text
-        selection = current_value.selection
-
-        if key == "a":
-            new_value = current_value.copy_with(selection=TextRange(0, len(text)))
-            self._update_value(new_value)
-            return True
-
-        if key == "c":
-            if not selection.is_collapsed:
-                selected_text = selection.text_inside(text)
-                self._copy_to_clipboard(selected_text)
-            return True
-
-        if key == "v":
-            clipboard_text = self._get_from_clipboard()
-            if clipboard_text:
-                new_text = selection.text_before(text) + clipboard_text + selection.text_after(text)
-                new_cursor_pos = selection.min + len(clipboard_text)
-                new_value = self._filter_input(
-                    current_value,
-                    current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos)),
-                )
-                self._update_value(new_value)
-            return True
-
-        if key == "x":
-            if not selection.is_collapsed:
-                selected_text = selection.text_inside(text)
-                self._copy_to_clipboard(selected_text)
-                new_text = selection.text_before(text) + selection.text_after(text)
-                new_cursor_pos = selection.min
-                new_value = current_value.copy_with(text=new_text, selection=TextRange(new_cursor_pos, new_cursor_pos))
-                self._update_value(new_value)
-            return True
-
-        return False
-
-    def _copy_to_clipboard(self, text: str) -> None:
-        get_system_clipboard().set_text(text)
-
-    def _get_from_clipboard(self) -> str:
-        return get_system_clipboard().get_text() or ""
+        new_value = apply_shortcut(current_value, key, get_system_clipboard(), filter=self._filter_input)
+        if new_value is None:
+            return False
+        self._update_value(new_value)
+        return True
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
