@@ -42,7 +42,7 @@ class _DividerBase(Widget):
             orientation: Direction of the divider, fixed by the subclass.
             width: Resolved width sizing.
             height: Resolved height sizing.
-            padding: Padding around the divider line.
+            padding: Insets from the allocated rect to the divider line.
             style: Resolved divider style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -160,7 +160,7 @@ class HorizontalDivider(_DividerBase):
 
         Args:
             width: Width sizing override. Defaults to ``Sizing.weight()``.
-            padding: Padding around the divider line.
+            padding: Insets from the allocated rect to the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -196,7 +196,7 @@ class VerticalDivider(_DividerBase):
 
         Args:
             height: Height sizing override. Defaults to ``Sizing.weight()``.
-            padding: Padding around the divider line.
+            padding: Insets from the allocated rect to the divider line.
             style: Optional :class:`~nuiitivet.material.styles.divider_style.DividerStyle`
                 override. Falls back to the default ``DividerStyle`` when ``None``.
             key: Stable widget identity for dev-bridge targeting and hot reload.

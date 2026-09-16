@@ -52,7 +52,6 @@ def test_theme_with_custom_loading_indicator_style():
     custom_style = LoadingIndicatorStyle(
         foreground=ColorRole.ERROR,
         motion=BezierMotion(0.34, 0.80, 0.34, 1.00, duration=5.0),
-        padding=8,
     )
 
     mat = light.extension(MaterialThemeData)
@@ -61,7 +60,6 @@ def test_theme_with_custom_loading_indicator_style():
     new_material = mat.copy_with(_loading_indicator_style=custom_style)
     assert new_material.loading_indicator_style.foreground == ColorRole.ERROR
     assert new_material.loading_indicator_style.motion.duration == 5.0
-    assert new_material.loading_indicator_style.padding == 8
 
 
 def test_loading_indicator_style_variants():

@@ -13,6 +13,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, make_paint, make_path, rgba_to_skia_color
 from nuiitivet.animation import Animatable
 from nuiitivet.observable import runtime
+from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.widgeting.widget import Widget
 
 from .shapes import (
@@ -82,7 +83,7 @@ class LoadingIndicator(Widget):
     Args:
         size: Outer size of the indicator (default 48). Sets both width and height.
         style: Style configuration for appearance and animation.
-        padding: Padding around the indicator.
+        padding: Insets from the allocated rect to the indicator.
     """
 
     def __init__(
@@ -97,11 +98,14 @@ class LoadingIndicator(Widget):
 
         Args:
             size: Outer size of the indicator (default 48).
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             style: Style configuration for appearance and animation.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=int(size), height=int(size), padding=padding, key=key)
+        # The indicator is MD3-fixed, so the fixed sizing carries the padding
+        # band as well: allocated = indicator + padding.
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        super().__init__(width=int(size) + pl + pr, height=int(size) + pt + pb, padding=padding, key=key)
         self._size = int(size)
         self._user_style = style
 
@@ -130,12 +134,14 @@ class LoadingIndicator(Widget):
         return ShapeMorphSequence(shapes)
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
-        size = int(self._size)
+        pl, pt, pr, pb = self.padding
+        w = int(self._size) + pl + pr
+        h = int(self._size) + pt + pb
         if max_width is not None:
-            size = min(size, int(max_width))
+            w = min(w, int(max_width))
         if max_height is not None:
-            size = min(size, int(max_height))
-        return (size, size)
+            h = min(h, int(max_height))
+        return (w, h)
 
     def on_mount(self) -> None:
         super().on_mount()
@@ -231,6 +237,8 @@ class LoadingIndicator(Widget):
         path = self._reset_path()
         if path is None:
             return
+
+        x, y, width, height = self.content_rect(x, y, width, height)
 
         # Layout: 48dp container with a 38dp active indicator (M3 spec). We keep
         # the ratio and allow scaling with the widget size.

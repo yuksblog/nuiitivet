@@ -45,7 +45,7 @@ def test_theme_default_styles():
     assert isinstance(button, ButtonStyle)
     assert button.corner_radius == 20
     assert button.container_height == 40
-    assert button.padding == (16, 0, 16, 0)
+    assert button.content_insets == (16, 0, 16, 0)
     checkbox = mat.checkbox_style
     radio = mat.radio_button_style
     switch = mat.switch_style
@@ -149,7 +149,7 @@ def test_theme_style_button_variants():
     tonal = ButtonStyle.tonal()
     assert filled.background is not None
     assert outlined.border_width == 1.0
-    assert text.padding == (16, 0, 16, 0)
+    assert text.content_insets == (16, 0, 16, 0)
     assert elevated.elevation == 1
     assert tonal.background is not None
 

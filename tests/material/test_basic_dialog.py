@@ -73,13 +73,13 @@ def test_basic_dialog_minimal():
 
 def test_basic_dialog_style_override():
     """Test BasicDialog with custom style."""
-    custom_style = DialogStyle(corner_radius=16.0, min_width=400.0, padding=32)
+    custom_style = DialogStyle(corner_radius=16.0, min_width=400.0, content_insets=32)
 
     dialog = BasicDialog(title="Props", style=custom_style)
 
     assert dialog.style.corner_radius == 16.0
     assert dialog.style.min_width == 400.0
-    assert dialog.style.padding == 32
+    assert dialog.style.content_insets == 32
 
 
 def test_basic_dialog_only_title():

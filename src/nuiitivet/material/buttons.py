@@ -34,7 +34,8 @@ from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.rendering.shadow import Shadows
-from nuiitivet.rendering.padding import PaddingLike
+from nuiitivet.layout.measure import preferred_size as measure_preferred_size
+from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia.color import make_opacity_paint
 from nuiitivet.widgeting.widget import Widget
@@ -211,10 +212,14 @@ def resolve_button_style_params(
     height: SizingLike,
     disabled: bool | ObservableProtocol[bool],
 ) -> dict[str, Any]:
-    """Resolve style parameters for ButtonBase."""
+    """Resolve style parameters for ButtonBase.
 
-    # Defaults
-    pad = padding
+    ``padding`` is the caller's outer inset and never comes from the style;
+    the style contributes ``content_insets``, the MD3 label inset inside the
+    container.
+    """
+
+    pad = padding if padding is not None else 0
     h = height
 
     # Style defaults
@@ -223,18 +228,15 @@ def resolve_button_style_params(
     bc = None
     bw = 0.0
     fg = None
+    insets: PaddingLike = 0
 
     if style is not None:
         bg = style.background
-        if pad is None:
-            pad = style.padding
+        insets = style.content_insets
         cr = style.corner_radius
         bc = getattr(style, "border_color", None)
         bw = getattr(style, "border_width", 0.0) or 0.0
         fg = getattr(style, "foreground", None)
-
-    if pad is None:
-        pad = 0
 
     # Keep height auto by default.
     # Minimum touch target is enforced by MaterialButtonBase.preferred_size.
@@ -272,6 +274,7 @@ def resolve_button_style_params(
         "background_color": bg,
         "foreground_color": fg,
         "padding": pad,
+        "content_insets": insets,
         "corner_radius": cr,
         "border_color": bc,
         "border_width": bw,
@@ -309,6 +312,7 @@ class MaterialButtonBase(InteractiveWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int, int, int]] = 0,
+        content_insets: PaddingLike = 0,
         background_color: ColorSpec = None,
         foreground_color: ColorSpec = None,
         border_color: ColorSpec = None,
@@ -331,7 +335,8 @@ class MaterialButtonBase(InteractiveWidget):
             disabled: Whether the button is disabled.
             width: Width specification.
             height: Height specification.
-            padding: Padding specification.
+            padding: Insets from the allocated rect to the container.
+            content_insets: Insets from the container to its content.
             background_color: Button container color.
             foreground_color: Button foreground color (text/icon).
             border_color: Border color for outlined buttons.
@@ -347,6 +352,8 @@ class MaterialButtonBase(InteractiveWidget):
         # Support old `overlay_color` arg by mapping to `state_layer_color`
         if state_layer_color is None and overlay_color is not None:
             state_layer_color = overlay_color
+
+        self._content_insets: Tuple[int, int, int, int] = parse_padding(content_insets)
 
         super().__init__(
             child=child,
@@ -544,6 +551,7 @@ class MaterialButtonBase(InteractiveWidget):
 
     def _apply_style_params(self, params: dict[str, Any], theme=None) -> None:
         self.padding = params["padding"]
+        self._content_insets = parse_padding(params["content_insets"])
         self.corner_radius = params["corner_radius"]
         self.border_width = params["border_width"]
         self.shadows = params["shadows"]
@@ -608,9 +616,20 @@ class MaterialButtonBase(InteractiveWidget):
         return max(0, min(int(raw), int(allocated_height)))
 
     def _container_rect(self, x: int, y: int, width: int, height: int) -> Tuple[int, int, int, int]:
+        """Return the visual container for the allocated rect: inside the padding, centred to ``container_height``."""
+        return self._container_in(*self.content_rect(x, y, width, height))
+
+    def _container_in(self, x: int, y: int, width: int, height: int) -> Tuple[int, int, int, int]:
+        """Return the visual container for a content rect: centred to ``container_height``."""
         ch = self._container_height_pixels(height)
         cy = y + max(0, (int(height) - ch) // 2)
         return (int(x), int(cy), int(width), int(ch))
+
+    def _content_extra(self) -> Tuple[int, int]:
+        """Return the (width, height) the container adds around its content."""
+        il, it, ir, ib = self._content_insets
+        bw = int(getattr(self, "border_width", 0) or 0)
+        return (il + ir + bw * 2, it + ib + bw * 2)
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -618,69 +637,84 @@ class MaterialButtonBase(InteractiveWidget):
             return
 
         child = self.children[0]
-        ch = self._container_height_pixels(height)
-        offset_y = max(0, (int(height) - ch) // 2)
+        cx, cy, cw, ch = self._container_rect(0, 0, width, height)
+        il, it, _ir, _ib = self._content_insets
+        bw = int(getattr(self, "border_width", 0) or 0)
+        extra_w, extra_h = self._content_extra()
 
-        ix, iy, iw, ih = self._layout.compute_inner_rect(0, offset_y, width, ch)
-        cx, cy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
+        ix = cx + il + bw
+        iy = cy + it + bw
+        iw = max(0, cw - extra_w)
+        ih = max(0, ch - extra_h)
+        gx, gy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
 
         child.layout(child_w, child_h)
-        child.set_layout_rect(cx, cy, child_w, child_h)
+        child.set_layout_rect(gx, gy, child_w, child_h)
 
+    # The draw hooks receive the content rect; the container is centred in it.
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
-        cx, cy, cw, ch = self._container_rect(x, y, width, height)
-        return super().draw_background(canvas, cx, cy, cw, ch)
+        return super().draw_background(canvas, *self._container_in(x, y, width, height))
 
     def draw_border(self, canvas, x: int, y: int, width: int, height: int):
-        cx, cy, cw, ch = self._container_rect(x, y, width, height)
-        return super().draw_border(canvas, cx, cy, cw, ch)
+        return super().draw_border(canvas, *self._container_in(x, y, width, height))
 
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
-        cx, cy, cw, ch = self._container_rect(x, y, width, height)
-        super().draw_state_layer(canvas, cx, cy, cw, ch)
+        super().draw_state_layer(canvas, *self._container_in(x, y, width, height))
 
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
-        cx, cy, cw, ch = self._container_rect(x, y, width, height)
-        super().draw_focus_indicator(canvas, cx, cy, cw, ch)
+        super().draw_focus_indicator(canvas, *self._container_in(x, y, width, height))
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return ``container + padding``, the container floored at the style minimums."""
         self._sync_theme_style()
-        w, h = super().preferred_size(max_width=max_width, max_height=max_height)
 
+        min_w = 0
+        min_h = 0
         try:
             style = self.style
+            min_w = int(getattr(style, "min_width", 0) or 0)
+            min_h = int(getattr(style, "min_height", 0) or 0)
         except Exception as e:
             exception_once(
                 logger,
                 f"material_button_preferred_size_style_exc_{type(e).__name__}",
                 "Failed to resolve Material button style",
             )
-            return w, h
 
-        if getattr(self.width_sizing, "kind", None) != "fixed":
-            try:
-                w = max(w, int(getattr(style, "min_width", 0) or 0))
-            except Exception as e:
-                exception_once(
-                    logger,
-                    f"material_button_preferred_size_min_width_exc_{type(e).__name__}",
-                    "Failed to clamp Material button min_width",
-                )
+        pl, pt, pr, pb = self.padding
+        extra_w, extra_h = self._content_extra()
+        w_dim = self.width_sizing
+        h_dim = self.height_sizing
 
-        if getattr(self.height_sizing, "kind", None) != "fixed":
-            try:
-                h = max(h, int(getattr(style, "min_height", 0) or 0))
-            except Exception as e:
-                exception_once(
-                    logger,
-                    f"material_button_preferred_size_min_height_exc_{type(e).__name__}",
-                    "Failed to clamp Material button min_height",
-                )
+        child_max_w: Optional[int] = None
+        child_max_h: Optional[int] = None
+        if w_dim.kind == "fixed":
+            child_max_w = max(0, int(w_dim.value) - pl - pr - extra_w)
+        elif max_width is not None:
+            child_max_w = max(0, int(max_width) - pl - pr - extra_w)
+        if h_dim.kind == "fixed":
+            child_max_h = max(0, int(h_dim.value) - pt - pb - extra_h)
+        elif max_height is not None:
+            child_max_h = max(0, int(max_height) - pt - pb - extra_h)
 
-        if max_width is not None:
-            w = min(int(w), int(max_width))
-        if max_height is not None:
-            h = min(int(h), int(max_height))
+        if self.children:
+            cw, ch = measure_preferred_size(self.children[0], max_width=child_max_w, max_height=child_max_h)
+        else:
+            cw, ch = 0, 0
+
+        if w_dim.kind == "fixed":
+            w = int(w_dim.value)
+        else:
+            w = max(int(cw) + extra_w, min_w) + pl + pr
+            if max_width is not None:
+                w = min(w, int(max_width))
+
+        if h_dim.kind == "fixed":
+            h = int(h_dim.value)
+        else:
+            h = max(int(ch) + extra_h, min_h) + pt + pb
+            if max_height is not None:
+                h = min(h, int(max_height))
 
         return int(w), int(h)
 
@@ -726,7 +760,7 @@ class Button(MaterialButtonBase):
             on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
             width: Width specification. Defaults to auto.
-            padding: Padding override; ``None`` delegates to ``style.padding``.
+            padding: Insets from the allocated rect to the container.
             style: Visual style preset. Defaults to ``ButtonStyle.filled("s")``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -878,7 +912,7 @@ class ToggleButtonBase(MaterialButtonBase):
             disabled: Whether the button is disabled.
             width: Width specification.
             height: Height specification.
-            padding: Padding override.
+            padding: Insets from the allocated rect to the container.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._user_padding = padding
@@ -1024,7 +1058,7 @@ class ToggleButton(ToggleButtonBase):
             on_change: Callback invoked with the new selected value.
             disabled: Whether the button is disabled.
             width: Width specification.
-            padding: Padding override; ``None`` uses ``style.padding``.
+            padding: Insets from the allocated rect to the container.
             style: Toggle style preset. Defaults to the theme's toggle button
                 style, which itself falls back to ``ToggleButtonStyle.filled("s")``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -1243,8 +1277,9 @@ class _FabBase(MaterialButtonBase):
             super().paint(canvas, x, y, width, height)
             return
 
-        ox = float(x) + (float(width) / 2.0)
-        oy = float(y) + (float(height) / 2.0)
+        cx, cy, cw, ch = self._container_rect(x, y, width, height)
+        ox = float(cx) + (float(cw) / 2.0)
+        oy = float(cy) + (float(ch) / 2.0)
         canvas.save()
         try:
             canvas.translate(ox, oy)
@@ -1282,8 +1317,7 @@ class Fab(_FabBase):
             icon: Icon for the button.
             on_click: Callback to be invoked when the button is clicked.
             disabled: Whether the button is disabled.
-            padding: Padding specification.  When ``None``, ``style.padding``
-                is used.
+            padding: Insets from the allocated rect to the container.
             style: FAB style preset.  Defaults to the theme's FAB style, which
                 itself falls back to :meth:`FabStyle.primary` (size ``"s"``,
                 56dp).  Use ``FabStyle.primary("m")`` / ``FabStyle.primary("l")``
@@ -1300,7 +1334,10 @@ class Fab(_FabBase):
         self._user_style = style
         self._user_padding = padding
         size = effective_style.container_height
-        self._user_height = size
+        # The container is MD3-fixed, so the fixed sizing carries the padding
+        # band as well: allocated = container + padding.
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        self._user_height = size + pt + pb
 
         text_color = effective_style.foreground if effective_style else ColorRole.ON_PRIMARY_CONTAINER
 
@@ -1312,12 +1349,12 @@ class Fab(_FabBase):
             style=effective_style,
         )
 
-        params = resolve_button_style_params(effective_style, padding, size, disabled)
+        params = resolve_button_style_params(effective_style, padding, self._user_height, disabled)
 
         super().__init__(
             child=child_widget,
             on_click=on_click,
-            width=size,
+            width=size + pl + pr,
             disabled=disabled,
             key=key,
             **params,
@@ -1371,7 +1408,7 @@ class ExtendedFab(_FabBase):
             corner_radius=ext["corner_radius"],
             container_height=ext["container_height"],
             spacing=ext["icon_label_space"],
-            padding=(ext["leading_space"], 0, ext["trailing_space"], 0),
+            content_insets=(ext["leading_space"], 0, ext["trailing_space"], 0),
             min_width=ext["container_height"],
             min_height=ext["container_height"],
         )

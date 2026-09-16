@@ -23,6 +23,7 @@ from nuiitivet.observable import MutableObservableBase
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
+from nuiitivet.layout.container import Container
 from nuiitivet.widgets.box import Box
 
 if TYPE_CHECKING:
@@ -123,16 +124,15 @@ class _SplitLeadingButton(InteractiveWidget):
             motion=None,
         )
 
-        padding = (style.leading_leading_space, 0, style.leading_trailing_space, 0)
+        insets = (style.leading_leading_space, 0, style.leading_trailing_space, 0)
 
         super().__init__(
-            child=child,
+            child=Container(child=child, padding=insets, alignment="center"),
             on_click=on_click,
             on_press=self._handle_press_down,
             on_release=self._handle_press_up,
             disabled=disabled,
             height=style.container_height,
-            padding=padding,
             background_color=style.background,
             border_color=style.border_color,
             border_width=style.border_width,
@@ -281,16 +281,15 @@ class _SplitTrailingButton(InteractiveWidget):
 
         content = self._build_content()
 
-        padding = (style.trailing_leading_space, 0, style.trailing_trailing_space, 0)
+        insets = (style.trailing_leading_space, 0, style.trailing_trailing_space, 0)
 
         super().__init__(
-            child=content,
+            child=Container(child=content, padding=insets, alignment="center"),
             on_click=self._handle_click,
             on_press=self._handle_press_down,
             on_release=self._handle_press_up,
             disabled=disabled,
             height=style.container_height,
-            padding=padding,
             background_color=style.background,
             border_color=style.border_color,
             border_width=style.border_width,

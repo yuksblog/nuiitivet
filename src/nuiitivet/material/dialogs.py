@@ -166,7 +166,7 @@ class BasicDialog(ComposableWidget):
         return Box(
             background_color=style.background,
             corner_radius=style.corner_radius,
-            padding=style.padding,
+            padding=style.content_insets,
             width=self.width,
             shadows=_shadows,
             child=Column(

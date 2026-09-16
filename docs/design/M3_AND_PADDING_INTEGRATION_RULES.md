@@ -228,19 +228,20 @@ class Checkbox(Widget):
 
 ```python
 class Button(Widget):
-    def __init__(self, label, padding=0, ...):
-        # M3: Internal padding (24dp horizontal) is a separate parameter
+    def __init__(self, label, padding=0, style=ButtonStyle.filled(), ...):
+        # M3: the label inset is a style token, never Widget.padding
         # Framework: padding = allocated→content insets
         super().__init__(padding=padding)
-        self._m3_horizontal_padding = 24  # M3 Internal
-        self._m3_height = 40              # M3 Spec
-    
+        self._content_insets = style.content_insets  # M3 Internal, e.g. (16, 0, 16, 0)
+        self._m3_height = style.container_height     # M3 Spec
+
     def preferred_size(self):
-        # M3: text width + M3 internal padding
+        # M3: text width + content insets
         text_w = self._measure_text()
-        m3_width = text_w + self._m3_horizontal_padding * 2
+        il, _, ir, _ = self._content_insets
+        m3_width = text_w + il + ir
         m3_height = self._m3_height
-        
+
         # Framework: M3 size + padding
         l, t, r, b = self.padding
         return (m3_width + l + r, m3_height + t + b)
@@ -408,8 +409,8 @@ Specify whether "the size changes" or "only the rendering changes" for each stat
 ### 4) Rule Integration (Mapping to BOX_MODEL)
 
 - Preferred size: Does it meet the touch target? (e.g., min 48)
-- Paint: Where is the container drawn? (e.g., centered as 40 within 48)
-- Hit test: Is it based on the allocated rect? (Exception: viewport/clip)
+- Paint: Where is the container drawn? (e.g., centered as 40 within 48, inside the padding)
+- Hit test: allocated rect for a leaf or layout box; content rect for a component that draws its own boundary (Exception: viewport/clip)
 - Outsets: Are shadows/focus/overlays treated as outsets? (Not included in layout/hit test)
 
 ### 5) Theme / Style Design
@@ -422,7 +423,7 @@ Specify whether "the size changes" or "only the rendering changes" for each stat
 
 - Expected `preferred_size` (Fixed value or range)
 - Ensure `padding` is included in `preferred_size`.
-- Ensure `hit_test` follows the `allocated rect`.
+- Ensure `hit_test` follows the `allocated rect` (leaf / layout box) or the content rect (own boundary).
 - Ensure visible region constraints of clip/viewport are not broken.
 
 If possible, prepare visual verification samples in `samples/*_demo.py` simultaneously.

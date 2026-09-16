@@ -27,7 +27,6 @@ class IconStyle:
 
     # Size
     default_size: int = 24
-    padding: int = 0
 
     # Family (outlined, rounded, sharp, icons)
     family: str = "outlined"

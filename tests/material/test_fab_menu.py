@@ -209,7 +209,7 @@ def test_list_item_geometry_follows_md3_tokens():
     assert row_style.corner_radius == pytest.approx(28.0)
     assert row_style.icon_size == 24
     assert row_style.label_font_size == 16
-    assert row_style.padding == (24, 0, 24, 0)
+    assert row_style.content_insets == (24, 0, 24, 0)
 
 
 def test_style_variants_resolve():

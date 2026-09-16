@@ -14,7 +14,7 @@ Even complex screens can be expressed by nesting these.
 
 ### 2. Spacing and Sizing
 
-There is no `margin`. Spacing is controlled entirely by parent container `padding` or `gap` between elements.
+There is no `margin`. Spacing is controlled by `padding` (a container's, or an element's own) and by `gap` between elements.
 Sizes can be intuitively specified in three patterns: `fixed`, `auto` (fit content), and `weight` (share the leftover space).
 
 - [Spacing Concepts](spacing.md)

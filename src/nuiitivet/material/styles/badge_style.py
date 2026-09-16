@@ -29,7 +29,7 @@ class LargeBadgeStyle:
     background_color: ColorSpec = ColorRole.ERROR
     content_color: ColorSpec = ColorRole.ON_ERROR
     height: int = 16
-    padding: tuple[int, int, int, int] = (4, 0, 4, 0)
+    content_insets: tuple[int, int, int, int] = (4, 0, 4, 0)
     corner_radius: float = 8.0
     font_size: int = 11
 

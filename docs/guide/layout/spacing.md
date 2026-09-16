@@ -6,8 +6,7 @@ There is no `margin`. First, verify that all spacing can be expressed with just 
 
 ## padding (Inner Spacing)
 
-Creates spacing between itself and its child elements (inside).
-In components with background colors or borders, this becomes the distance to the content.
+Every widget has `padding`: space inside the widget's edge, counted in its size.
 
 ```python
 import nuiitivet.material as nv
@@ -102,9 +101,9 @@ content = nv.Column(
 
 ![Spacer example](../../assets/layout_spacing_spacer.png)
 
-### 2. Wrap with Container (Open Space Around)
+### 2. Set padding on the element itself (Open Space Around)
 
-If you want spacing only around a specific element (so-called margin-like usage), wrap that element in a `Container` and set `padding` on the `Container`.
+If you want spacing only around a specific element (so-called margin-like usage), set `padding` on that element.
 
 ```python
 import nuiitivet.material as nv
@@ -114,10 +113,7 @@ content = nv.Column(
     children=[
         nv.Button("Button 1", style=nv.ButtonStyle.filled()),
         nv.Button("Button 2", style=nv.ButtonStyle.filled()),
-        nv.Container(
-            child=nv.Button("Button 3", style=nv.ButtonStyle.outlined()),
-            padding=24,  # Secure 24px around this element only
-        ),
+        nv.Button("Button 3", style=nv.ButtonStyle.outlined(), padding=24),  # 24px around this element only
         nv.Button("Button 4", style=nv.ButtonStyle.filled()),
     ],
     gap=12,
@@ -125,7 +121,7 @@ content = nv.Column(
 )
 ```
 
-![Container padding example](../../assets/layout_spacing_container.png)
+![Padding on the element example](../../assets/layout_spacing_container.png)
 
 ## Gap Property per Component
 

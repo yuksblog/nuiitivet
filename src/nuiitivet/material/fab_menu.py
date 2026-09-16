@@ -176,7 +176,7 @@ def _list_item_style(base_style: FabStyle) -> FabStyle:
         label_font_size=16,
         icon_size=24,
         spacing=8,
-        padding=(24, 0, 24, 0),
+        content_insets=(24, 0, 24, 0),
         elevation=0,
         focused_elevation=3,
         hovered_elevation=4,

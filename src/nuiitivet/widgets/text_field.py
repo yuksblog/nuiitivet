@@ -42,7 +42,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     - font_size: Font size for input text
     - width: Explicit width sizing
     - height: Explicit height sizing
-    - padding: Space around the text field
+    - padding: Insets from the allocated rect to the field
     - disabled: Disable interaction
     """
 

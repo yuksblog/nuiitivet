@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 _ButtonStyleT = TypeVar("_ButtonStyleT", bound="ButtonStyle")
 
 
-def _size_padding(size: ButtonSize) -> PaddingLike:
-    """Return the (leading, 0, trailing, 0) padding for the given size."""
+def _size_content_insets(size: ButtonSize) -> PaddingLike:
+    """Return the (leading, 0, trailing, 0) label insets for the given size."""
     tokens = BUTTON_SIZE_TOKENS[size]
     return (tokens["leading_space"], 0, tokens["trailing_space"], 0)
 
@@ -71,7 +71,9 @@ class ButtonStyle:
 
     # Sizing
     container_height: int = 40
-    padding: PaddingLike = (16, 0, 16, 0)
+    #: Insets from the container edge to the label; the MD3 leading / trailing
+    #: space. Distinct from ``Widget.padding``, which sits outside the container.
+    content_insets: PaddingLike = (16, 0, 16, 0)
     spacing: int = 8
     min_width: int = 64
     min_height: int = 48
@@ -112,7 +114,7 @@ class ButtonStyle:
             "foreground": colors.get("foreground"),
             "border_color": colors.get("border_color"),
             "corner_radius": self.corner_radius,
-            "padding": self.padding,
+            "content_insets": self.content_insets,
             "spacing": getattr(self, "spacing", 8),
             "min_size": (self.min_width, self.min_height),
             "text_style": None,
@@ -140,7 +142,7 @@ class ButtonStyle:
             border_width=0.0,
             corner_radius=t["corner_radius"],
             container_height=t["container_height"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -162,7 +164,7 @@ class ButtonStyle:
             border_width=t["outline_width"],
             corner_radius=t["corner_radius"],
             container_height=t["container_height"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -183,7 +185,7 @@ class ButtonStyle:
             border_width=0.0,
             corner_radius=t["corner_radius"],
             container_height=t["container_height"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=max(48, t["container_height"]),
             min_height=_size_min_height(size),
@@ -204,7 +206,7 @@ class ButtonStyle:
             border_width=0.0,
             corner_radius=t["corner_radius"],
             container_height=t["container_height"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -225,7 +227,7 @@ class ButtonStyle:
             border_width=0.0,
             corner_radius=t["corner_radius"],
             container_height=t["container_height"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -253,7 +255,7 @@ class IconButtonStyle:
         return dict(
             corner_radius=t["corner_radius"],
             container_height=h,
-            padding=0,
+            content_insets=0,
             min_width=max(48, h),
             min_height=max(48, h),
             icon_size=t["icon_size"],

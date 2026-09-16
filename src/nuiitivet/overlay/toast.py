@@ -27,7 +27,7 @@ class PlainToast(ComposableWidget):
         *,
         background_color: ColorSpec = (50, 50, 50, 230),
         text_color: ColorSpec = (255, 255, 255, 255),
-        padding: Union[int, Tuple[int, int, int, int]] = 16,
+        content_insets: Union[int, Tuple[int, int, int, int]] = 16,
         corner_radius: float = 8.0,
     ):
         """Create a toast widget.
@@ -36,14 +36,14 @@ class PlainToast(ComposableWidget):
             message: The message to display.
             background_color: Background color of the toast.
             text_color: Text color.
-            padding: Padding around the text.
+            content_insets: Insets from the container edge to the text.
             corner_radius: Corner radius for rounded corners.
         """
         super().__init__()
         self.message = message
         self.background_color = background_color
         self.text_color = text_color
-        self.padding = padding
+        self.content_insets = content_insets
         self.corner_radius = corner_radius
 
     def build(self) -> Widget:
@@ -55,7 +55,7 @@ class PlainToast(ComposableWidget):
         return Box(
             background_color=self.background_color,
             corner_radius=self.corner_radius,
-            padding=self.padding,
+            padding=self.content_insets,
             child=Text(
                 self.message,
                 style=TextStyle(color=self.text_color),

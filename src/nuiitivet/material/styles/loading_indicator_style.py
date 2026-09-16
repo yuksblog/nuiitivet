@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 from typing import Optional, Sequence, TYPE_CHECKING
 
 from ..theme.color_role import ColorRole
-from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.animation.motion import Motion
 from nuiitivet.material.motion import EXPRESSIVE_SLOW_SPATIAL
@@ -44,7 +43,6 @@ class LoadingIndicatorStyle:
     corner_radius: int = 24
 
     # Layout
-    padding: PaddingLike = 0
 
     def copy_with(self, **changes) -> "LoadingIndicatorStyle":
         """Create a new style instance with specified fields changed."""

@@ -25,7 +25,6 @@ class RadioButtonStyle:
     """
 
     default_touch_target: int = 48
-    padding: int = 0
 
     icon_diameter_ratio: float = 20.0 / 48.0
     inner_dot_ratio: float = 10.0 / 20.0

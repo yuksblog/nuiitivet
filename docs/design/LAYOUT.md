@@ -15,7 +15,7 @@ Spacing control between Widgets is unified under `padding` and `gap`. `margin` (
 
 * **Padding (Inner Spacing)**
   * All Widgets have a `padding` property.
-  * It controls the space between the content and the boundary (Border/Background).
+  * It is the inset from the allocated rect to the content rect (see [BOX_MODEL.md](BOX_MODEL.md)). A widget that draws its own boundary draws it inside the padding.
 
 * **Gap (Spacing Between Children)**
   * Containers with multiple children (`Row`, `Column`, etc.) have a `gap` property.
@@ -34,9 +34,10 @@ Spacing control between Widgets is unified under `padding` and `gap`. `margin` (
   * Shares the same intent as CSS `row-gap` / `column-gap`.
 
 * **Why No Margin?**
-  * Having both `margin` and `padding` causes confusion about which to use.
-  * Allowing components to have "outer spacing" compromises reusability (the required outer spacing changes depending on the context).
-  * If spacing is needed, use the parent container's `gap`, the parent's `padding`, or a transparent `Spacer` Widget.
+  * This does not mean a child cannot have outer space. It means there is exactly **one** property for insets, `padding`, and no second property called `margin`.
+  * The goal is to never leave the reader choosing between margin and padding, not to forbid outer space.
+  * Space between siblings is the parent's `gap`; space inside the whole container is the parent's `padding`; an adjustment to one element is that element's own `padding`.
+  * This is the same shape as SwiftUI's `.padding()` (no margin concept; padding grows the frame), in line with the SwiftUI / Compose modifier lineage.
 
 ### 2. Sizing System
 

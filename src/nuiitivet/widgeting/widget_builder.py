@@ -538,13 +538,16 @@ class BuilderHostMixin:
     def layout(self, width: int, height: int) -> None:
         # Delegate to super (WidgetKernel) to store layout_rect and layout children
         super().layout(width, height)  # type: ignore
-        # Delegate to built child (composition)
+        # The built subtree fills the content rect: this widget's padding is the
+        # band around it.
         if self._built:
-            self._built.layout(width, height)
+            cx, cy, cw, ch = self.content_rect(0, 0, width, height)  # type: ignore[attr-defined]
+            self._built.layout(cw, ch)
+            self._built.set_layout_rect(cx, cy, cw, ch)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         if self._built:
-            self._built.paint(canvas, x, y, width, height)
+            self._built.paint(canvas, *self.content_rect(x, y, width, height))  # type: ignore[attr-defined]
         else:
             super().paint(canvas, x, y, width, height)  # type: ignore
 
@@ -555,23 +558,33 @@ class BuilderHostMixin:
             return self._built.paint_outsets()
         return super().paint_outsets()  # type: ignore
 
+    def _hit_test_built(self, x: int, y: int):
+        """Descend into the built subtree, in its own (content rect) coordinates."""
+        built = self._built
+        if not built:
+            return None
+        rect = built.layout_rect
+        if rect and rect[2] > 0 and rect[3] > 0:
+            rx, ry, rw, rh = rect
+            if not (rx <= x < rx + rw and ry <= y < ry + rh):
+                return None
+            return built.hit_test(x - rx, y - ry)
+        return built.hit_test(x, y)
+
     def hit_test(self, x: int, y: int):
-        if self._built:
-            hit = self._built.hit_test(x, y)
-            if hit:
-                return hit
+        hit = self._hit_test_built(x, y)
+        if hit:
+            return hit
         return super().hit_test(x, y)  # type: ignore
 
     def _hit_test_children(self, x: int, y: int):
-        # The built subtree *is* this widget's C axis: it fills the host at the
-        # origin, so it is reached with the same coordinates. Without this, a
-        # wrapper that governs the S axis itself and descends only into
-        # ``children`` (``HitParticipationBox``) would never see the content of
-        # a widget with a ``build()``.
-        if self._built:
-            hit = self._built.hit_test(x, y)
-            if hit:
-                return hit
+        # The built subtree *is* this widget's C axis. Without this, a wrapper
+        # that governs the S axis itself and descends only into ``children``
+        # (``HitParticipationBox``) would never see the content of a widget
+        # with a ``build()``.
+        hit = self._hit_test_built(x, y)
+        if hit:
+            return hit
         return super()._hit_test_children(x, y)  # type: ignore
 
     async def handle_back_event(self) -> bool:
@@ -594,9 +607,16 @@ class BuilderHostMixin:
                     return True
         return True
 
+    def _measure_built(self, built: "Widget", max_width: Optional[int], max_height: Optional[int]) -> Tuple[int, int]:
+        l, t, r, b = self.padding  # type: ignore[attr-defined]
+        inner_w = None if max_width is None else max(0, int(max_width) - l - r)
+        inner_h = None if max_height is None else max(0, int(max_height) - t - b)
+        w, h = measure_preferred_size(built, max_width=inner_w, max_height=inner_h)
+        return (int(w) + l + r, int(h) + t + b)
+
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         if self._built:
-            return measure_preferred_size(self._built, max_width=max_width, max_height=max_height)
+            return self._measure_built(self._built, max_width, max_height)
 
         # Measuring must be side-effect-free. When mounted, the live
         # subtree already exists — either as ``_built`` (handled above) or, for
@@ -617,7 +637,7 @@ class BuilderHostMixin:
 
         if built is not None and built is not self:
             self._adopt_built(built)
-            return measure_preferred_size(built, max_width=max_width, max_height=max_height)
+            return self._measure_built(built, max_width, max_height)
 
         return super().preferred_size(max_width=max_width, max_height=max_height)  # type: ignore
 
