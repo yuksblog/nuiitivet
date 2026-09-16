@@ -17,7 +17,7 @@ from nuiitivet.widgeting.widget import Widget
 _ToolbarOrientation = Literal["horizontal", "vertical"]
 
 
-def _resolve_content_padding(
+def _resolve_content_insets(
     style: ToolbarStyle,
     buttons: Sequence[Widget],
 ) -> tuple[int, int, int, int]:
@@ -26,7 +26,7 @@ def _resolve_content_padding(
     Edge inset is derived from container height and the maximum measured button
     extent, and then applied uniformly for both orientations.
     """
-    left, top, right, bottom = style.content_padding
+    left, top, right, bottom = style.content_insets
     max_extent = 0
     for button in buttons:
         width, height = measure_preferred_size(button)
@@ -126,7 +126,7 @@ class DockedToolbar(_ToolbarBase):
             gap=effective_style.item_gap,
             main_alignment="space-between",
             cross_alignment="center",
-            padding=effective_style.content_padding,
+            padding=effective_style.content_insets,
         )
 
         super().__init__(
@@ -149,7 +149,7 @@ class DockedToolbar(_ToolbarBase):
         self.border_width = style.border_width
         self.corner_radius = style.corner_radius
         self._content.gap = style.item_gap
-        self._content.padding = style.content_padding
+        self._content.padding = style.content_insets
         self.invalidate()
 
 
@@ -199,7 +199,7 @@ class _FloatingToolbarBase(_ToolbarBase):
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
-                padding=effective_style.content_padding,
+                padding=effective_style.content_insets,
             )
             inner_height: SizingLike = effective_style.container_height
         else:
@@ -208,7 +208,7 @@ class _FloatingToolbarBase(_ToolbarBase):
                 gap=effective_style.item_gap,
                 main_alignment="center",
                 cross_alignment="center",
-                padding=effective_style.content_padding,
+                padding=effective_style.content_insets,
             )
             inner_height = None
 
@@ -252,7 +252,7 @@ class _FloatingToolbarBase(_ToolbarBase):
         if self.orientation == "horizontal":
             self._inner_container.height_sizing = Sizing.fixed(int(style.container_height))
         self._layout_content.gap = style.item_gap
-        self._layout_content.padding = _resolve_content_padding(
+        self._layout_content.padding = _resolve_content_insets(
             style,
             self._layout_content.children_snapshot(),
         )

@@ -45,7 +45,7 @@ class Checkbox(Toggleable, InteractiveWidget):
     Parameters:
     - checked: Checked state source (bool / Observable[bool] / Observable[Optional[bool]])
     - on_toggle: Callback when toggled
-    - padding: Space around the checkbox (M3: "space between UI elements")
+    - padding: Insets from the allocated rect to the touch target
     - indeterminate: Indeterminate flag (bool / Observable[bool])
     - disabled: Disable interaction (bool / Observable[bool])
     - style: CheckboxStyle for visual customization (defaults to theme style)
@@ -106,13 +106,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         # until the widget is attached.
         touch_target = int(style.default_touch_target) if style is not None else 48
 
-        # Resolve padding
-        final_padding = padding
-        if final_padding is None:
-            if style is not None:
-                final_padding = style.padding
-            else:
-                final_padding = 0
+        final_padding = padding if padding is not None else 0
 
         # Initialize Toggleable
         super().__init__(
@@ -125,10 +119,6 @@ class Checkbox(Toggleable, InteractiveWidget):
             padding=final_padding,
             key=key,
         )
-
-        # If padding was None and style was None, we might need to update padding from theme later.
-        # We can do this in on_mount or similar if we want full theme support for padding.
-        self._user_padding = padding
 
         self._touch_target_size = touch_target
 
@@ -182,16 +172,6 @@ class Checkbox(Toggleable, InteractiveWidget):
             self.observe(self._indeterminate_external, lambda _v: self._sync_from_external())
 
         self._sync_from_external()
-
-        # If padding was not provided by user, update it from theme style
-        if self._user_padding is None and self._style is None:
-            try:
-                style = self.style  # This resolves from theme
-                if style.padding != 0:
-                    self.padding = style.padding
-                    self.invalidate()
-            except Exception:
-                pass
 
     def _get_state_layer_target_opacity(self) -> float:
         state = self.state
@@ -682,7 +662,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         Args:
             value: Option value represented by this radio button.
             disabled: Disable interaction when True.
-            padding: Space around the touch target.
+            padding: Insets from the allocated rect to the touch target.
             style: Style override. Uses theme style when omitted.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -694,8 +674,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         # until the widget is attached.
         touch_target = int(style.default_touch_target) if style is not None else 48
 
-        final_padding = padding if padding is not None else (style.padding if style is not None else 0)
-        self._user_padding = padding
+        final_padding = padding if padding is not None else 0
 
         super().__init__(
             value=False,
@@ -733,15 +712,6 @@ class RadioButton(Toggleable, InteractiveWidget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        if self._user_padding is None and self._style is None:
-            try:
-                style = self.style
-                if style.padding != 0:
-                    self.padding = style.padding
-                    self.invalidate()
-            except Exception:
-                pass
-
         # Inside a group the radio is no Tab stop of its own: the group is the stop
         # and its FocusScope roves the radios (WAI-ARIA). A radio placed on its own
         # stays an ordinary stop.
@@ -934,12 +904,11 @@ class Switch(Toggleable, InteractiveWidget):
             checked: Checked state source (bool or observable bool).
             on_change: Callback invoked when checked state changes.
             disabled: Disable interaction when True.
-            padding: Space around the switch.
+            padding: Insets from the allocated rect to the touch target.
             style: Style override. Uses theme style when omitted.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._style = style
-        self._user_padding = padding
         self._on_change_bool = on_change
 
         # Touch-target size is style-driven (MD3 fixes the axis -> style only).
@@ -947,7 +916,7 @@ class Switch(Toggleable, InteractiveWidget):
         # until the widget is attached.
         touch_target = int(style.default_touch_target) if style is not None else 48
 
-        final_padding = padding if padding is not None else (style.padding if style is not None else 0)
+        final_padding = padding if padding is not None else 0
 
         def _on_toggle(next_val: Optional[bool]) -> None:
             if self._on_change_bool is not None:
@@ -988,17 +957,6 @@ class Switch(Toggleable, InteractiveWidget):
 
             return SwitchStyle()
         return theme.switch_style
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        if self._user_padding is None and self._style is None:
-            try:
-                style = self.style
-                if style.padding != 0:
-                    self.padding = style.padding
-                    self.invalidate()
-            except Exception:
-                pass
 
     def _get_state_layer_target_opacity(self) -> float:
         state = self.state

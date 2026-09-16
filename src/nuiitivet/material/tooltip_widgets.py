@@ -182,7 +182,7 @@ class RichTooltip(ComposableWidget):
             container_height=32,
             min_width=0,
             min_height=32,
-            padding=(8, 0, 8, 0),
+            content_insets=(8, 0, 8, 0),
         )
         action_buttons: list[Widget] = []
         if self.action_label is not None:

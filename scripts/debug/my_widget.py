@@ -324,12 +324,14 @@ class MyWidget(nv.ComposableWidget):
         print("[my_widget debug]" + " ".join(f"{k}={v}" for k, v in debug_fields.items()), file=sys.stderr)
 
 
+def build_root() -> nv.Widget:
+    return MyWidget(MyWidgetModel())
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    model = MyWidgetModel()
-    widget = MyWidget(model)
 
-    app = nv.App(nv.Window(content=widget, title="MyWidget Demo"))
+    app = nv.App(nv.Window(content=build_root, title="MyWidget Demo"))
     try:
         app.run()
     except Exception:

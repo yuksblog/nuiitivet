@@ -29,7 +29,7 @@ class DialogStyle:
     # Layout Constraints
     min_width: float = 280.0
     max_width: float = 560.0
-    padding: PaddingLike = 24  # Container internal padding
+    content_insets: PaddingLike = 24  # Insets from the container edge to the content
 
     # Text visual overrides (color / font_family). Typography roles are fixed
     # by MD3: title = Headline Small, content = Body Medium.

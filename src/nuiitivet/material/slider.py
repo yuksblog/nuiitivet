@@ -63,7 +63,7 @@ class _SliderBase(InteractiveWidget):
             disabled: Disabled state.
             orientation: Slider orientation.
             length: Axis length sizing.
-            padding: Padding around the slider.
+            padding: Insets from the allocated rect to the slider.
             style: Optional SliderStyle override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -315,7 +315,7 @@ class _SliderBase(InteractiveWidget):
             from nuiitivet.theme.theme import Theme
 
             self.set_last_rect(x, y, width, height)
-            self.draw_background(canvas, x, y, width, height)
+            self.draw_background(canvas, *self.content_rect(x, y, width, height))
             self._compute_geometry(float(x), float(y), float(width), float(height))
 
             style = self.style
@@ -542,7 +542,7 @@ class _SliderBase(InteractiveWidget):
                     self._draw_value_indicator(canvas, cx, cy, active_value)
 
             self.draw_children(canvas, x, y, width, height)
-            self.draw_border(canvas, x, y, width, height)
+            self.draw_border(canvas, *self.content_rect(x, y, width, height))
         except Exception:
             exception_once(_logger, "slider_paint_exc", "Slider paint raised")
 

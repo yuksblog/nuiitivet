@@ -598,18 +598,12 @@ class Menu(InteractiveWidget):
         _shadows = elevation_shadows(effective_style.elevation)
 
         children = self._materialize_children(effective_style)
-        self._column = Column(children=children, width=Sizing.weight(), gap=0, cross_alignment="start")
+        self._column = self._build_column(children, effective_style)
 
         super().__init__(
             child=self._column,
             on_click=None,
             state_layer_color=effective_style.state_layer_color,
-            padding=(
-                0,
-                effective_style.container_vertical_padding,
-                0,
-                effective_style.container_vertical_padding,
-            ),
             background_color=effective_style.background,
             corner_radius=effective_style.corner_radius,
             shadows=_shadows,
@@ -698,7 +692,6 @@ class Menu(InteractiveWidget):
         self._applied_style = style
 
         self.state_layer_color = style.state_layer_color
-        self.padding = (0, style.container_vertical_padding, 0, style.container_vertical_padding)
         self.bgcolor = style.background
         self.corner_radius = style.corner_radius
         self.shadows = elevation_shadows(style.elevation)
@@ -797,14 +790,21 @@ class Menu(InteractiveWidget):
 
     def _rematerialize(self) -> None:
         self.clear_children()
-        self._column = Column(
-            children=self._materialize_children(self._applied_style),
+        self._column = self._build_column(self._materialize_children(self._applied_style), self._applied_style)
+        self.add_child(self._column)
+        self.invalidate()
+
+    @staticmethod
+    def _build_column(children: list[Widget], style: MenuStyle) -> Column:
+        """Stack the entries with the MD3 vertical inset inside the surface."""
+        vertical = int(style.container_vertical_padding)
+        return Column(
+            children=children,
             width=Sizing.weight(),
             gap=0,
             cross_alignment="start",
+            padding=(0, vertical, 0, vertical),
         )
-        self.add_child(self._column)
-        self.invalidate()
 
     def _materialize_children(self, style: MenuStyle) -> list[Widget]:
         """Build the entry widgets for ``style``.

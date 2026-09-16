@@ -6,10 +6,7 @@ def build_root() -> nv.Widget:
         children=[
             nv.Button("Button 1", style=nv.ButtonStyle.filled()),
             nv.Button("Button 2", style=nv.ButtonStyle.filled()),
-            nv.Container(
-                child=nv.Button("Button 3", style=nv.ButtonStyle.outlined()),
-                padding=24,  # この要素だけ周囲に24px確保
-            ),
+            nv.Button("Button 3", style=nv.ButtonStyle.outlined(), padding=24),  # 24px around this element only
             nv.Button("Button 4", style=nv.ButtonStyle.filled()),
         ],
         gap=12,
@@ -19,7 +16,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png: str = ""):
-    app = nv.App(nv.Window(content=build_root, title="nv.Container Margin", width=400))
+    app = nv.App(nv.Window(content=build_root, title="Padding as Margin", width=400))
     if png:
         app.render_to_png(png)
         print(f"Rendered {png}")

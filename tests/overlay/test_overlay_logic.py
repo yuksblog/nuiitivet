@@ -69,7 +69,7 @@ def test_resolve_overlay_with_style_alpha_scaled():
         border_color=None,
         border_width=0.0,
         corner_radius=8,
-        padding=(4, 4, 4, 4),
+        content_insets=(4, 4, 4, 4),
         min_width=0,
         min_height=0,
         overlay_color="#112233",

@@ -48,7 +48,9 @@ class FabStyle(ButtonStyle):
         return dict(
             border_width=0.0,
             corner_radius=t["corner_radius"],
-            padding=(8, 8, 8, 8),
+            # The icon is centred in the container, so its inset follows from
+            # container_height and icon_size alone.
+            content_insets=0,
             container_height=t["container_height"],
             min_width=t["container_width"],
             min_height=t["container_height"],

@@ -139,25 +139,37 @@ class InteractiveWidget(Clickable):
         )
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
-        """Override paint to inject draw_state_layer."""
+        """Paint the container inside the padding, then the content on top.
+
+        ``padding`` is the band between the allocated rect and this component;
+        the background, state layer, border and focus ring are all drawn on the
+        content rect so the band stays transparent.
+        """
         self.set_last_rect(x, y, width, height)
+        cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
-        # 1. Background (from Box)
-        self.draw_background(canvas, x, y, width, height)
+        self.draw_background(canvas, cx, cy, cw, ch)
 
-        # 2. State Layer (New)
         if not self.disabled:
-            self.draw_state_layer(canvas, x, y, width, height)
+            self.draw_state_layer(canvas, cx, cy, cw, ch)
 
-        # 3. Children (from Box)
         self.draw_children(canvas, x, y, width, height)
 
-        # 4. Border (from Box)
-        self.draw_border(canvas, x, y, width, height)
+        self.draw_border(canvas, cx, cy, cw, ch)
 
-        # 5. Focus Indicator (New)
         if not self.disabled and self.should_show_focus_ring:
-            self.draw_focus_indicator(canvas, x, y, width, height)
+            self.draw_focus_indicator(canvas, cx, cy, cw, ch)
+
+    def _in_local_bounds(self, x: int, y: int) -> bool:
+        # The component ends where its container ends: the padding band is
+        # neither painted nor clickable, while the MD3 touch target (the
+        # min_width / min_height floor) is part of the content rect.
+        rect = getattr(self, "layout_rect", None)
+        if not rect:
+            return False
+        _, _, w, h = rect
+        cx, cy, cw, ch = self.content_rect(0, 0, int(w), int(h))
+        return cx <= x < cx + cw and cy <= y < cy + ch
 
     def _get_active_state_layer_opacity(self) -> float:
         """Return the opacity for the current state layer based on interaction state."""

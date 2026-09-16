@@ -92,7 +92,7 @@ class Icon(IconBase):
     Parameters:
     - name: Ligature name (e.g. "home", "menu") or Symbol
     - size: Icon visual size in pixels (default 24dp)
-    - padding: Space around icon (M3: "space between UI elements")
+    - padding: Insets from the allocated rect to the glyph
     - style: IconStyle for customization (defaults to theme style)
     """
 
@@ -111,27 +111,17 @@ class Icon(IconBase):
             name: Ligature name such as "home", "menu", "search", a Symbol,
                   or an Observable that yields either.
             size: Logical pixel size of the icon (font size used for the glyph).
-            padding: Space around the icon (M3: "space between UI elements").
+            padding: Insets from the allocated rect to the glyph.
             style: IconStyle for customization (defaults to theme style).
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         # Store style (use provided or get from theme lazily)
         self._style = style
 
-        # Resolve padding
-        final_padding = padding
-        if final_padding is None:
-            if style is not None:
-                final_padding = style.padding
-            else:
-                final_padding = 0
-
         # Treat `size` as a SizingLike and use it for layout via the
         # base Widget's width/height. Also compute a pixel fallback stored
         # in self._size for paint-time operations.
-        super().__init__(size=size, padding=final_padding, key=key)
-
-        self._user_padding = padding
+        super().__init__(size=size, padding=padding if padding is not None else 0, key=key)
 
         self._name_source: Any = name
         self._symbol: Optional["Symbol"] = None
@@ -200,16 +190,6 @@ class Icon(IconBase):
             except Exception:
                 exception_once(logger, "icon_name_bind_exc", "Failed to bind icon name observable")
 
-        # If padding was not provided by user, update it from theme style
-        if self._user_padding is None and self._style is None:
-            try:
-                style = self.style  # This resolves from theme
-                if style.padding != 0:
-                    self.padding = style.padding
-                    self.invalidate()
-            except Exception:
-                pass
-
     @property
     def style(self):
         if self._style is not None:
@@ -241,7 +221,7 @@ class Icon(IconBase):
         else:
             height = self._size
 
-        # Add padding (M3: space between UI elements)
+        # The allocated rect is the glyph plus its padding.
         l, t, r, b = self.padding
         total_w = int(width) + int(l) + int(r)
         total_h = int(height) + int(t) + int(b)
@@ -478,7 +458,6 @@ class Icon(IconBase):
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint icon with padding support (M3準拠)."""
-        # Apply padding to get content area (M3: space between UI elements)
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
         # Determine size to draw (contain behavior).

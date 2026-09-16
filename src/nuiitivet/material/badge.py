@@ -84,7 +84,7 @@ class LargeBadge(Box):
 
         Args:
             text: Badge text to display. Must be non-empty.
-            padding: External badge padding. Defaults to style padding.
+            padding: Insets from the allocated rect to the pill.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -94,8 +94,6 @@ class LargeBadge(Box):
         self.text = text
 
         effective_style = style or LargeBadgeStyle()
-        resolved_height = Sizing.fixed(effective_style.height)
-        resolved_padding = effective_style.padding if padding is None else padding
 
         label = Text(
             text,
@@ -105,13 +103,18 @@ class LargeBadge(Box):
             max_lines=1,
             overflow="clip",
         )
-
-        super().__init__(
+        pill = Box(
             child=label,
-            height=resolved_height,
-            padding=resolved_padding,
+            height=Sizing.fixed(effective_style.height),
+            padding=effective_style.content_insets,
             background_color=effective_style.background_color,
             corner_radius=effective_style.corner_radius,
+            alignment="center",
+        )
+
+        super().__init__(
+            child=pill,
+            padding=padding if padding is not None else 0,
             alignment="center",
             key=key,
         )

@@ -19,7 +19,6 @@ class SwitchStyle:
     """Immutable style for Switch widgets."""
 
     default_touch_target: int = 48
-    padding: int = 0
 
     track_width_ratio: float = 52.0 / 48.0
     track_height_ratio: float = 32.0 / 48.0

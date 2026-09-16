@@ -59,15 +59,17 @@ def test_snackbar_creation() -> None:
 
     assert snackbar.message == "Test message"
     assert isinstance(snackbar.style, SnackbarStyle)
-    assert snackbar.padding == (16, 16, 16, 16)
+    assert snackbar.padding == (0, 0, 0, 0)
+    assert snackbar.style.content_insets == 16
 
 
 def test_snackbar_custom_style() -> None:
-    style = SnackbarStyle().copy_with(corner_radius=12.0, padding=20)
+    style = SnackbarStyle().copy_with(corner_radius=12.0, content_insets=20)
     snackbar = Snackbar(message="Custom", style=style)
 
     assert snackbar.style.corner_radius == 12.0
-    assert snackbar.padding == (20, 20, 20, 20)
+    assert snackbar.style.content_insets == 20
+    assert snackbar.padding == (0, 0, 0, 0)
 
 
 def test_snackbar_build() -> None:

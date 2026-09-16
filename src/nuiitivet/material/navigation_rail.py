@@ -1252,9 +1252,11 @@ class NavigationRail(InteractionHostMixin, Widget):
         children = self.children_snapshot()
         if children:
             child = children[0]
-            child_w, child_height = child.preferred_size(max_width=rail_width, max_height=max_height)
-            preferred_w = max(int(rail_width), int(child_w))
-            preferred_h = int(child_height)
+            l, t, r, b = self.padding
+            child_max_h = None if max_height is None else max(0, int(max_height) - t - b)
+            child_w, child_height = child.preferred_size(max_width=rail_width, max_height=child_max_h)
+            preferred_w = max(int(rail_width), int(child_w)) + l + r
+            preferred_h = int(child_height) + t + b
 
             if max_width is not None:
                 preferred_w = min(int(preferred_w), int(max_width))

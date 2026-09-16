@@ -25,18 +25,23 @@ class Snackbar(ComposableWidget):
         style: Optional[SnackbarStyle] = None,
         key: Optional[str] = None,
     ) -> None:
-        super().__init__(key=key)
-        self.message = str(message)
+        """Initialize Snackbar.
 
-        resolved_style = style if style is not None else SnackbarStyle()
-        self.style = resolved_style
-        self.padding = padding if padding is not None else resolved_style.padding
+        Args:
+            message: Text to display.
+            padding: Insets from the allocated rect to the container.
+            style: Visual style; defaults to :class:`SnackbarStyle`.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
+        super().__init__(padding=padding, key=key)
+        self.message = str(message)
+        self.style = style if style is not None else SnackbarStyle()
 
     def build(self) -> Widget:
         return Box(
             background_color=self.style.background,
             corner_radius=self.style.corner_radius,
-            padding=self.padding,
+            padding=self.style.content_insets,
             child=Text(
                 self.message,
                 style=TextStyle(color=self.style.foreground),

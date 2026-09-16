@@ -12,6 +12,7 @@ from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.type_scale import TypeScale
@@ -43,7 +44,7 @@ def _chip_icon(
     return Icon(name, size=18, style=IconStyle(color=color))
 
 
-def _default_inner_padding(has_icon: bool) -> tuple[int, int, int, int]:
+def _default_content_insets(has_icon: bool) -> tuple[int, int, int, int]:
     if has_icon:
         return (8, 0, 8, 0)
     return (16, 0, 16, 0)
@@ -58,13 +59,13 @@ def _chip_content(
 ) -> Container:
     row = Row(children, gap=spacing, cross_alignment="center")
 
-    inner_padding: tuple[int, int, int, int]
-    if style.padding == (8, 0, 8, 0):
-        inner_padding = _default_inner_padding(has_icon)
+    insets: tuple[int, int, int, int]
+    if style.content_insets == (8, 0, 8, 0):
+        insets = _default_content_insets(has_icon)
     else:
-        inner_padding = style.padding
+        insets = style.content_insets
 
-    return Container(child=row, padding=inner_padding, alignment="center")
+    return Container(child=row, padding=insets, alignment="center")
 
 
 class MaterialChipBase(InteractiveWidget):
@@ -94,7 +95,7 @@ class MaterialChipBase(InteractiveWidget):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            padding: External insets around chip widget.
+            padding: Insets from the allocated rect to the container.
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -107,15 +108,15 @@ class MaterialChipBase(InteractiveWidget):
         initial_style = style if style is not None else ChipStyle.preset(self._variant)
         self._effective_style: "ChipStyle" = initial_style
         # Chip height is MD3-fixed (container_height token) -> style only.
-        content_padding = padding if padding is not None else 0
+        outer_padding = padding if padding is not None else 0
 
         super().__init__(
             child=self._build_content(initial_style),
             on_click=on_click,
             disabled=disabled,
             width=width,
-            height=int(initial_style.container_height),
-            padding=content_padding,
+            height=self._allocated_height(initial_style, outer_padding),
+            padding=outer_padding,
             background_color=initial_style.background,
             border_color=initial_style.border_color,
             border_width=initial_style.border_width,
@@ -128,6 +129,12 @@ class MaterialChipBase(InteractiveWidget):
         self._PRESS_OPACITY = initial_style.pressed_alpha
         self._DRAG_OPACITY = initial_style.drag_alpha
         self._on_style_applied(initial_style)
+
+    @staticmethod
+    def _allocated_height(style: "ChipStyle", padding: "int | Tuple[int, int] | Tuple[int, int, int, int]") -> int:
+        """Return the fixed height: the MD3 container plus the padding band."""
+        _l, top, _r, bottom = parse_padding(padding)
+        return int(style.container_height) + top + bottom
 
     # --- Theme integration ----------------------------------------------------
     def _resolve_style(self) -> "ChipStyle":
@@ -176,7 +183,7 @@ class MaterialChipBase(InteractiveWidget):
         from nuiitivet.rendering.sizing import Sizing
 
         self._effective_style = style
-        self.height_sizing = Sizing.fixed(int(style.container_height))
+        self.height_sizing = Sizing.fixed(self._allocated_height(style, self.padding))
         self.bgcolor = style.background
         self.border_color = style.border_color
         self.border_width = style.border_width
@@ -252,7 +259,7 @@ class AssistChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            padding: External insets around chip widget.
+            padding: Insets from the allocated rect to the container.
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -313,7 +320,7 @@ class FilterChip(MaterialChipBase):
             on_click: Additional click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            padding: External insets around chip widget.
+            padding: Insets from the allocated rect to the container.
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -428,7 +435,7 @@ class InputChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            padding: External insets around chip widget.
+            padding: Insets from the allocated rect to the container.
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -501,7 +508,7 @@ class SuggestionChip(MaterialChipBase):
             on_click: Click callback.
             disabled: Disabled flag.
             width: Width sizing.
-            padding: External insets around chip widget.
+            padding: Insets from the allocated rect to the container.
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

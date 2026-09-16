@@ -52,7 +52,7 @@ class Text(TextBase):
             label: The text content to display. Can be a string or an Observable.
             width: Width specification.
             height: Height specification.
-            padding: Padding around the text.
+            padding: Insets from the allocated rect to the text.
             style: Custom Material TextStyle (color, font_family).
             type_scale: MD3 type-scale token supplying typography. Defaults to
                 Body Medium.

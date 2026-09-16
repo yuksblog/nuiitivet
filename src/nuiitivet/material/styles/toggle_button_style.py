@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 from .button_size import BUTTON_SIZE_TOKENS, ButtonSize
-from .button_style import ButtonStyle, PaddingLike, _size_min_height, _size_min_width, _size_padding
+from .button_style import ButtonStyle, PaddingLike, _size_content_insets, _size_min_height, _size_min_width
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
@@ -38,7 +38,7 @@ class ToggleButtonStyle:
     # Shape / size (shared across states)
     container_height: int = 40
     corner_radius: int = 20
-    padding: PaddingLike = (16, 0, 16, 0)
+    content_insets: PaddingLike = (16, 0, 16, 0)
     spacing: int = 8
     min_width: int = 64
     min_height: int = 48
@@ -80,7 +80,7 @@ class ToggleButtonStyle:
                 border_width=self.border_width,
                 corner_radius=self.corner_radius,
                 container_height=self.container_height,
-                padding=self.padding,
+                content_insets=self.content_insets,
                 spacing=self.spacing,
                 min_width=self.min_width,
                 min_height=self.min_height,
@@ -97,7 +97,7 @@ class ToggleButtonStyle:
             border_width=self.border_width,
             corner_radius=self.corner_radius,
             container_height=self.container_height,
-            padding=self.padding,
+            content_insets=self.content_insets,
             spacing=self.spacing,
             min_width=self.min_width,
             min_height=self.min_height,
@@ -117,7 +117,7 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -144,7 +144,7 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -171,7 +171,7 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),
@@ -198,7 +198,7 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
-            padding=_size_padding(size),
+            content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
             min_height=_size_min_height(size),

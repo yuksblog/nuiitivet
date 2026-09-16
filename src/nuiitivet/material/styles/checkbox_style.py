@@ -32,7 +32,6 @@ class CheckboxStyle:
 
     # Size properties (M3 baseline: 48dp touch target)
     default_touch_target: int = 48
-    padding: int = 0
     icon_size_ratio: float = 18.0 / 48.0  # Icon size relative to touch target
     corner_radius_ratio: float = 0.111  # Corner radius relative to icon size
     stroke_width_ratio: float = 0.11  # Stroke width relative to icon size

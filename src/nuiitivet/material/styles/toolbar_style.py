@@ -23,7 +23,7 @@ class ToolbarStyle:
         background: Toolbar container background color.
         foreground: Recommended foreground color for icon actions.
         container_height: Visual container height in pixels.
-        content_padding: Internal content insets.
+        content_insets: Internal content insets.
         item_gap: Gap between action buttons.
         corner_radius: Container corner radius in pixels.
         border_color: Optional border color.
@@ -35,7 +35,7 @@ class ToolbarStyle:
     background: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
     foreground: ColorSpec = ColorRole.ON_SURFACE
     container_height: int = 64
-    content_padding: tuple[int, int, int, int] = (16, 0, 16, 0)
+    content_insets: tuple[int, int, int, int] = (16, 0, 16, 0)
     item_gap: int = 8
     corner_radius: int = 0
     border_color: Optional[ColorSpec] = None
@@ -54,7 +54,7 @@ class ToolbarStyle:
             background=ColorRole.SURFACE_CONTAINER_HIGHEST,
             foreground=ColorRole.ON_SURFACE,
             container_height=64,
-            content_padding=(16, 0, 16, 0),
+            content_insets=(16, 0, 16, 0),
             item_gap=8,
             corner_radius=0,
             border_color=None,
@@ -70,7 +70,7 @@ class ToolbarStyle:
             background=ColorRole.PRIMARY_CONTAINER,
             foreground=ColorRole.ON_PRIMARY_CONTAINER,
             container_height=64,
-            content_padding=(16, 0, 16, 0),
+            content_insets=(16, 0, 16, 0),
             item_gap=8,
             corner_radius=0,
             border_color=None,

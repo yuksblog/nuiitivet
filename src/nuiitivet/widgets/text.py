@@ -45,7 +45,7 @@ class TextBase(Widget):
       ``"center"``, ``"end"``).
     - width: Explicit width sizing
     - height: Explicit height sizing
-    - padding: Space around text
+    - padding: Insets from the allocated rect to the text
     - max_lines: Maximum number of lines (``None`` = unbounded). Hard line
       breaks (``\\n``) and soft wrapping both count toward this limit.
     - overflow: What to do when text exceeds the layout box: ``"visible"``
@@ -346,7 +346,7 @@ class TextBase(Widget):
         else:
             height = measured_height
 
-        # Add padding (M3: space between UI elements)
+        # The allocated rect is the text plus its padding.
         l, t, r, b = self.padding
         total_w = int(width) + int(l) + int(r)
         total_h = int(height) + int(t) + int(b)
@@ -360,7 +360,6 @@ class TextBase(Widget):
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint text with padding, multi-line layout and overflow support."""
-        # Apply padding to get content area (M3: space between UI elements)
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
         txt = self._resolve_label()

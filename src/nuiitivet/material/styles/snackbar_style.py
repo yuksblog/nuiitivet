@@ -15,7 +15,7 @@ class SnackbarStyle:
     background: Optional[ColorSpec] = ColorRole.ON_SURFACE
     foreground: Optional[ColorSpec] = ColorRole.SURFACE
     corner_radius: float = 4.0
-    padding: PaddingLike = 16
+    content_insets: PaddingLike = 16
 
     def copy_with(self, **changes) -> "SnackbarStyle":
         """Create a new style instance with specified fields changed."""

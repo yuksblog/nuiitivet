@@ -272,7 +272,7 @@ class _ProgressIndicatorBase(Widget):
             disabled: Disabled state or observable disabled state.
             width: Width sizing.
             height: Height sizing.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._disabled_external: ObservableProtocol[bool] | None = None
@@ -325,7 +325,7 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
             disabled: Disabled state or observable disabled state.
             width: Width sizing.
             height: Height sizing.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._value_external: ObservableProtocol[float] | None = None
@@ -395,7 +395,7 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
             disabled: Disabled state or observable disabled state.
             width: Width sizing.
             height: Height sizing.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(disabled=disabled, width=width, height=height, padding=padding, key=key)
@@ -476,7 +476,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
             value: Progress value in range ``[0.0, 1.0]``. Values are clamped.
             disabled: Disabled state.
             width: Width sizing.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -629,7 +629,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
         Args:
             disabled: Disabled state.
             width: Width sizing.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -755,7 +755,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
             value: Progress value in range ``[0.0, 1.0]``. Values are clamped.
             disabled: Disabled state.
             size: Outer indicator size in dp. Uses style default when omitted.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -887,7 +887,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
         Args:
             disabled: Disabled state.
             size: Outer indicator size in dp. Uses style default when omitted.
-            padding: Padding around the indicator.
+            padding: Insets from the allocated rect to the indicator.
             style: Optional style override.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

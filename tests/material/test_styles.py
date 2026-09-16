@@ -94,7 +94,7 @@ def test_button_style_defaults():
     style = ButtonStyle()
     assert style.corner_radius == 20
     assert style.container_height == 40
-    assert style.padding == (16, 0, 16, 0)
+    assert style.content_insets == (16, 0, 16, 0)
     assert style.min_width == 64
     assert style.min_height == 48
     assert style.elevation == 0
@@ -130,7 +130,7 @@ def test_button_style_text():
 
     style = ButtonStyle.text()
     assert style.background is None
-    assert style.padding == (16, 0, 16, 0)
+    assert style.content_insets == (16, 0, 16, 0)
     assert style.border_width == 0.0
 
 
@@ -165,7 +165,7 @@ def test_style_classes_are_immutable():
     radio = RadioButtonStyle()
     switch = SwitchStyle()
     try:
-        button.padding = 30
+        button.content_insets = 30
         assert False, "Should not be able to modify frozen dataclass"
     except Exception:
         pass

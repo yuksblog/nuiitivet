@@ -135,7 +135,7 @@ class TextField(InteractiveWidget):
     - style: Custom style configuration
     - width: Explicit width sizing
     - height: Explicit height sizing
-    - padding: Space around the text field
+    - padding: Insets from the allocated rect to the field container
     - disabled: Disable interaction (supports Observable)
     """
 
@@ -201,7 +201,7 @@ class TextField(InteractiveWidget):
                 message and carry a message without being flagged.
             disabled: Whether the text field is disabled.
             width: Width specification.
-            padding: Padding around the text field.
+            padding: Insets from the allocated rect to the field container.
             style: Custom style configuration.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -591,7 +591,7 @@ class TextField(InteractiveWidget):
         if not style:
             return (default_width, default_height)
 
-        pl, pt, pr, pb = style.content_padding
+        pl, pt, pr, pb = style.content_insets
 
         icon_w = 0
         if self.leading_icon:
@@ -654,7 +654,7 @@ class TextField(InteractiveWidget):
         if not style:
             return
 
-        pl, pt, pr, pb = style.content_padding
+        pl, pt, pr, pb = style.content_insets
 
         # When the floating label is shown inside the container (filled mode),
         # reserve a 16dp band at the top for the populated label text. This

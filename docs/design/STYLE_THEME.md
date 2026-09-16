@@ -63,7 +63,7 @@ class ButtonStyle:
     border_color: Optional[str | ColorRole] = None
     border_width: float = 0.0
     corner_radius: int = 12
-    padding: int = 16
+    content_insets: int = 16
     min_size: Tuple[int, int] = (160, 48)
     overlay: Optional[Tuple[str, float]] = None
     
@@ -79,7 +79,7 @@ class ButtonStyle:
             "foreground": resolve_color(self.foreground),
             "border_color": resolve_color(self.border_color),
             "corner_radius": self.corner_radius,
-            "padding": self.padding,
+            "content_insets": self.content_insets,
             "min_size": self.min_size,
             "overlay": self.overlay,
         }
@@ -182,7 +182,7 @@ class Theme:
         foreground=ColorRole.ON_PRIMARY,
         elevation=0.0,
         corner_radius=12,
-        padding=16,
+        content_insets=16,
         min_size=(160, 48),
         overlay=(ColorRole.ON_PRIMARY, 0.12),
     ))
@@ -208,7 +208,7 @@ class Theme:
             foreground=ColorRole.ON_PRIMARY,
             elevation=0.0,
             corner_radius=12,
-            padding=16,
+            content_insets=16,
             min_size=(160, 48),
             overlay=(ColorRole.ON_PRIMARY, 0.12),
         )
@@ -246,7 +246,7 @@ button = Button(
     "Click",
     style=manager.current.button_style.copy_with(
         corner_radius=20,
-        padding=20,
+        content_insets=20,
     ),
 )
 

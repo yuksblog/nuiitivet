@@ -53,7 +53,7 @@ class TextFieldStyle:
     border_radius: float = 4.0  # Top corners for filled, all for outlined
 
     # Layout
-    content_padding: Tuple[int, int, int, int] = (16, 16, 16, 16)  # L, T, R, B
+    content_insets: Tuple[int, int, int, int] = (16, 16, 16, 16)  # L, T, R, B
 
     def copy_with(self, **changes) -> "TextFieldStyle":
         """Create a new style instance with specified fields changed."""
@@ -67,7 +67,7 @@ class TextFieldStyle:
             container_color=ColorRole.SURFACE_CONTAINER_HIGHEST,
             indicator_color=ColorRole.ON_SURFACE_VARIANT,
             border_radius=4.0,
-            content_padding=(16, 8, 16, 8),  # Adjusted for label
+            content_insets=(16, 8, 16, 8),  # Adjusted for label
         )
 
     @classmethod
@@ -79,7 +79,7 @@ class TextFieldStyle:
             indicator_color=ColorRole.OUTLINE,
             focused_indicator_width=3.0,  # MD3: focused outline width = 3dp
             border_radius=4.0,
-            content_padding=(16, 16, 16, 16),
+            content_insets=(16, 16, 16, 16),
         )
 
     @classmethod

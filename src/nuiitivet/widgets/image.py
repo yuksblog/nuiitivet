@@ -24,7 +24,7 @@ class Image(Widget):
         alignment: Content alignment in the allocated content rect.
         width: Width sizing.
         height: Height sizing.
-        padding: Space around content.
+        padding: Insets from the allocated rect to the image.
     """
 
     def __init__(
@@ -45,7 +45,7 @@ class Image(Widget):
             fit: Content fit mode. One of ``"contain"``, ``"cover"``, ``"fill"``, ``"none"``.
             width: Width sizing.
             height: Height sizing.
-            padding: Space around content.
+            padding: Insets from the allocated rect to the image.
             alignment: Content alignment in the allocated content rect.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

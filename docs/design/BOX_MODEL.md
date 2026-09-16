@@ -57,16 +57,18 @@ visual bounds (allocated + outsets)
 
 `Widget.padding` always means: **allocated rect → content rect**.
 
-Why it can look like "outer spacing" for leaf widgets:
+Every widget that occupies a rect has `padding`, and it is included in `preferred_size`. A pure provider that occupies no rect of its own (`ForEach`) has nothing to inset and is exempt.
 
-- A leaf widget often draws its meaningful visuals inside the content rect.
-- If the leaf's padding is large and the leaf draws no background, that padding area can be visually empty.
-- Hit testing (by default) can still include the full allocated rect, so the padding area can be interactive.
+What the widget draws goes inside the content rect. For a leaf (`Text`, `Icon`, `Divider`) and for a component that draws its own boundary (`Button`, `Fab`, `Chip`), the padding band is therefore transparent, and it reads as outer space. That is the intended behaviour, not a side effect: `Fab(padding=24)` is `Container(padding=24, child=Fab(...))` one node lighter, and a `Box` wrapping either paints the whole allocated rect, so the same band reads as inner padding there. Which one it "is" depends on who draws the boundary, never on the widget class.
 
-For M3-style components:
+Two layers own two different insets, and they never share a property:
 
-- Treat the M3 "component" as the widget's content.
-- M3 internal spacing (e.g. button label insets) should be modeled as *component-internal layout*, not as `Widget.padding`.
+| Layer | Owner | Meaning |
+| --- | --- | --- |
+| Box model | `Widget.padding` | allocated rect → content rect |
+| MD3 spec | `*Style.content_insets` (and the other spec tokens) | container edge → content, inside the component |
+
+M3 internal spacing (button label insets, menu vertical inset, dialog inset) is *component-internal layout*: it lives on an inner node or on a style field named for what it is, never on the component's own `Widget.padding`. A component's visual container (background, border, state layer, focus ring) sits inside the padding. Its MD3 touch target (`min_width` / `min_height`) is part of the container's rect, not of the padding.
 
 ## Hit Testing: Interactive Bounds
 
@@ -81,8 +83,17 @@ Default hit testing uses the **allocated rect**.
 
 Rationale:
 
-- For interactive controls (buttons, toggles), users expect padding to be part of the touch target.
-- Using the content rect as the hit target tends to create "visible but not clickable" padding.
+- A layout box or a leaf has no boundary of its own, so its padding is part of what the user sees as "the widget".
+- Using the content rect as the hit target there would create "visible but not clickable" padding.
+
+### Own-boundary exception
+
+A component that draws its own boundary (`InteractiveWidget` and its subclasses) hit-tests on the **content rect**.
+
+Rationale:
+
+- Its padding is a transparent band outside the container; a `Fab(padding=24)` that answered clicks across the band would be a 104px target showing a 56px circle.
+- The MD3 touch target is inside the content rect (the container is floored at `min_width` / `min_height`), so it is unaffected.
 
 ### Viewport/clip exception
 

@@ -23,7 +23,7 @@ class ChipStyle:
         border_width: Border width in pixels.
         corner_radius: Container corner radius in pixels.
         container_height: Visual container height in pixels.
-        padding: Content insets (left, top, right, bottom).
+        content_insets: Insets from the container edge to the content (left, top, right, bottom).
         spacing: Gap between chip content items.
         min_width: Minimum chip width.
         min_height: Minimum touch target height.
@@ -43,7 +43,7 @@ class ChipStyle:
     corner_radius: int = 8
 
     container_height: int = 32
-    padding: tuple[int, int, int, int] = (8, 0, 8, 0)
+    content_insets: tuple[int, int, int, int] = (8, 0, 8, 0)
     spacing: int = 8
     min_width: int = 48
     min_height: int = 48
