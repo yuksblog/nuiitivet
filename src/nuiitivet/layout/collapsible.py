@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Literal, Optional, Tuple, Union
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation.animatable import Animatable
 from nuiitivet.animation.motion import BezierMotion, Motion
 from nuiitivet.common.logging_once import exception_once
@@ -97,6 +98,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
         motion_out: Optional[Motion] = None,
         axis: Axis = "both",
         alignment: Union[str, Tuple[str, str]] = "top-left",
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize a Collapsible.
@@ -113,9 +115,10 @@ class Collapsible(FocusTraversalBlocker, Widget):
                 ``"vertical"``). Axes that are not animated pass the child's
                 natural size through unchanged.
             alignment: Alignment of the child within the animated rectangle.
+            padding: Insets from the allocated rect to the animated area.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(max_children=1, overflow_policy="replace_last", key=key)
+        super().__init__(max_children=1, overflow_policy="replace_last", padding=padding, key=key)
         self._opened: Union[bool, ObservableBase[bool]] = opened
         self._motion_in = motion
         self._motion_out = motion_out if motion_out is not None else motion
@@ -306,9 +309,14 @@ class Collapsible(FocusTraversalBlocker, Widget):
         whatever ``layout`` last resolved. The constraints are remembered so
         the following ``layout`` measures the child the same way.
         """
-        self._measure_constraints = (max_width, max_height)
+        l, t, r, b = self.padding
+        self._measure_constraints = (
+            None if max_width is None else max(0, int(max_width) - l - r),
+            None if max_height is None else max(0, int(max_height) - t - b),
+        )
         natural_w, natural_h = self._natural_size(*self._child_constraints())
-        return self._resolve_size(natural_w, natural_h)
+        out_w, out_h = self._resolve_size(natural_w, natural_h)
+        return (out_w + l + r, out_h + t + b)
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -324,6 +332,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
         natural_w, natural_h = self._natural_size(*self._child_constraints())
         self._sync_targets(natural_w, natural_h)
 
+        cx, cy, width, height = self.content_rect(0, 0, width, height)
         child_w = natural_w if self._animates_width() else width
         child_h = natural_h if self._animates_height() else height
         try:
@@ -338,9 +347,12 @@ class Collapsible(FocusTraversalBlocker, Widget):
 
         fx = {"start": 0.0, "center": 0.5, "end": 1.0}.get(self._align[0], 0.0)
         fy = {"start": 0.0, "center": 0.5, "end": 1.0}.get(self._align[1], 0.0)
-        cx = int(round((width - child_w) * fx))
-        cy = int(round((height - child_h) * fy))
-        child.set_layout_rect(cx, cy, child_w, child_h)
+        child.set_layout_rect(
+            cx + int(round((width - child_w) * fx)),
+            cy + int(round((height - child_h) * fy)),
+            child_w,
+            child_h,
+        )
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
@@ -348,10 +360,13 @@ class Collapsible(FocusTraversalBlocker, Widget):
         if child is None:
             return
 
-        # When the allocated rect has zero area the child is fully hidden.
+        # The animated area is the content rect; the padding stays around it.
+        clip_x, clip_y, clip_w, clip_h = self.content_rect(x, y, width, height)
+
+        # When the animated area has zero size the child is fully hidden.
         # Skip painting entirely; do not rely on the clip below because the
         # clip is only established when width > 0 and height > 0.
-        if width <= 0 or height <= 0:
+        if clip_w <= 0 or clip_h <= 0:
             return
 
         rect = child.layout_rect
@@ -363,7 +378,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
 
         clip_saved = False
         if canvas is not None:
-            clip_area = make_rect(x, y, width, height)
+            clip_area = make_rect(clip_x, clip_y, clip_w, clip_h)
             try:
                 canvas.save()
                 if clip_area is not None and clip_rect(canvas, clip_area, True):

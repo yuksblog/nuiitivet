@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Tuple
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
@@ -29,6 +30,7 @@ class Tooltip(ComposableWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         style: TooltipStyle | None = None,
+        padding: PaddingLike = 0,
         key: str | None = None,
     ) -> None:
         """Initialize Tooltip.
@@ -38,9 +40,10 @@ class Tooltip(ComposableWidget):
             width: Optional width sizing.
             height: Optional height sizing.
             style: Optional style token set. Defaults to TooltipStyle.standard().
+            padding: Insets from the allocated rect to the tooltip.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, key=key)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self.message = str(message)
         self._user_style = style
 
@@ -101,6 +104,7 @@ class RichTooltip(ComposableWidget):
         width: SizingLike = None,
         height: SizingLike = None,
         style: RichTooltipStyle | None = None,
+        padding: PaddingLike = 0,
         key: str | None = None,
     ) -> None:
         """Initialize RichTooltip.
@@ -115,9 +119,10 @@ class RichTooltip(ComposableWidget):
             width: Optional width sizing.
             height: Optional height sizing.
             style: Optional style token set. Defaults to RichTooltipStyle.standard().
+            padding: Insets from the allocated rect to the tooltip.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, key=key)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self.supporting_text = str(supporting_text)
         self.subhead = subhead
         self.action_label = action_label

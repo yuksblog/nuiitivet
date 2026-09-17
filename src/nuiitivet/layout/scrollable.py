@@ -32,7 +32,7 @@ from ..scrolling import (
     ScrollPhysics,
     ScrollbarStyle,
 )
-from ..rendering.padding import parse_padding
+from ..rendering.padding import PaddingLike, parse_padding
 from ..rendering.sizing import Sizing, SizingLike
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import (
@@ -82,6 +82,7 @@ class _ScrollableBase(Widget):
         scrollbar_visible: ScrollbarVisibleLike = True,
         width: SizingLike = None,
         height: SizingLike = None,
+        padding: PaddingLike = 0,
         scrollbar_behavior: Optional[ScrollbarBehavior] = None,
         scrollbar_style: Optional[ScrollbarStyle] = None,
         style: Optional[ScrollableStyle] = None,
@@ -102,13 +103,14 @@ class _ScrollableBase(Widget):
                 or an ``Observable[bool]`` for reactive visibility.
             width: Width sizing override.
             height: Height sizing override.
+            padding: Insets from the allocated rect to the viewport and its bar.
             scrollbar_behavior: Scrollbar interaction behavior (auto-hide,
                 track clicks…).
             scrollbar_style: Scrollbar appearance (thickness, min thumb length).
             style: Placement (viewport padding, scrollbar padding, overlay).
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, key=key)
+        super().__init__(width=width, height=height, padding=padding, key=key)
 
         if child is None:
             raise ValueError("Scrollable requires a child widget")
@@ -223,9 +225,13 @@ class _ScrollableBase(Widget):
     # --- Sizing ---
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        """Explicit sizes take priority, otherwise delegate to viewport"""
-        # Get viewport's preferred size
-        viewport_w, viewport_h = self._viewport.preferred_size(max_width=max_width, max_height=max_height)
+        """Explicit sizes take priority, otherwise delegate to viewport (plus padding)."""
+        l, t, r, b = self.padding
+        inner_max_w = None if max_width is None else max(0, int(max_width) - l - r)
+        inner_max_h = None if max_height is None else max(0, int(max_height) - t - b)
+        viewport_w, viewport_h = self._viewport.preferred_size(max_width=inner_max_w, max_height=inner_max_h)
+        viewport_w += l + r
+        viewport_h += t + b
 
         # Check if explicit sizes were provided
         w_sz = self.width_sizing
@@ -262,6 +268,8 @@ class _ScrollableBase(Widget):
         y = int(current[1]) if current is not None else 0
         self.set_layout_rect(x, y, width, height)
 
+        # Everything below is placed inside the padding.
+        cx, cy, width, height = self.content_rect(0, 0, width, height)
         viewport_width = int(width)
         viewport_height = int(height)
 
@@ -279,21 +287,21 @@ class _ScrollableBase(Widget):
                 viewport_height = max(0, viewport_height - thickness - pad_b)
 
         self._viewport.layout(viewport_width, viewport_height)
-        self._viewport.set_layout_rect(0, 0, viewport_width, viewport_height)
+        self._viewport.set_layout_rect(cx, cy, viewport_width, viewport_height)
 
         scrollbar = self._scrollbar
 
         if wants_scrollbar and self._should_show_scrollbar():
             if self.direction is ScrollDirection.VERTICAL:
                 pad_r = self._scrollbar_padding[2]
-                bar_x = int(width) - scrollbar.thickness - pad_r
-                bar_y = 0
+                bar_x = cx + int(width) - scrollbar.thickness - pad_r
+                bar_y = cy
                 bar_w = scrollbar.thickness
                 bar_h = viewport_height
             else:
                 pad_b = self._scrollbar_padding[3]
-                bar_x = 0
-                bar_y = int(height) - scrollbar.thickness - pad_b
+                bar_x = cx
+                bar_y = cy + int(height) - scrollbar.thickness - pad_b
                 bar_w = viewport_width
                 bar_h = scrollbar.thickness
 
@@ -323,6 +331,7 @@ class _ScrollableBase(Widget):
         # Record the painted rect (for hit-testing)
         self.set_last_rect(x, y, width, height)
 
+        x, y, width, height = self.content_rect(x, y, width, height)
         viewport_width = width
         viewport_height = height
 

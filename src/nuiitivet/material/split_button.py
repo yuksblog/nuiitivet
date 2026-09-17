@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.animation.converter import VectorConverter
 from nuiitivet.input.pointer import PointerEvent
@@ -530,6 +531,7 @@ class SplitButton(Box):
         disabled: "bool | MutableObservableBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[SplitButtonStyle]" = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize SplitButton.
@@ -549,6 +551,7 @@ class SplitButton(Box):
             disabled: Disables both button halves when ``True``.
             width: Optional width sizing for the overall widget.
             style: Visual style.  Defaults to ``SplitButtonStyle.filled("s")``.
+            padding: Insets from the allocated rect to the button pair.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         if label is None and icon is None:
@@ -581,7 +584,7 @@ class SplitButton(Box):
             cross_alignment="center",
         )
 
-        super().__init__(child=row, width=width, key=key)
+        super().__init__(child=row, width=width, padding=padding, key=key)
 
     # ------------------------------------------------------------------
     # Content builder (leading button)

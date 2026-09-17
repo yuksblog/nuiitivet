@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Tuple
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.common.logging_once import exception_once
 
 from ..widgeting.widget import Widget
@@ -25,6 +26,7 @@ class CrossAligned(Widget):
         child: Optional[Widget],
         alignment: str,
         *,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize the CrossAligned wrapper.
@@ -33,12 +35,13 @@ class CrossAligned(Widget):
             child: The child widget to wrap.
             alignment: The cross-axis alignment to apply to this child.
                 Common values: "start", "center", "end", "stretch".
+            padding: Insets from the allocated rect to the child.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(
             width=child.width_sizing if child is not None else None,
             height=child.height_sizing if child is not None else None,
-            padding=0,
+            padding=padding,
             max_children=1,
             overflow_policy="replace_last",
             key=key,
@@ -51,17 +54,22 @@ class CrossAligned(Widget):
         ChildContainerMixin.add_child(self, w)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        l, t, r, b = self.padding
         if not self.children:
-            return (0, 0)
-        return measure_preferred_size(self.children[0], max_width=max_width, max_height=max_height)
+            return (l + r, t + b)
+        inner_w = None if max_width is None else max(0, int(max_width) - l - r)
+        inner_h = None if max_height is None else max(0, int(max_height) - t - b)
+        w, h = measure_preferred_size(self.children[0], max_width=inner_w, max_height=inner_h)
+        return (int(w) + l + r, int(h) + t + b)
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         if not self.children:
             return
         child = self.children[0]
-        child.layout(width, height)
-        child.set_layout_rect(0, 0, width, height)
+        cx, cy, cw, ch = self.content_rect(0, 0, width, height)
+        child.layout(cw, ch)
+        child.set_layout_rect(cx, cy, cw, ch)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
