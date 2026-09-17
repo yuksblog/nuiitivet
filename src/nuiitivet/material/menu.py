@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, Sequence, cast
 
+from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
@@ -97,6 +98,7 @@ class MenuItem(InteractiveWidget):
         disabled: bool = False,
         leading_icon: Symbol | str | None = None,
         trailing: Symbol | str | None = None,
+        padding: PaddingLike = 0,
         key: str | None = None,
     ) -> None:
         """Initialize MenuItem.
@@ -111,6 +113,7 @@ class MenuItem(InteractiveWidget):
             disabled: Whether this item is disabled.
             leading_icon: Optional leading icon.
             trailing: Optional trailing icon (Symbol) or trailing text (str).
+            padding: Insets from the allocated rect to the item.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self.label = label
@@ -127,7 +130,9 @@ class MenuItem(InteractiveWidget):
         self._content_container: Container | None = None
         self._content_icon_size: int | None = None
 
-        resolved_height = Sizing.fixed(self._menu_style.item_height)
+        # The item height is MD3-fixed, so the fixed sizing carries the padding band.
+        _l, pad_top, _r, pad_bottom = parse_padding(padding if padding is not None else 0)
+        resolved_height = Sizing.fixed(self._menu_style.item_height + pad_top + pad_bottom)
 
         super().__init__(
             child=Text(label),
@@ -140,7 +145,7 @@ class MenuItem(InteractiveWidget):
             width=Sizing.weight(),
             height=resolved_height,
             background_color=None,
-            padding=0,
+            padding=padding if padding is not None else 0,
             corner_radius=0,
             # The enclosing Menu's FocusScope moves focus between the items; the
             # global Tab sequence must not stop on them (WAI-ARIA menu pattern).
@@ -237,7 +242,7 @@ class MenuItem(InteractiveWidget):
         self._PRESS_OPACITY = float(style.pressed_alpha)
         self.corner_radius = float(style.state_layer_corner_radius)
 
-        self.height_sizing = Sizing.fixed(style.item_height)
+        self.height_sizing = Sizing.fixed(style.item_height + self.padding[1] + self.padding[3])
 
         foreground = style.selected_foreground if self._selected else style.label_color
         icon_color = style.selected_foreground if self._selected else style.icon_color
@@ -337,6 +342,7 @@ class SubMenuItem(MenuItem):
         *,
         leading_icon: Symbol | str | None = None,
         disabled: bool = False,
+        padding: PaddingLike = 0,
         key: str | None = None,
     ) -> None:
         """Initialize SubMenuItem.
@@ -346,6 +352,7 @@ class SubMenuItem(MenuItem):
             items: Submenu entries.
             leading_icon: Optional leading icon.
             disabled: Whether this item is disabled.
+            padding: Insets from the allocated rect to the item.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._submenu_items = list(items)
@@ -362,6 +369,7 @@ class SubMenuItem(MenuItem):
             disabled=disabled,
             leading_icon=leading_icon,
             trailing=Symbols.chevron_right,
+            padding=padding,
             key=key,
         )
 
@@ -566,6 +574,7 @@ class Menu(InteractiveWidget):
         style: MenuStyle | None = None,
         autofocus: bool = True,
         parent_item: "SubMenuItem | None" = None,
+        padding: PaddingLike = 0,
         key: str | None = None,
     ) -> None:
         """Initialize Menu.
@@ -576,6 +585,7 @@ class Menu(InteractiveWidget):
             style: Optional menu style override.
             autofocus: Whether opening the menu focuses its first enabled item.
             parent_item: The SubMenuItem this menu expands from, if it is a submenu.
+            padding: Insets from the allocated rect to the menu surface.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self.items = list(items)
@@ -610,6 +620,7 @@ class Menu(InteractiveWidget):
             # The menu is one group, not a row of stops: Tab neither lands on the
             # surface nor on the items, it leaves the menu (see the scope below).
             traversable=False,
+            padding=padding if padding is not None else 0,
             key=key,
         )
 
@@ -846,9 +857,10 @@ class Menu(InteractiveWidget):
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
         vertical = int(self.style.container_vertical_padding) * 2
+        pl, pt, pr, pb = self.padding
         measure_max_width = int(self.style.max_width)
         if max_width is not None:
-            measure_max_width = min(measure_max_width, int(max_width))
+            measure_max_width = min(measure_max_width, max(0, int(max_width) - pl - pr))
 
         content_width = 0
         content_height = 0
@@ -858,8 +870,8 @@ class Menu(InteractiveWidget):
             content_width = max(content_width, int(w))
             content_height += int(h)
 
-        resolved_width = max(int(self.style.min_width), min(int(self.style.max_width), int(content_width)))
-        resolved_height = int(content_height) + vertical
+        resolved_width = max(int(self.style.min_width), min(int(self.style.max_width), int(content_width))) + pl + pr
+        resolved_height = int(content_height) + vertical + pt + pb
 
         if max_width is not None:
             resolved_width = min(resolved_width, int(max_width))

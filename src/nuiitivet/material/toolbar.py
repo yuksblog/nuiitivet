@@ -7,7 +7,7 @@ from typing import Literal, Optional, Sequence, Tuple, Union
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.styles.toolbar_style import ToolbarStyle
-from nuiitivet.rendering.padding import PaddingLike
+from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.theme.theme import Theme
@@ -90,7 +90,7 @@ class _ToolbarBase(Box):
 class DockedToolbar(_ToolbarBase):
     """Material Design 3 docked toolbar.
 
-    This toolbar is edge-to-edge and therefore does not expose external padding.
+    Edge-to-edge by default: ``padding`` is 0 unless the caller sets it.
     """
 
     def __init__(
@@ -98,6 +98,7 @@ class DockedToolbar(_ToolbarBase):
         buttons: Sequence[Widget],
         *,
         style: Optional[ToolbarStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize DockedToolbar.
@@ -109,6 +110,7 @@ class DockedToolbar(_ToolbarBase):
                 button-sized children and degrades gracefully for larger ones.
             style: Optional toolbar style. Defaults to the theme's toolbar
                 style, which itself falls back to ``ToolbarStyle.standard()``.
+            padding: Insets from the allocated rect to the toolbar.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._user_style = style
@@ -129,10 +131,12 @@ class DockedToolbar(_ToolbarBase):
             padding=effective_style.content_insets,
         )
 
+        # The container height is MD3-fixed, so the fixed sizing carries the padding band.
+        _l, pad_top, _r, pad_bottom = parse_padding(padding if padding is not None else 0)
         super().__init__(
             child=self._content,
-            height=effective_style.container_height,
-            padding=0,
+            height=effective_style.container_height + pad_top + pad_bottom,
+            padding=padding,
             background_color=effective_style.background,
             border_color=effective_style.border_color,
             border_width=effective_style.border_width,
@@ -143,7 +147,7 @@ class DockedToolbar(_ToolbarBase):
 
     def _apply_toolbar_style(self, style: ToolbarStyle) -> None:
         super()._apply_toolbar_style(style)
-        self.height_sizing = Sizing.fixed(int(style.container_height))
+        self.height_sizing = Sizing.fixed(int(style.container_height) + self.padding[1] + self.padding[3])
         self.bgcolor = style.background
         self.border_color = style.border_color
         self.border_width = style.border_width

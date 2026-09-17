@@ -743,7 +743,7 @@ class Button(MaterialButtonBase):
         on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        padding: PaddingLike = None,
         style: Optional[ButtonStyle] = None,
         key: Optional[str] = None,
     ):
@@ -809,6 +809,7 @@ class IconButton(MaterialButtonBase):
         *,
         on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
+        padding: PaddingLike = 0,
         style: Optional[ButtonStyle] = None,
         key: Optional[str] = None,
     ):
@@ -818,6 +819,7 @@ class IconButton(MaterialButtonBase):
             icon: Icon glyph source.
             on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
+            padding: Insets from the allocated rect to the container.
             style: Icon button style preset or custom style.  Defaults to
                 :meth:`IconButtonStyle.standard` (size ``"s"``, 40dp).  Use
                 size-aware factories such as ``IconButtonStyle.filled("m")``
@@ -827,8 +829,12 @@ class IconButton(MaterialButtonBase):
         effective_style = style if style is not None else IconButtonStyle.standard()
 
         self._user_style = effective_style
-        self._user_padding = None
-        self._user_height = effective_style.container_height
+        self._user_padding = padding
+        # The container is MD3-fixed, so the fixed sizing carries the padding
+        # band as well: allocated = container + padding.
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        container = effective_style.container_height
+        self._user_height = container + pt + pb
 
         child_widget = build_button_child(
             label=None,
@@ -838,11 +844,11 @@ class IconButton(MaterialButtonBase):
             style=effective_style,
         )
 
-        params = resolve_button_style_params(effective_style, None, effective_style.container_height, disabled)
+        params = resolve_button_style_params(effective_style, padding, self._user_height, disabled)
         super().__init__(
             child=child_widget,
             on_click=on_click,
-            width=effective_style.container_height,
+            width=container + pl + pr,
             disabled=disabled,
             key=key,
             **params,
@@ -899,7 +905,7 @@ class ToggleButtonBase(MaterialButtonBase):
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        padding: PaddingLike = None,
         key: Optional[str] = None,
     ):
         """Initialize the base toggle button.
@@ -1040,7 +1046,7 @@ class ToggleButton(ToggleButtonBase):
         on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
         width: SizingLike = None,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        padding: PaddingLike = None,
         style: Optional[ToggleButtonStyle] = None,
         key: Optional[str] = None,
     ):
@@ -1101,6 +1107,7 @@ class IconToggleButton(ToggleButtonBase):
         selected: bool | ObservableProtocol[bool] = False,
         on_change: Optional[BoolCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
+        padding: PaddingLike = 0,
         style: Optional[IconToggleButtonStyle] = None,
         key: Optional[str] = None,
     ):
@@ -1111,6 +1118,7 @@ class IconToggleButton(ToggleButtonBase):
             selected: Selected state value or observable.
             on_change: Callback invoked with the new selected state.
             disabled: Whether the button is disabled.
+            padding: Insets from the allocated rect to the container.
             style: Toggle style pair for selected and unselected states.
                 Defaults to the theme's icon toggle button style, which itself
                 falls back to :meth:`IconToggleButtonStyle.standard` (size
@@ -1125,6 +1133,9 @@ class IconToggleButton(ToggleButtonBase):
         # The container is sized once, from the style available at construction:
         # a theme arriving later restyles the button but does not resize it.
         self._icon_size = preset.unselected.container_height
+        # The container is MD3-fixed, so the fixed sizing carries the padding
+        # band as well: allocated = container + padding.
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
 
         super().__init__(
             label=None,
@@ -1132,9 +1143,9 @@ class IconToggleButton(ToggleButtonBase):
             selected=selected,
             on_change=on_change,
             disabled=disabled,
-            width=self._icon_size,
-            height=self._icon_size,
-            padding=0,
+            width=self._icon_size + pl + pr,
+            height=self._icon_size + pt + pb,
+            padding=padding,
             key=key,
         )
 
@@ -1162,7 +1173,7 @@ class _FabBase(MaterialButtonBase):
 
     #: The style the caller passed, or ``None`` to follow the theme.
     _user_style: Optional[FabStyle]
-    _user_padding: Optional[Union[int, Tuple[int, int, int, int]]]
+    _user_padding: PaddingLike
     _user_height: Union[int, float]
 
     @property
@@ -1307,7 +1318,7 @@ class Fab(_FabBase):
         *,
         on_click: Optional[VoidCallback] = None,
         disabled: bool | ObservableProtocol[bool] = False,
-        padding: Optional[Union[int, Tuple[int, int, int, int]]] = None,
+        padding: PaddingLike = None,
         style: Optional[FabStyle] = None,
         key: Optional[str] = None,
     ):
@@ -1421,6 +1432,7 @@ class ExtendedFab(_FabBase):
         on_click: Optional[VoidCallback] = None,
         expanded: bool | ObservableProtocol[bool] = True,
         disabled: bool | ObservableProtocol[bool] = False,
+        padding: PaddingLike = 0,
         style: Optional[FabStyle] = None,
         key: Optional[str] = None,
     ):
@@ -1435,6 +1447,7 @@ class ExtendedFab(_FabBase):
                 (default) shows the icon + label pill; ``False`` collapses to
                 the circular FAB footprint.
             disabled: Whether the button is disabled.
+            padding: Insets from the allocated rect to the container.
             style: FAB style preset selecting the colour mapping and size.
                 Defaults to the theme's FAB style, which itself falls back to
                 :meth:`FabStyle.primary` (size ``"s"``, 56dp).
@@ -1448,8 +1461,10 @@ class ExtendedFab(_FabBase):
         ext = EXTENDED_FAB_SIZE_TOKENS[_fab_size_from_height(base_style.container_height)]
 
         self._user_style = style
-        self._user_padding = None
-        self._user_height = self._container_height
+        self._user_padding = padding
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        # The pill height is MD3-fixed, so the fixed sizing carries the padding.
+        self._user_height = self._container_height + pt + pb
         self._has_icon = icon is not None
 
         self._expanded_external: ObservableProtocol[bool] | None = None
@@ -1471,7 +1486,7 @@ class ExtendedFab(_FabBase):
             style=effective_style,
         )
 
-        params = resolve_button_style_params(effective_style, None, self._container_height, disabled)
+        params = resolve_button_style_params(effective_style, padding, self._user_height, disabled)
 
         super().__init__(
             child=child_widget,
@@ -1549,13 +1564,15 @@ class ExtendedFab(_FabBase):
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         # Full pill width (icon + label + leading/trailing space), independent of
-        # the current morph progress, then interpolate toward the circle.
+        # the current morph progress, then interpolate toward the circle. The
+        # padding band is constant around both.
+        pl, pt, pr, pb = self.padding
         full_w, _ = super().preferred_size(max_width=None, max_height=None)
         circle = int(self._container_height)
         t = max(0.0, min(1.0, float(self._morph_anim.value)))
-        w = int(round(circle + (int(full_w) - circle) * t))
-        w = max(circle, w)
-        h = circle
+        w = int(round(circle + (int(full_w) - pl - pr - circle) * t))
+        w = max(circle, w) + pl + pr
+        h = circle + pt + pb
         if max_width is not None:
             w = min(w, int(max_width))
         if max_height is not None:

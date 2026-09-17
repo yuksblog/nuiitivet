@@ -6,6 +6,7 @@ from typing import Optional, Tuple, Type, TypeVar
 
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.observable import Observable
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
@@ -48,6 +49,7 @@ class Geometry(Widget):
         *,
         width: SizingLike = None,
         height: SizingLike = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Wrap *child*, publishing this widget's measured size to its subtree.
@@ -59,9 +61,12 @@ class Geometry(Widget):
                 offers). Use a filling size to measure the space *available* to a
                 content pane, not just the child's intrinsic size.
             height: Sizing for this widget; see ``width``.
+            padding: Insets from the allocated rect to the child.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(width=width, height=height, max_children=1, overflow_policy="replace_last", key=key)
+        super().__init__(
+            width=width, height=height, padding=padding, max_children=1, overflow_policy="replace_last", key=key
+        )
         # A single atomic Observable[Size]: width and height update together so
         # consumers never read a torn (new width, old height) pair. The
         # Observable de-dupes equal values, so an unchanged size performs no
@@ -107,21 +112,25 @@ class Geometry(Widget):
         this widget to fill — which is what lets a filling ``Geometry`` measure
         the space available to a content pane.
         """
+        l, t, r, b = self.padding
         if self.children:
-            child_w, child_h = measure_preferred_size(self.children[0], max_width=max_width, max_height=max_height)
+            inner_w = None if max_width is None else max(0, int(max_width) - l - r)
+            inner_h = None if max_height is None else max(0, int(max_height) - t - b)
+            child_w, child_h = measure_preferred_size(self.children[0], max_width=inner_w, max_height=inner_h)
         else:
             child_w, child_h = 0, 0
-        w = int(self.width_sizing.value) if self.width_sizing.kind == "fixed" else int(child_w)
-        h = int(self.height_sizing.value) if self.height_sizing.kind == "fixed" else int(child_h)
+        w = int(self.width_sizing.value) if self.width_sizing.kind == "fixed" else int(child_w) + l + r
+        h = int(self.height_sizing.value) if self.height_sizing.kind == "fixed" else int(child_h) + t + b
         return (w, h)
 
     def layout(self, width: int, height: int) -> None:
-        """Lay the child out at this widget's own size, then queue its publish."""
+        """Lay the child out in the content rect, then queue this widget's own size."""
         super().layout(width, height)
         if self.children:
             child = self.children[0]
-            child.layout(width, height)
-            child.set_layout_rect(0, 0, width, height)
+            cx, cy, cw, ch = self.content_rect(0, 0, width, height)
+            child.layout(cw, ch)
+            child.set_layout_rect(cx, cy, cw, ch)
         # Queue, don't write: an Observable write here would propagate to
         # consumers mid-pass. The queue delivers the final measurement to
         # _publish_size between frames, de-duped against the last report.
@@ -135,8 +144,9 @@ class Geometry(Widget):
         child = self.children[0]
         if child.layout_rect is None:
             self.layout(width, height)
-        child.set_last_rect(x, y, width, height)
-        child.paint(canvas, x, y, width, height)
+        rx, ry, rw, rh = child.layout_rect or self.content_rect(0, 0, width, height)
+        child.set_last_rect(x + rx, y + ry, rw, rh)
+        child.paint(canvas, x + rx, y + ry, rw, rh)
 
 
 __all__ = ["Geometry"]

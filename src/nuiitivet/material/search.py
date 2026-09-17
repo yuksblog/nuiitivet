@@ -47,6 +47,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional, Tuple, TYPE_CHECKING, Union
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.material.interactive_widget import InteractiveWidget
@@ -657,6 +658,7 @@ class SearchBar(ComposableWidget):
             bar is capped at 720dp and centred when the box is wider; in a box
             too narrow for the 360dp minimum it shrinks to fit rather than
             overflowing.
+        padding: Insets from the allocated rect to the box.
         style: Custom style configuration.
     """
 
@@ -675,9 +677,10 @@ class SearchBar(ComposableWidget):
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[SearchBarStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._width = width
         # Built once and reused across rebuilds so focus and cursor position
         # survive recomposition.
@@ -784,6 +787,7 @@ class DockedSearchBar(ComposableWidget):
             switches from keyboard to pointer; ``focused=False`` arrives once.
         input_filter: Rule applied to text as the user types it.
         width: Sizing for the box — see :class:`SearchBar`.
+        padding: Insets from the allocated rect to the box.
         style: Custom style configuration.
     """
 
@@ -805,9 +809,10 @@ class DockedSearchBar(ComposableWidget):
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
         style: Optional[DockedSearchBarStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._width = width
         self._style = style if style is not None else DockedSearchBarStyle()
         self._close_on_enter = bool(close_on_enter)

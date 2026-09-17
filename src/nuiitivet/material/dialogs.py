@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional, Union, TYPE_CHECKING
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
 from nuiitivet.material.icon import Icon
@@ -59,6 +60,7 @@ class BasicDialog(ComposableWidget):
         actions: Optional[List[Widget]] = None,
         style: Optional[DialogStyle] = None,
         width: float = 280.0,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ):
         """Initialize BasicDialog.
@@ -70,9 +72,10 @@ class BasicDialog(ComposableWidget):
             actions: Optional action widgets (typically buttons).
             style: Optional dialog style override.
             width: Container width in dp (MD3 range: 280-560). Defaults to 280.
+            padding: Insets from the allocated rect to the dialog surface.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self.title = title
         self.message = message
         self.icon = icon

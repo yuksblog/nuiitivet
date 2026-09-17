@@ -21,6 +21,7 @@ from typing import (
     cast,
 )
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.animation.converter import VectorConverter
 from nuiitivet.input.pointer import PointerEvent
@@ -794,6 +795,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         connected_inner_press_only: bool,
         group_width: SizingLike,
         style: "ButtonGroupStyle",
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize the shared button group layout.
@@ -811,6 +813,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
                 ``Box``.  ``None`` for content-fit; ``"wt"`` for full-width.
             style: The style to build with -- the caller's, or the preset that
                 stands in until the first measure can reach the theme.
+            padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _validate_items(items)
@@ -832,7 +835,7 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
             height=style.container_height,
         )
 
-        super().__init__(child=self._row, width=group_width, key=key)
+        super().__init__(child=self._row, width=group_width, padding=padding, key=key)
 
         # The group is the Tab stop; its items are not (see on_mount). Tab lands
         # here, the scope hands the focus to the first item, and the arrow keys
@@ -1022,6 +1025,7 @@ class StandardButtonGroup(_ButtonGroupBase):
         items: Sequence[GroupButton],
         *,
         style: "Optional[StandardButtonGroupStyle]" = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize StandardButtonGroup.
@@ -1031,6 +1035,7 @@ class StandardButtonGroup(_ButtonGroupBase):
             style: Visual style override.  Defaults to the theme's standard
                 button group style, which itself falls back to
                 ``StandardButtonGroupStyle.filled()`` (size ``"s"``).
+            padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import (
@@ -1046,6 +1051,7 @@ class StandardButtonGroup(_ButtonGroupBase):
             connected_inner_press_only=False,
             group_width=None,  # Fits content
             style=eff_style,
+            padding=padding,
             key=key,
         )
 
@@ -1090,6 +1096,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         *,
         select_mode: Literal["single", "multi"] = "single",
         style: "Optional[ConnectedButtonGroupStyle]" = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize ConnectedButtonGroup.
@@ -1100,6 +1107,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             style: Visual style override.  Defaults to the theme's connected
                 button group style, which itself falls back to
                 ``ConnectedButtonGroupStyle.filled()`` (size ``"s"``).
+            padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import (
@@ -1117,6 +1125,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
             connected_inner_press_only=True,
             group_width="wt",
             style=eff_style,
+            padding=padding,
             key=key,
         )
 

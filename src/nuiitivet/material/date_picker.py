@@ -20,6 +20,7 @@ import logging
 from datetime import date as _Date, timedelta as _TimeDelta
 from typing import Any, Callable, cast, Literal, Optional, Tuple, TYPE_CHECKING
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
@@ -1284,6 +1285,7 @@ class DatePicker(ComposableWidget):
         max_date: Optional[_Date] = None,
         labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         style: Optional["DatePickerStyle"] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize DatePicker.
@@ -1298,9 +1300,10 @@ class DatePicker(ComposableWidget):
             max_date: Maximum selectable date.
             labels: Calendar display labels.
             style: Optional style override.
+            padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._value_obs = value
         self._on_change = on_change
         self._on_confirm = on_confirm
@@ -1669,6 +1672,7 @@ class DockedDatePicker(ComposableWidget):
         supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
         is_error: bool | ReadOnlyObservableProtocol[bool] = False,
         style: Optional["DockedDatePickerStyle"] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize DockedDatePicker.
@@ -1686,9 +1690,10 @@ class DockedDatePicker(ComposableWidget):
             supporting_text: Text shown below the field.  Empty by default.
             is_error: Whether to show the field in its error state.
             style: Optional style override.
+            padding: Insets from the allocated rect to the field.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._value_obs = value
         # The one writable cell this widget touches, and only when the calendar
         # commits. A read-only source displays only -- the same rule TextField
@@ -1851,6 +1856,7 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDatePickerStyle"] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDatePicker.
@@ -1861,9 +1867,10 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
+            padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._supporting_text = supporting_text
         self._min_date = min_date
         self._max_date = max_date
@@ -2100,6 +2107,7 @@ class ModalDateRangePicker(
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDateRangePickerStyle"] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDateRangePicker.
@@ -2110,9 +2118,10 @@ class ModalDateRangePicker(
             min_date: Minimum selectable date.
             max_date: Maximum selectable date.
             style: Optional style override.
+            padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._supporting_text = supporting_text
         self._min_date = min_date
         self._max_date = max_date
@@ -2367,6 +2376,7 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         style: Optional["ModalDateInputStyle"] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize ModalDateInput.
@@ -2379,9 +2389,10 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
             min_date: Minimum acceptable date.
             max_date: Maximum acceptable date.
             style: Optional style override.
+            padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
         self._init_value = init_value
         self._supporting_text = supporting_text
         self._input_label = input_label

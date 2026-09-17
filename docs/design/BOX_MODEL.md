@@ -57,7 +57,7 @@ visual bounds (allocated + outsets)
 
 `Widget.padding` always means: **allocated rect → content rect**.
 
-Every widget that occupies a rect has `padding`, and it is included in `preferred_size`. A pure provider that occupies no rect of its own (`ForEach`) has nothing to inset and is exempt.
+Every widget that occupies a rect has `padding`, and it is included in `preferred_size`. Exempt are widgets that occupy no rect of their own — a provider that lifts its children into the parent (`ForEach`), a descriptor rendered by another widget (`RailItem`) — and hosts whose rect is whatever the parent hands them (`Navigator`, `Overlay`, the app and window scopes).
 
 What the widget draws goes inside the content rect. For a leaf (`Text`, `Icon`, `Divider`) and for a component that draws its own boundary (`Button`, `Fab`, `Chip`), the padding band is therefore transparent, and it reads as outer space. That is the intended behaviour, not a side effect: `Fab(padding=24)` is `Container(padding=24, child=Fab(...))` one node lighter, and a `Box` wrapping either paints the whole allocated rect, so the same band reads as inner padding there. Which one it "is" depends on who draws the boundary, never on the widget class.
 

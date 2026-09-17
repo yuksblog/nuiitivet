@@ -5,17 +5,31 @@ preferred size by it, keeps its spec insets on ``content_insets`` (never on
 its own ``padding``), and hit-tests on the content rect.
 """
 
+import pytest
+
+from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.container import Container
+from nuiitivet.layout.cross_aligned import CrossAligned
+from nuiitivet.layout.geometry import Geometry
+from nuiitivet.layout.scrollable import VerticalScrollable
+from nuiitivet.layout.spacer import Spacer
 from nuiitivet.material.badge import LargeBadge
-from nuiitivet.material.buttons import Button, Fab
+from nuiitivet.material.button_group import GroupButton, StandardButtonGroup
+from nuiitivet.material.buttons import Button, ExtendedFab, Fab, IconButton, IconToggleButton
 from nuiitivet.material.chip import AssistChip
+from nuiitivet.material.dialogs import BasicDialog
+from nuiitivet.material.fab_menu import FabMenu
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.menu import Menu, MenuItem
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
+from nuiitivet.material.selection_controls import RadioGroup
+from nuiitivet.material.sheet import SideSheet
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.material.split_button import SplitButton
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.styles.fab_style import FabStyle
+from nuiitivet.material.toolbar import DockedToolbar
+from nuiitivet.material.tooltip_widgets import Tooltip
 from nuiitivet.widgets.box import Box
 
 
@@ -201,3 +215,99 @@ def test_navigation_rail_padding_grows_the_box() -> None:
     pw, ph = plain.preferred_size()
     w, h = padded.preferred_size()
     assert (w, h) == (pw + 8, ph + 12)
+
+
+# --- Widgets that gained a padding parameter ------------------------------
+
+
+def _grows_by(make, pad=(4, 6, 4, 6)):
+    """Assert ``make(padding=...)`` is ``make()`` plus the padding band."""
+    pw, ph = make().preferred_size()
+    w, h = make(padding=pad).preferred_size()
+    assert (w, h) == (pw + pad[0] + pad[2], ph + pad[1] + pad[3])
+
+
+def test_icon_button_padding_wraps_the_fixed_container() -> None:
+    button = IconButton("add", padding=6)
+    w, h = _lay_out(button)
+    assert (w, h) == (52, 52)
+    assert button._container_rect(0, 0, w, h) == (6, 6, 40, 40)
+
+
+def test_icon_toggle_button_padding_wraps_the_fixed_container() -> None:
+    _grows_by(lambda **kw: IconToggleButton("star", **kw))
+
+
+def test_extended_fab_padding_wraps_the_pill() -> None:
+    _grows_by(lambda **kw: ExtendedFab("Compose", icon="edit", **kw))
+
+
+def test_spacer_padding_adds_to_the_reserved_space() -> None:
+    assert Spacer(width=24, height=8, padding=4).preferred_size() == (32, 16)
+
+
+def test_cross_aligned_padding_insets_the_child() -> None:
+    wrapper = CrossAligned(Box(width=50, height=20), "center", padding=5)
+    w, h = _lay_out(wrapper)
+    assert (w, h) == (60, 30)
+    assert wrapper.children[0].layout_rect == (5, 5, 50, 20)
+
+
+def test_geometry_padding_insets_the_child() -> None:
+    geometry = Geometry(Box(width=50, height=20), padding=5)
+    w, h = _lay_out(geometry)
+    assert (w, h) == (60, 30)
+    assert geometry.children[0].layout_rect == (5, 5, 50, 20)
+
+
+def test_collapsible_padding_stays_around_the_animated_area() -> None:
+    collapsible = Collapsible(Box(width=50, height=20), opened=True, padding=5)
+    w, h = _lay_out(collapsible)
+    assert (w, h) == (60, 30)
+    assert collapsible.children[0].layout_rect == (5, 5, 50, 20)
+    closed = Collapsible(Box(width=50, height=20), opened=False, padding=5)
+    assert closed.preferred_size() == (10, 10)
+
+
+def test_fab_menu_padding_wraps_the_footprint() -> None:
+    menu = FabMenu("add", [], padding=8)
+    w, h = _lay_out(menu)
+    assert (w, h) == (72, 72)
+    assert menu._inner.layout_rect == (8, 8, 56, 56)
+
+
+def test_scrollable_padding_insets_the_viewport() -> None:
+    scrollable = VerticalScrollable(Box(width=50, height=20), padding=(4, 6, 4, 6))
+    w, h = _lay_out(scrollable)
+    assert (w, h) == (58, 32)
+    viewport = scrollable.children_snapshot()[0]
+    assert viewport.layout_rect[:2] == (4, 6)
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda **kw: Menu(items=[MenuItem("Cut")], **kw),
+        lambda **kw: MenuItem("Cut", **kw),
+        lambda **kw: SplitButton("Action", **kw),
+        lambda **kw: StandardButtonGroup([GroupButton("A"), GroupButton("B")], **kw),
+        lambda **kw: DockedToolbar([IconButton("add")], **kw),
+        lambda **kw: RadioGroup(Box(width=30, height=10), **kw),
+        lambda **kw: Tooltip("Hint", **kw),
+        lambda **kw: BasicDialog(title="Title", message="Body", **kw),
+        lambda **kw: SideSheet(Box(width=30, height=10), headline="Sheet", **kw),
+    ],
+    ids=[
+        "Menu",
+        "MenuItem",
+        "SplitButton",
+        "StandardButtonGroup",
+        "DockedToolbar",
+        "RadioGroup",
+        "Tooltip",
+        "BasicDialog",
+        "SideSheet",
+    ],
+)
+def test_padding_grows_the_preferred_size(make) -> None:
+    _grows_by(make)

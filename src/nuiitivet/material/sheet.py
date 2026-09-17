@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Literal, Optional, Union
 
+from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
@@ -18,11 +19,18 @@ from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
 from nuiitivet.overlay import OverlayAware
-from nuiitivet.rendering.sizing import Sizing
+from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
 _logger = logging.getLogger(__name__)
+
+
+def _plus(sizing: SizingLike, extra: int) -> SizingLike:
+    """Grow a fixed sizing by the padding band; a filling or auto sizing is unchanged."""
+    if isinstance(sizing, (int, float)) and not isinstance(sizing, bool):
+        return type(sizing)(sizing + extra)
+    return sizing
 
 
 class SideSheet(ComposableWidget, OverlayAware[None]):
@@ -73,6 +81,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         on_back: Optional[Callable[[], None]] = None,
         show_back_button: Union[bool, ObservableBase[bool]] = False,
         style: Optional[SideSheetStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize SideSheet.
@@ -85,10 +94,17 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
                 Defaults to ``False``. Rendered only when truthy **and** *on_back*
                 is not ``None``.
             style: Container style. Defaults to :class:`SideSheetStyle`.
+            padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else SideSheetStyle()
-        super().__init__(width=_style.width, height=_style.height, key=key)
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        super().__init__(
+            width=_plus(_style.width, pl + pr),
+            height=_plus(_style.height, pt + pb),
+            padding=padding,
+            key=key,
+        )
         self._content = content
         self._headline = headline
         self._on_back = on_back
@@ -195,6 +211,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         *,
         headline: Union[str, ObservableBase[str]],
         style: Optional[BottomSheetStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize BottomSheet.
@@ -203,10 +220,17 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
             style: Container style. Defaults to :class:`BottomSheetStyle`.
+            padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else BottomSheetStyle()
-        super().__init__(width=_style.width, height=_style.height, key=key)
+        pl, pt, pr, pb = parse_padding(padding if padding is not None else 0)
+        super().__init__(
+            width=_plus(_style.width, pl + pr),
+            height=_plus(_style.height, pt + pb),
+            padding=padding,
+            key=key,
+        )
         self._content = content
         self._headline = headline
         self._user_style = style
@@ -311,6 +335,7 @@ class StandardSideSheet(ComposableWidget):
         headline: Optional[Union[str, ObservableBase[str]]] = None,
         side: Literal["right", "left"] = "right",
         style: Optional[StandardSideSheetStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize StandardSideSheet.
@@ -325,6 +350,7 @@ class StandardSideSheet(ComposableWidget):
             side: Attachment edge (``"right"`` or ``"left"``).
                 Defaults to ``"right"``.
             style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
+            padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         _style = style if style is not None else StandardSideSheetStyle()
@@ -333,7 +359,8 @@ class StandardSideSheet(ComposableWidget):
         # height must be visible there.  The width stays ``auto`` because the
         # open/close animation works by having ``Collapsible`` report an
         # animating preferred width to the parent.
-        super().__init__(height=_style.height, key=key)
+        _l, pt, _r, pb = parse_padding(padding if padding is not None else 0)
+        super().__init__(height=_plus(_style.height, pt + pb), padding=padding, key=key)
         self._content = content
         self._opened = opened
         self._on_close_click = on_close_click

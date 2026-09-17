@@ -26,6 +26,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import warning_once
 from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
@@ -454,6 +455,7 @@ class FabMenu(Widget):
         auto_close: bool = True,
         close_icon: Union["Symbol", str] = Symbols.close,
         style: Optional[FabStyle] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize a FabMenu.
@@ -471,9 +473,10 @@ class FabMenu(Widget):
             style: FAB style preset selecting the colour family and size.
                 Defaults to :meth:`FabStyle.primary`.  List items use the
                 matching ``*-container`` colour set.
+            padding: Insets from the allocated rect to the FAB footprint.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(key=key)
+        super().__init__(padding=padding, key=key)
 
         base_style = style if style is not None else FabStyle.primary()
         self._is_open: Observable[bool] = is_open if is_open is not None else Observable(False)
@@ -546,22 +549,27 @@ class FabMenu(Widget):
         # Always reserve the closed-size footprint so the surrounding layout is
         # stable as the FAB shrinks into the smaller close button.
         size = int(round(self._closed_size))
+        l, t, r, b = self.padding
+        w = size + l + r
+        h = size + t + b
         if max_width is not None:
-            size = min(size, int(max_width))
+            w = min(w, int(max_width))
         if max_height is not None:
-            size = min(size, int(max_height))
-        return (size, size)
+            h = min(h, int(max_height))
+        return (w, h)
 
     def _fab_box(self, width: int, height: int) -> Tuple[int, int, int, int]:
         """Return the (x, y, w, h) for the morphing FAB inside the footprint.
 
-        The FAB is aligned to the top-trailing corner, so shrinking it grows the
-        margin underneath (and to the leading side).
+        The footprint is the content rect; the FAB is aligned to its
+        top-trailing corner, so shrinking it grows the margin underneath (and
+        to the leading side).
         """
+        cx, cy, cw, ch = self.content_rect(0, 0, width, height)
         fab_w, fab_h = self._inner.preferred_size()
-        fab_w = min(int(fab_w), width)
-        fab_h = min(int(fab_h), height)
-        return (width - fab_w, 0, fab_w, fab_h)
+        fab_w = min(int(fab_w), cw)
+        fab_h = min(int(fab_h), ch)
+        return (cx + cw - fab_w, cy, fab_w, fab_h)
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -577,7 +585,9 @@ class FabMenu(Widget):
             self._inner.paint(canvas, x + cx, y + cy, cw, ch)
 
     def hit_test(self, x: int, y: int):
-        hit = self._inner.hit_test(x, y)
+        rect = self._inner.layout_rect
+        ox, oy = (int(rect[0]), int(rect[1])) if rect is not None else (0, 0)
+        hit = self._inner.hit_test(x - ox, y - oy)
         if hit is not None:
             return hit
         return super().hit_test(x, y)

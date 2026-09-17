@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
 
+from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
@@ -511,6 +512,7 @@ class RadioGroup(InteractionHostMixin, Container):
         *,
         value: object | ObservableProtocol[object | None] | None = None,
         on_change: Optional[Callable[[object | None], None]] = None,
+        padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
         """Initialize RadioGroup.
@@ -519,11 +521,12 @@ class RadioGroup(InteractionHostMixin, Container):
             child: Root child subtree that contains radio options.
             value: Selected value or external observable selected value.
             on_change: Callback invoked when selection changes.
+            padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         if not isinstance(child, Widget):
             raise TypeError(f"child must be Widget, got {type(child)}")
-        super().__init__(child=child, key=key)
+        super().__init__(child=child, padding=padding, key=key)
 
         self._value_external: ObservableProtocol[object | None] | None = None
         if hasattr(value, "subscribe") and hasattr(value, "value"):
