@@ -1,7 +1,7 @@
 """Source jump: ``Ctrl+Shift+Click`` opens the code that built a widget.
 
-Modeless, unlike :mod:`.select_mode`. A mode earns its latch by carrying state
-from one gesture to the next -- select mode's marks -- and a jump carries none:
+Modeless, unlike :mod:`.comment_mode`. A mode earns its latch by carrying state
+from one gesture to the next -- comment mode's marks -- and a jump carries none:
 the click opens the editor and is over. Making it a mode would put a mode entry
 in front of every look at the code and confine it to one mode, when "where is
 this built?" comes up in every state the app can be in. So it sits on the real

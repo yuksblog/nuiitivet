@@ -9,7 +9,7 @@ Subcommands::
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
-    python -m nuiitivet.dev describe-selection      # dump what the human pointed at
+    python -m nuiitivet.dev see-comments      # dump what the human pointed at and wrote
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
@@ -53,8 +53,8 @@ from .layout_edit_mode import LayoutEditMode
 from .loader import find_discovery_root, load_app_module, resolve_entry
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
-from .select_mode import SelectMode
-from .selection import Selection
+from .comment_mode import CommentMode
+from .comments import Comments
 from .session import DevSession, set_dev_session
 from .source_edit import EditLog
 from .source_jump import SourceJump
@@ -69,7 +69,7 @@ _SUBCOMMANDS = frozenset(
         "screenshot",
         "describe-tree",
         "describe-state",
-        "describe-selection",
+        "see-comments",
         "reload-log",
         "interaction-log",
         "click",
@@ -167,8 +167,8 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_window_arg(describe_state)
 
     subparsers.add_parser(
-        "describe-selection",
-        help="Print what the human designated in the running app's select mode, as JSON.",
+        "see-comments",
+        help="Print what the human marked in the running app's comment mode, as JSON.",
     )
 
     reload_log = subparsers.add_parser(
@@ -460,10 +460,10 @@ def _run(args: argparse.Namespace) -> int:
         # notice the code changed between its turns.
         journal = ReloadJournal()
         # What the human *points at*, the reverse of the interaction
-        # journal's "what the human did". Select mode writes designations from
+        # journal's "what the human did". Comment mode writes marks from
         # the real input path; the controller re-resolves them across a reload;
-        # the bridge serves them at ``/describe_selection``.
-        selection = Selection()
+        # the bridge serves them at ``/see_comments``.
+        comments = Comments()
         # What the human *changes* without an assistant: layout edit mode's edits to
         # the source, applied by the reload the controller runs, so the
         # controller is what tells the log whether an edit landed.
@@ -474,14 +474,14 @@ def _run(args: argparse.Namespace) -> int:
             session.root_factory,
             poll_interval=args.poll_interval,
             journal=journal,
-            selection=selection,
+            comments=comments,
             edits=edits,
         )
         # The complementary surface: the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
         # at ``/interaction_log`` so an AI pair can see how the human drove the
         # app between its turns. Instrumented per window — the journal, the
-        # selection and the edit log are shared, but each window carries its own
+        # comments and the edit log are shared, but each window carries its own
         # recorder, modes and source jump so hover/gesture state stays
         # window-local and the Ctrl+Shift chords work in every window, not just
         # the main one.
@@ -489,7 +489,7 @@ def _run(args: argparse.Namespace) -> int:
 
         def _instrument_window(win: Any) -> None:
             win._interaction_recorder = InteractionRecorder(interaction_journal)
-            win._select_mode = SelectMode(selection, journal=interaction_journal)
+            win._comment_mode = CommentMode(comments, journal=interaction_journal)
             win._layout_edit_mode = LayoutEditMode(edits, request_reload=controller.request_reload)
             win._source_jump = SourceJump()
             # Window lifecycle joins the same timeline: the register
@@ -516,7 +516,7 @@ def _run(args: argparse.Namespace) -> int:
             interaction_journal=interaction_journal,
             runtime_journal=runtime_journal,
             runtime_capture=runtime_capture,
-            selection=selection,
+            comments=comments,
         )
 
         print(
@@ -532,7 +532,7 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(status / describe-tree / describe-state / describe-selection / screenshot / click / scroll / "
+            "(status / describe-tree / describe-state / see-comments / screenshot / click / scroll / "
             "scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
@@ -573,10 +573,10 @@ def _describe_tree(args: argparse.Namespace) -> int:
     return 0
 
 
-def _describe_selection() -> int:
+def _see_comments() -> int:
     try:
         client = BridgeClient.discover()
-        payload = client.describe_selection()
+        payload = client.see_comments()
     except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
@@ -777,8 +777,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _describe_tree(args)
     if args.command == "describe-state":
         return _describe_state(args)
-    if args.command == "describe-selection":
-        return _describe_selection()
+    if args.command == "see-comments":
+        return _see_comments()
     if args.command == "reload-log":
         return _reload_log(args)
     if args.command == "interaction-log":

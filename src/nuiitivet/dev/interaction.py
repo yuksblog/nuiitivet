@@ -222,8 +222,8 @@ def own_identity(node: Any) -> dict[str, Any]:
     The counterpart to :func:`resolve_target`, and the two answer different
     questions. ``resolve_target`` answers "how would you drive this?", which for
     a click on a button's inner label is the button. That is exactly right for an
-    action, and wrong as the sole answer to "what is this node?" -- select-mode
-    picking exists precisely so an anonymous ``Text`` can be designated,
+    action, and wrong as the sole answer to "what is this node?" -- comment-mode
+    picking exists precisely so an anonymous ``Text`` can be marked,
     and reporting the button's identity beside that text's rect would describe
     neither node.
 
@@ -370,7 +370,7 @@ class InteractionEvent:
             is re-issued a fresh one, so an ongoing gesture reads as new activity.
         timestamp: Unix time (seconds) when the event was recorded -- for a
             coalesced ``scroll``, when it was last updated.
-        kind: ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"select"``,
+        kind: ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"comment"``,
             ``"window_opened"``, or ``"window_closed"``.
         target: For a ``click`` or a ``scroll``, the resolved widget identity
             (``{"type", optional "key"/"label"}``); ``None`` otherwise. Never a
@@ -483,19 +483,13 @@ class InteractionJournal:
         """Record a key press ``name`` with held ``modifiers`` and return the event."""
         return self._record("key", key=name, modifiers=modifiers)
 
-    def record_select(self) -> InteractionEvent:
-        """Record a content-free marker that the human designated something.
+    def record_comment(self) -> InteractionEvent:
+        """Record a content-free marker that the human made or wrote a comment.
 
-        The counterpart to :meth:`record_text`, and content-free for a different
-        reason. A designation *may* carry rects and field text -- it is an
-        explicit act of disclosure, unlike this journal's ambient recording -- but
-        the layering still holds: the marker here says only *that* it happened,
-        and the payload is served only when the assistant explicitly calls
-        ``describe_selection``. So an assistant catching up on the journal sees
-        the designation without the journal itself becoming a second, unasked-for
-        channel for it.
+        The journal says only that it happened; the payload is served by an explicit
+        ``see_comments`` call.
         """
-        return self._record("select")
+        return self._record("comment")
 
     def record_text(self) -> InteractionEvent:
         """Record a content-free marker that the human typed, and return the event."""

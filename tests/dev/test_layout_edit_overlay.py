@@ -246,7 +246,7 @@ def test_the_badge_names_the_mode_its_exit_and_the_switch(
     lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
 
     assert seen["mode_line"] == SEPARATOR.join(
-        ("LAYOUT EDIT", "release writes the source", "Esc leave", "Ctrl+Shift+D designate")
+        ("LAYOUT EDIT", "release writes the source", "Esc leave", "Ctrl+Shift+C comment")
     )
     assert seen["hints"] == mode.hints
     assert seen["placement"] is mode.placement

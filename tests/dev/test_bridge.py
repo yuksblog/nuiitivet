@@ -862,22 +862,22 @@ def test_get_cleans_up_on_connection_refused(tmp_path: Path) -> None:
     assert not path.exists()
 
 
-# --- selection --------------------------------------------------------
+# --- comments --------------------------------------------------------
 
 
 def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) -> None:
     """The human -> assistant direction: what they pointed at, pulled on demand."""
-    from nuiitivet.dev.selection import Selection
+    from nuiitivet.dev.comments import Comments
 
     app = _fake_app()
-    selection = Selection()
-    selection.toggle(app.root)
-    bridge = DevBridge(app, tmp_path, selection=selection)
+    comments = Comments()
+    comments.toggle(app.root)
+    bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()
     try:
         with _Pump(bridge):
             client = BridgeClient("127.0.0.1", _port_of(bridge))
-            payload = client.describe_selection()
+            payload = client.see_comments()
 
             assert payload["regions"] == []
             assert payload["lost"] == 0
@@ -892,33 +892,33 @@ def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) ->
 def test_bridge_without_a_selection_serves_an_empty_designation(
     tmp_path: Path, dev_run: None
 ) -> None:
-    """A bridge built without one (as tests do) reads as nothing designated."""
+    """A bridge built without one (as tests do) reads as nothing marked."""
     bridge = DevBridge(_fake_app(), tmp_path)
     bridge.start()
     try:
         with _Pump(bridge):
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
-            assert client.describe_selection()["nodes"] == []
+            assert client.see_comments()["nodes"] == []
     finally:
         bridge.shutdown()
 
 
 def test_status_carries_the_selection_roll_up(tmp_path: Path, dev_run: None) -> None:
     """The discoverability hook: status is the cheapest tool and the first called."""
-    from nuiitivet.dev.selection import Selection
+    from nuiitivet.dev.comments import Comments
 
     app = _fake_app()
-    selection = Selection()
-    selection.enter()
-    selection.toggle(app.root)
-    bridge = DevBridge(app, tmp_path, selection=selection)
+    comments = Comments()
+    comments.enter()
+    comments.toggle(app.root)
+    bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()
     try:
         with _Pump(bridge):
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
-            summary = client.status()["selection"]
+            summary = client.status()["comments"]
             assert summary["active"] is True
             assert summary["nodes"] == 1
             assert summary["regions"] == 0
@@ -934,7 +934,7 @@ def test_status_selection_is_null_without_one(tmp_path: Path, dev_run: None) -> 
         with _Pump(bridge):
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
-            assert client.status()["selection"] is None
+            assert client.status()["comments"] is None
     finally:
         bridge.shutdown()
 
@@ -1012,5 +1012,29 @@ def test_get_carries_the_bridge_reason_for_an_unknown_window(
             client = BridgeClient("127.0.0.1", _port_of(bridge))
             with pytest.raises(RuntimeError, match="no open window with id 99"):
                 client.describe_tree(window=99)
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, dev_run: None) -> None:
+    """The human's words ride with the mark, and reading them is the read receipt."""
+    from nuiitivet.dev.comments import Comments
+
+    app = _fake_app()
+    comments = Comments()
+    comments.toggle(app.root)
+    comments.set_instruction(1, "make this wider")
+    bridge = DevBridge(app, tmp_path, comments=comments)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            assert client.status()["comments"]["instructions"] == 1
+            assert comments.unread is True
+            (node,) = client.see_comments()["nodes"]
+
+            assert node["instruction"] == "make this wider"
+            assert comments.unread is False
     finally:
         bridge.shutdown()

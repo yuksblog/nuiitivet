@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `describe_selection`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user refers to a "selection" (e.g. "selection 1", "the selected widget"), it means widgets picked in the running app — read it with `describe_selection` first. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `see_comments`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user says `see_comments`, or refers to a "comment" or a mark by number ("#2", "the second one"), they mean marks and instructions they left in the running app — read them with `see_comments` first, and act on them with the nuiitivet-see-comments skill. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -97,9 +97,9 @@ top to bottom.
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree, named as the widget bound them (`_state_internal`, `checked_external_tri`), so they differ per widget; read `describe_tree`'s `state` for the same facts in one vocabulary. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
-| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
-| The human says "this is wrong" / "look at this part" without naming a widget? | `describe_selection` — they may have already pointed at it in select mode. Check before guessing from a screenshot |
-| `status` reports a `selection` whose `seq` you haven't seen? | `describe_selection` — they designated something for you since your last turn |
+| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls / `comment` markers, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
+| The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — they may have already pointed at it, and written what to do, in comment mode. Check before guessing from a screenshot |
+| `status` reports a `comments` whose `seq` you haven't seen? | `see_comments` — they left a comment for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem, and scope it to the widget they named: `screenshot(key=...)` / `screenshot(label=...)` crops to that widget plus `padding` px (default 8) each side, `screenshot(rect=[x, y, w, h])` to a raw region from `describe_tree`. Take the whole frame only when the problem has no widget to name |
 | A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop` — reach for it only because a human reported it; you cannot perceive jank or excess rebuilds yourself. The report's `rebuilds` and `bindings` counters name the widget doing wasted work; `frames` carries paint-walk mean/p95/max ms. Recording slows frames ~10%, so stop it when done. Paint counts equal painted-frame count (every painted frame walks the whole tree) — read `rebuilds`/`bindings` for the per-widget signal |
 
@@ -110,8 +110,8 @@ window is only reached by passing its id explicitly. An action on a window
 blocked by a modal child fails with an error naming the blocking window; drive
 the modal child (or close it) instead of retrying. Window ids are never reused,
 so an id from an earlier `status` stays valid for that window's lifetime.
-Select mode and the interaction log cover every window, and a designated
-node's `describe_selection` payload names its window (`"window": <id>`) — use
+Comment mode and the interaction log cover every window, and a marked
+node's `see_comments` payload names its window (`"window": <id>`) — use
 that id for the follow-up `describe_tree` / action calls.
 `interaction_log` also records window lifecycle: `window_opened` /
 `window_closed` events carry `window` (`{"id", "title", "main"}`) and cover
@@ -119,42 +119,13 @@ every path — an OS-title-bar close or a parent-cascade close appears there eve
 though no click does. A `window_closed` for an id you remembered means that id
 is stale; re-run `status` before addressing it.
 
-### Reading a designation
+### Reading a comment
 
-`describe_selection` is the one channel that runs **from the human to you** —
-what they *meant*, not what the app is.
-
-- Read a node's `tree` / `state` (both scoped to it) instead of dumping the whole
-  tree. `key` / `label` drive it; `path` locates it in `describe_tree`.
-- **No `key`, `label`, or `target` on it?** Expected — most apps pass no
-  `key=`, and then `resolve_target` has nothing to anchor on. Its scoped
-  `tree` is what tells two same-typed nodes apart (two bare `_RailItemButton`s by
-  the `Text` inside each), and `path` is how you reach it.
-- A node's `rect` here is what is **on screen** of it, clips applied — unlike
-  `describe_tree`'s. A node clipped away entirely reports no `rect` at all.
-- **`source` is the line that built it** — edit there instead of searching.
-  Innermost first; the `target: true` frame is the construction site, and the
-  rest are its callers, so a widget built by a shared helper shows both "change
-  every one" and "change this one" and *what the human said* picks. Absent when
-  the runner is not recording sites.
-- Refer to a designation by its `index`: it matches the badge on their screen.
-- `lost` > 0 — some designations did not survive a reload. **Say so.** Never
-  reason over a silently shortened list.
-- `active: true` — they are still in select mode and have not pressed `Enter`,
-  so the set is not committed. Do not act on it: tell them that, or ask them to
-  press `Enter`.
-- `regions` are areas, numbered in the same sequence as `nodes`:
-  - `container` is the widget enclosing the box; `contents` is a nested tree of
-    what the box crosses, tagged `contained` / `clipped` (no tag = only on the
-    path to a match).
-  - One box, two meanings — "the gap between these things" (`container`) or
-    "these things" (`contents`). Nothing is collapsed for you; pick from what the
-    human said.
-  - Empty `contents` is an answer, not a miss: nothing is painted there, and
-    `container` names what should have been.
-  - Re-derived on every call, so read one again after your fix.
-- You cannot arm it and cannot clear it. If nothing is designated, ask them to
-  press `Ctrl+Shift+D`, click a widget or drag a box over the area, then `Enter`.
+`see_comments` is the one channel that runs **from the human to you** —
+what they *mean*, not what the app is: the widgets and areas they marked in
+comment mode (`Ctrl+Shift+C`), each with the instruction they typed on it.
+Reading the payload and acting on it is the **nuiitivet-see-comments** skill —
+follow it whenever this tool is the one you reach for.
 
 ### Blind spots
 

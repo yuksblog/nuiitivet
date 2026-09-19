@@ -1,7 +1,7 @@
 """Install the agent skills bundled with nuiitivet.
 
 The framework ships its Claude Code skills (``nuiitivet-app``,
-``nuiitivet-debug``) inside the wheel as ``nuiitivet/_skills_data/`` (see
+``nuiitivet-debug``, ``nuiitivet-see-comments``) inside the wheel as ``nuiitivet/_skills_data/`` (see
 ``setup.py``), so the skills a user installs always match the framework
 version they have. ``python -m nuiitivet.skills install`` copies them into a
 Claude Code skills directory; re-run it after upgrading nuiitivet to update

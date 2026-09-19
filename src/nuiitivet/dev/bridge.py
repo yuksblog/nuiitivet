@@ -50,7 +50,7 @@ from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
 from . import profiling
-from .selection import Selection, describe_selection
+from .comments import Comments, see_comments
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .session import current_dev_session
@@ -323,7 +323,7 @@ def _build_status(
     marshaller: _UIThreadMarshaller,
     journal: Optional[ReloadJournal],
     runtime_journal: Optional[RuntimeJournal],
-    selection: Optional[Selection] = None,
+    comments: Optional[Comments] = None,
 ) -> dict[str, Any]:
     """Aggregate a cheap liveness/health snapshot of the running app.
 
@@ -344,9 +344,20 @@ def _build_status(
         "error_count": _error_count(runtime_journal),
         # A pull-only surface nobody calls does not exist. ``status`` is the
         # cheapest tool and the one called first, so it is the most reliable
-        # place for an assistant to notice the human designated something.
-        "selection": selection.summary() if selection is not None else None,
+        # place for an assistant to notice the human marked something.
+        "comments": comments.summary() if comments is not None else None,
     }
+
+
+def _serve_comments(app: Any, window_spec: Any, comments: Optional[Comments]) -> dict[str, Any]:
+    """Read the comments, then repaint: the overlay's prompt to read them is over."""
+    payload = see_comments(_resolve_window(app, window_spec).root, comments)
+    for window in getattr(app, "windows", None) or (app,):
+        try:
+            window.invalidate()
+        except Exception:
+            logger.debug("dev bridge: invalidate after see_comments failed", exc_info=True)
+    return payload
 
 
 def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
@@ -451,7 +462,7 @@ def _make_handler(
     interaction_journal: Optional[InteractionJournal],
     runtime_journal: Optional[RuntimeJournal],
     runtime_capture: Optional[RuntimeLogCapture],
-    selection: Optional[Selection] = None,
+    comments: Optional[Comments] = None,
 ) -> type[BaseHTTPRequestHandler]:
     """Build the request handler class bound to ``marshaller`` and the journals."""
 
@@ -599,7 +610,7 @@ def _make_handler(
                     # positively-named alternative to a screenshot for "is it up
                     # and healthy?".
                     self._send_json(
-                        200, _build_status(marshaller, journal, runtime_journal, selection)
+                        200, _build_status(marshaller, journal, runtime_journal, comments)
                     )
                 elif path == "/describe_tree":
                     tree = marshaller.call_on_ui_thread(
@@ -618,16 +629,15 @@ def _make_handler(
                         )
                     )
                     self._send_json(200, {"state": state})
-                elif path == "/describe_selection":
-                    # What the *human* pointed at, the mirror of describe_tree /
-                    # describe_state. Read on the UI thread: the payload carries
-                    # each member's live rect plus a scoped tree/state dump.
+                elif path == "/see_comments":
+                    # What the *human* pointed at and wrote, the mirror of
+                    # describe_tree / describe_state. Read on the UI thread: the
+                    # payload carries each member's live rect plus a scoped
+                    # tree/state dump.
                     self._send_json(
                         200,
                         marshaller.call_on_ui_thread(
-                            lambda app: describe_selection(
-                                _resolve_window(app, window_spec).root, selection
-                            )
+                            lambda app: _serve_comments(app, window_spec, comments)
                         ),
                     )
                 elif path == "/screenshot":
@@ -705,7 +715,7 @@ class DevBridge:
         interaction_journal: Optional[InteractionJournal] = None,
         runtime_journal: Optional[RuntimeJournal] = None,
         runtime_capture: Optional[RuntimeLogCapture] = None,
-        selection: Optional[Selection] = None,
+        comments: Optional[Comments] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -722,9 +732,9 @@ class DevBridge:
         # verbose capture via the capture handle at ``/runtime_log/verbose``.
         self._runtime_journal = runtime_journal
         self._runtime_capture = runtime_capture
-        # Written by the app's select mode when the human designates a widget;
-        # the bridge serves it at ``/describe_selection``.
-        self._selection = selection
+        # Written by the app's comment mode when the human marks a widget;
+        # the bridge serves it at ``/see_comments``.
+        self._comments = comments
         self._marshaller = _UIThreadMarshaller(app)
         self._server: Optional[ThreadingHTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -758,7 +768,7 @@ class DevBridge:
             self._interaction_journal,
             self._runtime_journal,
             self._runtime_capture,
-            self._selection,
+            self._comments,
         )
         self._server = ThreadingHTTPServer((self._host, 0), handler)
         self._thread = threading.Thread(

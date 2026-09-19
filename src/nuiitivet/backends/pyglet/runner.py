@@ -60,7 +60,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 # source jump goes first so its chord means the same thing inside a mode as
 # outside one; it never consumes a key, so the order is moot for the keyboard.
 # The two modes are never latched at once, so their order is moot as well.
-_DEV_INPUT_LAYERS = ("_source_jump", "_select_mode", "_layout_edit_mode")
+_DEV_INPUT_LAYERS = ("_source_jump", "_comment_mode", "_layout_edit_mode")
 
 
 def _dev_consumed(app: Any, hook: str, *args: Any) -> bool:
@@ -986,7 +986,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
         # Dev-only: a chorded press is a source jump, and while a mode is
-        # latched any press is the human aiming a designation or a drag. Either
+        # latched any press is the human aiming a mark or a drag. Either
         # is consumed *before* dispatch -- letting it through would fire the
         # button they were merely pointing at.
         if _dev_consumed(win, "on_mouse_press", win, x_log, y_conv, modifier_keys):
@@ -1010,7 +1010,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         button_n = _normalize_mouse_button(button)
         modifier_keys = _normalize_modifiers(modifiers)
-        # Dev-only: release is where a jump or a designation resolves -- travel
+        # Dev-only: release is where a jump or a mark resolves -- travel
         # distance tells a click from a drag.
         if _dev_consumed(win, "on_mouse_release", win, x_log, y_conv, modifier_keys):
             return True
@@ -1036,7 +1036,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         x_log, y_conv = _to_logical(x, y)
         buttons_n = _normalize_mouse_buttons(buttons)
         modifier_keys = _normalize_modifiers(modifiers)
-        # Dev-only: a drag mid-designation is the human sweeping out a region.
+        # Dev-only: a drag mid-mark is the human sweeping out a region.
         # Routed to the same hook as a plain move, which tells the two apart by
         # whether a press is outstanding.
         if _dev_consumed(win, "on_mouse_motion", win, x_log, y_conv, modifier_keys):

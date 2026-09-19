@@ -620,10 +620,10 @@ class Window:
         # actions can be recorded for an AI pair to pull; ``None`` -- and zero
         # overhead -- in production.
         self._interaction_recorder: Optional[Any] = None
-        # Dev-only designation mode. The dev runner attaches a
-        # ``SelectMode`` here so the human can point at a widget for an AI pair
+        # Dev-only mark mode. The dev runner attaches a
+        # ``CommentMode`` here so the human can point at a widget for an AI pair
         # to read; ``None`` -- and zero overhead -- in production.
-        self._select_mode: Optional[Any] = None
+        self._comment_mode: Optional[Any] = None
         # Dev-only source jump. The dev runner attaches a ``SourceJump`` here so
         # a chorded click opens the code that built a widget; ``None`` in
         # production.
@@ -1454,13 +1454,13 @@ class Window:
                 exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
 
             try:
-                from nuiitivet.dev import layout_edit_overlay, selection_overlay
+                from nuiitivet.dev import layout_edit_overlay, comment_overlay
 
-                selection_overlay.paint_selection(self, canvas, self.width, self.height)
+                comment_overlay.paint_comments(self, canvas, self.width, self.height)
                 layout_edit_overlay.paint_layout_edit(self, canvas, self.width, self.height)
             except Exception:
                 exception_once(
-                    logger, "app_snapshot_dev_selection_overlay_exc", "dev selection overlay paint raised"
+                    logger, "app_snapshot_dev_comment_overlay_exc", "dev comment overlay paint raised"
                 )
 
         img = surface.makeImageSnapshot()

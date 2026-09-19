@@ -208,11 +208,12 @@ def build_server() -> "FastMCP":
           "focused"}]`` (or ``null`` on a single-host build). Pass an ``id`` as
           the ``window`` argument of the tree/state/screenshot/action tools to
           address that window; omitting it addresses the main window.
-        - ``selection`` -- ``{"seq", "active", "nodes", "regions"}`` (or ``null``):
-          what the human has pointed at in select mode. A ``seq`` you have not
-          seen before means they designated something for you since your last
-          turn -- call `describe_selection` to read it. ``active: true`` means
-          they are still designating.
+        - ``comments`` -- ``{"seq", "active", "nodes", "regions",
+          "instructions"}`` (or ``null``): what the human has pointed at, and
+          written, in comment mode. A ``seq`` you have not seen before means
+          they left a comment for you since your last turn -- call
+          `see_comments` to read it. ``instructions`` counts the marks
+          that carry text. ``active: true`` means they are still writing.
 
         Use `describe_tree` when you need the actual on-screen structure.
         """
@@ -280,28 +281,34 @@ def build_server() -> "FastMCP":
         return _client().describe_state(include_animations=include_animations, window=window)
 
     @server.tool()
-    def describe_selection() -> dict[str, Any]:
-        """Return what the human deliberately pointed at in the running app.
+    def see_comments() -> dict[str, Any]:
+        """Return the human's comments: what they pointed at in the running app, and what they wrote there.
 
         The one channel that runs *from* the human *to* you. `describe_tree` and
         `describe_state` tell you what the app is; `interaction_log` tells you
-        what the human did. This tells you what the human **meant** -- the widgets
-        they entered select mode and designated on purpose.
+        what the human did. This tells you what the human **means** -- the
+        widgets and areas they marked in comment mode, each with the
+        instruction they typed on it, if any.
 
-        Reach for it whenever `status` reports a `selection` whose `seq` you have
-        not seen, and whenever the human says "this is wrong" / "look at this
-        part" without naming a widget: they may well have pointed at it already,
-        and guessing from a screenshot when a designation is waiting is wasted
-        effort.
+        Reach for it whenever the human says `see_comments`, whenever
+        `status` reports a `comments` whose `seq` you have not seen, and
+        whenever they say "this is wrong" / "look at this part" without naming
+        a widget: they may well have pointed at it already, and guessing from a
+        screenshot when a comment is waiting is wasted effort.
 
         Returns ``{"seq", "active", "nodes", "regions", "lost"}`` -- two
         independent lists, either of which may be empty. Each node is
-        ``{"index", "type", optional "key"/"label", "path", "rect", "tree",
-        "state"}`` -- `index` matches the number badged on screen, so "the second
-        one" means `index: 2`; `key`/`label` are directly usable as a `click`
-        target; `path` is the root -> node type chain for locating it in
+        ``{"index", optional "instruction", "type", optional "key"/"label",
+        "path", "rect", "tree", "state"}`` -- `index` matches the number badged
+        on screen, so "the second one" means `index: 2`; `instruction` is the
+        human's instruction for that mark, in their words: **act on it**, and
+        answer by number ("#2 refused: the value is an expression"). A mark
+        without `instruction` is still a whole comment -- they will say what
+        they mean in chat, by its number. `key`/`label` are directly usable as a
+        `click` target; `path` is the root -> node type chain for locating it in
         `describe_tree`; `tree` and `state` are those dumps **scoped to that
         node**, which is usually all you need instead of a whole-tree read.
+        Several comments are one work order: answer them in one turn.
 
         A **region** is an area they dragged a box over rather than a widget,
         numbered in the same sequence as `nodes`. It carries `rect`, the
@@ -318,14 +325,15 @@ def build_server() -> "FastMCP":
         there. Regions are re-derived on every call, so read one again after your
         fix to see what occupies the area now.
 
-        `active: true` means select mode is still on: the human may still be
-        designating, and has not yet pressed `Enter` to keep it (`Esc` throws the
-        session away). Prefer waiting over acting on a half-made set -- and if
-        they say they pointed at something but the lists are empty, this is why. `lost` is
-        how many designated widgets a hot reload could not re-resolve; when it is
-        non-zero, say so rather than reasoning over a silently shortened list.
+        `active: true` means comment mode is still on: the human may still be
+        marking and writing, and has not yet pressed `Enter` to keep it (`Esc`
+        throws the session away). Prefer waiting over acting on a half-made set
+        -- and if they say they pointed at something but the lists are empty,
+        this is why. `lost` is how many marked widgets a hot reload could not
+        re-resolve; when it is non-zero, say so rather than reasoning over a
+        silently shortened list.
         """
-        return _client().describe_selection()
+        return _client().see_comments()
 
     @server.tool()
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:
@@ -363,8 +371,8 @@ def build_server() -> "FastMCP":
         before acting -- e.g. so you do not dismiss a dialog they just opened.
 
         Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
-        ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"window_opened"``,
-        or ``"window_closed"``. ``seq`` is monotonic
+        ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"comment"``,
+        ``"window_opened"``, or ``"window_closed"``. ``seq`` is monotonic
         -- compare it to the last one you saw to tell whether new actions
         happened. A ``click`` carries ``target`` (the resolved widget
         ``{"type", optional "key"/"label"}``, never a coordinate); a ``key``
