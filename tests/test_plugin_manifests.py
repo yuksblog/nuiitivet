@@ -50,6 +50,6 @@ def test_plugin_skills_are_discoverable() -> None:
     # shipped there must be a real skill.
     skills = [p for p in (REPO_ROOT / "skills").iterdir() if p.is_dir()]
     names = {p.name for p in skills}
-    assert {"nuiitivet-app", "nuiitivet-debug"} <= names
+    assert {"nuiitivet-app", "nuiitivet-debug", "nuiitivet-see-comments"} <= names
     for skill in skills:
         assert (skill / "SKILL.md").is_file(), f"{skill.name} lacks SKILL.md"

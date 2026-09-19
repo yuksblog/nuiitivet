@@ -345,21 +345,21 @@ def test_recorder_never_receives_or_stores_typed_text() -> None:
 
 
 def test_select_marker_is_content_free() -> None:
-    """A designation may disclose rects and text -- but not through this journal.
+    """A mark may disclose rects and text -- but not through this journal.
 
-    The marker says only *that* the human designated something; the payload is
-    served solely by ``describe_selection``, so the ambient journal never becomes
+    The marker says only *that* the human marked something; the payload is
+    served solely by ``see_comments``, so the ambient journal never becomes
     a second, unasked-for channel for it.
     """
     journal = InteractionJournal()
 
-    journal.record_select()
+    journal.record_comment()
 
     (event,) = journal.recent()
     assert event.to_dict() == {
         "seq": event.seq,
         "timestamp": event.timestamp,
-        "kind": "select",
+        "kind": "comment",
     }
 
 

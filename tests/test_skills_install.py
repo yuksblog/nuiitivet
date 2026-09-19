@@ -14,6 +14,7 @@ def test_available_skills_lists_the_bundled_skills() -> None:
     names = skills.available_skills()
     assert "nuiitivet-app" in names
     assert "nuiitivet-debug" in names
+    assert "nuiitivet-see-comments" in names
 
 
 def test_install_copies_skills_without_pycache(tmp_path: Path) -> None:
@@ -23,6 +24,7 @@ def test_install_copies_skills_without_pycache(tmp_path: Path) -> None:
     assert dest / "nuiitivet-app" in installed
     assert (dest / "nuiitivet-app" / "SKILL.md").is_file()
     assert (dest / "nuiitivet-debug" / "SKILL.md").is_file()
+    assert (dest / "nuiitivet-see-comments" / "SKILL.md").is_file()
     assert not list(dest.rglob("__pycache__"))
     assert not list(dest.rglob("*.pyc"))
 
@@ -66,3 +68,4 @@ def test_cli_list_prints_skill_names(capsys: pytest.CaptureFixture[str]) -> None
     lines = capsys.readouterr().out.splitlines()
     assert "nuiitivet-app" in lines
     assert "nuiitivet-debug" in lines
+    assert "nuiitivet-see-comments" in lines

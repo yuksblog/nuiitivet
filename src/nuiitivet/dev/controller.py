@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
 from .navigation_snapshot import restore_navigation, snapshot_navigation
-from .selection import Selection
+from .comments import Comments
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
 from .source_edit import EditLog
@@ -56,7 +56,7 @@ class HotReloadController:
         poll_interval: float = 0.4,
         drain_interval: float = 0.1,
         journal: Optional[ReloadJournal] = None,
-        selection: Optional[Selection] = None,
+        comments: Optional[Comments] = None,
         edits: Optional[EditLog] = None,
     ) -> None:
         self._app = app
@@ -67,11 +67,11 @@ class HotReloadController:
         # When present, every reload -- success or failure -- is recorded so the
         # assistant can notice the code changed under it between turns.
         self._journal = journal
-        # The human's select-mode designation, whose members are weak and so
+        # The human's comment-mode mark, whose members are weak and so
         # evaporate when the rebuild replaces every live object. Re-resolved
         # below like observable state and the navigation stack, because a reload
         # lands in the middle of essentially every use of it.
-        self._selection = selection
+        self._comments = comments
         # Layout edit mode's edits. Told after every reload whether its pending edit
         # landed, since a reload is how an edit takes effect at all.
         self._edits = edits
@@ -148,8 +148,8 @@ class HotReloadController:
             app._commit_content_root(new_content)
             restored = restore_observables(app.root, snapshot)
             restored_routes = restore_navigation(app, nav_snapshot)
-            if self._selection is not None:
-                self._selection.restore(app.root)
+            if self._comments is not None:
+                self._comments.restore(app.root)
         except Exception:
             # The new root is already committed; report but stay alive.
             tb = traceback.format_exc()

@@ -16,8 +16,8 @@ import pytest
 
 from nuiitivet.dev import landing, source
 from nuiitivet.dev.layout_edit_mode import LayoutEditMode
-from nuiitivet.dev.select_mode import SelectMode
-from nuiitivet.dev.selection import Selection
+from nuiitivet.dev.comment_mode import CommentMode
+from nuiitivet.dev.comments import Comments
 from nuiitivet.dev.source_edit import EditLog
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.layout.column import Column
@@ -284,7 +284,7 @@ class _App:
     def __init__(self, root: Any = None) -> None:
         self.root = root
         self.invalidated = 0
-        self._select_mode: Any = None
+        self._comment_mode: Any = None
         self._layout_edit_mode: Any = None
 
     def invalidate(self) -> None:
@@ -406,54 +406,54 @@ def test_every_key_is_consumed_while_latched_and_none_before() -> None:
     assert mode.on_key_release(app, "a", 0) is True
 
 
-# --- switching with select mode -----------------------------------------------
+# --- switching with comment mode -----------------------------------------------
 
 
 def _through_layers(app: _App, key: str) -> None:
     """Offer a key the way the runner does: to each layer until one takes it."""
-    for layer in (app._select_mode, app._layout_edit_mode):
+    for layer in (app._comment_mode, app._layout_edit_mode):
         if layer.on_key_press(app, key, _CHORD):
             return
 
 
-def test_the_layout_chord_switches_out_of_select_mode_keeping_its_marks() -> None:
+def test_the_layout_chord_switches_out_of_comment_mode_keeping_its_marks() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        selection = Selection()
-        app._select_mode = SelectMode(selection)
+        comments = Comments()
+        app._comment_mode = CommentMode(comments)
         app._layout_edit_mode = LayoutEditMode(EditLog())
-        app._select_mode.on_key_press(app, "d", _CHORD)
-        app._select_mode.on_mouse_press(app, 2, 2)
-        app._select_mode.on_mouse_release(app, 2, 2)
-        assert selection.members()
+        app._comment_mode.on_key_press(app, "c", _CHORD)
+        app._comment_mode.on_mouse_press(app, 2, 2)
+        app._comment_mode.on_mouse_release(app, 2, 2)
+        assert comments.members()
 
         _through_layers(app, "e")
 
-        assert app._select_mode.active is False
+        assert app._comment_mode.active is False
         assert app._layout_edit_mode.active is True
-        assert selection.members(), "switching keeps the marks, as Enter does"
+        assert comments.members(), "switching keeps the marks, as Enter does"
 
 
 def test_the_select_chord_switches_out_of_layout_edit_mode() -> None:
     app = _App()
-    app._select_mode = SelectMode(Selection())
+    app._comment_mode = CommentMode(Comments())
     app._layout_edit_mode = LayoutEditMode(EditLog())
     app._layout_edit_mode.on_key_press(app, "e", _CHORD)
 
-    _through_layers(app, "d")
+    _through_layers(app, "c")
 
     assert app._layout_edit_mode.active is False
-    assert app._select_mode.active is True
+    assert app._comment_mode.active is True
 
 
-def test_without_a_layout_mode_select_mode_keeps_consuming_the_chord() -> None:
+def test_without_a_layout_mode_comment_mode_keeps_consuming_the_chord() -> None:
     app = _App()
-    app._select_mode = SelectMode(Selection())
-    app._select_mode.on_key_press(app, "d", _CHORD)
+    app._comment_mode = CommentMode(Comments())
+    app._comment_mode.on_key_press(app, "c", _CHORD)
 
-    assert app._select_mode.on_key_press(app, "e", _CHORD) is True
-    assert app._select_mode.active is True
+    assert app._comment_mode.on_key_press(app, "e", _CHORD) is True
+    assert app._comment_mode.active is True
 
 
 # --- candidate and selection ----------------------------------------------------
@@ -1592,7 +1592,7 @@ def test_the_accelerator_shortcuts_select_all_and_reach_the_clipboard(
             self.text = text
 
     clipboard = _Clipboard()
-    monkeypatch.setattr("nuiitivet.dev.layout_edit_mode.get_system_clipboard", lambda: clipboard)
+    monkeypatch.setattr("nuiitivet.dev.inline_field.get_system_clipboard", lambda: clipboard)
     _editing(session)
     mode, app = session.mode, session.app
 

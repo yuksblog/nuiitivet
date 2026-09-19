@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from nuiitivet.dev import source
-from nuiitivet.dev.select_mode import SelectMode
-from nuiitivet.dev.selection import Selection
+from nuiitivet.dev.comment_mode import CommentMode
+from nuiitivet.dev.comments import Comments
 from nuiitivet.dev.source_jump import SourceJump
 from nuiitivet.input.codes import MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.layout.column import Column
@@ -144,14 +144,14 @@ def test_keys_are_never_consumed() -> None:
     app = _App()
 
     assert jump.on_key_press(app, "lctrl", MOD_CTRL) is False
-    assert jump.on_key_press(app, "d", _CHORD) is False
+    assert jump.on_key_press(app, "c", _CHORD) is False
     assert jump.on_key_release(app, "c", _CHORD) is False
 
 
-# --- inside select mode ------------------------------------------------------
+# --- inside comment mode ------------------------------------------------------
 
 
-def test_inside_select_mode_the_chord_jumps_instead_of_designating(monkeypatch: Any) -> None:
+def test_inside_comment_mode_the_chord_jumps_instead_of_designating(monkeypatch: Any) -> None:
     """The runner offers the press to the jump first; a consumed press never
     reaches the mode, so browsing code leaves no marks behind."""
     opened: list[tuple[str, int]] = []
@@ -162,11 +162,11 @@ def test_inside_select_mode_the_chord_jumps_instead_of_designating(monkeypatch: 
         with mount(Column(children=[Text("AAA")])) as host:
             host.layout(300, 200)
             host.settle()
-            selection = Selection()
-            mode = SelectMode(selection)
+            comments = Comments()
+            mode = CommentMode(comments)
             jump = SourceJump()
             app = _App(host.root)
-            mode.on_key_press(app, "d", _CHORD)
+            mode.on_key_press(app, "c", _CHORD)
 
             if not jump.on_mouse_press(app, 2, 2, _CHORD):
                 mode.on_mouse_press(app, 2, 2, _CHORD)
@@ -176,12 +176,12 @@ def test_inside_select_mode_the_chord_jumps_instead_of_designating(monkeypatch: 
         source.uninstall()
 
     assert len(opened) == 1
-    assert selection.members() == []
+    assert comments.members() == []
     assert mode.active is True
 
 
-def test_select_mode_no_longer_jumps_on_ctrl_click(monkeypatch: Any) -> None:
-    """One chord for the jump everywhere; ``Ctrl+Click`` in the mode designates."""
+def test_comment_mode_no_longer_jumps_on_ctrl_click(monkeypatch: Any) -> None:
+    """One chord for the jump everywhere; ``Ctrl+Click`` in the mode marks."""
     opened: list[tuple[str, int]] = []
     monkeypatch.setattr("nuiitivet.dev.source_jump.open_at", _records_into(opened))
 
@@ -191,15 +191,15 @@ def test_select_mode_no_longer_jumps_on_ctrl_click(monkeypatch: Any) -> None:
         with mount(Column(children=[leaf])) as host:
             host.layout(300, 200)
             host.settle()
-            selection = Selection()
-            mode = SelectMode(selection)
+            comments = Comments()
+            mode = CommentMode(comments)
             app = _App(host.root)
-            mode.on_key_press(app, "d", _CHORD)
+            mode.on_key_press(app, "c", _CHORD)
 
             mode.on_mouse_press(app, 2, 2, MOD_CTRL)
             mode.on_mouse_release(app, 2, 2, MOD_CTRL)
 
-            assert selection.members() == [leaf]
+            assert comments.members() == [leaf]
     finally:
         source.uninstall()
 

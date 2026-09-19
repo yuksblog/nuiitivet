@@ -86,7 +86,7 @@ in the loop. *When* the assistant should reach for which is the
 | `describe_tree` | The mounted tree as compact JSON — each node's type, identity (`key` / `label` / `text` / `title`), interactive state (`disabled` / `focused` / `selected` / `value`), and rect. The cheap view the assistant reasons over and resolves action targets from. |
 | `describe_state` | The live `Observable` values behind that tree, in the same shape as `describe_tree` so the two join node-for-node. Answers "the value updated but the UI didn't", and the reverse. <br> **These are the raw observables, under the attribute names your widgets bound them to** — `describe_tree`'s own state is the same thing in one vocabulary. <br> **Animation state is omitted by default.** `Animatable` channels carry visual rather than semantic state and would dominate the dump; `include_animations=True` brings them back. |
 | `screenshot` | The mounted tree rendered to PNG — the whole frame, or just one widget: `key` / `label` crop to that widget's painted rect plus `padding` logical pixels each side (default 8, so shadows and outlines stay in), `rect=[x, y, w, h]` crops to a raw region. <br> **Not a capture of your window.** Your screen can be visibly garbled while `screenshot` comes back clean, so it settles nothing about a problem *you* are seeing — send the assistant your own screenshot instead. |
-| `describe_selection` | The widgets and areas *you* pointed at — see [Point at something](#point-at-something-select-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *meant*. |
+| `see_comments` | The widgets and areas *you* pointed at, and what you typed on them — see [Write instructions on the app](#write-instructions-on-the-app-comment-mode). Each carries a `describe_tree` / `describe_state` dump scoped to it. <br> **The only tool that runs from you to the assistant.** Everything else reports what the app is; this reports what you *mean*. |
 
 ### Act — drive it
 
@@ -132,79 +132,56 @@ no `seq` to track.
 | `profile_start` | Begins recording rebuild/repaint counters and painted-frame timings. <br> **Recording is not free.** An active session inflates frame time by roughly 10% on a heavy tree; outside a session nothing is installed and nothing costs anything, so leave it off unless a question needs it. |
 | `profile_stop` | Ends the recording and returns the report: painted-frame timings (mean / p95 / max of the paint walk), paint counts by widget type, and the actionable pair — scope-recomposition counts and `Observable` binding-update counts, per widget, largest first. A widget rebuilding far more often than the interaction warrants is the wasted-work signal. <br> **Paint counts track frames, not damage.** Every painted frame walks the whole tree, so per-widget paint counts equal the painted-frame count; the per-widget signal lives in the rebuild and binding counters. |
 
-## Point at something (select mode)
+## Write instructions on the app (comment mode)
 
-Every tool above runs assistant → app. Select mode runs the other way: it is how
-you **point**.
-
-Prose is a poor way to name a location, and for two cases it barely works — an
-inner widget with no `key` and no distinctive text, and a *gap*, where nothing
-painted and there is no widget to name at all.
+Telling an assistant *where* is often the hard part of telling it what to do.
+Comment mode puts the instruction on the app itself: mark a widget or an area,
+write what you want done on the mark, and the assistant reads the place and the
+words together.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+D` | Enter select mode (`Cmd+Shift+D` on macOS — either accelerator works throughout). `D` for *designate*: point things out for the assistant. |
-| Click | Designate the widget under the cursor; click it again to remove it. |
-| Drag | Designate an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
-| `W` / `S` | Move the newest widget designation up to its parent, or back down, when the click landed one level off. |
-| `Backspace` | Remove the newest designation. |
-| `Ctrl+Backspace` | Remove them all. |
-| `Enter` | Keep them and leave. |
-| `Esc` | Discard this session and leave. Anything you kept with `Enter` earlier stays. |
-| `Ctrl+Shift+E` | Keep them and switch to [layout edit mode](#resize-or-reorder-a-widget-by-dragging-layout-edit-mode). |
+| `Ctrl+Shift+C` | Enter comment mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). |
+| Click | Mark the widget under the cursor. Click it again to remove the mark. |
+| Drag | Mark an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
+| `Enter` on a mark you just made | Open a field on that mark. `Enter` keeps the text (leave it empty to keep just the number); `Esc` closes the field. `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. |
+| Click a mark's numbered badge | Open its field again, to change or clear the text. |
+| `W` / `S` | Move the newest mark up to its parent, or back down, when the click landed one level off. |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo and redo what you did in this session — a mark, an unmark, a text. The same keys as layout edit mode. |
+| `Ctrl+Backspace` | Remove every mark, including ones you kept earlier. `Ctrl+Z` brings them back. |
+| `Enter` | Keep everything and leave. |
+| `Esc` | Discard this session and leave — marks and text alike. Anything you kept with `Enter` earlier stays. |
+| `Ctrl+Shift+E` | Keep everything and switch to [layout edit mode](#edit-the-layout-directly-layout-edit-mode). |
 
-Every designation and both removals take effect *inside* the session, so `Esc`
-undoes any of them.
+Click the widget you mean, or drag a box over the area, then press `Enter`. A
+field opens on the mark; type the instruction and press `Enter` to keep it.
+Press `Enter` once more to leave the mode. Mark as many places as you like
+before leaving: the assistant handles them all in one turn, each by its number.
+A mark with no text is fine too — refer to it by number in chat.
 
-While the mode is on your clicks go to the picker, not the app, so you cannot
-fire the button you are pointing at. A badge at the bottom-left shows the mode,
-the way out, and the keys that apply right now, and steps aside when the
-pointer comes near. Widgets get **corner brackets** and areas a **soft fill**, so they stay
-distinct when one sits inside the other, and each carries a **numbered badge**
-matching what the assistant sees — "fix the second one" is unambiguous.
-
-Hovering names the widget **and the line that built it**, and the assistant is
-given that same line — so it edits the right place instead of hunting for it.
-That is worth most in the apps where naming a widget in prose is hardest: the
-ones passing no `key=` anywhere. To open that line yourself, see
-[Jump to the source](#jump-to-the-source).
-
-You do not have to say you did it: `status` carries a `selection` summary, so the
-assistant notices on the cheapest call it makes. Designations survive a reload
-too, so an edit mid-conversation does not make you point again, and any that
-cannot be found afterwards are reported as lost rather than quietly dropped.
-
-Two things about areas:
-
-- **An empty result is the answer, not a failure.** Nothing is painted there —
-  and the enclosing widget names what should have been.
-- **A rough box is fine.** "The gap between these" and "these things" are drawn
-  the same way; both are reported, and what you *say* settles which you meant.
-
-Only the rectangle is stored, so the assistant can re-read the same area after a
-fix to see what is there now.
+Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments
+and does what each one says, answering by number. If the skill is not
+installed, type `see_comments` instead: that names the dev bridge tool
+directly, so the assistant calls it. Either works; the skill is the better
+habit, since your chat completes it for you. The badge at the bottom-left
+shows both until the assistant has read the comments.
 
 > **Privacy note.** `interaction_log` records neither coordinates nor typed
-> content, because it records ambiently. A designation may carry both — that is
-> the point of it, since you chose to show it. The journal still only gains a
-> content-free marker that you designated *something*; the payload goes out only
-> when the assistant asks for it.
+> content, because it records ambiently. A comment may carry both, and your
+> own words — that is the point of it, since you chose to show it. The journal
+> still only gains a content-free marker that you commented on *something*;
+> the payload goes out only when the assistant asks for it.
 
-## Resize or reorder a widget by dragging (layout edit mode)
+## Edit the layout directly (layout edit mode)
 
-Select mode tells the assistant what you mean. Layout Edit mode needs no assistant:
-drag a widget's corner, and on release the dev runner writes the new `width` /
-`height` / `size` into the call that built it; drag its body along a `Column`
-or `Row`, and the runner moves it in the `children` list; drag it onto another
-container, and the runner moves it into that container's list — or, for a
-`Grid`, into the cell under the pointer, and for a `Stack`, on top; drag it
-without leaving its place —
-sideways in a `Column`, anywhere in a `Stack` — and the runner writes the
-container's alignment. Hot reload applies the edit.
+Some fixes are not worth asking an assistant for: a width or a height, the
+order of two widgets — layout, in short. Layout edit mode lets you make those
+yourself, by dragging the widget on the app's own screen. The dev runner writes
+the change into the source, and hot reload applies it.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside select mode it switches directly, keeping your designations as `Enter` would; `Ctrl+Shift+D` switches back. |
+| `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside comment mode it switches directly, keeping your comments as `Enter` would; `Ctrl+Shift+C` switches back. |
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `W` / `S` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |
@@ -286,39 +263,47 @@ reorders in its column. `W` / `S` or a digit moves the landing to another
 layer — the content column under a floating button, say — and the choice
 holds until the pointer leaves the stack.
 
-After the reload, the badge also reports a size that did not land where the
-ghost said, a reload that failed on the edit, or a `"wt"` whose meaning
-changed with the move — a share of the `Row`'s leftover where it filled the
-`Column`'s width. A widget leaving a `Grid` leaves its `GridItem` behind, and
-the badge names the `width` / `height` / `padding` / `alignment` the item
-carried, since those stay with it; one leaving a `Container` or `Box` leaves
-the box behind, empty — and an empty box takes a widget dropped on it as its
-`child`, while a box that already has one is passed over, so the drop lands in
-the list around it. Either way `Ctrl+Z` still reverts it —
-unless you have edited that line by hand since, in which case the undo is
-refused rather than applied to the wrong text.
+After the reload, the badge reports anything that did not go as the ghost
+said: a size that landed elsewhere, a reload that failed on the edit, or a
+`"wt"` whose meaning changed with the move — a share of the `Row`'s leftover
+where it filled the `Column`'s width.
 
-Only `width`, `height`, `size`, the place of a child in the list that orders
-the children — `children=[...]`, or the data a comprehension or
-`Column.builder()` iterates, even one bound to a name (`tags = [...]`) — a
-`GridItem`'s `row` / `column` or area, added or removed with the wrapper
-itself as a widget enters or leaves a `Grid`, and a container's `alignment` /
-`cross_alignment` / `item_alignment` (or a `CrossAligned`'s value) are ever
-written. `padding`, `gap`, colours and every other style value are yours to
-change in code.
+A widget that leaves a container can leave something behind. Out of a `Grid`,
+its `GridItem` stays, and the badge names the `width` / `height` / `padding` /
+`alignment` the item carried. Out of a `Container` or `Box`, the box stays,
+empty — and an empty box takes a widget dropped on it as its `child`, while a
+box that already has one is passed over, so the drop lands in the list around
+it.
+
+`Ctrl+Z` reverts any of this. The one exception is a line you have edited by
+hand since: the undo is refused rather than applied to the wrong text.
+
+Layout edit mode writes four things, and nothing else:
+
+- `width`, `height` and `size`;
+- a child's place in the list that orders the children — `children=[...]`, or
+  the data a comprehension or `Column.builder()` iterates, even one bound to a
+  name (`tags = [...]`);
+- a `GridItem`'s `row` / `column` or area, with the wrapper itself added or
+  removed as a widget enters or leaves a `Grid`;
+- a container's `alignment` / `cross_alignment` / `item_alignment`, or a
+  `CrossAligned`'s value.
+
+`padding`, `gap`, colours and every other style value are yours to change in
+code.
 
 ## Jump to the source
 
 `Ctrl+Shift+Click` (`Cmd+Shift+Click` on macOS) on a widget **opens the code
 that built it**, in your editor. It is not a mode: it works with no mode on, and
-inside select mode or layout edit mode, where it opens the code instead of
-designating or selecting — so you can read through several widgets without
+inside comment mode or layout edit mode, where it opens the code instead of
+marking or selecting — so you can read through several widgets without
 leaving marks behind.
 
 Hold `Ctrl+Shift` and the widget under the cursor gets **rose** brackets and a
 caption naming its file and line, so you can aim before clicking — a different
-colour from select mode's amber, so inside that mode you can tell a jump from
-a designation. After the click a
+colour from comment mode's amber, so inside that mode you can tell a jump from
+a mark. After the click a
 caption says what happened — `opening app.py:42`, or why nothing did — and
 clears on the next pointer move.
 
@@ -331,7 +316,7 @@ python -m nuiitivet.dev run app.py \
   --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
 ```
 
-`Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+D`,
+`Ctrl+Shift` is the dev runner's prefix: every chord it claims — `Ctrl+Shift+C`,
 `Ctrl+Shift+E`, `Ctrl+Shift+Click` — starts with it, and nothing else does.
 
 ## Watch the assistant act (on-screen)
@@ -349,7 +334,7 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `type` | A caret marker near the focused widget. <br> **The typed content is never drawn**, consistent with `interaction_log`, so it cannot leak into a screenshot either. |
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
-These markers are **indigo**; select mode's are **amber**; layout edit mode's ghosts
+These markers are **indigo**; comment mode's are **amber**; layout edit mode's ghosts
 are **teal**; the source jump's brackets are **rose**. What the assistant did,
 what you pointed at, what is about to change in your file, and where a click
 would take you must never be confusable.
@@ -365,6 +350,7 @@ python -m nuiitivet.dev status
 python -m nuiitivet.dev describe-tree
 python -m nuiitivet.dev describe-state
 python -m nuiitivet.dev describe-state --include-animations
+python -m nuiitivet.dev see-comments
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log

@@ -572,7 +572,7 @@ def pick_at(root: Any, x: float, y: float) -> Optional[Any]:
 
     A layout-only wrapper stacking several rects under one pixel is skipped in
     favour of its deepest child; walking back out to it is the caller's job (the
-    ancestor walk in select mode), not this function's.
+    ancestor walk in comment mode), not this function's.
 
     Must be called on the UI thread (it reads live layout state).
 
@@ -637,7 +637,7 @@ def _iter_visible(node: Any, seen: set[int]) -> Any:
 def enclosing_container(root: Any, rect: tuple[float, float, float, float]) -> Optional[Any]:
     """Return the innermost visible node whose rect wholly encloses ``rect``.
 
-    The anchor for a designated *region*. When the human draws a box over
+    The anchor for a marked *region*. When the human draws a box over
     empty space there is no widget to name, and this is the entire answer: it
     names the widget that *should* have painted something there.
 
@@ -659,7 +659,7 @@ def enclosing_container(root: Any, rect: tuple[float, float, float, float]) -> O
 
 
 def _relation(node_rect: tuple[float, ...], rect: tuple[float, ...]) -> Optional[str]:
-    """How ``node_rect`` stands to a designated region, or ``None`` if it misses it."""
+    """How ``node_rect`` stands to a marked region, or ``None`` if it misses it."""
     if not _rect_intersects(node_rect, rect):
         return None
     return "contained" if _rect_encloses(rect, node_rect) else "clipped"
@@ -687,7 +687,7 @@ def _intersection_node(
 def intersecting_subtree(
     container: Any, rect: tuple[float, float, float, float]
 ) -> list[tuple[Any, Optional[str], list[Any]]]:
-    """Return what a designated region covers, as a pruned ``(node, relation, children)`` tree.
+    """Return what a marked region covers, as a pruned ``(node, relation, children)`` tree.
 
     Scoped to ``container``'s subtree, which is what makes an *intersection* rule
     workable at all: humans drag rough boxes, but a bare intersection test

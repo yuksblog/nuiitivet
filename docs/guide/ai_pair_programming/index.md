@@ -34,8 +34,8 @@ whether or not an assistant is involved.
 A skill is a bundle of instructions you install into your assistant's skills
 directory — each skill page shows the ways to do that. The features above are
 usable without them; the skills are what make an assistant reach for the right
-one at the right time instead of guessing. Install both — one covers each leg
-of the loop.
+one at the right time instead of guessing. Install all three — one covers each
+leg of the loop.
 
 - **[The `nuiitivet-app` skill](nuiitivet_app_skill.md)** — *idioms.* Keeps the
   assistant's edits idiomatic Nuiitivet rather than leaking Flutter/React/Rx
@@ -44,6 +44,9 @@ of the loop.
   Teaches the assistant to launch under hot reload and work the dev bridge
   cheaply — check the tree before spending a screenshot, wait for async work
   instead of racing it.
+- **[The `nuiitivet-see-comments` skill](nuiitivet_see_comments_skill.md)** —
+  *act on what you pointed at.* Reads the comments you left in the app and does
+  them, one turn for all of them.
 
 ## Which page answers what
 
@@ -53,7 +56,8 @@ of the loop.
 | What exactly can an assistant see and do in my running app? | [Dev Bridge MCP](dev_bridge_mcp.md) |
 | How do I stop the assistant writing Flutter-flavoured Python? | [The `nuiitivet-app` skill](nuiitivet_app_skill.md) |
 | How do I get the assistant to run and debug the app itself? | [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) |
+| How do I have the assistant act on the comments I left in the app? | [The `nuiitivet-see-comments` skill](nuiitivet_see_comments_skill.md) |
 
-The two feature pages are the reference for *what the tool does*; the two skill
-pages cover *what the assistant is told about it*, and link back rather than
-restate.
+The two feature pages are the reference for *what the tool does*; the three
+skill pages cover *what the assistant is told about it*, and link back rather
+than restate.

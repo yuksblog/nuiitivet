@@ -80,7 +80,7 @@ def path_of(root: Any, node: Any) -> Optional[Path]:
 
     The same key-preferring path :func:`snapshot_observables` builds, exposed for
     anything that has to survive a reload by naming *where* a widget was rather
-    than holding the object -- the select-mode selection re-resolves its
+    than holding the object -- the comment buffer re-resolves its
     members this way, for the same reason and with the same degradation: a
     keyless widget that moves loses its match.
     """
@@ -94,7 +94,7 @@ def widgets_by_path(root: Any) -> dict[Path, Any]:
     """Return every widget in ``root``'s tree, keyed by its structural path.
 
     The lookup side of :func:`path_of`: one walk answers any number of paths, so
-    re-resolving a whole selection after a reload costs a single traversal.
+    re-resolving every comment after a reload costs a single traversal.
     """
     return {path: widget for path, widget in _walk(root)}
 

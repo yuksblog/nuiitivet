@@ -28,7 +28,7 @@ class _KeysOnly:
 class _App:
     def __init__(self) -> None:
         self._source_jump: Any = _KeysOnly()
-        self._select_mode: Any = _KeysOnly()
+        self._comment_mode: Any = _KeysOnly()
         self._layout_edit_mode: Any = _Takes()
 
 
@@ -52,7 +52,7 @@ def test_a_layer_that_raises_does_not_swallow_the_input() -> None:
             raise RuntimeError("boom")
 
     app = _App()
-    app._select_mode = _Broken()
+    app._comment_mode = _Broken()
     app._layout_edit_mode = _KeysOnly()
 
     assert _dev_consumed(app, "on_text", app, "a") is False

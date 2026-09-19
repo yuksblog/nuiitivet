@@ -1,7 +1,7 @@
 """Layout edit mode: the human drags a widget, and the runner edits the source.
 
-The sibling of :mod:`.select_mode`, on the same real input handlers, with the
-opposite division of labour. Select mode is how the human *says* something to
+The sibling of :mod:`.comment_mode`, on the same real input handlers, with the
+opposite division of labour. Comment mode is how the human *says* something to
 the assistant; this is how they *do* something with no assistant in the loop.
 A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
 ``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
@@ -15,7 +15,7 @@ screen always came from the code.
 ``Delete`` on the selection removes its expression the same way, with no
 confirmation, and ``Enter`` opens a field over its text whose ``Enter``
 rewrites the string literal. Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and
-select mode's switch directly, each mode closing the other on entry. There is
+comment mode's switch directly, each mode closing the other on entry. There is
 no commit: every release writes, so ``Ctrl+Z`` is what "I did not mean that"
 reaches for, and ``Ctrl+Shift+Z`` takes it back.
 """
@@ -29,23 +29,16 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import ancestors, global_visual_rect
-from nuiitivet.input.codes import MOD_ALT, MOD_SHIFT, resolve_modifiers, text_motion_for_key
+from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
 from nuiitivet.layout.cross_aligned import CrossAligned
 from nuiitivet.layout.grid import Grid
 from nuiitivet.layout.stack import Stack
-from nuiitivet.platform import get_system_clipboard
-from nuiitivet.widgets.text_editing import (
-    TextEditingValue,
-    TextRange,
-    apply_motion,
-    apply_shortcut,
-    compose_text,
-    insert_text,
-)
+from nuiitivet.widgets.text_editing import TextEditingValue
 
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .hud import SEPARATOR, Placement
+from .inline_field import InlineField
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
@@ -79,10 +72,10 @@ Rect = tuple[float, float, float, float]
 # The key that enters the mode. ``E`` for *edit*, and it keeps the chord under
 # the left hand while the right is on the mouse.
 _ENTER_KEY = "e"
-# Select mode's key, ``D`` for *designate*. Its chord is let through while this
+# Comment mode's key, ``C`` for *comment*. Its chord is let through while this
 # mode is latched, so the two switch directly; the mode that enters closes the
 # other.
-_SELECT_KEY = "d"
+_COMMENT_KEY = "c"
 # Logical pixels around each corner of the candidate within which a press is a
 # grab of that corner rather than a click.
 _CORNER_GRAB = 10.0
@@ -125,10 +118,7 @@ class TextEditor:
 @dataclass
 class _Editing:
     node: Callable[[], Any]
-    value: TextEditingValue
-    # Set by the commit that confirms a composition, which on macOS lands
-    # before that Enter's key press; read once by the next key.
-    ime_just_committed: bool = False
+    field: InlineField
 
 
 @dataclass
@@ -239,7 +229,7 @@ class LayoutEditMode:
 
     Attach as ``app._layout_edit_mode``; the backend's real input handlers call the
     ``on_*`` hooks and honour a ``True`` return as "consumed". While latched
-    every event is consumed, like select mode. All hooks run on the UI thread.
+    every event is consumed, like comment mode. All hooks run on the UI thread.
     """
 
     def __init__(self, edits: EditLog, *, request_reload: Optional[Callable[[str], None]] = None) -> None:
@@ -296,7 +286,7 @@ class LayoutEditMode:
         rect = global_visual_rect(node) if node is not None else None
         if editing is None or rect is None:
             return None
-        return TextEditor(rect, editing.value)
+        return TextEditor(rect, editing.field.value)
 
     @property
     def exit(self) -> str:
@@ -403,7 +393,7 @@ class LayoutEditMode:
                 return True
             return False
 
-        if key == _SELECT_KEY and chord and getattr(app, "_select_mode", None) is not None:
+        if key == _COMMENT_KEY and chord and getattr(app, "_comment_mode", None) is not None:
             return False
         self._clear_notice()
         if self._editing is not None:
@@ -446,10 +436,7 @@ class LayoutEditMode:
         editing = self._editing
         if not self._active or editing is None:
             return False
-        editing.ime_just_committed = editing.value.is_composing
-        inserted = insert_text(editing.value, text)
-        if inserted is not None:
-            editing.value = inserted
+        editing.field.type(text)
         invalidate(app)
         return True
 
@@ -458,9 +445,7 @@ class LayoutEditMode:
         editing = self._editing
         if not self._active or editing is None:
             return False
-        composed = compose_text(editing.value, text, start, length)
-        if composed is not None:
-            editing.value = composed
+        editing.field.compose(text, start, length)
         invalidate(app)
         return True
 
@@ -473,7 +458,7 @@ class LayoutEditMode:
         return self._active
 
     def _enter(self, app: Any) -> None:
-        other = getattr(app, "_select_mode", None)
+        other = getattr(app, "_comment_mode", None)
         if other is not None and other.active:
             other.commit(app)
         self._active = True
@@ -1210,33 +1195,19 @@ class LayoutEditMode:
             invalidate(app)
             return
         value, _source = found
-        caret = TextRange(len(value), len(value))
-        self._editing = _Editing(weak(node) or (lambda: None), TextEditingValue(value, caret))
+        self._editing = _Editing(weak(node) or (lambda: None), InlineField.open(value))
         invalidate(app)
 
     def _edit_key(self, app: Any, key: str, modifier_keys: int) -> None:
         """One key in the field: a motion, a shortcut, a write or a cancel."""
         editing = self._editing
         assert editing is not None
-        just_committed, editing.ime_just_committed = editing.ime_just_committed, False
-        motion = text_motion_for_key(key)
-        if key == "escape":
+        outcome = editing.field.key(key, modifier_keys)
+        if outcome == "commit":
+            self._commit_text(app)
+            return
+        if outcome == "cancel":
             self._editing = None
-        elif key == "enter":
-            # Not the Enter that confirms a composition: the text is the
-            # input method's until it commits, and its commit arrived just now.
-            if not (editing.value.is_composing or just_committed):
-                self._commit_text(app)
-                return
-        elif motion is not None:
-            select = bool(resolve_modifiers(int(modifier_keys)) & MOD_SHIFT)
-            moved = apply_motion(editing.value, motion, select=select)
-            if moved is not None:
-                editing.value = moved
-        elif accel_held(modifier_keys):
-            changed = apply_shortcut(editing.value, key, get_system_clipboard())
-            if changed is not None:
-                editing.value = changed
         invalidate(app)
 
     def _commit_text(self, app: Any) -> None:
@@ -1245,7 +1216,7 @@ class LayoutEditMode:
         if editing is None or node is None:
             return
         rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
-        text = editing.value.text
+        text = editing.field.text
         self._write(app, self._plan_text(node, text), [Ghost(rect, f'text "{text}"')])
         invalidate(app)
 

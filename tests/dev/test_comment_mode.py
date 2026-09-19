@@ -1,12 +1,12 @@
-"""Tests for select mode -- the gesture layer over the designation buffer."""
+"""Tests for comment mode -- the gesture layer over the mark buffer."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from nuiitivet.dev.select_mode import SelectMode
+from nuiitivet.dev.comment_mode import CommentMode
 from nuiitivet.dev.interaction import InteractionJournal
-from nuiitivet.dev.selection import Selection
+from nuiitivet.dev.comments import Comments
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
@@ -26,82 +26,90 @@ class _App:
         self.invalidated += 1
 
 
-def _mode() -> tuple[SelectMode, Selection, _App]:
+def _mode() -> tuple[CommentMode, Comments, _App]:
     """A mode with no tree under it, for the tests that only exercise keys."""
-    selection = Selection()
-    return (SelectMode(selection), selection, _App())
+    comments = Comments()
+    return (CommentMode(comments), comments, _App())
 
 
-def _click(mode: SelectMode, app: _App, x: float, y: float) -> None:
+def _click(mode: CommentMode, app: _App, x: float, y: float) -> None:
     mode.on_mouse_press(app, x, y)
     mode.on_mouse_release(app, x, y)
+
+
+def _leave(mode: CommentMode, app: _App) -> None:
+    """``Enter`` out of the session; a mark just made offers its field first, which ``Esc`` declines."""
+    mode.on_key_press(app, "enter", 0)
+    if mode.writing is not None:
+        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
 
 
 # --- latching ---------------------------------------------------------------
 
 
 def test_the_shortcut_latches_the_mode_on() -> None:
-    mode, selection, app = _mode()
+    mode, comments, app = _mode()
 
-    assert mode.on_key_press(app, "d", _ENTER) is True
-    assert selection.active is True
+    assert mode.on_key_press(app, "c", _ENTER) is True
+    assert comments.active is True
 
 
 def test_the_meta_accelerator_also_enters() -> None:
     """Ctrl on Windows/Linux, Cmd on macOS -- one shortcut, spelled per platform."""
-    mode, selection, app = _mode()
+    mode, comments, app = _mode()
 
-    mode.on_key_press(app, "d", MOD_META | MOD_SHIFT)
+    mode.on_key_press(app, "c", MOD_META | MOD_SHIFT)
 
-    assert selection.active is True
+    assert comments.active is True
 
 
 def test_a_bare_c_does_not_enter() -> None:
-    mode, selection, app = _mode()
+    mode, comments, app = _mode()
 
-    assert mode.on_key_press(app, "d", 0) is False
-    assert selection.active is False
+    assert mode.on_key_press(app, "c", 0) is False
+    assert comments.active is False
 
 
 def test_the_wrong_chord_does_not_enter() -> None:
-    mode, selection, app = _mode()
+    mode, comments, app = _mode()
 
-    assert mode.on_key_press(app, "d", MOD_CTRL | MOD_ALT) is False
-    assert selection.active is False
+    assert mode.on_key_press(app, "c", MOD_CTRL | MOD_ALT) is False
+    assert comments.active is False
 
 
 def test_enter_commits_and_leaves() -> None:
-    """Enter keeps the session's work; the designation outlives the mode."""
+    """Enter keeps the session's work; the mark outlives the mode."""
     root = Column(children=[Text("AAA")])
     with mount(root) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
 
-        mode.on_key_press(app, "enter", 0)
+        _leave(mode, app)
 
-        assert selection.active is False
-        assert len(selection.members()) == 1
+        assert comments.active is False
+        assert len(comments.members()) == 1
 
 
 def test_keys_pass_through_while_the_mode_is_off() -> None:
-    mode, _selection, app = _mode()
+    mode, _comments, app = _mode()
 
     assert mode.on_key_press(app, "enter", 0) is False
 
 
 def test_every_key_is_consumed_while_latched() -> None:
     """A half-passed-through keyboard would let the app act on picker input."""
-    mode, _selection, app = _mode()
-    mode.on_key_press(app, "d", _ENTER)
+    mode, _comments, app = _mode()
+    mode.on_key_press(app, "c", _ENTER)
 
     assert mode.on_key_press(app, "tab", 0) is True
     assert mode.on_key_press(app, "a", 0) is True
 
 
-# --- designation ------------------------------------------------------------
+# --- mark ------------------------------------------------------------
 
 
 def test_a_click_designates_the_widget_under_the_cursor() -> None:
@@ -109,26 +117,30 @@ def test_a_click_designates_the_widget_under_the_cursor() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
 
         _click(mode, app, 2, 2)
 
-        assert selection.members() == [leaf]
+        assert comments.members() == [leaf]
 
 
 def test_clicking_a_designated_widget_removes_it() -> None:
-    leaf = Text("AAA")
+    """Clicking its body, that is: the corner is the badge, which opens its field."""
+    leaf = Text("AAAAAAAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
+        rect = leaf.global_layout_rect
+        assert rect is not None
+        centre = (rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
 
-        _click(mode, app, 2, 2)
-        _click(mode, app, 2, 2)
+        _click(mode, app, *centre)
+        _click(mode, app, *centre)
 
-        assert selection.members() == []
+        assert comments.members() == []
 
 
 def test_pointer_events_pass_through_while_the_mode_is_off() -> None:
@@ -136,45 +148,61 @@ def test_pointer_events_pass_through_while_the_mode_is_off() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
+        mode, comments, _stub = _mode()
 
         assert mode.on_mouse_press(app, 2, 2) is False
         assert mode.on_mouse_release(app, 2, 2) is False
-        assert selection.members() == []
+        assert comments.members() == []
 
 
 def test_a_drag_does_not_fall_back_to_a_click() -> None:
-    """A drag designates a region, so it must not
+    """A drag marks a region, so it must not
     quietly mean something else in the meantime."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 2, 2)
         mode.on_mouse_release(app, 80, 60)
 
-        assert selection.members() == []
+        assert comments.members() == []
 
 
-def test_backspace_removes_the_newest_designation() -> None:
+def test_ctrl_z_takes_back_the_newest_mark_and_ctrl_shift_z_returns_it() -> None:
     first, second = Text("AAA"), Text("BBBBBBBB")
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
         first_rect = first.global_layout_rect
         assert first_rect is not None
         _click(mode, app, 2, 2)
         _click(mode, app, 2, first_rect[3] + 2)
-        assert len(selection.members()) == 2
+        assert len(comments.members()) == 2
 
-        mode.on_key_press(app, "backspace", 0)
+        mode.on_key_press(app, "z", MOD_CTRL)
+        assert comments.members() == [first]
 
-        assert selection.members() == [first]
+        mode.on_key_press(app, "z", MOD_CTRL | MOD_SHIFT)
+        assert comments.members() == [first, second]
+
+
+def test_a_bare_backspace_does_nothing() -> None:
+    """Next door it deletes a widget from the source, so here it is not a key at all."""
+    leaf = Text("AAA")
+    with mount(Column(children=[leaf])) as host:
+        host.layout(300, 200)
+        app = _App(host.root)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
+        _click(mode, app, 2, 2)
+
+        assert mode.on_key_press(app, "backspace", 0) is True, "still consumed"
+        assert comments.members() == [leaf]
 
 
 def test_hover_tracks_the_pick_candidate() -> None:
@@ -182,8 +210,8 @@ def test_hover_tracks_the_pick_candidate() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
 
         assert mode.on_mouse_motion(app, 2, 2) is True
         assert mode.hovered is leaf
@@ -192,14 +220,14 @@ def test_hover_tracks_the_pick_candidate() -> None:
 # --- the badge's hints ------------------------------------------------------
 
 
-def _latched() -> tuple[SelectMode, _App, Any]:
+def _latched() -> tuple[CommentMode, _App, Any]:
     leaf = Text("AAA")
     host = mount(Column(children=[leaf]))
     root = host.__enter__().root
     host.layout(300, 200)
     app = _App(root)
-    mode = SelectMode(Selection())
-    mode.on_key_press(app, "d", _ENTER)
+    mode = CommentMode(Comments())
+    mode.on_key_press(app, "c", _ENTER)
     return (mode, app, host)
 
 
@@ -215,7 +243,7 @@ def test_hovering_teaches_the_click_and_the_source_jump() -> None:
     with host:
         mode.on_mouse_motion(app, 2, 2)
 
-        assert mode.hints == ("click / drag designate", "Ctrl+Shift+Click source")
+        assert mode.hints == ("click / drag mark", "Ctrl+Shift+Click source")
 
 
 def test_a_designation_makes_leaving_a_decision_and_offers_the_ways_to_unmake_it() -> None:
@@ -223,8 +251,18 @@ def test_a_designation_makes_leaving_a_decision_and_offers_the_ways_to_unmake_it
     with host:
         _click(mode, app, 2, 2)
 
+        assert mode.exit == "Esc discard", "Enter is the offer to write, not a way out"
+        assert mode.hints == ("Enter write", "W/S parent/child", "Ctrl+Z undo", "Ctrl+Backspace clear")
+
+        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
+
         assert mode.exit == "Enter keep  |  Esc discard"
-        assert mode.hints == ("W/S parent/child", "Backspace remove", "Ctrl+Backspace clear")
+        assert mode.hints == ("click a badge write", "W/S parent/child", "Ctrl+Z undo", "Ctrl+Backspace clear")
+
+        mode.on_key_press(app, "z", MOD_CTRL)
+
+        assert mode.hints == ("Ctrl+Shift+Z redo",), "nothing marked, one change to reapply"
 
 
 def test_nothing_is_hinted_mid_drag() -> None:
@@ -264,7 +302,7 @@ def test_every_key_the_mode_binds_is_taught_in_some_state() -> None:
         _click(mode, app, 2, 2)
         taught |= {mode.exit, *mode.hints}
 
-    for key in ("Enter", "Esc", "Backspace", "Ctrl+Backspace", "W/S", "click", "Ctrl+Shift+Click"):
+    for key in ("Enter", "Esc", "Ctrl+Z", "Ctrl+Backspace", "W/S", "click", "Ctrl+Shift+Click"):
         assert any(key in hint for hint in taught), key
 
 
@@ -277,13 +315,13 @@ def test_up_replaces_the_member_with_its_parent() -> None:
     with mount(column) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
 
         mode.on_key_press(app, "w", 0)
 
-        assert selection.members() == [column]
+        assert comments.members() == [column]
 
 
 def test_down_retraces_the_way_up_came() -> None:
@@ -294,16 +332,16 @@ def test_down_retraces_the_way_up_came() -> None:
     with mount(column) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "w", 0)
         mode.on_key_press(app, "w", 0)
 
         mode.on_key_press(app, "s", 0)
-        assert selection.members() == [column]
+        assert comments.members() == [column]
         mode.on_key_press(app, "s", 0)
-        assert selection.members() == [leaf]
+        assert comments.members() == [leaf]
 
 
 def test_down_without_a_walk_does_nothing() -> None:
@@ -311,13 +349,13 @@ def test_down_without_a_walk_does_nothing() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode, selection, _stub = _mode()
-        mode.on_key_press(app, "d", _ENTER)
+        mode, comments, _stub = _mode()
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
 
         mode.on_key_press(app, "s", 0)
 
-        assert selection.members() == [leaf]
+        assert comments.members() == [leaf]
 
 
 # --- journal ----------------------------------------------------------------
@@ -329,13 +367,13 @@ def test_a_designation_leaves_a_content_free_marker() -> None:
         host.layout(300, 200)
         app = _App(host.root)
         journal = InteractionJournal()
-        mode = SelectMode(Selection(), journal=journal)
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments(), journal=journal)
+        mode.on_key_press(app, "c", _ENTER)
 
         _click(mode, app, 2, 2)
 
         (event,) = journal.recent()
-        assert event.kind == "select"
+        assert event.kind == "comment"
         assert event.target is None
 
 
@@ -349,9 +387,9 @@ def test_latching_the_mode_asks_for_a_frame() -> None:
     latches, clicks stop reaching the app, and the human sees no reason why
     until something else happens to force a redraw.
     """
-    mode, _selection, app = _mode()
+    mode, _comments, app = _mode()
 
-    mode.on_key_press(app, "d", _ENTER)
+    mode.on_key_press(app, "c", _ENTER)
 
     assert app.invalidated > 0
 
@@ -361,14 +399,14 @@ def test_every_designation_change_asks_for_a_frame() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
 
         for act in (
             lambda: _click(mode, app, 2, 2),
             lambda: mode.on_key_press(app, "w", 0),
             lambda: mode.on_key_press(app, "s", 0),
-            lambda: mode.on_key_press(app, "backspace", 0),
+            lambda: mode.on_key_press(app, "z", MOD_CTRL),
             lambda: mode.on_key_press(app, "enter", 0),
         ):
             before = app.invalidated
@@ -382,8 +420,8 @@ def test_hovering_the_same_candidate_does_not_repaint() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
 
         settled = app.invalidated
@@ -398,10 +436,10 @@ def test_key_releases_are_swallowed_while_latched() -> None:
     A widget that acts on key-up would otherwise fire from a keystroke whose
     beginning it never saw.
     """
-    mode, _selection, app = _mode()
+    mode, _comments, app = _mode()
 
     assert mode.on_key_release(app, "c", _ENTER) is False
-    mode.on_key_press(app, "d", _ENTER)
+    mode.on_key_press(app, "c", _ENTER)
     assert mode.on_key_release(app, "c", _ENTER) is True
 
 
@@ -409,8 +447,8 @@ def test_escape_release_passes_through_after_leaving() -> None:
     """Leaving happens on the press, so the release lands with the mode already
     off -- and must not be swallowed, or the app's own escape latch never sees
     the key-up it gates on."""
-    mode, _selection, app = _mode()
-    mode.on_key_press(app, "d", _ENTER)
+    mode, _comments, app = _mode()
+    mode.on_key_press(app, "c", _ENTER)
     mode.on_key_press(app, "escape", 0)
 
     assert mode.on_key_release(app, "escape", 0) is False
@@ -419,29 +457,29 @@ def test_escape_release_passes_through_after_leaving() -> None:
 def test_a_walked_designation_still_survives_a_reload() -> None:
     """The walk must carry the structural path, or the refinement is unresolvable.
 
-    A designation refined with the ancestor walk looks identical to one made by
+    A mark refined with the ancestor walk looks identical to one made by
     clicking, so a missing path here is invisible until a reload silently drops
     the member -- exactly the quiet truncation `lost` exists to prevent.
     """
     leaf = Text("AAA")
     column = Column(children=[leaf])
-    selection = Selection()
+    comments = Comments()
     with mount(column) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(selection)
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(comments)
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         mode.on_key_press(app, "w", 0)
-        assert selection.members() == [column]
+        assert comments.members() == [column]
 
     rebuilt = Column(children=[Text("AAA")])
     with mount(rebuilt) as host:
         host.layout(300, 200)
 
-        assert selection.restore(host.root) == 1
-        assert selection.lost == 0
-        assert selection.members() == [rebuilt]
+        assert comments.restore(host.root) == 1
+        assert comments.lost == 0
+        assert comments.members() == [rebuilt]
 
 
 # --- regions ---------------------------------------------------------
@@ -452,36 +490,36 @@ def test_a_drag_designates_the_area_it_swept() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
         mode.on_mouse_release(app, 60, 40)
 
-        assert mode.selection.regions() == [(10.0, 10.0, 50.0, 30.0)]
-        assert mode.selection.members() == []
+        assert mode.comments.regions() == [(10.0, 10.0, 50.0, 30.0)]
+        assert mode.comments.members() == []
 
 
 def test_a_drag_normalizes_whichever_way_it_went() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 60, 40)
         mode.on_mouse_release(app, 10, 10)
 
-        assert mode.selection.regions() == [(10.0, 10.0, 50.0, 30.0)]
+        assert mode.comments.regions() == [(10.0, 10.0, 50.0, 30.0)]
 
 
 def test_the_rubber_band_tracks_the_drag_and_clears_on_release() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
 
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
@@ -497,8 +535,8 @@ def test_a_drag_does_not_move_the_hover_candidate() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_motion(app, 2, 2)
         assert mode.hovered is leaf
 
@@ -512,8 +550,8 @@ def test_leaving_clears_an_abandoned_band() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
 
@@ -531,16 +569,16 @@ def test_escape_discards_the_session() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        selection = mode.selection
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        comments = mode.comments
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
-        assert selection.members() == [leaf]
+        assert comments.members() == [leaf]
 
         mode.on_key_press(app, "escape", 0)
 
-        assert selection.active is False
-        assert selection.members() == []
+        assert comments.active is False
+        assert comments.members() == []
 
 
 def test_escape_rolls_back_only_the_session() -> None:
@@ -550,35 +588,35 @@ def test_escape_rolls_back_only_the_session() -> None:
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
+        mode = CommentMode(Comments())
         first_rect = first.global_layout_rect
         assert first_rect is not None
 
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
-        mode.on_key_press(app, "enter", 0)
+        _leave(mode, app)
 
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, first_rect[3] + 2)
-        assert len(mode.selection.members()) == 2
+        assert len(mode.comments.members()) == 2
         mode.on_key_press(app, "escape", 0)
 
-        assert mode.selection.members() == [first]
+        assert mode.comments.members() == [first]
 
 
 def test_escape_discards_regions_too() -> None:
     with mount(Column(children=[Text("AAA")])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_release(app, 60, 40)
-        assert mode.selection.regions()
+        assert mode.comments.regions()
 
         mode.on_key_press(app, "escape", 0)
 
-        assert mode.selection.regions() == []
+        assert mode.comments.regions() == []
 
 
 def test_a_discarded_session_still_moves_seq() -> None:
@@ -588,24 +626,24 @@ def test_a_discarded_session_still_moves_seq() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
-        before = mode.selection.summary()["seq"]
+        before = mode.comments.summary()["seq"]
 
         mode.on_key_press(app, "escape", 0)
 
-        assert mode.selection.summary()["seq"] > before
+        assert mode.comments.summary()["seq"] > before
 
 
 def test_discarding_outside_a_session_changes_nothing() -> None:
     node = Text("AAA")
-    selection = Selection()
-    selection.toggle(node)
+    comments = Comments()
+    comments.toggle(node)
 
-    selection.discard()
+    comments.discard()
 
-    assert selection.members() == [node]
+    assert comments.members() == [node]
 
 
 def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
@@ -615,21 +653,21 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
     with mount(old) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
-        mode.selection.toggle(old.children[0], root=host.root)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
+        mode.comments.toggle(old.children[0], root=host.root)
         mode.on_key_press(app, "enter", 0)
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
 
     rebuilt = Column(children=[Text("HEADER", key="header")])
     with mount(rebuilt) as host:
         host.layout(300, 200)
-        mode.selection.restore(host.root)
+        mode.comments.restore(host.root)
         app = _App(host.root)
 
         mode.on_key_press(app, "escape", 0)
 
-        assert mode.selection.members() == [rebuilt.children[0]]
+        assert mode.comments.members() == [rebuilt.children[0]]
 
 
 def test_ctrl_backspace_clears_every_designation() -> None:
@@ -638,19 +676,19 @@ def test_ctrl_backspace_clears_every_designation() -> None:
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
+        mode = CommentMode(Comments())
         rect = first.global_layout_rect
         assert rect is not None
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
         _click(mode, app, 2, rect[3] + 2)
         mode.on_mouse_press(app, 100, 100)
         mode.on_mouse_release(app, 160, 150)
-        assert len(mode.selection.marks()) == 3
+        assert len(mode.comments.marks()) == 3
 
         mode.on_key_press(app, "backspace", MOD_CTRL)
 
-        assert mode.selection.marks() == []
+        assert mode.comments.marks() == []
 
 
 def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
@@ -659,17 +697,17 @@ def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
-        mode.on_key_press(app, "enter", 0)
+        _leave(mode, app)
 
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
-        assert mode.selection.members() == []
+        assert mode.comments.members() == []
         mode.on_key_press(app, "escape", 0)
 
-        assert mode.selection.members() == [leaf]
+        assert mode.comments.members() == [leaf]
 
 
 def test_a_committed_designation_can_still_be_cleared() -> None:
@@ -678,24 +716,250 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         app = _App(host.root)
-        mode = SelectMode(Selection())
-        mode.on_key_press(app, "d", _ENTER)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
         _click(mode, app, 2, 2)
-        mode.on_key_press(app, "enter", 0)
+        _leave(mode, app)
 
-        mode.on_key_press(app, "d", _ENTER)
+        mode.on_key_press(app, "c", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
         mode.on_key_press(app, "enter", 0)
 
-        assert mode.selection.members() == []
+        assert mode.comments.members() == []
 
 
 def test_text_motions_are_swallowed_while_latched() -> None:
     from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE
 
-    mode, _selection, app = _mode()
+    mode, _comments, app = _mode()
     assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is False
 
-    mode.on_key_press(app, "d", _ENTER)
+    mode.on_key_press(app, "c", _ENTER)
 
     assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+
+
+# --- writing on a mark ------------------------------------------------------
+
+
+def _marked() -> tuple[CommentMode, _App, Any, Any]:
+    """Comment mode latched on with the one leaf marked; its badge sits at (0, 0)."""
+    leaf = Text("AAAAAAAA")
+    host = mount(Column(children=[leaf]))
+    root = host.__enter__().root
+    host.layout(300, 200)
+    app = _App(root)
+    mode = CommentMode(Comments())
+    mode.on_key_press(app, "c", _ENTER)
+    _click(mode, app, 2, 2)
+    return (mode, app, host, leaf)
+
+
+def test_a_click_on_the_badge_opens_the_field_on_that_mark() -> None:
+    mode, app, host, leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+
+        assert mode.writing is not None and mode.writing.index == 1
+        assert mode.comments.members() == [leaf], "the badge click is not an unmark"
+        assert mode.exit == "Enter write  |  Esc close"
+
+
+def test_typing_then_enter_writes_the_instruction_and_leaves_a_marker() -> None:
+    journal = InteractionJournal()
+    leaf = Text("AAAAAAAA")
+    with mount(Column(children=[leaf])) as host:
+        host.layout(300, 200)
+        app = _App(host.root)
+        mode = CommentMode(Comments(), journal=journal)
+        mode.on_key_press(app, "c", _ENTER)
+        _click(mode, app, 2, 2)
+        _click(mode, app, 2, 2)
+        before = len(journal.recent())
+
+        assert mode.on_text(app, "wider") is True
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.writing is None
+        assert mode.active, "writing does not end the session"
+        assert mode.comments.instruction(1) == "wider"
+        assert [event.kind for event in journal.recent()[before:]] == ["comment"]
+
+
+def test_escape_closes_the_field_without_writing() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "wider")
+
+        mode.on_key_press(app, "escape", 0)
+
+        assert mode.writing is None
+        assert mode.active, "Esc closed the field, not the session"
+        assert mode.comments.instruction(1) is None
+
+
+def test_a_click_elsewhere_writes_the_field_and_does_nothing_else() -> None:
+    mode, app, host, leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "wider")
+
+        _click(mode, app, 150, 150)
+
+        assert mode.writing is None
+        assert mode.comments.instruction(1) == "wider"
+        assert mode.comments.marks() == [(1, "node", leaf)], "the click did not mark anything"
+
+
+def test_shift_enter_does_nothing_in_the_field() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "wider")
+
+        mode.on_key_press(app, "enter", MOD_SHIFT)
+
+        assert mode.writing is not None
+        assert mode.comments.instruction(1) is None
+
+
+def test_enter_right_after_marking_opens_the_field_on_that_mark() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        assert mode.exit == "Esc discard" and "Enter write" in mode.hints
+
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.active, "Enter opened the field instead of committing"
+        assert mode.writing is not None and mode.writing.index == 1
+
+
+def test_enter_right_after_a_drag_opens_the_field_on_the_region() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_mouse_press(app, 100, 100)
+        mode.on_mouse_release(app, 160, 150)
+
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.writing is not None and mode.writing.index == 2
+
+
+def test_mark_write_leave_is_click_enter_type_enter_enter() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_key_press(app, "enter", 0)
+        mode.on_text(app, "wider")
+        mode.on_key_press(app, "enter", 0)
+        assert mode.active and mode.writing is None
+
+        mode.on_key_press(app, "enter", 0)
+
+        assert not mode.active
+        assert mode.comments.instruction(1) == "wider"
+
+
+def test_the_offer_to_write_is_made_once_per_new_mark() -> None:
+    """The pointer still on the mark does not reopen its field: only the badge does."""
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
+        assert mode.active and mode.writing is None
+
+        mode.on_key_press(app, "enter", 0)
+
+        assert not mode.active
+
+
+def test_the_walk_keeps_the_offer_but_an_undo_withdraws_it() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_key_press(app, "w", 0)
+        assert "Enter write" in mode.hints
+
+        mode.on_key_press(app, "z", MOD_CTRL)
+
+        assert "Enter write" not in mode.hints
+        mode.on_key_press(app, "enter", 0)
+        assert not mode.active
+
+
+def test_a_key_that_does_nothing_here_does_not_withdraw_the_offer() -> None:
+    """An arrow tried before ``W``, a bare modifier, an input-method key: the
+    human saw nothing happen, so ``Enter`` must still mean what the badge says."""
+    mode, app, host, _leaf = _marked()
+    with host:
+        for name, mods in (("up", 0), ("lshift", MOD_SHIFT), ("f13", 0)):
+            mode.on_key_press(app, name, mods)
+        mode.on_key_press(app, "w", 0)
+
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.active and mode.writing is not None
+
+
+def test_unmarking_an_older_widget_keeps_the_offer_on_the_newest() -> None:
+    first, second = Text("AAAAAAAA"), Text("BBBBBBBB")
+    with mount(Column(children=[first, second])) as host:
+        host.layout(300, 200)
+        app = _App(host.root)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
+        rects = [leaf.global_layout_rect for leaf in (first, second)]
+        assert rects[0] is not None and rects[1] is not None
+        centres = [(r[0] + r[2] / 2, r[1] + r[3] / 2) for r in rects if r is not None]
+        _click(mode, app, *centres[0])
+        _click(mode, app, *centres[1])
+
+        _click(mode, app, *centres[0])
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.writing is not None and mode.writing.index == 1
+        assert mode.comments.members() == [second]
+
+
+def test_the_field_reopens_on_the_text_already_written() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "wider")
+        mode.on_key_press(app, "enter", 0)
+
+        _click(mode, app, 2, 2)
+
+        assert mode.writing is not None and mode.writing.field.text == "wider"
+
+
+def test_the_mode_keys_are_the_fields_while_it_is_open() -> None:
+    """``W`` types a letter rather than walking, and ``Backspace`` edits rather than unmarking."""
+    mode, app, host, leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "w")
+        mode.on_key_press(app, "backspace", 0)
+        mode.on_key_press(app, "w", 0)
+
+        assert mode.comments.members() == [leaf]
+        assert mode.writing is not None and mode.writing.field.text == ""
+
+
+def test_text_is_not_taken_without_a_field() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        assert mode.on_text(app, "x") is False
+        assert mode.on_ime_composition(app, "x", 0, 1) is False
+
+
+def test_the_badge_teaches_writing_and_the_field_teaches_its_keys() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        assert "Enter write" in mode.hints
+        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
+        assert "click a badge write" in mode.hints
+
+        _click(mode, app, 2, 2)
+
+        assert mode.hints == ("Shift+←/→ select", "Ctrl+A/C/X/V")

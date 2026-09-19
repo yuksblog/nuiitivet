@@ -1,6 +1,6 @@
 """Where a widget was constructed.
 
-A designation answers "which widget is this". It stops one step short of
+A mark answers "which widget is this". It stops one step short of
 the question that follows it every time: *which line of code built this?* In an
 app that passes no ``key=`` -- which is most apps -- the alternative is a chain
 of anonymous types twenty levels deep and a grep.

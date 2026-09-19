@@ -14,9 +14,11 @@ git-ignored — so framework users can adopt them.
 | --- | --- |
 | [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
 | [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `scroll_into_view`, `wait_for`) for the see → act → verify loop. |
+| [`nuiitivet-see-comments/`](nuiitivet-see-comments/) | **Read and act on the comments** the user left in the running app (comment mode): `/nuiitivet-see-comments`, or `see_comments` in chat. Falls back to the CLI when the MCP server is not registered. |
 
 `nuiitivet-app` *writes* the code; `nuiitivet-debug` *runs and debugs* what was
-written. They are independent — install either or both.
+written; `nuiitivet-see-comments` *acts on what the user pointed at*. They are
+independent — install any of them.
 
 ## How to use a skill
 
@@ -24,8 +26,9 @@ written. They are independent — install either or both.
 agent discovers it automatically (copy each skill you want):
 
 ```
-cp -r skills/nuiitivet-app   <your-project>/.claude/skills/nuiitivet-app
-cp -r skills/nuiitivet-debug <your-project>/.claude/skills/nuiitivet-debug
+cp -r skills/nuiitivet-app          <your-project>/.claude/skills/nuiitivet-app
+cp -r skills/nuiitivet-debug        <your-project>/.claude/skills/nuiitivet-debug
+cp -r skills/nuiitivet-see-comments <your-project>/.claude/skills/nuiitivet-see-comments
 ```
 
 The agent loads each `SKILL.md`, follows any referenced material in `references/`,

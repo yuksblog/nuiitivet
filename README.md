@@ -86,16 +86,17 @@ step that differed — without the user ever putting the steps into words.
 
 ![Read](docs/assets/readme_1.2.png)
 
-### 1.3 You point at something
+### 1.3 You point at something, and write on it
 
 Naming a location in prose is the weak link. An inner widget with no `key`
 and no distinctive text is hard; **a gap, where nothing was painted at all**,
 is nearly impossible.
 
-`Ctrl+Shift+D` (`Cmd+Shift+D` on macOS) enters select mode — `D` for
-*designate*. **Click to designate a widget, drag to designate an area.** Each designation gets a
-numbered badge, and the assistant sees the same numbers — so "fix the second
-one" simply works.
+`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters comment mode — `C` for
+*comment*. **Click a widget or drag over an area, press `Enter`, and write what
+you want done there.** Each mark gets a numbered badge, and the assistant sees
+the same numbers and the same words — so "fix the second one" simply works,
+and three comments are one turn. Then run `/nuiitivet-see-comments` in chat.
 
 ![Point at something](docs/assets/readme_1.3.gif)
 
@@ -107,11 +108,13 @@ the training data. Worse, it looks like Flutter / SwiftUI / Compose / Rx — on 
 assistant **imports habits from elsewhere** — wrapping things in a
 `SizedBox`, hunting for `setState`.
 
-The two bundled skills exist for that.
+The three bundled skills exist for that.
 
 - **`nuiitivet-app`** — keeps the code idiomatic. Ships with a linter
 - **`nuiitivet-debug`** — teaches launching the app and working the dev bridge,
   down to checking the tree before spending a screenshot
+- **`nuiitivet-see-comments`** — reads the comments you left in the app and acts
+  on them, one turn for all of them; `/nuiitivet-see-comments` in Claude Code
 
 Even so, you will get results you do not like. That is what the next part is
 for.
@@ -119,7 +122,7 @@ for.
 ### 1.5 You take over
 
 **`Ctrl+Shift+Click`** (`Cmd+Shift+Click` on macOS) **opens the code that built
-that widget, in your editor** — in select mode or out of it.
+that widget, in your editor** — in comment mode or out of it.
 
 ![Take over](docs/assets/readme_1.5.gif)
 
@@ -332,7 +335,7 @@ uv add --dev 'nuiitivet[dev]'
 MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
 an AI effectively requires the extra — install it up front.
 
-Then install the two skills from
+Then install the bundled skills from
 [1.4](#14-skills-keep-it-idiomatic) into your assistant. The package bundles
 them, so what you install matches the nuiitivet version you have:
 
@@ -391,7 +394,7 @@ if __name__ == "__main__":
 ### 3.4 Into the loop
 
 `python app.py` works, but during development, use the dev runner. Everything
-described above — hot reload, the dev bridge, select mode, the source jump —
+described above — hot reload, the dev bridge, comment mode, the source jump —
 turns on here.
 
 ```bash
