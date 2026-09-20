@@ -28,15 +28,11 @@ What the human handed you decides where you enter the loop.
 | --- | --- |
 | A change to make ("make it wider", "move it below the title") | **Edit** |
 | A problem they saw ("nothing happens", "the total is wrong after deleting a row") | **See** |
-| Comments in the running app (`see_comments`, "#2", "the second one") | **See** — each comment is one of the two above |
+| Comments they left in the running app in comment mode — they type `see_comments`, or refer to one by its number, e.g. "fix comment 2", "no. 2 of comment mode is too narrow" | **See** — each comment is one of the two above |
 
 For a problem, do not edit until you have observed the symptom.
 
 ## Setup — before the loop
-
-Two one-time steps get you into the loop; you then cycle without repeating them.
-
-### Launch under hot reload
 
 **Call `status` first.** The human usually has the app open already; `running:
 true` means use that process (check `title`), and a second launch would put a
@@ -50,42 +46,9 @@ python -m nuiitivet.dev run app.py -- --flag value  # args for the app's own ent
 The app's `sys.argv` is its path plus anything after `--` — the runner's own
 arguments never reach it.
 
-Under the dev runner, saving a widget edit updates the running window **while
-`Observable` state survives**.
-
-Production launch (`App.run()`) is unchanged; hot reload is a development-time
-wrapper.
-
-**Hot reload requires a factory root.** It works **only if the window's root is
-a factory** — a zero-argument callable returning the root widget — passed to
-`Window(content=...)` *without* calling it (the entry point is
-`nv.App(nv.Window(content=...))`). What depends on it:
-
-- **Pass a factory, not an instance.** `Window(content=build_root())` (with the
-  call) yields a widget instance the reloader cannot rebuild, so hot reload stops
-  applying your edits. A `Widget` *subclass* works directly
-  (`Window(content=Counter)`); a factory needing arguments closes over them
-  (`Window(content=lambda: Home(cfg))`).
-- **Per-tree init goes in the factory / widget `__init__`, not `main()`.**
-  `main()` runs **once** at startup and never again on reload; side effects and
-  module-level state created there are not restored.
-
-If a reload seems to do nothing or the app resets its state on every edit, suspect
-a stray `content=build_root()` first — the dev runner says so itself: a startup
-WARNING in `runtime_log`, and an `inert_windows` list on every `reload_log`
-success naming the windows edits cannot reach.
-
-### Register the dev bridge / MCP server
-
-The dev bridge lets an assistant inspect and drive the running app. Register it
-once in your MCP host:
-
-```
-python -m nuiitivet.dev mcp        # needs: pip install 'nuiitivet[dev]'
-```
-
-It is **development-only** and forwards to the running dev process (the one
-started with `python -m nuiitivet.dev`).
+No `nuiitivet-dev` tools registered → the same verbs are CLI subcommands:
+`python -m nuiitivet.dev describe-tree`, `python -m nuiitivet.dev click --label
+Save`. `python -m nuiitivet.dev --help` lists them.
 
 ## Edit — change a widget under hot reload
 
@@ -93,47 +56,32 @@ Write or change the widget with the **nuiitivet-app** skill's idioms, then save:
 the running window reloads in place while `Observable` state survives — no restart,
 no lost state. A broken value survives too: before replaying a reported problem,
 drive the app back to where the human's steps began, or restart the runner.
-Confirm the reload actually landed in **Verify**. If the window doesn't update or
-resets its state on every save, it is the factory contract — see **Launch under
-hot reload**.
+Confirm the reload landed in **Verify**.
 
 ## See — check the running app
 
-Match the question you actually have to the one tool that answers it. This is a
+### Choose the tool
+
+Match the question you have to the one tool that answers it. This is a
 **reverse lookup, not a sequence** — reach only for the row you need, never run it
-top to bottom.
+top to bottom. What each tool returns is in its own description.
 
 | The question you have | Tool |
 | --- | --- |
-| Is the app up and running? | `status` — liveness, title, last-reload outcome, error count, a `blank` flag for a white screen |
-| Is the widget tree built as intended? | `describe_tree` — the structure, and how you resolve action targets |
-| Is a control disabled, selected, or focused — and did my `type` land? | `describe_tree` — each node's `state` map. `disabled` / `focused` / `selected` appear only when true; `value` appears whenever the widget has one, and carries a toggle's checked state (a tri-state checkbox reports `null`, a range slider a `[start, end]` pair) |
-| Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree, named as the widget bound them (`_state_internal`, `checked_external_tri`), so they differ per widget; read `describe_tree`'s `state` for the same facts in one vocabulary. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
-| My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
-| Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
-| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls / `comment` markers, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen. For a reported problem, the events before the newest `comment` marker are the human's steps: replay them |
-| The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — they may have already pointed at it, and written what to do, in comment mode. Check before guessing from a screenshot |
-| `status` reports a `comments` whose `seq` you haven't seen? | `see_comments` — they left a comment for you since your last turn |
-| A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem, and scope it to the widget they named: `screenshot(key=...)` / `screenshot(label=...)` crops to that widget plus `padding` px (default 8) each side, `screenshot(rect=[x, y, w, h])` to a raw region from `describe_tree`. Take the whole frame only when the problem has no widget to name |
-| A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop` — reach for it only because a human reported it; you cannot perceive jank or excess rebuilds yourself. The report's `rebuilds` and `bindings` counters name the widget doing wasted work; `frames` carries paint-walk mean/p95/max ms. Recording slows frames ~10%, so stop it when done. Paint counts equal painted-frame count (every painted frame walks the whole tree) — read `rebuilds`/`bindings` for the per-widget signal |
+| Is the app up and running? | `status` — the cheapest check; call it before any other |
+| Is the widget tree built as intended? | `describe_tree` — also where action targets come from |
+| Is a control disabled, selected, or focused — and did my `type` land? | `describe_tree`, each node's `state` — not `describe_state` |
+| The tree looks wrong — is the state behind it wrong too, or only the display? | `describe_state` |
+| My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — before retrying the action |
+| Did the last edit reload cleanly, and which file changed? | `reload_log` |
+| What did the human do in the app between my turns? | `interaction_log` — before trusting a tree you read earlier |
+| The human reported a problem — which steps led to it? | `interaction_log` |
+| The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — before guessing from a screenshot |
+| `status` reports a `comments` whose `seq` you haven't seen? | `see_comments` |
+| A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — scoped to the widget they named; the whole frame only when the problem has no widget to name |
+| A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop`. Stop it when done: recording slows the frames |
 
-**Multiple windows.** `status` lists every open window (`id`, `title`,
-`main`/`focused` flags). Every tree/state/action tool takes `window=<id>`;
-omitted, it targets the **main** window — not the focused one — so a secondary
-window is only reached by passing its id explicitly. An action on a window
-blocked by a modal child fails with an error naming the blocking window; drive
-the modal child (or close it) instead of retrying. Window ids are never reused,
-so an id from an earlier `status` stays valid for that window's lifetime.
-Comment mode and the interaction log cover every window, and a marked
-node's `see_comments` payload names its window (`"window": <id>`) — use
-that id for the follow-up `describe_tree` / action calls.
-`interaction_log` also records window lifecycle: `window_opened` /
-`window_closed` events carry `window` (`{"id", "title", "main"}`) and cover
-every path — an OS-title-bar close or a parent-cascade close appears there even
-though no click does. A `window_closed` for an id you remembered means that id
-is stale; re-run `status` before addressing it.
-
-### Blind spots
+### Read the output
 
 Read these tools' output as *what was recorded or built*, not as *what happened or
 is on screen*:
@@ -149,30 +97,21 @@ is on screen*:
 - **A node's `rect` can read `0` or stale right after a measurement.** Never
   diagnose a layout bug from a single `rect` value; re-observe after things
   settle.
-- **`rect` is content space, not screen space.** Inside a scrolled region it does
-  *not* subtract the scroll offset, so a listed node may be nowhere on screen and
-  a `rect` is never evidence a widget is visible. Target it by `key` / `label`
-  and let the bridge resolve the real position; coordinate-targeting from a
-  `rect` inside a scroll region is wrong by exactly the offset.
-- **`screenshot` re-renders the tree offscreen instead of capturing the
-  window.** It can come back clean while the screen is visibly broken (GPU path,
-  swap chain), so never dismiss a human's visual report on that basis — ask them
-  for their own screenshot.
-- **A scoped `screenshot` fails "not visible" for a widget scrolled wholly out
-  of view.** `scroll_into_view(key=...)` it, then retry; a widget half off
-  screen returns its visible half.
 - **`screenshot(label=...)` crops to the node that displays the text** -- the
   `Text` inside a `Button`, not the `Button`. To frame the whole widget, give it
   a `key` and use `screenshot(key=...)`.
 
 ## Act — drive the running app
 
-`click`, `scroll`, `scroll_into_view`, `type`, `key` drive the app. Resolve
-targets from `describe_tree`, or by a stable `key`.
+`click`, `scroll`, `scroll_into_view`, `type`, `key` and `wait_for` do what
+their descriptions say. This section holds what the descriptions do not: the
+choice between them. Whether an action worked is **Verify**'s question — never
+the return alone.
 
-**Make a widget targetable — `key=`.** Every widget takes a stable `key` in its
-constructor so the bridge can drive it by `key`, and so its state survives a
-reorder across hot reload:
+### Name a target
+
+Resolve targets from `describe_tree`, by `key` or `label`. Every widget takes a
+stable `key` in its constructor, so give one to the widget you need to drive:
 
 ```python
 nv.Button("increment", key="increment-btn")
@@ -181,54 +120,41 @@ nv.Button("increment", key="increment-btn")
 Add it on demand and remove it once the need is gone. For a widget built by a
 helper you do not control, assign the public attribute: `widget.key = "row"`.
 
-A returned node is **not** proof the intended handler fired. `click` resolves the
-first depth-first match, then dispatches at that node's center — so a duplicate
-`label` can resolve to the wrong (or a non-interactive) node and come back looking
-successful while the screen does nothing. Prefer a `key` when a label repeats; if
-there is none, coordinate-target the center of the node's `describe_tree` `rect`.
-Then confirm the effect in **Verify** — never the return alone.
+`click` resolves the first depth-first match, so a `label` that repeats can
+resolve to the wrong node. Target by `key` when a label repeats; with no `key`
+to add, pass the `x` / `y` centre of the node's `rect` — outside a scroll
+region only, where `rect` is where the widget is painted.
 
-### Editing a text field — `type` inserts, `key` edits
+### Edit the text in a field
 
-`type` only ever inserts. To delete what it inserted, or to move the caret, use
-`key` with an editing key: `backspace`, `delete`, `left`, `right`, `home`,
-`end`. Pass `modifiers=["shift"]` with one to extend the selection instead of
-moving — then `type` replaces what is selected. To clear a field, select it all
-with `key a modifiers=["accel"]` and then `key backspace`; there is no
-"set the text" verb.
+`type` only ever inserts. To clear a field, select it all with
+`key a modifiers=["accel"]` and then `key backspace`; there is no "set the text"
+verb.
 
-### Off-screen targets — `scroll_into_view`, then `scroll`
+### Reach an off-screen target
 
-An action on a widget scrolled out of its region — or covered by a modal —
-**fails** with a "not visible" error instead of dispatching where it would hit
-something else. Not a bad target: the widget exists, it just isn't reachable yet.
+A "not visible" error is not a bad target: the widget exists and is scrolled
+out of its region. Keep the target, call `scroll_into_view` on it, and retry
+the action.
 
-- **`scroll_into_view(key=…)` is the fix** — one call, exact offset, and the
-  retried `click` lands. Reach for it whenever you know which widget you want.
-- **`scroll` is for exploring** a list you haven't read yet. **Target the region,
-  not a row in it**: a row anchor is refused, because the wheel would carry it
-  off screen and leave your next call with no target. Regions often have no
-  `key` — give the region one with `key=`, or use the `x` / `y` centre of the region's
-  rect, which stays put as the content scrolls. `dx` / `dy` are **wheel notches,
-  ~20 px each**, positive = down / right.
-- **Read the result.** `at_end: true` with an unchanged `offset` is your stop
-  condition — without it a scroll-until-found loop never ends. `handled: false`
-  means your coordinates hit no scrollable region.
+### Explore a list
 
-### `wait_for` — settle before you observe
+`scroll` is for a list you have not read yet; stop on `at_end`. For a widget you
+can name, it is **Reach an off-screen target**.
 
-After an action that starts async work (network, a timer, an animation), call
-`wait_for` — naming a `key` / `label` / `text` condition, or `present=False` to
-wait one *out* — before `describe_tree`, so you read the settled state instead of
-a still-loading one.
+### Act in a secondary window
 
-- **Waiting on async work:** `wait_for` blocks your turn synchronously for up to
-  `timeout` (default 3s). That fits app-driven settling.
+An action on a window blocked by a modal child fails with an error naming the
+blocking window. Drive the modal child, or close it, instead of retrying.
+
+### Wait for things to settle
+
+- **Waiting on async work:** one `wait_for` before `describe_tree`.
 - **Waiting on a *human*** (someone deciding when to click): do **not** set one
-  long `timeout` on it. Keep each `wait_for` short and poll in a loop — re-issue
-  it, checking `interaction_log` between tries. The condition is detected only if it
-  becomes true while a `wait_for` call is actively running, and one long call blocks
-  the whole turn.
+  long `timeout`. Keep each `wait_for` short and poll in a loop — re-issue it,
+  checking `interaction_log` between tries. The condition is detected only if it
+  becomes true while a `wait_for` call is running, and one long call blocks the
+  whole turn.
 
 ## Verify — confirm the change
 
@@ -236,11 +162,9 @@ Don't trust a green return or a single number; confirm against the live app.
 
 - **The edit landed.** `reload_log` shows a `success` outcome with your file in
   `changed`. An `error` outcome means the save didn't compile and the live UI is
-  stale — fix and re-save before reading anything else. A `success` carrying
-  `inert_windows` means those windows were rebuilt to the identical tree: their
-  root is a widget instance, so no edit can reach them until
-  `Window(content=...)` is changed to a factory (see **Hot reload requires a
-  factory root**).
+  stale — fix and re-save before reading anything else. `inert_windows` on a
+  `success` means no edit can reach those windows: their root is a widget
+  instance, which is rule 6 of the **nuiitivet-app** skill.
 - **No new error appeared — check `runtime_log`, not `error_count`.** `error_count`
   (from `status`) is cumulative and a green build does not reset it, so a clean
   `last_reload: success` can still report failures from *before* your fix. Instead,
