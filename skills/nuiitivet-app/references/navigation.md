@@ -4,8 +4,10 @@ Principle: **structure is declarative, flow is imperative.** Screens and dialog
 *content* are declared as widgets; *when* to show them is driven imperatively
 from event handlers (often with `await`).
 
+## Resolve a navigator or an overlay
+
 `Navigator` and `Overlay` are reached through an **instance**, resolved from a
-widget — there is no global accessor:
+mounted widget — there is no global accessor, and no `.root()`:
 
 - `nv.Navigator.of(self)` — the nearest enclosing navigator, falling back to the
   app's when there is no nested one.
@@ -13,12 +15,31 @@ widget — there is no global accessor:
 - `nv.Navigator.of(self, root=True)` / `nv.Overlay.of(self, root=True)` — skip any
   nested one and target the app's.
 
-There is **no** `Navigator.root()` / `Overlay.root()`; they were removed
-because a process-global root cannot say *which* app it belongs to. `self` must be
-mounted, so resolve in `on_mount()`, `build()`, or the event handler — never in
-`__init__`.
+**Never in `__init__`.** The lookup walks up from `self`, and a widget has no
+parent until it is attached to the tree — the call raises `RuntimeError` with a
+message saying so. Resolve in `on_mount()`, `build()`, or the event handler,
+**every time**. This is also why a ViewModel takes the navigator / overlay per
+call rather than in its constructor.
 
-## Dialogs — declarative definition + imperative display
+## Navigate
+
+| Need | Approach |
+| --- | --- |
+| Wizard / step switch inside one screen, no back history | switch children with a `Deck`: `nv.Deck(index=step_obs, children=[Step1(), Step2()])` |
+| Tabs / rail, independent screens, keep state | `NavigationRail` + a `Deck` keyed on the selected-index `Observable` |
+| List → detail with back history | imperative `nv.Navigator.of(self).push(DetailScreen())` |
+| From a ViewModel (decoupled, testable) | **Intent-based** routing |
+| Per-region history (nested) | `nv.Navigator.of(self).push(...)` inside a nested `Navigator` |
+
+Method names: `Navigator.of(self).push(screen_or_intent)` to go forward,
+`Navigator.of(self).pop()` to go back. There is **no** `MaterialPageRoute`,
+`push_replacement`, or `pop_until` — push a screen widget or an Intent; to replace
+the whole screen from inside a nested navigator, use
+`Navigator.of(self, root=True).push(...)`.
+
+## Show an overlay
+
+### Dialogs
 
 `Overlay.of(self).dialog(...)` shows a modal and returns a handle you can `await`
 for an `OverlayResult` (read `result.value`). Close it with
@@ -46,48 +67,20 @@ close without repeating the lookup.
 
 Do **not** reach for Flutter's `showDialog(context:, builder:)`. A dialog can also
 be presented from an **Intent** (`nv.Overlay.of(self).dialog(MyDialogIntent(...))`)
-when driving it from a ViewModel — see the Intent section below.
+when driving it from a ViewModel — see **Pass them to a ViewModel**.
 
-## Snackbars — imperative fire & forget
+### Snackbars
 
 ```python
 nv.Overlay.of(self).snackbar("Saved successfully!")          # optional: duration=5.0
 ```
 
-A snackbar lives *inside* the window. To tell the user something finished while
-they are in **another window**, raise an OS notification instead — no external
-library, safe from any thread:
+A snackbar lives *inside* the window. For something that finished while the user
+is in another window, it is `nv.Desktop.notify` — see [desktop.md](desktop.md).
 
-```python
-nv.Desktop.notify("Import done", "1,000 rows written")   # fire-and-forget, never raises
-```
+## Pass them to a ViewModel
 
-## Tooltips — fully declarative (a modifier)
-
-```python
-nv.IconButton(icon="edit").modifier(tooltip("Click to edit"))
-```
-
-Name an icon with a string (`icon="edit"`) or the typed constant
-`nv.Symbols.edit` — both resolve to the same glyph.
-
-## Navigation patterns (pick by requirement)
-
-| Need | Approach |
-| --- | --- |
-| Wizard / step switch inside one screen, no back history | switch children with a `Deck`: `nv.Deck(index=step_obs, children=[Step1(), Step2()])` |
-| Tabs / rail, independent screens, keep state | `NavigationRail` + a `Deck` keyed on the selected-index `Observable` |
-| List → detail with back history | imperative `nv.Navigator.of(self).push(DetailScreen())` |
-| From a ViewModel (decoupled, testable) | **Intent-based** routing |
-| Per-region history (nested) | `nv.Navigator.of(self).push(...)` inside a nested `Navigator` |
-
-Method names: `Navigator.of(self).push(screen_or_intent)` to go forward,
-`Navigator.of(self).pop()` to go back. There is **no** `MaterialPageRoute`,
-`push_replacement`, or `pop_until` — push a screen widget or an Intent; to replace
-the whole screen from inside a nested navigator, use
-`Navigator.of(self, root=True).push(...)`.
-
-## Intent-based navigation (recommended from ViewModels)
+### Route by Intent
 
 A ViewModel issues an Intent to a navigator; the View maps Intents to screens with
 the `nv.Navigator.intents(...)` factory. This keeps the VM free of Widget
@@ -105,7 +98,7 @@ class DetailsIntent:
 
 class ItemViewModel:
     # The navigator is passed per call, not stored: it cannot be resolved in
-    # __init__ (see "Resolving a navigator / overlay" below).
+    # __init__ (see "Resolve a navigator or an overlay").
     def open(self, navigator: nv.NavigatorProtocol, item_id: int):
         navigator.push(DetailsIntent(item_id=item_id))
 
@@ -140,7 +133,7 @@ def main():
 The same Intent approach applies to dialogs from a ViewModel via `nv.Overlay` and
 an intent resolver.
 
-## Typing the injected navigator / overlay / window / app
+### Type what the ViewModel receives
 
 Annotate what a ViewModel receives with the protocols, not the concrete objects:
 
@@ -161,12 +154,3 @@ exist.
 `nuiitivet.OverlayProtocol` (core) is a *different, smaller* protocol carrying only
 `close()`, mirroring how `nv.Overlay` is `MaterialOverlay` while core `Overlay` has no
 `dialog` / `snackbar` / sheet helpers. From an app, use the `nv.` one.
-
-## Resolving a navigator / overlay
-
-**Never in `__init__`.** `nv.Navigator.of(self)` / `nv.Overlay.of(self)` walk up from
-`self`, and a widget has no parent until it is attached to the tree — the call raises
-`RuntimeError` with a message saying so.
-
-Resolve one in `on_mount()`, `build()`, or the event handler, **every time**. This is
-also why a VM takes the navigator/overlay per call rather than in its constructor.

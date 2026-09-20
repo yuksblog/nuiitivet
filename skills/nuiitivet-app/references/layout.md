@@ -1,4 +1,4 @@
-# Layout, sizing, spacing & modifiers
+# Layout, sizing & spacing
 
 ## The parameter principle
 
@@ -48,10 +48,9 @@ or `baseline`.
 | `cross_alignment` (Row/Column) | `start`, `center`, `end` |
 | `origin` (`rotate`/`scale`) | same nine-point tokens (e.g. `top-left`, `bottom-center`), or an `(x, y)` tuple in local coords |
 
-The **hyphen form is canonical** (`top-left`, `bottom-center`, ...). The
-underscore form (`top_left`) is accepted as an alias for back-compat, but new
-code should use hyphens. Unrecognized tokens emit a warning and fall back
-rather than silently centering.
+Write the **hyphen form** (`top-left`, `bottom-center`, ...), not `top_left`.
+An unrecognized token emits a warning and falls back rather than silently
+centering.
 
 ```python
 # Wrong (CSS reflex): the alignment can't stretch the child to fill the cross axis
@@ -75,10 +74,9 @@ A size is one of three things, and the string form is the idiom:
 | Hug the content | `width="auto"` | `nv.Sizing.auto()` |
 | Fill / take a share | `width="wt"`, `width="wt2"` | `nv.Sizing.weight(2)` |
 
-`nv.Sizing.*` still exists for code that builds sizes programmatically, but
-prefer the number/string in hand-written app code. Annotate a helper that
-forwards a size with `nv.SizingLike` — that is the type `width` / `height`
-accept.
+Write the number or the string in app code; `nv.Sizing.*` is for code that
+builds a size programmatically. Annotate a helper that forwards a size with
+`nv.SizingLike` — that is the type `width` / `height` accept.
 
 A weight claims a share of the space **left over** after the `fixed` and `auto`
 siblings — it is never a fraction of the parent, and there is no percentage
@@ -163,13 +161,11 @@ nv.Geometry(Pane(), width="wt", height="wt")   # filling: defines the scope
 
 ## Dynamic lists
 
-Three ways, in order of preference:
-
 | Situation | Approach |
 | --- | --- |
 | Collection fixed at build time | plain list comprehension in `children=[...]` |
-| Collection changes at runtime | `builder()` **(recommended)** |
-| Prefer SwiftUI-like syntax | `ForEach(...)` inside `children` |
+| Collection changes at runtime | `builder()` |
+| A grid | `nv.UniformFlow.builder(items, fn, columns=3, main_gap=8, cross_gap=8)` |
 
 `Row`, `Column`, `Stack`, `Flow`, and `UniformFlow` expose a `builder()` class
 method. Pass an **Observable** as the source to get automatic, region-scoped
@@ -183,24 +179,3 @@ nv.Column.builder(
     cross_alignment="center",
 )
 ```
-
-- `Deck` switches between children by `index` (give it an explicit `children`
-  list; it does not take `builder()`): `nv.Deck(index=obs, children=[A(), B()])`.
-- Wrap scrollable regions in `nv.VerticalScrollable(...)` / `nv.HorizontalScrollable(...)`.
-- Grids: `nv.UniformFlow.builder(items, fn, columns=3, main_gap=8, cross_gap=8)`.
-
-## Modifiers (decoration & behavior)
-
-Attach decoration/behavior with `.modifier(...)`, composing several with `|` in a
-single call — do not re-wrap the widget and do not chain `.modifier().modifier()`.
-
-```python
-nv.Button("OK").modifier(
-    tooltip("Submit") | clickable(on_click) | background("#2196F3")
-)
-```
-
-`padding`/`width` stay as **parameters**; modifiers are for things like
-`background`, `corner_radius`, `clip`, `border`, `shadows`, `tooltip`, `clickable`,
-`focusable`, `hoverable`, `opacity`, `translate`, `rotate`, `scale`, and popups.
-(The corner-rounding modifier is `corner_radius`, **not** `radius`.)

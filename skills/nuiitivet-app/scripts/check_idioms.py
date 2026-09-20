@@ -115,12 +115,6 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Bundled fonts are built in: nv.Fonts.register(\"assets/fonts/X.ttf\", "
      "family_name=\"X\") once at startup, then font_family=\"X\" wherever a "
      "font_family is accepted. Default family: nv.Fonts.set_default_family(...)."),
-    (re.compile(r"\bnv\.(?:register_font|set_default_font_family)\s*\("), "nuiitivet (old API)",
-     "Font configuration lives on the nv.Fonts namespace: nv.Fonts.register(path, "
-     "family_name=...) / nv.Fonts.set_default_family(...)."),
-    (re.compile(r"\bnv\.(?:get_clock|set_clock)\s*\("), "nuiitivet (old API)",
-     "The clock seam lives on the nv.Clocks namespace: nv.Clocks.get() / "
-     "nv.Clocks.set(clock)."),
     (re.compile(r"\bTextEditingController\b"), "Flutter",
      "No controller object: bind an Observable as the field's value, "
      "nv.TextField(value=obs). Set the text with obs.value = ..."),
@@ -136,10 +130,6 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Navigator.of(self).push(...); go back with Navigator.of(self).pop()."),
     (re.compile(r"\brunApp\s*\(|\bMaterialApp\s*\("), "Flutter",
      "nv.App(nv.Window(content=build_root)).run() — pass a factory for hot reload."),
-    (re.compile(r"\bApp\(\s*content\s*="), "nuiitivet (old API)",
-     "App takes its main Window: nv.App(nv.Window(content=..., title=...)). Window "
-     "keywords (title, width, menu, ...) live on nv.Window; App keeps theme= and "
-     "exit_policy= only."),
     (re.compile(r"\bBuildContext\b"), "Flutter",
      "No BuildContext type; context is passed where needed without annotation."),
     (re.compile(r"@Composable\b"), "Jetpack Compose",
