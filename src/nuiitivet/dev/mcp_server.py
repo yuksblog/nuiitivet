@@ -290,21 +290,21 @@ def build_server() -> "FastMCP":
         widgets and areas they marked in comment mode, each with the
         instruction they typed on it, if any.
 
-        Reach for it whenever the human says `see_comments`, whenever
-        `status` reports a `comments` whose `seq` you have not seen, and
-        whenever they say "this is wrong" / "look at this part" without naming
-        a widget: they may well have pointed at it already, and guessing from a
-        screenshot when a comment is waiting is wasted effort.
+        Reach for it when the human says `see_comments`, when `status` reports
+        a `comments` whose `seq` you have not seen, and when they say "this is
+        wrong" / "look at this part" without naming a widget: they may have
+        pointed at it already.
 
         Returns ``{"seq", "active", "nodes", "regions", "lost"}`` -- two
         independent lists, either of which may be empty. Each node is
         ``{"index", optional "instruction", "type", optional "key"/"label",
         "path", "rect", "tree", "state"}`` -- `index` matches the number badged
-        on screen, so "the second one" means `index: 2`; `instruction` is the
-        human's instruction for that mark, in their words: **act on it**, and
-        answer by number ("#2 refused: the value is an expression"). A mark
-        without `instruction` is still a whole comment -- they will say what
-        they mean in chat, by its number. `key`/`label` are directly usable as a
+        on screen, so "the second one" means `index: 2`; `instruction` is what
+        the human wrote on that mark, in their words. A change to make ("make it
+        wider"): make it. A problem they saw ("nothing happens"): reproduce it
+        before editing -- `interaction_log` holds their steps. Answer by number
+        ("#2 refused: the value is an expression"). A mark without `instruction`
+        is still a whole comment -- they say what they mean in chat, by number. `key`/`label` are directly usable as a
         `click` target; `path` is the root -> node type chain for locating it in
         `describe_tree`; `tree` and `state` are those dumps **scoped to that
         node**, which is usually all you need instead of a whole-tree read.
@@ -364,23 +364,25 @@ def build_server() -> "FastMCP":
     def interaction_log(limit: Optional[int] = None) -> dict[str, Any]:
         """Return the human's recent coarse UI actions in the running app, oldest-first.
 
-        Use this to see what the human *did in the app* between your turns: in a
-        pair session they may click through a screen or reproduce a bug while you
-        work, so your last `describe_tree` can be of a stale screen. It lets you
-        answer "where is the human now, and how did they get here?" and re-sync
-        before acting -- e.g. so you do not dismiss a dialog they just opened.
+        Use this to see what the human *did in the app* between your turns: they
+        may click through a screen while you work, so your last `describe_tree`
+        can be of a stale screen. Re-sync before acting -- e.g. so you do not
+        dismiss a dialog they just opened. When they report a problem, the events
+        before the newest ``comment`` marker are the steps that led to it: replay
+        them with `click` / `key` / `scroll` to reproduce it, and after the fix.
 
         Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
         ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"comment"``,
-        ``"window_opened"``, or ``"window_closed"``. ``seq`` is monotonic
-        -- compare it to the last one you saw to tell whether new actions
-        happened. A ``click`` carries ``target`` (the resolved widget
-        ``{"type", optional "key"/"label"}``, never a coordinate); a ``key``
-        carries ``key`` and optional ``modifiers`` (only shortcuts and navigation
-        keys are recorded); a ``text`` marker means the human typed into a field
-        -- the content is deliberately never recorded. Semantic transitions
-        (navigation, dialogs) are not recorded; infer them from the click sequence
-        plus `describe_tree`. ``limit`` caps the result to the newest N events.
+        ``"window_opened"``, or ``"window_closed"``. ``seq`` is monotonic --
+        compare it to the last one you saw to tell whether new actions happened. A
+        ``click`` carries ``target`` (the resolved widget ``{"type", optional
+        "key"/"label"}``, a keyless button labelled by its caption, never a
+        coordinate); a ``key`` carries ``key`` and optional ``modifiers`` (only
+        shortcuts and navigation keys are recorded); a ``text`` marker means the
+        human typed into a field -- the content is deliberately never recorded.
+        Semantic transitions (navigation, dialogs) are not recorded; infer them
+        from the click sequence plus `describe_tree`. ``limit`` caps the result to
+        the newest N events.
 
         A ``scroll`` carries the region's ``target``, the ``direction``, the
         distance in wheel notches (``dx`` / ``dy``, the units and signs `scroll`

@@ -312,6 +312,41 @@ def resolve_target(node: Any) -> dict[str, Any]:
     return {"type": type(node).__name__}
 
 
+def _caption_within(node: Any) -> Optional[str]:
+    """Return the first visible label in ``node``'s subtree, in reading order."""
+    from nuiitivet._interaction.perception import _visible_children
+
+    pending = list(reversed(_visible_children(node)))
+    seen: set[int] = set()
+    while pending:
+        cur = pending.pop()
+        if id(cur) in seen:
+            continue
+        seen.add(id(cur))
+        label = _visible_label(cur)
+        if label is not None:
+            return label
+        pending.extend(reversed(_visible_children(cur)))
+    return None
+
+
+def click_target(node: Any) -> dict[str, Any]:
+    """Resolve the node a click hit to an identity a replay can find again.
+
+    :func:`resolve_target`, except that a hit node with neither a ``key`` above it
+    nor a label of its own takes the first label its subtree shows: a ``Button``
+    is hit as itself and carries its caption in a child ``Text``, so two keyless
+    buttons would otherwise record as one target.
+    """
+    target = resolve_target(node)
+    if "key" in target or _visible_label(node) is not None:
+        return target
+    caption = _caption_within(node)
+    if caption is None:
+        return target
+    return {"type": type(node).__name__, "label": caption}
+
+
 def _consumed_axis(reported_axis: Any, dx: float, dy: float) -> tuple[str, float]:
     """Pick the axis a scroll region consumed on, and the delta it consumed.
 
@@ -668,7 +703,7 @@ class InteractionRecorder:
             node = None
         if node is None:
             return
-        self._journal.record_click(resolve_target(node))
+        self._journal.record_click(click_target(node))
         self._last_kind = "click"
 
     def on_mouse_scroll(self, handler: Any, dx: float, dy: float) -> None:
@@ -738,6 +773,7 @@ __all__ = [
     "InteractionEvent",
     "InteractionJournal",
     "InteractionRecorder",
+    "click_target",
     "own_identity",
     "read_scroll_metrics",
     "resolve_target",

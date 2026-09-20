@@ -157,7 +157,9 @@ Click the widget you mean, or drag a box over the area, then press `Enter`. A
 field opens on the mark; type the instruction and press `Enter` to keep it.
 Press `Enter` once more to leave the mode. Mark as many places as you like
 before leaving: the assistant handles them all in one turn, each by its number.
-A mark with no text is fine too — refer to it by number in chat.
+A mark with no text is fine too — refer to it by number in chat. The text can
+be a problem instead of a change: comment right after it happens, and the
+assistant replays what you did in the app to reproduce it before fixing.
 
 Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments
 and does what each one says, answering by number. If the skill is not
