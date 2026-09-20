@@ -95,7 +95,7 @@ is nearly impossible.
 `Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters comment mode — `C` for
 *comment*. **Click a widget or drag over an area, press `Enter`, and write what
 you want done there.** Each mark gets a numbered badge, and the assistant sees
-the same numbers and the same words — so "fix the second one" simply works,
+the same numbers and the same words — so "fix comment 2" simply works,
 and three comments are one turn. Then run `/nuiitivet-see-comments` in chat.
 
 ![Point at something](docs/assets/readme_1.3.gif)

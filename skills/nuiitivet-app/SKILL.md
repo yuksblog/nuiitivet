@@ -47,7 +47,7 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
    development); pass arguments through a closure
    (`Window(content=lambda: Home(cfg))`). Put per-tree state and side effects in
    the factory / widget `__init__`, not `main()` (which runs **once**, never on
-   reload). The *why* and *how to run* live in the **nuiitivet-debug** skill.
+   reload). *How to run* under hot reload lives in the **nuiitivet-debug** skill.
 
 7. **The one-line mental model:** Logic → UI is declarative (`Observable`
    binding); UI → logic is imperative (event handlers).

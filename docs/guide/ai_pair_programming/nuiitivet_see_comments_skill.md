@@ -7,8 +7,8 @@
 Run it in chat after you leave
 [comment mode](dev_bridge_mcp.md#write-instructions-on-the-app-comment-mode).
 The assistant reads the comments you left in the app and does what each one
-says — all of them in one turn — then answers by number: `#1 done`,
-`#2 refused` and why.
+says — all of them in one turn — then answers by number: `comment 1: done`,
+`comment 2: refused` and why.
 
 Without the MCP server registered, the skill reads the same comments through
 `python -m nuiitivet.dev see-comments`, so nothing else needs setting up.

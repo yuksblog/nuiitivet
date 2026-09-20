@@ -162,7 +162,9 @@ def build_server() -> "FastMCP":
         """Return the running app's widget tree as compact JSON.
 
         The default for reading what is on screen and for resolving `click` / `type`
-        targets. ``rect`` is ``[x, y, w, h]`` in root coordinates. ``state`` is what the
+        targets. ``rect`` is ``[x, y, w, h]`` as laid out: inside a scrolled region it
+        does not subtract the scroll offset, so it is not where the widget is painted --
+        target by ``key`` / ``label`` there, never by ``rect``. ``state`` is what the
         widget publishes: ``disabled`` / ``focused`` / ``selected`` appear only when
         true, ``value`` whenever the widget has one (a tri-state checkbox reports
         ``null``, a range slider a ``[start, end]`` pair).
@@ -200,7 +202,7 @@ def build_server() -> "FastMCP":
         to make, or a problem they saw. Reproduce a problem before editing;
         `interaction_log` holds their steps. A mark without ``instruction`` is still a
         comment: they say what they mean in chat, by number. Answer every comment in
-        one turn, by number.
+        one turn, by number: ``comment 2: refused``, with the reason.
 
         A region is an area, not a widget. ``container`` is the widget enclosing the
         box and ``contents`` is what the box crosses: "the gap between these things" is
