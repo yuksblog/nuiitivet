@@ -880,7 +880,7 @@ def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) ->
             payload = client.see_comments()
 
             assert payload["regions"] == []
-            assert payload["lost"] == 0
+            assert payload["lost_marks"] == 0
             (node,) = payload["nodes"]
             assert node["index"] == 1
             assert node["key"] == "submit"
@@ -919,7 +919,7 @@ def test_status_carries_the_selection_roll_up(tmp_path: Path, dev_run: None) -> 
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
             summary = client.status()["comments"]
-            assert summary["active"] is True
+            assert summary["committed"] is False
             assert summary["nodes"] == 1
             assert summary["regions"] == 0
             assert summary["seq"] > 0

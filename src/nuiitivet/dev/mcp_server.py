@@ -1,50 +1,28 @@
-"""MCP server exposing the dev bridge as assistant-native tools (dev-only).
+"""MCP server exposing the dev bridge as tools (dev-only).
 
-This is the polished, MCP-host-facing surface over the dev bridge:
-it turns the localhost control channel into first-class tools any MCP host
-(Claude Desktop, IDE integrations, other agents) can call to close the
-perception-action loop over hot reload -- edit code (hot reload) ->
-``describe_tree`` / ``describe_state`` (see) -> ``click`` / ``type`` / ``key``
-(act) -> ``wait_for`` (settle async work) -> verify -> edit again.
+Every tool is a thin forward to a freshly discovered
+:class:`~nuiitivet.dev.client.BridgeClient`, which talks to the running
+``python -m nuiitivet.dev run <app.py>`` process over localhost. The server holds
+no app logic and inherits the bridge's dev-session gate.
 
-``screenshot`` serves a separate purpose: investigating a human-reported
-visual/layout discrepancy that ``describe_tree`` + ``describe_state`` cannot
-explain (see its docstring).
-
-The server holds no app logic. Every tool is a thin forward to a freshly
-discovered :class:`~nuiitivet.dev.client.BridgeClient`, which talks to the
-running ``python -m nuiitivet.dev run <app.py>`` process over localhost. It inherits
-that bridge's dev-session gate, so it is never a path into a production app.
-
-The ``mcp`` SDK is an optional dependency; install it with
-``pip install 'nuiitivet[dev]'``. Both SDK majors are supported (1.x and 2.x,
-which renamed the server class). Importing this module without a usable SDK
-raises a :class:`MissingMCPDependencyError` -- saying which of the two cases it
-is -- rather than a bare ``ImportError``.
-
-Run it over stdio (the transport every MCP host supports) with::
-
-    python -m nuiitivet.dev mcp
+The ``mcp`` SDK is an optional dependency (``pip install 'nuiitivet[dev]'``); SDK
+1.x and 2.x are both supported. Without a usable SDK, building the server raises
+:class:`MissingMCPDependencyError`. Run it over stdio with
+``python -m nuiitivet.dev mcp``.
 """
 
 from __future__ import annotations
 
 import importlib.util
-from typing import Any, Optional
+import inspect
+from typing import Any, Callable, Optional, TypeVar
 
 from .client import BridgeClient, BridgeNotFoundError
 
-# The 'mcp' SDK is an optional dependency (the ``[dev]`` extra). Import it at
-# module scope so type annotations on the tool functions resolve -- the server
-# evaluates them against these module globals -- but tolerate its absence so
-# merely importing this module (e.g. to probe availability) never hard-fails.
-#
-# SDK 2.0 renamed the server package: ``mcp.server.fastmcp.FastMCP`` became
-# ``mcp.server.mcpserver.MCPServer``. No release ships both, so support the two
-# majors by trying the newer path first and falling back. Everything we use of
-# the class -- the constructor, ``@tool()``, ``Image``, ``run(transport=...)``,
-# and the resulting tool schemas -- is identical across them, so the rest of
-# this module is written once against the ``FastMCP`` alias.
+# Imported at module scope so the tool annotations resolve; absence is tolerated
+# so that probing this module never hard-fails. SDK 2.0 renamed
+# ``mcp.server.fastmcp.FastMCP`` to ``mcp.server.mcpserver.MCPServer``: try the
+# newer path first.
 try:
     from mcp.server.mcpserver import MCPServer as FastMCP  # mcp >= 2.0
     from mcp.server.mcpserver import Image
@@ -59,6 +37,9 @@ except ImportError:  # pragma: no cover - depends on the installed SDK major
         FastMCP = None  # type: ignore[assignment,misc]
         Image = None  # type: ignore[assignment,misc]
         _MCP_IMPORT_ERROR = _exc
+
+
+_Tool = TypeVar("_Tool", bound=Callable[..., Any])
 
 
 class MissingMCPDependencyError(RuntimeError):
@@ -80,57 +61,25 @@ _INCOMPATIBLE_HINT = (
     "pip install --upgrade 'nuiitivet[dev]'"
 )
 
-# Guidance surfaced to the calling model. Two ways to "check the app": `status`
-# answers "is it up and healthy?" and `describe_tree` answers "is the right thing
-# on screen?" (and resolves action targets); `describe_state` covers the reactive
-# values behind the tree.
-#
-# Design note, for maintainers -- do not fold this into the model-facing
-# text below: `screenshot` is classified by trigger, not cost. It is described
-# only by its own job -- a human-reported visual discrepancy tree+state can't
-# explain -- and is kept out of every see/verify/cost description entirely. The
-# reason for silence rather than a disclaimer: naming it even to say "not a
-# see-option" re-associates it with the loop, and "expensive see-option" framing
-# puts it back on a cost gradient whose top is always a legal move. So it is
-# absent here by design; do not reintroduce it as the pricey alternative to
-# `status`/`describe_tree`.
+# `screenshot` appears only by its own job: beside `status` / `describe_tree` it
+# would read as the costly way to look, an option the model may pay for.
 _SERVER_INSTRUCTIONS = (
     "Tools to drive a running nuiitivet dev app (started with "
-    "'python -m nuiitivet.dev run <app.py>'). To confirm the app is up and healthy "
-    "-- after starting it, or after an edit -- call `status`: it is the cheapest "
-    "check and returns liveness, the current title, the last hot-reload outcome, "
-    "an error count, and a `blank` flag for a white/blank screen, all without the "
-    "tree or an image. To reason about the UI or check that the right thing is on "
-    "screen, and to resolve click/type targets by key or label, use "
-    "`describe_tree` -- a compact JSON tree, cheap in tokens. Each node also "
-    "carries the interactive state its widget publishes -- `disabled`, "
-    "`focused` and `selected` when true, `value` whenever it has one -- so the "
-    "tree alone tells you what is greyed out, where the keyboard is, and what a "
-    "`type` landed. Use `screenshot` "
-    "for one thing: investigating a human-reported visual/layout discrepancy that "
-    "`describe_tree` + `describe_state` cannot explain; a human's report is what "
-    "puts it in play, and `key`/`label` scope it to the widget in question. When "
-    "the displayed tree looks wrong but you need to know "
-    "whether "
-    "the *state* behind it is wrong too -- a reactive bug where the value "
-    "updated but the UI did not, or the reverse -- call `describe_state`: it "
-    "returns the live `Observable` values behind the tree, in the same shape as "
-    "`describe_tree` so you can join them node-for-node. Act with `click`, "
-    "`scroll`, `type`, and `key`, then re-`describe_tree` to "
-    "verify the effect. An action on a target that is scrolled out of its "
-    "region or covered by an overlay fails rather than quietly landing "
-    "elsewhere; when it does, call `scroll_into_view` on that target and retry. "
-    "In a pair session the human may edit and save while you "
-    "work; call `reload_log` to see whether the code hot-reloaded under you (and "
-    "whether it even compiled) before trusting a stale `describe_tree`. The human "
-    "may also drive the app itself between your turns; call `interaction_log` to "
-    "see their recent clicks, keys, and typing so you can tell where they are and "
-    "how they got there before acting. When an action seems to do nothing, call "
-    "`runtime_log`: a callback that raised is swallowed to keep the app alive and "
-    "reported there, so it tells you *why* nothing changed, not just that it "
-    "didn't -- it also carries background-thread and asyncio failures and general "
-    "log output. If a repeated error has collapsed to one line and you need every "
-    "occurrence, call `set_runtime_log_verbose(True)`."
+    "'python -m nuiitivet.dev run <app.py>'). The nuiitivet-debug skill carries the "
+    "working loop and the choice between these tools, and the "
+    "nuiitivet-see-comments skill reads the human's comments; install both with "
+    "'python -m nuiitivet.skills install'. Which tool answers which question: is "
+    "the app up and healthy -- `status`; what is on screen, and what can I target "
+    "-- `describe_tree`; is the state behind the tree right -- `describe_state`; "
+    "what did the human point at in the app, and write there -- `see_comments`; "
+    "did the code hot-reload under me -- `reload_log`; what did the human do in "
+    "the app -- `interaction_log`; why did an action do nothing -- `runtime_log` "
+    "(`set_runtime_log_verbose` records every occurrence of a repeated error); a "
+    "human reported a visual discrepancy that tree and state cannot explain -- "
+    "`screenshot`; a human reported jank -- `profile_start`, then `profile_stop`. "
+    "Act with `click`, `type`, `key` and `scroll`; `scroll_into_view` when a "
+    "target is not visible; `wait_for` before reading the tree after an action "
+    "that starts async work."
 )
 
 
@@ -182,295 +131,170 @@ def build_server() -> "FastMCP":
 
     server = FastMCP("nuiitivet-dev", instructions=_SERVER_INSTRUCTIONS)
 
-    @server.tool()
+    def tool(fn: _Tool) -> _Tool:
+        """Register ``fn``, sending its docstring without the source indentation."""
+        server.tool(description=inspect.cleandoc(fn.__doc__ or ""))(fn)
+        return fn
+
+    @tool
     def status() -> dict[str, Any]:
-        """Return a cheap liveness/health snapshot of the running app.
+        """Return a cheap liveness and health snapshot of the running app.
 
-        The first thing to call to confirm the app is up and healthy -- after
-        starting it, or after an edit -- and the right tool for a health check.
-        Cheaper than `describe_tree` (no tree). Returns:
+        Call it first -- after starting the app, or after an edit. No tree, no image.
+        Fails with "no running dev app" when the app is not up.
 
-        - ``running`` -- always ``True`` when this returns; if the app is not up,
-          the call fails instead with a "no running dev app" error.
-        - ``title`` -- the current window title, so you can confirm *which* app is
-          running (or ``null`` if unset).
-        - ``last_reload`` -- the newest hot-reload as ``{"seq", "outcome"}`` (or
-          ``null``); ``outcome: "error"`` means your last save did not compile and
-          the live UI is stale. Compare ``seq`` to tell a new reload from an old.
-        - ``error_count`` -- number of retained ERROR/CRITICAL runtime events
-          (uncaught exceptions and swallowed callback errors, not WARNING noise);
-          nonzero means something failed at runtime -- see `runtime_log`.
-        - ``blank`` -- ``True`` if the frame is a single uniform color, i.e. a
-          white/blank screen where nothing painted (a build that produced no
-          content, or a paint that raised). A heuristic: an intentionally solid
-          screen also reads blank.
-        - ``windows`` -- the open windows as ``[{"id", "title", "main",
-          "focused"}]`` (or ``null`` on a single-host build). Pass an ``id`` as
-          the ``window`` argument of the tree/state/screenshot/action tools to
-          address that window; omitting it addresses the main window.
-        - ``comments`` -- ``{"seq", "active", "nodes", "regions",
-          "instructions"}`` (or ``null``): what the human has pointed at, and
-          written, in comment mode. A ``seq`` you have not seen before means
-          they left a comment for you since your last turn -- call
-          `see_comments` to read it. ``instructions`` counts the marks
-          that carry text. ``active: true`` means they are still writing.
-
-        Use `describe_tree` when you need the actual on-screen structure.
+        - ``last_reload``: ``outcome: "error"`` means the last save did not compile and
+          the live UI is stale.
+        - ``error_count``: retained ERROR/CRITICAL runtime events, cumulative; the
+          details are in `runtime_log`.
+        - ``blank``: the frame is one uniform color -- nothing painted. An
+          intentionally solid screen also reads blank.
+        - ``windows``: pass an ``id`` as ``window`` to the other tools; omitted, they
+          address the main window.
+        - ``comments``: a ``seq`` you have not seen means the human left a comment
+          since your last turn -- call `see_comments`. ``committed: false`` means they
+          are still writing.
         """
         return _client().status()
 
-    @server.tool()
+    @tool
     def describe_tree(window: Optional[int] = None) -> dict[str, Any]:
-        """Return the running app's widget tree as compact structural JSON.
+        """Return the running app's widget tree as compact JSON.
 
-        This is the token-cheap default for reasoning about the UI and for
-        resolving `click` / `type` targets. Each node is
-        ``{"type", optional "key"/"label"/"text"/"title", optional "state",
-        optional "rect", optional "children"}`` where ``rect`` is
-        ``[x, y, w, h]`` in root coordinates. This is the default for reading
-        what is on screen.
+        The default for reading what is on screen and for resolving `click` / `type`
+        targets. ``rect`` is ``[x, y, w, h]`` in root coordinates. ``state`` is what the
+        widget publishes: ``disabled`` / ``focused`` / ``selected`` appear only when
+        true, ``value`` whenever the widget has one (a tri-state checkbox reports
+        ``null``, a range slider a ``[start, end]`` pair).
 
-        ``state`` is the interactive state the widget publishes, and it is how
-        you tell a disabled control from an enabled one, see where the keyboard
-        is, and read back what a `type` landed: ``disabled`` / ``focused`` /
-        ``selected`` appear only when true, and ``value`` whenever the widget has
-        one (a toggle's checked state included -- a tri-state checkbox reports
-        ``null``, a range slider a ``[start, end]`` pair). Do not reach for
-        `describe_state` to answer these; it reports
-        the raw observables underneath, under whatever private attribute names
-        the widget bound them to.
-
-        ``window`` selects an open window by id (from `status`'s ``windows``
-        listing); omit it for the main window.
+        ``window`` is an id from `status`; omit it for the main window.
         """
         return _client().describe_tree(window=window)
 
-    @server.tool()
+    @tool
     def describe_state(
         include_animations: bool = False, window: Optional[int] = None
     ) -> dict[str, Any]:
-        """Return the running app's reactive `Observable` state as structural JSON.
+        """Return the live `Observable` values behind the tree.
 
-        The complement to `describe_tree`: where that gives the UI *output*
-        (types, identities, rects), this gives the *state that produced it* -- the
-        live observable values behind the tree. Use it to diagnose reactive bugs
-        where the tree looks wrong but you need to know whether the underlying
-        state is wrong too: "the value updated but the UI didn't", or the reverse.
-
-        The result mirrors `describe_tree`'s nested shape -- each node is
-        ``{"type", optional "key"/"label"/"text"/"title", optional "state",
-        optional "children"}`` -- but is pruned to nodes that hold state (or
-        contain one that does), so you can join it to `describe_tree` node-for-node
-        by type and identity. ``state`` maps a name to its current value (e.g.
-        ``{"checked": true}``); a derived/computed value is instead
-        ``{"value", "kind": "computed"}``. Values are length- and depth-capped and
-        opaque objects render as ``type: repr``.
-
-        These are the *raw* observables, named as the widget bound them
-        (``_state_internal``, ``checked_external_tri``), so they differ per
-        widget. For `disabled` / `focused` / `selected` / `value` in one
-        vocabulary, read `describe_tree`'s own ``state`` instead.
-
-        Animation state is **omitted by default**: an interactive widget's
-        `Animatable` channels (`state_layer_anim`, `bg_color_anim`, …) change
-        every frame and carry visual, not semantic, state -- they used to bury
-        the state you are looking for. Set `include_animations=True` only when
-        the animation itself is the bug ("the button never returns to its rest
-        state").
+        Call it when the tree looks wrong and you need to know whether the state is
+        wrong too: the value updated but the UI did not, or the reverse. Same nested
+        shape as `describe_tree`, pruned to the nodes that hold state, so the two join
+        node for node. Names are the widget's own attributes (``_state_internal``), so
+        they differ per widget; a computed value is ``{"value", "kind": "computed"}``.
+        Animation state is omitted unless ``include_animations=True`` -- pass it when
+        the animation itself is the bug.
         """
         return _client().describe_state(include_animations=include_animations, window=window)
 
-    @server.tool()
+    @tool
     def see_comments() -> dict[str, Any]:
-        """Return the human's comments: what they pointed at in the running app, and what they wrote there.
+        """Return the human's comments: the widgets and areas they marked in the app, and what they wrote on each.
 
-        The one channel that runs *from* the human *to* you. `describe_tree` and
-        `describe_state` tell you what the app is; `interaction_log` tells you
-        what the human did. This tells you what the human **means** -- the
-        widgets and areas they marked in comment mode, each with the
-        instruction they typed on it, if any.
+        The one channel from the human to you. Call it when the human says
+        `see_comments`, when `status` reports a `comments` ``seq`` you have not seen,
+        and when they say "this is wrong" without naming a widget.
 
-        Reach for it when the human says `see_comments`, when `status` reports
-        a `comments` whose `seq` you have not seen, and when they say "this is
-        wrong" / "look at this part" without naming a widget: they may have
-        pointed at it already.
+        ``nodes`` and ``regions`` share one numbering: ``index`` is the badge on the
+        human's screen. ``instruction`` is what they wrote, in their words -- a change
+        to make, or a problem they saw. Reproduce a problem before editing;
+        `interaction_log` holds their steps. A mark without ``instruction`` is still a
+        comment: they say what they mean in chat, by number. Answer every comment in
+        one turn, by number.
 
-        Returns ``{"seq", "active", "nodes", "regions", "lost"}`` -- two
-        independent lists, either of which may be empty. Each node is
-        ``{"index", optional "instruction", "type", optional "key"/"label",
-        "path", "rect", "tree", "state"}`` -- `index` matches the number badged
-        on screen, so "the second one" means `index: 2`; `instruction` is what
-        the human wrote on that mark, in their words. A change to make ("make it
-        wider"): make it. A problem they saw ("nothing happens"): reproduce it
-        before editing -- `interaction_log` holds their steps. Answer by number
-        ("#2 refused: the value is an expression"). A mark without `instruction`
-        is still a whole comment -- they say what they mean in chat, by number. `key`/`label` are directly usable as a
-        `click` target; `path` is the root -> node type chain for locating it in
-        `describe_tree`; `tree` and `state` are those dumps **scoped to that
-        node**, which is usually all you need instead of a whole-tree read.
-        Several comments are one work order: answer them in one turn.
-
-        A **region** is an area they dragged a box over rather than a widget,
-        numbered in the same sequence as `nodes`. It carries `rect`, the
-        `container` enclosing it (with that container's immediate children), and
-        `contents` -- a nested tree of the nodes it covers, each tagged
-        `contained` or `clipped` (a node with no tag is only on the path to one).
-
-        The two fields answer two readings of the same rectangle, and **you**
-        pick: "the gap between these things" is `container`, "these things" is
-        `contents`. The geometry cannot tell them apart, so nothing is collapsed
-        for you -- decide from what the human actually said. **An empty
-        `contents` is the answer, not a miss**: they drew a box where nothing is
-        painted, and `container` names the widget that should have put something
-        there. Regions are re-derived on every call, so read one again after your
-        fix to see what occupies the area now.
-
-        `active: true` means comment mode is still on: the human may still be
-        marking and writing, and has not yet pressed `Enter` to keep it (`Esc`
-        throws the session away). Prefer waiting over acting on a half-made set
-        -- and if they say they pointed at something but the lists are empty,
-        this is why. `lost` is how many marked widgets a hot reload could not
-        re-resolve; when it is non-zero, say so rather than reasoning over a
-        silently shortened list.
+        A region is an area, not a widget. ``container`` is the widget enclosing the
+        box and ``contents`` is what the box crosses: "the gap between these things" is
+        ``container``, "these things" is ``contents``. Empty ``contents`` means nothing
+        is painted there.
         """
         return _client().see_comments()
 
-    @server.tool()
+    @tool
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:
-        """Return recent hot-reload events in the running app, oldest-first.
+        """Return recent hot-reload events, oldest first.
 
-        Use this to notice edits the human made between your turns: in a pair
-        session they may save a file while you work, so your last `describe_tree`
-        and your assumptions about the source can go stale. Each event is
-        ``{"seq", "timestamp", "outcome": "success"|"error", optional "modules",
-        "changed", optional "error", optional "inert_windows"}``. ``seq`` is
-        monotonic -- compare it to the
-        last one you saw to tell whether new reloads happened. ``changed`` lists
-        the modules whose *source actually changed*: an empty ``changed`` is a
-        no-op save (mtime bumped but bytes identical -- an editor autosave or
-        formatter), so you can skip re-reading; a non-empty ``changed`` pinpoints
-        which file(s) to re-read. An ``"error"`` outcome means the human's save
-        did *not* compile and the previous UI is still running, so the live tree
-        does not reflect the code you are reading; re-read the files (and
-        re-`describe_tree`) before acting. ``inert_windows`` lists window ids
-        whose root was constructed from a widget *instance* rather than a
-        factory: a ``"success"`` there rebuilt the same tree, so edits can never
-        reach those windows until ``Window(content=...)`` is changed to a
-        factory. ``limit`` caps the result to the newest N events.
+        Call it to notice edits the human saved between your turns, before trusting a
+        cached `describe_tree`. Compare ``seq`` with the last one you saw.
+
+        - ``outcome: "error"``: the save did not compile; the previous UI is still
+          running.
+        - ``changed``: the modules whose source changed. Empty means a no-op save (an
+          autosave or a formatter).
+        - ``inert_windows``: window ids whose root is a widget instance, not a factory.
+          No edit reaches them until ``Window(content=...)`` takes a factory.
+
+        ``limit`` caps the result to the newest N events.
         """
         return {"events": _client().reload_log(limit=limit)}
 
-    @server.tool()
+    @tool
     def interaction_log(limit: Optional[int] = None) -> dict[str, Any]:
-        """Return the human's recent coarse UI actions in the running app, oldest-first.
+        """Return what the human did in the running app, oldest first.
 
-        Use this to see what the human *did in the app* between your turns: they
-        may click through a screen while you work, so your last `describe_tree`
-        can be of a stale screen. Re-sync before acting -- e.g. so you do not
-        dismiss a dialog they just opened. When they report a problem, the events
-        before the newest ``comment`` marker are the steps that led to it: replay
-        them with `click` / `key` / `scroll` to reproduce it, and after the fix.
+        Call it to re-sync before acting: they may have clicked through a screen since
+        your last `describe_tree`. When they report a problem, the events before the
+        newest ``comment`` marker are the steps that led to it: replay them with
+        `click` / `key` / `scroll` to reproduce it, and again after the fix.
 
-        Each event is ``{"seq", "timestamp", "kind", ...}`` where ``kind`` is
-        ``"click"``, ``"key"``, ``"text"``, ``"scroll"``, ``"comment"``,
-        ``"window_opened"``, or ``"window_closed"``. ``seq`` is monotonic --
-        compare it to the last one you saw to tell whether new actions happened. A
-        ``click`` carries ``target`` (the resolved widget ``{"type", optional
-        "key"/"label"}``, a keyless button labelled by its caption, never a
-        coordinate); a ``key`` carries ``key`` and optional ``modifiers`` (only
-        shortcuts and navigation keys are recorded); a ``text`` marker means the
-        human typed into a field -- the content is deliberately never recorded.
-        Semantic transitions (navigation, dialogs) are not recorded; infer them
-        from the click sequence plus `describe_tree`. ``limit`` caps the result to
-        the newest N events.
+        ``kind`` is ``click``, ``key``, ``text``, ``scroll``, ``comment``,
+        ``window_opened`` or ``window_closed``; compare ``seq`` with the last one you
+        saw. A ``click`` carries the ``target`` widget, never a coordinate. Only
+        shortcut and navigation keys are recorded, and a ``text`` marker carries no
+        content. One ``scroll`` entry is one gesture, in the units `scroll` takes; read
+        ``at_end`` rather than the delta. A ``window_closed`` for an id you remembered
+        means that id is stale. Navigation and dialogs are not recorded: infer them
+        from the clicks and `describe_tree`.
 
-        A ``scroll`` carries the region's ``target``, the ``direction``, the
-        distance in wheel notches (``dx`` / ``dy``, the units and signs `scroll`
-        takes), and where the region ended up: ``axis``, ``offset``,
-        ``max_extent``, ``at_start``, ``at_end``. Prefer the position over the
-        delta -- ``at_end: true`` tells "scrolled to the bottom" from "still
-        going". One entry is one **gesture**: consecutive scrolls of one region in
-        one direction merge (delta accumulates, ``seq`` is re-issued,
-        ``started_at`` keeps the start), while a reversal, another region, or any
-        click / key / text starts a new entry. Unconsumed scrolling is not
-        recorded.
-
-        A ``window_opened`` / ``window_closed`` carries ``window``
-        (``{"id", optional "title", "main"}``, the ids `status` lists and
-        ``window=`` takes) and covers every open/close path, including an
-        OS-title-bar close or a parent-cascade close that no click event shows.
-        A ``window_closed`` for an id you remembered means that id is stale --
-        re-run `status` before addressing it.
+        ``limit`` caps the result to the newest N events.
         """
         return {"events": _client().interaction_log(limit=limit)}
 
-    @server.tool()
+    @tool
     def runtime_log(limit: Optional[int] = None) -> dict[str, Any]:
-        """Return the running app's recent log output and uncaught exceptions, oldest-first.
+        """Return the app's recent log output and uncaught exceptions, oldest first.
 
-        Use this to see *why* an action had no visible effect. When an
-        assistant-driven `click` / `type` / `key` triggers a callback that
-        raises, the framework swallows it (the app stays alive) and reports it
-        here -- so a `describe_tree` that looks unchanged is explained by an
-        exception in this log, not a no-op. It also carries uncaught
-        background-thread and asyncio failures and general WARNING+ log output.
-
-        Each event is ``{"seq", "timestamp", "level", "source", "thread",
-        "message", optional "logger"/"exc_type"/"traceback"}``. ``source`` is
-        ``"logging"``, ``"thread"``, or ``"excepthook"``. ``seq`` is monotonic --
-        compare it to the last one you saw to tell whether new output happened
-        since your turn. Repeated identical failures collapse to one entry by
-        default; if that hides one you need, call `set_runtime_log_verbose(True)`.
-        ``limit`` caps the result to the newest N events.
+        Call it when an action had no visible effect: a callback that raised is
+        swallowed to keep the app alive, and reported here. It also carries
+        background-thread and asyncio failures and WARNING+ log output. Compare ``seq``
+        with the last one you saw. Repeated identical failures collapse to one entry;
+        `set_runtime_log_verbose(True)` records every occurrence. ``limit`` caps the
+        result to the newest N events.
         """
         return {"events": _client().runtime_log(limit=limit)}
 
-    @server.tool()
+    @tool
     def set_runtime_log_verbose(enabled: bool) -> dict[str, Any]:
-        """Enable or disable verbose `runtime_log` capture; return the new state.
+        """Turn verbose `runtime_log` capture on or off; return ``{"verbose": bool}``.
 
-        By default the running app de-duplicates repeated failures, so a callback
-        that raises every frame shows once rather than flooding the log. Enabling
-        verbose turns that off process-wide so *every* occurrence is recorded --
-        use it when a collapsed entry is hiding a distinct error you are chasing,
-        then disable it again to restore the quiet default. Returns
-        ``{"verbose": true|false}``.
+        On, every occurrence of a repeated failure is recorded instead of one. Turn it
+        on when a collapsed entry hides the error you are chasing, and off again
+        afterwards.
         """
         return {"verbose": _client().set_runtime_log_verbose(enabled)}
 
-    @server.tool()
+    @tool
     def profile_start() -> dict[str, Any]:
-        """Start recording rebuild/repaint counters and frame timings.
+        """Start recording rebuild and repaint counters and frame timings.
 
-        A **human's report of jank or slowness** is the trigger that puts it in
-        play -- you cannot perceive stutter or excess rebuilds yourself, so do
-        not reach for it unprompted. DevTools-style recording: call this,
-        reproduce the interaction they named (`click` / `type` / scroll, or ask
-        the human to), then call `profile_stop` to read the results. While
-        recording, painted frames run roughly 10% slower; nothing is recorded
-        (and nothing costs anything) outside a session. Returns
-        ``{"active": true, "was_active": bool}`` -- ``was_active`` means a
-        session was already running and kept its counters.
+        Call it only when a human reports jank or slowness: you cannot perceive
+        either. Then reproduce the interaction they named, and call `profile_stop`.
+        Painted frames run about 10% slower while recording. ``was_active: true`` means
+        a session was already running and kept its counters.
         """
         return _client().profile_start()
 
-    @server.tool()
+    @tool
     def profile_stop() -> dict[str, Any]:
-        """Stop the profiling session and return what it recorded.
+        """Stop the profiling session and return its report (``null`` when nothing was recording).
 
-        Returns ``{"active": false, "report": {...}}`` (``report`` is null when
-        nothing was recording). The report carries ``duration_s``; ``frames``
-        (painted count, mean/p95/max tree-walk ms); ``paints`` by widget type
-        (every painted frame walks the whole tree, so per-widget paint counts
-        track frames, not damage); and the actionable pair: ``rebuilds`` (scope
-        recompositions per widget) and ``bindings`` (fine-grained Observable
-        updates per widget), each ``{"widget", "key", "alive", "count"}``,
-        largest first. A widget rebuilding far more often than the interaction
-        warrants is the wasted-work signal to chase.
+        ``frames`` is the painted count with mean / p95 / max tree-walk ms. ``paints``
+        tracks frames, not damage: every painted frame walks the whole tree.
+        ``rebuilds`` and ``bindings`` are the signal, largest first: a widget that
+        rebuilds far more often than the interaction warrants is doing wasted work.
         """
         return _client().profile_stop()
 
-    @server.tool()
+    @tool
     def screenshot(
         key: Optional[str] = None,
         label: Optional[str] = None,
@@ -480,25 +304,17 @@ def build_server() -> "FastMCP":
     ) -> Image:
         """Return a PNG of the widget tree, re-rendered offscreen.
 
-        Use it for one job: investigating a *human-reported* visual or layout
-        discrepancy that `describe_tree` + `describe_state` cannot explain. A
-        human's report is the trigger that puts it in play; the pixels are where
-        you look once tree and state have failed to reproduce what they saw. For
-        everything else the other tools are the answer -- `status` (with its
-        `blank` flag) for whether the app started or is healthy, `describe_tree`
-        for on-screen structure and action targets.
+        One job: a human-reported visual or layout discrepancy that `describe_tree`
+        and `describe_state` cannot explain.
 
-        **Scope it to the widget in question.** `key` / `label` (the same
-        targets `click` takes) crop the image to that widget's painted rect plus
-        `padding` logical pixels on each side (default 8, enough to show its
-        shadow or outline); `rect=[x, y, w, h]` from `describe_tree` crops to a
-        raw region, unpadded. A widget scrolled wholly out of view fails with
-        "not visible" -- `scroll_into_view` it first. Omit all three for the
-        whole frame, which is far larger in image tokens.
+        ``key`` / ``label`` crop to that widget plus ``padding`` logical pixels a side
+        (default 8); ``rect=[x, y, w, h]`` crops to a raw region; omit all three for
+        the whole frame. A widget scrolled wholly out of view fails with "not visible":
+        `scroll_into_view` it first.
 
-        **It can come back clean while the screen is visibly broken** (GPU path,
-        swap chain), so never dismiss a human's visual report on that basis --
-        ask them for their own screenshot.
+        The render is offscreen, so it can come back clean while the screen is visibly
+        broken (GPU path, swap chain): ask the human for their own screenshot instead
+        of dismissing the report.
         """
         return Image(
             data=_client().screenshot(
@@ -507,7 +323,7 @@ def build_server() -> "FastMCP":
             format="png",
         )
 
-    @server.tool()
+    @tool
     def click(
         key: Optional[str] = None,
         label: Optional[str] = None,
@@ -517,14 +333,14 @@ def build_server() -> "FastMCP":
     ) -> dict[str, Any]:
         """Click a widget in the running app.
 
-        Target it by a stable identifier -- ``key`` (a widget's key/testID) or
-        ``label`` (its visible label/text/title) -- which survives layout
-        changes. Raw ``x`` / ``y`` root coordinates are a fallback. Find valid
-        identifiers with `describe_tree`.
+        Target it by ``key`` or ``label`` (its visible label, text or title), found
+        with `describe_tree`; ``x`` / ``y`` root coordinates are the fallback. A target
+        scrolled out of view or covered fails with "not visible" instead of landing
+        elsewhere.
         """
         return _client().click(key=key, label=label, x=x, y=y, window=window)
 
-    @server.tool()
+    @tool
     def scroll(
         key: Optional[str] = None,
         label: Optional[str] = None,
@@ -534,62 +350,39 @@ def build_server() -> "FastMCP":
         dy: float = 0.0,
         window: Optional[int] = None,
     ) -> dict[str, Any]:
-        """Send a mouse wheel event to a scrollable region in the running app.
+        """Send a mouse wheel event to a scrollable region.
 
-        ``key`` / ``label`` name **the scroll region itself** (the list, the
-        feed), exactly as they name a widget everywhere else. Naming something
-        *inside* the region is an error, and deliberately so: the wheel would
-        move that widget out of view, so the anchor that aimed your first call
-        no longer exists for the second. The error tells you which region
-        encloses it and the coordinates that reach it.
+        ``key`` / ``label`` name the scroll region itself. A widget inside the region is
+        refused, and the error names the enclosing region and the coordinates that
+        reach it. A region without a ``key`` takes the ``x`` / ``y`` centre of its rect,
+        which does not move as the content scrolls.
 
-        Regions often carry no ``key`` in `describe_tree`. Two ways through:
-        give the region a ``key=`` in its constructor, or pass the ``x`` / ``y`` centre of the
-        region's rect -- that rect does not move as the content scrolls, so the
-        same coordinates stay valid for the whole loop.
+        ``dx`` / ``dy`` are wheel notches, 20 px each by default; positive is down /
+        right. There is no inertia: send one ``dy=10``, not ten ``dy=1``.
 
-        ``dx`` / ``dy`` are **wheel notches, not pixels**: a region moves 20 px
-        per notch by default, so ``dy=5`` scrolls about 100 px. Positive is
-        toward the content's end (``dy`` down, ``dx`` right). Scrolling is
-        linear with no inertia -- send one ``dy=10`` rather than ten ``dy=1``.
-
-        Returns ``handled`` plus the region's resulting ``offset``,
-        ``max_extent``, ``at_start`` and ``at_end``. Read them: ``handled:
-        false`` means nothing consumed the wheel (wrong target -- there is no
-        scrollable region there), while ``handled: true`` with an unchanged
-        ``offset`` and ``at_end: true`` means the region is already at the end.
-        Both look identical on screen, and ``at_end`` is your stop condition.
-
-        To bring a specific widget on screen, prefer `scroll_into_view` -- it
-        computes the offset in one shot instead of stepping by notches.
+        ``handled: false`` means no scrollable region is there. ``at_end: true`` with an
+        unchanged ``offset`` means the region is already at its end: that is the stop
+        condition. To bring one widget on screen, call `scroll_into_view`.
         """
         return _client().scroll(key=key, label=label, x=x, y=y, dx=dx, dy=dy, window=window)
 
-    @server.tool()
+    @tool
     def scroll_into_view(
         key: Optional[str] = None,
         label: Optional[str] = None,
         align: str = "nearest",
         window: Optional[int] = None,
     ) -> dict[str, Any]:
-        """Scroll a widget's region(s) until that widget is on screen.
+        """Scroll a widget's region(s) until the widget is on screen.
 
-        The fix for a `click` (or `scroll`) that failed with "not visible": the
-        target exists in the tree but is scrolled out of its region, so the
-        coordinates it resolves to reach nothing. This moves the minimum amount
-        needed and guarantees the widget is reachable, in one call rather than a
-        `scroll` poll loop. Nested regions are handled outermost-inward.
-
-        ``align`` places the target: ``"nearest"`` (default, move as little as
-        possible), ``"start"``, ``"center"`` or ``"end"``.
-
-        Returns ``already_visible`` (``true`` when nothing had to move) and the
-        region's resulting ``offset`` / ``max_extent``. A target in no
-        scrollable region at all is an error, not a silent success.
+        The fix for a `click` or `scroll` that failed with "not visible". One call,
+        minimum movement, nested regions outermost first. ``align`` is ``"nearest"``
+        (default), ``"start"``, ``"center"`` or ``"end"``. ``already_visible: true``
+        means nothing moved. A target in no scrollable region is an error.
         """
         return _client().scroll_into_view(key=key, label=label, align=align, window=window)
 
-    @server.tool()
+    @tool
     def type(  # noqa: A001 (MCP tool name is intentional)
         text: str, window: Optional[int] = None
     ) -> dict[str, Any]:
@@ -600,7 +393,7 @@ def build_server() -> "FastMCP":
         """
         return _client().type_text(text, window=window)
 
-    @server.tool()
+    @tool
     def key(
         name: str,
         modifiers: Optional[list[str]] = None,
@@ -608,18 +401,14 @@ def build_server() -> "FastMCP":
     ) -> dict[str, Any]:
         """Press a key (e.g. ``enter``, ``tab``, ``a``) in the running app.
 
-        ``modifiers`` is an optional list of names to hold -- ``shift``,
-        ``ctrl``, ``alt``, ``meta``, or ``accel`` (the platform Ctrl/Cmd) -- so
-        shortcuts and focus traversal behave like real key events.
-
-        The editing keys -- ``backspace``, ``delete``, ``left``, ``right``,
-        ``home``, ``end`` -- edit the focused text field, which is how you
-        delete what `type` inserted or move the caret; hold ``shift`` with one
-        to extend the selection instead.
+        ``modifiers`` holds any of ``shift``, ``ctrl``, ``alt``, ``meta`` or ``accel``
+        (the platform Ctrl/Cmd). ``backspace``, ``delete``, ``left``, ``right``, ``home``
+        and ``end`` edit the focused text field: that is how you delete what `type`
+        inserted or move the caret; ``shift`` with one extends the selection.
         """
         return _client().key(name, modifiers=modifiers, window=window)
 
-    @server.tool()
+    @tool
     def wait_for(
         key: Optional[str] = None,
         label: Optional[str] = None,
@@ -630,20 +419,11 @@ def build_server() -> "FastMCP":
     ) -> dict[str, Any]:
         """Wait for a tree condition after an action that starts async work.
 
-        After a `click` / `type` / `key` that kicks off async loading (network,
-        a timer, an animation), the tree updates over several frames -- an
-        immediate `describe_tree` can race it and see a spinner or stale value.
-        Call this first to wait for the settled state.
-
-        Name the condition by ``key`` (a widget's key/testID), ``label`` (its
-        visible label/text/title), and/or ``text`` (a substring of a visible
-        identity). The bridge polls -- re-settling each time -- until it holds or
-        ``timeout`` seconds elapse (default 3.0). Set ``present=False`` to wait
-        for the target to *disappear* (e.g. a loading spinner).
-
-        Returns ``{"satisfied", "timed_out", "waited", "polls", "condition"}``.
-        A plain timeout is reported as ``satisfied: false`` (not an error) --
-        follow up with `describe_tree` to see what state the app is actually in.
+        Call it before `describe_tree` when a `click` / `type` / `key` starts loading,
+        a timer or an animation. Name the condition by ``key``, ``label`` and/or
+        ``text`` (a substring of a visible identity); ``present=False`` waits for it to
+        disappear. Polls until it holds or ``timeout`` seconds pass (default 3.0). A
+        timeout is ``satisfied: false``, not an error.
         """
         return _client().wait_for(
             key=key, label=label, text=text, present=present, timeout=timeout, window=window

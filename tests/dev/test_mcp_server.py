@@ -155,6 +155,33 @@ def test_build_server_registers_the_tools() -> None:
     }
 
 
+# Claude Code cuts the server instructions and each tool description here, and
+# drops the rest without an error.
+_HOST_TEXT_LIMIT = 2048
+
+
+def test_every_tool_description_fits_the_host_limit() -> None:
+    server = mcp_server.build_server()
+    for tool in asyncio.run(server.list_tools()):
+        description = tool.description or ""
+        assert description, tool.name
+        assert len(description) <= _HOST_TEXT_LIMIT, tool.name
+
+
+def test_tool_descriptions_are_sent_without_source_indentation() -> None:
+    server = mcp_server.build_server()
+    for tool in asyncio.run(server.list_tools()):
+        lines = (tool.description or "").splitlines()
+        assert not any(line.startswith("        ") for line in lines), tool.name
+
+
+def test_server_instructions_fit_the_host_limit_and_name_the_channels() -> None:
+    instructions = mcp_server._SERVER_INSTRUCTIONS
+    assert len(instructions) <= _HOST_TEXT_LIMIT
+    for name in ("see_comments", "runtime_log", "nuiitivet-debug"):
+        assert name in instructions
+
+
 def test_profile_start_forwards_to_client() -> None:
     client = _fake_client()
     client.profile_start.return_value = {"active": True, "was_active": False}
