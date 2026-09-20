@@ -12,6 +12,7 @@ from nuiitivet.dev.interaction import (
     InteractionEvent,
     InteractionJournal,
     InteractionRecorder,
+    click_target,
     resolve_target,
     window_identity,
 )
@@ -223,6 +224,28 @@ def test_resolve_target_keeps_descendant_label_when_keyed_node_has_none() -> Non
     assert resolve_target(inner) == {"type": "_Node", "key": "row-3", "label": "Buy milk"}
 
 
+def test_click_target_labels_a_hit_button_from_its_caption() -> None:
+    # A Material Button is hit as itself and has no label of its own: the
+    # caption is a child Text. Without it two keyless buttons are one target.
+    class Button(_Node):
+        pass
+
+    button = Button(parent=_Node(title="Notes"), children=[_Node(children=[_Node(text="Add")])])
+    assert click_target(button) == {"type": "Button", "label": "Add"}
+    assert resolve_target(button) == {"type": "_Node", "label": "Notes"}
+
+
+def test_click_target_keeps_the_hit_nodes_own_label() -> None:
+    node = _Node(label="Save", children=[_Node(text="inner")])
+    assert click_target(node) == {"type": "_Node", "label": "Save"}
+
+
+def test_click_target_keeps_a_keyed_ancestor() -> None:
+    keyed = _Node(key="row-3")
+    hit = _Node(parent=keyed, children=[_Node(text="Buy milk")])
+    assert click_target(hit) == {"type": "_Node", "key": "row-3"}
+
+
 def test_resolve_target_collapses_text_and_title_to_label() -> None:
     node = _Node(text="hello")
     assert resolve_target(node) == {"type": "_Node", "label": "hello"}
@@ -245,6 +268,15 @@ def test_resolve_target_never_includes_coordinates() -> None:
 class _App:
     def __init__(self, root: Optional[_Node]) -> None:
         self.root = root
+
+
+def test_recorder_names_the_keyless_button_a_press_hit() -> None:
+    journal = InteractionJournal()
+    root = _Node()
+    button = _Node(parent=root, children=[_Node(text="Clear")])
+    root._hit = button
+    InteractionRecorder(journal).on_mouse_press(_App(root), 10, 10)
+    assert journal.recent()[-1].target == {"type": "_Node", "label": "Clear"}
 
 
 def test_recorder_records_click_resolved_to_identity() -> None:

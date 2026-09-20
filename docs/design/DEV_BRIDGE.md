@@ -144,7 +144,8 @@ record of how the app got here. Two choices are load-bearing:
 
 - **A mirror of the action vocabulary, not a semantic taxonomy.** It records
   exactly the inbound of `click` / `key` / `type` / `scroll`: a click resolved
-  to a widget identity (never a coordinate), a shortcut or navigation key, a
+  to a widget identity a replay can find again (never a coordinate; a keyless
+  button is named by the caption inside it), a shortcut or navigation key, a
   content-free text marker, a scroll. Whatever the human did that the
   assistant must reproduce, it reproduces through those same verbs, so this
   set is necessary and sufficient to replay a path, and it grows only when the

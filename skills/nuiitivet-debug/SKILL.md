@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `see_comments`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. When the user says `see_comments`, or refers to a "comment" or a mark by number ("#2", "the second one"), they mean marks and instructions they left in the running app — read them with `see_comments` first, and act on them with the nuiitivet-see-comments skill. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets an assistant check and drive the live app (`status`, `describe_tree`, `describe_state`, `see_comments`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -19,6 +19,18 @@ Once set up, the working loop is:
 The sections below map to it: a one-time **Setup**, then **Edit / See / Act /
 Verify**. The nuiitivet-app skill keeps *edit* producing correct widgets; this
 skill keeps *see / act / verify* fast and reliable.
+
+### Where a round starts
+
+What the human handed you decides where you enter the loop.
+
+| The human handed you | Enter at |
+| --- | --- |
+| A change to make ("make it wider", "move it below the title") | **Edit** |
+| A problem they saw ("nothing happens", "the total is wrong after deleting a row") | **See** |
+| Comments in the running app (`see_comments`, "#2", "the second one") | **See** — each comment is one of the two above |
+
+For a problem, do not edit until you have observed the symptom.
 
 ## Setup — before the loop
 
@@ -79,9 +91,11 @@ started with `python -m nuiitivet.dev`).
 
 Write or change the widget with the **nuiitivet-app** skill's idioms, then save:
 the running window reloads in place while `Observable` state survives — no restart,
-no lost state. Confirm the reload actually landed in **Verify**. If the window
-doesn't update or resets its state on every save, it is the factory contract — see
-**Launch under hot reload**.
+no lost state. A broken value survives too: before replaying a reported problem,
+drive the app back to where the human's steps began, or restart the runner.
+Confirm the reload actually landed in **Verify**. If the window doesn't update or
+resets its state on every save, it is the factory contract — see **Launch under
+hot reload**.
 
 ## See — check the running app
 
@@ -97,7 +111,7 @@ top to bottom.
 | Is the reactive state as intended? | `describe_state` — the live `Observable` values behind the tree, named as the widget bound them (`_state_internal`, `checked_external_tri`), so they differ per widget; read `describe_tree`'s `state` for the same facts in one vocabulary. Animation state is omitted by default; pass `include_animations=True` when an animation itself is the bug |
 | My `click` / `scroll` / `type` / `key` had no visible effect — why? | `runtime_log` — a swallowed callback exception, or an uncaught background/async error (the app stays alive but the handler raised); also WARNING+ output. If a repeated failure is collapsed to one line, `set_runtime_log_verbose(True)` shows every occurrence |
 | Did the last edit reload cleanly, and which file changed? | `reload_log` — recent hot-reload outcomes; `changed` pinpoints the edited module(s), an `error` outcome means the save didn't compile and the live UI is stale |
-| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls / `comment` markers, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen |
+| What did the human do in the app between my turns? | `interaction_log` — their recent clicks / keys / text markers / scrolls / `comment` markers, plus `window_opened` / `window_closed` lifecycle events, so you re-sync instead of acting on a stale screen. For a reported problem, the events before the newest `comment` marker are the human's steps: replay them |
 | The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — they may have already pointed at it, and written what to do, in comment mode. Check before guessing from a screenshot |
 | `status` reports a `comments` whose `seq` you haven't seen? | `see_comments` — they left a comment for you since your last turn |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — reach for it only because a human reported the problem, and scope it to the widget they named: `screenshot(key=...)` / `screenshot(label=...)` crops to that widget plus `padding` px (default 8) each side, `screenshot(rect=[x, y, w, h])` to a raw region from `describe_tree`. Take the whole frame only when the problem has no widget to name |
@@ -118,14 +132,6 @@ that id for the follow-up `describe_tree` / action calls.
 every path — an OS-title-bar close or a parent-cascade close appears there even
 though no click does. A `window_closed` for an id you remembered means that id
 is stale; re-run `status` before addressing it.
-
-### Reading a comment
-
-`see_comments` is the one channel that runs **from the human to you** —
-what they *mean*, not what the app is: the widgets and areas they marked in
-comment mode (`Ctrl+Shift+C`), each with the instruction they typed on it.
-Reading the payload and acting on it is the **nuiitivet-see-comments** skill —
-follow it whenever this tool is the one you reach for.
 
 ### Blind spots
 
