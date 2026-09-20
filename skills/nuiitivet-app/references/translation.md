@@ -10,9 +10,11 @@ to write the left column, write the right column instead.
 - [Imports & entry point](#imports--entry-point)
 - [Component definition](#component-definition)
 - [State & reactivity](#state--reactivity)
+- [Text & date input](#text--date-input)
 - [Layout, sizing & spacing](#layout-sizing--spacing)
 - [Decoration & behavior (modifiers)](#decoration--behavior-modifiers)
 - [Navigation & dialogs](#navigation--dialogs)
+- [Desktop integration](#desktop-integration)
 
 ## Imports & entry point
 
@@ -21,7 +23,6 @@ to write the left column, write the right column instead.
 | `from nuiitivet.widgets import Column, Text` (scattered imports) | `import nuiitivet.material as nv`, then `nv.Column`, `nv.Text` — one import root |
 | `runApp(MyApp())` (Flutter) | `nv.App(nv.Window(content=build_root)).run()` — pass a **factory** for hot reload |
 | `MaterialApp(home=...)` (Flutter) | `nv.App(nv.Window(content=...))`; theming via `nv.App(win, theme=nv.ThemeFactory...)` |
-| `nv.App(content=..., title=...)` (older nuiitivet) | `nv.App(nv.Window(content=..., title=...))` — `App` takes its main `Window`; window keywords (`title`, `width`, `menu`, ...) live on `Window`, and `App` keeps only `theme=` / `exit_policy=` / `tray=` |
 | `nv.Window(content=CounterApp())` — a widget **instance** as the root | `nv.Window(content=CounterApp)`, or `nv.Window(content=lambda: CounterApp(cfg))` when the constructor takes arguments — a **factory**. An instance root makes hot reload inert: every rebuild returns the same object, so edits never reach that window |
 
 ```python
@@ -90,9 +91,6 @@ it. You never write code that pushes a value into a widget.
 | `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | for work derived from an Observable's value, `switch_map` supersedes the previous run for you and hands `fn` a `nv.CancelToken`. Otherwise there is no cancellation API: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
 | `switchMap` / `flatMapLatest` (Rx), `collectLatest` (Kotlin), a `useEffect` that aborts the previous fetch | `source.switch_map(fn, initial=...)` — same name, same semantics. `fn` takes `(value, cancel)`, runs off the UI thread, and must **return** failure as a value rather than raising; there is no `.error` channel |
 | `.map(fetch)` / `.map(search_api)` — an async call inside a `map` (Rx habit, where `map` is on a stream) | `switch_map(fn, initial=...)`. A `map`/`compute` function is **synchronous** and runs on the triggering thread — the UI thread for a `debounce` chain — so I/O in it freezes the window, and two in-flight calls have no ordering guarantee |
-| `TextEditingController()` + `controller:` (Flutter), a `ref` on an input (React) | bind an Observable as the field's value: `self.query = nv.Observable("")` then `nv.TextField(value=self.query)`. Edits are written back into it, and you set the text by assigning `self.query.value` — there is no controller object and no `.text` property to read |
-| `onEditingComplete` (Flutter), a `FocusNode` listener, an `onBlur` handler (JS) to finish a value | `on_focus_change(focused, source)` on the field — the same signature as `nv.focusable()`. Branch on `focused`; it can arrive more than once as `True` when the input source changes, and once as `False` |
-| `onSubmitted` expected to fire when the field loses focus | it does not. `on_submit` is **Enter only**, every press including a repeat on an unchanged value. Blur-time work goes to `on_focus_change` |
 | `Observable<AsyncValue<T>>` / `Resource<T>` / `RemoteData` wrappers around loading + error (Flutter/Compose/Elm) | keep the value position plain and put failure in your own result type: `SearchOutcome(items=..., error=...)`. A wrapper type forces every downstream `map`/`filter`/`combine` and every binding to unwrap it |
 
 Note: `Observable.subscribe()` **does** exist and is legitimate for side effects
@@ -107,6 +105,17 @@ self.outcome = self.query.debounce(0.3).switch_map(self._search, initial=SearchO
 ```
 
 See [state.md](state.md) for the full API and the ViewModel pattern.
+
+## Text & date input
+
+| Tempted to write (foreign) | In Nuiitivet write |
+| --- | --- |
+| `TextEditingController()` + `controller:` (Flutter), a `ref` on an input (React) | bind an Observable as the field's value: `self.query = nv.Observable("")` then `nv.TextField(value=self.query)`. Edits are written back into it, and you set the text by assigning `self.query.value` — there is no controller object and no `.text` property to read |
+| `onEditingComplete` (Flutter), a `FocusNode` listener, an `onBlur` handler (JS) to finish a value | `on_focus_change(focused, source)` on the field — the same signature as `nv.focusable()`. Branch on `focused`; it can arrive more than once as `True` when the input source changes, and once as `False` |
+| `onSubmitted` expected to fire when the field loses focus | it does not. `on_submit` is **Enter only**, every press including a repeat on an unchanged value. Blur-time work goes to `on_focus_change` |
+
+See [inputs.md](inputs.md) for input filters, typed values, search bars and
+date pickers.
 
 ## Layout, sizing & spacing
 
@@ -138,8 +147,8 @@ nv.Column([a, b, c], gap=20, padding=20)             # gap, not spacer widgets
 nv.Column.builder(self.items, lambda item, i: nv.Text(item))   # reactive list from an Observable
 ```
 
-See [layout.md](layout.md) for sizing policies, `builder()` vs `ForEach`, grids,
-and adaptive layout with `on_size_changed`.
+See [layout.md](layout.md) for sizing, dynamic lists, grids, and adaptive layout
+with `on_size_changed`.
 
 ## Decoration & behavior (modifiers)
 
@@ -151,9 +160,8 @@ and adaptive layout with `on_size_changed`.
 | `.modifier(a).modifier(b)` (re-wrapping) | compose in one call: `.modifier(a \| b \| c)` |
 | Compose `Modifier.padding().background()` chain | `.modifier(...)` for decoration/behavior; padding is a widget **parameter** |
 
-Modifier functions live on `nv`: `background`, `border`, `corner_radius`, `clip`,
-`shadows`, `opacity`, `tooltip`, `clickable`, `focusable`, `hoverable`, `translate`,
-`rotate`, `scale`, `visible`, … (there is **no** `radius` — it is `corner_radius`).
+The set of modifiers is the **Modifier catalog** in `SKILL.md`. There is **no**
+`radius` — the corner-rounding modifier is `corner_radius`.
 
 ```python
 # Correct
@@ -178,11 +186,6 @@ static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor.
 | `ScaffoldMessenger.of(context).showSnackBar(...)` | `nv.Overlay.of(self).snackbar("Saved")` |
 | `showSearch(context:, delegate: SearchDelegate())` (Flutter) — a full-screen search route | There is **no full-screen search widget**. Put `nv.SearchBar(...)` in a screen you lay out yourself, and push that screen like any other; or use `nv.DockedSearchBar(..., content=...)` for a dropdown. The bar animates its own 24dp → 12dp inset either way |
 | routing tables of string paths only | Intent-based `nv.Navigator.intents(initial_route=..., routes={Intent: lambda i: Screen()})` |
-| `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
-| `tkinter.filedialog.askopenfilename()` / `file_picker` (Flutter) / `NSOpenPanel` / a hand-rolled path `TextField` | `path = await nv.FileDialog.open_file(file_types=["txt"])` — coroutine, call from an `async` handler. Cancel is `None` (`open_files`: `[]`); also `save_file(default_name=...)` / `open_directory()`; `nv.FileDialogError` when the dialog cannot be shown (Linux without `zenity`/`kdialog`). Never import tkinter: its mainloop cannot coexist with the pyglet-owned event loop |
-| `pystray.Icon(...).run()` / `run_detached()` / `infi.systray` (external tray-icon libs) | `nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., menu=[nv.MenuEntry(...)]))` — built in; the menu reuses `MenuEntry` and `tray.installed` (`Observable[bool]`) reports whether the icon actually shows. Never import pystray directly: on macOS it fights the pyglet-owned loop, and nuiitivet already wraps it where it is used. Close-to-tray is `close_action=tray.installed.map(...)` on the `Window`, plus `exit_policy=nv.ExitPolicy.EXPLICIT` |
-| `QFontDatabase.addApplicationFont(...)` (Qt) / `pubspec.yaml` font assets (Flutter) / `tkinter.font.Font(...)` | `nv.Fonts.register("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")` once at startup, before any widget renders; then `font_family="NotoSansJP"` wherever a `font_family` is accepted. App-wide default: `nv.Fonts.set_default_family("Hiragino Sans")` |
-| `nv.register_font(...)` / `nv.set_default_font_family(...)` / `nv.get_clock()` / `nv.set_clock(...)` (pre-namespace nuiitivet) | Configuration lives on namespace classes, not flat on the root: `nv.Fonts.register(...)`, `nv.Fonts.set_default_family(...)`, `nv.Clocks.get()`, `nv.Clocks.set(...)` |
 
 ```python
 # Correct
@@ -196,3 +199,14 @@ nv.Navigator.of(self).push(CartScreen())
 
 See [navigation.md](navigation.md) for Intent-based routing, nested navigation,
 and the ViewModel-friendly navigator/overlay injection patterns.
+
+## Desktop integration
+
+| Tempted to write (foreign) | In Nuiitivet write |
+| --- | --- |
+| `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
+| `tkinter.filedialog.askopenfilename()` / `file_picker` (Flutter) / `NSOpenPanel` / a hand-rolled path `TextField` | `path = await nv.FileDialog.open_file(file_types=["txt"])` — coroutine, call from an `async` handler. Cancel is `None` (`open_files`: `[]`); also `save_file(default_name=...)` / `open_directory()`; `nv.FileDialogError` when the dialog cannot be shown (Linux without `zenity`/`kdialog`). Never import tkinter: its mainloop cannot coexist with the pyglet-owned event loop |
+| `pystray.Icon(...).run()` / `run_detached()` / `infi.systray` (external tray-icon libs) | `nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., menu=[nv.MenuEntry(...)]))` — built in; the menu reuses `MenuEntry` and `tray.installed` (`Observable[bool]`) reports whether the icon actually shows. Never import pystray directly: on macOS it fights the pyglet-owned loop, and nuiitivet already wraps it where it is used. Close-to-tray is `close_action=tray.installed.map(...)` on the `Window`, plus `exit_policy=nv.ExitPolicy.EXPLICIT` |
+| `QFontDatabase.addApplicationFont(...)` (Qt) / `pubspec.yaml` font assets (Flutter) / `tkinter.font.Font(...)` | `nv.Fonts.register("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")` once at startup, before any widget renders; then `font_family="NotoSansJP"` wherever a `font_family` is accepted. App-wide default: `nv.Fonts.set_default_family("Hiragino Sans")` |
+
+See [desktop.md](desktop.md) for windows, the menu bar, the tray and file drops.

@@ -5,7 +5,7 @@ Signals) and carries Rx-style operators (like ReactiveProperty, its inspiration)
 The rule that prevents 90% of leaks: **assign `.value`, bind the Observable into
 the widget, never manually push into the UI.**
 
-## Basic API
+## Create, read and write
 
 ```python
 import nuiitivet.material as nv
@@ -26,7 +26,7 @@ nv.Button("Increment", on_click=lambda: count.set(count.value + 1))
 ```
 
 Same write path as `.value =` (same de-duping, `compare`, batching, dispatch);
-prefer `.value =` wherever a statement fits.
+use `.value =` wherever a statement fits.
 
 Custom equality when needed (keyword-only `compare`):
 
@@ -35,7 +35,7 @@ always = nv.Observable(0, compare=lambda a, b: False)
 user   = nv.Observable(None, compare=lambda a, b: (a is b) if (a is None or b is None) else a.uid == b.uid)
 ```
 
-## Binding into the UI
+## Bind into the UI
 
 Pass the Observable itself where a value is expected — do not read `.value` at
 build time if you want it to stay live, and do not `subscribe()` to update a
@@ -53,22 +53,14 @@ def inc(self):
     self.count.value += 1                            # the Text follows on its own
 ```
 
-**An Observable handed to an input widget is that widget's value** — displayed
-*and* written to. `nv.TextField(value=self.query)`, `nv.Switch(checked=self.on)`,
-`nv.HorizontalSlider(value=self.level)` all write the user's edit straight back.
-There is no separate opt-in, and no `on_change` is needed to keep the Observable
-in sync. Use `on_change` only for a *side effect* of the change; anything you can
-derive (`query.debounce(0.3).switch_map(...)`) belongs on the Observable.
+An Observable handed to an input widget (`nv.TextField(value=self.query)`) is
+that widget's value, displayed *and* written to — see [inputs.md](inputs.md).
 
-On a text input, `on_submit` means **Enter only** -- every press, never on blur.
-Blur-time work (validating, saving an inline edit, finishing a half-typed value)
-goes to `on_focus_change(focused, source)`.
+Drawing is on-demand: a frame repaints when state changes, not on a fixed loop.
+Bind to an `Observable`; never drive an animation with a per-frame `while` loop
+or busy polling.
 
-A read-only source — anything from `.map(...)`, `.compute(...)`, `combine(...)` —
-has no setter, so an input widget can only display it. That is the correct way
-to show a derived value; add `disabled=True` so the field does not look editable.
-
-## Derived state (declare a formula, not an update)
+## Derive a value (declare a formula, not an update)
 
 ```python
 self.a = nv.Observable(0)
@@ -81,7 +73,7 @@ self.total = self.a.combine(self.b).compute(lambda a, b: a + b)
 several. A standalone `nv.Observable.compute(fn)` builds a computed value from any
 Observables read inside `fn`.
 
-## Async / event-stream state (Rx operators, then bind)
+## Derive over time or off the UI thread (Rx operators, then bind)
 
 ```python
 self.query   = nv.Observable("")
@@ -209,7 +201,7 @@ Inline like that is safe under **Hold what you derive**: the widget's binding
 holds the wrapper, exactly as `subscribe()`'s `Disposable` does. What is *not*
 safe is the local variable in `__init__` under that heading — nothing binds it.
 
-## Background work (threads)
+## Write from a background thread
 
 Assign `.value` straight from a worker thread — the write is marshalled onto the
 UI thread. No dispatch wrapper, no queue, no hop back.
@@ -262,7 +254,7 @@ Unmounting does not stop a worker (its writes are inert, not unsafe). If the wor
 exists only for that screen, cancel from an `on_unmount()` override — not an
 `on_unmount` modifier in `build()`, which fires on every rebuild.
 
-## `subscribe()` — legitimate vs anti-pattern
+## Run a side effect with `subscribe()`
 
 - OK: side effects — logging, calling a service, analytics.
 - Anti-pattern: subscribing to copy a value into a widget. That is what binding
@@ -283,7 +275,7 @@ cause on its own:
 | a plain Observable | the source holds the callback, so it keeps firing after unmount — into a dead tree |
 | anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`, `scan`) | nothing holds the derived Observable, so it is collected and never fires at all — see **Hold what you derive** |
 
-## Initialization that must run exactly once
+## Run setup exactly once
 
 `Observable`s go in `__init__`. Setup that needs the widget **in the tree** —
 `X.of(self)`, async loading — goes in an `on_mount()` override, which runs once
@@ -314,11 +306,11 @@ outlives the rebuild (the ViewModel). A flag on that widget dies with it.
 No `on_appear()` / `on_disappear()` exists — a covered route stays mounted and
 nothing fires. Pause/resume from the caller side, or a `nv.Deck` index Observable.
 
-## ViewModel pattern
+## Separate logic into a ViewModel
 
 For non-trivial apps, separate state/logic into a ViewModel and keep `build()`
 purely declarative. The View holds Observables (or the VM does) and the VM
-exposes methods for event handlers to call. ViewModels should not import or
-create Widgets — for dialogs/navigation they issue **Intents** to an injected
+exposes methods for event handlers to call. A ViewModel does not import or
+create Widgets — for dialogs/navigation it issues **Intents** to an injected
 navigator/overlay, annotated with `nv.NavigatorProtocol` / `nv.OverlayProtocol` so the
 VM stays free of widget types. See [navigation.md](navigation.md).
