@@ -242,7 +242,7 @@ def test_see_comments_reports_identity_rect_path_and_scoped_views() -> None:
         payload = see_comments(host.root, comments)
 
     assert payload["regions"] == []
-    assert payload["lost"] == 0
+    assert payload["lost_marks"] == 0
     (node,) = payload["nodes"]
     assert node["index"] == 1
     assert node["key"] == "body"
@@ -291,7 +291,7 @@ def test_see_comments_without_a_buffer_is_an_empty_payload() -> None:
     """The bridge runs without one in tests; that reads as nothing marked."""
     payload = see_comments(None, None)
 
-    assert payload == {"seq": 0, "active": False, "nodes": [], "regions": [], "lost": 0}
+    assert payload == {"seq": 0, "committed": True, "nodes": [], "regions": [], "lost_marks": 0}
 
 
 # --- regions ---------------------------------------------------------

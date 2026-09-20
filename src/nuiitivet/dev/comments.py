@@ -324,13 +324,14 @@ class Comments:
     def summary(self) -> dict[str, Any]:
         """Return the roll-up ``status`` carries.
 
-        ``seq``, ``active``, and separate counts of nodes, regions and marks with text.
+        ``seq``, ``committed`` (false while comment mode is on), and separate counts
+        of nodes, regions and marks with text.
         """
         with self._lock:
             nodes = sum(1 for mark in self._marks if isinstance(mark, _Member))
             return {
                 "seq": self._seq,
-                "active": self._active,
+                "committed": not self._active,
                 "nodes": nodes,
                 "regions": len(self._marks) - nodes,
                 "instructions": sum(1 for mark in self._marks if mark.instruction is not None),
@@ -512,7 +513,7 @@ def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
     thread.
     """
     if comments is None:
-        return {"seq": 0, "active": False, "nodes": [], "regions": [], "lost": 0}
+        return {"seq": 0, "committed": True, "nodes": [], "regions": [], "lost_marks": 0}
 
     summary = comments.summary()
     nodes: list[dict[str, Any]] = []
@@ -527,10 +528,10 @@ def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
 
     return {
         "seq": summary["seq"],
-        "active": summary["active"],
+        "committed": summary["committed"],
         "nodes": nodes,
         "regions": regions,
-        "lost": comments.lost,
+        "lost_marks": comments.lost,
     }
 
 
