@@ -32,7 +32,7 @@ string enum and no raw S API**. The opt-in modifiers below build on the shared
 helper and each fix S / C to name one posture; the tri-state itself is never
 surfaced. The pass-behind (`translucent`) B axis remains a separate follow-up.
 
-## Public opt-in modifiers (issue #449)
+## Public opt-in modifiers
 
 Four intent-named modifiers let a widget deviate from the `auto` default. All
 route through one shared wrapper, `HitParticipationBox`

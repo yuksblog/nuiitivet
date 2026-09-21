@@ -49,7 +49,7 @@ Navigator.of(context, root=True).push(...)   # Always the window's
 To support independent Navigators (transition histories) per tab, we implement `Navigator.of(context)`.
 
 - Implementation traverses up the parent chain.
-- With no `Navigator` ancestor it falls back to the navigator owned by the `Window` that the context belongs to, found through the window scope wrapping every window root. That keeps the common case a single short call **and** keeps the answer scoped to one window — there is no process-global root, so two windows (or two Apps in one process) never collide (#518).
+- With no `Navigator` ancestor it falls back to the navigator owned by the `Window` that the context belongs to, found through the window scope wrapping every window root. That keeps the common case a single short call **and** keeps the answer scoped to one window — there is no process-global root, so two windows (or two Apps in one process) never collide.
 
 ```python
 class Widget:

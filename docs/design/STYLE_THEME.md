@@ -348,8 +348,6 @@ Widgets can only honour the rule if the chain they walk is intact:
   anything. Measuring first would resolve every lookup against the default light
   theme and size the window for a theme the app never installed.
 
-See issues #464, #473 and #476.
-
 #### A theme change repaints and re-measures
 
 Light/dark switching — and switching between themes built from different seed

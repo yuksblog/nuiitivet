@@ -40,7 +40,7 @@ A dimension is decided **per axis**, using one binary test:
 
 ### Resulting Classification
 
-> The authoritative list is derived by a fresh audit of every public constructor against the rule. The table below records the outcome of that audit (issue #249).
+> The authoritative list is derived by a fresh audit of every public constructor against the rule. The table below records the outcome of that audit.
 
 | Widget / axis | MD3 fixes it? | Exposure |
 | :--- | :--- | :--- |
@@ -96,7 +96,7 @@ Two consequences follow:
 
 To size a widget to a genuine fraction of its parent, use a number (`height=300`); there is no fraction-of-parent spec.
 
-> A percentage spelling (`"50%"`) existed until #510. It was never a fraction of the parent — it parsed to a weight and the `%` was discarded — and reading it as a percentage was the most common misunderstanding of this system. It now raises `ValueError`.
+> There is no percentage spelling: `"50%"` raises `ValueError`. Accepting it as a weight with the `%` discarded was rejected, because it reads as a fraction of the parent and a weight is not one.
 
 ## 1.2 Composable Wrappers Are Transparent to Layout Metadata
 
