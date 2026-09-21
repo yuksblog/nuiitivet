@@ -100,43 +100,13 @@ def _build_text_field_icon(
 
 
 class TextField(InteractiveWidget):
-    """A text input widget base class.
+    """A Material Design 3 text field; ``style`` picks filled or outlined.
 
-    Note:
-        An observable passed as ``value`` holds the field's value, the same as
-        for every other input widget: it is displayed, and edits are written
-        back to it. A read-only observable (``.map(...)``, a computed value)
-        has nowhere to write, so it displays only -- pair it with
-        ``disabled=True`` to make that visible to the user.
-
-    Parameters:
-    - value: Initial text (str), or the observable that holds the field's value
-    - on_change: Callback when value changes
-    - on_submit: Callback invoked with the confirmed value when the user presses
-      Enter in the field or moves focus away from it, and only when the text
-      changed since the last commit
-    - input_filter: Rule applied to text as the user types it -- see
-      :mod:`nuiitivet.widgets.input_filter`. It governs what is *typeable*;
-      whether a finished value is acceptable belongs in ``is_error`` /
-      ``supporting_text``, and reshaping a finished value belongs in
-      ``on_submit``
-    - label: Floating label text (supports Observable)
-    - leading_icon: Icon source (Symbol/str or Observable of them)
-    - on_tap_leading_icon: Callback invoked when the leading icon is tapped.
-      Supplying it upgrades the icon to a standard IconButton with hover /
-      focus / pressed state layers; a decorative icon (no callback) renders
-      as a plain, feedback-free glyph.
-    - trailing_icon: Icon source (Symbol/str or Observable of them)
-    - on_tap_trailing_icon: Callback invoked when the trailing icon is tapped
-      (see ``on_tap_leading_icon`` for the interactive-icon behavior)
-    - obscure_text: Whether to mask text display (password-style)
-    - supporting_text: Supporting text to display below the field (supports Observable)
-    - is_error: Whether the field is in error state (supports Observable)
-    - style: Custom style configuration
-    - width: Explicit width sizing
-    - height: Explicit height sizing
-    - padding: Insets from the allocated rect to the field container
-    - disabled: Disable interaction (supports Observable)
+    An observable passed as ``value`` holds the field's value, the same as
+    for every other input widget: it is displayed, and edits are written
+    back to it. A read-only observable (``.map(...)``, a computed value)
+    has nowhere to write, so it displays only -- pair it with
+    ``disabled=True`` to make that visible to the user.
     """
 
     def __init__(
@@ -186,12 +156,20 @@ class TextField(InteractiveWidget):
                 once with ``focused=True`` for a single acquisition, because
                 the *source* is re-announced when the user switches from
                 keyboard to pointer; ``focused=False`` arrives once.
-            input_filter: Rule applied to text as the user types it.
+            input_filter: Rule applied to text as the user types it -- see
+                :mod:`nuiitivet.widgets.input_filter`. It governs what is
+                typeable; whether a finished value is acceptable belongs in
+                *is_error* / *supporting_text*, and reshaping a finished
+                value belongs in *on_submit*.
             label: Floating label text.
             leading_icon: Icon displayed before the text.
-            on_tap_leading_icon: Callback invoked when the leading icon is tapped.
+            on_tap_leading_icon: Callback invoked when the leading icon is
+                tapped. With it the icon is a standard icon button -- hover,
+                focus and pressed feedback, keyboard focusable; without it
+                the icon is a plain glyph.
             trailing_icon: Icon displayed after the text.
-            on_tap_trailing_icon: Callback invoked when the trailing icon is tapped.
+            on_tap_trailing_icon: Callback invoked when the trailing icon is
+                tapped; the icon changes as for *on_tap_leading_icon*.
             obscure_text: Whether to mask text display (password-style).
             supporting_text: Supporting text displayed below the field.
             is_error: Whether the field is in its error state. This is a

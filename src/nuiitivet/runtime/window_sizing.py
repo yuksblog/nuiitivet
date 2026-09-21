@@ -17,17 +17,22 @@ WindowSizingKind = Literal["fixed", "auto"]
 
 @dataclass(frozen=True, slots=True)
 class WindowSizing:
-    """Represents how a window requests its initial size along an axis."""
+    """Represents how a window requests its initial size along an axis.
+
+    Construct with :meth:`fixed` or :meth:`auto`.
+    """
 
     kind: WindowSizingKind
     value: float = 0.0
 
     @classmethod
     def fixed(cls, value: float) -> "WindowSizing":
+        """Return a size of *value* logical pixels."""
         return cls("fixed", float(value))
 
     @classmethod
     def auto(cls) -> "WindowSizing":
+        """Return a size that follows the content's preferred size."""
         return cls("auto", 0.0)
 
 

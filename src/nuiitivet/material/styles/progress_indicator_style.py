@@ -35,7 +35,10 @@ class ProgressIndicatorStyle:
 
 @dataclass(frozen=True)
 class LinearProgressIndicatorStyle(ProgressIndicatorStyle):
-    """Linear progress indicator geometry and motion tokens."""
+    """Linear progress indicator geometry and motion tokens.
+
+    Presets: :meth:`default` (wavy), :meth:`flat`.
+    """
 
     track_thickness: float = 4.0
     with_wave_height: float = 10.0
@@ -91,7 +94,10 @@ class LinearProgressIndicatorStyle(ProgressIndicatorStyle):
 
 @dataclass(frozen=True)
 class CircularProgressIndicatorStyle(ProgressIndicatorStyle):
-    """Circular progress indicator geometry and motion tokens."""
+    """Circular progress indicator geometry and motion tokens.
+
+    Presets: :meth:`default` (wavy), :meth:`flat`.
+    """
 
     size: float = 40.0
     with_wave_size: float = 48.0

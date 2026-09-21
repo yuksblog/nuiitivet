@@ -16,11 +16,7 @@ from nuiitivet.observable.protocols import ObservableBase
 class Row(Widget):
     """Layout children horizontally.
 
-    Parameters
-    - gap: pixels between children
-    - cross_alignment: 'start'|'center'|'end' for cross-axis (vertical) alignment
-    - main_alignment: 'start'|'center'|'end'|'space-between'|'space-around'|'space-evenly'
-    - padding: inner padding as int (all sides), (h, v), or (left, top, right, bottom)
+    From a data collection, or an observable of one: :meth:`builder`.
     """
 
     # Hint for ancestor-based layout resolution (used by ForEach and others)
@@ -88,17 +84,21 @@ class Row(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Row":
-        """Create a Row that materializes children from items via ForEach.
+        """Create a Row whose children are built from *items*.
 
         Args:
-            items: Source data collection.
-            builder: Function to create a widget for each item.
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for each item; returns
+                the item's widget.
             width: Row width.
             height: Row height.
             padding: Padding around the content.
-            gap: Space between children.
+            gap: Space between children in pixels.
             main_alignment: Horizontal alignment of children.
+                'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Vertical alignment of children.
+                'start', 'center', 'end', 'stretch'.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)

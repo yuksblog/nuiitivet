@@ -22,19 +22,34 @@ SizingLike = Union["Sizing", int, float, str, None]
 
 @dataclass(frozen=True)
 class Sizing:
+    """How a widget sizes itself along one axis.
+
+    Construct with :meth:`fixed`, :meth:`auto` or :meth:`weight`; wherever a
+    sizing is accepted, a number means fixed, ``"auto"`` auto, and ``"wt"`` /
+    ``"wt2"`` a weight.
+    """
+
     kind: SizingKind
     value: float = 0.0
 
     @classmethod
     def fixed(cls, value: float) -> "Sizing":
+        """Return a size of exactly *value* pixels."""
         return cls("fixed", float(value))
 
     @classmethod
     def auto(cls) -> "Sizing":
+        """Return a size that follows the content's preferred size."""
         return cls("auto", 0.0)
 
     @classmethod
     def weight(cls, value: float = 1.0) -> "Sizing":
+        """Return a share of the space the parent has left over.
+
+        Args:
+            value: Share relative to the sibling weights. Zero or less gives
+                :meth:`auto`.
+        """
         if value <= 0:
             return cls.auto()
         return cls("weight", float(value))

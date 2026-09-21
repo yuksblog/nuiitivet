@@ -31,6 +31,8 @@ _DEFAULT_LINE_HEIGHT_RATIO = 1.25
 class TypeScaleToken:
     """Immutable typographic metrics for a single type-scale role.
 
+    From a font size alone, with the line height derived: :meth:`from_size`.
+
     Attributes:
         font_size: Glyph size in px.
         line_height: Absolute line height in px (faithful to MD3 tokens, not a

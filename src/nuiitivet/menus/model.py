@@ -58,32 +58,14 @@ class MenuEntry:
     - **Submenu**: ``MenuEntry("File", submenu=[...])`` — top-level bar
       entries are simply entries with a ``submenu``; nesting is unlimited.
     - **Separator**: ``MenuEntry.separator()``
-    - **Standard item**: ``MenuEntry.quit()`` and friends — prebuilt entries
-      whose activation calls a built-in App/Window method.
+    - **Standard item**: ``MenuEntry.quit()``, ``close_window()``,
+      ``minimize()``, ``maximize()``, ``restore()``, ``full_screen()`` —
+      prebuilt entries whose activation calls a built-in App/Window method.
 
     ``label`` and ``enabled`` may be Observables and propagate live to
     whichever surface renders the model. ``checked`` (presence makes the entry
     checkable) must be a *writable* Observable: activation toggles it before
     ``on_select`` runs.
-
-    Args:
-        label: Entry label; a plain string or an Observable.
-        on_select: Called with no arguments when the entry is activated. May be
-            sync or async. Exactly one of ``on_select`` / ``submenu`` / a
-            standard-item role is required for a non-separator entry.
-        shortcut: Accelerator gesture, as a spec string (``"Accel+S"``) or a
-            :class:`~nuiitivet.input.shortcut.Shortcut`. The menu system both
-            displays it and registers it; do not register the same gesture
-            separately via ``key_shortcut()``.
-        enabled: Whether the entry can be activated; a bool or an Observable.
-        checked: Writable Observable holding the check state. Presence makes
-            the entry checkable; activation toggles the value, then calls
-            ``on_select``.
-        submenu: Child entries. Mutually exclusive with ``on_select`` /
-            ``shortcut`` / ``checked``.
-
-    Raises:
-        ValueError: If the combination of arguments is invalid.
     """
 
     label: ObservableStr
@@ -107,6 +89,27 @@ class MenuEntry:
         _role: MenuRole = MenuRole.NONE,
         _separator: bool = False,
     ) -> None:
+        """Initialize MenuEntry.
+
+        Args:
+            label: Entry label; a plain string or an Observable.
+            on_select: Called with no arguments when the entry is activated. May be
+                sync or async. Exactly one of ``on_select`` / ``submenu`` / a
+                standard-item role is required for a non-separator entry.
+            shortcut: Accelerator gesture, as a spec string (``"Accel+S"``) or a
+                :class:`~nuiitivet.input.shortcut.Shortcut`. The menu system both
+                displays it and registers it; do not register the same gesture
+                separately via ``key_shortcut()``.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+            checked: Writable Observable holding the check state. Presence makes
+                the entry checkable; activation toggles the value, then calls
+                ``on_select``.
+            submenu: Child entries. Mutually exclusive with ``on_select`` /
+                ``shortcut`` / ``checked``.
+
+        Raises:
+            ValueError: If the combination of arguments is invalid.
+        """
         self.label = label
         self.on_select = on_select
         self.shortcut = to_shortcut(shortcut) if shortcut is not None else None
@@ -179,7 +182,13 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Exit the application (calls ``app.exit()``)."""
+        """Exit the application (calls ``app.exit()``).
+
+        Args:
+            label: Entry label. Defaults to "Quit" on macOS, "Exit" elsewhere.
+            shortcut: Accelerator gesture. Defaults to ``"Accel+Q"`` on macOS, none elsewhere.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+        """
         if label is None:
             label = "Quit" if sys.platform == "darwin" else "Exit"
         if shortcut is None and sys.platform == "darwin":
@@ -194,7 +203,13 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = "Accel+W",
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Close the window (calls ``window.close()``)."""
+        """Close the window (calls ``window.close()``).
+
+        Args:
+            label: Entry label. Defaults to "Close Window".
+            shortcut: Accelerator gesture. Defaults to ``"Accel+W"``; ``None`` for none.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+        """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.CLOSE_WINDOW)
 
     @classmethod
@@ -205,7 +220,13 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Minimize the window (calls ``window.minimize()``)."""
+        """Minimize the window (calls ``window.minimize()``).
+
+        Args:
+            label: Entry label. Defaults to "Minimize".
+            shortcut: Accelerator gesture. Defaults to ``"Accel+M"`` on macOS, none elsewhere.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+        """
         if shortcut is None and sys.platform == "darwin":
             shortcut = "Accel+M"
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.MINIMIZE)
@@ -218,7 +239,13 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Maximize / zoom the window (calls ``window.maximize()``)."""
+        """Maximize / zoom the window (calls ``window.maximize()``).
+
+        Args:
+            label: Entry label. Defaults to "Zoom" on macOS, "Maximize" elsewhere.
+            shortcut: Accelerator gesture. None by default.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+        """
         if label is None:
             label = "Zoom" if sys.platform == "darwin" else "Maximize"
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.MAXIMIZE)
@@ -236,6 +263,11 @@ class MenuEntry:
         The way back from :meth:`full_screen`, :meth:`maximize`, and
         :meth:`minimize`: exits full screen, or restores the pre-maximize
         size, or brings a minimized window back.
+
+        Args:
+            label: Entry label. Defaults to "Restore".
+            shortcut: Accelerator gesture. None by default.
+            enabled: Whether the entry can be activated; a bool or an Observable.
         """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.RESTORE)
 
@@ -247,5 +279,11 @@ class MenuEntry:
         shortcut: Optional[ShortcutLike] = None,
         enabled: ObservableBool = True,
     ) -> "MenuEntry":
-        """Toggle full screen (calls ``window.full_screen()``)."""
+        """Toggle full screen (calls ``window.full_screen()``).
+
+        Args:
+            label: Entry label. Defaults to "Full Screen".
+            shortcut: Accelerator gesture. None by default.
+            enabled: Whether the entry can be activated; a bool or an Observable.
+        """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.FULL_SCREEN)

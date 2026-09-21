@@ -18,7 +18,9 @@ ToolbarColorScheme = Literal["standard", "vibrant"]
 class ToolbarStyle:
     """Immutable style for Material toolbar widgets.
 
-    Args:
+    Presets: :meth:`standard`, :meth:`vibrant`.
+
+    Attributes:
         color_scheme: Toolbar color scheme variant.
         background: Toolbar container background color.
         foreground: Recommended foreground color for icon actions.

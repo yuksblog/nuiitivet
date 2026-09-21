@@ -121,6 +121,13 @@ doc.
 issue number: write what the pointer would have said. Links between design
 docs are fine.
 
+**A callable documents its own arguments.** `__init__` and every public
+method carry their own `Args:`; the class docstring holds no parameter list
+and names the other constructors ("From a data collection: `builder`"). A
+dataclass lists its fields under `Attributes:`. The `nuiitivet-app` skill
+sends the agent to the callable's docstring for every parameter it does not
+list, so that docstring is the agent's instruction.
+
 **The agent's text assumes the skills are installed.** The skill and the
 two MCP rows are read by a coding agent, not a person. The framework is used
 with its skills installed, so a tool description does not stand in for a

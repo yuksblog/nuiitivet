@@ -45,7 +45,10 @@ class _ResolvedPlacement:
 
 
 class GridItem(Container):
-    """Annotate a child with explicit grid placement data."""
+    """Annotate a child with explicit grid placement data.
+
+    Into an area of :meth:`Grid.named_areas`: :meth:`named_area`.
+    """
 
     def __init__(
         self,
@@ -125,7 +128,10 @@ class GridItem(Container):
 
 
 class Grid(Widget):
-    """Two-dimensional layout container with explicit tracks."""
+    """Two-dimensional layout container with explicit tracks.
+
+    With areas laid out by name: :meth:`named_areas`.
+    """
 
     def __init__(
         self,

@@ -14,12 +14,8 @@ from ..widgeting.widget import Widget
 class Spacer(Widget):
     """Invisible widget that reserves space.
 
-    This single Spacer supports both fixed-size and space-filling behavior.
-
-    Args:
-        width: preferred width (int, "auto", "wt", "wt{n}", or Sizing)
-        height: preferred height (same accepted formats as width)
-        padding: insets added around the reserved space
+    A fixed size reserves exactly that much; a weight (``"wt"``) takes the
+    space its parent has left over.
     """
 
     def __init__(
@@ -33,8 +29,9 @@ class Spacer(Widget):
         """Initialize a Spacer.
 
         Args:
-            width: Preferred width. Use Sizing.weight() or 0 for filling space.
-            height: Preferred height. Use Sizing.weight() or 0 for filling space.
+            width: Width to reserve: a fixed size, or a weight (``"wt"``,
+                ``Sizing.weight()``) to fill the space left over.
+            height: Height to reserve, in the same forms as *width*.
             padding: Insets from the allocated rect to the reserved space.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

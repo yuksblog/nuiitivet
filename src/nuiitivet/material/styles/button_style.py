@@ -375,7 +375,10 @@ class IconButtonStyle:
 
 @dataclass(frozen=True)
 class IconToggleButtonStyle:
-    """State-paired style for icon toggle button widgets."""
+    """State-paired style for icon toggle button widgets.
+
+    Presets: :meth:`standard`, :meth:`filled`, :meth:`outlined`, :meth:`tonal`.
+    """
 
     selected: ButtonStyle
     unselected: ButtonStyle

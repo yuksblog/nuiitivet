@@ -628,38 +628,6 @@ class SearchBar(ComposableWidget):
     There is no full-screen search widget. To build one, lay out your own
     screen and place a ``SearchBar`` in it; the bar brings its own margin
     animation with it.
-
-    Args:
-        value: Initial query text, or the observable holding it. Edits are
-            written back to a writable observable, exactly as for ``TextField``.
-        placeholder: Supporting text shown inside the bar while it is empty.
-        leading_icon: Icon source (Symbol/str, or an Observable of them).
-        on_tap_leading_icon: Makes the leading icon a tappable icon button.
-        trailing_icon: Icon source for the trailing slot.
-        on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
-            The slot is generic — clearing the query is one use of it, not a
-            built-in behaviour.
-        on_change: Callback invoked with the query as it changes, for a side
-            effect of the change. The observable bound to *value* carries the
-            same signal without it.
-        on_submit: Callback invoked with the query when Enter is pressed.
-            Fires on every press, including a repeat on an unchanged query,
-            and never on focus loss.
-        on_focus_change: Callback invoked as focus arrives and leaves, with
-            ``(focused, source)`` -- the same signature as ``focusable()``. It
-            can arrive more than once with ``focused=True`` for a single
-            acquisition, because the *source* is re-announced when the user
-            switches from keyboard to pointer; ``focused=False`` arrives once.
-        input_filter: Rule applied to text as the user types it.
-        width: Sizing for the **box**, not for the bar drawn inside it. The bar
-            is the box minus the margins, so ``width=440`` draws a 392dp bar
-            that grows to 416dp when the user clicks into it, while the
-            widget's own footprint stays 440dp and nothing beside it moves. The
-            bar is capped at 720dp and centred when the box is wider; in a box
-            too narrow for the 360dp minimum it shrinks to fit rather than
-            overflowing.
-        padding: Insets from the allocated rect to the box.
-        style: Custom style configuration.
     """
 
     def __init__(
@@ -680,6 +648,41 @@ class SearchBar(ComposableWidget):
         padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
+        """Initialize SearchBar.
+
+        Args:
+            value: Initial query text, or the observable holding it. Edits are
+                written back to a writable observable, exactly as for ``TextField``.
+            placeholder: Supporting text shown inside the bar while it is empty.
+            leading_icon: Icon source (Symbol/str, or an Observable of them).
+            on_tap_leading_icon: Makes the leading icon a tappable icon button.
+            trailing_icon: Icon source for the trailing slot.
+            on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
+                The slot is generic — clearing the query is one use of it, not a
+                built-in behaviour.
+            on_change: Callback invoked with the query as it changes, for a side
+                effect of the change. The observable bound to *value* carries the
+                same signal without it.
+            on_submit: Callback invoked with the query when Enter is pressed.
+                Fires on every press, including a repeat on an unchanged query,
+                and never on focus loss.
+            on_focus_change: Callback invoked as focus arrives and leaves, with
+                ``(focused, source)`` -- the same signature as ``focusable()``. It
+                can arrive more than once with ``focused=True`` for a single
+                acquisition, because the *source* is re-announced when the user
+                switches from keyboard to pointer; ``focused=False`` arrives once.
+            input_filter: Rule applied to text as the user types it.
+            width: Sizing for the **box**, not for the bar drawn inside it. The bar
+                is the box minus the margins, so ``width=440`` draws a 392dp bar
+                that grows to 416dp when the user clicks into it, while the
+                widget's own footprint stays 440dp and nothing beside it moves. The
+                bar is capped at 720dp and centred when the box is wider; in a box
+                too narrow for the 360dp minimum it shrinks to fit rather than
+                overflowing.
+            padding: Insets from the allocated rect to the box.
+            style: Custom style configuration.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         super().__init__(padding=padding, key=key)
         self._width = width
         # Built once and reused across rebuilds so focus and cursor position
@@ -757,38 +760,6 @@ class DockedSearchBar(ComposableWidget):
     overlay entry — this container, when it is open — without moving focus.
     When the container is closed the path declines the key, so an enclosing
     handler (a dialog, the navigator) still sees it.
-
-    Args:
-        value: Initial query text, or the observable holding it.
-        content: Widget rendered inside the docked container.
-        is_open: Observable holding whether the container is open. Pass one to
-            drive or observe it; when omitted an internal one is created and
-            exposed as :attr:`is_open`.
-        close_on_enter: Whether Enter closes the container. The default suits
-            a page that renders its own results; pass ``False`` to keep the
-            container up and swap ``content`` to the results instead. The
-            close runs before *on_submit*, so a search that wants the
-            container to stay up can reopen it from inside its own callback.
-        placeholder: Supporting text shown inside the bar while it is empty.
-        leading_icon: Icon source for the leading slot.
-        on_tap_leading_icon: Makes the leading icon a tappable icon button.
-        trailing_icon: Icon source for the trailing slot.
-        on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
-        on_change: Callback invoked with the query as it changes, for a side
-            effect of the change. The observable bound to *value* carries the
-            same signal without it.
-        on_submit: Callback invoked with the query when Enter is pressed.
-            Fires on every press, including a repeat on an unchanged query,
-            and never on focus loss.
-        on_focus_change: Callback invoked as focus arrives and leaves, with
-            ``(focused, source)`` -- the same signature as ``focusable()``. It
-            can arrive more than once with ``focused=True`` for a single
-            acquisition, because the *source* is re-announced when the user
-            switches from keyboard to pointer; ``focused=False`` arrives once.
-        input_filter: Rule applied to text as the user types it.
-        width: Sizing for the box — see :class:`SearchBar`.
-        padding: Insets from the allocated rect to the box.
-        style: Custom style configuration.
     """
 
     def __init__(
@@ -812,6 +783,41 @@ class DockedSearchBar(ComposableWidget):
         padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
+        """Initialize DockedSearchBar.
+
+        Args:
+            value: Initial query text, or the observable holding it.
+            content: Widget rendered inside the docked container.
+            is_open: Observable holding whether the container is open. Pass one to
+                drive or observe it; when omitted an internal one is created and
+                exposed as :attr:`is_open`.
+            close_on_enter: Whether Enter closes the container. The default suits
+                a page that renders its own results; pass ``False`` to keep the
+                container up and swap ``content`` to the results instead. The
+                close runs before *on_submit*, so a search that wants the
+                container to stay up can reopen it from inside its own callback.
+            placeholder: Supporting text shown inside the bar while it is empty.
+            leading_icon: Icon source for the leading slot.
+            on_tap_leading_icon: Makes the leading icon a tappable icon button.
+            trailing_icon: Icon source for the trailing slot.
+            on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
+            on_change: Callback invoked with the query as it changes, for a side
+                effect of the change. The observable bound to *value* carries the
+                same signal without it.
+            on_submit: Callback invoked with the query when Enter is pressed.
+                Fires on every press, including a repeat on an unchanged query,
+                and never on focus loss.
+            on_focus_change: Callback invoked as focus arrives and leaves, with
+                ``(focused, source)`` -- the same signature as ``focusable()``. It
+                can arrive more than once with ``focused=True`` for a single
+                acquisition, because the *source* is re-announced when the user
+                switches from keyboard to pointer; ``focused=False`` arrives once.
+            input_filter: Rule applied to text as the user types it.
+            width: Sizing for the box — see :class:`SearchBar`.
+            padding: Insets from the allocated rect to the box.
+            style: Custom style configuration.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         super().__init__(padding=padding, key=key)
         self._width = width
         self._style = style if style is not None else DockedSearchBarStyle()

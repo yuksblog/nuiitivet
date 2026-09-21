@@ -15,15 +15,7 @@ from nuiitivet.observable.protocols import ObservableBase
 class Column(Widget):
     """Layout children vertically.
 
-    Parameters
-    - gap: pixels between children
-    - cross_alignment: 'start'|'center'|'end' for cross-axis (horizontal) alignment
-    - main_alignment: 'start'|'center'|'end'|'space-between'|'space-around'|'space-evenly'
-    - padding: inner padding as int (all sides), (h, v), or (left, top, right, bottom)
-    - overflow: 'visible'|'clip'|'scroll' - how to handle children that overflow the container
-        - 'visible' (default): children may extend beyond container (Phase 1 behavior)
-        - 'clip': children are clipped to container bounds
-        - 'scroll': requires VerticalScrollable / HorizontalScrollable wrapper (Phase 3)
+    From a data collection, or an observable of one: :meth:`builder`.
     """
 
     # Hint for ancestor-based layout resolution (used by ForEach and others)
@@ -93,17 +85,21 @@ class Column(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Column":
-        """Create a Column that materializes children from items via ForEach.
+        """Create a Column whose children are built from *items*.
 
         Args:
-            items: Source data collection.
-            builder: Function to create a widget for each item.
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for each item; returns
+                the item's widget.
             width: Column width.
             height: Column height.
             padding: Padding around the content.
-            gap: Space between children.
+            gap: Space between children in pixels.
             main_alignment: Vertical alignment of children.
+                'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Horizontal alignment of children.
+                'start', 'center', 'end', 'stretch'.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)

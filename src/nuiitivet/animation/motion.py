@@ -56,13 +56,14 @@ class Motion(Protocol):
 
 
 class LinearMotion:
-    """Linear time-based motion.
-
-    Args:
-        duration: Duration in seconds for a full transition.
-    """
+    """Linear time-based motion."""
 
     def __init__(self, duration: float) -> None:
+        """Initialize LinearMotion.
+
+        Args:
+            duration: Duration in seconds for a full transition.
+        """
         self.duration = max(0.0, float(duration))
 
     def create_state(self, value: list[float], target: list[float]) -> MotionState:
@@ -101,17 +102,18 @@ class LinearMotion:
 
 
 class BezierMotion:
-    """Bezier time-based motion.
-
-    Args:
-        x1: Control point 1 x.
-        y1: Control point 1 y.
-        x2: Control point 2 x.
-        y2: Control point 2 y.
-        duration: Duration in seconds for a full transition.
-    """
+    """Bezier time-based motion."""
 
     def __init__(self, x1: float, y1: float, x2: float, y2: float, duration: float) -> None:
+        """Initialize BezierMotion.
+
+        Args:
+            x1: Control point 1 x.
+            y1: Control point 1 y.
+            x2: Control point 2 x.
+            y2: Control point 2 y.
+            duration: Duration in seconds for a full transition.
+        """
         self.duration = max(0.0, float(duration))
         self._curve = _CubicBezier(float(x1), float(y1), float(x2), float(y2))
 
@@ -154,22 +156,15 @@ class BezierMotion:
 class SpringMotion:
     """Spring-based motion.
 
-    The integrator is sub-stepped so stiff springs stay stable when the frame
-    rate (and thus ``dt``) drops: a single large semi-implicit Euler step can
-    diverge once ``dt`` approaches ``2 / sqrt(stiffness / mass)`` (e.g. a
-    stiffness of 1400 diverges below ~30 fps).  Each ``step`` splits ``dt`` into
-    fixed-size sub-steps so the result is stable and frame-rate independent.
-
-    Args:
-        stiffness: Spring stiffness constant.
-        damping: Damping coefficient.
-        mass: Mass attached to the spring.
-        initial_velocity: Initial velocity in units per second.
+    The result is frame-rate independent, and a stiff spring stays stable
+    when the frame rate drops.
     """
 
-    # Fixed integration sub-step (~240 Hz) — stable for stiffness up to ~57000
-    # at unit mass.  Larger frames are clamped to avoid a long catch-up after a
-    # stall (e.g. a backgrounded window).
+    # Fixed integration sub-step (~240 Hz): one large semi-implicit Euler step
+    # diverges once dt approaches 2 / sqrt(stiffness / mass) -- a stiffness of
+    # 1400 below ~30 fps -- and this size is stable up to ~57000 at unit mass.
+    # Larger frames are clamped to avoid a long catch-up after a stall (e.g. a
+    # backgrounded window).
     _MAX_SUBSTEP = 1.0 / 240.0
     _MAX_FRAME = 0.25
 
@@ -182,6 +177,17 @@ class SpringMotion:
         initial_velocity: float | Sequence[float] = 0.0,
         tolerance: float = 1e-3,
     ) -> None:
+        """Initialize SpringMotion.
+
+        Args:
+            stiffness: Spring stiffness constant.
+            damping: Damping coefficient.
+            mass: Mass attached to the spring.
+            initial_velocity: Initial velocity in units per second: one number for
+                every dimension, or one per dimension.
+            tolerance: Distance from the target, and speed, at or below which the
+                motion is at rest.
+        """
         self.stiffness = float(stiffness)
         self.damping = float(damping)
         self.mass = max(1e-9, float(mass))

@@ -547,9 +547,12 @@ class FileDialog:
     ) -> Optional[Path]:
         """Pick an existing file to open.
 
-        ``file_types`` restricts the picker to extensions given without the
-        leading dot (e.g. ``["png", "jpg"]``); ``None`` allows any file.
-        A leading ``~`` in ``initial_dir`` is expanded to the home directory.
+        Args:
+            title: Dialog title; the platform's own when omitted.
+            initial_dir: Directory the dialog opens in; a leading ``~`` is the
+                home directory.
+            file_types: Extensions the picker is restricted to, without the
+                leading dot (e.g. ``["png", "jpg"]``); ``None`` allows any file.
         """
         return await _run_backend(
             lambda backend: backend.open_file(
@@ -568,8 +571,15 @@ class FileDialog:
     ) -> list[Path]:
         """Pick one or more existing files to open.
 
-        Like :meth:`open_file` with multiple selection. Cancelling returns an
-        empty list — the dialog cannot return zero selections otherwise.
+        Cancelling returns an empty list — the dialog cannot return zero
+        selections otherwise.
+
+        Args:
+            title: Dialog title; the platform's own when omitted.
+            initial_dir: Directory the dialog opens in; a leading ``~`` is the
+                home directory.
+            file_types: Extensions the picker is restricted to, without the
+                leading dot; ``None`` allows any file.
         """
         return await _run_backend(
             lambda backend: backend.open_files(
@@ -591,9 +601,16 @@ class FileDialog:
 
         The returned path may not exist yet; writing the file is the caller's
         job. The native dialog asks for overwrite confirmation where the
-        platform does so. ``file_types`` restricts the saved name's extension
-        where the platform's save dialog supports it; the macOS ``osascript``
-        fallback has no type filter and ignores it.
+        platform does so.
+
+        Args:
+            title: Dialog title; the platform's own when omitted.
+            initial_dir: Directory the dialog opens in; a leading ``~`` is the
+                home directory.
+            default_name: File name the dialog starts with.
+            file_types: Extensions the saved name is restricted to, where the
+                platform's save dialog supports it; the macOS ``osascript``
+                fallback has no type filter and ignores it.
         """
         return await _run_backend(
             lambda backend: backend.save_file(
@@ -610,7 +627,13 @@ class FileDialog:
         title: Optional[str] = None,
         initial_dir: Union[Path, str, None] = None,
     ) -> Optional[Path]:
-        """Pick an existing directory."""
+        """Pick an existing directory.
+
+        Args:
+            title: Dialog title; the platform's own when omitted.
+            initial_dir: Directory the dialog opens in; a leading ``~`` is the
+                home directory.
+        """
         return await _run_backend(
             lambda backend: backend.open_directory(
                 title=title,

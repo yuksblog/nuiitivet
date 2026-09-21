@@ -32,16 +32,6 @@ class BasicDialog(ComposableWidget):
 
     Displays a modal dialog with optional icon, title, content, and action buttons.
     Follows Material Design 3 dialog guidelines.
-
-    Args:
-        title: Optional title text (str or Observable).
-        message: Optional message text (str or Observable).
-        icon: Optional icon (str, Symbol, or Observable).
-        actions: list of action widgets (typically TextButtons).
-        style: Optional DialogStyle. If None, uses theme default.
-        width: Container width in dp. Per MD3 the basic dialog width is between
-            ``min_width`` (280) and ``max_width`` (560). Defaults to 280 (MD3 minimum).
-            Note: viewport-aware dynamic sizing is tracked as a separate enhancement.
     """
 
     def __init__(
@@ -66,11 +56,13 @@ class BasicDialog(ComposableWidget):
         """Initialize BasicDialog.
 
         Args:
-            title: Optional title text source.
-            message: Optional message text source.
-            icon: Optional icon source.
-            actions: Optional action widgets (typically buttons).
-            style: Optional dialog style override.
+            title: Title text, or an observable of it.
+            message: Message text, or an observable of it.
+            icon: Icon shown above the title: a ``Symbol``, an icon name, or
+                an observable of either.
+            actions: Action widgets, typically ``Button`` with
+                ``ButtonStyle.text()``.
+            style: Dialog style override; the theme's default when omitted.
             width: Container width in dp (MD3 range: 280-560). Defaults to 280.
             padding: Insets from the allocated rect to the dialog surface.
             key: Stable widget identity for dev-bridge targeting and hot reload.

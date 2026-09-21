@@ -299,6 +299,16 @@ class Observable(_ObservableValue[T]):
         compare: Optional[CompareFunc[T]] = None,
         dispatch: bool = True,
     ):
+        """Initialize Observable.
+
+        Args:
+            default: Initial value; as a class attribute, the value each instance
+                starts from.
+            compare: ``compare(old, new)`` returning whether the two are equal; a
+                write of an equal value notifies nobody. ``==`` when omitted.
+            dispatch: Whether a write from another thread is delivered on the UI
+                thread. ``False`` is for an observable no widget binds to.
+        """
         super().__init__(initial=default, owner=None, name=None, compare=compare, dispatch=dispatch)
         self.default = default
         self.name: Optional[str] = None
@@ -333,6 +343,15 @@ class Observable(_ObservableValue[T]):
 
     @staticmethod
     def compute(fn: Callable[[], T], *, dispatch: bool = True) -> "ComputedObservable[T]":
+        """Create a read-only observable whose value is ``fn()``.
+
+        It recomputes when an observable that *fn* read changes.
+
+        Args:
+            fn: Computes the value from the ``.value`` of other observables.
+            dispatch: Whether a change from another thread is delivered on
+                the UI thread. ``False`` is for a value no widget binds to.
+        """
         from .computed import ComputedObservable
 
         return ComputedObservable(fn, dispatch=dispatch)

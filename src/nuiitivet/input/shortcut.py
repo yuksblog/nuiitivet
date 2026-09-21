@@ -124,7 +124,9 @@ def produces_text(key: str, modifier_keys: int) -> bool:
 class Shortcut:
     """A key gesture: one key plus a mask of the modifiers held with it.
 
-    Args:
+    From a spec string such as ``"Accel+Shift+S"``: :meth:`parse`.
+
+    Attributes:
         key: The key name, normalized via :func:`normalize_key_name`
             (e.g. ``"s"``, ``"enter"``, ``"f1"``).
         modifiers: A bitmask of ``MOD_*`` values, which may include
@@ -271,7 +273,7 @@ class ShortcutBinding:
     than a bare callable so richer command semantics (``can_execute``, menu
     binding) can be added without changing every call site.
 
-    Args:
+    Attributes:
         shortcut: The gesture that triggers the binding.
         on_trigger: Called with no arguments when the gesture fires. May be sync
             or async.

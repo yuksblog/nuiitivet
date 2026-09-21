@@ -59,18 +59,6 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
 
     The slide-in edge and corner rounding are owned by
     ``MaterialOverlay.side_sheet(sheet, side=...)``, not by this widget.
-
-    Args:
-        content: Widget to display below the header.
-        headline: Header title text (str or Observable[str]). Required by M3.
-        on_back: Callback invoked when the Back icon button is pressed.
-            Back button visibility is controlled separately by *show_back_button*.
-        show_back_button: Whether to show the Back icon button.
-            Accepts ``bool`` or ``Observable[bool]`` for dynamic toggling
-            (e.g. driven by in-sheet navigation state). Defaults to ``False``.
-            The button is only rendered when this is truthy **and** *on_back* is
-            not ``None``.
-        style: Container style. Defaults to :class:`SideSheetStyle`.
     """
 
     def __init__(
@@ -89,10 +77,11 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         Args:
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
-            on_back: Callback for the Back icon button press.
-            show_back_button: Back button visibility (bool or Observable[bool]).
-                Defaults to ``False``. Rendered only when truthy **and** *on_back*
-                is not ``None``.
+            on_back: Callback invoked when the Back icon button is pressed.
+            show_back_button: Whether to show the Back icon button; an
+                ``Observable[bool]`` toggles it, e.g. from in-sheet navigation
+                state. Rendered only when truthy **and** *on_back* is not
+                ``None``.
             style: Container style. Defaults to :class:`SideSheetStyle`.
             padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -197,12 +186,6 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
     The Close button always dismisses the sheet through the overlay's unified
     dismissal pipeline. To intercept the close (for unsaved changes, etc.),
     attach a ``will_pop`` modifier.
-
-    Args:
-        content: Widget to display below the header.
-        headline: Header title text (str or Observable[str]). Required by M3.
-        style: Container size, background, and shape options.
-            Defaults to :class:`BottomSheetStyle`.
     """
 
     def __init__(
@@ -219,7 +202,8 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         Args:
             content: Widget to display below the header.
             headline: Header title text (str or Observable[str]).
-            style: Container style. Defaults to :class:`BottomSheetStyle`.
+            style: Container size, background and shape. Defaults to
+                :class:`BottomSheetStyle`.
             padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -308,22 +292,6 @@ class StandardSideSheet(ComposableWidget):
     when *opened* is a writable observable, when *on_close_click* is given, or
     both.  With a literal ``bool`` *opened* and no callback there is nothing a
     press could do, so no button is shown.
-
-    Args:
-        content: Widget to display inside the sheet.
-        opened: ``bool`` or writable ``Observable[bool]`` driving the
-            expand/collapse animation.  Defaults to ``True``.
-        on_close_click: Callback invoked when the close icon button is
-            pressed.  **Supplying it disables the default auto-close**: the
-            sheet no longer writes ``opened.value = False`` and updating
-            *opened* becomes the caller's responsibility.  This is the
-            interception point for confirm-before-close flows.
-        headline: Optional header title text (``str`` or
-            ``Observable[str]``).  When provided, an M3-compliant header row
-            is rendered above *content*.
-        side: Edge the sheet is attached to (``"right"`` or ``"left"``).
-            Defaults to ``"right"``.  The collapse anchor is derived from it.
-        style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
     """
 
     def __init__(
@@ -342,13 +310,17 @@ class StandardSideSheet(ComposableWidget):
 
         Args:
             content: Widget to display inside the sheet.
-            opened: ``bool`` or writable ``Observable[bool]``.  Defaults to
-                ``True``.
-            on_close_click: Callback for the close icon button.  Supplying it
-                disables the default ``opened.value = False`` auto-close.
-            headline: Optional header title (str or Observable[str]).
-            side: Attachment edge (``"right"`` or ``"left"``).
-                Defaults to ``"right"``.
+            opened: ``bool`` or writable ``Observable[bool]`` driving the
+                expand/collapse animation.
+            on_close_click: Callback invoked when the close icon button is
+                pressed.  **Supplying it disables the default auto-close**:
+                the sheet does not write ``opened.value = False``, and
+                updating *opened* is the caller's job.  This is the
+                interception point for confirm-before-close flows.
+            headline: Header title (str or Observable[str]).  When given, an
+                M3 header row is rendered above *content*.
+            side: Edge the sheet is attached to (``"right"`` or ``"left"``);
+                the sheet collapses toward it.
             style: Container style.  Defaults to :class:`StandardSideSheetStyle`.
             padding: Insets from the allocated rect to the sheet.
             key: Stable widget identity for dev-bridge targeting and hot reload.
