@@ -12,134 +12,167 @@
 
 ## What Nuiitivet is
 
-Large language models lowered the bar for building an app. Nuiitivet is a
-framework built for the case that follows from it: **making a desktop app
-together with an AI.**
+Nuiitivet has two themes.
 
-Not just having the model write code, but a development loop the two of you
-share: **what gets written becomes a screen immediately, you and the assistant
-can talk about that screen, and it gets fixed on the spot.** And when you would
-rather fix it yourself, the screen takes you straight to the code that built
-it.
+### Exploring what a UI framework should be in the age of AI agents
 
-And because the desktop is the premise, the problems only desktop apps run
-into already have answers: **worker threads that dispatch onto the UI
-thread**, **OS integration from file dialogs to the tray icon**, and
-**shipping an executable**. What is still missing is listed plainly in
-[5. Current limitations](#5-current-limitations).
+Ask a coding agent, and the first version of an app is on screen in no time.
+It is rarely the version you wanted, so a back-and-forth follows.
+
+- **Refine** — the back-and-forth that brings what works closer to what you
+  want.
+- **Debug** — the back-and-forth that fixes what behaves wrong.
+
+Both can be done through chat, and you have probably felt how hard some of it
+is to put into prose.
+
+With Nuiitivet, you drag, mark and comment on the running app itself. The
+agent looks at the same screen, edits, drives it, and checks. The centre of
+your communication with the agent moves from the chat to the app. The
+back-and-forth stops being a matter of explaining in prose and becomes a
+matter of showing each other on the screen. That is far more intuitive.
+
+### A UI framework specialised in desktop apps for Python
+
+It sits between Tkinter and PyQt / PySide. It is more modern to write than
+Tkinter: a declarative widget tree, reactive state, Material Design 3. It does
+not aim at the large applications PyQt serves. The target is small to
+mid-sized apps, and what there is to learn is in proportion.
+
+The code looks like Flet's. Flet targets many platforms, mobile and web
+included; Nuiitivet looks at the desktop alone.
+
+The biggest difference is state management. `Observable` is modelled on
+ReactiveProperty, a library widely used with WPF's MVVM: Rx operators work
+directly on a reactive value. And the switch from a worker thread back to the
+UI thread — where things tend to go wrong — is done by `Observable` for you.
+
+OS integration and shipping an executable are there too. What is still
+missing is listed plainly in [5. Current limitations](#5-current-limitations).
 
 ---
 
-## 1. Building with an AI
+## 1. Building with a coding agent
 
-Getting an AI to write code is something any framework can do. What Nuiitivet
-has is the loop that comes after. Here it is, piece by piece.
-
-All of it turns on when you launch through the dev runner.
+Everything in this chapter turns on when you launch through the dev runner.
 
 ```bash
 python -m nuiitivet.dev run app.py
 ```
 
-### 1.1 Hot reload, state intact
+A saved change shows up on the screen, on the spot.
+
+### 1.1 Refine
+
+The back-and-forth that brings what works closer to what you want. There are
+three things you can do on the app's own screen.
+
+#### Write the prompt on the app
+
+Some instructions are hard to put into words in chat. In an app with many
+widgets, **where** is the hard part.
+
+`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters comment mode. Click a widget as
+it is, or drag over an area where there is nothing to click, and write your
+comment right there, on what you marked. There is no need to work out how to
+say where: you point with the mouse.
+
+When you are done, run `/nuiitivet-see-comments` in chat. The agent reads the
+comments, changes the app as they say, and drives the app itself to check.
+
+![Write the prompt on the app](docs/assets/readme_1.3.gif)
+
+#### Change the layout directly
+
+A size, an alignment, the order inside a `Row`: some changes are not worth an
+instruction. They are all layout.
+
+`Ctrl+Shift+E` (`Cmd+Shift+E` on macOS) enters layout edit mode. Drag the
+app's own screen to change the layout. The change is written into the source
+code. It costs no turn and no tokens.
+
+#### Jump to the source, to check it or edit it
+
+Even when an agent writes the code, human code review does not go to zero.
+And a senior engineer is sometimes faster writing the code than instructing an
+agent.
+
+`Ctrl+Shift+Click` (`Cmd+Shift+Click` on macOS) opens the source code that
+built the widget you clicked, in your editor. The code you want to check, or
+to edit, is one click away.
+
+![Jump to the source](docs/assets/readme_1.5.gif)
+
+### 1.2 Debug
+
+The back-and-forth that fixes what behaves wrong. Here there are two things
+the agent can do.
+
+#### The agent sees the app, and drives it
+
+- **See** — the widget tree, the live `Observable` values behind it, a
+  screenshot
+- **Act** — click, type, scroll, send keys. Targets are named by `key` /
+  `label` rather than coordinates, so they survive a layout change
+- **Wait** — for async work to settle
+
+So you can ask it to "use this app like a user would". Below, the agent drives
+the app, checks the result, and finds a bug on the way.
+
+![The agent drives the app](docs/assets/readme_1.2.gif)
+
+#### The agent sees what you did, too
+
+Writing down the steps that reproduce a bug is a chore. The
+[dev bridge](#the-dev-bridge) records the actions you took in the app. For
+privacy, the text you type is never recorded.
+
+So you walk into the bug once, by hand, and that is enough. Write "this
+happened" on the spot in comment mode, or say it in chat. The agent reads the
+record, replays the same actions, sees the symptom for itself, and then fixes
+it.
+
+The example below is a "works sometimes, fails sometimes" case. Every attempt
+is in the record, so the agent compares them and finds the one step that
+differed.
+
+![The agent compares the attempts](docs/assets/readme_1.2.png)
+
+### 1.3 What makes this possible
+
+#### The UI is all Python
+
+Python is all you read and all you write. There is no new language to learn,
+and it is a language the agent writes well.
+
+A widget is a Python object, and each one corresponds to one expression in
+your code. That is why an edit made on a displayed widget can be written
+straight back into the code, and why the source jump works.
+
+#### Hot reload
 
 Every save **hot reloads** the app: the window is rebuilt **in place**, no
 restart. And the state your `Observable`s hold **survives** — the screen you
 reached with twelve clicks is not thrown away because you saved a file.
-
-Reloads also go through with a VS Code **F5** debug session attached. Your
+Reloads also go through with a VS Code **F5** debug session attached, and your
 breakpoints stay.
 
-And when a save does not compile, the reload is skipped and the old screen
-stays alive — the assistant can tell, so it never mistakes a stale screen for
-your latest code.
+#### The dev bridge
 
-### 1.2 The assistant can see it, and drive it
+The dev bridge is an MCP server. MCP is the standard that connects agents to
+tools, so no per-agent plugin is needed: Claude Code or GitHub Copilot, it
+works the same way.
 
-The dev runner also starts the **dev bridge** — an MCP server alongside your
-app. Through it, the assistant can:
+It opens only under the dev runner and listens only on localhost. It is not
+part of the app you ship.
 
-- **See** — the widget tree, the live `Observable` values behind it, a screenshot
-- **Act** — click, type, scroll, send keys. Targets are named by `key` / `label`
-  rather than coordinates, so they survive a layout change
-- **Wait** — for async work to settle, instead of racing it
+#### The intuitive grammar
 
-Together, that is an E2E test the assistant runs for you. Ask it to use the
-app like a user would — below, it drives the app, checks the result, and finds
-a bug on the way.
+A jump to the code is no use if the code it lands on cannot be read: no
+review, no touch-up. Nuiitivet takes the good parts of several frameworks,
+aiming at a grammar that is intuitive to read and to write.
 
-![See & drive](docs/assets/readme_1.2.gif)
-
-One tool is left, and it points the other way — at what already *happened*:
-
-- **Read** — the app's logs, the exceptions swallowed to keep the app alive,
-  and the UI actions **you** took. That last one keeps your steps out of
-  prose:
-  - **Reporting a bug** — walk into it once by hand; the repro steps are
-    already in the log
-  - **Directing an E2E test** — run the flow once by hand; the demonstration
-    *is* the instruction
-
-How far that goes: even "it works sometimes and not others" is enough. Below,
-the log holds each attempt, so the assistant diffs them and finds the one
-step that differed — without the user ever putting the steps into words.
-
-![Read](docs/assets/readme_1.2.png)
-
-### 1.3 You point at something, and write on it
-
-Naming a location in prose is the weak link. An inner widget with no `key`
-and no distinctive text is hard; **a gap, where nothing was painted at all**,
-is nearly impossible.
-
-`Ctrl+Shift+C` (`Cmd+Shift+C` on macOS) enters comment mode — `C` for
-*comment*. **Click a widget or drag over an area, press `Enter`, and write what
-you want done there.** Each mark gets a numbered badge, and the assistant sees
-the same numbers and the same words — so "fix comment 2" simply works,
-and three comments are one turn. Then run `/nuiitivet-see-comments` in chat.
-
-![Point at something](docs/assets/readme_1.3.gif)
-
-### 1.4 Skills keep it idiomatic
-
-Plainly: **the assistant does not know Nuiitivet.** There is not enough of it in
-the training data. Worse, it looks like Flutter / SwiftUI / Compose / Rx — on purpose, as
-[1.6](#16-intuitive-to-write-intuitive-to-read) explains — so left alone the
-assistant **imports habits from elsewhere** — wrapping things in a
-`SizedBox`, hunting for `setState`.
-
-The three bundled skills exist for that.
-
-- **`nuiitivet-app`** — keeps the code idiomatic. Ships with a linter
-- **`nuiitivet-debug`** — teaches launching the app and working the dev bridge,
-  down to checking the tree before spending a screenshot
-- **`nuiitivet-see-comments`** — reads the comments you left in the app and acts
-  on them, one turn for all of them; `/nuiitivet-see-comments` in Claude Code
-
-Even so, you will get results you do not like. That is what the next part is
-for.
-
-### 1.5 You take over
-
-**`Ctrl+Shift+Click`** (`Cmd+Shift+Click` on macOS) **opens the code that built
-that widget, in your editor** — in comment mode or out of it.
-
-![Take over](docs/assets/readme_1.5.gif)
-
-VS Code works as installed. For another editor, pass its URL scheme:
-
-```bash
-python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
-```
-
-Which only works if what you land on is readable.
-
-### 1.6 Intuitive to write, intuitive to read
-
-Nuiitivet looks like other frameworks on purpose. The parts that were already
-intuitive elsewhere are kept, so you write in a grammar you know:
-
-- **Flutter** — the widget tree; a screen is a value you assemble
+- **Flutter** — the widget tree
 - **SwiftUI / Compose** — modifiers that chain
 - **CSS** — spacing with `padding` and `gap` alone, no `margin`; `Grid` cells
   placed by area name
@@ -153,12 +186,20 @@ Where it departs from them, it is to keep the code readable:
 - Decoration and behavior are attached as **modifiers**, chained with `|`
 - Event handlers are written as **procedures**, not declarations
 
-What the screen shows is declared; what happens on a click is a procedure.
-Each half is written the way a person already thinks about it — that is what
-makes it intuitive.
-
 [The intuitive grammar](docs/guide/intuitive_grammar.md) walks through it with
 code.
+
+#### Skills
+
+Plainly: the agent does not know Nuiitivet. There is not enough of it in the
+training data. The bundled skills fill that gap.
+
+- **`nuiitivet-app`** — keeps the code idiomatic. Ships with a linter
+- **`nuiitivet-debug`** — teaches the agent hot reload and the dev bridge:
+  launch, see, act, check, down to reading the tree before spending a
+  screenshot
+
+Installing them is in [3.2 Installation](#32-installation).
 
 ---
 
@@ -303,20 +344,37 @@ uv add --dev 'nuiitivet[dev]'
 MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
 an AI effectively requires the extra — install it up front.
 
-Then install the bundled skills from
-[1.4](#14-skills-keep-it-idiomatic) into your assistant. The package bundles
+Then install the bundled [skills](#skills) into your agent. The package bundles
 them, so what you install matches the nuiitivet version you have:
 
 ```bash
 python -m nuiitivet.skills install
 ```
 
-Where skills belong differs by assistant: by default this writes to Claude's
+Where skills belong differs by agent: by default this writes to Claude's
 project skills directory, `.claude/skills/`; point `--dest` at another
-assistant's. Re-run it after upgrading nuiitivet. The other channels — the
+agent's. Re-run it after upgrading nuiitivet. The other channels — the
 Claude Code plugin (which also wires up the dev bridge MCP server) and copying
 by hand — are covered in the
 [install page](docs/guide/ai_pair_programming/install_skills.md).
+
+Finally, register the dev bridge's MCP server with your agent, so it can see
+and drive the app. Add this to your MCP host's configuration:
+
+```json
+{
+  "mcpServers": {
+    "nuiitivet-dev": {
+      "command": ".venv/bin/python",
+      "args": ["-m", "nuiitivet.dev", "mcp"]
+    }
+  }
+}
+```
+
+The Claude Code plugin does this for you.
+[Dev Bridge MCP](docs/guide/ai_pair_programming/dev_bridge_mcp.md) has the
+details, Windows paths included.
 
 ### 3.3 Your first app
 
@@ -359,11 +417,11 @@ if __name__ == "__main__":
     main()
 ```
 
-### 3.4 Into the loop
+### 3.4 Run it under the dev runner
 
 `python app.py` works, but during development, use the dev runner. Everything
-described above — hot reload, the dev bridge, comment mode, the source jump —
-turns on here.
+described above — hot reload, the dev bridge, comment mode, layout edit mode,
+the source jump — turns on here.
 
 ```bash
 python -m nuiitivet.dev run app.py
@@ -411,7 +469,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 | Guide | Summary |
 | ----- | ------- |
 | [Concurrency](docs/guide/concurrency.md) | Choosing a concurrency tool, and safe UI updates from background work. |
-| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | The development loop, the MCP dev bridge, and the skills. |
+| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Refine and Debug with a coding agent: the on-screen modes, hot reload, the dev bridge, and the skills. |
 | [Packaging](docs/guide/packaging.md) | Ship your app to users. |
 
 ---
