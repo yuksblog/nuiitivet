@@ -96,6 +96,8 @@ SAMPLES = [
     ("samples/navigation/route.py", "navigation_route.png"),
     ("samples/navigation/intent.py", "navigation_intent.png"),
     ("samples/navigation/nested.py", "navigation_sub.png"),
+    # The intuitive grammar
+    ("samples/intuitive_grammar/counter_card.py", "intuitive_grammar_counter_card.png"),
     # README samples
     ("samples/readme/readme_counter_app.py", "readme_counter.png"),
     # Window Chrome

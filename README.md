@@ -139,58 +139,26 @@ Which only works if what you land on is readable.
 Nuiitivet looks like other frameworks on purpose. The parts that were already
 intuitive elsewhere are kept, so you write in a grammar you know:
 
-- **Flutter** — the widget tree and `build()`; a screen is a value you assemble
+- **Flutter** — the widget tree; a screen is a value you assemble
 - **SwiftUI / Compose** — modifiers that chain
-- **CSS** — `padding`, `gap`, `width` as short parameters
+- **CSS** — spacing with `padding` and `gap` alone, no `margin`; `Grid` cells
+  placed by area name
 - **WPF** — `Grid` layout, `*`-style weight sizing (`"wt"` here), and
   ReactiveProperty for state (that one is a desktop matter, so it waits for
   [2.1 ReactiveProperty-style state](#21-reactiveproperty-style-state))
 
-Where it departs from them, it is to keep the code readable. The clearest
-case is nesting. Written Flutter-style, decoration piles up as wrappers.
+Where it departs from them, it is to keep the code readable:
 
-```python
-# the nesting grows
-Padding(
-    padding=EdgeInsets.all(12),
-    child=SizedBox(
-        width=200,
-        child=Text("Hello"),
-    ),
-)
-```
+- Decoration is a **parameter**, not a wrapper, so the nesting does not grow
+- Decoration and behavior are attached as **modifiers**, chained with `|`
+- Event handlers are written as **procedures**, not declarations
 
-In Nuiitivet, those are parameters.
+What the screen shows is declared; what happens on a click is a procedure.
+Each half is written the way a person already thinks about it — that is what
+makes it intuitive.
 
-```python
-nv.Text("Hello", padding=12, width=200)
-```
-
-Decoration and behavior are attached as **modifiers** rather than wrapped
-around, and they chain with `|`.
-
-```python
-nv.Button("OK").modifier(
-    nv.tooltip("Submit") | nv.clickable(...) | nv.background("#2196F3")
-)
-```
-
-![Modifier](docs/assets/readme_modifier.png)
-
-Event handlers like `on_click()` are written **imperatively**, not
-declaratively. Read a value, change it, branch on the result — that is a
-procedure, and it reads best as one.
-
-```python
-def handle_increment(self):
-    print(f"Current count: {self.count.value}")
-    self.count.value += 1
-    if self.count.value % 10 == 0:
-        print("Milestone reached!")
-```
-
-**Logic to UI declaratively. UI to logic imperatively.** Each half is written
-the way a person already thinks about it — that is what makes it intuitive.
+[The intuitive grammar](docs/guide/intuitive_grammar.md) walks through it with
+code.
 
 ---
 
@@ -416,6 +384,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 
 | Guide | Summary |
 | ----- | ------- |
+| [The intuitive grammar](docs/guide/intuitive_grammar.md) | What is borrowed from Flutter, SwiftUI / Compose, CSS and WPF, in one small card. |
 | [Layout](docs/guide/layout/index.md) | Build UIs with widgets and parameters. |
 | [State Management](docs/guide/state-management/index.md) | Reactive `Observable` state that auto-updates the UI. |
 | [Modifiers](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |

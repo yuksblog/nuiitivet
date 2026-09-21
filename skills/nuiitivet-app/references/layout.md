@@ -21,7 +21,7 @@ nv.Column([a, b, c], gap=20, padding=20, cross_alignment="center")
 nv.Row([x, y], gap=8, cross_alignment="center")
 ```
 
-### padding tuple order — horizontal-first, NOT CSS
+### padding tuple order — horizontal first, like every pair
 
 `padding` takes three forms:
 
@@ -29,9 +29,10 @@ nv.Row([x, y], gap=8, cross_alignment="center")
 - `(h, v)` → **horizontal** (left/right), then **vertical** (top/bottom)
 - `(l, t, r, b)` → left, top, right, bottom
 
-The 2-tuple is **horizontal-first**, the *opposite* of CSS's
-`padding: <vertical> <horizontal>`. `padding=(16, 8)` = 16px left/right, 8px
-top/bottom — do not carry over the CSS order. `None` means no padding.
+Every pair is **horizontal first, then vertical** — `padding`, `alignment`,
+`translate`. `padding=(16, 8)` = 16px left/right, 8px top/bottom. CSS writes
+`padding: <vertical> <horizontal>`; do not carry that order over. `None` means
+no padding.
 
 ## Alignment is positioning only — never sizing
 

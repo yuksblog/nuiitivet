@@ -37,10 +37,9 @@ content = nv.Column(
 
 Passing `None` (or omitting `padding`) means no padding (`0` on all sides).
 
-> **Warning:** The two-element form is **horizontal-first** (`(horizontal, vertical)`),
-> which is the *opposite* of CSS's `padding: <vertical> <horizontal>` shorthand. If you
-> have web experience, `padding=(16, 8)` here means 16px left/right and 8px top/bottom —
-> not the CSS meaning of 16px top/bottom and 8px left/right.
+Every pair in Nuiitivet is **horizontal first, then vertical**: `padding=(16, 8)` is
+16px left/right and 8px top/bottom, just as `alignment` and `translate` take x before
+y. CSS writes its `padding` shorthand the other way round.
 
 ```python
 import nuiitivet.material as nv
