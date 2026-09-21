@@ -1,7 +1,7 @@
 """Comment mode: the gesture layer that turns the human's clicks and typing into comments.
 
 The input half of :mod:`nuiitivet.dev.comments`, on the backend's real input
-handlers, which the assistant's synthesized actions bypass: a comment is always
+handlers, which the agent's synthesized actions bypass: a comment is always
 the human's. Latched on ``Ctrl+Shift+C``; while latched every event is consumed,
 so a click marks the widget instead of firing it.
 

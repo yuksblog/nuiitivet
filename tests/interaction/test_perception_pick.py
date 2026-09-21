@@ -395,7 +395,7 @@ def test_a_clipped_nodes_reported_rect_is_what_survives_the_clip() -> None:
     """What the human sees drawn, and what the payload says, must be one rect.
 
     Reporting the layout rect drew a bracket across a neighbouring pane and told
-    the assistant the designation covered it -- the visible symptom that led
+    the agent the designation covered it -- the visible symptom that led
     here.
     """
     bubble, _tile, root = _clipped_tile()

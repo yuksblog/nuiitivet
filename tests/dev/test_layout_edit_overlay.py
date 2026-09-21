@@ -1,7 +1,7 @@
 """Tests for the layout-mode overlay.
 
 Same load-bearing property as the selection overlay: nothing here enters the
-widget tree, so the assistant's perception never sees a ghost.
+widget tree, so the agent's perception never sees a ghost.
 """
 
 from __future__ import annotations

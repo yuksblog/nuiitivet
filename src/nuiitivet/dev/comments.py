@@ -1,4 +1,4 @@
-"""The human's comments: the widgets and areas they marked, and what they wrote on each, for the assistant to pull.
+"""The human's comments: the widgets and areas they marked, and what they wrote on each, for the agent to pull.
 
 A mark is a node (a widget is the subject) or a region (an area is, whatever
 occupies it), numbered in one sequence; each may carry an instruction, and a
@@ -341,7 +341,7 @@ class Comments:
 
     @property
     def unread(self) -> bool:
-        """Whether the marks changed since the assistant last read them.
+        """Whether the marks changed since the agent last read them.
 
         ``False`` while a session is open, and unaffected by a hot reload.
         """

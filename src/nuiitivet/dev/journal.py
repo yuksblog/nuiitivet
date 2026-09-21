@@ -1,20 +1,20 @@
 """Reload journal: a pull-able record of recent hot-reload events (dev-only).
 
-The dev bridge is AI-initiated: the assistant reads (``describe_tree`` /
+The dev bridge is agent-initiated: the agent reads (``describe_tree`` /
 ``screenshot``) and acts (``click`` / ``type`` / ``key``) on its own turns, but
 has no way to notice what changed *between* turns. In a pair session the human
-edits and saves while the assistant is mid-task, so its cached ``describe_tree``
+edits and saves while the agent is mid-task, so its cached ``describe_tree``
 and its assumptions about the source both go stale. The most damaging case is a
 **failed** reload: the human saves, it errors, the previous UI keeps running,
-and the assistant -- unaware -- keeps operating against a tree that no longer
+and the agent -- unaware -- keeps operating against a tree that no longer
 reflects the code it is reading.
 
 This module records each reload the controller performs into a bounded ring
-buffer, exposed as a perception surface the assistant pulls when it wants (see
-``bridge.py``'s ``/reload_log`` and the ``reload_log`` MCP tool). An AI pair acts
+buffer, exposed as a perception surface the agent pulls when it wants (see
+``bridge.py``'s ``/reload_log`` and the ``reload_log`` MCP tool). An agent acts
 in turns, not a continuous attention loop, and MCP is request/response -- so a
 pull-able log is a natural fit alongside ``describe_tree`` / ``screenshot``,
-letting the assistant detect "the code changed under me -- and did it even
+letting the agent detect "the code changed under me -- and did it even
 compile?" and decide on its own to re-read files / re-``describe_tree`` before
 acting.
 
@@ -31,14 +31,14 @@ from dataclasses import dataclass
 from itertools import count
 from typing import Any, Deque, Iterable, Optional
 
-# Default number of reload events retained. Small: an assistant only needs the
+# Default number of reload events retained. Small: an agent only needs the
 # recent tail to notice "the code changed under me since my last turn".
 DEFAULT_CAPACITY = 50
 
 # Upper bound on a recorded traceback, in characters. A failed reload's
 # traceback is the same failure already surfaced on the console and app banner;
 # the head carries the message and the innermost frames, which is what the
-# assistant needs to reason about the break. Capped so a pathological traceback
+# agent needs to reason about the break. Capped so a pathological traceback
 # can never dominate the response.
 _TRACEBACK_CAP = 4000
 
@@ -70,7 +70,7 @@ class ReloadEvent:
         changed: Names of the modules whose *source actually changed* since the
             previous reload, detected by content hash. An empty list means a
             no-op save (the file's mtime changed but its bytes did not, e.g. an
-            editor autosave or formatter re-save): the assistant can skip
+            editor autosave or formatter re-save): the agent can skip
             re-reading. A non-empty list pinpoints exactly which file(s) the
             human edited, so a re-read can target them.
         error: The failure traceback (error only; ``None`` on success), capped.

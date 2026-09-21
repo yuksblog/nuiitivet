@@ -26,7 +26,7 @@ class ActionNotHandledError(RuntimeError):
 
     ``type()`` with no focused widget, or ``key()`` with nothing bound to the
     keystroke, dispatches the input into an app that ignores it. The dev bridge
-    reports that as ``handled: False`` and lets the assistant read it; an
+    reports that as ``handled: False`` and lets the agent read it; an
     ``assert`` does not read it, so the same result here would let a test go
     green on input that never arrived. Pass ``require_handled=False`` to the verb
     to get the result dict back instead and assert on it.
@@ -43,7 +43,7 @@ class WaitTimeoutError(TimeoutError):
     A :class:`TimeoutError`, so ``pytest.raises(TimeoutError)`` catches it and a
     suite that already treats timeouts as a category needs no new import. Note
     the deliberate divergence from the dev bridge, whose ``wait_for`` reports
-    ``timed_out: True`` and never raises: an assistant reads that result and
+    ``timed_out: True`` and never raises: an agent reads that result and
     decides what to do, while an ``assert`` does not read it at all.
     """
 

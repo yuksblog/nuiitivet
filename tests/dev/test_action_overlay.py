@@ -1,7 +1,7 @@
 """Tests for the human-only dev action overlay.
 
 The overlay visualizes AI-driven ``click`` / ``scroll`` / ``type`` / ``key`` actions for a
-human watching hot reload, without ever entering the assistant's perception. The
+human watching hot reload, without ever entering the agent's perception. The
 critical properties verified here: recording is gated on a live dev session +
 window (no-op under headless / tests), markers live outside the widget tree so
 ``describe_tree`` stays clean, typed content is never captured, consecutive
@@ -363,7 +363,7 @@ def test_actions_never_appear_in_describe_tree() -> None:
 
     # Markers were recorded for the human...
     assert len(_reg(app).markers) >= 1
-    # ...but the tree the assistant perceives is byte-for-byte unchanged, and the
+    # ...but the tree the agent perceives is byte-for-byte unchanged, and the
     # typed content never leaks into it.
     after = describe_tree(root)
     assert after == before

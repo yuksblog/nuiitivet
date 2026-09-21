@@ -1,11 +1,11 @@
-"""The bridge's :class:`~nuiitivet._interaction.action.ActionObserver`: draw what the assistant did.
+"""The bridge's :class:`~nuiitivet._interaction.action.ActionObserver`: draw what the agent did.
 
 The action verbs are silent on their own. The bridge is the driver that wants
-them not to be: when the assistant drives the app the screen updates by itself,
+them not to be: when the agent drives the app the screen updates by itself,
 and without a marker the human watching cannot tell which action caused it.
 
 Every hook is best-effort. A marker is a courtesy to the human, so a failure to
-draw one must never turn a working action into an error the assistant has to
+draw one must never turn a working action into an error the agent has to
 reason about.
 """
 

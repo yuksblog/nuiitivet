@@ -1,6 +1,6 @@
 """Dev bridge: a localhost control channel into the running app (dev-only).
 
-Every "live" operation an assistant might perform on a running app -- read the
+Every "live" operation an agent might perform on a running app -- read the
 tree, screenshot it, later click or type -- needs the same primitive: post a
 request onto the app's UI thread and return the result. Hot reload already owns
 that primitive (watcher thread -> flag -> ``pyglet.clock`` drain on the UI
@@ -329,7 +329,7 @@ def _build_status(
 
     A thin roll-up over existing primitives -- the app (title + blank-frame
     probe, read on the UI thread), the reload journal (newest reload outcome),
-    and the runtime journal (retained error count) -- so an assistant can answer
+    and the runtime journal (retained error count) -- so an agent can answer
     "is it up and healthy?" without the widget tree or a screenshot. Reaching
     this code at all means the bridge is up, so ``running`` is always ``True``;
     a *stopped* app surfaces earlier as a failed discovery on the client.
@@ -344,7 +344,7 @@ def _build_status(
         "error_count": _error_count(runtime_journal),
         # A pull-only surface nobody calls does not exist. ``status`` is the
         # cheapest tool and the one called first, so it is the most reliable
-        # place for an assistant to notice the human marked something.
+        # place for an agent to notice the human marked something.
         "comments": comments.summary() if comments is not None else None,
     }
 
@@ -374,7 +374,7 @@ def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict
 
     Returns a structured result (never raises on timeout): ``satisfied`` is the
     outcome, ``timed_out`` distinguishes a miss from a hit, and ``waited`` /
-    ``polls`` report the effort so the assistant can decide its next step.
+    ``polls`` report the effort so the agent can decide its next step.
 
     Raises:
         ValueError: If the condition is empty or the numeric params are invalid.

@@ -1,16 +1,17 @@
-"""Human-facing visualization of AI-driven dev-bridge actions.
+"""Human-facing visualization of agent-driven dev-bridge actions.
 
-When an assistant drives a running app through the dev bridge (``click`` /
+When an agent drives a running app through the dev bridge (``click`` /
 ``scroll`` / ``type`` / ``key``), hot reload makes the screen update on its own -- but a human
-watching cannot tell *what the assistant just did*. This module draws a
+watching cannot tell *what the agent just did*. This module draws a
 short-lived, human-only marker for each synthesized action so the human can
-follow the AI's side of the pair-programming loop in real time.
+follow the agent's side of the pair-programming loop in real time.
 
 It is the mirror image of :mod:`nuiitivet.dev.interaction`: that closes the loop
-in one direction (letting the AI catch up on what the *human* did); this closes
-the reverse direction (letting the *human* observe what the *AI* is doing).
+in one direction (letting the agent catch up on what the *human* did); this
+closes the reverse direction (letting the *human* observe what the *agent* is
+doing).
 
-Critical constraint -- the overlay must never pollute the assistant's
+Critical constraint -- the overlay must never pollute the agent's
 perception:
 
 * Markers live in a paint-only registry, **outside the widget tree**, so
@@ -18,7 +19,7 @@ perception:
   sees them.
 * :func:`paint_markers` is invoked only from the *live* frame paths (GPU /
   raster). The off-screen ``screenshot`` render
-  (:meth:`App._render_snapshot`) deliberately does not call it, so the assistant
+  (:meth:`App._render_snapshot`) deliberately does not call it, so the agent
   never sees its own residue nor pays image tokens for it.
 
 Each marker fades on its own timeline driven by the frame clock, so consecutive
@@ -70,7 +71,7 @@ _MAX_CAPTIONS = 5
 # Repaint pump cadence while any marker is alive (matches the animation clock).
 _PUMP_INTERVAL = 1 / 60.0
 
-# Accent that reads as "the assistant", distinct from app chrome (MD3 tertiary-ish).
+# Accent that reads as "the agent", distinct from app chrome (MD3 tertiary-ish).
 _ACCENT = (124, 77, 255)  # indigo/violet
 
 

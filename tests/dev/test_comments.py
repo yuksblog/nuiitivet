@@ -132,7 +132,7 @@ def test_undo_outside_a_session_does_nothing() -> None:
 
 
 def test_seq_bumps_on_every_change() -> None:
-    """What lets an assistant notice a mark from the cheap status roll-up."""
+    """What lets an agent notice a mark from the cheap status roll-up."""
     node = Text("A")
     comments = Comments()
     seen = [comments.summary()["seq"]]
@@ -195,7 +195,7 @@ def _tree(label: str) -> Column:
 
 
 def test_restore_re_resolves_members_by_structural_path() -> None:
-    """The normal case: the assistant's own fix rebuilds the tree mid-mark."""
+    """The normal case: the agent's own fix rebuilds the tree mid-mark."""
     old = _tree("BEFORE")
     with mount(old) as host:
         host.layout(300, 200)
@@ -604,7 +604,7 @@ def test_the_summary_counts_marks_that_carry_text() -> None:
 
         summary = comments.summary()
         assert summary["instructions"] == 1
-        assert summary["seq"] > before, "an assistant polling status must notice the text"
+        assert summary["seq"] > before, "an agent polling status must notice the text"
 
 
 def test_an_instruction_survives_a_reload_with_its_mark() -> None:

@@ -74,7 +74,7 @@ class TargetNotVisibleError(TargetNotFoundError):
 
     Scrolled out of its region, or covered by something on top. A subclass of
     :class:`TargetNotFoundError` so it rides the bridge's existing 404 branch:
-    either way the assistant cannot act on the target as things stand, and the
+    either way the agent cannot act on the target as things stand, and the
     message says which it is.
     """
 

@@ -2,7 +2,7 @@
 
 The sibling of :mod:`.comment_mode`, on the same real input handlers, with the
 opposite division of labour. Comment mode is how the human *says* something to
-the assistant; this is how they *do* something with no assistant in the loop.
+the agent; this is how they *do* something with no agent in the loop.
 A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
 ``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
 the widget's siblings, a cell, or another container's children

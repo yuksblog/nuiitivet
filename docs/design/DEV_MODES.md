@@ -1,13 +1,13 @@
 # Dev Modes
 
 > Status: Implemented (comment mode, source jump, layout edit mode)
-> Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
+> Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the coding agent's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
 ## 1. Goal
 
-Every bridge surface runs assistant → app. The dev modes run the other way:
+Every bridge surface runs agent → app. The dev modes run the other way:
 they let the **human point at a widget** and have something happen to it —
-a mark the assistant can read, an editor opened on the line that built it, or
+a mark the agent can read, an editor opened on the line that built it, or
 its source rewritten by a drag. Prose is an expensive channel for a location,
 and for two cases it barely works at all: an anonymous inner node no phrase
 identifies, and a *gap* with no widget to name.
@@ -16,7 +16,7 @@ Three gestures share one input layer and one prefix:
 
 | Gesture | Chord | Kind | Effect |
 | --- | --- | --- | --- |
-| Comment mode | `Ctrl+Shift+C` | latched mode | marks widgets and regions for the assistant, with an instruction typed on the mark (a *comment*) |
+| Comment mode | `Ctrl+Shift+C` | latched mode | marks widgets and regions for the agent, with an instruction typed on the mark (a *comment*) |
 | Layout Edit mode | `Ctrl+Shift+E` | latched mode | a corner drag rewrites `width` / `height` / `size` in the source |
 | Source jump | `Ctrl+Shift+Click` | modeless | opens the widget's construction site in the editor |
 
@@ -31,7 +31,7 @@ HUD and the guide carries its verb, so the letter is learned with the word.
 ```mermaid
 flowchart TB
     human[Human]
-    assistant[Assistant]
+    agent[Coding agent]
     subgraph backend[pyglet backend · real input handlers]
         recorder[interaction recorder]
         subgraph layers[dev input layers · offered in this order]
@@ -49,16 +49,16 @@ flowchart TB
 
     human -- "mouse · keys" --> recorder --> jump
     jump -- "not consumed" --> comment -- "not consumed" --> layout -- "not consumed" --> dispatch
-    assistant -- "click · type · key (synthesized)" --> dispatch
+    agent -- "click · type · key (synthesized)" --> dispatch
     jump --> editor
-    comment -- marks, instructions --> comments --> bridge --> assistant
+    comment -- marks, instructions --> comments --> bridge --> agent
     layout -- writes --> file --> reload --> dispatch
 ```
 
 The layers sit on the backend's *real* input handlers — the same place the
-interaction recorder hangs — and the assistant's synthesized actions enter
+interaction recorder hangs — and the agent's synthesized actions enter
 below them at the app's dispatch. That is what makes a comment
-unforgeable: nothing the assistant does can reach a mode. What each mode
+unforgeable: nothing the agent does can reach a mode. What each mode
 produces leaves by a different door — the comments through the bridge, the
 jump through the platform's URL opener, a layout edit through the file and the
 reload that follows.
@@ -84,8 +84,8 @@ reload that follows.
 
 Comment mode records what the human pointed at, as nodes and as regions, and
 what they wrote on each mark, and the bridge serves the result to the
-assistant, with a roll-up on `status` and a content-free marker on the
-interaction journal so the assistant notices a comment without being told. A
+agent, with a roll-up on `status` and a content-free marker on the
+interaction journal so the agent notices a comment without being told. A
 comment is a mark with an optional instruction: a bare number is a whole
 comment, and the human says what it means in chat, by number.
 
@@ -118,16 +118,16 @@ comment, and the human says what it means in chat, by number.
   file behind the field.
 - **The read prompt.** Once a session is committed with marks in it, the
   badge's home says what to type in chat — the skill, then
-  `see_comments` for an assistant without it — until the assistant
-  has read the comments; a hot reload, which changes nothing the assistant
+  `see_comments` for an agent without it — until the agent
+  has read the comments; a hot reload, which changes nothing the agent
   has not seen, does not bring it back. The fallback is the tool's name
-  rather than a sentence, because "see the comments" reads to an assistant as
+  rather than a sentence, because "see the comments" reads to an agent as
   code comments or review comments.
 - **Reload re-resolution.** Members are held weakly and keyed on object
   identity — two anonymous siblings resolve to the same identity dict, so
   keying on that would make picking the second remove the first. A rebuild
   evaporates them, and that is the normal case: "point at it, then have the
-  assistant fix it" puts a reload in the middle of nearly every use. They are
+  agent fix it" puts a reload in the middle of nearly every use. They are
   matched back by the same key-preferring structural path state restore uses
   ([HOT_RELOAD.md §7.4](HOT_RELOAD.md#74-state-snapshot-restore)), and misses
   are counted rather than silently shortening the list.
@@ -161,7 +161,7 @@ and "what of it is on screen" are different questions, and a mark answers the
 second. The visual rect stays as it is, since an action must aim
 at the node's actual origin; the visible rect intersects it with every ancestor
 clip, and the payload and the on-screen brackets both use it, so the box on
-the glass and the rect handed to the assistant are the same claim.
+the glass and the rect handed to the agent are the same claim.
 
 ### 3.2 Regions
 
@@ -268,7 +268,7 @@ the cursor landed; each platform's opener was confirmed against a real editor.
 ## 6. Layout Edit mode
 
 The sibling of comment mode with the opposite division of labour: the human
-drags a widget and the **dev runner edits the source itself** — no assistant,
+drags a widget and the **dev runner edits the source itself** — no agent,
 no turn. A corner drag writes `width` / `height` / `size` into the call that
 built the widget; a body drag moves the widget's element within its
 container's `children` list, into another container's, or into a grid cell —
@@ -285,7 +285,7 @@ moves.
   removes its expression — the move's leaving half, under the move's gates —
   with no confirmation, since `Ctrl+Z` is the confirmation for every write.
   Only the expression goes: a handler it referenced stays, and cleaning up
-  after it is the assistant's job, like inserting or unwrapping. A widget in a
+  after it is the agent's job, like inserting or unwrapping. A widget in a
   `GridItem` takes the item with it, since one without a child cannot be
   built.
 - **Text is one literal.** `Enter` on the selection — or a second click on
@@ -317,7 +317,7 @@ moves.
   keyword that may come through `**kwargs`, a constructor without the keyword,
   a call that cannot be located: nothing is written and the badge names the
   reason. Layout Edit mode never touches the `Comments`; a refusal is not handed
-  to the assistant.
+  to the agent.
 - **Landing values are measured, not guessed.** The `auto` band is the
   widget's own intrinsic size measured at the proposed width, and the `wt`
   band is what the parent's own allocation would give it, so a snapped value
@@ -435,7 +435,7 @@ because one visual language for opposite directions would mislead:
 
 | Colour | Means |
 | --- | --- |
-| indigo (action overlay) | the assistant did this |
+| indigo (action overlay) | the agent did this |
 | amber (comment mode) | the human means this |
 | teal (layout edit mode) | a change about to be made to a file |
 | rose (source jump) | a jump, not a mark — under a held chord inside comment mode, amber brackets would read as a mark about to be made |

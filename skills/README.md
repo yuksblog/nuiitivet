@@ -1,7 +1,7 @@
 # Agent skills for Nuiitivet users
 
-This directory holds **published skills** for AI coding assistants (Claude Code,
-and compatible agents) that build applications *with* Nuiitivet. They are shipped
+This directory holds **published skills** for coding agents (Claude Code and
+compatible agents) that build applications *with* Nuiitivet. They are shipped
 in the repository — unlike the maintainers' local `.claude/` tooling, which is
 git-ignored — so framework users can adopt them.
 
@@ -38,7 +38,7 @@ and — for `nuiitivet-app` — runs the bundled linter as the final step:
 python .claude/skills/nuiitivet-app/scripts/check_idioms.py <files-or-dirs>
 ```
 
-**Any assistant / manual use** — point the assistant at
+**Any agent / manual use** — point the agent at
 [`nuiitivet-app/SKILL.md`](nuiitivet-app/SKILL.md); it stands alone as a written
 guide, and the linter runs as an ordinary Python script with no dependencies:
 

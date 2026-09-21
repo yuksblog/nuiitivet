@@ -32,7 +32,7 @@ class AppHarness(_HarnessBase):
     The action verbs are the dev bridge's, one for one, targeting by the same
     ``key`` / ``label``, so what an author learns writing E2E carries straight
     down. Two things differ, both because a test cannot read a result and judge
-    the way an assistant can: an ambiguous target raises instead of silently
+    the way an agent can: an ambiguous target raises instead of silently
     taking the first match, and a verb nothing consumed raises
     :class:`~nuiitivet.testing.errors.ActionNotHandledError` instead of reporting
     ``handled: False``.

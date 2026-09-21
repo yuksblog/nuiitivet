@@ -63,9 +63,9 @@ class HotReloadController:
         self._project_root = project_root.resolve()
         self._factory: "RootFactory" = initial_factory
         self._drain_interval = drain_interval
-        # Optional pull-able record of reload outcomes for an AI pair.
+        # Optional pull-able record of reload outcomes for an agent.
         # When present, every reload -- success or failure -- is recorded so the
-        # assistant can notice the code changed under it between turns.
+        # agent can notice the code changed under it between turns.
         self._journal = journal
         # The human's comment-mode mark, whose members are weak and so
         # evaporate when the rebuild replaces every live object. Re-resolved

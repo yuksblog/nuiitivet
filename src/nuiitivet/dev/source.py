@@ -223,7 +223,7 @@ def payload(node: Any) -> Optional[list[dict[str, Any]]]:
     knows which was meant.
 
     Paths are relative to the working directory when they sit under it, since
-    that is how both the guide and the assistant refer to files.
+    that is how both the guide and the agent refer to files.
     """
     site = site_of(node)
     if not site:

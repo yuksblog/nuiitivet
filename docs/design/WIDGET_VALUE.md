@@ -10,7 +10,7 @@ which governs the `_private` side of the same widgets.
 
 ## Why one name
 
-`describe_tree` reports a node's interactive state in a vocabulary an assistant
+`describe_tree` reports a node's interactive state in a vocabulary a coding agent
 can rely on across every widget: `disabled`, `focused`, `selected`, `value`. It
 gets that vocabulary by probing public properties, so a widget that keeps its
 value under a private attribute is invisible there.

@@ -130,6 +130,6 @@ debug session is never torn down.
 
 ## Next Steps
 
-- [The on-screen modes](on_screen_modes.md) — tell the assistant what to change
+- [The on-screen modes](on_screen_modes.md) — tell the coding agent what to change
   from the app's own screen, or change the layout yourself.
 - [AI pair-programming](index.md) — the section overview.
