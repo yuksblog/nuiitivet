@@ -28,8 +28,6 @@ See also:
 - **I/O-bound work**: Use `asyncio` (`await` network / file I/O), keeping the UI responsive.
 - **High-frequency updates**: The default marshal already coalesces (last-write-wins per tick). Pass `dispatch=False` only where every intermediate value is needed and no widget is bound.
 
-The user-facing form of this chooser is [docs/guide/concurrency.md](../guide/concurrency.md).
-
 ## Interaction: threads × asyncio
 
 - Async code can update observables directly because it runs on the UI thread.

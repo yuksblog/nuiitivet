@@ -129,8 +129,7 @@ app = nv.App(window, tray=tray)
 
 The resident-app recipe is therefore three independent declarations —
 `ExitPolicy.EXPLICIT`, `close_action` bound to `tray.installed`, and the
-`TrayIcon` itself — each meaningful without the others. See
-`docs/guide/window/tray_icon.md`.
+`TrayIcon` itself — each meaningful without the others.
 
 ## 6. Platform Backends
 

@@ -117,6 +117,10 @@ A design doc that grows past its name is the usual symptom: it has started
 carrying procedure or API reference. Move the surplus down, not into a bigger
 doc.
 
+**A design doc does not point at the guide**, by link or by path. Nothing
+checks the target, so a renamed guide page breaks it without an error. Links
+between design docs are fine.
+
 **The agent's text assumes the skills are installed.** The skill and the
 two MCP rows are read by a coding agent, not a person. The framework is used
 with its skills installed, so a tool description does not stand in for a
