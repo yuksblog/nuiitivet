@@ -1,6 +1,6 @@
 # Geometry: Container-Scoped Measured Geometry
 
-Status: **Accepted — implemented** (tracks issue #431; related to #430)
+Status: **Accepted — implemented**
 
 ## 1. Motivation
 
@@ -74,20 +74,18 @@ hazard a synchronous, build-during-layout `LayoutBuilder` would expose to
 callers — and a lazily-read binding (a mapped `Text` label) resolves one
 consistent value for a whole frame: measurement and paint agree.
 
-### 3.1 What is *not* deferred — a known deviation
+### 3.1 The write defers, not only the recomposition
 
-~~Only recomposition defers. The write itself propagates **synchronously**: a
-`bind_to` setter runs immediately, and a lazy reader such as `Text`'s label
-resolution picks up the new value the moment it is asked. So within one layout
-pass, a widget measured *before* the publishing `Geometry` measures against the
-old value while a widget measured after it sees the new one — a `Text` bound to
-the size and laid out ahead of the `Geometry` in the same `Column` paints one
-torn frame before self-healing.~~ **Resolved in #466.** The write itself now
-defers too: `layout()` queues the measurement and the between-frames flush
-publishes it, so no consumer — synchronous, lazy, or recomposing — can observe
-a mid-pass change (§3 above describes the current model).
+Deferring recomposition alone is not enough. A write that propagates
+synchronously runs every `bind_to` setter at once, and a lazy reader such as
+`Text`'s label resolution picks up the new value the moment it is asked. Within
+one layout pass a widget measured *before* the publishing `Geometry` would see
+the old value and a widget measured after it the new one — a `Text` bound to the
+size and laid out ahead of the `Geometry` in the same `Column` paints one torn
+frame. So the write itself waits for the between-frames flush, and no consumer —
+synchronous, lazy, or recomposing — can observe a mid-pass change.
 
-The same resolution covers `ScrollViewport`, with one refinement: scroll
+The same holds for `ScrollViewport`, with one refinement: scroll
 metrics are additionally *recorded* in plain synchronous fields during layout,
 which paint, hit-testing, and offset clamping read within the same frame — the
 pipeline's scrollbar-visibility and hit-testing guarantees are unchanged. Only
@@ -188,9 +186,9 @@ re-fire the update — a feedback loop across frames. Handling:
    is naturally safer than a Flutter-style `LayoutBuilder`, where the builder's
    output *is* what gets measured (a tighter loop).
 
-## 7. Relationship to #430 (window size) — one unified read path
+## 7. Relationship to the window size — one unified read path
 
-The window case (#430) and this container case (#431) resolve to a **single
+The window case and this container case resolve to a **single
 in-tree read API**:
 
 - **In-tree read (window and container, unified):** `Geometry.of(context).size`.
@@ -202,12 +200,10 @@ in-tree read API**:
   [backends/pyglet/runner.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/backends/pyglet/runner.py))
   already triggers via `invalidate` → relayout. Nearest provider wins, so a
   nested `Geometry` transparently overrides the window for its subtree; with no
-  nested provider, reads fall back to the window. **Implemented in #431.**
-- **MD3 window size class:** proposed as a thin wrapper over this read path in
-  #457 and **closed as not planned** — the read path above is the whole of the
-  delivered surface. Rationale and revisit triggers are in the closing comment on
-  #457; the short form is that `Geometry` is itself a container-scoped read, which
-  is the concept a window size class is the coarser predecessor of.
+  nested provider, reads fall back to the window.
+- **No MD3 window size class.** A size class would be a thin wrapper over this
+  read path, and it is left out: `Geometry` is itself a container-scoped read,
+  the concept a window size class is the coarser predecessor of.
 - **No `App.of(context).size`.** Introducing a parallel App-level read API is
   rejected — it fragments the read path. The root `Geometry` provider is the
   single mechanism.
@@ -225,30 +221,24 @@ that, if such a mechanism arrives, geometry can be surfaced through the same rea
 path without an API break. `Geometry` remains the special (C) provider that
 *feeds* geometry in; it is never a plain author-set value in that mechanism.
 
-## 9. Scope of this issue vs. future
+## 9. Scope
 
-**In scope (#431):**
+**Provided:**
 
 - `Geometry` widget publishing `Observable[Size]` (resolved size), read via
   `Geometry.of(context)`.
 - De-dupe guard; documented structurally-safe usage.
 - Root `Geometry` provider installed at the window, so a top-level read falls
   back to the window size (the unified read path in §7).
-- Example: local reflow independent of window size.
+- `on_size_changed`, the push counterpart for a widget reading its own size
+  (§11).
 
-**Future (later milestones / on demand):**
+**Left out until there is demand:**
 
 - `constraints` (min/max) on the same `Geometry` — a layout-model extension, not
-  additive-only (§5). Revisit if requested.
+  additive-only (§5).
 - `App.window_size` context-free `Observable` for code outside the widget tree
-  (e.g. view-models that cannot call `.of(context)`). Not needed for the initial
-  cut; revisit on demand.
-- ~~A side-effect callback modifier (`on_resized`) for reacting to a resize
-  without a subtree rebuild — considered and **deferred**; the declarative
-  `Geometry.of(context)` covers the primary use case. Reconsider if a concrete
-  need appears.~~ **Shipped as `on_size_changed` (#460)** — see §11.
-- ~~MD3 window size class derived from this read path (#457).~~ **Closed as not
-  planned** — see §7.
+  (e.g. view-models that cannot call `.of(context)`).
 - General-purpose environment mechanism for families (A)/(B) — see §8.
 
 ## 10. Design decisions summary
@@ -260,11 +250,11 @@ path without an API break. `Geometry` remains the special (C) provider that
   nuiitivet (Navigator, Overlay); `.of(context)` requires a real ancestor node.
   A modifier that creates a scope would break that convention.
 - **Raw geometry only; no MD3 size class.** Core stays MD3-independent and every
-  app uses raw size. The size-class layer was proposed and closed as not planned
-  (§7) — `Geometry` is already the container-scoped read that supersedes it.
+  app uses raw size. There is no size-class layer (§7) — `Geometry` is already
+  the container-scoped read that supersedes it.
 - **Atomic `Observable[Size]`.** Prevents torn reads; per-axis reactions via
   `computed`.
-- **Window = root `Geometry` provider.** Installed at the window in #431, so one
+- **Window = root `Geometry` provider.** Installed at the window, so one
   unified read path (`Geometry.of(context).size`) serves both window and
   container; no separate `App.of().size`. The root provider needs no bespoke
   resize plumbing — it measures the window through the normal layout pass.
@@ -272,14 +262,13 @@ path without an API break. `Geometry` remains the special (C) provider that
   keeps the layout pass free of `Observable` writes — the publish rides the
   post-layout queue (§3).
 
-## 11. `on_size_changed` (#460): the push counterpart
+## 11. `on_size_changed`: the push counterpart
 
-The deferral in §9 was argued on *performance* grounds ("react without a subtree
-rebuild"), and the declarative read did cover the use cases on the table. The
-need that reopened it is ergonomic: when the size is consumed *imperatively* — a
-ViewModel input, or a plain `Observable` the widget owns — `Geometry.of()`'s pull
-semantics buy nothing while still charging the `on_mount` timing rule, the
-subscription disposal, and the provider-scope concept.
+The declarative read covers reacting to a size by rebuilding. It fits badly when
+the size is consumed *imperatively* — a ViewModel input, or a plain `Observable`
+the widget owns: `Geometry.of()`'s pull semantics buy nothing there while still
+charging the `on_mount` timing rule, the subscription disposal, and the
+provider-scope concept.
 
 `on_size_changed(callback)` reports a widget's own measured `Size` back to that
 widget. Division of labour:
@@ -291,10 +280,9 @@ widget. Division of labour:
 
 `Geometry` therefore stays the mechanism for the provider-shaped problem — many
 widgets at arbitrary depth reading one scoped value, which push cannot express.
-The docs invert the emphasis: `on_size_changed` is the default answer in
-`docs/guide/layout/adaptive.md`, and `Geometry` moved to
-`docs/guide/advanced/geometry.md`. That split matches where the demand actually
-turned out to be, and is part of why the size-class layer was not needed (§7).
+The docs invert the emphasis: the layout guide gives `on_size_changed` as the
+default answer, and `Geometry` sits under the advanced pages. That split follows
+the demand, and is part of why no size-class layer is needed (§7).
 
 **It is not a provider**, so §10's "widget, not modifier, for the provider"
 decision still holds: it creates no scope and is not resolvable via `.of()`. Like
@@ -309,9 +297,8 @@ the measurement to a framework-internal queue
 (`widgeting/widget_size_change.py`). Nothing in the tree is mutated and no
 `Observable` is written during layout. `App._render_frame` drains the queue at
 the start of the next frame, before the build flush, and the effect lands one
-frame after the measurement. This queue is now also how `Geometry` and the
-scroll metrics publish (§3.1's resolution): the push path pioneered the
-mechanism, and the pull paths ride it.
+frame after the measurement. `Geometry` and the scroll metrics publish through
+the same queue (§3.1).
 
 The one side effect the layout pass does keep is a frame request: queuing calls
 `invalidate()`, because a draw-on-demand app would otherwise never reach the

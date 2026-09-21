@@ -1,7 +1,6 @@
 # Dev Bridge
 
 > Status: Implemented
-> User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md)
 > Related design: [HOT_RELOAD.md](HOT_RELOAD.md) (the reload the bridge closes a loop over), [DEV_MODES.md](DEV_MODES.md) (the human's side of the same session)
 
 ## 1. Goal

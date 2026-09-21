@@ -1,8 +1,6 @@
 # Hot Reload
 
 > Status: Implemented
-> Related: [#359](https://github.com/yuksblog/nuiitivet/issues/359)
-> User guide: [docs/guide/ai_pair_programming/hot_reload.md](../guide/ai_pair_programming/hot_reload.md)
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (a tool sees and drives the reloaded app), [DEV_MODES.md](DEV_MODES.md) (the human points; layout edit mode applies its edit through this reload)
 
 ## 1. Goal
@@ -268,7 +266,7 @@ observable at the matching path.
 
 The rebuilt tree starts a fresh `Navigator` at its initial route, so pushed
 routes would be lost. For **declarative** navigation the stack is instead
-snapshotted and replayed, mirroring the `Observable` restore above (#378):
+snapshotted and replayed, mirroring the `Observable` restore above:
 
 - The navigator logs a **restore descriptor** for every route added via `push`.
   A declarative push — `push(SomeIntent(...))` against a
@@ -293,7 +291,7 @@ snapshotted and replayed, mirroring the `Observable` restore above (#378):
 
 When the tree structure is unchanged (the common "tweak a padding" case) every
 path matches and state is fully restored. A widget given a `key` — the same
-reconciliation identity the dev action bridge targets (#375), set via the
+reconciliation identity the dev action bridge targets, set via the
 `key=` constructor parameter every widget accepts — keeps its path across
 a reorder or a sibling insertion, so its state survives those structural edits
 too. When keyless widgets are added, removed, or reordered, unmatched paths keep
@@ -342,13 +340,12 @@ successful reload.
 - **Structural edits reset the affected state of keyless widgets.** State restore
   is by structural path (§7.4). A widget given a stable `key` — via the
   `key=` constructor parameter every widget accepts — anchors its state
-  across structural changes (reorder, sibling insertion), landed in
-  [#375](https://github.com/yuksblog/nuiitivet/issues/375). Keyless widgets still
+  across structural changes (reorder, sibling insertion). Keyless widgets still
   lose state when their position changes — add a `key` to opt into durable state.
 - **Declarative navigation stack is restored; imperative pushes and open
   overlays reset.** A reload replays the **declarative** navigation stack —
   routes pushed as intents against a route table — onto the rebuilt navigator
-  (§7.5, [#378](https://github.com/yuksblog/nuiitivet/issues/378)). Imperative
+  (§7.5). Imperative
   instance-based `push(Screen())` is fundamentally unrestorable (same
   instance-vs-factory constraint as the root); it is recorded as opaque and
   stops the replay, leaving routes above it collapsed. A fresh `Overlay` is
