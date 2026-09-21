@@ -33,6 +33,8 @@ class ToggleButtonStyle:
     groups: ``unselected_*`` and ``selected_*``.  The :meth:`for_selected`
     helper projects the style into a :class:`ButtonStyle` for the active
     state, so the widget internals can reuse the normal Button machinery.
+
+    Presets: :meth:`filled`, :meth:`outlined`, :meth:`elevated`, :meth:`tonal`.
     """
 
     # Shape / size (shared across states)

@@ -337,6 +337,12 @@ class Navigator(ComposableWidget):
         return resolve_phase_motion(route.transition_spec, phase, back=back)
 
     def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
+        """Push a new screen onto the navigation stack.
+
+        Args:
+            route_or_widget_or_intent: A route, a widget to wrap in a default
+                route, or an intent resolved through the navigator's intents.
+        """
         self._cancel_transition()
 
         previous_route = self._top_route()

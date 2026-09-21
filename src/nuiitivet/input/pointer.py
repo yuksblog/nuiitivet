@@ -37,6 +37,9 @@ class PointerEventType(str, Enum):
 class PointerEvent:
     """Immutable pointer event payload delivered to widgets.
 
+    The runtime builds one with :meth:`mouse_event` or :meth:`scroll_event`;
+    so can a test.
+
     Button semantics:
         ``button`` is the single button that *caused* this event — set on
         ``PRESS`` and ``RELEASE`` (and carried through the synthesized

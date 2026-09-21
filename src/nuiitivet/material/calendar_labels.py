@@ -31,7 +31,7 @@ from typing import Tuple
 class CalendarLabels:
     """Names and week convention a calendar renders dates with.
 
-    Args:
+    Attributes:
         month_names: Twelve month names, January first, indexed by
             ``month - 1``.
         weekday_labels: Seven weekday column headers, Monday first -- indexed

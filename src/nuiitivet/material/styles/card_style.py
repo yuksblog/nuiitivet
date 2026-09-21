@@ -16,7 +16,10 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class CardStyle:
-    """Immutable style for Card widgets (M3-compliant)."""
+    """Immutable style for Card widgets (M3-compliant).
+
+    Presets: :meth:`elevated`, :meth:`filled`, :meth:`outlined`.
+    """
 
     # Container properties
     background: Optional[ColorSpec] = None

@@ -15,9 +15,7 @@ from .measure import preferred_size as measure_preferred_size
 class Stack(Widget):
     """Layout children on top of each other.
 
-    Parameters
-    - children: List of widgets to stack.
-    - alignment: How to align children within the stack.
+    From a data collection, or an observable of one: :meth:`builder`.
     """
 
     def __init__(
@@ -58,15 +56,18 @@ class Stack(Widget):
         alignment: AlignmentLike = "center",
         key: Optional[str] = None,
     ) -> "Stack":
-        """Create a Stack that materializes children from items via ForEach.
+        """Create a Stack whose children are built from *items*.
 
         Args:
-            items: Source data collection.
-            builder: Function to create a widget for each item.
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for each item; returns
+                the item's widget.
             width: Stack width.
             height: Stack height.
             padding: Padding around the content.
             alignment: Default alignment for children.
+                (horizontal, vertical) tuple or string like "top-left", "center".
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)

@@ -23,8 +23,11 @@ class Fonts:
         """Set the application-wide default font family.
 
         The family is prioritized over locale-based defaults wherever no
-        explicit ``font_family`` is given. Pass ``None`` to reset to automatic
-        locale detection.
+        explicit ``font_family`` is given.
+
+        Args:
+            family_name: Font family to use, or ``None`` to reset to automatic
+                locale detection.
         """
         _set_default_font_family(family_name)
 

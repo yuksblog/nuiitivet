@@ -87,14 +87,7 @@ def _pixel_size_from_sizing(size: SizingLike) -> int:
 
 
 class Icon(IconBase):
-    """Material Symbols icon widget (M3準拠).
-
-    Parameters:
-    - name: Ligature name (e.g. "home", "menu") or Symbol
-    - size: Icon visual size in pixels (default 24dp)
-    - padding: Insets from the allocated rect to the glyph
-    - style: IconStyle for customization (defaults to theme style)
-    """
+    """Material Symbols icon widget."""
 
     def __init__(
         self,
@@ -109,7 +102,7 @@ class Icon(IconBase):
 
         Args:
             name: Ligature name such as "home", "menu", "search", a Symbol,
-                  or an Observable that yields either.
+                or an Observable that yields either.
             size: Logical pixel size of the icon (font size used for the glyph).
             padding: Insets from the allocated rect to the glyph.
             style: IconStyle for customization (defaults to theme style).

@@ -21,7 +21,7 @@ class Shadow:
 
     A widget's shadow is one or more of these layers, stacked back to front.
 
-    Args:
+    Attributes:
         color: Shadow color. Supports ``ColorRole``, hex string, RGBA tuple,
             or a ``(ColorRole, alpha)`` pair where *alpha* is 0.0-1.0.
         blur_radius: CSS blur-radius, in pixels. A value of 0.0 means a

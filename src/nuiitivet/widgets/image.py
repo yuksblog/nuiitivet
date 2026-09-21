@@ -16,16 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Image(Widget):
-    """Display a raster image from in-memory bytes.
-
-    Args:
-        source: Encoded image bytes, ``None``, or an Observable that provides them.
-        fit: Content fit mode. One of ``"contain"``, ``"cover"``, ``"fill"``, ``"none"``.
-        alignment: Content alignment in the allocated content rect.
-        width: Width sizing.
-        height: Height sizing.
-        padding: Insets from the allocated rect to the image.
-    """
+    """Display a raster image from in-memory bytes."""
 
     def __init__(
         self,

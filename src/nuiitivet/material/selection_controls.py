@@ -41,16 +41,7 @@ def _scale_alpha(color: RGBA, factor: float) -> RGBA:
 
 
 class Checkbox(Toggleable, InteractiveWidget):
-    """A minimal Material-like Checkbox widget (M3).
-
-    Parameters:
-    - checked: Checked state source (bool / Observable[bool] / Observable[Optional[bool]])
-    - on_toggle: Callback when toggled
-    - padding: Insets from the allocated rect to the touch target
-    - indeterminate: Indeterminate flag (bool / Observable[bool])
-    - disabled: Disable interaction (bool / Observable[bool])
-    - style: CheckboxStyle for visual customization (defaults to theme style)
-    """
+    """A Material Design 3 checkbox."""
 
     def __init__(
         self,
@@ -63,6 +54,20 @@ class Checkbox(Toggleable, InteractiveWidget):
         style: Optional["CheckboxStyle"] = None,
         key: Optional[str] = None,
     ):
+        """Initialize Checkbox.
+
+        Args:
+            checked: Checked state, or the observable holding it. An observable
+                of ``Optional[bool]`` carries the indeterminate state as ``None``.
+            on_toggle: Callback invoked with the new state when toggled.
+            indeterminate: Whether the checkbox shows the indeterminate mark, or
+                an observable of it, kept apart from a two-state *checked*.
+            disabled: Whether the checkbox ignores interaction, or an observable
+                of it.
+            padding: Insets from the allocated rect to the touch target.
+            style: Visual style; the theme's checkbox style when omitted.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         self._checked_external_tri: ObservableProtocol[Optional[bool]] | None = None
         self._checked_external_bool: ObservableProtocol[bool] | None = None
         self._indeterminate_external: ObservableProtocol[bool] | None = None

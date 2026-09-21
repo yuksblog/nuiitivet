@@ -79,11 +79,6 @@ class LoadingIndicator(Widget):
     """M3 Expressive loading indicator.
 
     This widget is intended for short, indeterminate waits.
-
-    Args:
-        size: Outer size of the indicator (default 48). Sets both width and height.
-        style: Style configuration for appearance and animation.
-        padding: Insets from the allocated rect to the indicator.
     """
 
     def __init__(
@@ -97,7 +92,7 @@ class LoadingIndicator(Widget):
         """Initialize the LoadingIndicator.
 
         Args:
-            size: Outer size of the indicator (default 48).
+            size: Outer size of the indicator; sets both width and height.
             padding: Insets from the allocated rect to the indicator.
             style: Style configuration for appearance and animation.
             key: Stable widget identity for dev-bridge targeting and hot reload.

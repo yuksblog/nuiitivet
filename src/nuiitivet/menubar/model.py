@@ -27,12 +27,6 @@ class MenuBar:
     wholesale via ``app.menu = ...``. Structure is not observable — entry
     *properties* (label / enabled / checked) may be Observables, but adding
     or removing entries means assigning a new model.
-
-    Args:
-        items: Top-level entries. Bar entries are usually submenus
-            (``MenuEntry("File", submenu=[...])``); a plain action entry is
-            allowed and activates directly on click.
-        style: Optional per-instance style; ``None`` follows the theme.
     """
 
     def __init__(
@@ -41,6 +35,14 @@ class MenuBar:
         *,
         style: Optional[MenuBarStyle] = None,
     ) -> None:
+        """Initialize MenuBar.
+
+        Args:
+            items: Top-level entries. Bar entries are usually submenus
+                (``MenuEntry("File", submenu=[...])``); a plain action entry is
+                allowed and activates directly on click.
+            style: Optional per-instance style; ``None`` follows the theme.
+        """
         entries = tuple(items)
         for entry in entries:
             if not isinstance(entry, MenuEntry):

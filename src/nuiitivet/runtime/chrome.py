@@ -39,7 +39,7 @@ class OSChrome:
 
     Maps *variant* directly to ``pyglet.window.Window.WINDOW_STYLE_*``.
 
-    Args:
+    Attributes:
         variant: Window style. One of: "default", "dialog", "tool",
             "borderless", "transparent".
     """
@@ -55,7 +55,7 @@ class CustomChrome:
     Wraps *header* in :class:`~nuiitivet.runtime.title_bar.WindowDragArea`
     so the user can drag the window by the header.
 
-    Args:
+    Attributes:
         header: Widget rendered as the window's title-bar area.
         corner_radius: Corner radius in logical pixels applied by the render
             layer. Content is clipped to a rounded rectangle; pixels outside

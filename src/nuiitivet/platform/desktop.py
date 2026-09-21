@@ -17,12 +17,16 @@ class Desktop:
 
     @staticmethod
     def notify(title: str, body: str = "") -> None:
-        """Raise a desktop notification with ``title`` and an optional ``body``.
+        """Raise a desktop notification.
 
         Fire-and-forget: returns immediately, never raises, and is safe to
         call from an event handler or a worker thread alike. Failures are
         logged once per process instead of surfacing — a notification must
         never take the app down. Delivery is best-effort: the OS may still
         suppress it (permissions, focus modes) without an error.
+
+        Args:
+            title: Headline of the notification.
+            body: Text shown under the title; none when empty.
         """
         _notify(title, body)

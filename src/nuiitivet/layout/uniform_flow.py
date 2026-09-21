@@ -20,6 +20,8 @@ class UniformFlow(Widget):
     """Layout children in a uniform grid.
 
     This layout arranges children into columns with equal width.
+
+    From a data collection, or an observable of one: :meth:`builder`.
     """
 
     def __init__(
@@ -39,6 +41,30 @@ class UniformFlow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> None:
+        """Initialize UniformFlow.
+
+        Args:
+            children: Child widgets to arrange.
+            columns: Number of columns. Takes precedence over *max_column_width*.
+            max_column_width: Widest a column may get, in pixels; as many columns
+                as fit the available width are used. With neither this nor
+                *columns*, every child sits in one row.
+            aspect_ratio: Cell width divided by cell height; sets a minimum cell
+                height from the column width.
+            main_gap: Space between columns, in pixels.
+            cross_gap: Space between rows, in pixels.
+            padding: Padding around the content.
+            main_alignment: Horizontal alignment of the grid: 'start', 'center' or
+                'end'.
+            run_alignment: Vertical alignment of the grid: 'start', 'center' or
+                'end'.
+            item_alignment: Alignment of a child within its cell: one value for
+                both axes, or a ``(horizontal, vertical)`` pair of 'start',
+                'center', 'end' or 'stretch'.
+            width: UniformFlow width.
+            height: UniformFlow height.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for child in children:
@@ -84,7 +110,33 @@ class UniformFlow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> "UniformFlow":
-        """Create a UniformFlow that materializes children from items via ForEach."""
+        """Create a UniformFlow whose children are built from *items*.
+
+        Args:
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for each item; returns
+                the item's widget.
+            columns: Number of columns. Takes precedence over *max_column_width*.
+            max_column_width: Widest a column may get, in pixels; as many columns
+                as fit the available width are used. With neither this nor
+                *columns*, every child sits in one row.
+            aspect_ratio: Cell width divided by cell height; sets a minimum cell
+                height from the column width.
+            main_gap: Space between columns, in pixels.
+            cross_gap: Space between rows, in pixels.
+            padding: Padding around the content.
+            main_alignment: Horizontal alignment of the grid: 'start', 'center' or
+                'end'.
+            run_alignment: Vertical alignment of the grid: 'start', 'center' or
+                'end'.
+            item_alignment: Alignment of a child within its cell: one value for
+                both axes, or a ``(horizontal, vertical)`` pair of 'start',
+                'center', 'end' or 'stretch'.
+            width: UniformFlow width.
+            height: UniformFlow height.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         provider = ForEach(items, builder)
         return cls(
             [provider],

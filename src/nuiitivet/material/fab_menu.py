@@ -72,7 +72,7 @@ _MENU_ITEM_BETWEEN_SPACE = 4
 class FabMenuItem:
     """Declarative spec for a single action inside a :class:`FabMenu`.
 
-    Args:
+    Attributes:
         icon: Leading icon shown in the menu-item pill.
         label: Text label rendered next to the icon.
         on_click: Optional callback invoked when the item is selected.

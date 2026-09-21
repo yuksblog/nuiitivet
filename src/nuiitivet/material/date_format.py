@@ -88,25 +88,25 @@ def _compile(pattern: str) -> str:
 
 
 class DateFormat:
-    """How a date is written as text, and read back.
-
-    Args:
-        pattern: The format dates are rendered in, and the first one accepted
-            when parsing. Also what :meth:`__str__` returns, so it can be shown
-            to the user as a hint.
-        also_accepts: Further patterns accepted when parsing, tried in order
-            after *pattern*. Typing is worth being lenient about -- someone will
-            enter ``2026-06-10`` into a ``mm/dd/yyyy`` field -- while output
-            stays in one format.
-
-    Raises:
-        ValueError: If any pattern is malformed.  See :func:`_compile`.
-    """
+    """How a date is written as text, and read back."""
 
     __slots__ = ("_pattern", "_also_accepts", "_formats")
 
     def __init__(self, pattern: str = "mm/dd/yyyy", *, also_accepts: Sequence[str] = ()) -> None:
-        """Initialize DateFormat."""
+        """Initialize DateFormat.
+
+        Args:
+            pattern: The format dates are rendered in, and the first one accepted
+                when parsing. Also what :meth:`__str__` returns, so it can be shown
+                to the user as a hint.
+            also_accepts: Further patterns accepted when parsing, tried in order
+                after *pattern*. Typing is worth being lenient about -- someone will
+                enter ``2026-06-10`` into a ``mm/dd/yyyy`` field -- while output
+                stays in one format.
+
+        Raises:
+            ValueError: If any pattern is malformed.  See :func:`_compile`.
+        """
         self._pattern = pattern
         self._also_accepts: Tuple[str, ...] = tuple(also_accepts)
         self._formats: Tuple[str, ...] = tuple(_compile(p) for p in (pattern, *self._also_accepts))

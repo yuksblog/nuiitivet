@@ -37,34 +37,7 @@ _DOCK_VISIBILITIES = ("always", "auto", "never")
 
 
 class TrayIcon:
-    """A system tray icon: image, tooltip, menu, and an activate callback.
-
-    Args:
-        icon: Path to the icon image file (PNG recommended). On macOS a
-            filename stem ending in ``Template`` is loaded as a template
-            image, so the system recolors it for light/dark menu bars.
-            Without an icon the tray shows the tooltip text (macOS) or a
-            neutral placeholder — real apps should always ship an icon.
-        tooltip: Hover text; a plain string or an Observable one.
-        menu: The tray menu as :class:`MenuEntry` entries — actions,
-            separators, submenus and checkable items, exactly as in the menu
-            bar. ``MenuEntry.quit()`` works (a resident app should include
-            it: while no window is visible the tray menu is the only exit
-            path). Window-scoped standard items (close/minimize/...) have no
-            target window here and are ignored with a warning.
-        on_activate: Called when the icon itself is activated the platform's
-            conventional way. Support varies: on macOS only without a
-            ``menu`` (a menu owns the click there); on Windows the gesture
-            is a double-click; a Linux AppIndicator host cannot deliver it
-            at all (a pystray limitation). Treat it as an optional shortcut
-            and keep an equivalent entry in ``menu``.
-        dock_visibility: macOS Dock presence: ``"always"`` (default),
-            ``"auto"`` (in the Dock only while some window is visible — the
-            close-to-tray convention), or ``"never"`` (a pure menu-bar-extra
-            app; the process gets no Dock icon or Cmd+Tab entry). Ignored on
-            Windows/Linux, where the taskbar entry follows window visibility
-            by itself.
-    """
+    """A system tray icon: image, tooltip, menu, and an activate callback."""
 
     def __init__(
         self,
@@ -75,6 +48,34 @@ class TrayIcon:
         on_activate: Optional[VoidCallback] = None,
         dock_visibility: str = "always",
     ) -> None:
+        """Initialize TrayIcon.
+
+        Args:
+            icon: Path to the icon image file (PNG recommended). On macOS a
+                filename stem ending in ``Template`` is loaded as a template
+                image, so the system recolors it for light/dark menu bars.
+                Without an icon the tray shows the tooltip text (macOS) or a
+                neutral placeholder — real apps should always ship an icon.
+            tooltip: Hover text; a plain string or an Observable one.
+            menu: The tray menu as :class:`MenuEntry` entries — actions,
+                separators, submenus and checkable items, exactly as in the menu
+                bar. ``MenuEntry.quit()`` works (a resident app should include
+                it: while no window is visible the tray menu is the only exit
+                path). Window-scoped standard items (close/minimize/...) have no
+                target window here and are ignored with a warning.
+            on_activate: Called when the icon itself is activated the platform's
+                conventional way. Support varies: on macOS only without a
+                ``menu`` (a menu owns the click there); on Windows the gesture
+                is a double-click; a Linux AppIndicator host cannot deliver it
+                at all (a pystray limitation). Treat it as an optional shortcut
+                and keep an equivalent entry in ``menu``.
+            dock_visibility: macOS Dock presence: ``"always"`` (default),
+                ``"auto"`` (in the Dock only while some window is visible — the
+                close-to-tray convention), or ``"never"`` (a pure menu-bar-extra
+                app; the process gets no Dock icon or Cmd+Tab entry). Ignored on
+                Windows/Linux, where the taskbar entry follows window visibility
+                by itself.
+        """
         entries: Tuple[MenuEntry, ...] = tuple(menu) if menu is not None else ()
         for entry in entries:
             if not isinstance(entry, MenuEntry):

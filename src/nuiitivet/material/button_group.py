@@ -97,23 +97,6 @@ class GroupButton(InteractiveWidget):
     motion on press / release.  ``set_position()`` is called exclusively by the
     containing ``_ButtonGroupBase`` during ``on_mount``; it is not part of the
     public user API.
-
-    Args:
-        label: Optional text label.  Can be a plain ``str`` or a
-            ``ObservableBase[str]`` for dynamic text.
-        icon: Optional icon.  Accepts a ``Symbol``, ``str`` icon name, or
-            ``ObservableBase`` wrapping either.
-        selected: Initial selected (toggle) state.  Pass an
-            ``MutableObservableBase[bool]`` to bind to external state.
-        on_change: Callback fired with the new ``bool`` selected state after each
-            toggle.  In ``ConnectedButtonGroup`` this callback is composed with
-            the group-level selection logic.
-        disabled: Whether the item ignores pointer events.
-        width: Optional width sizing.  ``ConnectedButtonGroup`` overrides this to
-            ``Sizing.weight(1)`` to achieve equal-width segments.
-        style: Optional style override.  If omitted, the containing group's
-            style is used; a group button standing on its own follows the
-            theme's standard-group style.
     """
 
     def __init__(
@@ -132,12 +115,18 @@ class GroupButton(InteractiveWidget):
 
         Args:
             label: Text label, or an observable string.
-            icon: Icon symbol, string name, or observable icon.
-            selected: Initial selected state, or an observable bool.
-            on_change: Toggle-state change callback.
-            disabled: Disable interaction.
-            width: Width sizing spec.
-            style: Visual style override.
+            icon: Icon symbol, string name, or an observable of either.
+            selected: Initial selected state, or a writable observable bool
+                bound to external state.
+            on_change: Callback invoked with the new selected state after
+                each toggle. In a ``ConnectedButtonGroup`` it runs together
+                with the group's selection enforcement.
+            disabled: Whether the item ignores pointer events.
+            width: Width sizing. A ``ConnectedButtonGroup`` overrides it
+                with ``Sizing.weight(1)`` so segments share the width equally.
+            style: Visual style override. When omitted the containing
+                group's style is used; a group button standing on its own
+                follows the theme's standard-group style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
@@ -1012,12 +1001,6 @@ class StandardButtonGroup(_ButtonGroupBase):
     direct neighbors shrink to compensate so the group's overall width stays
     stable.  All transitions use M3 Expressive (``EXPRESSIVE_FAST_SPATIAL``)
     motion.  Item selected states are independent — no group-level enforcement.
-
-    Args:
-        items: Between 2 and 5 ``GroupButton`` instances.
-        style: Visual style.  Use ``StandardButtonGroupStyle.filled()``,
-            ``.tonal()``, or ``.outlined()``, optionally passing a size
-            (e.g. ``StandardButtonGroupStyle.filled("m")``).
     """
 
     def __init__(
@@ -1032,9 +1015,10 @@ class StandardButtonGroup(_ButtonGroupBase):
 
         Args:
             items: Between 2 and 5 ``GroupButton`` instances.
-            style: Visual style override.  Defaults to the theme's standard
-                button group style, which itself falls back to
-                ``StandardButtonGroupStyle.filled()`` (size ``"s"``).
+            style: Visual style: ``StandardButtonGroupStyle.filled()``,
+                ``.tonal()`` or ``.outlined()``, each taking an optional size
+                (``filled("m")``). Defaults to the theme's standard button
+                group style, which falls back to ``filled()`` at size ``"s"``.
             padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -1080,14 +1064,6 @@ class ConnectedButtonGroup(_ButtonGroupBase):
     share space equally (``Sizing.weight(1)``).  Only corner shapes animate on
     press — adjacent segment corners are unaffected.  Selection is always
     enforced by the group.
-
-    Args:
-        items: Between 2 and 5 ``GroupButton`` instances.
-        select_mode: ``"single"`` ensures at most one item is selected;
-            ``"multi"`` allows any combination.
-        style: Visual style.  Use ``ConnectedButtonGroupStyle.filled()``,
-            ``.tonal()``, or ``.outlined()``, optionally passing a size
-            (e.g. ``ConnectedButtonGroupStyle.filled("m")``).
     """
 
     def __init__(
@@ -1103,10 +1079,12 @@ class ConnectedButtonGroup(_ButtonGroupBase):
 
         Args:
             items: Between 2 and 5 ``GroupButton`` instances.
-            select_mode: ``"single"`` or ``"multi"`` selection enforcement.
-            style: Visual style override.  Defaults to the theme's connected
-                button group style, which itself falls back to
-                ``ConnectedButtonGroupStyle.filled()`` (size ``"s"``).
+            select_mode: ``"single"`` keeps at most one item selected;
+                ``"multi"`` allows any combination.
+            style: Visual style: ``ConnectedButtonGroupStyle.filled()``,
+                ``.tonal()`` or ``.outlined()``, each taking an optional size
+                (``filled("m")``). Defaults to the theme's connected button
+                group style, which falls back to ``filled()`` at size ``"s"``.
             padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

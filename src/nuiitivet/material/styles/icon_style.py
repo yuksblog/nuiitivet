@@ -17,12 +17,18 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class IconStyle:
-    """Immutable style for Icon widgets (M3準拠).
+    """Immutable style for Icon widgets (M3-compliant).
 
-    Material Design 3 Icon specifications:
-    - Default size: 24dp
-    - Default color: ON_SURFACE
-    - Font family priority: Material Symbols → Material Icons
+    Attributes:
+        default_size: Icon size in dp when the widget gives none.
+        family: Material Symbols family: "outlined", "rounded", "sharp", or
+            "icons" for the legacy Material Icons font.
+        color: Glyph color.
+        font_family_priority: Font families tried in order for the glyph.
+        custom_font_family: Icon font registered with :meth:`Fonts.register`;
+            used in place of the built-in lookup.
+        style_to_family: Font family for each *family* value; filled in on
+            construction.
     """
 
     # Size

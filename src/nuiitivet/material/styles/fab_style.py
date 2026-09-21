@@ -29,10 +29,11 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class FabStyle(ButtonStyle):
-    """Style preset used by the :class:`Fab` widget.
+    """Style of the :class:`Fab` widget, with the field set of :class:`ButtonStyle`.
 
-    Inherits the field set of :class:`ButtonStyle` so that ``Fab`` can reuse
-    the shared ``resolve_button_style_params`` machinery without changes.
+    Presets, each taking a size: :meth:`primary`, :meth:`secondary`,
+    :meth:`tertiary` (tonal containers), and :meth:`primary_solid`,
+    :meth:`secondary_solid`, :meth:`tertiary_solid`.
     """
 
     focus_opacity: float = 0.1

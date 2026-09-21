@@ -18,6 +18,8 @@ class Flow(Widget):
 
     Arranges children in a horizontal run, wrapping to a new line when the line
     runs out of space.
+
+    From a data collection, or an observable of one: :meth:`builder`.
     """
 
     def __init__(
@@ -34,6 +36,23 @@ class Flow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> None:
+        """Initialize Flow.
+
+        Args:
+            children: Child widgets to arrange.
+            main_gap: Space between children in a line, in pixels.
+            cross_gap: Space between lines, in pixels.
+            padding: Padding around the content.
+            main_alignment: Horizontal alignment of each line: 'start', 'center'
+                or 'end'.
+            run_alignment: Vertical alignment of the lines as a block: 'start',
+                'center' or 'end'.
+            cross_alignment: Vertical alignment of a child within its line:
+                'start', 'center' or 'end'.
+            width: Flow width.
+            height: Flow height.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
         super().__init__(width=width, height=height, padding=padding, key=key)
         if children:
             for child in children:
@@ -61,7 +80,26 @@ class Flow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> "Flow":
-        """Create a Flow that materializes children from items via ForEach."""
+        """Create a Flow whose children are built from *items*.
+
+        Args:
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for each item; returns
+                the item's widget.
+            main_gap: Space between children in a line, in pixels.
+            cross_gap: Space between lines, in pixels.
+            padding: Padding around the content.
+            main_alignment: Horizontal alignment of each line: 'start', 'center'
+                or 'end'.
+            run_alignment: Vertical alignment of the lines as a block: 'start',
+                'center' or 'end'.
+            cross_alignment: Vertical alignment of a child within its line:
+                'start', 'center' or 'end'.
+            width: Flow width.
+            height: Flow height.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
 
         provider = ForEach(items, builder)
         return cls(

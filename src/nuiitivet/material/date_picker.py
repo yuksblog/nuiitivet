@@ -1257,21 +1257,6 @@ class DatePicker(ComposableWidget):
     is inert and Cancel clears the selection.  An embedder that owns a dismissal
     — :class:`DockedDatePicker` closing its dropdown — passes ``on_confirm`` and
     ``on_cancel`` to take over both buttons.
-
-    Args:
-        value: Observable holding the currently selected :class:`datetime.date`
-            (or ``None``).  Both reads and writes are performed on this object.
-        on_change: Optional callback invoked after the value is updated.
-        on_confirm: Optional callback invoked with ``value`` when OK is pressed.
-            When omitted, OK does nothing.
-        on_cancel: Optional callback invoked when Cancel is pressed.  When
-            omitted, Cancel clears ``value``.
-        min_date: Earliest selectable date.
-        max_date: Latest selectable date.
-        labels: Month names, weekday headers and first day of week the
-            calendar renders with.  The default is English and Sunday-first on
-            every platform; it never reads the process locale.
-        style: Visual style.  Defaults to :class:`DatePickerStyle`.
     """
 
     def __init__(
@@ -1291,15 +1276,19 @@ class DatePicker(ComposableWidget):
         """Initialize DatePicker.
 
         Args:
-            value: Observable holding the selected date (or None).
-            on_change: Callback invoked when the user selects a date.
-            on_confirm: Callback invoked with the selected date when OK is pressed.
-            on_cancel: Callback invoked when Cancel is pressed; replaces the
-                default "clear the selection" behavior.
-            min_date: Minimum selectable date.
-            max_date: Maximum selectable date.
-            labels: Calendar display labels.
-            style: Optional style override.
+            value: Observable holding the selected date (or None); the
+                picker reads it and writes each selection into it.
+            on_change: Callback invoked after the user selects a date.
+            on_confirm: Callback invoked with the selected date when OK is
+                pressed. When omitted, OK does nothing.
+            on_cancel: Callback invoked when Cancel is pressed. When omitted,
+                Cancel clears *value*.
+            min_date: Earliest selectable date.
+            max_date: Latest selectable date.
+            labels: Month names, weekday headers and first day of week. The
+                default is English and Sunday-first on every platform; it
+                never reads the process locale.
+            style: Visual style. Defaults to :class:`DatePickerStyle`.
             padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -1585,19 +1574,9 @@ class DockedDatePicker(ComposableWidget):
 
         nv.DockedDatePicker(value=self.date_text, label="Arrival")
 
-    Binding the text is what lets the application decide what an invalid date
-    means.  Half-typed input is a normal state of a field the user is allowed to
-    type into, and only the application knows whether ``"06/1"`` should be shown
-    as an error yet, or whether a perfectly parseable date is nonetheless
-    unacceptable ("already booked").  So the widget reports no errors of its own:
-    pass *supporting_text* and *is_error* -- derived from the same text -- and
-    they have exactly one writer.
-
-    A date-bound field would have to keep the date and the text in step, and
-    would have to own the error state in order to describe text that has no
-    date.  This binding removes both.  :class:`DatePicker`, the inline calendar, keeps
-    ``Observable[Optional[date]]``: a widget's value type follows its primary
-    input mechanism, and a calendar cannot be typed into.
+    The widget reports no errors of its own: half-typed text such as
+    ``"06/1"`` is a normal state, and only the application knows when it is an
+    error.  Derive *supporting_text* and *is_error* from the same text.
 
     Per MD3 the dropdown carries a Cancel/OK action row, so picking a day is a
     selection rather than a commit.  The calendar edits an internal draft; only
@@ -1609,52 +1588,7 @@ class DockedDatePicker(ComposableWidget):
     :class:`TextField`; the calendar's OK then has nowhere to write and does
     nothing.
 
-    *date_format* is one object rather than a parse and a format function,
-    because the two directions must be inverses and two separate arguments
-    cannot be checked for that.  ``str(date_format)`` is its pattern, so the
-    same object also spells the hint an application chooses to show.
-
     MD3 reference: ``md.comp.date-picker.docked.*``
-
-    Args:
-        value: Observable holding the field's text.  Typing writes into it, and
-            the calendar's OK writes the picked date into it formatted by
-            *format*.  Keyword-only, so call sites written against the
-            pre-rename ``DockedDatePicker`` (the inline calendar, now
-            :class:`DatePicker`) fail loudly instead of silently changing
-            behavior.
-        on_change: Optional callback invoked with the text as it changes, by
-            typing or by the calendar alike.  The observable bound to *value*
-            carries the same signal.
-        on_submit: Optional callback invoked with the text when the user presses
-            Enter -- a request to act, not a value settling.
-        on_focus_change: Optional callback invoked as focus arrives and leaves.
-            Where blur-triggered work belongs, such as reformatting a
-            half-typed date once the user has left the field.
-        date_format: How text is read as a date and how a picked date is written
-            back.  Reading is used only to decide which month the calendar opens
-            on and which day it highlights, never to validate -- unparseable
-            text simply leaves the calendar where it was.  One object rather
-            than a parse and a format, because the two have to be inverses and
-            nothing could check that they were.  Pass the same one the
-            application derives its date with, and they agree by construction.
-        min_date: Earliest date selectable **in the calendar**.
-        max_date: Latest date selectable in the calendar.  The calendar cannot
-            produce a date outside these bounds, but typing can: enforcing a
-            range on typed text is the application's, via *is_error*.  An
-            application that wants both states the bounds in both places.
-        labels: Month names, weekday headers and first day of week the dropdown
-            calendar renders with.  The default is English and Sunday-first on
-            every platform; it never reads the process locale.
-        label: Floating label for the text field.
-        supporting_text: Text shown below the field.  Empty by default: the
-            widget has nothing of its own to say there, and the slot is where an
-            application puts its error message.  For a format hint, pass
-            ``str(date_format)``.
-        is_error: Whether to show the field in its error state.  A separate axis
-            from *supporting_text*: it recolors the whole field, so a field can
-            be flagged without a message and carry one without being flagged.
-        style: Visual style.  Defaults to :class:`DockedDatePickerStyle`.
     """
 
     def __init__(
@@ -1678,18 +1612,37 @@ class DockedDatePicker(ComposableWidget):
         """Initialize DockedDatePicker.
 
         Args:
-            value: Observable holding the field's text.
-            on_change: Callback invoked with the text as it changes.
-            on_submit: Callback invoked with the text when Enter is pressed.
+            value: Observable holding the field's text. Typing writes into
+                it, and the calendar's OK writes the picked date into it,
+                formatted by *date_format*.
+            on_change: Callback invoked with the text as it changes, by typing
+                or by the calendar alike. The observable bound to *value*
+                carries the same signal.
+            on_submit: Callback invoked with the text when the user presses
+                Enter -- a request to act, not a value settling.
             on_focus_change: Callback invoked as focus arrives and leaves.
-            date_format: How text is read as a date and written back.
+                Blur-triggered work belongs here, such as reformatting a
+                half-typed date once the user has left the field.
+            date_format: How text is read as a date and how a picked date is
+                written back. Reading only decides which month the calendar
+                opens on and which day it highlights, never validates --
+                unparseable text leaves the calendar where it was. Pass the
+                one the application derives its date with, and they agree.
             min_date: Earliest date selectable in the calendar.
-            max_date: Latest date selectable in the calendar.
-            labels: Calendar display labels.
-            label: Text field label.
-            supporting_text: Text shown below the field.  Empty by default.
-            is_error: Whether to show the field in its error state.
-            style: Optional style override.
+            max_date: Latest date selectable in the calendar. Typing can
+                still produce a date outside the bounds; enforcing a range
+                on typed text is the application's, via *is_error*.
+            labels: Month names, weekday headers and first day of week of the
+                dropdown calendar. The default is English and Sunday-first
+                on every platform; it never reads the process locale.
+            label: Floating label for the text field.
+            supporting_text: Text shown below the field; the slot for the
+                application's error message. For a format hint, pass
+                ``str(date_format)``.
+            is_error: Whether to show the field in its error state. It
+                recolors the whole field and is independent of
+                *supporting_text*.
+            style: Visual style. Defaults to :class:`DockedDatePickerStyle`.
             padding: Insets from the allocated rect to the field.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -1839,13 +1792,6 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         between :class:`ModalDatePicker` and :class:`ModalDateInput` is not implemented.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
         framework.
-
-    Args:
-        init_value: Pre-selected date shown when the picker opens.
-        supporting_text: Small label shown at the top of the header (14pt).
-        min_date: Earliest selectable date.
-        max_date: Latest selectable date.
-        style: Visual style.  Defaults to :class:`ModalDatePickerStyle`.
     """
 
     def __init__(
@@ -1862,11 +1808,11 @@ class ModalDatePicker(ComposableWidget, OverlayAware[Optional[_Date]]):
         """Initialize ModalDatePicker.
 
         Args:
-            init_value: Initial selected date.
+            init_value: Date selected when the picker opens.
             supporting_text: Small label shown at the top of the header (14pt).
-            min_date: Minimum selectable date.
-            max_date: Maximum selectable date.
-            style: Optional style override.
+            min_date: Earliest selectable date.
+            max_date: Latest selectable date.
+            style: Visual style. Defaults to :class:`ModalDatePickerStyle`.
             padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -2090,13 +2036,6 @@ class ModalDateRangePicker(
         does not yet exist.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
         framework.
-
-    Args:
-        init_value: Pre-selected date range as ``(start, end)`` tuple.
-        supporting_text: Small label shown at the top of the header (14pt).
-        min_date: Earliest selectable date.
-        max_date: Latest selectable date.
-        style: Visual style.  Defaults to :class:`ModalDateRangePickerStyle`.
     """
 
     def __init__(
@@ -2113,11 +2052,12 @@ class ModalDateRangePicker(
         """Initialize ModalDateRangePicker.
 
         Args:
-            init_value: Initial date range as (start, end) tuple.
+            init_value: Range selected when the picker opens, as
+                ``(start, end)``.
             supporting_text: Small label shown at the top of the header (14pt).
-            min_date: Minimum selectable date.
-            max_date: Maximum selectable date.
-            style: Optional style override.
+            min_date: Earliest selectable date.
+            max_date: Latest selectable date.
+            style: Visual style. Defaults to :class:`ModalDateRangePickerStyle`.
             padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -2354,16 +2294,6 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         and the range-input variant (``ModalDateRangeInput``) does not yet exist.
         Deferred: Nuiitivet prioritizes the Docked variant as a desktop-oriented
         framework.
-
-    Args:
-        init_value: Optional initial date used to pre-populate the text field.
-        supporting_text: Small label shown at the top of the header (14pt).
-        input_label: Label for the date text field.
-        date_format: How the typed date is read and rendered.  Its pattern is
-            also the hint shown below the field.
-        min_date: Earliest acceptable date.
-        max_date: Latest acceptable date.
-        style: Visual style.  Defaults to :class:`ModalDateInputStyle`.
     """
 
     def __init__(
@@ -2382,13 +2312,14 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         """Initialize ModalDateInput.
 
         Args:
-            init_value: Initial date to pre-populate the text field.
+            init_value: Date the text field opens with.
             supporting_text: Small label shown at the top of the header (14pt).
             input_label: Text field label.
-            date_format: How the typed date is read and rendered.
-            min_date: Minimum acceptable date.
-            max_date: Maximum acceptable date.
-            style: Optional style override.
+            date_format: How the typed date is read and rendered. Its pattern
+                is also the hint shown below the field.
+            min_date: Earliest acceptable date.
+            max_date: Latest acceptable date.
+            style: Visual style. Defaults to :class:`ModalDateInputStyle`.
             padding: Insets from the allocated rect to the picker.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
