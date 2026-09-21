@@ -36,9 +36,10 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 ## AI pair-programming
 
 - [Overview](ai_pair_programming/index.md)
+- [Install the skills](ai_pair_programming/install_skills.md)
 - [Hot Reload](ai_pair_programming/hot_reload.md)
+- [The on-screen modes](ai_pair_programming/on_screen_modes.md)
 - [Dev Bridge MCP](ai_pair_programming/dev_bridge_mcp.md)
-- [The `nuiitivet-app` skill](ai_pair_programming/nuiitivet_app_skill.md)
 
 ## Advanced
 

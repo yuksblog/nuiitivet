@@ -348,7 +348,7 @@ project skills directory, `.claude/skills/`; point `--dest` at another
 assistant's. Re-run it after upgrading nuiitivet. The other channels — the
 Claude Code plugin (which also wires up the dev bridge MCP server) and copying
 by hand — are covered in the
-[skill pages](docs/guide/ai_pair_programming/nuiitivet_app_skill.md).
+[install page](docs/guide/ai_pair_programming/install_skills.md).
 
 ### 3.3 Your first app
 

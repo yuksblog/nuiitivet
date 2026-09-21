@@ -1,7 +1,6 @@
 # Dev Modes
 
 > Status: Implemented (comment mode, source jump, layout edit mode)
-> User guide: [docs/guide/ai_pair_programming/dev_bridge_mcp.md](../guide/ai_pair_programming/dev_bridge_mcp.md) — the gestures themselves are the guide's business
 > Related design: [DEV_BRIDGE.md](DEV_BRIDGE.md) (the assistant's side of the session), [HOT_RELOAD.md](HOT_RELOAD.md) (what applies a layout-mode edit)
 
 ## 1. Goal

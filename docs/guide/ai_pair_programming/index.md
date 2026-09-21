@@ -9,55 +9,18 @@ between its turns — so you stay on the same page.
 <!-- TODO(#387): embed a short screencast of a pair-programming session here — a
      video conveys the loop far better than prose. Deferred until one is recorded. -->
 
-## The two layers
-
-This workflow assumes you already work in an AI programming environment — an
-assistant like Claude Code or GitHub Copilot. Nuiitivet plugs into it on two
-levels, and the rest of this section is organised the same way.
-
-### Development-time features — what the framework provides
-
-Set these up in your project. They are ordinary development tooling and work
-whether or not an assistant is involved.
-
-- **[Hot Reload](hot_reload.md)** — *write.* Launch your app with the dev runner
-  (`python -m nuiitivet.dev run path/to/app.py`) so every save rebuilds the running
-  window in place, with your `Observable` state and VSCode **F5** debug session
-  intact.
-- **[Dev Bridge MCP](dev_bridge_mcp.md)** — *see and act.* A localhost server the
-  dev runner starts alongside hot reload, exposing the running app as MCP tools:
-  read the widget tree, screenshot it, click and type, and pull your
-  reload/interaction logs.
-
-### AI skills — what the assistant is told about them
-
-A skill is a bundle of instructions you install into your assistant's skills
-directory — each skill page shows the ways to do that. The features above are
-usable without them; the skills are what make an assistant reach for the right
-one at the right time instead of guessing. Install all three — one covers each
-leg of the loop.
-
-- **[The `nuiitivet-app` skill](nuiitivet_app_skill.md)** — *idioms.* Keeps the
-  assistant's edits idiomatic Nuiitivet rather than leaking Flutter/React/Rx
-  habits.
-- **[The `nuiitivet-debug` skill](nuiitivet_debug_skill.md)** — *run and drive.*
-  Teaches the assistant to launch under hot reload and work the dev bridge
-  cheaply — check the tree before spending a screenshot, wait for async work
-  instead of racing it.
-- **[The `nuiitivet-see-comments` skill](nuiitivet_see_comments_skill.md)** —
-  *act on what you pointed at.* Reads the comments you left in the app and does
-  them, one turn for all of them.
-
 ## Which page answers what
 
-| If you want to know… | Read |
-| --- | --- |
-| How do I get my app rebuilding on save, with state and breakpoints intact? | [Hot Reload](hot_reload.md) |
-| What exactly can an assistant see and do in my running app? | [Dev Bridge MCP](dev_bridge_mcp.md) |
-| How do I stop the assistant writing Flutter-flavoured Python? | [The `nuiitivet-app` skill](nuiitivet_app_skill.md) |
-| How do I get the assistant to run and debug the app itself? | [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) |
-| How do I have the assistant act on the comments I left in the app? | [The `nuiitivet-see-comments` skill](nuiitivet_see_comments_skill.md) |
+This workflow assumes you already work with an AI assistant such as Claude Code
+or GitHub Copilot. The pages follow the order you meet them in:
 
-The two feature pages are the reference for *what the tool does*; the three
-skill pages cover *what the assistant is told about it*, and link back rather
-than restate.
+| If you want to… | Read |
+| --- | --- |
+| Get the assistant writing idiomatic Nuiitivet, and running and checking the app itself | [Install the skills](install_skills.md) |
+| Get your app rebuilding on save, with state and breakpoints intact | [Hot Reload](hot_reload.md) |
+| Tell the assistant what to change from the app's own screen, or fix the layout yourself | [The on-screen modes](on_screen_modes.md) |
+| Know what the assistant can see and do in your running app, and set that up | [Dev Bridge MCP](dev_bridge_mcp.md) |
+
+Hot reload, the on-screen modes and the dev bridge are ordinary development
+tooling the framework provides: they work whether or not an assistant is
+involved. The skills are what the assistant is told about them.
