@@ -61,8 +61,8 @@ Pass one or the other, never both: they are matched as an **or**, so naming both
 widens the query instead of narrowing it. The harness refuses the call rather
 than answering the opposite of what you meant.
 
-**An ambiguous query fails.** Two rows both labelled "Delete" is a question an
-assistant driving a live app can resolve by looking, and an `assert` cannot — so
+**An ambiguous query fails.** Two rows both labelled "Delete" is a question a
+coding agent driving a live app can resolve by looking, and an `assert` cannot — so
 `get()` refuses and lists the matches. This is a deliberate divergence from the
 dev bridge, which takes the first match silently. A `key` unique enough for
 `get()` behaves identically in both.
@@ -137,7 +137,7 @@ raises and tells you which region to use — a diagnostic worth keeping.
 ### A verb that did nothing raises
 
 Text goes to whatever is *focused*. With nothing focused, the bridge reports
-`handled: False` and lets the assistant judge; an `assert` does not read that, so
+`handled: False` and lets the agent judge; an `assert` does not read that, so
 the harness raises `ActionNotHandledError` instead:
 
 ```python

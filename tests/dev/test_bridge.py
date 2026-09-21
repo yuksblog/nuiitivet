@@ -866,7 +866,7 @@ def test_get_cleans_up_on_connection_refused(tmp_path: Path) -> None:
 
 
 def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) -> None:
-    """The human -> assistant direction: what they pointed at, pulled on demand."""
+    """The human -> agent direction: what they pointed at, pulled on demand."""
     from nuiitivet.dev.comments import Comments
 
     app = _fake_app()

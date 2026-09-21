@@ -617,11 +617,11 @@ class Window:
         self._modifier_keys: int = 0
         # Dev-only observer for the interaction journal. The dev runner
         # attaches an ``InteractionRecorder`` here so the human's coarse UI
-        # actions can be recorded for an AI pair to pull; ``None`` -- and zero
+        # actions can be recorded for an agent to pull; ``None`` -- and zero
         # overhead -- in production.
         self._interaction_recorder: Optional[Any] = None
         # Dev-only mark mode. The dev runner attaches a
-        # ``CommentMode`` here so the human can point at a widget for an AI pair
+        # ``CommentMode`` here so the human can point at a widget for an agent
         # to read; ``None`` -- and zero overhead -- in production.
         self._comment_mode: Optional[Any] = None
         # Dev-only source jump. The dev runner attaches a ``SourceJump`` here so
@@ -1229,7 +1229,7 @@ class Window:
         Resolves the title given at construction: a plain string is returned as
         is; an :class:`~nuiitivet.observable.protocols.ObservableBase` is
         unwrapped to its current value. Exposed for dev tooling -- the dev
-        bridge's ``status`` reports it so an assistant can confirm *which* app is
+        bridge's ``status`` reports it so an agent can confirm *which* app is
         running -- and never raises: an observable whose read fails reports
         ``None`` rather than propagating.
         """

@@ -351,7 +351,7 @@ def test_the_payload_flags_the_innermost_frame_as_the_jump_target(
 def test_payload_paths_are_relative_to_the_working_directory(
     recording: None,
 ) -> None:
-    """How the guide and the assistant both refer to files."""
+    """How the guide and the agent both refer to files."""
     node = Text("AAA")
 
     entries = source.payload(node)

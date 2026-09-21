@@ -996,7 +996,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_mouse_press_dispatch_exc", "Mouse press dispatch raised")
         # Dev-only: record the human's click for the interaction journal.
-        # Only the real input path reaches here; the assistant's synthesized
+        # Only the real input path reaches here; the agent's synthesized
         # clicks enter below at ``_dispatch_*``, so this captures the human alone.
         recorder = getattr(win, "_interaction_recorder", None)
         if recorder is not None:

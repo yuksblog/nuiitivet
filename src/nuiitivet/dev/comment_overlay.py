@@ -4,13 +4,13 @@ The visual half of :mod:`nuiitivet.dev.comment_mode`: a pure function of the
 live :class:`~nuiitivet.dev.comments.Comments`, read at paint time. Drawn from
 the live frame paths only, outside the widget tree, so ``describe_tree`` never
 sees a mark and ``screenshot`` never contains one. Amber, against the action
-overlay's indigo: "the human means this", not "the assistant did this".
+overlay's indigo: "the human means this", not "the agent did this".
 
 While latched: the HUD badge (:mod:`.hud`), a hover highlight on the pick
 candidate, the newest mark at full strength, earlier ones dimmed to their
 badges, and the field open on a mark. After committing: numbered badges only,
 each with its instruction beside it, cut short, plus one line at the badge's
-home saying what to type in chat until the assistant has read the comments.
+home saying what to type in chat until the agent has read the comments.
 Widgets get corner brackets and areas a faint fill, so the two kinds of mark
 stay distinct when they nest.
 
@@ -349,7 +349,7 @@ def _paint_hud(
     if regions:
         parts.append(_plural(regions, "region"))
 
-    mode_line = SEPARATOR.join(("COMMENT", "for the assistant", *parts, mode.exit, "Ctrl+Shift+E edit"))
+    mode_line = SEPARATOR.join(("COMMENT", "for the agent", *parts, mode.exit, "Ctrl+Shift+E edit"))
     paint_hud(
         skia,
         canvas,

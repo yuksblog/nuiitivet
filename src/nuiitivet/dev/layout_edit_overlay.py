@@ -6,7 +6,7 @@ as :mod:`.comment_overlay`: from the live frame paths only, never from
 paint time.
 
 Its colour is a third family. Comment mode's amber is a note the human wrote,
-the action overlay's indigo is a report of what the assistant did, and this
+the action overlay's indigo is a report of what the agent did, and this
 teal is a change about to be made -- the one of the three that alters a file
 on release, which is why it must never be mistaken for either of the others.
 """

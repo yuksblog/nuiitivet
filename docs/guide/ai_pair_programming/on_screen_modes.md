@@ -5,15 +5,15 @@ there, with the app launched under the [dev runner](hot_reload.md):
 
 | You want to | Do this |
 | --- | --- |
-| Tell the assistant what to change, or what went wrong, right where it is | [Write an instruction on the app](#write-instructions-on-the-app-comment-mode) — `Ctrl+Shift+C` |
+| Tell the coding agent what to change, or what went wrong, right where it is | [Write an instruction on the app](#write-instructions-on-the-app-comment-mode) — `Ctrl+Shift+C` |
 | Fix a size, an order or an alignment yourself | [Edit the layout directly](#edit-the-layout-directly-layout-edit-mode) — `Ctrl+Shift+E` |
 | Read or edit the code behind a widget | [Jump to the source](#jump-to-the-source) — `Ctrl+Shift+Click` |
 
 ## Write instructions on the app (comment mode)
 
-Telling an assistant *where* is often the hard part of telling it what to do.
+Telling an agent *where* is often the hard part of telling it what to do.
 Comment mode puts the instruction on the app itself: mark a widget or an area,
-write what you want done on the mark, and the assistant reads the place and the
+write what you want done on the mark, and the agent reads the place and the
 words together.
 
 | Gesture | What it does |
@@ -33,27 +33,27 @@ words together.
 Click the widget you mean, or drag a box over the area, then press `Enter`. A
 field opens on the mark; type the instruction and press `Enter` to keep it.
 Press `Enter` once more to leave the mode. Mark as many places as you like
-before leaving: the assistant handles them all in one turn, each by its number.
+before leaving: the agent handles them all in one turn, each by its number.
 A mark with no text is fine too — refer to it by number in chat. The text can
 be a problem instead of a change: comment right after it happens, and the
-assistant replays what you did in the app to reproduce it before fixing.
+agent replays what you did in the app to reproduce it before fixing.
 
 Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments
 and does what each one says, answering by number. If the skill is
 [not installed](install_skills.md), type `see_comments` instead: that names the dev bridge tool
-directly, so the assistant calls it. Either works; the skill is the better
+directly, so the agent calls it. Either works; the skill is the better
 habit, since your chat completes it for you. The badge at the bottom-left
-shows both until the assistant has read the comments.
+shows both until the agent has read the comments.
 
 > **Privacy note.** `interaction_log` records neither coordinates nor typed
 > content, because it records ambiently. A comment may carry both, and your
 > own words — that is the point of it, since you chose to show it. The journal
 > still only gains a content-free marker that you commented on *something*;
-> the payload goes out only when the assistant asks for it.
+> the payload goes out only when the agent asks for it.
 
 ## Edit the layout directly (layout edit mode)
 
-Some fixes are not worth asking an assistant for: a width or a height, the
+Some fixes are not worth asking an agent for: a width or a height, the
 order of two widgets — layout, in short. Layout edit mode lets you make those
 yourself, by dragging the widget on the app's own screen. The dev runner writes
 the change into the source, and hot reload applies it.
@@ -69,7 +69,7 @@ the change into the source, and hot reload applies it.
 | `W` / `S` / `0`–`9` while dragging over a `Stack` | Pick the layer the widget lands in. A list beside the stack names its layers, bottom to top, with the landing marked; a layer that is a container takes the widget inside, any other gives the widget its place in the stack, and past the top layer is a new one on top. |
 | Release | Write and reload. The ghost stays until the reload lands. |
 | `Alt` while dragging | Land on the exact pixel count instead of snapping. |
-| `Delete` / `Backspace` | Remove the selected widget from the source — its whole expression, children included. No confirmation: `Ctrl+Z` brings it back. A handler or import the widget used stays behind for you or the assistant to clean up. |
+| `Delete` / `Backspace` | Remove the selected widget from the source — its whole expression, children included. No confirmation: `Ctrl+Z` brings it back. A handler or import the widget used stays behind for you or the agent to clean up. |
 | `Enter`, or a second click on the selection | Edit its text in place. A field opens over the widget; `Enter` writes the new string into the literal the code passed (`text=` / `label=`, or the first argument), `Esc` or a click elsewhere cancels. The field edits like a text field: `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. Text that comes from a variable, an f-string or a function call cannot be edited here — the badge says so. |
 | `Ctrl+Z` | Undo the last edit this mode wrote. |
 | `Ctrl+Shift+Z` | Redo what `Ctrl+Z` undid. A new edit clears what could be redone. |
@@ -200,6 +200,6 @@ python -m nuiitivet.dev run app.py \
 
 ## Next Steps
 
-- [Dev Bridge MCP](dev_bridge_mcp.md) — what the assistant sees and does in the
+- [Dev Bridge MCP](dev_bridge_mcp.md) — what the agent sees and does in the
   same running app.
 - [AI pair-programming](index.md) — the section overview.

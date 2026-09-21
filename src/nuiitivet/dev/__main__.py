@@ -417,7 +417,7 @@ def _run(args: argparse.Namespace) -> int:
 
     # The runtime log: capture taps route the app's log output and uncaught
     # exceptions (UI, background threads, asyncio) into this journal, which the
-    # bridge serves at ``/runtime_log`` so an AI pair can see *why* an action it
+    # bridge serves at ``/runtime_log`` so an agent can see *why* an action it
     # drove had no visible effect. Installed before the import for the same
     # reason as ``source``: WARNINGs emitted while the user's module loads and
     # its entry constructs the app (an instance-root ``Window``, say) must land
@@ -456,7 +456,7 @@ def _run(args: argparse.Namespace) -> int:
         # via its ``window=`` selector.
         host = app.main_window
         # One journal shared by both: the controller records reload outcomes
-        # into it, the bridge serves them at ``/reload_log`` so an AI pair can
+        # into it, the bridge serves them at ``/reload_log`` so an agent can
         # notice the code changed between its turns.
         journal = ReloadJournal()
         # What the human *points at*, the reverse of the interaction
@@ -464,7 +464,7 @@ def _run(args: argparse.Namespace) -> int:
         # the real input path; the controller re-resolves them across a reload;
         # the bridge serves them at ``/see_comments``.
         comments = Comments()
-        # What the human *changes* without an assistant: layout edit mode's edits to
+        # What the human *changes* without an agent: layout edit mode's edits to
         # the source, applied by the reload the controller runs, so the
         # controller is what tells the log whether an edit landed.
         edits = EditLog()
@@ -479,7 +479,7 @@ def _run(args: argparse.Namespace) -> int:
         )
         # The complementary surface: the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
-        # at ``/interaction_log`` so an AI pair can see how the human drove the
+        # at ``/interaction_log`` so an agent can see how the human drove the
         # app between its turns. Instrumented per window — the journal, the
         # comments and the edit log are shared, but each window carries its own
         # recorder, modes and source jump so hover/gesture state stays

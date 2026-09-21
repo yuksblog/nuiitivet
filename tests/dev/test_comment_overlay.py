@@ -1,8 +1,8 @@
 """Tests for the comment-mode and source-jump overlay.
 
 The load-bearing property is negative: the human's marks are drawn for
-the human only, and must never reach the assistant's perception. If they did,
-the assistant would read its own human's annotations back as app content.
+the human only, and must never reach the agent's perception. If they did,
+the agent would read its own human's annotations back as app content.
 """
 
 from __future__ import annotations
@@ -198,7 +198,7 @@ def test_the_badge_names_the_mode_its_exit_and_the_switch(
     so.paint_comments(app, _Canvas(), app.width, app.height)
 
     assert seen["mode_line"] == SEPARATOR.join(
-        ("COMMENT", "for the assistant", "1 widget", "Esc discard", "Ctrl+Shift+E edit")
+        ("COMMENT", "for the agent", "1 widget", "Esc discard", "Ctrl+Shift+E edit")
     )
     assert seen["hints"] == mode.hints
     assert seen["placement"] is mode.placement

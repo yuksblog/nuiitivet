@@ -9,7 +9,7 @@
 Hot reload lets an author *edit* a live app; the dev bridge lets a tool *see*
 and *drive* it. Together they close a perception–action loop: edit (reload) →
 see (`describe_tree`, `screenshot`) → act (`click`, `type`, `key`) → verify →
-edit again. The tool is an AI assistant working in turns over MCP, and every
+edit again. The tool is a coding agent working in turns over MCP, and every
 choice below follows from that reader: it reasons over text, it pays for
 tokens, it cannot watch the app between its turns, and it shares the app with
 a human who edits and clicks while it is thinking.
@@ -19,7 +19,7 @@ a human who edits and clicks while it is thinking.
 ```mermaid
 flowchart LR
     subgraph host[MCP host]
-        assistant[Assistant]
+        agent[Coding agent]
     end
     subgraph devproc[Dev runner process]
         direction TB
@@ -40,7 +40,7 @@ flowchart LR
         input["Backend input handlers<br/>(the human)"]
         logs["logging · excepthooks"]
     end
-    assistant -- "MCP tools" --> mcp
+    agent -- "MCP tools" --> mcp
     mcp -- HTTP --> bridge
     cli -- HTTP --> bridge
     bridge -- "marshalled onto the UI thread" --> perception
@@ -56,7 +56,7 @@ flowchart LR
 The MCP server and the CLI are thin clients of one HTTP bridge. The bridge
 owns the two things that matter: it is only ever open inside a dev session,
 and everything it does to the tree happens on the UI thread. The journals are
-the other direction of flow — the app telling the assistant what happened while
+the other direction of flow — the app telling the agent what happened while
 it was not looking.
 
 ## 3. The bridge
@@ -77,7 +77,7 @@ thread — a clock callback drains a queue ([HOT_RELOAD.md
 - **`describe_tree`** walks the mounted tree into compact JSON: per node its
   type, its human identity (`key` / `label` / `text` / `title`), its rect in
   root coordinates, and the interactive state it publishes. This is the
-  semantic, low-token view the assistant reasons over and resolves action
+  semantic, low-token view the agent reasons over and resolves action
   targets from; it is the default, and `screenshot` is the exception.
 - **`screenshot`** renders the mounted tree on an offscreen raster surface
   rather than reading back the framebuffer, so a defect in the GPU path or the
@@ -110,13 +110,13 @@ its region or covered by an overlay fails rather than landing elsewhere.
 
 ## 6. Journals
 
-The bridge is assistant-initiated: the assistant reads and acts on its own
+The bridge is agent-initiated: the agent reads and acts on its own
 turns and cannot see what happened between them. In a pair session that gap is
 the normal case — the human saves, clicks through a screen, and the app logs an
-error while the assistant is mid-task. Three journals fill it, and they share
+error while the agent is mid-task. Three journals fill it, and they share
 one model:
 
-- **Pull, not push.** An assistant acts in turns and MCP is request/response,
+- **Pull, not push.** An agent acts in turns and MCP is request/response,
   so each journal is a bounded, thread-safe ring buffer read on demand. A
   monotonic `seq` on every entry lets a client tell whether anything happened
   since its last look.
@@ -126,12 +126,12 @@ one model:
 ### 6.1 Reload journal
 
 Answers "did the code change under me?". The worst case is a *failed* reload:
-the previous UI keeps running against code the assistant is no longer reading.
+the previous UI keeps running against code the agent is no longer reading.
 The controller records every reload — success with the reloaded module names,
 or failure with a capped traceback. Each entry also carries `changed`, the
 modules whose source *content* changed, detected by per-file hash: the watcher
 fires on mtime, which an autosave or a formatter bumps with identical bytes, so
-an empty `changed` marks a no-op save the assistant can ignore, and a non-empty
+an empty `changed` marks a no-op save the agent can ignore, and a non-empty
 one names the file the human edited (the reloader reloads every user module on
 any change, so the module list alone cannot). The diff itself is deliberately
 not recorded.
@@ -147,12 +147,12 @@ record of how the app got here. Two choices are load-bearing:
   to a widget identity a replay can find again (never a coordinate; a keyless
   button is named by the caption inside it), a shortcut or navigation key, a
   content-free text marker, a scroll. Whatever the human did that the
-  assistant must reproduce, it reproduces through those same verbs, so this
+  agent must reproduce, it reproduces through those same verbs, so this
   set is necessary and sufficient to replay a path, and it grows only when the
   vocabulary does. Semantic events (navigate, dialog open, submit) are states
   derivable from the clicks plus the tree, and are not recorded.
 - **Recorded at the real-input layer, so the human only.** The recorder hangs
-  off the backend's input handlers, which the assistant's synthesized actions
+  off the backend's input handlers, which the agent's synthesized actions
   bypass, so the journal needs no real/synthetic tagging. Typed content never
   enters it: a bare printable key is dropped and a burst of text collapses to
   one marker, because recording keystrokes would leak field text.
@@ -182,9 +182,9 @@ not the raw wheel: a horizontal region driven by a vertical wheel is normal.
 
 ### 6.3 Runtime journal
 
-Answers "what did the app emit?". When an assistant-driven action triggers a
+Answers "what did the app emit?". When an agent-driven action triggers a
 callback that raises, the framework swallows the exception to keep the app
-alive and logs it — to a console the assistant cannot read. The next
+alive and logs it — to a console the agent cannot read. The next
 `describe_tree` then shows an unchanged tree: *that* nothing happened, not
 *why*. A capture installs a `logging` handler (WARNING and above, any thread;
 asyncio reports an unretrieved task exception by logging it, so those land

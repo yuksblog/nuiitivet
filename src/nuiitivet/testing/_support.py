@@ -730,7 +730,7 @@ class _HarnessBase:
         """The one node matching. Fails on none, and fails on more than one.
 
         Failing on ambiguity is a deliberate divergence from the dev bridge,
-        which takes the first match and says nothing: an assistant can look at
+        which takes the first match and says nothing: an agent can look at
         the screen and try again, an ``assert`` cannot, and a test that silently
         targeted the wrong row of a list is exactly the green-but-meaningless
         result this package exists to prevent.

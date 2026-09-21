@@ -201,7 +201,7 @@ def _paint_dev_comment_overlay(app: Any, canvas: Any) -> None:
     """Draw comment-mode, layout-mode and source-jump feedback on the live frame only.
 
     Live frames only, like the action overlay: the human's comments must not
-    reach ``screenshot``, or the assistant would read them back as app content.
+    reach ``screenshot``, or the agent would read them back as app content.
     """
     try:
         from nuiitivet.dev import layout_edit_overlay, comment_overlay
@@ -216,7 +216,7 @@ def _paint_dev_action_overlay(app: Any, canvas: Any) -> None:
     """Paint the human-only dev action overlay onto the live frame.
 
     Only the on-screen frame paths call this; the off-screen ``screenshot``
-    render deliberately does not, so markers never enter the assistant's
+    render deliberately does not, so markers never enter the agent's
     perception. A no-op (import guarded) when the dev overlay is unavailable.
     """
     try:

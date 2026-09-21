@@ -621,7 +621,7 @@ def test_escape_discards_regions_too() -> None:
 
 def test_a_discarded_session_still_moves_seq() -> None:
     """Marks go live as they are made, so a rollback is a state change an
-    assistant that read mid-session has to be able to notice."""
+    agent that read mid-session has to be able to notice."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)

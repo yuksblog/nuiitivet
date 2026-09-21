@@ -273,7 +273,7 @@ class BridgeClient:
     def see_comments(self) -> dict[str, Any]:
         """Fetch what the human marked in comment mode.
 
-        The human -> assistant direction of the loop: where ``describe_tree`` and
+        The human -> agent direction of the loop: where ``describe_tree`` and
         ``describe_state`` report what the app *is*, this reports what the human
         *meant* -- the widgets they deliberately pointed at, each with its
         identity, rect, and a tree/state dump scoped to it.

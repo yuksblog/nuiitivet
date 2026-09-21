@@ -1,17 +1,17 @@
 """Interaction journal: a pull-able record of the human's recent UI actions (dev-only).
 
-The dev bridge is **AI-initiated**: the assistant reads (``describe_tree`` /
+The dev bridge is **agent-initiated**: the agent reads (``describe_tree`` /
 ``screenshot``) and acts (``click`` / ``type`` / ``key``) on its own turns. The
 reload journal closed one perception gap between turns -- "the *code*
 changed under me". This module closes the complementary one: **"the human *drove
 the app* under me."** In a pair session the human often reproduces a bug or
-navigates to a screen while the assistant is mid-task, so the assistant's cached
+navigates to a screen while the agent is mid-task, so the agent's cached
 ``describe_tree`` is of a stale screen and it cannot tell *how* the human got to
 the current state.
 
-The design is a deliberate **mirror of the assistant's own action vocabulary**
+The design is a deliberate **mirror of the agent's own action vocabulary**
 (``click`` / ``key`` / ``type`` / ``scroll``): whatever the human does that the
-assistant would need to reproduce, the assistant reproduces *through those same
+agent would need to reproduce, the agent reproduces *through those same
 verbs*, so recording exactly those inbound is necessary and sufficient to
 reconstruct a replayable path. Higher-level *semantic* events (navigate / dialog
 open-close / submit) are deliberately **not** recorded -- they are states
@@ -20,7 +20,7 @@ derivable from a click sequence plus ``describe_tree``, not primitive inputs.
 Window lifecycle events (``window_opened`` / ``window_closed``) are the
 one exception, because the derivability argument fails for them: a close can
 happen on the OS title bar, entirely outside the widget tree, so no click
-sequence records it -- the assistant could only reconstruct it by diffing
+sequence records it -- the agent could only reconstruct it by diffing
 ``status``'s window list against a remembered snapshot. They are recorded from
 the App's register/unregister choke points (the dev runner wires them in), so
 every open/close path -- in-app button, OS close, parent cascade, programmatic
@@ -69,7 +69,7 @@ from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 logger = logging.getLogger(__name__)
 
 # Default number of interaction events retained. A reproduction path is usually
-# short (a handful of clicks); a small buffer holds the recent tail an assistant
+# short (a handful of clicks); a small buffer holds the recent tail an agent
 # needs to answer "where is the human now, and how did they get here?".
 DEFAULT_CAPACITY = 200
 
@@ -243,7 +243,7 @@ def window_identity(window: Any) -> dict[str, Any]:
     """Summarize ``window`` for a lifecycle event: ``{"id", optional "title", "main"}``.
 
     The same fields ``status``'s window listing reports (minus the transient
-    ``focused``), so an assistant can join a lifecycle event to that listing --
+    ``focused``), so an agent can join a lifecycle event to that listing --
     in particular, a ``window_closed`` id marks any remembered ``window=`` id
     as stale before acting on it. The title goes through the same display
     coercion as widget identities, so an observable title is unwrapped and an
@@ -668,7 +668,7 @@ class InteractionRecorder:
 
     The dev runner attaches one of these to the running app as
     ``app._interaction_recorder`` and calls it from the *real* input handlers --
-    the layer the human drives but the assistant's synthesized actions bypass
+    the layer the human drives but the agent's synthesized actions bypass
     (those enter below, at ``app._dispatch_*``). So the journal captures the human
     only, with no need to tag synthetic events.
 

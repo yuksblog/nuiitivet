@@ -4,7 +4,7 @@
 any human-meaningful identity (``key`` / ``label`` / ``text``), the interactive
 state it publishes (``disabled`` / ``focused`` / ``selected`` / ``value``) and
 its ``global_layout_rect`` in root coordinates. This is the semantic, low-token
-view an assistant reasons over -- "a disabled ``Button`` labeled 'increment' at
+view an agent reasons over -- "a disabled ``Button`` labeled 'increment' at
 (x, y, w, h)" -- and is what makes targeting for
 :mod:`nuiitivet._interaction.action` possible.
 
@@ -373,7 +373,7 @@ def visible_rect(node: Any) -> Optional[tuple[float, float, float, float]]:
     there, so the answer can name an area where nothing of the node is painted.
     A decorative shape oversized on purpose and trimmed to a corner is the
     common case, and a rect spanning a neighbouring pane is actively misleading
-    to anyone -- human or assistant -- reading it as "this is what I pointed at".
+    to anyone -- human or agent -- reading it as "this is what I pointed at".
 
     So this intersects the node's rect with every ancestor clip, and returns
     ``None`` when nothing survives (the node is laid out somewhere it is painted
@@ -819,7 +819,7 @@ def _read_observable(obs: ObservableBase[Any]) -> Any:
 
     A mutable source observable reports its coerced value directly; a derived
     (non-mutable) one -- ``Observable.compute`` / ``map`` / ``combine`` -- is
-    wrapped as ``{"value", "kind": "computed"}`` so the assistant can tell a
+    wrapped as ``{"value", "kind": "computed"}`` so the agent can tell a
     value it can trace to an edit from one that is recomputed from others.
     """
     try:

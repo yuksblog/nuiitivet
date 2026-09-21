@@ -1,7 +1,7 @@
 # Dev Bridge MCP
 
-Hot reload lets *you* edit a running app; the **dev bridge** lets an **AI
-assistant** see and drive that same app — read the widget tree, click, scroll
+Hot reload lets *you* edit a running app; the **dev bridge** lets a **coding
+agent** see and drive that same app — read the widget tree, click, scroll
 and type, wait for async work to settle, and catch up on what you did between
 its turns. After a change it checks the result itself, so you are not the one
 who has to.
@@ -59,14 +59,14 @@ one is up, so the order of steps 2 and 3 does not matter.
 
 ### 4. Confirm the connection
 
-Run `python -m nuiitivet.dev status`, or ask the assistant to call `status`. It
+Run `python -m nuiitivet.dev status`, or ask the agent to call `status`. It
 is the cheapest tool and reports the running app's window title, so a successful
 call confirms both that the bridge was reached and that it found the app you
 meant.
 
 Everything below assumes this setup is in place.
 
-## What the assistant can do
+## What the agent can do
 
 It reads the running app as a tree of widgets with their state, and as the
 live `Observable` values behind them. It drives the app by clicking, scrolling,
@@ -81,10 +81,10 @@ What is worth knowing as the human in the loop:
 - **What you type is never recorded.** The log of your actions keeps clicks,
   shortcut keys and scrolls; a burst of typing collapses to one content-free
   marker, so field text never leaks.
-- **A comment is the one thing that runs from you to the assistant.** Everything
+- **A comment is the one thing that runs from you to the agent.** Everything
   else reports what the app is; a comment reports what you *mean*.
 - **A silent failure surfaces in the app's error log.** A handler that raises is
-  swallowed to keep the app alive, so the screen looks unchanged; the assistant
+  swallowed to keep the app alive, so the screen looks unchanged; the agent
   finds the traceback there, and so can you: `python -m nuiitivet.dev runtime-log`.
 - **Its screenshot is not a capture of your window.** It re-renders the widget
   tree, so your screen can be visibly garbled while its image comes back clean.
@@ -92,15 +92,15 @@ What is worth knowing as the human in the loop:
 - **"Blank screen" is a heuristic.** The health check flags a frame of one
   uniform colour, which catches a paint that raised — and an intentionally
   solid screen too.
-- **Profiling is not free.** While the assistant records rebuilds and frame
+- **Profiling is not free.** While the agent records rebuilds and frame
   timings, frames run roughly 10% slower; outside a recording nothing is
   installed and nothing costs anything.
 
-## Watch the assistant act (on-screen)
+## Watch the agent act (on-screen)
 
-`interaction_log` closes the loop in one direction — it lets the assistant catch
+`interaction_log` closes the loop in one direction — it lets the agent catch
 up on what *you* did. The **action overlay** closes the reverse direction: it
-lets *you* see what the *assistant* is doing. When the assistant drives the app
+lets *you* see what the *agent* is doing. When the agent drives the app
 the screen updates on its own, and without the overlay you cannot tell at a
 glance which action caused it. Each verb draws a short-lived marker:
 
@@ -112,7 +112,7 @@ glance which action caused it. Each verb draws a short-lived marker:
 | `key` | The keystroke as a human-readable combo (e.g. `Ctrl+Enter`), in the corner caption stack. |
 
 These markers are **indigo**; comment mode's are **amber**; layout edit mode's ghosts
-are **teal**; the source jump's brackets are **rose**. What the assistant did,
+are **teal**; the source jump's brackets are **rose**. What the agent did,
 what you pointed at, what is about to change in your file, and where a click
 would take you must never be confusable.
 

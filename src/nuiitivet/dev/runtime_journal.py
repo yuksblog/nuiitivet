@@ -1,20 +1,20 @@
 """Runtime journal: a pull-able record of the running app's log output and
 uncaught exceptions (dev-only).
 
-The dev bridge exposes what the assistant *sees* (``describe_tree`` /
+The dev bridge exposes what the agent *sees* (``describe_tree`` /
 ``screenshot``) and what it and the human *did* (``reload_log`` /
 ``interaction_log``), but nothing surfaces what the running app *emitted*. When
-an assistant-driven ``click`` / ``type`` / ``key`` makes a callback raise, the
+an agent-driven ``click`` / ``type`` / ``key`` makes a callback raise, the
 framework swallows it (the app stays alive) and logs it -- to a console the
-assistant, driving over MCP, cannot read. The post-action ``describe_tree`` then
-shows an unchanged tree: the assistant can see *that* nothing happened, not
+agent, driving over MCP, cannot read. The post-action ``describe_tree`` then
+shows an unchanged tree: the agent can see *that* nothing happened, not
 *why*.
 
 This module is the missing surface. A :class:`RuntimeJournal` is a bounded ring
 buffer of :class:`RuntimeEvent`\\ s -- one per captured ``logging`` record or
 uncaught exception -- that the bridge serves at ``/runtime_log`` and the
 ``runtime_log`` MCP tool pulls. Each event carries a monotonic ``seq`` so the
-assistant can tell what is new since its last turn, mirroring the reload and
+agent can tell what is new since its last turn, mirroring the reload and
 interaction journals.
 
 The journal itself holds no capture policy: it is a plain, thread-safe buffer
@@ -35,11 +35,11 @@ from typing import Any, Deque, Optional
 
 # Default number of runtime events retained. Larger than the reload journal: a
 # single failing frame or a chatty background thread can emit a burst, and the
-# assistant wants the recent tail intact rather than evicted by noise.
+# agent wants the recent tail intact rather than evicted by noise.
 DEFAULT_CAPACITY = 200
 
 # Upper bound on a recorded traceback, in characters. The head carries the
-# exception message and the innermost frames -- what the assistant needs to
+# exception message and the innermost frames -- what the agent needs to
 # reason about the failure -- so truncation keeps the front. Capped so one
 # pathological traceback cannot dominate a response. Matches the reload journal.
 _TRACEBACK_CAP = 4000
@@ -77,7 +77,7 @@ class RuntimeEvent:
         source: Where the event was captured: ``"logging"`` (a ``logging``
             record), ``"thread"`` (a background thread's uncaught exception), or
             ``"excepthook"`` (the main thread's uncaught exception).
-        thread: Name of the thread the event originated on, so the assistant can
+        thread: Name of the thread the event originated on, so the agent can
             tell a UI-thread failure from a background one.
         message: The log message (or the exception's ``str``), length-capped.
         logger: The ``logging`` logger name for a ``"logging"`` event; ``None``

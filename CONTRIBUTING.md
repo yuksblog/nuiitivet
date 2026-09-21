@@ -92,8 +92,8 @@ If you write `Closes #IssueNumber` in the PR description, the linked Issue will 
 
 ## 📚 Documentation
 
-Guides live in `docs/guide/`, design documents in `docs/design/`. The text an
-AI assistant reads lives in the published skills (`skills/`) and in the dev
+Guides live in `docs/guide/`, design documents in `docs/design/`. The text a
+coding agent reads lives in the published skills (`skills/`) and in the dev
 bridge MCP server (`src/nuiitivet/dev/mcp_server.py`). Run
 `uv run --group docs mkdocs build --strict` before opening the PR.
 
@@ -106,9 +106,9 @@ upper one links or stays silent.
 | Place | Carries | Leaves out |
 | --- | --- | --- |
 | Design doc (`docs/design/`) | The framework's core ideas: what the design is, how it is realised, and the alternatives that were rejected and why. API and procedure only as far as the design needs them to be understood | Parameter lists, step-by-step mechanics, measurements, the story of how a rule was found |
-| Guide (`docs/guide/`) | How a user does something and what will surprise them | Why the API is shaped that way; a restatement of what a skill tells the assistant |
+| Guide (`docs/guide/`) | How a user does something and what will surprise them | Why the API is shaped that way; a restatement of what a skill tells the agent |
 | MCP server instructions | What the server drives, a one-clause map of which question goes to which tool, and the names of the skills | Procedure and judgement; the details of any one tool |
-| Skill (`skills/`) | The assistant's procedure and judgement: the order of steps, the choice between tools that could both answer, a rule for a mistake that was actually made. In `nuiitivet-app`, the Nuiitivet idiom next to the habit from another framework it replaces | What the human does, what a tool returns, a precaution nobody has hit |
+| Skill (`skills/`) | The agent's procedure and judgement: the order of steps, the choice between tools that could both answer, a rule for a mistake that was actually made. In `nuiitivet-app`, the Nuiitivet idiom next to the habit from another framework it replaces | What the human does, what a tool returns, a precaution nobody has hit |
 | MCP tool description | What the tool returns and when to call it | Field-by-field walkthroughs, procedures, anything the returned JSON already shows |
 | Docstring | What the caller can observe: behaviour, timing, constraints | Mechanism and rationale |
 | Code | The procedure itself; a comment carries only the *why*, once, at the definition site | Anything the code already says |
@@ -117,8 +117,8 @@ A design doc that grows past its name is the usual symptom: it has started
 carrying procedure or API reference. Move the surplus down, not into a bigger
 doc.
 
-**The assistant's text assumes the skills are installed.** The skill and the
-two MCP rows are read by an AI assistant, not a person. The framework is used
+**The agent's text assumes the skills are installed.** The skill and the
+two MCP rows are read by a coding agent, not a person. The framework is used
 with its skills installed, so a tool description does not stand in for a
 missing skill. An MCP host may cut what it is sent — Claude Code cuts the
 server instructions and each tool description at 2048 characters — so a text
@@ -155,7 +155,7 @@ page added makes it worse. Three rules keep it linear:
 
 ### Writing a skill
 
-The reader is an assistant. It does not fill a gap from context: it invents
+The reader is an agent. It does not fill a gap from context: it invents
 something to fill it, or follows whichever fragment it retrieved.
 
 - **A new feature goes into the skill's outline, not into a section appended
