@@ -128,10 +128,8 @@ the failure — the full traceback on the console (VSCode debug console /
 terminal) and a banner over the app. Fix the code and save again to recover; the
 debug session is never torn down.
 
-## See also
+## Next Steps
 
-- [AI pair-programming](index.md) — the edit → see → act loop hot reload drives.
-- [Dev Bridge MCP](dev_bridge_mcp.md) — the other half: how an assistant sees and
-  drives the app hot reload keeps running.
-- [The `nuiitivet-debug` skill](nuiitivet_debug_skill.md) — the skill that teaches
-  an assistant to launch under the dev runner and keep the factory contract.
+- [The on-screen modes](on_screen_modes.md) — tell the assistant what to change
+  from the app's own screen, or change the layout yourself.
+- [AI pair-programming](index.md) — the section overview.
