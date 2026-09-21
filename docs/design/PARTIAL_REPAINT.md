@@ -1,4 +1,4 @@
-# Subtree Paint Cache (Issue #370, Part B) — Design Record
+# Subtree Paint Cache — Design Record
 
 *Status: **PAUSED / not implemented.** This work was explored and prototyped in
 depth; the prototype branch was **discarded** rather than merged (it delivered no
@@ -10,8 +10,8 @@ was paused and how to resume.*
 The problem: eliminate the full `root.paint()` walk that a **localized** content
 change (hover/press/focus, a caret, one animating widget) still pays, even when
 the changed rectangle is a rounding error against the window. It is the follow-up
-to the GPU **Full-Frame Paint Cache** (Issue #369, Part A), which only eliminated
-the walk for *content-unchanged* surface-loss redraws.
+to the GPU **Full-Frame Paint Cache**, which only eliminated the walk for
+*content-unchanged* surface-loss redraws.
 
 ---
 
@@ -120,7 +120,7 @@ state it depends on* (dependency tracking).
 
 Why a temporal "stable for N frames" enable specifically mis-fires in nuiitivet:
 
-1. **It optimises the wrong frames under on-demand drawing (#360).** A static tree
+1. **It optimises the wrong frames under on-demand drawing.** A static tree
    already renders **zero** frames; frames exist only during interaction/animation.
    "Stable for N frames" only enables *after* an idle run, so a brief interaction
    (1–2 frames) never enables, and a structural boundary would help from frame 1.
@@ -192,9 +192,8 @@ explicit** (`graphicsLayer` / `RepaintBoundary`). The nuiitivet analogues:
 5. **Descendant paint-outset bleed — dissolved by `SkPicture`.** A child's shadow /
    focus ring can extend outside the container rect. A rasterized surface sized to
    the container would *clip it away*; a picture does not clip to its recording
-   bounds, so the bleed is captured and replayed automatically. (This is the
-   correctness subtlety that got Part B split out of #369; the picture primitive
-   removes it — verified in the prototype.)
+   bounds, so the bleed is captured and replayed automatically — verified in the
+   prototype.
 
 **Invalidation universality (prerequisite).** The residual correctness risk is a
 *stale snapshot*: a descendant change that failed to invalidate an ancestor's

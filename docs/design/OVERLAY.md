@@ -52,7 +52,7 @@ Note: The `Overlay` core provides only `show()`, while scenario-specific APIs (d
 - `App` owns an Overlay, reached through the same context lookup as a nested one.
   - `Overlay.of(context)`: the nearest ancestor Overlay, falling back to the App's. Use this in the common case.
   - `Overlay.of(context, root=True)`: always the App's. Use this to show above everything from inside a nested Overlay.
-  - The App composes its Overlay as a *sibling* of the Navigator, not as an ancestor of the content, so an ancestor walk alone would never reach it. The fallback resolves it through the `AppScope` instead — per App, never a process-global (#518).
+  - The App composes its Overlay as a *sibling* of the Navigator, not as an ancestor of the content, so an ancestor walk alone would never reach it. The fallback resolves it through the `AppScope` instead — per App, never a process-global.
 - Protocols are provided to ensure ViewModels do not depend on implementation details.
   Core `OverlayProtocol` (`nuiitivet.overlay.protocols`) covers `close()` only, since the
   presentation helpers live on `MaterialOverlay`; `MaterialOverlayProtocol`
@@ -114,13 +114,13 @@ The two input axes form a 2×2 whose fourth cell is not implementable today:
 | | `dismiss_on_outside_tap=False` | `dismiss_on_outside_tap=True` |
 | --- | --- | --- |
 | `passthrough=False` | blocking (dialog) | outside-tap dismissal (menu) |
-| `passthrough=True` | pass-through (toast, tooltip) | `ValueError` — see #508 |
+| `passthrough=True` | pass-through (toast, tooltip) | `ValueError` |
 
 Pointer dispatch resolves a **single** hit target and then walks parents only,
 so a layer can pass a tap through (by not being the hit target) or observe it
 (by being the hit target) — never both. `passthrough=True` with an explicit
-`dismiss_on_outside_tap=True` raises `ValueError` naming #508 rather than
-silently ignoring the flag.
+`dismiss_on_outside_tap=True` raises `ValueError` rather than silently
+ignoring the flag.
 
 #### Responsibility split: the core owns input, the composer owns paint
 

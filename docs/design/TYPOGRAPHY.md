@@ -116,7 +116,7 @@ guard above continues to hold.
 
 ## 2. Why not ambient inheritance
 
-An earlier proposal ("ambient icon theme", issue #258) would have let an `Icon`
+An earlier proposal ("ambient icon theme") would have let an `Icon`
 auto-size to adjacent text via a Flutter-`IconTheme`-style scope inherited
 through the widget tree. We rejected this as the primary model:
 

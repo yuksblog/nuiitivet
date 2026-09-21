@@ -17,11 +17,10 @@ Neither is wrong in isolation, but making it a per-widget decision means every
 new widget re-litigates it, and a wrong choice fails quietly:
 
 - **Resolve and keep, without subscribing.** The widget shows the light default
-  forever. It looks correct in a light-themed app. This is what #473 found
-  across `Card`, the chips, `TextField` and the floating toolbars.
+  forever. It looks correct in a light-themed app, so nothing flags it.
 - **Push, when something reads the value before `on_mount` runs.** The reader
-  gets the preset. #476: auto window sizing measured a card against a 0px border
-  preset and sized the window 38px wide for a card that needed 62px.
+  gets the preset. Auto window sizing is such a reader: it would measure a
+  card against a 0px border preset and size the window too narrow for it.
 
 Both failures are lifecycle-ordering bugs. The fix is not better documentation
 of the choice — it is removing the choice.
@@ -258,8 +257,9 @@ bless a pattern this document exists to remove.
 The declarative four converge on the same answer: the author writes a pull, the
 framework wires the invalidation, and nobody subscribes. The retained-mode
 frameworks all provide a **framework-called hook** rather than a subscription —
-none of them ask the author to pair subscribe with unsubscribe. nuiitivet used
-to be the outlier in doing so, and #473 was the predictable result.
+none of them ask the author to pair subscribe with unsubscribe. Asking for
+that pairing is the outlier, and a widget that forgets half of it is the
+predictable result.
 
 No framework surveyed extends late-binding tokens beyond colour. The answer for
 typography and shape is recomputation, not indirection — which is why extending

@@ -596,7 +596,7 @@ changed, and "something" is a clock callback marshalling a worker's write, a
 `debounce` timer, or an unrelated handler three widgets away. None of them wrote
 the broken function. Raising there only decides, by which thread happened to be
 passing, whose stack the failure lands on — the undefined behaviour this section
-replaces (#562).
+replaces.
 
 **Every such bug is therefore logged and contained**, through
 `exception_once_per_exc`, keyed by the failure's own type and innermost frame.

@@ -170,7 +170,7 @@ editing combos, while the **characters themselves arrive on `on_text`**. So when
 a printable key arrives, `EditableText.on_key` truthfully returns `False` (it
 really does nothing on that route) and then `on_text` inserts the character
 anyway. Read at face value, that `False` would hand a bare `b` to the shortcut
-tier — the letter is typed *and* `key_shortcut("b", ...)` fires (#331).
+tier — the letter is typed *and* `key_shortcut("b", ...)` fires.
 
 Tier 3 closes this by withholding such keys from the bindings outright. It asks
 two questions, and **both** must hold:
