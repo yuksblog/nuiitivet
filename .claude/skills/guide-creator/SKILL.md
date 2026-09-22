@@ -63,6 +63,23 @@ repeated only where the two places are far apart.
 | There are cases in which the field will not accept typing | The field sometimes refuses typing |
 | This is done in order to avoid the value being reformatted | *(cut — or name the symptom the reader sees)* |
 
+**List what the page has to say before opening the code.** Written from the
+code, a page names every argument in the order of the signature and ends up a
+docstring with reasons attached.
+
+**Open with the thing and its verb, not an abstraction of it.** "The line
+break is a key gesture" makes the reader translate back to "Shift+Enter breaks
+the line"; write the second.
+
+**Cutting means deleting, not compressing.** Two facts joined by "and" or a
+colon are still two facts, in a sentence that got shorter and harder. Delete
+the sentence the reader does not need and leave the other whole.
+
+**The order is the reader's.** What it does before how, the concrete before
+the abstract, the surprise where the reader would hit it, and each only when
+the reader lacks it. A page ordered by the signature answers none of the
+reader's questions first.
+
 ## Widget Showcase Pages
 
 `docs/guide/design-system/material_widgets.md` is a showcase, not a reference.
@@ -192,6 +209,7 @@ reading order. Then fix the **Next Steps** of the page it now follows.
 - [ ] Opens with working code
 - [ ] Every snippet executed, including inline ones
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
+- [ ] Each paragraph opens with the thing and its verb; every cut is a deletion, not a merge
 - [ ] Sample exists and runs; guide code blocks match it
 - [ ] Root is a module-level `build_root` passed uncalled — no lambda, no local factory
 - [ ] Every new or changed sample verified end-to-end under `python -m nuiitivet.dev run`: a `build_root` edit hot-reloads into the live tree
