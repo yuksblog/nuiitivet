@@ -596,10 +596,13 @@ class Window:
         self._dirty = False
         # Content dirtiness is distinct from ``_dirty``: ``_dirty`` means "a frame
         # was requested", while ``_paint_dirty`` means "the widget tree changed and
-        # must be re-painted". A surface-loss redraw (window show/activate) requests
-        # a frame without changing content, letting the GPU path re-blit its cached
-        # full frame instead of re-walking the tree. See ``draw_gpu_frame``.
+        # must be re-painted". A surface-loss redraw (window show/activate) or a
+        # dev overlay change requests a frame without changing content, letting
+        # the renderer reuse the tree it last painted instead of walking it again.
         self._paint_dirty = True
+        # The raster path's last painted tree, without overlays; the GPU path
+        # keeps its own in ``draw_gpu_frame``.
+        self._content_image: Any = None
         self._window = None
         self._event_loop: Any = None
         self._last_hover_target = None
@@ -1347,9 +1350,10 @@ class Window:
         Args:
             immediate: If True and running in pyglet, bypass FPS throttle for next draw
             content: If True (default), mark the widget tree as changed so the next
-                frame is fully re-painted. Pass False for surface-loss redraws
-                (window show/activate) where the tree is unchanged and the GPU path
-                may re-blit its cached full frame instead of re-walking the tree.
+                frame re-paints it. Pass False when the tree is unchanged and only
+                what lies over it needs the frame: a surface-loss redraw (window
+                show/activate) or a dev overlay. The renderer then reuses the tree
+                it last painted instead of walking it again.
         """
         self._dirty = True
         if content:
@@ -1379,24 +1383,20 @@ class Window:
         self,
         scale: float = 1.0,
         *,
-        for_display: bool = False,
         settle: bool = False,
         clip: Optional[tuple[float, float, float, float]] = None,
     ):
-        """Create a Skia image snapshot for the current root at given scale.
+        """Create a Skia image snapshot of the widget tree at the given scale.
 
-        Returns an image object. Raises RuntimeError if Skia is missing or
-        snapshot/encoding fails.
+        The tree only: the dev overlays are painted by :meth:`_render_display_frame`,
+        so a ``screenshot`` never contains them. Returns an image object. Raises
+        RuntimeError if Skia is missing or the snapshot fails.
 
         Args:
             scale: Device-pixel scale factor for the raster surface.
             clip: A logical ``(x, y, w, h)`` rect to render instead of the whole
                 window. Layout is unchanged; the surface is just that region,
                 so paint outside it is culled rather than cropped afterwards.
-            for_display: When ``True`` this snapshot is being drawn to the live
-                on-screen window (the CPU/raster frame path), so the human-only
-                dev action overlay is painted over it. Screenshot callers leave
-                this ``False`` so the overlay never leaks into ``screenshot``.
             settle: When ``True`` this is a one-shot capture, so run the reactive
                 work that the next frames would have done (see
                 :meth:`_settle_pending_size_changes`). Live frame paths leave it
@@ -1444,29 +1444,62 @@ class Window:
         except Exception:
             exception_once(logger, "app_snapshot_mount_paint_unmount_exc", "_mount_paint_unmount raised")
 
-        # Human-only dev action overlay: on-screen frames only, never screenshots.
-        if for_display:
-            try:
-                from nuiitivet.dev import action_overlay
-
-                action_overlay.paint_markers(canvas=canvas, app=self, width=self.width, height=self.height)
-            except Exception:
-                exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
-
-            try:
-                from nuiitivet.dev import layout_edit_overlay, comment_overlay
-
-                comment_overlay.paint_comments(self, canvas, self.width, self.height)
-                layout_edit_overlay.paint_layout_edit(self, canvas, self.width, self.height)
-            except Exception:
-                exception_once(
-                    logger, "app_snapshot_dev_comment_overlay_exc", "dev comment overlay paint raised"
-                )
-
         img = surface.makeImageSnapshot()
         if img is None:
             raise RuntimeError("makeImageSnapshot() returned None")
         return img
+
+    def _render_display_frame(self, scale: float = 1.0):
+        """Create the Skia image the raster path puts on screen: the tree with the dev overlays over it.
+
+        The tree is painted only when it changed since the last display frame
+        (``invalidate(content=True)``) or the window's pixel size changed; a
+        frame requested with ``content=False`` composes the overlays over the
+        tree image kept from the last paint. Raises RuntimeError if Skia is
+        missing or the snapshot fails.
+
+        Args:
+            scale: Device-pixel scale factor for the raster surface.
+        """
+        require_skia()
+        content = getattr(self, "_content_image", None)
+        phys = (max(1, int(round(self.width * scale))), max(1, int(round(self.height * scale))))
+        if content is None or self._paint_dirty or (content.width(), content.height()) != phys:
+            content = self._render_snapshot(scale=scale)
+            self._content_image = content
+            self._paint_dirty = False
+
+        surface = make_raster_surface(content.width(), content.height())
+        canvas = surface.getCanvas()
+        canvas.drawImage(content, 0, 0)
+        if scale != 1.0:
+            canvas.scale(scale, scale)
+        self._paint_dev_overlays(canvas)
+        img = surface.makeImageSnapshot()
+        if img is None:
+            raise RuntimeError("makeImageSnapshot() returned None")
+        return img
+
+    def _paint_dev_overlays(self, canvas: Any) -> None:
+        """Paint the human-only dev overlays onto ``canvas``, in logical coordinates.
+
+        On-screen frames only, never a screenshot: the agent must not read the
+        markers back as app content. A no-op without the dev package.
+        """
+        try:
+            from nuiitivet.dev import action_overlay
+
+            action_overlay.paint_markers(canvas=canvas, app=self, width=self.width, height=self.height)
+        except Exception:
+            exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
+
+        try:
+            from nuiitivet.dev import layout_edit_overlay, comment_overlay
+
+            comment_overlay.paint_comments(self, canvas, self.width, self.height)
+            layout_edit_overlay.paint_layout_edit(self, canvas, self.width, self.height)
+        except Exception:
+            exception_once(logger, "app_snapshot_dev_comment_overlay_exc", "dev comment overlay paint raised")
 
     # Longest-side pixel budget for the blank-frame probe. Small on purpose: it
     # only decides whether the frame is a single uniform color, not what it is.

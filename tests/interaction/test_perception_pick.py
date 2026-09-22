@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import pytest
+
+from nuiitivet._interaction import perception
 from nuiitivet._interaction.perception import (
     enclosing_container,
     find_obstruction,
@@ -120,6 +123,30 @@ def test_a_row_scrolled_out_of_view_is_not_picked() -> None:
         picked = pick_at(host.root, 5, 2)
         assert picked is not rows[0]
         assert picked in rows
+
+
+def test_a_pick_carried_down_the_tree_agrees_with_each_nodes_own_rect(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The descent computes rects from the ancestors' offsets it carries; the
+    slow path asks every node for its own. Across a scrolled viewport and a
+    clipped overhang, the two must pick the same node at every point."""
+    rows = [Text(f"Item {index}") for index in range(30)]
+    scroller = VerticalScrollable(child=Column(rows))
+    bubble, _tile, tile_root = _clipped_tile()
+    outer = Column([Container(child=scroller, width=200, height=60), tile_root, Text("BELOW")])
+    with mount(outer) as host:
+        host.layout(300, 400)
+        host.settle()
+        scroller._controller.scroll_to(150.0)
+        host.settle()
+        points = [(float(x), float(y)) for y in range(0, 400, 7) for x in range(0, 300, 7)]
+
+        carried = [pick_at(host.root, x, y) for x, y in points]
+        monkeypatch.setattr(perception, "_frame_below", lambda node, frame: None)
+        asked = [pick_at(host.root, x, y) for x, y in points]
+
+        assert all(a is b for a, b in zip(carried, asked))
+        assert any(node in rows for node in carried), "the scrolled rows must be reachable"
+        assert any(node is bubble for node in carried), "the clipped overhang must be reachable"
 
 
 def test_a_row_clipped_by_the_viewport_loses_to_what_is_painted_there() -> None:

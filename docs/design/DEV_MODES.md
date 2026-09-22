@@ -432,8 +432,11 @@ moves.
 
 Each mode paints on the glass, never into the tree — the same paint-only,
 live-frames-only constraint as the action overlay — so `describe_tree` never
-sees a bracket and `screenshot` never contains one. Four colour families,
-because one visual language for opposite directions would mislead:
+sees a bracket and `screenshot` never contains one. The frame a mode asks for
+leaves the tree clean: the renderer redraws the glass over the tree it last
+painted, so a hover crossing a grid of small widgets costs the overlay and not
+a tree walk per cell. Four colour families, because one visual language for
+opposite directions would mislead:
 
 | Colour | Means |
 | --- | --- |

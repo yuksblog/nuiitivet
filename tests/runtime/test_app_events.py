@@ -213,6 +213,71 @@ def test_gpu_frame_reblits_cached_frame_when_clean():
     assert canvas.drawn_images[0][1:] == (0.0, 0.0)
 
 
+def test_gpu_frame_paints_the_overlays_over_the_reblitted_tree(monkeypatch):
+    """A dev overlay change requests a frame with the tree clean; the frame
+    re-blits the cached tree and paints the overlays fresh over it."""
+    from nuiitivet.backends.pyglet import gpu_frame
+
+    app, canvas, surf, skia, gr, gl = _make_gpu_env()
+    events: list[str] = []
+    monkeypatch.setattr(gpu_frame, "_paint_dev_comment_overlay", lambda app, canvas: events.append("overlay"))
+    original = surf.makeImageSnapshot
+
+    def snapshot():
+        events.append("cache")
+        return original()
+
+    surf.makeImageSnapshot = snapshot
+
+    app._paint_dirty = True
+    draw_gpu_frame(app, gr, gl, skia)
+    assert events == ["cache", "overlay"], "the cache must hold the tree without the overlays"
+
+    events.clear()
+    app.root.painted = False
+    app._paint_dirty = False
+    draw_gpu_frame(app, gr, gl, skia)
+
+    assert app.root.painted is False
+    assert len(canvas.drawn_images) == 1
+    assert events == ["overlay"]
+
+
+def test_raster_display_frame_reuses_the_tree_while_it_is_clean(monkeypatch):
+    """The raster path keeps the painted tree as an image and composes the
+    overlays over it, so a frame with the tree clean skips the tree walk."""
+    from nuiitivet.dev import action_overlay
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    class _Counting(Widget):
+        paints = 0
+
+        def build(self):
+            return self
+
+        def paint(self, canvas, x, y, width, height):
+            type(self).paints += 1
+
+    overlays: list[str] = []
+    monkeypatch.setattr(action_overlay, "paint_markers", lambda **kw: overlays.append("painted"))
+    app = App(Window(content=_Counting(), background="#123456")).main_window
+
+    app._render_display_frame(scale=1.0)
+    assert (_Counting.paints, overlays) == (1, ["painted"])
+
+    app.invalidate(content=False)
+    app._render_display_frame(scale=1.0)
+    assert (_Counting.paints, overlays) == (1, ["painted", "painted"])
+
+    app.invalidate()
+    app._render_display_frame(scale=1.0)
+    assert (_Counting.paints, overlays) == (2, ["painted", "painted", "painted"])
+
+    app._render_display_frame(scale=2.0)
+    assert _Counting.paints == 3, "a new pixel size repaints the tree"
+
+
 def test_gpu_frame_repaints_when_size_changes():
     app, canvas, surf, skia, gr, gl = _make_gpu_env()
 
