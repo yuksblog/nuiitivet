@@ -225,10 +225,11 @@ alone.
 #### Known limitation: `Enter` through a field that does not use it
 
 `produces_text` classifies `Enter` as non-text, so it reaches the shortcut tier
-unless the focused field claims it on the `on_key` route first. `EditableText` is
-single-line: it claims `Enter` only when an `on_submit` is set (there is a
-callback to run), and declines it otherwise. A field with no `on_submit`
-therefore lets `Enter` fall through to a `key_shortcut("enter", ...)`.
+unless the focused field claims it on the `on_key` route first. `EditableText`
+claims `Enter` only when an `on_submit` is set (there is a callback to run),
+and declines it otherwise; a multi-line field breaks its lines on
+`Shift+Enter` and follows the same rule for a bare `Enter`. A field with no
+`on_submit` therefore lets `Enter` fall through to a `key_shortcut("enter", ...)`.
 
 The *outcome* is often what one wants — the `Enter` a plain field does nothing
 with is exactly the one a dialog's default action should get. But this is a

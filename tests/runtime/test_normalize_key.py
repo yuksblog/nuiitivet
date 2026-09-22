@@ -17,10 +17,12 @@ from nuiitivet.input.codes import (
     MOD_SHIFT,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
+    TEXT_MOTION_DOWN,
     TEXT_MOTION_END,
     TEXT_MOTION_HOME,
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
+    TEXT_MOTION_UP,
 )
 
 
@@ -150,13 +152,15 @@ def test_normalize_modifiers(pyglet_modifiers: int, expected_modifier_keys: int)
         # pyglet spells Home/End as beginning/end of line — there is no MOTION_HOME.
         (pyglet_key.MOTION_BEGINNING_OF_LINE, TEXT_MOTION_HOME),
         (pyglet_key.MOTION_END_OF_LINE, TEXT_MOTION_END),
+        (pyglet_key.MOTION_UP, TEXT_MOTION_UP),
+        (pyglet_key.MOTION_DOWN, TEXT_MOTION_DOWN),
     ],
 )
 def test_normalize_text_motion(pyglet_motion: int, expected_motion: int) -> None:
     assert _normalize_text_motion(pyglet_motion) == expected_motion
 
 
-@pytest.mark.parametrize("pyglet_motion", [pyglet_key.MOTION_UP, pyglet_key.MOTION_DOWN])
+@pytest.mark.parametrize("pyglet_motion", [pyglet_key.MOTION_NEXT_WORD, pyglet_key.MOTION_NEXT_PAGE])
 def test_normalize_text_motion_passes_unmapped_motions_through(pyglet_motion: int) -> None:
-    """The arrow keys emit vertical motions nuiitivet has no code for: pass, don't raise."""
+    """Word and page motions have no nuiitivet code: pass, don't raise."""
     assert _normalize_text_motion(pyglet_motion) == int(pyglet_motion)

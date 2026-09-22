@@ -145,6 +145,18 @@ class OrderForm:
         # supporting_text from the text separately would write it twice.
         self.error = self.arrival_text.map(arrival_error)
 
+        self.rate_text = nv.Observable("")
+
+    def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
+        """Pad a half-typed rate once the user has left the field.
+
+        Writing the text back is safe here and nowhere else: nothing reformats
+        under a cursor that has moved on.
+        """
+        if focused:
+            return
+        self.rate_text.value = f"{float(self.rate_text.value or 0):.2f}"
+
 
 # ---------------------------------------------------------------------------
 # Pattern 5: Busy flag while an async handler runs
@@ -252,6 +264,14 @@ class PatternsApp(nv.ComposableWidget):
                         is_error=form.error.map(lambda e: e is not None),
                     ),
                     nv.Text(form.arrival.map(lambda d: f"arrival:         {d}")),
+                    nv.TextField(
+                        value=form.rate_text,
+                        label="Rate",
+                        input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
+                        on_focus_change=form.finish_rate,
+                        width=320,
+                        style=nv.TextFieldStyle.outlined(),
+                    ),
                     # --- Busy flag while an async handler runs ---
                     nv.Text("Pattern 5: Busy Flag While a Handler Runs"),
                     nv.Row(

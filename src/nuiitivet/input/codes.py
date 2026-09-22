@@ -68,6 +68,8 @@ TEXT_MOTION_LEFT: int = 3
 TEXT_MOTION_RIGHT: int = 4
 TEXT_MOTION_HOME: int = 5
 TEXT_MOTION_END: int = 6
+TEXT_MOTION_UP: int = 7
+TEXT_MOTION_DOWN: int = 8
 
 
 #: Key names that a focused text field consumes as an editing motion, mapped to
@@ -83,6 +85,8 @@ TEXT_MOTION_KEYS: dict[str, int] = {
     "right": TEXT_MOTION_RIGHT,
     "home": TEXT_MOTION_HOME,
     "end": TEXT_MOTION_END,
+    "up": TEXT_MOTION_UP,
+    "down": TEXT_MOTION_DOWN,
 }
 
 

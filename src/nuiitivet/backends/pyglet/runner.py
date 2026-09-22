@@ -28,10 +28,12 @@ from nuiitivet.input.codes import (
     MOD_SHIFT,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
+    TEXT_MOTION_DOWN,
     TEXT_MOTION_END,
     TEXT_MOTION_HOME,
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
+    TEXT_MOTION_UP,
 )
 
 from .gpu_frame import draw_gpu_frame
@@ -1557,8 +1559,8 @@ def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
 def _normalize_text_motion(motion: int) -> int:
     """Translate a pyglet text-motion constant into nuiitivet's TEXT_MOTION_* code.
 
-    Motions nuiitivet has no code for (word/page/file moves, and the vertical
-    moves the arrow keys emit) pass through unchanged.
+    Motions nuiitivet has no code for (word, page and file moves) pass through
+    unchanged.
     """
     try:
         keymod = pyglet.window.key
@@ -1570,6 +1572,8 @@ def _normalize_text_motion(motion: int) -> int:
             keymod.MOTION_RIGHT: TEXT_MOTION_RIGHT,
             keymod.MOTION_BEGINNING_OF_LINE: TEXT_MOTION_HOME,
             keymod.MOTION_END_OF_LINE: TEXT_MOTION_END,
+            keymod.MOTION_UP: TEXT_MOTION_UP,
+            keymod.MOTION_DOWN: TEXT_MOTION_DOWN,
         }
         mapped = mapping.get(int(motion))
         if mapped is not None:

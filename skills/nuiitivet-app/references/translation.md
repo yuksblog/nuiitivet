@@ -113,6 +113,7 @@ See [state.md](state.md) for the full API and the ViewModel pattern.
 | `TextEditingController()` + `controller:` (Flutter), a `ref` on an input (React) | bind an Observable as the field's value: `self.query = nv.Observable("")` then `nv.TextField(value=self.query)`. Edits are written back into it, and you set the text by assigning `self.query.value` — there is no controller object and no `.text` property to read |
 | `onEditingComplete` (Flutter), a `FocusNode` listener, an `onBlur` handler (JS) to finish a value | `on_focus_change(focused, source)` on the field — the same signature as `nv.focusable()`. Branch on `focused`; it can arrive more than once as `True` when the input source changes, and once as `False` |
 | `onSubmitted` expected to fire when the field loses focus | it does not. `on_submit` is **Enter only**, every press including a repeat on an unchanged value. Blur-time work goes to `on_focus_change` |
+| `TextField(maxLines: null)` (Flutter), `singleLine = false` (Compose), `TextArea` | `nv.TextField.multiline(value=obs, label="Notes")` — the same arguments as `nv.TextField`. `Enter` submits through `on_submit`; `Shift+Enter` breaks the line |
 
 See [inputs.md](inputs.md) for input filters, typed values, search bars and
 date pickers.
