@@ -1,4 +1,4 @@
-"""Material Widgets - TextField filled/outlined/error."""
+"""Material Widgets - TextField filled/outlined/error/multi-line."""
 
 from __future__ import annotations
 
@@ -35,6 +35,12 @@ def build_root() -> nv.Widget:
                     width=320,
                     style=nv.TextFieldStyle.outlined(),
                 ),
+                nv.TextField.multiline(
+                    value="Ships in two parts.\nThe second follows a week later.",
+                    label="Notes",
+                    max_lines=4,
+                    width=320,
+                ),
             ],
         ),
     )
@@ -42,7 +48,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png_path: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="TextField", width=440, height=360))
+    app = nv.App(nv.Window(content=build_root, title="TextField", width=440, height=460))
     if png_path:
         app.render_to_png(png_path)
     else:

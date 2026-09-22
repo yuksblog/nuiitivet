@@ -812,7 +812,7 @@ def test_a_click_elsewhere_writes_the_field_and_does_nothing_else() -> None:
         assert mode.comments.marks() == [(1, "node", leaf)], "the click did not mark anything"
 
 
-def test_shift_enter_does_nothing_in_the_field() -> None:
+def test_shift_enter_breaks_the_line_in_the_field_and_enter_writes_both() -> None:
     mode, app, host, _leaf = _marked()
     with host:
         _click(mode, app, 2, 2)
@@ -822,6 +822,11 @@ def test_shift_enter_does_nothing_in_the_field() -> None:
 
         assert mode.writing is not None
         assert mode.comments.instruction(1) is None
+        mode.on_text(app, "and taller")
+        mode.on_key_press(app, "enter", 0)
+
+        assert mode.writing is None
+        assert mode.comments.instruction(1) == "wider\nand taller"
 
 
 def test_enter_right_after_marking_opens_the_field_on_that_mark() -> None:
@@ -962,4 +967,4 @@ def test_the_badge_teaches_writing_and_the_field_teaches_its_keys() -> None:
 
         _click(mode, app, 2, 2)
 
-        assert mode.hints == ("Shift+←/→ select", "Ctrl+A/C/X/V")
+        assert mode.hints == ("Shift+Enter newline", "Shift+←/→ select", "Ctrl+A/C/X/V")

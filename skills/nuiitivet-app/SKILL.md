@@ -131,6 +131,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | --- | --- | --- |
 | Text input | `TextField` | `nv.TextField(value=obs, label="Name")` |
 | Restricted text input | `TextField` + `input_filter` | `nv.TextField(value=obs, input_filter=nv.digits_only() \| nv.max_length(4))` |
+| Multi-line text input | `TextField.multiline` | `nv.TextField.multiline(value=obs, label="Notes")` |
 | Search input | `SearchBar` | `nv.SearchBar(obs, placeholder="Search", width=440)` |
 | Search + dropdown panel | `DockedSearchBar` | `nv.DockedSearchBar(obs, placeholder="Search", content=panel_widget)` |
 | Boolean toggle | `Checkbox` / `Switch` | `nv.Switch(checked=obs)` |

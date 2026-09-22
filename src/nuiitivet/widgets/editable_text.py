@@ -6,7 +6,15 @@ from typing import Optional, Tuple, Union, cast
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
-from nuiitivet.input.codes import MOD_CTRL, MOD_META
+from nuiitivet.input.codes import (
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
+    TEXT_MOTION_DOWN,
+    TEXT_MOTION_END,
+    TEXT_MOTION_HOME,
+    TEXT_MOTION_UP,
+)
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.widgeting.context_lookup import find_window
@@ -27,6 +35,15 @@ from nuiitivet.widgets.text_editing import (
     compose_text,
     end_composition,
     insert_text,
+)
+from nuiitivet.widgets.text_lines import (
+    Measure,
+    break_lines,
+    caret_x,
+    index_at,
+    line_edge,
+    line_of,
+    move_lines,
 )
 from nuiitivet.rendering.skia import (
     make_font,
@@ -52,6 +69,12 @@ class EditableText(InteractionHostMixin, Widget):
     """
     A basic text input widget that handles text editing, selection, and cursor rendering.
     It does not include any decoration (borders, labels, etc.).
+
+    With ``multiline`` the text takes several lines: it wraps at the width and
+    Shift+Enter breaks a line. Enter keeps its meaning: it submits through
+    ``on_submit``, and is left alone without one. The field shows ``min_lines``
+    lines when empty, grows with the text to ``max_lines``, and then scrolls
+    the caret's line into view.
     """
 
     _state_internal = Observable(TextEditingValue())
@@ -64,6 +87,9 @@ class EditableText(InteractionHostMixin, Widget):
         on_focus_change: Optional[FocusChangeCallback] = None,
         on_submit: Optional[StrCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
+        multiline: bool = False,
+        min_lines: int = 1,
+        max_lines: Optional[int] = None,
         text_color: ColorSpec = "#000000",
         cursor_color: ColorSpec = "#000000",
         selection_color: ColorSpec = "#B3D7FF",  # Default selection color
@@ -74,7 +100,47 @@ class EditableText(InteractionHostMixin, Widget):
         disabled: bool = False,
         obscure_text: bool = False,
     ):
+        """Initialize EditableText.
+
+        Args:
+            value: Initial text, or the observable holding the field's value.
+                Edits are written back to a writable observable; a read-only
+                one displays only.
+            on_change: Callback invoked with the text as it changes, by typing
+                or by code. Not during an IME composition.
+            on_user_edit: Callback invoked with the text the user produced,
+                composition included, and never for an assignment by code.
+            on_focus_change: Callback invoked with ``(focused, source)`` as
+                focus arrives and leaves.
+            on_submit: Callback invoked with the text on a bare Enter. Its
+                presence makes the field claim the Enter key. Shift+Enter
+                never submits: it breaks the line, or does nothing in a
+                single-line field.
+            input_filter: Rule applied to text as the user types it, a line
+                break included.
+            multiline: Whether the text takes several lines. It decides
+                whether a line break can be typed at all; *input_filter* can
+                only refuse one.
+            min_lines: Lines shown when the text has fewer, at least 1. Read
+                only with *multiline*.
+            max_lines: Lines shown before the field scrolls, at least
+                *min_lines*; ``None`` grows without bound. Neither bounds the
+                text's own line count. Read only with *multiline*.
+            text_color: Color of the text.
+            cursor_color: Color of the caret.
+            selection_color: Color behind the selected text.
+            font_family: Font family; the default fallbacks otherwise.
+            font_size: Font size in pixels.
+            width: Width specification.
+            height: Height specification.
+            disabled: Whether the field ignores input.
+            obscure_text: Whether every character is shown as a bullet.
+        """
         super().__init__(width=width, height=height)
+
+        self._multiline = False
+        self._min_lines = 1
+        self._max_lines: Optional[int] = None
 
         self._text_color = text_color
         self._cursor_color = cursor_color
@@ -115,9 +181,19 @@ class EditableText(InteractionHostMixin, Widget):
             to_input_filter(input_filter) if input_filter is not None else None
         )
 
-        # Horizontal scroll offset (pixels) used to keep the cursor visible
-        # when the text exceeds the available width.
+        # Scroll offsets (pixels) that keep the caret visible: horizontal for
+        # a single line that outgrows the width, vertical for lines that
+        # outgrow the height.
         self._scroll_x: float = 0.0
+        self._scroll_y: float = 0.0
+        # The x a run of Up/Down moves aims for, so a short line passed on the
+        # way does not pull the caret left for good. Any other edit drops it.
+        self._goal_x: Optional[float] = None
+        # The size the last layout gave, which is the wrap width.
+        self._viewport: Tuple[int, int] = (0, 0)
+        # The lines of the text as last broken, keyed by what they depend on.
+        self._lines_cache: Optional[Tuple[Tuple[str, Optional[float], int, Optional[str]], list[TextRange]]] = None
+        self.set_lines(multiline, min_lines, max_lines)
         # Track whether the current pointer interaction is in drag mode so
         # that pointer MOVE events extend the selection from the press anchor.
         self._drag_anchor: Optional[int] = None
@@ -231,6 +307,41 @@ class EditableText(InteractionHostMixin, Widget):
             self._obscure_text = value
             self.invalidate()
 
+    @property
+    def multiline(self) -> bool:
+        """Whether the text takes several lines."""
+        return self._multiline
+
+    @property
+    def min_lines(self) -> int:
+        """Lines shown when the text has fewer."""
+        return self._min_lines
+
+    @property
+    def max_lines(self) -> Optional[int]:
+        """Lines shown before the field scrolls; ``None`` is unbounded."""
+        return self._max_lines
+
+    def set_lines(self, multiline: bool, min_lines: int = 1, max_lines: Optional[int] = None) -> None:
+        """Switch the field between one line and several, and set the lines it shows.
+
+        Args:
+            multiline: Whether the text takes several lines.
+            min_lines: Lines shown when the text has fewer, at least 1.
+            max_lines: Lines shown before the field scrolls, at least
+                *min_lines*; ``None`` grows without bound.
+        """
+        if min_lines < 1:
+            raise ValueError(f"min_lines must be at least 1, got {min_lines}")
+        if max_lines is not None and max_lines < min_lines:
+            raise ValueError(f"max_lines must be at least min_lines ({min_lines}), got {max_lines}")
+        self._multiline = bool(multiline)
+        self._min_lines = min_lines
+        self._max_lines = max_lines
+        self._lines_cache = None
+        self.mark_needs_layout()
+        self.invalidate()
+
     def on_mount(self) -> None:
         super().on_mount()
         if self._external_str_obs:
@@ -254,7 +365,7 @@ class EditableText(InteractionHostMixin, Widget):
                 )
                 self._state_internal.value = new_val
                 self._announced_text = new_text
-                self.invalidate()
+                self._text_changed()
                 # Notify listeners so that decorators (e.g. floating label
                 # state in TextField) can synchronize with externally-driven
                 # value changes. The ``current.text == new_text`` early-return
@@ -304,8 +415,12 @@ class EditableText(InteractionHostMixin, Widget):
         if current == new_value:
             return
 
+        self._goal_x = None
         self._state_internal.value = new_value
-        self.invalidate()
+        if current.text != new_value.text:
+            self._text_changed()
+        else:
+            self.invalidate()
         self._announce(new_value)
 
         if user_edit and self._on_user_edit and current.text != new_value.text:
@@ -320,6 +435,12 @@ class EditableText(InteractionHostMixin, Widget):
                 error_msg="EditableText on_user_edit raised",
                 owner_name=type(self).__name__,
             )
+
+    def _text_changed(self) -> None:
+        """Repaint, and in a multi-line field relayout: the line count may have moved."""
+        if self.multiline:
+            self.mark_needs_layout()
+        self.invalidate()
 
     def _announce(self, new_value: TextEditingValue) -> None:
         """Publish the text the application is meant to see.
@@ -375,6 +496,52 @@ class EditableText(InteractionHostMixin, Widget):
                 "EditableText failed to write the edited value back to its observable",
             )
 
+    # --- lines -----------------------------------------------------------------
+
+    def line_height(self) -> int:
+        """The height of one line of text in pixels, from the font's metrics."""
+        font = self._get_font()
+        if not font:
+            return 0
+        metrics = font.getMetrics()
+        return int(-metrics.fAscent + metrics.fDescent)
+
+    def line_count(self, width: Optional[float] = None) -> int:
+        """How many lines the text takes when wrapped at *width*; at least 1.
+
+        A single-line field always answers 1. ``None`` breaks at ``'\\n'`` only.
+        """
+        if not self.multiline:
+            return 1
+        font = self._get_font()
+        if not font:
+            return 1
+        return len(self._lines(font, width))
+
+    def _measure(self, font) -> Measure:
+        return lambda s: float(font.measureText(s))
+
+    def _lines(self, font, width: Optional[float]) -> list[TextRange]:
+        """The text's lines wrapped at *width*; a single-line field is one line whatever it holds."""
+        text = self._get_display_text(self._state_internal.value.text)
+        if not self.multiline:
+            return [TextRange(0, len(text))]
+        key = (text, width, self._font_size, self._font_family)
+        cached = self._lines_cache
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        lines = break_lines(text, self._measure(font), width)
+        self._lines_cache = (key, lines)
+        return lines
+
+    def _wrap_width(self, width: Optional[float] = None) -> Optional[float]:
+        """The width lines wrap at: the one given, else the last layout's; ``None`` for a single line."""
+        if not self.multiline:
+            return None
+        if width is not None:
+            return max(0.0, float(width))
+        return float(self._viewport[0]) if self._viewport[0] > 0 else None
+
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         font = self._get_font()
         if not font:
@@ -382,18 +549,23 @@ class EditableText(InteractionHostMixin, Widget):
 
         text = self._state_internal.value.text
         display_text = self._get_display_text(text)
-        # If empty, measure a dummy character to get height
-        measure_text = display_text if display_text else "M"
-
-        width = int(font.measureText(measure_text)) if display_text else 0
         metrics = font.getMetrics()
-        height = int(-metrics.fAscent + metrics.fDescent)
+        line_h = int(-metrics.fAscent + metrics.fDescent)
 
-        return (width, height)
+        if not self.multiline:
+            width = int(font.measureText(display_text)) if display_text else 0
+            return (width, line_h)
+
+        lines = self._lines(font, self._wrap_width(max_width))
+        width = int(max(font.measureText(display_text[line.start : line.end]) for line in lines))
+        count = max(self._min_lines, len(lines))
+        if self._max_lines is not None:
+            count = min(count, self._max_lines)
+        return (width, line_h * count)
 
     def layout(self, width: int, height: int) -> None:
-        # EditableText fills the available space or uses preferred size
-        pass
+        # EditableText fills the space it is given; the width is where lines wrap.
+        self._viewport = (int(width), int(height))
 
     def focus(self) -> None:
         try:
@@ -456,10 +628,12 @@ class EditableText(InteractionHostMixin, Widget):
 
     def _index_at_event(self, event: PointerEvent) -> int:
         local_x = event.x
+        local_y = event.y
         rect = self.global_visual_rect
         if rect is not None:
             local_x -= rect[0]
-        return self._get_index_at(local_x)
+            local_y -= rect[1]
+        return self._get_index_at(local_x, local_y)
 
     def _get_font(self):
         fallbacks = get_default_font_fallbacks()
@@ -473,7 +647,8 @@ class EditableText(InteractionHostMixin, Widget):
         )
         return make_font(tf, self.font_size)
 
-    def _get_index_at(self, x: float) -> int:
+    def _get_index_at(self, x: float, y: float = 0.0) -> int:
+        """The caret index nearest to the viewport-local point ``(x, y)``."""
         font = self._get_font()
         if font is None:
             return 0
@@ -482,24 +657,14 @@ class EditableText(InteractionHostMixin, Widget):
         if not text:
             return 0
 
-        display_text = self._get_display_text(text)
-
-        # Translate viewport-local x into text-coordinate space.
-        text_x = x + self._scroll_x
-
-        if text_x < 0:
-            return 0
-
-        for i in range(len(text) + 1):
-            sub = display_text[:i]
-            w = font.measureText(sub)
-            if w > text_x:
-                prev_w = font.measureText(display_text[: i - 1]) if i > 0 else 0
-                if text_x - prev_w < w - text_x:
-                    return i - 1
-                return i
-
-        return len(text)
+        lines = self._lines(font, self._wrap_width())
+        if self.multiline:
+            metrics = font.getMetrics()
+            line_h = max(1.0, float(-metrics.fAscent + metrics.fDescent))
+            row = int((y + self._scroll_y) // line_h)
+            line = lines[max(0, min(row, len(lines) - 1))]
+            return index_at(self._get_display_text(text), line, x, self._measure(font))
+        return index_at(self._get_display_text(text), lines[0], x + self._scroll_x, self._measure(font))
 
     def _handle_focus_change(self, focused: bool, source: FocusSource):
         # A focus change (e.g. clicking away, which commits an active
@@ -539,6 +704,8 @@ class EditableText(InteractionHostMixin, Widget):
 
     def _handle_text(self, text: str) -> bool:
         current_value = self._state_internal.value
+        # Typed text never carries a line break: the Enter key is the line
+        # break, and the ``'\r'`` some backends send with it would double it.
         new_value = insert_text(current_value, text, filter=self._filter_input)
         if new_value is None:
             return False
@@ -580,10 +747,37 @@ class EditableText(InteractionHostMixin, Widget):
         # Cursor navigation ends any input burst; drop a pending IME-commit
         # marker so it cannot suppress a later Enter.
         self._ime_just_committed = False
-        new_value = apply_motion(self._state_internal.value, motion, select=select)
+        current = self._state_internal.value
+        if self.multiline and motion in (TEXT_MOTION_UP, TEXT_MOTION_DOWN, TEXT_MOTION_HOME, TEXT_MOTION_END):
+            return self._move_in_lines(current, motion, select)
+        if motion in (TEXT_MOTION_UP, TEXT_MOTION_DOWN):
+            return False
+        new_value = apply_motion(current, motion, select=select)
         if new_value is None:
             return False
         self._update_value(new_value)
+        return True
+
+    def _move_in_lines(self, current: TextEditingValue, motion: int, select: bool) -> bool:
+        """Up, Down, Home and End over the lines as wrapped; ``True`` when the caret moved."""
+        font = self._get_font()
+        if font is None:
+            return False
+        lines = self._lines(font, self._wrap_width())
+        if motion in (TEXT_MOTION_HOME, TEXT_MOTION_END):
+            new_value = line_edge(current, lines, end=motion == TEXT_MOTION_END, select=select)
+            if new_value is None:
+                return False
+            self._update_value(new_value)
+            return True
+        delta = -1 if motion == TEXT_MOTION_UP else 1
+        new_value, goal_x = move_lines(
+            current, lines, delta, self._measure(font), goal_x=self._goal_x, select=select
+        )
+        if new_value is None:
+            return False
+        self._update_value(new_value)
+        self._goal_x = goal_x
         return True
 
     def _handle_key(self, key: str, modifier_keys: int) -> bool:
@@ -596,13 +790,15 @@ class EditableText(InteractionHostMixin, Widget):
         self._ime_just_committed = False
 
         if key == "enter":
-            # Enter confirms the text. EditableText is single-line, so Enter
-            # never inserts a newline; the value is left untouched.
             # Do not submit when this Enter is confirming an IME composition:
             # either the composition is still active, or it committed on this
             # same keystroke just before the Enter reached us.
             if current_value.is_composing or ime_just_committed:
                 return False
+            # Shift+Enter is the line break, and never a submit: a single line
+            # has nowhere to break, so there it does nothing.
+            if modifier_keys & MOD_SHIFT:
+                return self._insert_line_break(current_value) if self.multiline else False
             if self._on_submit is None:
                 return False
             # Every press, with no "has it changed?" guard: pressing Enter
@@ -619,11 +815,22 @@ class EditableText(InteractionHostMixin, Widget):
 
         if not modifier_keys & (MOD_CTRL | MOD_META):
             return False
-        new_value = apply_shortcut(current_value, key, get_system_clipboard(), filter=self._filter_input)
+        new_value = apply_shortcut(
+            current_value, key, get_system_clipboard(), filter=self._filter_input, line_breaks=self.multiline
+        )
         if new_value is None:
             return False
         self._update_value(new_value)
         return True
+
+    def _insert_line_break(self, current_value: TextEditingValue) -> bool:
+        new_value = insert_text(current_value, "\n", filter=self._filter_input, line_breaks=True)
+        if new_value is None or new_value == current_value:
+            return True
+        self._update_value(new_value)
+        return True
+
+    # --- painting --------------------------------------------------------------
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
@@ -640,30 +847,49 @@ class EditableText(InteractionHostMixin, Widget):
             return
 
         font_metrics = font.getMetrics()
-        # Align text vertically centered in the available height
-        text_height = -font_metrics.fAscent + font_metrics.fDescent
-        ty = y + (height + text_height) / 2 - font_metrics.fDescent
+        line_h = -font_metrics.fAscent + font_metrics.fDescent
+        measure = self._measure(font)
+        lines = self._lines(font, self._wrap_width(width))
+        caret_line = line_of(lines, selection.end)
+        caret_x_in_line = caret_x(display_text, lines[caret_line], selection.end, measure)
 
-        # Compute scroll offset so that the cursor remains within the visible
-        # viewport, mirroring the behavior of single-line text inputs in the
-        # platform: long values are not truncated mid-glyph but are scrolled
-        # horizontally as the cursor moves.
-        cursor_x_in_text = font.measureText(display_text[: selection.end])
-        total_text_width = font.measureText(display_text) if display_text else 0.0
+        # Scroll so that the caret stays within the viewport, as the
+        # platform's inputs do: a single line scrolls sideways under the
+        # caret, several lines scroll the caret's line into view.
         margin = 2.0  # Padding so the caret is not flush against the edge.
-        scroll = self._scroll_x
-        if total_text_width <= max(0.0, width - margin):
-            scroll = 0.0
+        if self.multiline:
+            scroll_x = 0.0
+            scroll_y = self._scroll_y
+            total_h = line_h * len(lines)
+            if total_h <= height:
+                scroll_y = 0.0
+            else:
+                caret_top = line_h * caret_line
+                if caret_top - scroll_y < 0:
+                    scroll_y = caret_top
+                elif caret_top + line_h - scroll_y > height:
+                    scroll_y = caret_top + line_h - height
+                scroll_y = max(0.0, min(scroll_y, total_h - height))
+            # Lines start at the top; a single line sits centred.
+            first_baseline = y - scroll_y - font_metrics.fAscent
         else:
-            # Keep the caret visible.
-            if cursor_x_in_text - scroll < 0:
-                scroll = cursor_x_in_text
-            elif cursor_x_in_text - scroll > width - margin:
-                scroll = cursor_x_in_text - (width - margin)
-            # Avoid leaving empty space at the right edge.
-            max_scroll = max(0.0, total_text_width - (width - margin))
-            scroll = max(0.0, min(scroll, max_scroll))
-        self._scroll_x = scroll
+            scroll_y = 0.0
+            total_text_width = measure(display_text) if display_text else 0.0
+            scroll_x = self._scroll_x
+            if total_text_width <= max(0.0, width - margin):
+                scroll_x = 0.0
+            else:
+                # Keep the caret visible.
+                if caret_x_in_line - scroll_x < 0:
+                    scroll_x = caret_x_in_line
+                elif caret_x_in_line - scroll_x > width - margin:
+                    scroll_x = caret_x_in_line - (width - margin)
+                # Avoid leaving empty space at the right edge.
+                max_scroll = max(0.0, total_text_width - (width - margin))
+                scroll_x = max(0.0, min(scroll_x, max_scroll))
+            first_baseline = y + (height + line_h) / 2 - font_metrics.fDescent
+        self._scroll_x = scroll_x
+        self._scroll_y = scroll_y
 
         # Clip drawing to the layout viewport so long text never bleeds
         # outside the field. Use a save/restore scope to avoid disturbing
@@ -687,19 +913,30 @@ class EditableText(InteractionHostMixin, Widget):
 
             _theme = Theme.of(self)
 
-            # Draw selection highlight (behind the text).
+            paint_sel = None
             if display_text and not selection.is_collapsed:
-                sel_start = max(0, min(selection.min, len(display_text)))
-                sel_end = max(0, min(selection.max, len(display_text)))
-                if sel_end > sel_start:
-                    sx0 = font.measureText(display_text[:sel_start]) - scroll
-                    sx1 = font.measureText(display_text[:sel_end]) - scroll
-                    sel_top = ty + font_metrics.fAscent
-                    sel_bottom = ty + font_metrics.fDescent
-                    sel_color = resolve_color_to_rgba(self.selection_color, theme=_theme)
-                    paint_sel = make_paint(color=sel_color)
-                    sel_rect = make_rect(int(x + sx0), int(sel_top), int(sx1 - sx0), int(sel_bottom - sel_top))
-                    if sel_rect is not None and paint_sel is not None:
+                paint_sel = make_paint(color=resolve_color_to_rgba(self.selection_color, theme=_theme))
+            paint_text = None
+            if display_text:
+                paint_text = make_paint(color=resolve_color_to_rgba(self.text_color, theme=_theme))
+
+            for i, line in enumerate(lines):
+                ty = first_baseline + i * line_h
+                if ty + font_metrics.fDescent < y or ty + font_metrics.fAscent > y + height:
+                    continue
+                line_text = display_text[line.start : line.end]
+
+                # Selection highlight (behind the text). A selection that runs
+                # past the line's end also covers the break, as a space would.
+                if paint_sel is not None and selection.min <= line.end and selection.max >= line.start:
+                    sel_start = max(selection.min, line.start)
+                    sel_end = min(selection.max, line.end)
+                    sx0 = measure(display_text[line.start : sel_start]) - scroll_x
+                    sx1 = measure(display_text[line.start : sel_end]) - scroll_x
+                    if selection.max > line.end and i < len(lines) - 1:
+                        sx1 += measure(" ")
+                    sel_rect = make_rect(int(x + sx0), int(ty + font_metrics.fAscent), int(sx1 - sx0), int(line_h))
+                    if sel_rect is not None and sx1 > sx0:
                         try:
                             canvas.drawRect(sel_rect, paint_sel)
                         except Exception:
@@ -709,18 +946,15 @@ class EditableText(InteractionHostMixin, Widget):
                                 "EditableText selection draw raised",
                             )
 
-            # Draw Text
-            if display_text:
-                text_color = resolve_color_to_rgba(self.text_color, theme=_theme)
-                paint_text = make_paint(color=text_color)
-                blob = make_text_blob(display_text, font)
-                if blob:
-                    canvas.drawTextBlob(blob, x - scroll, ty, paint_text)
+                if line_text and paint_text is not None:
+                    blob = make_text_blob(line_text, font)
+                    if blob:
+                        canvas.drawTextBlob(blob, x - scroll_x, ty, paint_text)
 
             # Draw Cursor
             if is_focused and selection.is_collapsed:
-                cursor_x = cursor_x_in_text - scroll
-
+                cursor_x = caret_x_in_line - scroll_x
+                ty = first_baseline + caret_line * line_h
                 cursor_top = ty + font_metrics.fAscent
                 cursor_bottom = ty + font_metrics.fDescent
 

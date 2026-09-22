@@ -115,7 +115,9 @@ comment, and the human says what it means in chat, by number.
 - **One field, two commit rules.** The field is the one layout edit mode opens
   over a text literal (§6), so neither mode grows a second editor. A click
   elsewhere keeps the text here and drops it there, because only there is a
-  file behind the field.
+  file behind the field. The field takes several lines, `Shift+Enter` breaking
+  one: an instruction is often more than a sentence, and a literal may hold a
+  line break.
 - **The read prompt.** Once a session is committed with marks in it, the
   badge's home says what to type in chat — the skill, then
   `see_comments` for an agent without it — until the agent

@@ -110,28 +110,39 @@ class ClipboardLike(Protocol):
     def set_text(self, text: str) -> None: ...
 
 
-def strip_control_chars(text: str) -> str:
+def normalize_input(text: str, *, line_breaks: bool = False) -> str:
     """Drop Unicode control characters (category ``Cc``) from *text*.
 
     Backends do not filter them uniformly: on macOS, Return reaches ``on_text``
     as ``'\\r'`` through a path that skips the guard every other key gets.
-    Editing is single-line, so newlines go with the rest.
+    With *line_breaks*, ``'\\r\\n'`` and a lone ``'\\r'`` become ``'\\n'`` and
+    every ``'\\n'`` stays; without it, line breaks go with the rest.
     """
-    return "".join(ch for ch in text if unicodedata.category(ch) != "Cc")
+    if line_breaks:
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return "".join(ch for ch in text if (line_breaks and ch == "\n") or unicodedata.category(ch) != "Cc")
+
+
+def line_bounds(text: str, index: int) -> TextRange:
+    """The line holding *index*: from after the previous ``'\\n'`` to the next one, excluded."""
+    start = text.rfind("\n", 0, index) + 1
+    end = text.find("\n", index)
+    return TextRange(start, len(text) if end < 0 else end)
 
 
 def insert_text(
-    value: TextEditingValue, text: str, *, filter: Optional[InsertFilter] = None
+    value: TextEditingValue, text: str, *, filter: Optional[InsertFilter] = None, line_breaks: bool = False
 ) -> Optional[TextEditingValue]:
     """Insert committed *text* over the composition, or else over the selection.
 
-    Control characters are dropped first; ``None`` when nothing is left. The
-    composition ends, and the caret lands after the insertion. A caller that
-    must tell an IME's confirming Enter from a submit remembers
-    ``value.is_composing`` at this call: on macOS the commit arrives here
-    before that Enter's key press.
+    Control characters are dropped first, line breaks among them unless
+    *line_breaks* keeps them (see :func:`normalize_input`); ``None`` when
+    nothing is left. The composition ends, and the caret lands after the
+    insertion. A caller that must tell an IME's confirming Enter from a submit
+    remembers ``value.is_composing`` at this call: on macOS the commit arrives
+    here before that Enter's key press.
     """
-    text = strip_control_chars(text)
+    text = normalize_input(text, line_breaks=line_breaks)
     if not text:
         return None
     replaced = value.composing if value.is_composing else value.selection
@@ -152,7 +163,7 @@ def compose_text(value: TextEditingValue, text: str, start: int, length: int) ->
     discard that follows a focus loss. ``None`` when there is no composition
     to end.
     """
-    text = strip_control_chars(text)
+    text = normalize_input(text)
     if not text:
         if not value.is_composing:
             return None
@@ -185,8 +196,9 @@ def apply_motion(value: TextEditingValue, motion: int, *, select: bool = False) 
     ``TEXT_MOTION_BACKSPACE`` and ``TEXT_MOTION_DELETE`` erase the selection
     when there is one, else the character before or after the caret. The
     others move the selection's end, collapsing it unless *select* holds it;
-    an unselecting move out of a selection lands on its near edge. ``None``
-    when nothing changes.
+    an unselecting move out of a selection lands on its near edge. ``HOME``
+    and ``END`` stop at the caret's line. ``None`` when nothing changes, and
+    for a vertical motion, which needs the text's layout.
     """
     text, selection = value.text, value.selection
     if motion in (TEXT_MOTION_BACKSPACE, TEXT_MOTION_DELETE):
@@ -208,9 +220,9 @@ def apply_motion(value: TextEditingValue, motion: int, *, select: bool = False) 
         elif focus < len(text):
             focus += 1
     elif motion == TEXT_MOTION_HOME:
-        focus = 0
+        focus = line_bounds(text, focus).start
     elif motion == TEXT_MOTION_END:
-        focus = len(text)
+        focus = line_bounds(text, focus).end
     else:
         return None
     moved = TextRange(selection.start, focus) if select else TextRange(focus, focus)
@@ -218,13 +230,19 @@ def apply_motion(value: TextEditingValue, motion: int, *, select: bool = False) 
 
 
 def apply_shortcut(
-    value: TextEditingValue, key: str, clipboard: ClipboardLike, *, filter: Optional[InsertFilter] = None
+    value: TextEditingValue,
+    key: str,
+    clipboard: ClipboardLike,
+    *,
+    filter: Optional[InsertFilter] = None,
+    line_breaks: bool = False,
 ) -> Optional[TextEditingValue]:
     """The accelerator's ``a`` / ``c`` / ``x`` / ``v``: select all, copy, cut, paste.
 
-    The caller has checked the accelerator; *key* is the normalized name. The
-    value returned is the one to adopt, unchanged for a copy, and ``None``
-    names a key that is not a shortcut.
+    The caller has checked the accelerator; *key* is the normalized name. A
+    paste is normalized as an insertion is, keeping its line breaks only with
+    *line_breaks*. The value returned is the one to adopt, unchanged for a
+    copy, and ``None`` names a key that is not a shortcut.
     """
     text, selection = value.text, value.selection
     if key == "a":
@@ -239,7 +257,7 @@ def apply_shortcut(
         clipboard.set_text(selection.text_inside(text))
         return _replace(value, selection, "")
     if key == "v":
-        pasted = clipboard.get_text() or ""
+        pasted = normalize_input(clipboard.get_text() or "", line_breaks=line_breaks)
         if not pasted:
             return value
         new = _replace(value, selection, pasted)

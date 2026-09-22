@@ -9,6 +9,7 @@ from that `Observable`, never stored beside it.
 ```python
 self.query = nv.Observable("")
 nv.TextField(value=self.query, label="Name")
+nv.TextField.multiline(value=self.notes, label="Notes")  # the text area, same arguments
 ```
 
 `nv.TextField(value=self.query)`, `nv.Switch(checked=self.on)` and
@@ -26,7 +27,8 @@ to show a derived value; add `disabled=True` so the field does not look editable
 `on_submit` means **Enter only** — every press, including a repeat on an unchanged
 value, and never on blur. Blur-time work (validating, saving an inline edit,
 finishing a half-typed value) goes to `on_focus_change(focused, source)`, the
-same signature as `nv.focusable()`.
+same signature as `nv.focusable()`. `Enter` submits in `nv.TextField.multiline(...)`
+too; `Shift+Enter` breaks the line.
 
 ## Restrict what can be typed
 

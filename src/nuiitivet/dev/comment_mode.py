@@ -9,7 +9,8 @@ A click marks a widget and a drag an area. ``Enter`` on a mark just made, or a
 click on any mark's numbered badge, opens the inline field (:mod:`.inline_field`)
 on it; the ``Enter`` is offered once per new mark and only opening the field,
 losing the mark or making a newer one ends the offer. In the field ``Enter``
-writes, ``Esc`` closes it unwritten, and a click elsewhere writes. Otherwise
+writes, ``Shift+Enter`` breaks the line, ``Esc`` closes it unwritten, and a
+click elsewhere writes. Otherwise
 ``Enter`` keeps the session and leaves, ``Esc`` discards it, and ``Ctrl+Z`` /
 ``Ctrl+Shift+Z`` step through its changes. ``Backspace`` is unbound: in layout
 edit mode it deletes a widget from the source.
@@ -134,7 +135,7 @@ class CommentMode:
         if self._band is not None:
             return ()
         if self._writing is not None:
-            return ("Shift+←/→ select", "Ctrl+A/C/X/V")
+            return ("Shift+Enter newline", "Shift+←/→ select", "Ctrl+A/C/X/V")
         parts: list[str] = []
         if self._fresh:
             parts += ["Enter write", "W/S parent/child"]

@@ -45,6 +45,9 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+# The M3 container height, which is also the first row of a multi-line field.
+_ROW_HEIGHT = 56
+
 
 _Symbol: Optional[Type["Symbol"]] = None
 try:
@@ -107,6 +110,8 @@ class TextField(InteractiveWidget):
     back to it. A read-only observable (``.map(...)``, a computed value)
     has nowhere to write, so it displays only -- pair it with
     ``disabled=True`` to make that visible to the user.
+
+    For a field that takes several lines: `multiline`.
     """
 
     def __init__(
@@ -147,7 +152,7 @@ class TextField(InteractiveWidget):
                 Enter. Fires on every press, including a repeat on an unchanged
                 value, and never on focus loss -- it reports a request to act,
                 not a value settling. To react to the user leaving the field,
-                use *on_focus_change*.
+                use *on_focus_change*. Shift+Enter never submits.
             on_focus_change: Callback invoked as focus arrives and leaves,
                 with ``(focused, source)`` -- the same signature as the
                 ``focusable()`` modifier. This is where blur-triggered work
@@ -342,6 +347,94 @@ class TextField(InteractiveWidget):
         # Preserve existing click behavior while adding press handling for icon taps.
         self.enable_click(on_press=self._handle_press)
 
+    @classmethod
+    def multiline(
+        cls,
+        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        *,
+        min_lines: int = 1,
+        max_lines: Optional[int] = None,
+        on_change: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[Callable[[str], None]] = None,
+        on_focus_change: Optional[FocusChangeCallback] = None,
+        input_filter: Optional[InputFilterLike] = None,
+        label: str | ReadOnlyObservableProtocol[str] | None = None,
+        leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        on_tap_leading_icon: Optional[Callable[[], None]] = None,
+        trailing_icon: (
+            Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
+        ) = None,
+        on_tap_trailing_icon: Optional[Callable[[], None]] = None,
+        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
+        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        width: SizingLike = 200,
+        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        style: Optional[TextFieldStyle] = None,
+        key: Optional[str] = None,
+    ) -> "TextField":
+        """A text field that takes several lines.
+
+        The text wraps at the width. Shift+Enter breaks the line; Enter
+        submits through *on_submit* and does nothing without one. The field
+        shows *min_lines* lines when the text has fewer, grows a line at a
+        time up to *max_lines*, and then scrolls the caret's line into view.
+        The first row is laid out as a single-line field: the resting label
+        and the icons sit there.
+
+        Args:
+            value: Initial text, or the observable holding the field's value.
+                Edits are written back to a writable observable.
+            min_lines: Lines shown when the text has fewer, at least 1.
+            max_lines: Lines shown before the field scrolls, at least
+                *min_lines*; ``None`` grows without bound. Neither bounds the
+                text's own line count: that is an *input_filter*.
+            on_change: Callback invoked with the text as it changes, for a
+                side effect of the change. Not during an IME composition.
+            on_submit: Callback invoked with the text on a bare Enter, on
+                every press, and never on focus loss.
+            on_focus_change: Callback invoked as focus arrives and leaves,
+                with ``(focused, source)``.
+            input_filter: Rule applied to text as the user types it, a line
+                break included: ``deny(r"\\n")`` keeps a wrapping field to one
+                paragraph.
+            label: Floating label text.
+            leading_icon: Icon displayed before the text, in the first row.
+            on_tap_leading_icon: Callback invoked when the leading icon is
+                tapped; with it the icon is a standard icon button.
+            trailing_icon: Icon displayed after the text, in the first row.
+            on_tap_trailing_icon: Callback invoked when the trailing icon is
+                tapped; the icon changes as for *on_tap_leading_icon*.
+            supporting_text: Supporting text displayed below the field.
+            is_error: Whether the field is in its error state.
+            disabled: Whether the text field is disabled.
+            width: Width specification.
+            padding: Insets from the allocated rect to the field container.
+            style: Custom style configuration.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
+        field = cls(
+            value,
+            on_change=on_change,
+            on_submit=on_submit,
+            on_focus_change=on_focus_change,
+            input_filter=input_filter,
+            label=label,
+            leading_icon=leading_icon,
+            on_tap_leading_icon=on_tap_leading_icon,
+            trailing_icon=trailing_icon,
+            on_tap_trailing_icon=on_tap_trailing_icon,
+            supporting_text=supporting_text,
+            is_error=is_error,
+            disabled=disabled,
+            width=width,
+            padding=padding,
+            style=style,
+            key=key,
+        )
+        field._editable.set_lines(True, min_lines, max_lines)
+        return field
+
     @property
     def should_show_focus_ring(self) -> bool:
         """Show the focus ring only when focus arrived via keyboard navigation.
@@ -518,6 +611,21 @@ class TextField(InteractiveWidget):
         self._editable.value = new_text
 
     @property
+    def is_multiline(self) -> bool:
+        """Whether the field takes several lines, as built by `multiline`."""
+        return self._editable.multiline
+
+    @property
+    def min_lines(self) -> int:
+        """Lines shown when the text has fewer."""
+        return self._editable.min_lines
+
+    @property
+    def max_lines(self) -> Optional[int]:
+        """Lines shown before the field scrolls; ``None`` is unbounded."""
+        return self._editable.max_lines
+
+    @property
     def obscure_text(self) -> bool:
         return self._editable.obscure_text
 
@@ -562,7 +670,7 @@ class TextField(InteractiveWidget):
         h_dim = self.height_sizing
 
         default_width = 200
-        default_height = 56  # M3 default height
+        default_height = _ROW_HEIGHT
 
         font = self._get_font()
         style = self.style
@@ -592,6 +700,11 @@ class TextField(InteractiveWidget):
             height = int(h_dim.value)
         else:
             height = default_height
+            if self.is_multiline:
+                # The first row is the single-line height; each further line
+                # adds one line of text.
+                text_w = width - pl - pr - icon_w
+                height += self._editable.line_height() * (self._grown_lines(text_w) - 1)
             if self.supporting_text and font:
                 font.setSize(12)
                 metrics = font.getMetrics()
@@ -608,6 +721,13 @@ class TextField(InteractiveWidget):
             total_h = min(int(total_h), int(max_height))
 
         return (int(total_w), int(total_h))
+
+    def _grown_lines(self, text_w: int) -> int:
+        """The lines the field is tall for: the text's, held between ``min_lines`` and ``max_lines``."""
+        count = max(self._editable.min_lines, self._editable.line_count(text_w))
+        if self._editable.max_lines is not None:
+            count = min(count, self._editable.max_lines)
+        return count
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
@@ -645,11 +765,15 @@ class TextField(InteractiveWidget):
             self._label_band = 16
             pt = pt + self._label_band
 
+        # Icons and the resting label sit in the first row, which is the whole
+        # field for a single line.
+        row_h = _ROW_HEIGHT if self.is_multiline else ch
+
         # Leading Icon
         leading_w = 0
         if self.leading_icon:
             lw, lh = self.leading_icon.preferred_size()
-            iy = cy + (ch - lh) // 2
+            iy = cy + (row_h - lh) // 2
             ix = cx + 12
             self.leading_icon.layout(lw, lh)
             self.leading_icon.set_layout_rect(ix, iy, lw, lh)
@@ -659,7 +783,7 @@ class TextField(InteractiveWidget):
         trailing_w = 0
         if self.trailing_icon:
             tw, th = self.trailing_icon.preferred_size()
-            iy = cy + (ch - th) // 2
+            iy = cy + (row_h - th) // 2
             ix = cx + cw - 12 - tw
             self.trailing_icon.layout(tw, th)
             self.trailing_icon.set_layout_rect(ix, iy, tw, th)
@@ -670,12 +794,23 @@ class TextField(InteractiveWidget):
         text_y = cy + pt
         text_w = cw - leading_w - trailing_w - pl - pr
         text_h = ch - pt - pb
+        if self.is_multiline:
+            # Lines start where a single line would be centred in the first
+            # row, so the first line sits where a single-line field's does.
+            row_text_h = row_h - pt - pb
+            offset = max(0, (row_text_h - self._editable.line_height()) // 2)
+            text_y += offset
+            text_h -= offset
 
         self._editable.layout(text_w, text_h)
         self._editable.set_layout_rect(text_x, text_y, text_w, text_h)
 
         # Store text rect for label positioning
         self._text_rect = (text_x, text_y, text_w, text_h)
+        # The band the resting label is centred in, as an offset from the
+        # container's top and a height: the first row's text area with the
+        # floating label's band, as if that band were not reserved.
+        self._label_rest = (pt - self._label_band, row_h - pt - pb + self._label_band)
 
     def focus(self) -> None:
         """Programmatically focus the TextField (keyboard-style focus).
@@ -926,11 +1061,12 @@ class TextField(InteractiveWidget):
             label_metrics = label_font.getMetrics()
             label_h = -label_metrics.fAscent + label_metrics.fDescent
 
-            # Rest-state label is vertically centered in the full inner area
-            # (i.e. as if the floating-label band were not reserved).
             band = getattr(self, "_label_band", 0)
-            rest_text_y = text_y - band
-            rest_text_h = text_h + band
+            rest = getattr(self, "_label_rest", None)
+            if rest is None:
+                rest_text_y, rest_text_h = text_y - band, text_h + band
+            else:
+                rest_text_y, rest_text_h = cy + rest[0], rest[1]
             start_y = rest_text_y + (rest_text_h + label_h) / 2 - label_metrics.fDescent
             style = self.style
             if style.mode == "outlined":

@@ -76,11 +76,16 @@ Composition uses `|`, matching the modifier vocabulary. Masking — displaying `
 
 ### Commit
 
-`on_submit` fires when the user presses Enter **and** when the field loses focus, in both cases only if the text moved since the last commit.
 
-Focus loss counts because commit-time work — parsing, padding an incomplete `"1."` to `"1.0"` — would otherwise only ever happen for the users who press Enter, leaving half-typed text behind for everyone who Tabs away. The "changed since last commit" guard is what makes that safe to add: an `on_submit` that runs a search or saves a record must not fire every time the field is merely tabbed through. A value the application assigns counts as already committed, so loading a record into a form does not report it straight back.
+`on_submit` fires on every Enter, a repeat on an unchanged value included, and never on focus loss: it reports the user asking for an action, not the value settling. Firing on focus loss as well was rejected because an `on_submit` that runs a search or saves a record would then fire every time the field is tabbed through. A "changed since the last commit" guard would make that safe, and was rejected too: pressing Enter again on the same query means run it again, and only the caller knows whether repeating its work is wasteful. Work that belongs to leaving the field, finishing a half-typed `"1."` as `"1.0"`, goes to `on_focus_change`.
 
-Supplying `on_submit` is also what makes the field **claim the Enter key** (see [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)); a field that handles commit owns Enter. The coupling is deliberate — a field with an `on_submit` that let Enter pass through to a shortcut would be harder to explain than the cost, which is that setting `on_submit` purely for blur-time normalization also takes Enter away from a shortcut.
+Supplying `on_submit` is also what makes the field **claim the Enter key** (see [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)): a field with an action for Enter owns it, and one without lets it reach a shortcut. A field that only reacts to being left therefore takes `on_focus_change` and leaves Enter alone.
+
+### Lines
+
+A multi-line field is the same widget in a second mode, reached by a named constructor, `TextField.multiline`. The mode changes what Enter does, how the text is laid out and how the field grows, and a name at the call site says so.
+
+Shift+Enter breaks the line. The break is inserted like typed text, so an input filter sees it. It does not come from the text the backend delivers: on macOS, Return arrives as `on_text('\r')` next to the key press whether Shift is held or not, so a break taken from there would also land on every submit. Enter means the same in both modes: a field claims it only when it has an action for it (see Commit). Making Enter the line break was rejected because a multi-line field would then take Enter from the rest of the screen.
 
 ### Interaction
 
@@ -136,5 +141,5 @@ Clipboard operations are abstracted via the `Clipboard` protocol.
 Key events are routed through the `FocusNode`.
 
 - **`on_text`**: Handles committed character input.
-- **`on_text_motion`**: Handles navigation (Arrow keys, Home, End, Backspace, Delete).
+- **`on_text_motion`**: Handles navigation (Arrow keys, Home, End, Backspace, Delete). Up and Down reach a multi-line field only.
 - **`on_ime_composition`**: Handles active composition updates.

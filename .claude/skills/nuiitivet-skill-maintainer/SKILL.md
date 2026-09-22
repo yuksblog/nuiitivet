@@ -45,7 +45,9 @@ is silent, or the reverse.
 ## Workflow
 
 1. **Classify the change**: API change, new anti-pattern, idiom change, MCP
-   change. If it does not affect the published text, stop.
+   change. If it does not affect the published text, stop. A new or changed
+   API also names the foreign habit it replaces (`maxLines`, `TextArea`):
+   translation row and linter rule first, reference text second.
 2. **Locate every touchpoint**: grep the whole skill for the symbol or claim.
    ```
    grep -rn "<old-name-or-claim>" skills/nuiitivet-app/
@@ -54,7 +56,9 @@ is silent, or the reverse.
    Confirm each name and signature from `src/nuiitivet/` (Verification Gate).
    The original draft shipped `radius`, `IndexedStack`, `push_replacement`;
    none exist.
-4. **Apply the edit** in the right file:
+4. **Apply the edit** in the right file. Each sentence passes **Guardrails**
+   before it is written: what a parameter means is the docstring's, which the
+   agent reads for every parameter the skill does not list.
    - API renamed or removed → fix every snippet and table row; update the
      widget catalog in `SKILL.md`.
    - New anti-pattern → the prose row **and** a `check_idioms.py` rule (The
@@ -62,7 +66,7 @@ is silent, or the reverse.
    - New widget → a catalog row in `SKILL.md` with a *verified* construction
      snippet.
    - New or changed idiom → the topical reference and every example.
-   - Missing knowledge → fold it into the references. No site link: a link
+   - Missing judgement → fold it into the references. No site link: a link
      next to a task gets followed and short-circuits maintenance.
 5. **Run the Verification Gate.** Fix until all pass.
 6. **Commit** as `docs(skills):` or `feat(skills):`; PR via
@@ -75,8 +79,10 @@ something, or follows whichever fragment it retrieved. This holds for every
 published skill and for the MCP server text.
 
 - **A new feature goes into the skill's outline, not into a section appended
-  for it.** An appended section ends up restating the skill. Sibling headings
-  divide their parent on one axis, with no gap and no overlap.
+  for it.** An appended section ends up restating the skill. A heading is
+  added only for a task the agent would search for; an option of an existing
+  task goes into that task's snippet or one sentence. Sibling headings divide
+  their parent on one axis, with no gap and no overlap.
 - **Every prohibition names its replacement, adjacent.** "Do not `setState`"
   alone buys a *different* wrong answer; the `nv` idiom goes in the same
   sentence or the next line.
@@ -118,29 +124,38 @@ asking: the server instructions and one description per tool.
 
 ## Verification Gate — all must pass
 
-- **Every `nv.*` claim exists.** For each symbol touched:
+Run each item; never assert it.
+
+- [ ] Every `nv.*` claim exists. For each symbol touched:
   ```
   python -c "import nuiitivet.material as nv; print(hasattr(nv, '<Name>'))"
   ```
   For a signature, read `src/nuiitivet/...` or
   `inspect.signature(getattr(nv, '<Name>').__init__)`.
-- **Snippets construct and run.** Paste each changed snippet into a throwaway
-  script and execute it. A snippet that raises on construction is a bug in the
+- [ ] Snippets construct and run: each changed snippet pasted into a throwaway
+  script and executed. A snippet that raises on construction is a bug in the
   skill.
-- **Linter clean on real code, sharp on bad code.**
+- [ ] Linter clean on real code, sharp on bad code:
   ```
   python skills/nuiitivet-app/scripts/check_idioms.py samples/   # expect: no findings
   ```
-  Then a planted file with the new anti-pattern is flagged with the right
+  then a planted file with the new anti-pattern is flagged with the right
   pointer. A rule that fires on `samples/` is a false positive: tighten the
   regex to a signature unique to the foreign framework.
-- **No external URL.** `grep -rn "https://" skills/nuiitivet-app/ skills/nuiitivet-debug/`
+- [ ] Prose and linter in lockstep: every habit a translation row names, the
+  linter flags, and the reverse (The One Rule).
+- [ ] No external URL: `grep -rn "https://" skills/nuiitivet-app/ skills/nuiitivet-debug/`
   returns nothing.
-- **MCP text within the host limit.** `uv run pytest tests/dev/test_mcp_server.py`
+- [ ] MCP text within the host limit: `uv run pytest tests/dev/test_mcp_server.py`
   after any change to the server instructions or a tool description.
-- **Wording holds.** Reread every changed line against **Wording**. The two
-  that slip through most: a prohibition without its replacement, and a hedge
-  left in a rule.
+- [ ] Every changed sentence is procedure, judgement, or the idiom beside the
+  habit it replaces (Guardrails); a parameter explained is a docstring copy.
+- [ ] Every prohibition has its replacement adjacent; no hedge in a rule
+  (Wording).
+- [ ] Short sentences, one fact each, dense throughout; a fact repeated only
+  where two places are far apart — checked on each changed paragraph.
+- [ ] Sibling headings divide their parent on one axis, no gap, no overlap —
+  checked on the whole file, not only the section touched.
 
 ## Adding a check_idioms.py rule
 

@@ -165,12 +165,59 @@ message without being flagged.
 
 `input_filter` decides what may land in the field at all, before any of the
 above. It runs on paste as well as typing, so `nv.digits_only()` turns a pasted
-`"1,234"` into `"1234"` in the field itself — see
-[TextField](../design-system/material_widgets.md#textfield).
+`"1,234"` into `"1234"` in the field itself:
 
-It says what is *typeable*, not what is *valid*: `"1."` has to be typeable or
-the decimal point could never be entered. Whether a finished value is
-acceptable stays with the derivation above.
+```python
+nv.TextField(value=self.qty_text, input_filter=nv.digits_only())
+nv.TextField(value=self.pin,      input_filter=nv.digits_only() | nv.max_length(4))
+nv.TextField(value=self.rate_text, input_filter=nv.matching(r"[0-9]*\.?[0-9]*"))
+nv.TextField(value=self.code,     input_filter=lambda s: s.upper())
+```
+
+| Filter | Effect |
+| --- | --- |
+| `nv.digits_only()` | keeps ASCII digits, drops everything else |
+| `nv.allow(pattern)` | keeps the characters matching `pattern` |
+| `nv.deny(pattern)` | drops the characters matching `pattern` |
+| `nv.max_length(n)` | truncates to `n` characters |
+| `nv.matching(pattern)` | rejects the keystroke unless the whole text matches |
+
+Combine them with `|`. `matching` is the odd one out: it judges the text as a
+whole and rejects the keystroke outright, which is how "at most one decimal
+point" is expressed.
+
+A filter says what is *typeable*, not what is *valid*: `"1."` has to be
+typeable or the decimal point could never be entered. Whether a finished value
+is acceptable stays with the derivation above.
+
+### Finishing the value when the user leaves
+
+A half-typed value — `"1."` for a rate — is fine while the user is in the field
+and wrong once they have left it. That work goes in
+`on_focus_change(focused, source)`, not in `on_submit`, which fires on `Enter`
+only and never on focus loss:
+
+```python
+class OrderForm:
+    def __init__(self):
+        self.rate_text = nv.Observable("")
+
+    def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
+        if focused:
+            return
+        self.rate_text.value = f"{float(self.rate_text.value or 0):.2f}"
+
+
+nv.TextField(
+    value=form.rate_text,
+    input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
+    on_focus_change=form.finish_rate,
+)
+```
+
+It can fire more than once with `focused=True`, so branch on `focused` rather
+than counting calls. Writing the text back is safe here and nowhere else: the
+user has left, so nothing reformats under their cursor.
 
 ### Binding a derived value by mistake
 

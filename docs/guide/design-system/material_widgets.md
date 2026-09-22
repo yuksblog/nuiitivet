@@ -133,68 +133,19 @@ API References: [HorizontalSlider](../../api/material.md#nuiitivet.material.Hori
 
 ## TextField
 
-Text input, with leading icons, supporting text and error states. The filled and outlined variants come from `style`.
+Text input, with leading icons, supporting text and error states. The filled and outlined variants come from `style`; `TextField.multiline` is the text area.
 
 ![TextField](../../assets/material_widgets_text_field.png)
 
-An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it:
+An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it. A read-only source (`.map(...)`, a computed value) has nowhere to write, so it only displays; pair it with `disabled=True`.
 
 ```python
 nv.TextField(value=self.query, label="Search")
-nv.TextField(value=self.query, label="Search", style=nv.TextFieldStyle.outlined())
+nv.TextField(value=self.pin, input_filter=nv.digits_only() | nv.max_length(4))
+nv.TextField.multiline(value=self.notes, label="Notes", max_lines=4)
 ```
 
-A read-only source (`.map(...)`, a computed value) has nowhere to write, so it only displays; pair it with `disabled=True`.
-
-### Restricting what can be typed
-
-`input_filter` runs on every keystroke, before the value changes:
-
-```python
-nv.TextField(value=self.pin,   input_filter=nv.digits_only() | nv.max_length(4))
-nv.TextField(value=self.rate,  input_filter=nv.matching(r"[0-9]*\.?[0-9]*"))
-nv.TextField(value=self.code,  input_filter=lambda s: s.upper())
-```
-
-| Filter | Effect |
-| --- | --- |
-| `nv.digits_only()` | keeps ASCII digits, drops everything else |
-| `nv.allow(pattern)` | keeps the characters matching `pattern` |
-| `nv.deny(pattern)` | drops the characters matching `pattern` |
-| `nv.max_length(n)` | truncates to `n` characters |
-| `nv.matching(pattern)` | rejects the keystroke unless the whole text matches |
-
-Combine them with `|`. `matching` is the odd one out: it judges the text as a whole and rejects the keystroke outright, which is how "at most one decimal point" is expressed.
-
-A filter says what is **typeable**, not what is **valid** — `"1."` has to be typeable or the `.` could never be entered. Whether a finished value is acceptable belongs in `is_error` / `supporting_text`.
-
-### Reacting to the user
-
-| You want to | Use |
-| --- | --- |
-| Derive something from the text | the `Observable` bound to `value` — `.debounce(...)`, `.map(...)`, `.switch_map(...)` |
-| Run a side effect on every change | `on_change` |
-| Act when the user presses `Enter` | `on_submit` |
-| Act when the user arrives at, or leaves, the field | `on_focus_change` |
-
-The observable is updated with or without `on_change`, so reach for the callback only when a change has a side effect. Neither reports the provisional text of an IME composition; both arrive once it commits.
-
-**`on_submit`** fires on **every** `Enter` — including a repeat on an unchanged value — and never on focus loss. Setting it makes the field claim the `Enter` key, so a `key_shortcut("enter", ...)` elsewhere stops firing while the field is focused; see [Interaction modifiers](../modifiers/interaction.md).
-
-**`on_focus_change(focused, source)`** is where blur-time work goes: validating once the user is done, saving an inline edit, finishing a half-typed value. It can fire more than once with `focused=True`, so branch on `focused` rather than counting calls.
-
-```python
-def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
-    if focused:
-        return
-    self.rate.value = f"{float(self.rate.value or 0):.2f}"
-
-nv.TextField(
-    value=self.rate,
-    input_filter=nv.matching(r"[0-9]*\.?[0-9]*"),
-    on_focus_change=self.finish_rate,
-)
-```
+Derive what the text means from the observable; `on_change` is for a side effect only. `on_submit` fires on every `Enter` and never on focus loss, and setting it takes `Enter` from the screen's shortcuts ([Interaction modifiers](../modifiers/interaction.md)); work for when the user leaves the field goes in `on_focus_change`. In a multi-line field `Shift+Enter` breaks the line and `Enter` still submits. Restricting what can be typed, and finishing a half-typed value on the way out, are recipes in [Typed Values from Text Input](../state-management/patterns_and_recipes.md#typed-values-from-text-input).
 
 [API Reference](../../api/material.md#nuiitivet.material.TextField)
 

@@ -19,11 +19,13 @@ from .codes import (
     resolve_modifiers,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
+    TEXT_MOTION_DOWN,
     TEXT_MOTION_END,
     TEXT_MOTION_HOME,
     TEXT_MOTION_KEYS,
     TEXT_MOTION_LEFT,
     TEXT_MOTION_RIGHT,
+    TEXT_MOTION_UP,
     text_motion_for_key,
 )
 from .shortcut import (
@@ -64,10 +66,12 @@ __all__ = [
     "to_shortcut",
     "TEXT_MOTION_BACKSPACE",
     "TEXT_MOTION_DELETE",
+    "TEXT_MOTION_DOWN",
     "TEXT_MOTION_END",
     "TEXT_MOTION_HOME",
     "TEXT_MOTION_KEYS",
     "TEXT_MOTION_LEFT",
     "TEXT_MOTION_RIGHT",
+    "TEXT_MOTION_UP",
     "text_motion_for_key",
 ]
