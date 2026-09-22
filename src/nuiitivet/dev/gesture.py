@@ -78,9 +78,13 @@ def child_toward(current: Any, anchor: Any) -> Optional[Any]:
 
 
 def invalidate(app: Any) -> None:
-    """Ask for a frame, so an overlay reflects the change that just happened."""
+    """Ask for a frame, so an overlay reflects the change that just happened.
+
+    The tree is left clean: a mode changes what is drawn over it, never the
+    tree, so the renderer redraws the glass over the tree it last painted.
+    """
     try:
-        app.invalidate()
+        app.invalidate(content=False)
     except Exception:
         logger.debug("dev input: invalidate failed", exc_info=True)
 

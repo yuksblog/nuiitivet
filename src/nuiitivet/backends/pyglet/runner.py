@@ -1311,10 +1311,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 def _draw_raster_frame(app: Any, skia: Any) -> bool:
     try:
         img: Any
-        render_snapshot = getattr(app, "_render_snapshot", None)
-        if callable(render_snapshot):
+        render_frame = getattr(app, "_render_display_frame", None)
+        if callable(render_frame):
             scale = max(1.0, float(getattr(app, "_scale", 1.0)))
-            snapshot = render_snapshot(scale=scale, for_display=True)
+            snapshot = render_frame(scale=scale)
 
             # Fast path: avoid PNG encode/decode and upload raw pixels directly.
             # skia.Image.tobytes() returns RGBA (top-to-bottom).

@@ -21,9 +21,11 @@ class _App:
     def __init__(self, root: Any = None) -> None:
         self.root = root
         self.invalidated = 0
+        self.tree_repaints = 0
 
-    def invalidate(self) -> None:
+    def invalidate(self, immediate: bool = False, content: bool = True) -> None:
         self.invalidated += 1
+        self.tree_repaints += int(content)
 
 
 def _mode() -> tuple[CommentMode, Comments, _App]:
@@ -428,6 +430,28 @@ def test_hovering_the_same_candidate_does_not_repaint() -> None:
         mode.on_mouse_motion(app, 3, 3)
 
         assert app.invalidated == settled
+
+
+def test_a_session_never_repaints_the_tree() -> None:
+    """Every frame a mode asks for leaves the tree clean: a mark, a hover, a
+    band and the badge are all drawn over it, so the renderer reuses the tree
+    it last painted instead of walking it again."""
+    leaf = Text("AAA")
+    with mount(Column(children=[leaf, Text("BBB")])) as host:
+        host.layout(300, 200)
+        app = _App(host.root)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
+        mode.on_mouse_motion(app, 2, 2)
+        mode.on_mouse_motion(app, 2, 60)
+        _click(mode, app, 2, 2)
+        mode.on_mouse_press(app, 10, 10)
+        mode.on_mouse_motion(app, 60, 40)
+        mode.on_mouse_release(app, 60, 40)
+        _leave(mode, app)
+
+        assert app.invalidated > 0
+        assert app.tree_repaints == 0
 
 
 def test_key_releases_are_swallowed_while_latched() -> None:

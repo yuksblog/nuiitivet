@@ -520,7 +520,50 @@ def _is_visually_empty(node: Any) -> bool:
         return False
 
 
-def _pick(root: Any, node: Any, x: float, y: float, seen: set[int]) -> Optional[Any]:
+# What a node's ancestors add to its own layout rect: their summed layout
+# origins (``global_layout_rect``'s walk) and their summed visual offsets
+# (``global_visual_rect``'s second walk). Carried down a descent, so a pick
+# costs one rect per node instead of two ancestor walks per node.
+_Frame = tuple[int, int, float, float]
+
+
+def _rect_within(node: Any, frame: Optional[_Frame]) -> Optional[tuple[float, float, float, float]]:
+    """``node``'s painted rect from its own layout rect and ``frame``.
+
+    ``None`` when either is missing; the caller then asks the node itself. The
+    arithmetic is ``WidgetKernel.global_layout_rect``'s, so the two agree to
+    the pixel.
+    """
+    rect = getattr(node, "layout_rect", None)
+    if frame is None or rect is None:
+        return None
+    x, y, w, h = rect
+    sx, sy, dx, dy = frame
+    return (float(int(x + sx)) + dx, float(int(y + sy)) + dy, float(w), float(h))
+
+
+def _frame_below(node: Any, frame: Optional[_Frame]) -> Optional[_Frame]:
+    """The frame ``node``'s own children descend with, or ``None`` when it cannot be carried."""
+    if frame is None:
+        layout = getattr(node, "global_layout_rect", None)
+        visual = global_visual_rect(node)
+        if layout is None or visual is None:
+            return None
+        sx, sy = int(layout[0]), int(layout[1])
+        dx, dy = float(visual[0]) - float(layout[0]), float(visual[1]) - float(layout[1])
+    else:
+        sx, sy, dx, dy = frame
+        rect = getattr(node, "layout_rect", None)
+        if rect:
+            sx += int(rect[0])
+            sy += int(rect[1])
+    adx, ady = _visual_offset(node)
+    return (sx, sy, dx + adx, dy + ady)
+
+
+def _pick(
+    root: Any, node: Any, x: float, y: float, seen: set[int], frame: Optional[_Frame] = None
+) -> Optional[Any]:
     """Depth-first, top-most-first search for the deepest reachable node at ``(x, y)``."""
     if node is None or id(node) in seen:
         return None
@@ -530,12 +573,19 @@ def _pick(root: Any, node: Any, x: float, y: float, seen: set[int]) -> Optional[
 
     # Reversed, so a later sibling -- painted on top -- is tried first. This is
     # the convention ``_hit_test_children`` already works in.
-    for child in reversed(_visible_children(node)):
-        picked = _pick(root, child, x, y, seen)
+    children = _visible_children(node)
+    below = _frame_below(node, frame) if children else None
+    for child in reversed(children):
+        # A child reached through another parent chain gets no frame and asks
+        # for its own rect.
+        child_frame = below if getattr(child, "parent", None) is node else None
+        picked = _pick(root, child, x, y, seen, child_frame)
         if picked is not None:
             return picked
 
-    rect = global_visual_rect(node)
+    rect = _rect_within(node, frame)
+    if rect is None:
+        rect = global_visual_rect(node)
     if rect is None or rect[2] <= 0 or rect[3] <= 0:
         return None
     if not _contains(rect, x, y):

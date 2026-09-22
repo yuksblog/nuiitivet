@@ -57,12 +57,17 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
 
     canvas = surf.getCanvas()
 
-    # Fast path: the widget tree is unchanged and only a surface-loss redraw
-    # (window show/activate) requested this frame. Re-blit the cached full frame
-    # 1:1 in device pixels instead of walking the whole tree. This fills the
-    # entire back buffer, so the flip invariant (never flip a buffer you did not
-    # just draw) is preserved.
+    # Fast path: the widget tree is unchanged and only what lies over it -- a
+    # surface-loss redraw (window show/activate), a dev overlay -- requested
+    # this frame. Re-blit the cached tree 1:1 in device pixels instead of
+    # walking it, then paint the overlays over it. This fills the entire back
+    # buffer, so the flip invariant (never flip a buffer you did not just draw)
+    # is preserved.
     if _try_reblit_cached_frame(app, canvas, phys_w, phys_h, skia):
+        if getattr(app, "_scale", 1.0) != 1.0:
+            canvas.scale(getattr(app, "_scale", 1.0), getattr(app, "_scale", 1.0))
+        _paint_dev_action_overlay(app, canvas)
+        _paint_dev_comment_overlay(app, canvas)
         _flush_gpu(app, gr_context)
         app._dirty = False
         return True
@@ -170,14 +175,15 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
             except Exception:
                 exception_once(logger, "gpu_frame_chrome_border_exc", "Failed to draw CustomChrome border")
 
-    _paint_dev_action_overlay(app, canvas)
-    _paint_dev_comment_overlay(app, canvas)
-
-    # Cache this fully-painted frame so a later surface-loss redraw can re-blit it
-    # instead of walking the tree again. The snapshot captures the surface at its
-    # physical (device-pixel) resolution regardless of the canvas scale transform.
+    # Cache the painted tree, before the overlays go on, so a later frame that
+    # changes only the overlays can re-blit it and paint them fresh. The
+    # snapshot captures the surface at its physical (device-pixel) resolution
+    # regardless of the canvas scale transform.
     _store_frame_cache(app, surf, phys_w, phys_h)
     app._paint_dirty = False
+
+    _paint_dev_action_overlay(app, canvas)
+    _paint_dev_comment_overlay(app, canvas)
 
     _flush_gpu(app, gr_context)
     app._dirty = False
@@ -228,7 +234,7 @@ def _paint_dev_action_overlay(app: Any, canvas: Any) -> None:
 
 
 def _store_frame_cache(app: Any, surf: Any, phys_w: int, phys_h: int) -> None:
-    """Snapshot the just-painted surface into the app's full-frame GPU cache."""
+    """Snapshot the just-painted tree into the app's full-frame GPU cache."""
 
     try:
         snapshot = surf.makeImageSnapshot()
@@ -240,10 +246,10 @@ def _store_frame_cache(app: Any, surf: Any, phys_w: int, phys_h: int) -> None:
 
 
 def _try_reblit_cached_frame(app: Any, canvas: Any, phys_w: int, phys_h: int, skia: Any) -> bool:
-    """Re-blit the cached full frame 1:1 when the tree is unchanged.
+    """Re-blit the cached tree 1:1 when it is unchanged.
 
-    Returns True when the cached frame was drawn (caller should flip); False when
-    no valid cache exists and a full paint is required.
+    Returns True when the cached frame was drawn (the caller paints the overlays
+    and flips); False when no valid cache exists and a full paint is required.
     """
 
     if getattr(app, "_paint_dirty", True):

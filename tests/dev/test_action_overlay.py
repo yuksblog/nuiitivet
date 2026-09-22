@@ -370,9 +370,9 @@ def test_actions_never_appear_in_describe_tree() -> None:
     assert "secret-password" not in str(after)
 
 
-def test_render_snapshot_paints_overlay_only_for_display(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The overlay is drawn on live frames (``for_display=True``) but excluded
-    from the ``screenshot`` render (``for_display=False``)."""
+def test_the_overlay_is_painted_on_the_display_frame_and_never_on_a_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The overlay is drawn on live frames (``_render_display_frame``) but excluded
+    from the ``screenshot`` render (``_render_snapshot``)."""
     from nuiitivet.runtime.app import App
     from nuiitivet.runtime.window import Window
     from nuiitivet.widgeting.widget import Widget
@@ -396,5 +396,5 @@ def test_render_snapshot_paints_overlay_only_for_display(monkeypatch: pytest.Mon
     assert calls == []
 
     # Live display path: overlay painted.
-    app._render_snapshot(scale=1.0, for_display=True)
+    app._render_display_frame(scale=1.0)
     assert calls == ["painted"]

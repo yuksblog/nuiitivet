@@ -284,11 +284,13 @@ class _App:
     def __init__(self, root: Any = None) -> None:
         self.root = root
         self.invalidated = 0
+        self.tree_repaints = 0
         self._comment_mode: Any = None
         self._layout_edit_mode: Any = None
 
-    def invalidate(self) -> None:
+    def invalidate(self, immediate: bool = False, content: bool = True) -> None:
         self.invalidated += 1
+        self.tree_repaints += int(content)
 
 
 @pytest.fixture

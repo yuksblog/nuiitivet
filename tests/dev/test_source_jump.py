@@ -23,9 +23,11 @@ class _App:
         self.root = root
         self.modifier_keys = 0
         self.invalidated = 0
+        self.tree_repaints = 0
 
-    def invalidate(self) -> None:
+    def invalidate(self, immediate: bool = False, content: bool = True) -> None:
         self.invalidated += 1
+        self.tree_repaints += int(content)
 
 
 def _records_into(sink: list[tuple[str, int]]) -> Any:
