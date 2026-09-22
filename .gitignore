@@ -23,7 +23,6 @@ wheels/
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
-.github/skills/
 
 # Documentation build files
 site/
@@ -34,7 +33,12 @@ site/
 # VS Code settings
 .vscode/mcp.json
 
-# Claude AI configuration files
+# Claude AI configuration files. Personal config is ignored; the maintainer
+# skills under .claude/skills/ carry project conventions and are tracked.
+# The shipped skills (skills/) are ignored at their local install target.
 CLAUDE.md
-.claude/
-.claude/settings.local.json
+.claude/*
+!.claude/skills/
+.claude/skills/nuiitivet-app/
+.claude/skills/nuiitivet-debug/
+.claude/skills/nuiitivet-see-comments/

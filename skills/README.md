@@ -2,11 +2,10 @@
 
 This directory holds **published skills** for coding agents (Claude Code and
 compatible agents) that build applications *with* Nuiitivet. They are shipped
-in the repository — unlike the maintainers' local `.claude/` tooling, which is
-git-ignored — so framework users can adopt them.
+in the repository so framework users can adopt them.
 
-> Not to be confused with `.claude/` / `.github/skills/`, which are the Nuiitivet
-> *maintainers'* development tools and are intentionally untracked.
+> Not to be confused with `.claude/skills/`, the Nuiitivet *maintainers'* skills
+> for working on the framework itself. Those are tracked too, but not shipped.
 
 ## Available skills
 
