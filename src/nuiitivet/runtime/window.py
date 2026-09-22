@@ -676,12 +676,12 @@ class Window:
     ) -> None:
         """Size the window from the content's preferred size.
 
-        Only called when at least one dimension is ``auto``. The tree must
-        already be mounted: a widget reaches its theme by walking up to the
-        :class:`AppScope`, and that walk only works once the widget is attached.
-        Measuring first and mounting afterwards sizes the window against the
-        default light theme, ignoring any custom typography or style the app
-        installed.
+        Only called when at least one dimension is ``auto``. The content is
+        measured within the fixed dimension, if any, so text that wraps at a
+        fixed width reports its wrapped height. The tree must already be
+        mounted: a widget reaches its theme by walking up to the
+        :class:`AppScope`, and a tree measured before it is attached is sized
+        against the default light theme.
 
         Args:
             width: The window width specification, as passed to the App.
@@ -690,23 +690,29 @@ class Window:
             chrome: The window chrome; a :class:`CustomChrome` header adds its
                 own preferred height to the total.
         """
-        pref_w = 0
-        pref_h = 0
-        if target is not None:
-            try:
-                pref_w, pref_h = target.preferred_size()
-            except Exception:
-                exception_once(logger, "app_auto_size_measure_exc", "Auto-size content measurement raised")
-                pref_w, pref_h = 0, 0
+        width_sizing = parse_window_sizing(width)
+        height_sizing = parse_window_sizing(height)
+        max_w = int(width_sizing.value) if width_sizing.kind == "fixed" else None
+        max_h = int(height_sizing.value) if height_sizing.kind == "fixed" else None
 
+        header_w = header_h = 0
         if isinstance(chrome, CustomChrome):
             try:
-                tw, th = chrome.header.preferred_size()
+                header_w, header_h = chrome.header.preferred_size(max_width=max_w)
             except Exception:
                 exception_once(logger, "app_auto_size_chrome_measure_exc", "Auto-size chrome measurement raised")
-                tw, th = 0, 0
-            pref_w = max(int(pref_w), int(tw))
-            pref_h = int(pref_h) + int(th)
+            if max_h is not None:
+                max_h = max(0, max_h - int(header_h))
+
+        pref_w = pref_h = 0
+        if target is not None:
+            try:
+                pref_w, pref_h = target.preferred_size(max_width=max_w, max_height=max_h)
+            except Exception:
+                exception_once(logger, "app_auto_size_measure_exc", "Auto-size content measurement raised")
+
+        pref_w = max(int(pref_w), int(header_w))
+        pref_h = int(pref_h) + int(header_h)
 
         self.width = self._resolve_window_sizing(width, preferred=int(pref_w), fallback=640)
         self.height = self._resolve_window_sizing(height, preferred=int(pref_h), fallback=480)

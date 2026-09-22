@@ -91,3 +91,19 @@ def test_on_mount_can_call_back_into_the_app(caplog) -> None:
 
     assert ran == [True]
     assert [r.message for r in caplog.records if r.levelname == "ERROR"] == []
+
+
+class _WrappingProbe(Widget):
+    """Measures like wrapped text: a natural width of 300, three lines at 100."""
+
+    def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
+        if max_width is not None and max_width < 300:
+            return (max_width, 20 * -(-300 // max_width))
+        return (300, 20)
+
+
+def test_auto_height_is_measured_within_a_fixed_width() -> None:
+    app = App(Window(content=_WrappingProbe(), width=100, height="auto"), theme=_theme_with())
+
+    assert app.main_window.width == 100
+    assert app.main_window.height == 60
