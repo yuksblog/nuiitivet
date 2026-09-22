@@ -10,6 +10,7 @@ import math
 from typing import Optional, Tuple
 
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.layout.layout_utils import layout_child_if_needed
 from nuiitivet.widgeting.widget import Widget
@@ -73,9 +74,23 @@ def test_unconstrained_query_not_served_by_constrained_entry():
     assert measure_preferred_size(leaf, max_width=50) == (50, 40)
     assert measure_preferred_size(leaf) == (100, 20)
     assert leaf.measure_calls == 2
-    # ... but an unconstrained entry serves any constraint the result fits.
+
+
+def test_constrained_query_not_served_by_unconstrained_entry():
+    leaf = CountingLeaf(natural_w=100)
+    assert measure_preferred_size(leaf) == (100, 20)
+    # A filling layout answers a finite constraint with the constraint, not
+    # with its intrinsic size, so the unconstrained entry cannot stand in.
     assert measure_preferred_size(leaf, max_width=150) == (100, 20)
     assert leaf.measure_calls == 2
+
+
+def test_filling_layout_measured_unconstrained_then_within_a_width():
+    """The weekday row of a calendar: an auto-height window measures the tree
+    unconstrained before the first layout measures it at the window width."""
+    flow = UniformFlow(columns=7, children=[CountingLeaf(natural_w=26, natural_h=12) for _ in range(7)])
+    assert measure_preferred_size(flow) == (182, 12)
+    assert measure_preferred_size(flow, max_width=532) == (532, 12)
 
 
 def test_mark_needs_layout_drops_cache():

@@ -21,17 +21,15 @@ def _axis_reusable(cached: Optional[int], requested: Optional[int], result: int)
     (text wrapping, min/max clamping) produces the same result for any
     constraint in ``[result, cached]``. A *growing* constraint may unlock a
     larger layout (e.g. wrapped text un-wraps), so it always re-measures.
-    ``None`` means unconstrained and behaves as an infinite constraint.
+    ``None`` means unconstrained and matches only ``None``: a filling layout
+    (``UniformFlow`` with ``columns``) reports its intrinsic width unconstrained
+    and the whole width under any finite constraint.
     """
     if cached == requested:
         return True
-    if requested is None:
-        # Unconstrained query: a constrained measurement may have been
-        # clamped or wrapped, so it cannot stand in for the natural size.
+    if requested is None or cached is None:
         return False
-    if cached is not None and requested > cached:
-        return False
-    return result <= requested
+    return requested <= cached and result <= requested
 
 
 def _cache_lookup(
