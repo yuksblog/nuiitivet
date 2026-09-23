@@ -122,8 +122,10 @@ class GroupButton(InteractiveWidget):
                 each toggle. In a ``ConnectedButtonGroup`` it runs together
                 with the group's selection enforcement.
             disabled: Whether the item ignores pointer events.
-            width: Width sizing. A ``ConnectedButtonGroup`` overrides it
-                with ``Sizing.weight(1)`` so segments share the width equally.
+            width: Width sizing. A fixed value is the item's allocated width
+                and sits out the pressed-width interaction. A content-fit item
+                in a ``ConnectedButtonGroup`` becomes ``Sizing.weight(1)`` so
+                such segments share the width equally.
             style: Visual style override. When omitted the containing
                 group's style is used; a group button standing on its own
                 follows the theme's standard-group style.
@@ -234,6 +236,10 @@ class GroupButton(InteractiveWidget):
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Return preferred size.
 
+        A fixed ``width`` is the item's allocated width: no side space is added
+        on top of it. A content-fit item measures as content plus the reserved
+        leading and trailing space.
+
         Connected groups enforce a visual minimum width (M3: 48dp for XS/S
         segments).  Standard groups are content-fit: their 48dp spec value is an
         accessible **tap-target** requirement, not a visual width floor, so it
@@ -247,13 +253,14 @@ class GroupButton(InteractiveWidget):
             ``(width, height)`` in pixels.
         """
         self._sync_theme_style()
-        # Content is centred with zero box padding, so ``super`` returns the
-        # bare content width; add the reserved leading + trailing space here so
-        # the idle width still equals content + 2 × side-space.
         w, _h = super().preferred_size(max_width=max_width, max_height=max_height)
-        w += 2 * self._side_space()
-        if not self._adjacent_animation:  # Connected groups only
-            w = max(w, self._style.min_item_width)
+        if self.width_sizing.kind != "fixed":
+            # Content is centred with zero box padding, so ``super`` returns
+            # the bare content width; add the reserved leading + trailing
+            # space so the idle width equals content + 2 × side-space.
+            w += 2 * self._side_space()
+            if not self._adjacent_animation:  # Connected groups only
+                w = max(w, self._style.min_item_width)
         return (int(w), self._style.container_height)
 
     def _sync_theme_style(self) -> None:
@@ -713,12 +720,16 @@ class _ButtonGroupRow(Row):
             x += gap
 
     def _interaction_widths(self, items: List["GroupButton"]) -> List[float]:
-        """Return the per-item widths after applying grow/compress (float, conserved)."""
+        """Return the per-item widths after applying grow/compress (float, conserved).
+
+        A fixed-width item keeps its width throughout: it neither grows when
+        pressed nor gives room to a pressed neighbour.
+        """
         bases = [float(it._base_width) for it in items]
         widths = list(bases)
         n = len(items)
         for i, it in enumerate(items):
-            if not it._adjacent_animation:
+            if not it._adjacent_animation or _is_fixed_width(it):
                 continue
             p = it._press_progress.value
             if p <= 0.0:
@@ -749,7 +760,15 @@ class _ButtonGroupRow(Row):
     @staticmethod
     def _pad(item: "GroupButton") -> float:
         """Horizontal inner padding = the maximum a neighbor may be compressed by."""
+        # A fixed width reserves no side space, so there is nothing to give.
+        if _is_fixed_width(item):
+            return 0.0
         return float(getattr(item._style, "inner_padding", 12))
+
+
+def _is_fixed_width(item: "GroupButton") -> bool:
+    """Whether the caller pinned the item's width with ``width=N``."""
+    return item.width_sizing.kind == "fixed"
 
 
 # ---------------------------------------------------------------------------
@@ -1122,8 +1141,11 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         """Assign positions, set weight widths, and wire group selection logic."""
         super().on_mount()  # Calls _ButtonGroupBase.on_mount → set_position()
 
-        # Equal-width distribution for connected layout
+        # Equal-width distribution for connected layout; a fixed width is the
+        # caller's choice and keeps its value.
         for item in self._items:
+            if _is_fixed_width(item):
+                continue
             item.width_sizing = Sizing.weight(1)
             item.mark_needs_layout()
 
