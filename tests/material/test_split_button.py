@@ -382,3 +382,76 @@ class TestIndependentHalves:
         _mount(btn)
         assert btn._leading_btn is not None
         assert btn._trailing_btn is not None
+
+
+# ===========================================================================
+# Width — a given width widens the leading segment, not the margins
+# ===========================================================================
+
+
+class TestWidth:
+    @staticmethod
+    def _layout_in(parent, width: int = 600) -> None:
+        from nuiitivet.testing import mount
+
+        with mount(parent) as host:
+            host.layout(width, 200)
+            host.settle()
+
+    @staticmethod
+    def _rest(btn: SplitButton, total: int) -> int:
+        """The width left for the leading segment inside ``total``."""
+        rect = btn._trailing_btn.layout_rect
+        assert rect is not None
+        return total - rect[2] - btn._leading_btn._style.between_space
+
+    def test_fixed_width_widens_the_leading_segment(self):
+        from nuiitivet.layout.column import Column
+
+        btn = SplitButton("Save", icon="save", width=300)
+        self._layout_in(Column(children=[btn]))
+
+        assert btn.layout_rect[2] == 300
+        assert btn._leading_btn.layout_rect[2] == self._rest(btn, 300)
+        assert btn._trailing_btn.layout_rect[0] + btn._trailing_btn.layout_rect[2] == 300
+
+    def test_weight_width_fills_a_column(self):
+        from nuiitivet.layout.column import Column
+
+        btn = SplitButton("Save", icon="save", width="wt")
+        self._layout_in(Column(children=[btn]))
+
+        assert btn.layout_rect[2] == 600
+        assert btn._leading_btn.layout_rect[2] == self._rest(btn, 600)
+
+    def test_weight_width_fills_a_row(self):
+        from nuiitivet.layout.row import Row
+        from nuiitivet.material.text import Text
+
+        btn = SplitButton("Save", icon="save", width="wt")
+        self._layout_in(Row(children=[Text("x"), btn]))
+
+        total = btn.layout_rect[2]
+        assert total + btn.layout_rect[0] == 600
+        assert btn._leading_btn.layout_rect[2] == self._rest(btn, total)
+
+    def test_leading_content_stays_centred_when_widened(self):
+        from nuiitivet.layout.column import Column
+
+        btn = SplitButton("Save", icon="save", width=300)
+        self._layout_in(Column(children=[btn]))
+
+        leading_w = btn._leading_btn.layout_rect[2]
+        cx, _cy, cw, _ch = btn._leading_btn.children[0].layout_rect
+        assert cx == pytest.approx(leading_w - (cx + cw), abs=1)
+
+    def test_no_width_stays_content_fit(self):
+        from nuiitivet.layout.column import Column
+
+        btn = SplitButton("Save", icon="save")
+        content_w = btn.preferred_size()[0]
+        self._layout_in(Column(children=[btn]))
+
+        assert btn.layout_rect[2] == content_w
+        assert btn._leading_btn.layout_rect[2] == btn._leading_btn.preferred_size()[0]
+        assert btn._leading_btn.layout_rect[2] == self._rest(btn, content_w)
