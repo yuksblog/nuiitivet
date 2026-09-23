@@ -40,3 +40,17 @@ def test_flow_alignment():
 
     # 200 width, 50 content. Center = (200-50)/2 = 75
     assert children[0].last_rect == (75, 0, 50, 20)
+
+
+def test_fixed_width_flow_measures_wrapping_against_its_own_width():
+    # Fixed width 200, children 60 wide, gap 10: three per row, two rows.
+    children = [DummyWidget(60, 20) for _ in range(4)]
+    flow = Flow(children, main_gap=10, cross_gap=10, width=200)
+
+    two_rows = (200, 20 + 10 + 20)
+    assert flow.preferred_size() == two_rows
+    assert flow.preferred_size(max_width=200) == two_rows
+    assert flow.preferred_size(max_width=600) == two_rows
+
+    # A narrower parent still wins: one per row, four rows.
+    assert flow.preferred_size(max_width=100) == (200, 4 * 20 + 3 * 10)

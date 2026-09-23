@@ -91,3 +91,17 @@ def test_uniform_flow_passes_column_constraint_to_children():
     # The flow should also have sized itself to contain height 200
     flow_pref = flow.preferred_size(max_width=200)
     assert flow_pref[1] == 200
+
+
+def test_fixed_width_uniform_flow_measures_columns_against_its_own_width():
+    # Fixed width 200, columns at most 100 wide: two columns, two rows.
+    children = [DummyWidget(60, 20) for _ in range(4)]
+    flow = UniformFlow(children, max_column_width=100, width=200)
+
+    two_rows = (200, 40)
+    assert flow.preferred_size() == two_rows
+    assert flow.preferred_size(max_width=200) == two_rows
+    assert flow.preferred_size(max_width=600) == two_rows
+
+    # A narrower parent still wins: one column, four rows.
+    assert flow.preferred_size(max_width=100) == (200, 80)
