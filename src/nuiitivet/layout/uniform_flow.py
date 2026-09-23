@@ -182,11 +182,13 @@ class UniformFlow(Widget):
                 height = min(height, int(max_height))
             return (width, height)
 
+        outer_max_w: Optional[int] = None if max_width is None else int(max_width)
+        if self.width_sizing.kind == "fixed":
+            fixed_w = int(self.width_sizing.value)
+            outer_max_w = fixed_w if outer_max_w is None else min(fixed_w, outer_max_w)
         inner_max_w: Optional[int] = None
-        if max_width is not None:
-            inner_max_w = max(0, int(max_width) - int(pad[0]) - int(pad[2]))
-        elif self.width_sizing.kind == "fixed":
-            inner_max_w = max(0, int(self.width_sizing.value) - int(pad[0]) - int(pad[2]))
+        if outer_max_w is not None:
+            inner_max_w = max(0, outer_max_w - int(pad[0]) - int(pad[2]))
 
         width, height = self._preferred_size_content(children, inner_max_w)
 
