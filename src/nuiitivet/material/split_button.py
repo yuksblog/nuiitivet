@@ -21,7 +21,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL, EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable import MutableObservableBase
-from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.rendering.sizing import SizingLike, parse_sizing
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 from nuiitivet.layout.container import Container
@@ -100,6 +100,7 @@ class _SplitLeadingButton(InteractiveWidget):
         style: "SplitButtonStyle",
         on_click: Optional[VoidCallback] = None,
         disabled: "bool | MutableObservableBase[bool]" = False,
+        width: SizingLike = None,
     ) -> None:
         """Initialize the leading button segment.
 
@@ -108,6 +109,8 @@ class _SplitLeadingButton(InteractiveWidget):
             style: Shared :class:`SplitButtonStyle` instance.
             on_click: Callback invoked when the leading button is clicked.
             disabled: Whether the button is disabled.
+            width: Width sizing; ``"wt"`` takes the width the trailing
+                segment leaves.
         """
         self._style = style
 
@@ -133,6 +136,7 @@ class _SplitLeadingButton(InteractiveWidget):
             on_press=self._handle_press_down,
             on_release=self._handle_press_up,
             disabled=disabled,
+            width=width,
             height=style.container_height,
             background_color=style.background,
             border_color=style.border_color,
@@ -549,7 +553,10 @@ class SplitButton(Box):
                 button.  Pass an :class:`MutableObservableBase` to bind
                 externally.
             disabled: Disables both button halves when ``True``.
-            width: Optional width sizing for the overall widget.
+            width: Width sizing. A fixed value or ``"wt"`` widens the button:
+                the trailing segment keeps its icon width and the leading
+                segment takes the rest, its content centred. ``None`` or
+                ``"auto"`` fits both segments to their content.
             style: Visual style.  Defaults to ``SplitButtonStyle.filled("s")``.
             padding: Insets from the allocated rect to the button pair.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -563,11 +570,17 @@ class SplitButton(Box):
 
         leading_child = self._build_leading_content(label, icon, resolved_style)
 
+        # A given width belongs to the button, not to margins around it: the
+        # row fills the box and the leading segment absorbs the leftover.
+        fills = parse_sizing(width).kind != "auto"
+        inner_width: SizingLike = "wt" if fills else None
+
         self._leading_btn = _SplitLeadingButton(
             child=leading_child,
             style=resolved_style,
             on_click=on_click,
             disabled=disabled,
+            width=inner_width,
         )
         self._trailing_btn = _SplitTrailingButton(
             style=resolved_style,
@@ -582,6 +595,7 @@ class SplitButton(Box):
             [self._leading_btn, self._trailing_btn],
             gap=resolved_style.between_space,
             cross_alignment="center",
+            width=inner_width,
         )
 
         super().__init__(child=row, width=width, padding=padding, key=key)
