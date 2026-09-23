@@ -1,6 +1,7 @@
 """A one-month calendar: click a day, type a title, and the event lands on it.
 
-The sample app the README's "Building with an AI" GIFs are recorded on.
+Beside the month, a panel lists what is still to come. The sample app the
+README's "Building with an AI" GIFs are recorded on.
 """
 
 import calendar
@@ -9,6 +10,16 @@ import datetime
 import nuiitivet.material as nv
 
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def initial_events(today: datetime.date) -> dict[int, list[str]]:
+    """Every Saturday of the month carries "Gym", so a recording starts with events on screen."""
+    _, day_count = calendar.monthrange(today.year, today.month)
+    return {
+        day: ["Gym"]
+        for day in range(1, day_count + 1)
+        if datetime.date(today.year, today.month, day).weekday() == calendar.SATURDAY
+    }
 
 
 class AddEventDialog(nv.ComposableWidget):
@@ -56,17 +67,28 @@ class AddEventDialog(nv.ComposableWidget):
 
 
 class CalendarApp(nv.ComposableWidget):
-    """The current month as a grid; each day cell collects typed-in events."""
+    """The current month as a grid, with a panel of upcoming events beside it."""
 
     def __init__(self) -> None:
         super().__init__()
         self.today = datetime.date.today()
-        self.events: nv.Observable[dict[int, list[str]]] = nv.Observable({})
+        self.events: nv.Observable[dict[int, list[str]]] = nv.Observable(initial_events(self.today))
 
     def build(self) -> nv.Widget:
-        return nv.Column(
+        return nv.Row(
             padding=18,
+            gap=18,
+            cross_alignment="start",
+            children=[
+                self._build_month(),
+                self._build_upcoming(),
+            ],
+        )
+
+    def _build_month(self) -> nv.Widget:
+        return nv.Column(
             gap=9,
+            width="wt",
             children=[
                 self._build_header(),
                 self._build_weekday_row(),
@@ -78,7 +100,7 @@ class CalendarApp(nv.ComposableWidget):
         total = self.events.map(lambda events: sum(len(titles) for titles in events.values()))
         return nv.Row(
             width="wt",
-            padding=(0, 0, 0, 9),
+            padding=(0, 0, 0, 60),
             cross_alignment="center",
             main_alignment="space-between",
             children=[
@@ -105,6 +127,67 @@ class CalendarApp(nv.ComposableWidget):
         cells += [self._build_day_cell(day) for day in range(1, day_count + 1)]
         return nv.UniformFlow(columns=7, main_gap=6, cross_gap=6, children=cells)
 
+    def _build_upcoming(self) -> nv.Widget:
+        upcoming = self.events.map(
+            lambda events: [(day, title) for day in sorted(events) if day > self.today.day for title in events[day]]
+        )
+        return nv.Column(
+            gap=8,
+            width=150,
+            children=[
+                nv.Text("Events", padding=(4, 0), type_scale=nv.TypeScale.TITLE_MEDIUM),
+                nv.Text(
+                    "Nothing planned yet",
+                    padding=(4, 0),
+                    type_scale=nv.TypeScale.BODY_SMALL,
+                    style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT),
+                ).modifier(nv.visible(upcoming.map(lambda items: not items))),
+                nv.Column.builder(
+                    upcoming,
+                    lambda event, _index: self._build_upcoming_card(*event),
+                    gap=6,
+                    width="wt",
+                ),
+            ],
+        )
+
+    def _build_upcoming_card(self, day: int, title: str) -> nv.Widget:
+        is_today = day == self.today.day
+        weekday = datetime.date(self.today.year, self.today.month, day).strftime("%a")
+        ink = nv.ColorRole.ON_PRIMARY_CONTAINER if is_today else nv.ColorRole.ON_SURFACE
+        return nv.Row(
+            padding=(10, 8),
+            gap=12,
+            width="wt",
+            cross_alignment="center",
+            children=[
+                nv.Container(width=4, height=32).modifier(nv.background(nv.ColorRole.PRIMARY) | nv.corner_radius(2)),
+                nv.Column(
+                    width=36,
+                    cross_alignment="center",
+                    children=[
+                        nv.Text(
+                            weekday.upper(),
+                            type_scale=nv.TypeScale.LABEL_SMALL,
+                            style=nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT),
+                        ),
+                        nv.Text(str(day), type_scale=nv.TypeScale.TITLE_MEDIUM, style=nv.TextStyle(color=ink)),
+                    ],
+                ),
+                nv.Text(
+                    title,
+                    width="wt",
+                    max_lines=1,
+                    overflow="ellipsis",
+                    type_scale=nv.TypeScale.BODY_MEDIUM,
+                    style=nv.TextStyle(color=ink),
+                ),
+            ],
+        ).modifier(
+            nv.background(nv.ColorRole.PRIMARY_CONTAINER if is_today else nv.ColorRole.SURFACE_CONTAINER)
+            | nv.corner_radius(10)
+        )
+
     def _build_day_cell(self, day: int) -> nv.Widget:
         is_today = day == self.today.day
         number: nv.Widget = nv.Text(
@@ -127,21 +210,16 @@ class CalendarApp(nv.ComposableWidget):
                 overflow="ellipsis",
                 type_scale=nv.TypeScale.LABEL_SMALL,
                 style=nv.TextStyle(color=nv.ColorRole.ON_TERTIARY_CONTAINER),
-            ).modifier(nv.background(nv.ColorRole.TERTIARY_CONTAINER) | nv.corner_radius(3)),
+            ).modifier(nv.background(nv.ColorRole.PRIMARY_CONTAINER) | nv.corner_radius(3)),
             gap=2,
             width="wt",
         )
-        return nv.Column(
-            padding=4,
-            gap=3,
+        return nv.Card(
+            nv.Column(gap=3, padding=4, width="wt", children=[number, chips]),
             width="wt",
-            height=72,
-            children=[number, chips],
-        ).modifier(
-            nv.background(nv.ColorRole.SURFACE_CONTAINER)
-            | nv.corner_radius(6)
-            | nv.clickable(lambda: self._open_add_dialog(day))
-        )
+            height=68,
+            style=nv.CardStyle.filled(),
+        ).modifier(nv.clickable(lambda: self._open_add_dialog(day)))
 
     async def _open_add_dialog(self, day: int) -> None:
         overlay = nv.Overlay.of(self)
@@ -161,7 +239,7 @@ def build_root() -> nv.Widget:
 
 
 def main() -> None:
-    nv.App(nv.Window(content=build_root, title="Calendar", width=570, height="auto")).run()
+    nv.App(nv.Window(content=build_root, title="Calendar", width=680, height=500)).run()
 
 
 if __name__ == "__main__":

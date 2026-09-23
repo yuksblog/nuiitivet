@@ -80,7 +80,16 @@ say where: you point with the mouse.
 When you are done, run `/nuiitivet-see-comments` in chat. The agent reads the
 comments, changes the app as they say, and drives the app itself to check.
 
-![Write the prompt on the app](docs/assets/readme_1.3.gif)
+Below, the app gets these comments:
+
+> 1: too much space, match the top
+>
+> 2: outlined
+
+The first marks the gap under the month title. The second marks a day cell.
+The agent narrows the gap and gives the day cells an outline.
+
+![Write the prompt on the app](docs/assets/readme_comment.gif)
 
 #### Change the layout directly
 
@@ -90,6 +99,8 @@ instruction. They are all layout.
 `Ctrl+Shift+E` (`Cmd+Shift+E` on macOS) enters layout edit mode. Drag the
 app's own screen to change the layout. The change is written into the source
 code. It costs no turn and no tokens.
+
+![Change the layout directly](docs/assets/readme_layout_edit.gif)
 
 #### Jump to the source, to check it or edit it
 
@@ -101,7 +112,7 @@ agent.
 built the widget you clicked, in your editor. The code you want to check, or
 to edit, is one click away.
 
-![Jump to the source](docs/assets/readme_1.5.gif)
+![Jump to the source](docs/assets/readme_source_jump.gif)
 
 ### 1.2 Debug
 
@@ -116,10 +127,21 @@ the agent can do.
   `label` rather than coordinates, so they survive a layout change
 - **Wait** — for async work to settle
 
-So you can ask it to "use this app like a user would". Below, the agent drives
-the app, checks the result, and finds a bug on the way.
+So you can ask it to "use this app like a user would". Below, the agent gets
+this prompt:
 
-![The agent drives the app](docs/assets/readme_1.2.gif)
+> Test the Events list in the running app. By spec, it lists only events from
+> today onward.
+
+The agent adds events and checks the list. It finds a bug at the boundary: an
+event for today does not show up.
+
+![The agent drives the app](docs/assets/readme_run_app_test.gif)
+
+The agent's last message:
+
+> Cause: the filter at readme_calendar_app.py:132 keeps only
+> `day > self.today.day`, so today's events are dropped. It should be `>=`.
 
 #### The agent sees what you did, too
 
@@ -136,7 +158,7 @@ The example below is a "works sometimes, fails sometimes" case. Every attempt
 is in the record, so the agent compares them and finds the one step that
 differed.
 
-![The agent compares the attempts](docs/assets/readme_1.2.png)
+![The agent compares the attempts](docs/assets/readme_see_what_you_did.png)
 
 ### 1.3 What makes this possible
 
