@@ -292,13 +292,17 @@ def test_standard_neighbor_corners_unaffected_on_press():
 # ===========================================================================
 
 
+def _make_wide_item() -> GroupButton:
+    return _make_item("Wide Label")
+
+
 def _make_wide_items(n: int) -> List[GroupButton]:
     """Items sharing a wide, identical-width label so their base widths match.
 
     Equal base widths keep the growth/shrink arithmetic exact: the per-neighbor
     shrink room equals the active item's growth share, so no capping kicks in.
     """
-    return [_make_item("Wide Label") for _ in range(n)]
+    return [_make_wide_item() for _ in range(n)]
 
 
 def _group_row(group):
@@ -607,6 +611,84 @@ def test_standard_group_width_preserved_with_short_labels():
     assert widths[1] > items[1]._base_width
     assert widths[0] < items[0]._base_width
     assert widths[2] < items[2]._base_width
+
+
+# ===========================================================================
+# Fixed width — the value written is the width allocated
+# ===========================================================================
+
+
+def _layout_group(group, width: int = 600, height: int = 100) -> None:
+    """Mount the group and run one layout pass at the given size."""
+    from nuiitivet.testing import mount
+
+    with mount(group) as host:
+        host.layout(width, height)
+        host.settle()
+
+
+def test_standard_fixed_width_item_lays_out_at_its_value():
+    """``GroupButton(width=N)`` in a Standard group is allocated exactly N.
+
+    Side space is reserved only for a content-fit item; a fixed width is the
+    allocated rect, as it is for every other widget.
+    """
+    items = [_make_item("Day"), GroupButton("Week", width=110), _make_item("Month")]
+    group = StandardButtonGroup(items, style=StandardButtonGroupStyle.filled("m"))
+    _layout_group(group)
+
+    assert items[1].preferred_size()[0] == 110
+    assert items[1].layout_rect[2] == 110
+
+
+def test_connected_fixed_width_item_lays_out_at_its_value():
+    """``GroupButton(width=N)`` in a Connected group keeps N; the rest share the remainder."""
+    from nuiitivet.rendering.sizing import Sizing
+
+    items = [_make_item("Day"), GroupButton("Week", width=110), _make_item("Month")]
+    group = ConnectedButtonGroup(items)
+    _layout_group(group)
+
+    assert items[1].width_sizing == Sizing.fixed(110)
+    assert items[1].layout_rect[2] == 110
+    assert items[0].width_sizing == Sizing.weight(1)
+    assert items[0].layout_rect[2] == items[2].layout_rect[2]
+
+
+def test_fixed_width_item_below_connected_minimum_keeps_its_value():
+    """A fixed width is not raised to the Connected visual minimum."""
+    items = [_make_item("Day"), GroupButton("W", width=30)]
+    group = ConnectedButtonGroup(items)
+    _mount_group(group)
+
+    assert items[1].preferred_size()[0] == 30
+
+
+def test_standard_fixed_width_item_does_not_grow_when_pressed():
+    """A pressed fixed-width item keeps its width; its neighbours stay put."""
+    items = [_make_wide_item(), GroupButton("Wide Label", width=110), _make_wide_item()]
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    _set_active(items[1])
+    widths = _computed_widths(group)
+
+    assert widths == pytest.approx([it._base_width for it in items])
+
+
+def test_standard_fixed_width_neighbour_is_not_compressed():
+    """A pressed item grows only toward a content-fit neighbour."""
+    items = [GroupButton("Wide Label", width=110), _make_wide_item(), _make_wide_item()]
+    group = StandardButtonGroup(items)
+    _mount_group(group)
+
+    _set_active(items[1])
+    widths = _computed_widths(group)
+
+    g = _side_growth(items[1], items[2])
+    assert widths[0] == pytest.approx(items[0]._base_width)
+    assert widths[1] == pytest.approx(items[1]._base_width + g)
+    assert widths[2] == pytest.approx(items[2]._base_width - g)
 
 
 # ===========================================================================
