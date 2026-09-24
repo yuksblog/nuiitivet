@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.material import Menu, MenuDivider, MenuItem, SubMenuItem
@@ -15,7 +17,8 @@ from nuiitivet.material.styles.menu_style import MenuStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.elevation import elevation_shadows
-from nuiitivet.observable import runtime
+from nuiitivet.modifiers.popup import popup
+from nuiitivet.observable import Observable, runtime
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
 
@@ -110,6 +113,30 @@ def test_menu_escape_calls_on_dismiss() -> None:
     menu = Menu(items=[MenuItem("A")], on_dismiss=_dismiss)
     assert menu.on_key_event("escape") is True
     assert dismissed is True
+
+
+def test_popup_menu_keeps_keyboard_focus_when_a_submenu_opens(nuiitivet_app) -> None:
+    is_open: Observable[bool] = Observable(False)
+    export = SubMenuItem("Export", items=[MenuItem("PNG"), MenuItem("SVG")])
+    exit_item = MenuItem("Exit")
+    menu = Menu(items=[MenuItem("New"), export, exit_item])
+    anchor = Container(width=120, height=40, child=Text("Open")).modifier(popup(menu, is_open=is_open))
+    app = nuiitivet_app(Container(padding=16, child=anchor), size=(600, 400))
+
+    is_open.value = True
+    app.settle()
+    assert app.get(label="New") is not None
+
+    app.key("down")  # New -> Export: the focused row opens its submenu on the next poll
+    time.sleep(0.05)
+    app.clock.pump()
+    app.settle()
+    assert app.get(label="PNG") is not None
+    assert export.state.focused is True
+
+    # The parent menu still roves with the submenu open.
+    app.key("down")
+    assert menu._focused_item() is exit_item
 
 
 def test_submenu_item_has_focus_node() -> None:

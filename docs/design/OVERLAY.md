@@ -332,9 +332,9 @@ In the Material implementation, `MaterialWindow` sets `overlay_factory` internal
   - If an entry is removed without being explicitly closed, it completes with `OverlayDismissReason.DISPOSED`.
   - The caller can branch based on `OverlayResult.reason`.
 
-## 4. Z-Index and Rendering Order
+## 4. Layer Stack
 
-### 4.1 Rendering Order Design
+### 4.1 Rendering Order
 
 Rendering order is controlled by insertion order (later entries are rendered on top), eliminating the need for explicit Z-index management.
 
@@ -343,18 +343,21 @@ Rendering order is controlled by insertion order (later entries are rendered on 
 - Managing numerical Z-index values adds complexity that is unnecessary for initial requirements (YAGNI).
 - Matching the intuition that "later openings are on top" aligns with user expectations and consistency with other frameworks like Flutter.
 
-```python
-class Overlay(Widget):
-    def __init__(self):
-        self._entries: list[OverlayEntry] = []
+### 4.2 Layer Lifetime
 
-    def _insert_entry(self, entry: OverlayEntry):
-        self._entries.append(entry)
-        self.mark_needs_layout()
+The modal navigator owns one `Stack` for the life of the overlay. Showing an
+entry appends its layer to that `Stack`; closing one removes that layer once
+its exit animation has finished. The other layers are not touched: an entry's
+widget mounts once, when it is shown, and unmounts once, when its entry
+closes.
 
-    def build(self, context):
-        return Stack(children=[entry.builder() for entry in self._entries])
-```
+An unmount is not a dismissal signal. The widget also leaves the tree when the
+overlay's own host does, with the entry still open. A widget that must know it
+was closed reads the handle's settled result (`handle.done()`, `await handle`).
+
+Rebuilding the whole `Stack` on every show or close was rejected: it unmounts
+and remounts every live entry, and a `Menu` drops the keyboard focus it holds
+on unmount, so opening a submenu left its parent menu deaf to the arrow keys.
 
 ## 5. Integration with Back / Navigator
 
