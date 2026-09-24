@@ -1,0 +1,4066 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A declarative, reactive Python UI framework.">
+      
+      
+        <meta name="author" content="yuksblog">
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.23.1/design/DEV_MODES/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Dev Modes - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dev-modes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dev Modes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/intuitive_grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The intuitive grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/adaptive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/overlay/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlay
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overlay
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/navigation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/route/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Route & Animations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/nested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/window/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/chrome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window Chrome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/renderer_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/file_dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/menu_bar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Menu Bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/multi_window/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multiple Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/notifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Desktop Notifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/tray_icon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tray Icon
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/modifiers/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/pointer_participation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pointer Participation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/popup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Popup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/state-management/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/basic_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/practical_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/concurrency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/thread_safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/async_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/background_work/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/patterns_and_recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/design-system/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design System
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_overlay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Overlay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_navigator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Navigator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/theme_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theme Extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/font_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Font Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/ai_pair_programming/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI pair-programming
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI pair-programming
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/install_skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/hot_reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot Reload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/on_screen_modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The on-screen modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/dev_bridge_mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Bridge MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/testing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Testing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a widget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a screen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/async/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing async flows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/clock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing outside the harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction Region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_13" id="__nav_2_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packaging
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Goal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-input-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The input layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-comment-mode-marks-and-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Comment mode: marks and instructions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Comment mode: marks and instructions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-picking-what-the-eye-sees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Picking what the eye sees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Regions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-construction-sites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Construction sites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-source-jump" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Source jump
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-layout-edit-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Layout Edit mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Overlays
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-implementation-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Implementation map
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/yuksblog/nuiitivet/edit/main/docs/design/DEV_MODES.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="dev-modes">Dev Modes<a class="headerlink" href="#dev-modes" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Status: Implemented (comment mode, source jump, layout edit mode)
+Related design: <a href="../DEV_BRIDGE/">DEV_BRIDGE.md</a> (the coding agent's side of the session), <a href="../HOT_RELOAD/">HOT_RELOAD.md</a> (what applies a layout-mode edit)</p>
+</blockquote>
+<h2 id="1-goal">1. Goal<a class="headerlink" href="#1-goal" title="Permanent link">&para;</a></h2>
+<p>Every bridge surface runs agent → app. The dev modes run the other way:
+they let the <strong>human point at a widget</strong> and have something happen to it —
+a mark the agent can read, an editor opened on the line that built it, or
+its source rewritten by a drag. Prose is an expensive channel for a location,
+and for two cases it barely works at all: an anonymous inner node no phrase
+identifies, and a <em>gap</em> with no widget to name.</p>
+<p>Three gestures share one input layer and one prefix:</p>
+<table>
+<thead>
+<tr>
+<th>Gesture</th>
+<th>Chord</th>
+<th>Kind</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comment mode</td>
+<td><code>Ctrl+Shift+C</code></td>
+<td>latched mode</td>
+<td>marks widgets and regions for the agent, with an instruction typed on the mark (a <em>comment</em>)</td>
+</tr>
+<tr>
+<td>Layout Edit mode</td>
+<td><code>Ctrl+Shift+E</code></td>
+<td>latched mode</td>
+<td>a corner drag rewrites <code>width</code> / <code>height</code> / <code>size</code> in the source</td>
+</tr>
+<tr>
+<td>Source jump</td>
+<td><code>Ctrl+Shift+Click</code></td>
+<td>modeless</td>
+<td>opens the widget's construction site in the editor</td>
+</tr>
+</tbody>
+</table>
+<p><code>Ctrl+Shift</code> is the dev runner's prefix: every chord it claims starts with it,
+so an app never has to guess which are taken. The letters name what the human
+does in the mode — <code>C</code> <em>comments</em>, <code>E</code> <em>edits</em> — and sit under the left hand
+while the right is on the mouse; every mention of a chord in the
+HUD and the guide carries its verb, so the letter is learned with the word.</p>
+<h2 id="2-structure">2. Structure<a class="headerlink" href="#2-structure" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TB
+    human[Human]
+    agent[Coding agent]
+    subgraph backend[pyglet backend · real input handlers]
+        recorder[interaction recorder]
+        subgraph layers[dev input layers · offered in this order]
+            jump[source jump]
+            comment[comment mode]
+            layout[layout edit mode]
+        end
+    end
+    dispatch["app._dispatch_* (widget tree)"]
+    comments[(Comments)]
+    editor[editor URL]
+    file[(source file)]
+    reload[hot reload]
+    bridge[bridge · see_comments]
+
+    human -- "mouse · keys" --&gt; recorder --&gt; jump
+    jump -- "not consumed" --&gt; comment -- "not consumed" --&gt; layout -- "not consumed" --&gt; dispatch
+    agent -- "click · type · key (synthesized)" --&gt; dispatch
+    jump --&gt; editor
+    comment -- marks, instructions --&gt; comments --&gt; bridge --&gt; agent
+    layout -- writes --&gt; file --&gt; reload --&gt; dispatch</code></pre>
+<p>The layers sit on the backend's <em>real</em> input handlers — the same place the
+interaction recorder hangs — and the agent's synthesized actions enter
+below them at the app's dispatch. That is what makes a comment
+unforgeable: nothing the agent does can reach a mode. What each mode
+produces leaves by a different door — the comments through the bridge, the
+jump through the platform's URL opener, a layout edit through the file and the
+reload that follows.</p>
+<h3 id="21-the-input-layer">2.1 The input layer<a class="headerlink" href="#21-the-input-layer" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Order.</strong> The jump is offered every event ahead of the modes, because it
+  works in any state; then comment mode, then layout edit mode. A layer that
+  consumes an event ends the walk.</li>
+<li><strong>Two modes, one switch rule.</strong> Each mode lets the <em>other's</em> chord pass, and
+  the entering mode closes the other — comment mode commits, layout edit mode drops
+  its drag. The rule holds whatever order the layers run in, and neither mode
+  needs the other to exist. While a mode is latched, every other key is
+  consumed, so a mode never leaks a keystroke into the app.</li>
+<li><strong>The jump is not a mode</strong> because nothing persists between one jump and the
+  next; a held chord shows brackets on the hover, a click opens the editor,
+  and the state that was there before is untouched.</li>
+<li><strong>Shared mechanics</strong> (<code>dev/gesture.py</code>): the prefix chord, the
+  click-versus-drag threshold, the geometry pick, the ancestor walk. The
+  modes are thin over these; what differs is what they do with the target.</li>
+</ul>
+<h2 id="3-comment-mode-marks-and-instructions">3. Comment mode: marks and instructions<a class="headerlink" href="#3-comment-mode-marks-and-instructions" title="Permanent link">&para;</a></h2>
+<p>Comment mode records what the human pointed at, as nodes and as regions, and
+what they wrote on each mark, and the bridge serves the result to the
+agent, with a roll-up on <code>status</code> and a content-free marker on the
+interaction journal so the agent notices a comment without being told. A
+comment is a mark with an optional instruction: a bare number is a whole
+comment, and the human says what it means in chat, by number.</p>
+<ul>
+<li><strong>One <code>Comments</code> buffer per app, shared three ways.</strong> The mode writes it from
+  the UI thread, the reload controller re-resolves it after a rebuild, and the
+  bridge reads it on HTTP worker threads, so it carries its own lock. Nodes
+  and regions live in one ordered list because they share one on-screen
+  numbering.</li>
+<li><strong>A session is undoable, step by step and as a unit.</strong> Every change inside
+  a session is a step back, and cancel is every step at once, so a cancel
+  scopes to one session rather than to everything and clearing is safe to
+  reach for. Undo stops at the session's start: what an earlier session kept
+  is not this one's to take back. The keys are layout edit mode's, and
+  <code>Backspace</code> is left unbound rather than meaning "remove a mark": next door
+  it deletes a widget from the source, and one key must not be harmless in
+  one mode and destructive in its sibling.</li>
+<li><strong>Writing is offered once per new mark; the badge is the handle after
+  that.</strong> <code>Enter</code> on a mark just made opens its field, and any other <code>Enter</code>
+  leaves. Two alternatives were rejected. A second click on the marked widget
+  already means "unmark it", and a region has no widget to click. <code>Enter</code>
+  while the pointer is on a mark makes the <code>Enter</code> that leaves, pressed right
+  after writing, reopen the field instead. The offer belongs to the mark, not
+  to the next input: it ends when the field has been opened, the mark is
+  gone, or a newer mark takes it over, and never on a key that does nothing
+  here — the human saw nothing happen, so <code>Enter</code> must still mean what the
+  badge says.</li>
+<li><strong>One field, two commit rules.</strong> The field is the one layout edit mode opens
+  over a text literal (§6), so neither mode grows a second editor. A click
+  elsewhere keeps the text here and drops it there, because only there is a
+  file behind the field. The field takes several lines, <code>Shift+Enter</code> breaking
+  one: an instruction is often more than a sentence, and a literal may hold a
+  line break.</li>
+<li><strong>The read prompt.</strong> Once a session is committed with marks in it, the
+  badge's home says what to type in chat — the skill, then
+  <code>see_comments</code> for an agent without it — until the agent
+  has read the comments; a hot reload, which changes nothing the agent
+  has not seen, does not bring it back. The fallback is the tool's name
+  rather than a sentence, because "see the comments" reads to an agent as
+  code comments or review comments.</li>
+<li><strong>Reload re-resolution.</strong> Members are held weakly and keyed on object
+  identity — two anonymous siblings resolve to the same identity dict, so
+  keying on that would make picking the second remove the first. A rebuild
+  evaporates them, and that is the normal case: "point at it, then have the
+  agent fix it" puts a reload in the middle of nearly every use. They are
+  matched back by the same key-preferring structural path state restore uses
+  (<a href="../HOT_RELOAD/#74-state-snapshot-restore">HOT_RELOAD.md §7.4</a>), and misses
+  are counted rather than silently shortening the list.</li>
+</ul>
+<h3 id="31-picking-what-the-eye-sees">3.1 Picking what the eye sees<a class="headerlink" href="#31-picking-what-the-eye-sees" title="Permanent link">&para;</a></h3>
+<p><code>hit_test</code> cannot serve the picker: it returns the deepest <em>hit-participating</em>
+widget, and the node a human means is often one that participates in none — a
+plain <code>Text</code>, a spacing <code>Container</code>. The picker (<code>pick_at</code>) is geometry-only,
+and three gaps had to be closed for geometry to agree with the eye:</p>
+<ul>
+<li><strong>Descent is narrowed, not filtered afterwards.</strong> The picker descends
+  through the same children the keyboard traverses, so it stops where the eye
+  does, and only then checks occlusion. The order matters: the occlusion check
+  deliberately does not treat a <code>None</code> hit as an obstruction (that is what
+  keeps a non-interactive target reachable), so an entirely non-interactive
+  hidden subtree — two <code>Text</code> pages in a <code>Deck</code> — is invisible to it.</li>
+<li><strong>An empty overlay is not in the way.</strong> Every App wraps its content in an
+  <code>Overlay</code> that stays mounted at full window size and paints nothing while
+  idle; it contains every point and sits on top. <code>is_visually_empty()</code>, opted
+  into by name like the other visual probes, is how anything reading the tree
+  geometrically gets the answer <code>Overlay.hit_test</code> already gives.</li>
+<li><strong>A clip is published.</strong> <code>Box</code> has always honoured <code>clip_content</code> when hit
+  testing, but the clip was invisible to the occlusion check, and a point
+  trimmed away lands on nothing — which is not an obstruction. The idiom that
+  exposes it is ordinary: a decorative shape laid out far larger than its
+  parent and clipped to a corner. <code>Box.visual_clip_rect()</code> closes it.</li>
+</ul>
+<p><strong>Reporting uses the visible rect, not the visual rect.</strong> "Where is this node"
+and "what of it is on screen" are different questions, and a mark answers the
+second. The visual rect stays as it is, since an action must aim
+at the node's actual origin; the visible rect intersects it with every ancestor
+clip, and the payload and the on-screen brackets both use it, so the box on
+the glass and the rect handed to the agent are the same claim.</p>
+<h3 id="32-regions">3.2 Regions<a class="headerlink" href="#32-regions" title="Permanent link">&para;</a></h3>
+<p>A region is the half node picking cannot express: an area with no widget in
+it. Only the rect is stored; its <code>container</code> (the innermost enclosing node,
+plus that node's immediate children) and <code>contents</code> are derived on every read,
+which is what carries a region across a reload with no restore step and makes
+it a continuing observation point rather than a single-use note.</p>
+<p>A rectangle carries two readings the geometry cannot separate: "the gap
+between these things" wants the enclosing owner, "these things" wants what the
+box crosses. So the two readings get one field each, neither collapsed into
+the other, and the caller — which knows what the human <em>said</em> — chooses. An
+earlier form dropped a match nested inside another match, which answers
+"which widget did you name?" and is a different question: a band drawn down a
+column reported only the column, the one thing the human already knew.
+<code>contents</code> intersects rather than requiring containment, because humans drag
+rough boxes, and is scoped to the container's subtree, which is what makes
+intersection workable: the ancestor chain trivially overlaps and drops out
+without a special case. An empty <code>contents</code> is a signal, not a failure.</p>
+<h3 id="33-privacy">3.3 Privacy<a class="headerlink" href="#33-privacy" title="Permanent link">&para;</a></h3>
+<p>A comment may carry rects, on-screen text and the human's own words, unlike
+the interaction journal, which records none of them. The journal records
+<em>ambiently</em>, without item-by-item consent; a comment is an explicit act of
+disclosure, the same ground on which a screenshot may. The journal marker stays
+content-free, and the payload is served only on an explicit request.</p>
+<h2 id="4-construction-sites">4. Construction sites<a class="headerlink" href="#4-construction-sites" title="Permanent link">&para;</a></h2>
+<p>Every mark is followed by the same question: <em>which line built this?</em>
+In an app that passes no <code>key=</code> — most apps — the alternative is a chain of
+anonymous types twenty levels deep and a grep.</p>
+<p>The dev runner wraps <code>Widget.__init__</code> — the single chokepoint every widget
+passes through — and walks the frames out of the package to the first user
+frames. A frame under an install directory is skipped like the package's own:
+after a hot reload the tree is rebuilt from pyglet's clock callback, and a
+site that kept that frame would spend a slot on a line nobody can edit. The
+wrap is installed by the runner and never by the framework, so a production
+launch pays nothing, not even a flag check on the construction path. Python's
+runtime frames make this cheaper than Flutter's <code>--track-widget-creation</code>,
+which needs a compile-time transform to learn the same thing.</p>
+<ul>
+<li><strong>Never stale.</strong> Sites are captured at construction and a reload rebuilds
+  everything, so there is no invalidation step to get wrong.</li>
+<li><strong>Interned.</strong> Sites are shared far more than they are distinct — one helper
+  builds fourteen cards — so a per-widget field becomes a pointer into a small
+  table.</li>
+<li><strong>A short chain, not one location.</strong> "Change every tile" wants the helper
+  and "change this one" wants the call site, and only the caller knows which
+  was meant; the innermost frame is flagged as the one place an editor can
+  open.</li>
+<li><strong>The exact call, not the line.</strong> Each frame records the span of the call
+  that was executing, so an editor of the file can find the <code>Call</code> node: a
+  line can hold several, and chained calls share a start. The frame an edit
+  targets is the innermost user frame <em>outside any <code>__init__</code></em>, since inside
+  a constructor the executing call is <code>super().__init__(...)</code> rather than the
+  call a human recognises as building the widget.</li>
+<li><strong>Direct or owned.</strong> A frame also records whether it built the widget
+  <em>directly</em>. A label a button builds for itself, in its constructor or during
+  layout, has no user call of its own, so a pointer on it means the nearest
+  ancestor a user call did build — the button. That owner is what layout edit mode
+  edits.</li>
+</ul>
+<h2 id="5-source-jump">5. Source jump<a class="headerlink" href="#5-source-jump" title="Permanent link">&para;</a></h2>
+<p><code>Ctrl+Shift+Click</code> opens the hovered widget's construction site. It does not
+mark — reading several widgets' code in a row must not leave a mark per
+widget — and it does not leave a latched mode, which is only safe because the
+overlay repaints on every state change: returning from the editor shows the
+badge that says the mode is still on. The hover caption carries <code>file:line</code>
+and the HUD lists the gesture, which is what let this be a modifier rather
+than a button; a pressable control would need hit testing inside a registry
+that deliberately has none.</p>
+<ul>
+<li><strong>By URL scheme, not CLI.</strong> The editor is handed a URL
+  (<code>vscode://file/path/to/app.py:171:1</code>) through the platform's standard
+  opener. The <code>code</code> shim boots the Electron binary as Node to send one IPC
+  message, an order of magnitude slower than the URL; a CLI fallback would hand
+  the slow path to exactly the people who had to configure something. The
+  line rides inside the URL, so nothing on the way can drop it — the macOS
+  <code>open --args</code> route was rejected for dropping exactly that when the editor
+  was already running.</li>
+<li><strong>The route is chosen by an install check, not by probing the scheme</strong>,
+  since probing waits on the opener, on the UI thread, for an answer that
+  never changes. The check is a proxy for a registered handler, so
+  <code>--editor vscode</code> exists to assert what the check cannot see.</li>
+<li><strong><code>--editor</code> is a URL template</strong>, <code>"cursor://file{file}:{line}:1"</code>, not a
+  command. What goes stale is the built-in list, and it goes stale by way of
+  VS Code forks whose URLs differ only in the scheme, so one line catches up
+  onto the fast route. The path is substituted absolute, slash-separated and
+  percent-encoded, so no template author has to know how a Windows path
+  becomes a URL.</li>
+<li><strong>Validated at startup, success announced.</strong> A URL is the one route that
+  cannot report its own failure: openers succeed whether or not anything is
+  registered. A malformed template is refused at launch rather than arriving
+  as silence on the first click, and a successful jump names the file, which
+  is the only evidence the click was received — what makes "nothing happened"
+  readable as an editor problem.</li>
+</ul>
+<p>None of this is checkable in CI, which is headless where the question is where
+the cursor landed; each platform's opener was confirmed against a real editor.</p>
+<h2 id="6-layout-edit-mode">6. Layout Edit mode<a class="headerlink" href="#6-layout-edit-mode" title="Permanent link">&para;</a></h2>
+<p>The sibling of comment mode with the opposite division of labour: the human
+drags a widget and the <strong>dev runner edits the source itself</strong> — no agent,
+no turn. A corner drag writes <code>width</code> / <code>height</code> / <code>size</code> into the call that
+built the widget; a body drag moves the widget's element within its
+container's <code>children</code> list, into another container's, or into a grid cell —
+or, when it keeps the widget's place, rewrites the container's alignment. The
+hot reload that follows is the apply step. The tree is never mutated: what is
+on screen always came from the code, and during the gesture only the overlay
+moves.</p>
+<ul>
+<li><strong>No commit.</strong> Every release writes, so <code>Ctrl+Z</code> is what "I did not mean
+  that" reaches for. Undo is the inverse span, and it refuses when the text it
+  expects has moved under a hand edit; <code>Ctrl+Shift+Z</code> reapplies it under the
+  same check, and a new edit drops what was undone.</li>
+<li><strong>Delete is a key, not a drag.</strong> <code>Delete</code> / <code>Backspace</code> on the selection
+  removes its expression — the move's leaving half, under the move's gates —
+  with no confirmation, since <code>Ctrl+Z</code> is the confirmation for every write.
+  Only the expression goes: a handler it referenced stays, and cleaning up
+  after it is the agent's job, like inserting or unwrapping. A widget in a
+  <code>GridItem</code> takes the item with it, since one without a child cannot be
+  built.</li>
+<li><strong>Text is one literal.</strong> <code>Enter</code> on the selection — or a second click on
+  it — opens a field over its text; <code>Enter</code> writes the string into the
+  literal the call was given (<code>text=</code> / <code>label=</code>, else its first argument),
+  spelled as it was, and <code>Esc</code> or a click away cancels — only <code>Enter</code> writes
+  a file. A name, an f-string, a call, or a call that takes no text is a
+  refusal. The field is the inline field both modes share
+  (<code>dev/inline_field.py</code>): painted by the overlay and never in the tree, like
+  everything else the mode shows; it takes typed text and the input method's
+  composition from the runner the way a text field does, and publishes its
+  caret so the candidate window opens beside it. Its caret, selection,
+  composition and clipboard keys are the operations <code>EditableText</code> runs
+  (<code>widgets/text_editing.py</code>), so the field behaves like the app's own fields
+  and no mode grows a second editor.</li>
+<li><strong>The selection is held by the pointer.</strong> A click selects, and <code>W</code> / <code>S</code>
+  walk the selection so a container can be grabbed through its children. That
+  is the selection's only job, so it lasts exactly as long as the pointer stays
+  on the selected widget and its grab zones, and inside that rect the
+  children's hover is overridden. The alternatives were rejected by feel:
+  hover-always-wins loses the container before its corner can be reached, and
+  drawing selection and hover as two outlines at once makes the mode read like
+  comment mode's marks.</li>
+<li><strong>Span surgery.</strong> The edit re-parses the file and matches the <code>Call</code> node
+  the site recorded (§4), then replaces the literal's span or inserts the
+  keyword after the last argument; nothing around it is reformatted. A site
+  under an install directory is refused rather than written to.</li>
+<li><strong>Refusals are badges, not marks.</strong> A value that is a name or expression, a
+  keyword that may come through <code>**kwargs</code>, a constructor without the keyword,
+  a call that cannot be located: nothing is written and the badge names the
+  reason. Layout Edit mode never touches the <code>Comments</code>; a refusal is not handed
+  to the agent.</li>
+<li><strong>Landing values are measured, not guessed.</strong> The <code>auto</code> band is the
+  widget's own intrinsic size measured at the proposed width, and the <code>wt</code>
+  band is what the parent's own allocation would give it, so a snapped value
+  matches the reload to the pixel. <code>auto</code> outranks <code>wt</code> where the bands
+  overlap; <code>Alt</code> at release suppresses snapping. An axis whose landing equals
+  what is declared is not rewritten.</li>
+<li><strong>A drag is not a coordinate.</strong> A corner drag resolves to one of the three
+  size spellings, a body drag to a slot among the siblings — the sibling gap
+  the pointer is over, read from the rects layout gave them — or, in a grid,
+  to the cell under the pointer, read from the tracks layout computed. What is
+  written is a landing value, a list position or a cell, never a delta.</li>
+<li><strong>A nudge is the drag, driven by keys.</strong> During a corner drag <code>W</code> / <code>A</code> /
+  <code>S</code> / <code>D</code> move the grabbed corner a pixel, and from the first press the
+  pointer is theirs: the hand's motion and the release point are ignored, and
+  the snap bands close to the exact size — <code>auto</code> and <code>wt</code> are written only
+  when the corner sits on them, since a key that could not choose the pixel
+  beside them would adjust nothing. The release still writes, so nothing
+  else changes — ghosts, undo, the check. The keys a drag
+  answers to are one vocabulary under the left hand, which is why the stack's
+  layer keys are <code>W</code> / <code>S</code> and the arrows are the selection walk alone.</li>
+<li><strong>The container under the pointer decides the reading.</strong> The deepest
+  container under the pointer, looking past the dragged subtree, is where the
+  drag lands: the widget's own container gives the in-place reading, any other
+  makes the drag a move into it, and none at all keeps the in-place reading so
+  a drag past the end of a list still lands at its end. "Deepest" rather than
+  "the one the pointer left" is what lets a widget move into a sibling
+  container nested inside its own.</li>
+<li><strong>In a <code>Stack</code> the layer decides, not the point.</strong> A point over a stack
+  names every layer under it at once, so the mode picks one layer and reads
+  within it as if nothing lay on top. A drag that started inside the stack
+  reads its own layer: a stack child aligns, a child of a column in a layer
+  reorders in that column, even under a layer that covers it. A drag arriving
+  from outside reads the top layer — into it when it can take a child, else
+  onto the stack, on top, which is the end of its list — so the empty box
+  most stacks put underneath is never the landing. The layer holds while the
+  pointer is anywhere in the stack, and the point only picks the slot. Since
+  no default can name the layer a point means, the overlay lists the stack's
+  layers with the landing marked, and <code>W</code> / <code>S</code> or a digit moves it: a layer
+  that takes a child is read within, any other gives the widget its place in
+  the stack — the z-order edit a stack has no gesture for — and past the top
+  is a new layer. The choice holds until the pointer leaves the stack.</li>
+<li><strong>The axis decides the in-place reading.</strong> In a <code>Column</code> or <code>Row</code> the
+  dominant axis of the travel at release decides: along the main axis is a
+  reorder, across it is alignment. In a wrapping flow every travel that
+  leaves the slot is a reorder, row by row, and travel that keeps it is
+  alignment — for a <code>Flow</code>, only when the cross axis dominates.</li>
+<li><strong>Staying put is alignment, and the alignment is the container's.</strong> A drag
+  that does not change the widget's place — its own slot or cell, a <code>Stack</code>
+  or a <code>Container</code> with no order — snaps the widget to <code>start</code> / <code>center</code> /
+  <code>end</code> on each axis of the box its container aligns it in, and writes the
+  container's keyword (<code>alignment</code>, <code>cross_alignment</code>, <code>item_alignment</code>), so
+  every child of the container moves and the ghost shows each one where the
+  new value puts it. Writing the container's value rather than a per-child
+  wrapper is what keeps one rule for every container, and aligning a whole
+  column is what a drag most often means; a per-child override is asked for
+  in words. A <code>CrossAligned</code> the human wrote is theirs: a drag on its child
+  rewrites that value, other wrapped children stay where they are, and the
+  mode never adds or removes one — <code>GridItem</code> is the only wrapper it writes.
+  An axis the widget already fills has no alignment to write; a widget that
+  fills every axis is a badge.</li>
+<li><strong>A reorder moves a span.</strong> The runner locates, through the container's
+  site, the list literal that owns the children's order — <code>children</code> itself,
+  or the list a comprehension or a <code>ForEach</code> iterates, inline or bound once to
+  a name in the enclosing scope and never mentioned again — and moves the
+  child's element there, with one of its separators, so the formatting
+  survives. The gate is that a layout index must name a source span: a
+  concatenation, a spread, a filtered comprehension, items from a call or a
+  view model, a name bound twice or used again, each leave the order somewhere
+  the runner cannot see, and are refused by name. Tree indices are never
+  trusted past that gate.</li>
+<li><strong>A move between containers is two lists, one edit.</strong> The element leaves
+  the source list with one of its separators, enters the destination with one
+  of the destination's, and its continuation lines take the destination's
+  indentation; the two lists may be in different files, which are written
+  together and undone together, the second refusing when either has moved.
+  Both <code>children</code> must be list literals written in place: a child built from
+  data is a template with no expression of its own, and a data-driven list has
+  nowhere to put one. The only child of a <code>Container</code> or <code>Box</code> leaves as its
+  <code>child</code> argument, taken off the call with one separator, and an empty box
+  takes one back the same way; the box stays through both, since an edit that
+  exists is not refused for being a box. A box with a child is passed over by
+  the destination walk — replacing it would be a choice, not a move — so a
+  drop on it lands in the list around it. Only the source can tell — the tree sees the same
+  children either way — so it is read once when the drag starts and once per
+  container the pointer enters, and the badge says it while the pointer is
+  there, before release. Sizing is not fixed up
+  — <code>"wt"</code> moves as written and the badge notes when its axis changed
+  meaning — since the corner is one drag away.</li>
+<li><strong>A grid drop is a cell, and the wrapper is the destination's.</strong> A <code>Grid</code>
+  places by <code>GridItem(child, row=…, column=…)</code> or by area name, never by
+  order, so inside a grid the in-place reading is a cell change — the item's
+  indices or area rewritten, a span keeping its length — and a move across a
+  grid's edge adds or removes the wrapper: only the item's child leaves, and
+  what enters is wrapped at the cell, or in the area the grid declares there.
+  The wrapper is spelled the way the grid is (<code>nv.Grid</code> gives <code>nv.GridItem</code>)
+  and never imported, so a bare <code>Grid</code> in a module that does not bind
+  <code>GridItem</code> refuses. An occupied cell is allowed — overlap is the grid's
+  business — and the caption names who is there; the keywords an unwrap drops
+  are named after the write, not refused.</li>
+<li><strong>Write, reload, check.</strong> The ghost is a prediction: after the reload the
+  edit log finds the instances rebuilt at the site and compares their rect —
+  or, for a move, the class at the slot or in the cell — with it, and a miss,
+  a site that now builds nothing, or a failed reload becomes the badge.</li>
+<li><strong>Shared sites.</strong> One helper builds fourteen cards; the edit is to the
+  helper and changes them all. What makes that honest is the ghost: every
+  instance of the site gets one before release, and the caption carries the
+  count.</li>
+</ul>
+<h2 id="7-overlays">7. Overlays<a class="headerlink" href="#7-overlays" title="Permanent link">&para;</a></h2>
+<p>Each mode paints on the glass, never into the tree — the same paint-only,
+live-frames-only constraint as the action overlay — so <code>describe_tree</code> never
+sees a bracket and <code>screenshot</code> never contains one. The frame a mode asks for
+leaves the tree clean: the renderer redraws the glass over the tree it last
+painted, so a hover crossing a grid of small widgets costs the overlay and not
+a tree walk per cell. Four colour families, because one visual language for
+opposite directions would mislead:</p>
+<table>
+<thead>
+<tr>
+<th>Colour</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>indigo (action overlay)</td>
+<td>the agent did this</td>
+</tr>
+<tr>
+<td>amber (comment mode)</td>
+<td>the human means this</td>
+</tr>
+<tr>
+<td>teal (layout edit mode)</td>
+<td>a change about to be made to a file</td>
+</tr>
+<tr>
+<td>rose (source jump)</td>
+<td>a jump, not a mark — under a held chord inside comment mode, amber brackets would read as a mark about to be made</td>
+</tr>
+</tbody>
+</table>
+<p>In layout edit mode the candidate's corner brackets <em>are</em> the grab zones, the ghost
+is a dashed outline captioned with the landing values — or, for a reorder, an
+insertion line in the slot, captioned with the sibling it lands before, plus a
+tint over the list it would land in, its own or another's; in a grid a deeper
+tint over the cell instead of a line; for an alignment a dashed rect per child
+the value moves, the dragged one captioned.</p>
+<p>The badge is the only place a human can learn the keys, and a box that lists
+them all is noise nobody reads. So:</p>
+<ul>
+<li><strong>A key is shown only while pressing it would do something.</strong> Every key
+  still appears in some state; a test walks them.</li>
+<li><strong>The ways out stay on the first line.</strong> The line that says the mode is on
+  says how to get off.</li>
+<li><strong>The <code>Stack</code> layer keys sit beside the layer list</strong>, where the eye is
+  mid-drag.</li>
+<li><strong>One box at the bottom; it dodges, never hides.</strong> A badge that vanished
+  would leave the mode's state in doubt. It flips sideways only when narrower
+  than half the window, and returns on a wider margin than it left on, so it
+  never flickers.</li>
+</ul>
+<h2 id="8-implementation-map">8. Implementation map<a class="headerlink" href="#8-implementation-map" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Design area</th>
+<th>Module</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dev input layers (order, prefix chord)</td>
+<td><code>backends/pyglet/runner.py</code></td>
+</tr>
+<tr>
+<td>mechanics shared by the layers (chord, click/drag, pick, ancestor walk)</td>
+<td><code>dev/gesture.py</code></td>
+</tr>
+<tr>
+<td>comment mode, the comment buffer, overlay</td>
+<td><code>dev/comment_mode.py</code>, <code>dev/comments.py</code>, <code>dev/comment_overlay.py</code></td>
+</tr>
+<tr>
+<td>geometry picker, visible rect</td>
+<td><code>_interaction/perception.py</code> (<code>pick_at</code>, <code>find_obstruction</code>)</td>
+</tr>
+<tr>
+<td>construction sites</td>
+<td><code>dev/source.py</code></td>
+</tr>
+<tr>
+<td>source jump, editor launch</td>
+<td><code>dev/source_jump.py</code>, <code>dev/editor.py</code></td>
+</tr>
+<tr>
+<td>layout edit mode: mode, landing values, slots and gates, span surgery, overlay</td>
+<td><code>dev/layout_edit_mode.py</code>, <code>dev/landing.py</code>, <code>dev/reorder.py</code>, <code>dev/source_edit.py</code>, <code>dev/layout_edit_overlay.py</code></td>
+</tr>
+<tr>
+<td>the badge both modes share: what it says, where it sits, how it is drawn</td>
+<td><code>dev/hud.py</code></td>
+</tr>
+<tr>
+<td>the inline field both modes open over the glass</td>
+<td><code>dev/inline_field.py</code></td>
+</tr>
+<tr>
+<td>the editing operations the text field shares with <code>EditableText</code></td>
+<td><code>widgets/text_editing.py</code></td>
+</tr>
+<tr>
+<td>edit log and reload request</td>
+<td><code>dev/source_edit.py</code> (<code>EditLog</code>), <code>dev/controller.py</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 yuksblog
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/yuksblog/nuiitivet" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tracking", "navigation.path", "navigation.instant", "navigation.instant.progress", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
