@@ -275,6 +275,39 @@ def test_the_chain_is_capped(recording: None) -> None:
     assert len(source.site_of(four())) <= source._MAX_FRAMES
 
 
+def test_a_dependency_frame_is_skipped_like_the_frameworks(recording: None) -> None:
+    """After a hot reload the tree is rebuilt from pyglet's clock callback, so a
+    dependency's frame sits between the user's frames on every site. It is not
+    a line the human can edit, and it must not spend one of the few slots."""
+    import sysconfig
+
+    dependency = _function_compiled_as(os.path.join(sysconfig.get_paths()["purelib"], "dep", "clock.py"))
+
+    node = dependency(_build_in_a_helper)
+
+    functions = [frame.function for frame in source.site_of(node)]
+    assert "call" not in functions
+    assert functions[:2] == ["_build_in_a_helper", "test_a_dependency_frame_is_skipped_like_the_frameworks"]
+
+
+def test_a_frame_without_a_file_is_skipped(recording: None) -> None:
+    """``exec`` of a string runs in ``<string>``; nothing there can be edited."""
+    pseudo = _function_compiled_as("<string>")
+
+    node = pseudo(_build_in_a_helper)
+
+    functions = [frame.function for frame in source.site_of(node)]
+    assert "call" not in functions
+    assert functions[:2] == ["_build_in_a_helper", "test_a_frame_without_a_file_is_skipped"]
+
+
+def _function_compiled_as(filename: str) -> Any:
+    """A ``call(build)`` whose code object claims to live in ``filename``."""
+    namespace: dict[str, Any] = {}
+    exec(compile("def call(build):\n    return build()\n", filename, "exec"), namespace)
+    return namespace["call"]
+
+
 def test_widgets_from_one_line_share_one_interned_site(recording: None) -> None:
     """What keeps this a small table rather than a per-widget field.
 

@@ -23,7 +23,6 @@ reaches for, and ``Ctrl+Shift+Z`` takes it back.
 from __future__ import annotations
 
 import logging
-import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Union
@@ -52,7 +51,6 @@ from .source_edit import (
     discarded_keywords,
     grid_item_name,
     host_child_refusal,
-    is_project_file,
     plan_alignment,
     plan_area,
     plan_cell,
@@ -1348,8 +1346,6 @@ def _source_of(node: Any, what: str) -> tuple[Frame, str] | Refusal:
     frame = construction_frame(node)
     if frame is None:
         return Refusal(f"no source recorded for {what}")
-    if not is_project_file(frame.file):
-        return Refusal(f"built outside the project, in {os.path.basename(frame.file)}")
     try:
         with open(frame.file, encoding="utf-8", newline="") as handle:
             return (frame, handle.read())

@@ -108,6 +108,26 @@ def _span(frame: Any) -> tuple[int, Optional[int], Optional[int], Optional[int]]
     return (int(frame.f_lineno), None, None, None)
 
 
+# Whether a file is the user's, per filename. A dependency's frame is outside
+# the package too, and after a hot reload it is the outer frame of every site:
+# the tree is rebuilt from pyglet's clock callback, with no user ``main()`` on
+# the stack. Cached because the path test resolves the path on disk, and this
+# runs on every construction.
+_user_files: dict[str, bool] = {}
+
+
+def _is_user_file(filename: str) -> bool:
+    """Whether a frame from ``filename`` is one the human can edit."""
+    known = _user_files.get(filename)
+    if known is None:
+        from .source_edit import is_project_file
+
+        # ``<string>``, ``<frozen ...>``: no file at all.
+        known = not filename.startswith("<") and not filename.startswith(_PACKAGE_ROOT) and is_project_file(filename)
+        _user_files[filename] = known
+    return known
+
+
 # Sites are shared far more than they are distinct: in the spike, 441 resolved
 # widgets held 145 distinct sites, because one helper builds fourteen cards.
 # Interning turns a per-widget field into a pointer into a small table.
@@ -122,7 +142,9 @@ def _capture(widget: Any) -> Site:
     Frames are collected wherever they occur rather than as one contiguous run:
     a widget built inside a user helper, invoked through a framework callback,
     from another user frame is an ordinary shape (a root factory, a ``ForEach``
-    builder), and the far frame is often the more useful of the two.
+    builder), and the far frame is often the more useful of the two. A
+    dependency's frame on the way is skipped like the framework's, so a site
+    is shorter, never padded, when the user's outer frames are off the stack.
     """
     try:
         # Skip this function and the __init__ wrapper that called it.
@@ -141,7 +163,7 @@ def _capture(widget: Any) -> Site:
         if frame is None:
             break
         code = frame.f_code
-        if not code.co_filename.startswith(_PACKAGE_ROOT):
+        if _is_user_file(code.co_filename):
             line, column, end_line, end_column = _span(frame)
             frames.append(Frame(code.co_filename, line, column, end_line, end_column, code.co_name, constructing))
             if len(frames) >= _MAX_FRAMES:

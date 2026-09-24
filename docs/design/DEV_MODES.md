@@ -201,11 +201,13 @@ anonymous types twenty levels deep and a grep.
 
 The dev runner wraps `Widget.__init__` — the single chokepoint every widget
 passes through — and walks the frames out of the package to the first user
-frames. The wrap is installed by the runner and never by the framework, so a
-production launch pays nothing, not even a flag check on the construction
-path. Python's runtime frames make this cheaper than Flutter's
-`--track-widget-creation`, which needs a compile-time transform to learn the
-same thing.
+frames. A frame under an install directory is skipped like the package's own:
+after a hot reload the tree is rebuilt from pyglet's clock callback, and a
+site that kept that frame would spend a slot on a line nobody can edit. The
+wrap is installed by the runner and never by the framework, so a production
+launch pays nothing, not even a flag check on the construction path. Python's
+runtime frames make this cheaper than Flutter's `--track-widget-creation`,
+which needs a compile-time transform to learn the same thing.
 
 - **Never stale.** Sites are captured at construction and a reload rebuilds
   everything, so there is no invalidation step to get wrong.
