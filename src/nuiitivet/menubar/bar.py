@@ -223,10 +223,9 @@ class MenuBarWidget(ComposableWidget):
     def popup_gone(self, popup: Widget) -> None:
         """The popup left the tree: sync the bar state on a real dismissal.
 
-        The overlay restacks its layers whenever another entry opens or closes
-        (a submenu opening, the previous menu closing), remounting the live
-        entries on the way — so an unmount alone is not a dismissal. Only an
-        entry whose result is settled (``handle.done()``: the outside tap) has
+        An unmount alone is not a dismissal: the popup also leaves the tree when
+        the overlay's own host does, with the entry still open. Only an entry
+        whose result is settled (``handle.done()``: the outside tap) has
         actually closed under us.
         """
         if self._popup is popup and self._handle is not None and self._handle.done():
@@ -407,7 +406,6 @@ class _MenuBarPopup(Menu):
 
     def __init__(self, bar: MenuBarWidget, entries: list) -> None:
         self._bar = bar
-        self._remount_focus_index = -1
         super().__init__(entries, on_dismiss=bar.close_menu, style=bar.popup_style())
 
     def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
@@ -421,19 +419,5 @@ class _MenuBarPopup(Menu):
         return False
 
     def on_unmount(self) -> None:
-        # The overlay rebuilds its layer stack whenever an entry opens or
-        # closes (a submenu appearing, a neighbor menu leaving), remounting
-        # this popup on the way, and ``Menu.on_unmount`` rightly drops the
-        # focus it holds. Remember the focused row so the remount can restore
-        # it (see ``_item_mounted``); the bar builds a fresh popup for every
-        # open, so a stale index cannot leak into a later open.
-        self._remount_focus_index = self._focus_index if self._holds_item_focus() else -1
         super().on_unmount()
         self._bar.popup_gone(self)
-
-    def _item_mounted(self, item) -> None:
-        super()._item_mounted(item)
-        index = self._remount_focus_index
-        if 0 <= index < len(self._focusable_items) and self._focusable_items[index] is item:
-            self._remount_focus_index = -1
-            self._focus_item(item)

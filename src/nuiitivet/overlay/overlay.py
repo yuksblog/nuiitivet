@@ -74,6 +74,10 @@ class _ModalNavigator(ComposableWidget):
         self._base_route = base_route
         self._stack = RouteStackRuntime(initial_routes=[base_route], pinned_routes=[base_route])
         self._pending_dispose: dict[int, Callable[[], None]] = {}
+        # One Stack for the life of the overlay, synced one layer at a time: a
+        # rebuild per push or exit would remount every live entry.
+        self._layers = Stack(children=[], alignment="center", width="wt", height="wt")
+        self._layer_by_route: dict[int, Widget] = {}
 
     @property
     def _routes(self) -> list[Route]:
@@ -91,7 +95,7 @@ class _ModalNavigator(ComposableWidget):
             )
         else:
             self._stack.mark_active(route)
-        self.rebuild()
+        self._add_layer(route)
 
     def remove_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
         if route is self._base_route:
@@ -137,7 +141,7 @@ class _ModalNavigator(ComposableWidget):
                     "Overlay modal route on_disposed raised (route=%s)",
                     type(route).__name__,
                 )
-        self.rebuild()
+        self._remove_layer(route)
 
     def pop(self) -> None:
         if not self.can_pop():
@@ -164,29 +168,31 @@ class _ModalNavigator(ComposableWidget):
             return False
         return getattr(self, "_app", None) is not None
 
+    def _add_layer(self, route: _OverlayEntryRoute) -> None:
+        try:
+            layer = route.build_widget()
+        except Exception:
+            exception_once(
+                logger,
+                f"overlay_modal_route_build_widget_exc:{type(route).__name__}",
+                "Overlay modal route build_widget raised (route=%s)",
+                type(route).__name__,
+            )
+            return
+        self._layer_by_route[id(route)] = layer
+        self._layers.add_child(layer)
+
+    def _remove_layer(self, route: _OverlayEntryRoute) -> None:
+        layer = self._layer_by_route.pop(id(route), None)
+        if layer is not None:
+            self._layers.remove_child(layer)
+
     def build(self) -> Widget:
-        if not self.can_pop():
-            return Container()
+        return self._layers
 
-        layers: list[Widget] = []
-        for route in self._stack.routes[1:]:
-            try:
-                layers.append(route.build_widget())
-            except Exception:
-                exception_once(
-                    logger,
-                    f"overlay_modal_route_build_widget_exc:{type(route).__name__}",
-                    "Overlay modal route build_widget raised (route=%s)",
-                    type(route).__name__,
-                )
-                continue
-        if not layers:
-            return Container()
-        return Stack(children=layers, alignment="center", width="wt", height="wt")
-
-    # No hit_test override needed: the navigator and its transparent Stack/Container
-    # wrapper both defer under the ``auto`` default, so input passes through
-    # whenever no actual overlay layer is hit.
+    # No hit_test override needed: the navigator and its transparent Stack both
+    # defer under the ``auto`` default, so input passes through whenever no
+    # actual overlay layer is hit.
 
 
 class _OverlayEntryRoute(Route):
@@ -812,8 +818,6 @@ class Overlay(ComposableWidget):
 
         self._insert_entry_with_route(entry, modal_route)
 
-        self.rebuild()
-
         if timeout is not None:
 
             def on_timeout(_dt: float) -> None:
@@ -852,7 +856,6 @@ class Overlay(ComposableWidget):
     def insert_entry(self, entry: OverlayEntry) -> None:
         route = Route(builder=entry.build_widget, transition_spec=Transitions.empty())
         self._insert_entry_with_route(entry, route)
-        self.rebuild()
 
     def _insert_entry_with_route(self, entry: OverlayEntry, route: Route) -> None:
         modal_route = (
@@ -877,7 +880,6 @@ class Overlay(ComposableWidget):
                 self._entry_to_pending_result[entry] = OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED)
 
         self._remove_modal_route(route, on_disposed=entry.dispose)
-        self.rebuild()
 
     def _remove_modal_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
         self._modal_navigator.remove_route(route, on_disposed=on_disposed)
