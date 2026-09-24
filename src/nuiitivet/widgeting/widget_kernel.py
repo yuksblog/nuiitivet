@@ -178,9 +178,6 @@ class WidgetKernel:
             # the report, so a widget that merely moves does not fire.
             queue_size_change(self, Size(int(width), int(height)))
 
-    def clear_layout_rect(self) -> None:
-        self._layout_rect = None
-
     @property
     def last_rect(self) -> Optional[Rect]:
         return self._last_rect
