@@ -1286,9 +1286,8 @@ class _Offsets:
 def is_project_file(path: str) -> bool:
     """Whether ``path`` is the human's to edit: not under an install directory.
 
-    A site can only point at a dependency's file when a widget was built with
-    no user frame nearer than the event loop, and a size written there would
-    be silent corruption of a package.
+    Site directories and the standard library are refused. A construction site
+    keeps only frames that pass this, so a size is never written into a package.
     """
     from .reloader import _site_directories
 
