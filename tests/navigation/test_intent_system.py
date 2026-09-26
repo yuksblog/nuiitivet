@@ -72,7 +72,7 @@ def test_overlay_dialog_intent_resolves_to_widget() -> None:
 
     overlay.dialog(_DialogIntent(label="ignored"))
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     def contains(root: Widget, needle: Widget) -> bool:
@@ -127,6 +127,6 @@ def test_material_overlay_dialog_resolves_intent_to_widget() -> None:
 
     overlay.dialog(_DialogIntent(label="intent"))
 
-    route = next(iter(overlay._entry_to_route.values()))
+    route = next(iter(overlay._entry_to_layer.values()))
     assert isinstance(route._content_widget, _FlagWidget)
     assert route._content_widget.label == "intent"

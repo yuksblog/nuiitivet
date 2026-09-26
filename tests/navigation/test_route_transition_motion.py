@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.navigation import Navigator, Route
-from nuiitivet.navigation.transition_spec import TransitionPhase
+from nuiitivet.transition.spec import TransitionPhase
 from nuiitivet.widgeting.widget import Widget
 
 

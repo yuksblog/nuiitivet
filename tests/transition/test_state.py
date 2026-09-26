@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from nuiitivet.navigation.transition_state import TransitionState
-from nuiitivet.navigation.transition_spec import TransitionPhase, Transitions
+from nuiitivet.transition.state import TransitionState
+from nuiitivet.transition.spec import TransitionPhase, Transitions
 
 
 def test_transition_state_create_builds_lifecycle_observable() -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nuiitivet.navigation.transition_spec import (
+from nuiitivet.transition.spec import (
     EmptyTransitionSpec,
     TransitionPhase,
     Transitions,

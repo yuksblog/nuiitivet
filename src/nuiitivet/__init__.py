@@ -62,7 +62,8 @@ from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.shadow import Shadow
 
 # Navigation
-from nuiitivet.navigation import Navigator, NavigatorProtocol, Route, Transitions
+from nuiitivet.navigation import Navigator, NavigatorProtocol, Route
+from nuiitivet.transition import Transitions
 
 # Overlay
 from nuiitivet.overlay import OverlayAware, OverlayProtocol

@@ -8,8 +8,8 @@ from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.overlay_entry import OverlayEntry
-from nuiitivet.overlay.overlay import _OverlayEntryRoute
-from nuiitivet.navigation.transition_spec import TransitionPhase
+from nuiitivet.overlay.overlay import _OverlayLayer
+from nuiitivet.transition.spec import TransitionPhase
 
 
 class _FakeClock:
@@ -42,7 +42,7 @@ class _AnimatedTransitionSpec:
     pass
 
 
-def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
+def test_overlay_layer_enter_exit_lifecycle_is_transition_driven() -> None:
     prev_clock = observable_runtime.clock
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
@@ -54,29 +54,23 @@ def test_overlay_route_enter_exit_lifecycle_is_transition_driven() -> None:
 
         overlay.show(BasicDialog(title="Lifecycle"), backdrop=True, transition_spec=_AnimatedTransitionSpec())
 
-        entry = next(iter(overlay._entry_to_route.keys()))
-        modal_route = overlay._entry_to_route[entry]
-        assert isinstance(modal_route, _OverlayEntryRoute)
-        assert modal_route.transition_phase_obs.value is TransitionPhase.ENTER
-        assert modal_route.transition_state.phase_obs is modal_route.transition_phase_obs
-        assert modal_route.transition_state.progress_obs is modal_route.transition_progress_obs
-        assert not hasattr(modal_route, "_overlay_route_frame_obs")
-        assert not hasattr(modal_route, "_overlay_content_opacity_obs")
-        assert not hasattr(modal_route, "_overlay_content_scale_obs")
-        assert not hasattr(modal_route, "_overlay_barrier_opacity_obs")
+        entry = next(iter(overlay._entry_to_layer.keys()))
+        layer = overlay._entry_to_layer[entry]
+        assert isinstance(layer, _OverlayLayer)
+        assert layer.transition_phase_obs.value is TransitionPhase.ENTER
+        assert layer.transition_state.phase_obs is layer.transition_phase_obs
+        assert layer.transition_state.progress_obs is layer.transition_progress_obs
 
         fake_clock.advance(0.7)
-        assert modal_route.transition_phase_obs.value is TransitionPhase.ACTIVE
-        assert abs(float(modal_route.transition_progress_obs.value) - 1.0) < 1e-6
+        assert layer.transition_phase_obs.value is TransitionPhase.ACTIVE
+        assert abs(float(layer.transition_progress_obs.value) - 1.0) < 1e-6
 
         overlay.remove_entry(entry)
-        routes_during_exit = overlay._modal_navigator._routes  # type: ignore[attr-defined]
-        assert any(r is modal_route for r in routes_during_exit)
-        assert modal_route.transition_phase_obs.value is TransitionPhase.EXIT
+        assert any(r is layer for r in overlay._layer_stack.layers)
+        assert layer.transition_phase_obs.value is TransitionPhase.EXIT
 
         fake_clock.advance(0.7)
-        routes_after_exit = overlay._modal_navigator._routes  # type: ignore[attr-defined]
-        assert not any(r is modal_route for r in routes_after_exit)
+        assert not any(r is layer for r in overlay._layer_stack.layers)
         assert overlay.has_entries() is False
     finally:
         observable_runtime.set_clock(prev_clock)
@@ -95,7 +89,7 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
         for _ in range(10):
             overlay.show(BasicDialog(title="Perf"), backdrop=True, transition_spec=_AnimatedTransitionSpec())
             fake_clock.advance(0.7)  # finish enter
-            entry = next(iter(overlay._entry_to_route.keys()))
+            entry = next(iter(overlay._entry_to_layer.keys()))
             overlay.remove_entry(entry)
             fake_clock.advance(0.7)  # finish exit
 
@@ -121,12 +115,10 @@ def test_overlay_on_disposed_runs_once_after_exit_complete() -> None:
             return BasicDialog(title="Dispose ordering")
 
         def _on_disposed() -> None:
-            routes = overlay._modal_navigator._routes  # type: ignore[attr-defined]
-            has_modal = any(isinstance(route, _OverlayEntryRoute) for route in routes)
-            callback_calls.append(has_modal)
+            callback_calls.append(bool(overlay._layer_stack.layers))
 
         entry = OverlayEntry(builder=_build, on_dispose=_on_disposed)
-        overlay._insert_entry_with_route(entry, _OverlayEntryRoute(entry, transition_spec=_AnimatedTransitionSpec()))
+        overlay._insert_entry_layer(entry, _OverlayLayer(entry, transition_spec=_AnimatedTransitionSpec()))
 
         fake_clock.advance(0.7)  # finish enter
         overlay.remove_entry(entry)

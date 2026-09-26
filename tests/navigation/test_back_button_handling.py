@@ -77,13 +77,13 @@ async def test_escape_verb_pops_exactly_one_route(nuiitivet_app) -> None:
     for _ in range(3):
         navigator.push(Container())
     await app.idle()
-    assert len(navigator._stack.routes) == 4
+    assert len(navigator._stack.elements) == 4
 
     assert app.key("escape")["handled"] is True
     await app.idle()
     await app.wait_for(lambda: not app.in_transition)
 
-    assert len(navigator._stack.routes) == 3
+    assert len(navigator._stack.elements) == 3
 
 
 async def test_escape_verb_closes_the_overlay_without_popping_behind_it(nuiitivet_app) -> None:
@@ -100,7 +100,7 @@ async def test_escape_verb_closes_the_overlay_without_popping_behind_it(nuiitive
     await app.idle()
     await app.wait_for(lambda: not overlay.has_entries())
 
-    assert len(navigator._stack.routes) == 2
+    assert len(navigator._stack.elements) == 2
 
 
 async def test_escape_respects_will_pop_cancel(nuiitivet_app) -> None:
@@ -237,7 +237,7 @@ async def test_async_on_will_pop_handling_flag_released_on_exception() -> None:
     assert await app.handle_back_event() is True
 
     # After exception, _handling should be False (released in finally)
-    outgoing_widget = navigator._stack.routes[-1].build_widget() if navigator.can_pop() else None
+    outgoing_widget = navigator._stack.elements[-1].build_widget() if navigator.can_pop() else None
     if outgoing_widget is not None:
         will_pop_scope = outgoing_widget if hasattr(outgoing_widget, "_handling") else None
         if will_pop_scope is not None:
@@ -286,7 +286,7 @@ async def test_reentrance_guard_blocks_concurrent_back_during_async_will_pop(
     await app.idle()
 
     # WillPopScope._handling should be True while suspended in on_will_pop
-    outgoing_widget = navigator._route_widget(navigator._stack.routes[-1])
+    outgoing_widget = navigator._route_widget(navigator._stack.elements[-1])
     # The outgoing widget is a WillPopScope
     assert getattr(outgoing_widget, "_handling", None) is True
 

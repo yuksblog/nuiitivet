@@ -12,8 +12,8 @@ from nuiitivet.navigation.layer_composer import (
     NavigationLayerCompositionContext,
     NavigationTransitionKind,
 )
-from nuiitivet.navigation.transition_spec import TransitionPhase, TransitionSpec
 from nuiitivet.rendering.skia.color import make_opacity_paint
+from nuiitivet.transition.spec import TransitionPhase, TransitionSpec
 from nuiitivet.widgeting.widget import Widget
 
 from .transition_visual_spec import resolve_material_transition_visual_spec

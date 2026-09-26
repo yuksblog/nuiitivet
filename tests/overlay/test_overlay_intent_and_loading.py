@@ -13,7 +13,7 @@ from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
-from nuiitivet.navigation.transition_spec import EmptyTransitionSpec
+from nuiitivet.transition.spec import EmptyTransitionSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +31,7 @@ def test_overlay_dialog_intent_resolves_to_widget() -> None:
     overlay.dialog(_ConfirmIntent("hi"), dismiss_on_outside_tap=False)
 
     assert overlay.has_entries() is True
-    route = next(iter(overlay._entry_to_route.values()))
+    route = next(iter(overlay._entry_to_layer.values()))
     assert not isinstance(route.transition_spec, EmptyTransitionSpec)
 
 
@@ -48,7 +48,7 @@ def test_material_overlay_dialog_shows_widget_with_dialog_transition() -> None:
 
     overlay.dialog(widget, dismiss_on_outside_tap=False)
 
-    route = next(iter(overlay._entry_to_route.values()))
+    route = next(iter(overlay._entry_to_layer.values()))
     assert route._content_widget is widget
     assert not isinstance(route.transition_spec, EmptyTransitionSpec)
 
@@ -58,7 +58,7 @@ def test_material_overlay_default_loading_has_no_transition() -> None:
 
     overlay.loading()
 
-    route = next(iter(overlay._entry_to_route.values()))
+    route = next(iter(overlay._entry_to_layer.values()))
     assert isinstance(route._content_widget, LoadingIndicator)
     assert isinstance(route.transition_spec, EmptyTransitionSpec)
 
@@ -69,7 +69,7 @@ def test_overlay_show_transition_does_not_carry_to_next_show() -> None:
     overlay.show(BasicDialog(title="First"), transition_spec=MaterialTransitions.dialog())
     overlay.show(BasicDialog(title="Second"))
 
-    first, second = overlay._entry_to_route.values()
+    first, second = overlay._entry_to_layer.values()
     assert not isinstance(first.transition_spec, EmptyTransitionSpec)
     assert isinstance(second.transition_spec, EmptyTransitionSpec)
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
+from nuiitivet.transition.spec import TransitionPhase, TransitionSpec
 from nuiitivet.widgeting.widget import Widget
-
-from .transition_spec import TransitionPhase, TransitionSpec
 
 
 NavigationTransitionKind = Literal["push", "pop"]

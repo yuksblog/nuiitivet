@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.material.transition_visual_spec import resolve_material_transition_visual_spec
-from nuiitivet.navigation.transition_spec import TransitionPhase, Transitions
+from nuiitivet.transition.spec import TransitionPhase, Transitions
 
 
 def test_page_fade_enter_active_exit_visuals() -> None:

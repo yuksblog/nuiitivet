@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from nuiitivet.observable import Observable, ReadOnlyObservableProtocol, combine
 
-from .transition_spec import TransitionPhase, TransitionSpec
+from .spec import TransitionPhase, TransitionSpec
 
 
 @dataclass(slots=True)

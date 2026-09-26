@@ -73,7 +73,7 @@ def test_dialog_exit_finishes_on_spec_motion_duration() -> None:
             env.clock.advance(0.05)
         assert env.overlay.has_entries() is True
 
-        entry = next(iter(env.overlay._entry_to_route.keys()))
+        entry = next(iter(env.overlay._entry_to_layer.keys()))
         env.overlay.remove_entry(entry)
 
         # The dialog exit motion is 0.15 s. Under the regression the engine fell

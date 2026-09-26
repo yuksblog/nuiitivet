@@ -68,7 +68,7 @@ def test_overlay_show_stacks_backdrop_then_blocker_then_content() -> None:
     overlay.show(dialog, backdrop=True)
 
     assert overlay.has_entries() is True
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     # The core does the stacking: backdrop (click-through), then its blocking
@@ -98,7 +98,7 @@ def test_overlay_show_without_backdrop_has_no_painted_layer() -> None:
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"))
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     assert isinstance(built, Stack)
@@ -114,7 +114,7 @@ def test_overlay_passthrough_entry_is_the_composed_content_alone() -> None:
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"), passthrough=True)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     assert _find_descendant_box(entry.build_widget()) is None
 
 
@@ -134,7 +134,7 @@ def test_overlay_content_is_last_child_so_it_is_hit_tested_first() -> None:
 
     root = _overlay_root(overlay)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     layers = entry.build_widget().children_snapshot()
     assert _find_descendant_box(layers[-2]) is not None, "the blocker must sit directly under the content"
 
@@ -161,7 +161,7 @@ def test_overlay_blocker_interaction_region_is_outside_the_hit_participation_box
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"), dismiss_on_outside_tap=True)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     blocker = entry.build_widget().children_snapshot()[-2]
 
     # The region is the outermost widget of the blocking layer, and the box that

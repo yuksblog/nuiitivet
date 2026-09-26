@@ -87,7 +87,7 @@ def test_material_overlay_snackbar_method() -> None:
 
     overlay.snackbar("Test snackbar")
 
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
     assert overlay.has_entries()
 
 
@@ -96,11 +96,11 @@ def test_material_overlay_snackbar_auto_removal(mock_clock) -> None:
 
     overlay.snackbar("Test snackbar", duration=0.1)
 
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     mock_clock.tick(0.15)
 
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
     assert not overlay.has_entries()
 
 
@@ -111,7 +111,7 @@ def test_material_overlay_multiple_snackbars() -> None:
     overlay.snackbar("Second snackbar")
     overlay.snackbar("Third snackbar")
 
-    assert len(overlay._entry_to_route) == 3
+    assert len(overlay._entry_to_layer) == 3
 
 
 def test_material_overlay_snackbar_custom_duration(mock_clock) -> None:
@@ -119,13 +119,13 @@ def test_material_overlay_snackbar_custom_duration(mock_clock) -> None:
 
     overlay.snackbar("Long snackbar", duration=5.0)
 
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     mock_clock.tick(0.1)
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     mock_clock.tick(5.0)
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
 
 
 def test_snackbar_widget_properties() -> None:
@@ -144,7 +144,7 @@ def test_material_overlay_snackbar_creates_entry() -> None:
 
     overlay.snackbar("Entry test")
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     def contains_type(root: Widget, t: type[Widget]) -> bool:
@@ -166,4 +166,4 @@ def test_material_overlay_app_snackbar() -> None:
 
     MaterialOverlay.of(content).snackbar("App snackbar")
 
-    assert len(app.overlay._entry_to_route) == 1
+    assert len(app.overlay._entry_to_layer) == 1
