@@ -253,13 +253,13 @@ class CartViewModel:
         self.navigator.push(OrderCompleteIntent())
 
 # 3. View (Bind Intent to Widget via Navigator configuration)
-Navigator(
-    initial_routes=[Route(builder=lambda: ProductListScreen())],
+Navigator.intents(
+    initial=ProductListIntent(),
     routes={
-        ProductListIntent: lambda _: Route(builder=lambda: ProductListScreen()),
-        CartIntent: lambda _: Route(builder=lambda: CartScreen()),
-        OrderCompleteIntent: lambda _: Route(builder=lambda: OrderCompleteScreen()),
-    }
+        ProductListIntent: lambda _: ProductListScreen(),
+        CartIntent: lambda _: CartScreen(),
+        OrderCompleteIntent: lambda _: OrderCompleteScreen(),
+    },
 )
 ```
 
@@ -279,25 +279,18 @@ class MainScreen(Widget):
                 children=[
                     # Tab 1: Home (Standard Navigation)
                     # This Navigator manages transitions within this tab
-                    Navigator(
-                        key="home_nav",
-                        initial_routes=[Route(builder=lambda: ProductListScreen())],
+                    Navigator.intents(
+                        initial=ProductListIntent(),
                         routes={
-                            ProductListIntent: lambda _: Route(builder=lambda: ProductListScreen()),
-                            CartIntent: lambda _: Route(builder=lambda: CartScreen()),
+                            ProductListIntent: lambda _: ProductListScreen(),
+                            CartIntent: lambda _: CartScreen(),
                             # ...
-                        }
+                        },
                     ),
                     # Tab 2: Search (Standard Navigation)
-                    Navigator(
-                        key="search_nav",
-                        initial_routes=[Route(builder=lambda: SearchScreen())]
-                    ),
+                    Navigator(SearchScreen(), key="search_nav"),
                     # Tab 3: Profile
-                    Navigator(
-                        key="profile_nav",
-                        initial_routes=[Route(builder=lambda: ProfileScreen())]
-                    ),
+                    Navigator(ProfileScreen(), key="profile_nav"),
                 ]
             ),
             bottom_navigation_bar=BottomNavigationBar(...)

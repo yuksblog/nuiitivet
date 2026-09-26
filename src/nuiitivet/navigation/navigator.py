@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 import inspect
 import logging
-from typing import Any, Callable, Literal, Mapping, TypeVar
+from typing import Any, Callable, Literal, Mapping, Tuple, TypeVar, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.callbacks import spawn_task
@@ -12,7 +12,13 @@ from nuiitivet.widgeting.context_lookup import find_provider, find_window, raise
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 from nuiitivet.transition.engine import TransitionEngine, TransitionHandle
-from nuiitivet.transition.spec import EmptyTransitionSpec, TransitionPhase, resolve_phase_motion
+from nuiitivet.transition.spec import (
+    EmptyTransitionSpec,
+    TransitionPhase,
+    TransitionSpec,
+    Transitions,
+    resolve_phase_motion,
+)
 from nuiitivet.transition.stack import StackRuntime
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
@@ -20,9 +26,11 @@ from .route import Route
 
 _logger = logging.getLogger(__name__)
 
-# Lets ``of()`` keep the concrete subclass type, so that
-# ``MaterialNavigator.of(...)`` is a ``MaterialNavigator`` and not a ``Navigator``.
+# Keeps ``MaterialNavigator.of(...)`` typed as ``MaterialNavigator``.
 NavigatorT = TypeVar("NavigatorT", bound="Navigator")
+
+# A screen, optionally with the transition it moves with.
+ScreenLike = Union[Widget, Tuple[Widget, TransitionSpec]]
 
 
 @dataclass(slots=True)
@@ -37,13 +45,10 @@ class _NavTransition:
 
 @dataclass(slots=True)
 class _PushDescriptor:
-    """A restorable record of one declaratively pushed route.
+    """An intent pushed onto the stack, kept so a hot reload can replay it.
 
-    Captures the intent *value* pushed via :meth:`Navigator.push` together with
-    its type's fully-qualified name. The qualname — not the class identity — is
-    what a hot reload matches against, because reloading redefines the intent
-    class so the live ``type(intent)`` no longer equals the freshly registered
-    route-table key.
+    A reload redefines the intent class, so the replay matches by qualified
+    name, not by class identity.
     """
 
     intent: Any
@@ -76,114 +81,89 @@ class _DefaultNavigationLayerComposer:
 
 
 class Navigator(ComposableWidget):
-    """A minimal navigation stack.
+    """A stack of screens; the top one is shown.
 
-    Initialization forms:
-        - ``Navigator(screen)``: start with a single screen (``Route`` or ``Widget``).
-        - ``Navigator.routes([...])``: pre-populated stack (e.g. deep linking).
-        - ``Navigator.intents(initial_route=..., routes={...})``: Intent-based routing.
+    Each screen moves with its own transition, given when it enters the stack.
 
-    Features:
-        - push/pop
-        - of(context) / of(context, root=True)
-        - optional fade-in on push
+    From a list of screens: :meth:`routes`. From intents and a routing table:
+    :meth:`intents`.
     """
 
     def __init__(
         self,
-        screen: Route | Widget | None = None,
+        screen: Widget | None = None,
         *,
+        transition: TransitionSpec | None = None,
         layer_composer: NavigationLayerComposer | None = None,
         key: str | None = None,
     ) -> None:
         """Initialize a Navigator with a single initial screen.
 
         Args:
-            screen: The initial screen as a ``Route`` or ``Widget``. If ``None``,
-                the navigator starts with an empty stack (use :meth:`routes` or
-                :meth:`intents` factories for alternative initialization).
+            screen: The initial screen. ``None`` starts with an empty stack.
+            transition: The transition ``screen`` moves with. Defaults to none.
             layer_composer: Optional custom layer composer.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(key=key)
-        self._intent_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] = {}
+        self._intent_routes: Mapping[type[Any], Callable[[Any], ScreenLike]] = {}
         self._transition: _NavTransition | None = None
         self._transition_handle: TransitionHandle | None = None
         self._transition_engine = TransitionEngine()
         self._pending_pop_requests: int = 0
-        # Back requests that have been made but have not finished. Distinct from
-        # ``_pending_pop_requests``, which only counts pops queued *behind* a
-        # running transition and is incremented inside ``request_back()`` -- a
-        # coroutine, so it is still 0 for the whole window between ``pop()``
-        # returning and the spawned task getting its turn. This one is
-        # incremented synchronously, so ``in_transition`` covers that window.
+        # Counted synchronously in ``pop()``; ``_pending_pop_requests`` stays 0 until the task runs.
         self._back_requests_in_flight: int = 0
         self._exiting_route: Route | None = None
         self._layer_composer: NavigationLayerComposer = layer_composer or _DefaultNavigationLayerComposer()
-        # Ordered restore descriptors for routes added via ``push`` (not the
-        # initial construction stack, which a hot reload rebuilds from the
-        # factory). One entry per pushed route: a ``_PushDescriptor`` for a
-        # declarative (intent) push, or ``None`` for an opaque, non-restorable
-        # push (a raw ``Route``/``Widget`` instance). See :meth:`snapshot_stack`.
+        # One entry per ``push``: a descriptor for an intent, ``None`` for a widget.
         self._restore_log: list[_PushDescriptor | None] = []
 
         initial_routes: list[Route] = []
         if screen is not None:
-            initial_routes.append(self._to_initial_route(screen))
+            initial_routes.append(self._to_route(screen, transition))
         self._stack: StackRuntime[Route] = StackRuntime(initial=initial_routes)
-
-    def _to_initial_route(self, value: Route | Widget) -> Route:
-        """Convert a ``Route`` or ``Widget`` into a ``Route`` for initial stack construction."""
-        if isinstance(value, Route):
-            return value
-        if isinstance(value, Widget):
-            return self._route_from_widget(value)
-        raise TypeError(f"Navigator initial screen must be a Route or Widget, got {type(value).__name__}")
 
     @classmethod
     def routes(
         cls,
-        screens: Sequence[Route | Widget],
+        screens: Sequence[ScreenLike],
         *,
         layer_composer: NavigationLayerComposer | None = None,
     ) -> Navigator:
-        """Create a Navigator with a pre-populated stack.
+        """Create a Navigator that starts with several screens on its stack.
 
-        Use this when the navigator should start with multiple screens already
-        on the stack (e.g. deep linking, state restoration).
+        Use this for deep linking or restoring state.
 
         Args:
-            screens: Sequence of ``Route`` or ``Widget`` instances. The last item
-                becomes the top of the stack.
+            screens: Screens bottom to top; the last one is shown. Each is a
+                widget or a ``(widget, transition)`` pair.
             layer_composer: Optional custom layer composer.
         """
         if not screens:
             raise ValueError("Navigator.routes(...) requires at least one screen")
         instance = cls(layer_composer=layer_composer)
-        initial_routes = [instance._to_initial_route(s) for s in screens]
-        instance._stack = StackRuntime(initial=initial_routes)
+        instance._stack = StackRuntime(initial=[instance._to_route(s) for s in screens])
         return instance
 
     @classmethod
     def intents(
         cls,
         *,
-        initial_route: Any,
-        routes: Mapping[type[Any], Callable[[Any], Route | Widget]],
+        initial: Any,
+        routes: Mapping[type[Any], Callable[[Any], ScreenLike]],
         layer_composer: NavigationLayerComposer | None = None,
     ) -> Navigator:
-        """Create a Navigator configured for Intent-based routing.
+        """Create a Navigator that resolves intents through a routing table.
 
         Args:
-            initial_route: The initial Intent instance used to resolve the first route.
-            routes: Mapping of Intent types to route builder functions. Each
-                builder returns a ``Route`` or ``Widget``.
+            initial: The intent that resolves the first screen.
+            routes: Mapping of intent types to factories. Each factory returns
+                a widget or a ``(widget, transition)`` pair.
             layer_composer: Optional custom layer composer.
         """
         instance = cls(layer_composer=layer_composer)
         instance._intent_routes = dict(routes)
-        initial = instance._resolve_intent_to_route(initial_route)
-        instance._stack = StackRuntime(initial=[initial])
+        instance._stack = StackRuntime(initial=[instance._resolve_intent_to_route(initial)])
         return instance
 
     @classmethod
@@ -191,17 +171,16 @@ class Navigator(ComposableWidget):
         """Return the ``Navigator`` that navigation from ``context`` should drive.
 
         The nearest ancestor wins, so a nested navigator keeps its own history.
-        With no ancestor the answer is the App's own navigator, which makes this
-        the single entry point for both the nested and the top-level case.
+        With no ancestor, the App's navigator.
 
         Args:
             context: A widget in the subtree from which to resolve.
-            root: Skip the ancestor search and return the App's navigator, to
-                drive a whole-window transition from inside a nested navigator.
+            root: Return the App's navigator, skipping ancestors. Use it for a
+                full-window push from inside a nested navigator.
 
         Raises:
-            RuntimeError: If called before ``context`` is mounted (typically from
-                ``__init__``), or if no navigator can be resolved at all.
+            RuntimeError: If ``context`` is not mounted yet (as in ``__init__``),
+                or no navigator exists.
         """
         if not root:
             navigator = find_provider(context, cls)
@@ -254,47 +233,38 @@ class Navigator(ComposableWidget):
         return self._stack.top()
 
     def _route_widget(self, route: Route) -> Widget:
-        widget = route.build_widget()
+        widget = route.widget
         if widget not in self.children_snapshot():
             self.add_child(widget)
         return widget
 
-    def _route_from_widget(self, widget: Widget) -> Route:
-        """Wrap a widget into a page route for navigator runtime."""
-        return Route(builder=lambda: widget)
+    def _default_transition(self) -> TransitionSpec:
+        """Return the transition a screen gets when none is given."""
+        return Transitions.empty()
+
+    def _to_route(self, screen: ScreenLike, transition: TransitionSpec | None = None) -> Route:
+        """Wrap a screen, or a ``(widget, transition)`` pair, into a stack element."""
+        widget: Any = screen
+        if isinstance(screen, tuple):
+            widget, transition = screen
+        if not isinstance(widget, Widget):
+            raise TypeError(f"A Navigator screen must be a Widget, got {type(widget).__name__}")
+        return Route(widget=widget, transition=self._default_transition() if transition is None else transition)
 
     def _resolve_intent_to_route(self, intent: Any) -> Route:
-        """Resolve an intent and normalize the result to a Route."""
         factory = self._intent_routes.get(type(intent))
         if factory is None:
             raise RuntimeError(f"No route is registered for intent: {type(intent).__name__}")
-        resolved = factory(intent)
-        if isinstance(resolved, Route):
-            return resolved
-        return self._route_from_widget(resolved)
+        return self._to_route(factory(intent))
 
-    def _descriptor_for_push(self, route_or_widget_or_intent: Route | Widget | Any) -> _PushDescriptor | None:
-        """Restore descriptor for a ``push`` input, or ``None`` if non-restorable.
-
-        A ``Route``/``Widget`` instance is opaque — it was built from code that a
-        reload replaces, with no factory to rebuild it against — so it is recorded
-        as ``None``. An intent is declarative: it is captured by value plus its
-        type's qualified name so the stack can be replayed after reload.
-        """
-        if isinstance(route_or_widget_or_intent, (Route, Widget)):
+    def _descriptor_for_push(self, screen: Widget | Any) -> _PushDescriptor | None:
+        """Return the restore record for a ``push`` input; ``None`` for a widget, which has no factory."""
+        if isinstance(screen, Widget):
             return None
-        intent = route_or_widget_or_intent
-        return _PushDescriptor(intent=intent, type_qualname=_type_qualname(type(intent)))
+        return _PushDescriptor(intent=screen, type_qualname=_type_qualname(type(screen)))
 
     def _resolve_descriptor_to_route(self, descriptor: _PushDescriptor) -> Route | None:
-        """Rebuild a route from a restore descriptor against the current route table.
-
-        Matches by the intent's qualified name rather than class identity so a
-        descriptor captured before a reload resolves against the intent classes
-        registered on the freshly built navigator. Returns ``None`` when no route
-        is registered for that qualified name (route table changed under the
-        stack), which the caller treats as a restore stopping point.
-        """
+        """Rebuild a route from a descriptor; ``None`` when its intent is no longer registered."""
         factory = None
         for intent_type, builder in self._intent_routes.items():
             if _type_qualname(intent_type) == descriptor.type_qualname:
@@ -302,32 +272,21 @@ class Navigator(ComposableWidget):
                 break
         if factory is None:
             return None
-        resolved = factory(descriptor.intent)
-        if isinstance(resolved, Route):
-            return resolved
-        return self._route_from_widget(resolved)
+        return self._to_route(factory(descriptor.intent))
 
-    def _normalize_to_route(self, route_or_widget_or_intent: Route | Widget | Any) -> Route:
-        """Normalize external push input to a Route.
-
-        This is the single boundary adapter for `push(...)` input polymorphism.
-        Internal navigator runtime must only operate on `Route`.
-        """
-        if isinstance(route_or_widget_or_intent, Route):
-            return route_or_widget_or_intent
-
-        if isinstance(route_or_widget_or_intent, Widget):
-            return self._route_from_widget(route_or_widget_or_intent)
-
-        return self._resolve_intent_to_route(route_or_widget_or_intent)
+    def _normalize_to_route(self, screen: Widget | Any, transition: TransitionSpec | None) -> Route:
+        """Turn ``push`` input into a stack element."""
+        if isinstance(screen, Widget):
+            return self._to_route(screen, transition)
+        if transition is not None:
+            raise TypeError("transition= applies to a widget; an intent's factory gives its own transition")
+        return self._resolve_intent_to_route(screen)
 
     def _is_animated_transition(self, route: Route) -> bool:
-        return not isinstance(route.transition_spec, EmptyTransitionSpec)
+        return not isinstance(route.transition, EmptyTransitionSpec)
 
     def _on_transition_progress(self, value: float) -> None:
-        # ``progress`` is a plain attribute, not a widget-bound observable, so
-        # mutating it never requests a frame. Repaint every tween step so the
-        # transition fades continuously instead of only at its endpoints.
+        # ``progress`` is not observable, so each step repaints explicitly.
         transition = self._transition
         if transition is None:
             return
@@ -335,22 +294,27 @@ class Navigator(ComposableWidget):
         self.invalidate()
 
     def _get_motion(self, route: Route, phase: TransitionPhase, *, back: bool = False) -> Any | None:
-        return resolve_phase_motion(route.transition_spec, phase, back=back)
+        return resolve_phase_motion(route.transition, phase, back=back)
 
-    def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
+    def push(self, screen: Widget | Any, *, transition: TransitionSpec | None = None) -> None:
         """Push a new screen onto the navigation stack.
 
         Args:
-            route_or_widget_or_intent: A route, a widget to wrap in a default
-                route, or an intent resolved through the navigator's intents.
+            screen: A widget, or an intent resolved through the navigator's routes.
+            transition: The transition the widget moves with, on push and later
+                on pop. Defaults to none; ``MaterialNavigator`` defaults to
+                the Material page transition.
+
+        Raises:
+            TypeError: If ``transition`` is given with an intent.
         """
         self._cancel_transition()
 
         previous_route = self._top_route()
         previous_widget = None if previous_route is None else self._route_widget(previous_route)
 
-        route = self._normalize_to_route(route_or_widget_or_intent)
-        self._restore_log.append(self._descriptor_for_push(route_or_widget_or_intent))
+        route = self._normalize_to_route(screen, transition)
+        self._restore_log.append(self._descriptor_for_push(screen))
 
         self._stack.push(route)
         self._stack.mark_active(route)
@@ -384,77 +348,49 @@ class Navigator(ComposableWidget):
         self.invalidate()
 
     @property
-    def stack(self) -> tuple[Route, ...]:
-        """The route stack, bottom to top.
+    def stack(self) -> tuple[Widget, ...]:
+        """The screens on the stack, bottom to top.
 
-        A route that is being animated out **is still here**, and stays until its
-        exit transition finalizes and the route is disposed. Filtering it out
-        would report a pop as done while the outgoing screen is still mounted,
-        still laid out and still painted — a caller waiting on the depth would go
-        through on a transition that has not happened. So this reports what the
-        stack runtime holds, and code that wants "the pop finished" waits for it::
+        A popping screen stays until its exit transition ends. To wait for a
+        pop, wait for this to shrink::
 
             navigator.pop()
             await app.wait_for(lambda: len(navigator.stack) == 1)
 
-        Reading this never builds a widget: the routes are handed out as they
-        are, and ``Route.build_widget()`` constructs on demand. Asking what is on
-        the stack must not change what is on screen.
-
-        Not to be confused with :meth:`snapshot_stack`, which is the hot-reload
-        restore log.
+        Reading this mounts nothing.
         """
-        return tuple(self._stack.elements)
+        return tuple(route.widget for route in self._stack.elements)
 
     @property
     def in_transition(self) -> bool:
-        """Whether a navigation is in flight — **not** merely whether one animates.
+        """Whether a navigation is in flight, animated or not.
 
-        True from the moment a back navigation is requested, through the spawned
-        task, through any push or pop transition, until the stack has settled.
-        The wider definition is the load-bearing part: :meth:`pop` runs the pop as
-        a task, so on the narrow "is a transition object alive" reading this would
-        be ``False`` for the whole window between ``pop()`` returning and the task
-        starting, and ``await wait_for(lambda: not nav.in_transition)`` would go
-        through immediately, having waited for nothing.
-
-        Prefer waiting on what actually changed — :attr:`stack`, or the screen on
-        top — and reach for this when the depth is not what moved.
+        True from the call to :meth:`pop` until the stack settles, including
+        before the pop's task starts. Prefer waiting on :attr:`stack` when the
+        depth changes.
         """
         return self._transition is not None or self._back_requests_in_flight > 0 or self._pending_pop_requests > 0
 
     def snapshot_stack(self) -> list[_PushDescriptor | None]:
-        """Capture the restorable descriptors of routes pushed onto this navigator.
+        """Return the restore log for :meth:`restore_stack`, not the route stack.
 
-        Returns an ordered list, one entry per route added via :meth:`push`
-        (bottom to top): a :class:`_PushDescriptor` for a declarative (intent)
-        push, or ``None`` for an opaque, non-restorable push. Routes from the
-        initial construction stack are excluded — a hot reload rebuilds those
-        from the factory. Pair with :meth:`restore_stack` across a reload.
-
-        **This is not the route stack.** It is the restore log: one entry per
-        *declarative* push, ``None`` for a raw widget push, and nothing at all
-        for the routes the navigator was constructed with. For the stack, use
-        :attr:`stack`.
+        One entry per :meth:`push`, bottom to top: a descriptor for an intent,
+        ``None`` for a widget. The initial screens are left out; a hot reload
+        rebuilds them from the factory.
         """
         return list(self._restore_log)
 
     def restore_stack(self, descriptors: Sequence[_PushDescriptor | None]) -> int:
-        """Replay pushed routes from descriptors onto the freshly built navigator.
+        """Replay a restore log onto a freshly built navigator, without animation.
 
-        Each restorable descriptor is resolved against the current route table
-        (by intent qualified name) and pushed without animation, rebuilding the
-        stack the author had before a reload. Replay stops at the first entry
-        that cannot be restored — an opaque (``None``) push or an intent whose
-        route is no longer registered — leaving the remainder collapsed, the
-        documented degradation analogous to unmatched ``Observable`` paths.
+        Replay stops at a widget entry or an intent no longer registered; the
+        screens above it are lost.
 
         Args:
-            descriptors: The list returned by :meth:`snapshot_stack` before the
-                reload rebuilt the tree.
+            descriptors: What :meth:`snapshot_stack` returned before the reload.
 
         Returns:
-            The number of routes restored (pushed) onto the stack.
+            The number of screens restored.
         """
         restored = 0
         for descriptor in descriptors:
@@ -475,19 +411,14 @@ class Navigator(ComposableWidget):
 
     def pop(self) -> None:
         """Request a back navigation. The pop itself runs as a task."""
-        # Counted here rather than in the coroutine: this call returns before the
-        # task has run a single line, and ``in_transition`` has to be true for
-        # that window too. See ``_back_requests_in_flight``.
+        # Counted before the task starts, so ``in_transition`` covers the gap.
         self._back_requests_in_flight += 1
         scheduled = False
         try:
             task = spawn_task(self._tracked_request_back(), owner_name=f"{type(self).__name__}.pop")
             scheduled = task is not None
         finally:
-            # With no running loop ``spawn_task`` closes the coroutine and either
-            # raises or returns None. A coroutine closed before it ever started
-            # runs no ``finally``, so the release has to happen here or
-            # ``in_transition`` would stay true for the rest of the process.
+            # A coroutine closed before it starts runs no ``finally``, so release here.
             if not scheduled:
                 self._back_requests_in_flight -= 1
 
@@ -499,15 +430,13 @@ class Navigator(ComposableWidget):
             self._back_requests_in_flight -= 1
 
     async def request_back(self) -> bool:
-        """Request a single back action.
+        """Request one back action, as from Esc or a back button.
 
-        This API is designed for user back inputs (Esc/back button).
-        If a pop transition is already running, the request is queued and the
-        current transition is completed immediately.
+        During a pop transition, the request is queued and the running pop
+        finishes at once. Queued pops run without animation, except the last.
 
-        Queue consumption policy:
-        - Intermediate queued pops are performed without animation.
-        - The last queued pop (if any) uses the normal pop behavior.
+        Returns:
+            ``False`` if the stack cannot pop.
         """
         self._back_requests_in_flight += 1
         return await self._tracked_request_back()
@@ -528,10 +457,8 @@ class Navigator(ComposableWidget):
             # Finish push quickly, then pop once.
             self._force_finish_push_transition()
 
-        did_pop = await self._pop_once(skip_animation=False)
-        if not did_pop:
-            # will_pop canceled; treat as handled.
-            return True
+        # A pop refused by the screen still counts as handled.
+        await self._pop_once(skip_animation=False)
         return True
 
     def _force_finish_push_transition(self) -> None:
@@ -577,7 +504,7 @@ class Navigator(ComposableWidget):
                 self._pending_pop_requests = 0
                 return
 
-            # If we started an animated pop, wait for completion.
+            # An animated pop drains the rest when it finishes.
             if self._transition is not None and self._transition_handle is not None and self._transition.kind == "pop":
                 return
 
@@ -655,11 +582,9 @@ class Navigator(ComposableWidget):
             self.invalidate()
             return
 
-        widget = route.build_widget()
+        widget = route.widget
         self._stack.complete_exit(route)
-        # Keep the restore log aligned with the committed stack. A pop can dip
-        # below the pushed routes into the initial construction stack (which is
-        # not logged); guard so those pops leave the empty log untouched.
+        # Initial screens are not logged, so popping one leaves the log alone.
         if self._restore_log:
             self._restore_log.pop()
         try:
@@ -677,11 +602,9 @@ class Navigator(ComposableWidget):
         )
 
     def focus_traversal_children(self) -> list[Widget]:
-        """Return only the top route, so Tab never reaches a covered one.
+        """Return only the top screen, so Tab never reaches a covered one.
 
-        Every route stays mounted — that is how a screen keeps its state while
-        another one sits on top of it — and only the top one is painted. The Tab
-        sequence has to stop at the same boundary.
+        Covered screens stay mounted to keep their state.
         """
         routes = self._stack.elements
         if not routes:
@@ -696,10 +619,11 @@ class Navigator(ComposableWidget):
         self.clear_needs_layout()
         self.set_layout_rect(0, 0, width, height)
 
-        # Layout all cached route widgets so hit_test coordinate translation works.
+        # Lay out every mounted screen so hit_test coordinate translation works.
+        children = self.children_snapshot()
         for route in self._stack.elements:
-            widget = route.build_widget() if route._widget is not None else None
-            if widget is None:
+            widget = route.widget
+            if widget not in children:
                 continue
             try:
                 widget.layout(width, height)
@@ -736,8 +660,8 @@ class Navigator(ComposableWidget):
                     from_phase=from_phase,
                     to_phase=to_phase,
                     progress=p,
-                    from_transition_spec=transition.from_route.transition_spec,
-                    to_transition_spec=transition.to_route.transition_spec,
+                    from_transition_spec=transition.from_route.transition,
+                    to_transition_spec=transition.to_route.transition,
                 )
                 self._layer_composer.paint_transition(context)
                 return
@@ -774,13 +698,8 @@ class Navigator(ComposableWidget):
         super().on_unmount()
 
 
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, float(value)))
-
-
 def _transition_phase_progress(transition: _NavTransition) -> tuple[TransitionPhase, TransitionPhase, float] | None:
-    # Only the lower bound is pinned: overshooting motions run past 1.0 and
-    # settle, and the visual resolver extrapolates spatial patterns through it.
+    # Only the lower bound is pinned: an overshooting motion runs past 1.0.
     if transition.kind == "push":
         p = max(0.0, transition.progress)
         return (TransitionPhase.EXIT, TransitionPhase.ENTER, p)

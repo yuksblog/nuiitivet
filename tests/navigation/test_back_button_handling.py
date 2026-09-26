@@ -237,7 +237,7 @@ async def test_async_on_will_pop_handling_flag_released_on_exception() -> None:
     assert await app.handle_back_event() is True
 
     # After exception, _handling should be False (released in finally)
-    outgoing_widget = navigator._stack.elements[-1].build_widget() if navigator.can_pop() else None
+    outgoing_widget = navigator._stack.elements[-1].widget if navigator.can_pop() else None
     if outgoing_widget is not None:
         will_pop_scope = outgoing_widget if hasattr(outgoing_widget, "_handling") else None
         if will_pop_scope is not None:

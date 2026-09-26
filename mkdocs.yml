@@ -163,7 +163,6 @@ nav:
           - Dialogs: guide/overlay/dialogs.md
       - Navigation:
           - guide/navigation/index.md
-          - Route & Animations: guide/navigation/route.md
           - Intent-Based Navigation: guide/navigation/intent.md
           - Nested Navigation: guide/navigation/nested.md
       - Window:

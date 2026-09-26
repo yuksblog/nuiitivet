@@ -161,7 +161,7 @@ class MaterialOverlay(Overlay):
             self._resolve(dialog),
             backdrop=True,
             dismiss_on_outside_tap=dismiss_on_outside_tap,
-            transition_spec=MaterialTransitions.dialog(),
+            transition=MaterialTransitions.dialog(),
         )
 
     def _resolve(self, content: Widget | Any) -> Widget:
@@ -190,7 +190,7 @@ class MaterialOverlay(Overlay):
             passthrough=True,
             timeout=float(duration),
             position=OverlayPosition.aligned("bottom-center", offset=(0.0, -24.0)),
-            transition_spec=MaterialTransitions.snackbar(),
+            transition=MaterialTransitions.snackbar(),
         )
 
     def loading(
@@ -280,7 +280,7 @@ class MaterialOverlay(Overlay):
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned(alignment),
-            transition_spec=MaterialTransitions.side_sheet(side=side),
+            transition=MaterialTransitions.side_sheet(side=side),
         )
 
     def bottom_sheet(
@@ -308,5 +308,5 @@ class MaterialOverlay(Overlay):
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned("bottom-center"),
-            transition_spec=MaterialTransitions.bottom_sheet(),
+            transition=MaterialTransitions.bottom_sheet(),
         )

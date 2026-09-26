@@ -52,7 +52,7 @@ def test_overlay_layer_enter_exit_lifecycle_is_transition_driven() -> None:
         root.mount(_DummyApp())
         root.layout(800, 600)
 
-        overlay.show(BasicDialog(title="Lifecycle"), backdrop=True, transition_spec=_AnimatedTransitionSpec())
+        overlay.show(BasicDialog(title="Lifecycle"), backdrop=True, transition=_AnimatedTransitionSpec())
 
         entry = next(iter(overlay._entry_to_layer.keys()))
         layer = overlay._entry_to_layer[entry]
@@ -87,7 +87,7 @@ def test_overlay_transition_does_not_leak_clock_callbacks_after_repeated_show_cl
         root.layout(800, 600)
 
         for _ in range(10):
-            overlay.show(BasicDialog(title="Perf"), backdrop=True, transition_spec=_AnimatedTransitionSpec())
+            overlay.show(BasicDialog(title="Perf"), backdrop=True, transition=_AnimatedTransitionSpec())
             fake_clock.advance(0.7)  # finish enter
             entry = next(iter(overlay._entry_to_layer.keys()))
             overlay.remove_entry(entry)
@@ -118,7 +118,7 @@ def test_overlay_on_disposed_runs_once_after_exit_complete() -> None:
             callback_calls.append(bool(overlay._layer_stack.layers))
 
         entry = OverlayEntry(builder=_build, on_dispose=_on_disposed)
-        overlay._insert_entry_layer(entry, _OverlayLayer(entry, transition_spec=_AnimatedTransitionSpec()))
+        overlay._insert_entry_layer(entry, _OverlayLayer(entry, transition=_AnimatedTransitionSpec()))
 
         fake_clock.advance(0.7)  # finish enter
         overlay.remove_entry(entry)

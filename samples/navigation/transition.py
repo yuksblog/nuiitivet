@@ -24,22 +24,15 @@ class DetailsScreen(nv.ComposableWidget):
 class HomeScreen(nv.ComposableWidget):
     def build(self):
         def navigate_with_custom_animation() -> None:
+            # Slide up and fade in on enter; slide down and fade out on exit.
             custom_transition = nv.MaterialTransitions.page(
                 enter=nv.FadeIn() | nv.SlideInVertically(initial_offset_y=50.0),
                 exit_=nv.FadeOut() | nv.SlideOutVertically(target_offset_y=50.0),
             )
-            route = nv.Route(
-                builder=lambda: DetailsScreen(),
-                transition_spec=custom_transition,
-            )
-            nv.Navigator.of(self).push(route)
+            nv.Navigator.of(self).push(DetailsScreen(), transition=custom_transition)
 
         def navigate_instantly() -> None:
-            route = nv.Route(
-                builder=lambda: DetailsScreen(),
-                transition_spec=nv.Transitions.empty(),
-            )
-            nv.Navigator.of(self).push(route)
+            nv.Navigator.of(self).push(DetailsScreen(), transition=nv.Transitions.empty())
 
         return nv.Column(
             padding=16,
@@ -57,7 +50,7 @@ class HomeScreen(nv.ComposableWidget):
 
 
 def main(png_path: str | None = None) -> None:
-    app = nv.App(nv.Window(content=HomeScreen, title="Navigation Route", width=400, height=300))
+    app = nv.App(nv.Window(content=HomeScreen, title="Navigation Transitions", width=400, height=300))
     if png_path:
         app.render_to_png(png_path)
     else:

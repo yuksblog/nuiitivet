@@ -28,7 +28,6 @@ from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.stack import Stack
 from nuiitivet.modifiers.clip import clip
 from nuiitivet.navigation.navigator import Navigator
-from nuiitivet.navigation.route import Route
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -97,11 +96,11 @@ def test_a_deck_follows_its_selected_index() -> None:
 
 def test_a_navigators_covered_route_is_never_picked() -> None:
     """Every route stays mounted; only the top one is on screen."""
-    navigator = Navigator(Route(builder=lambda: Text("FIRST")))
+    navigator = Navigator(Text("FIRST"))
     with mount(navigator) as host:
         host.layout(300, 200)
         host.settle()
-        navigator.push(Route(builder=lambda: Text("SECOND")))
+        navigator.push(Text("SECOND"))
         host.settle()
         host.layout(300, 200)
         host.settle()

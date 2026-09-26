@@ -84,7 +84,8 @@ is in another window, it is `nv.Desktop.notify` — see [desktop.md](desktop.md)
 
 A ViewModel issues an Intent to a navigator; the View maps Intents to screens with
 the `nv.Navigator.intents(...)` factory. This keeps the VM free of Widget
-knowledge and gives type-safe routing. Route builders return a **Widget**.
+knowledge and gives type-safe routing. A factory returns a **Widget**, or a
+`(widget, transition)` pair.
 
 ```python
 from dataclasses import dataclass
@@ -118,7 +119,7 @@ def main():
     app = nv.App(
         nv.Window(
             content=lambda: nv.Navigator.intents(
-                initial_route=HomeIntent(),
+                initial=HomeIntent(),
                 routes={
                     HomeIntent:    lambda _: HomeScreen(),
                     DetailsIntent: lambda intent: DetailsScreen(item_id=intent.item_id),

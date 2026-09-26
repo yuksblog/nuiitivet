@@ -1,6 +1,6 @@
 """Tests for Intent System (Phase 5).
 
-The intent system resolves an intent object to a Route/Widget via a type map.
+The intent system resolves an intent object to a widget via a type map.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.overlay import Overlay
 from nuiitivet.widgeting.widget import Widget
@@ -41,9 +41,9 @@ class _DialogIntent:
 
 def test_navigator_push_intent_resolves_to_route() -> None:
     nav = Navigator.intents(
-        initial_route=_PushIntent(label="home"),
+        initial=_PushIntent(label="home"),
         routes={
-            _PushIntent: lambda i: Route(builder=lambda: _FlagWidget(label=i.label)),
+            _PushIntent: lambda i: _FlagWidget(label=i.label),
         },
     )
 
@@ -55,7 +55,7 @@ def test_navigator_push_intent_resolves_to_route() -> None:
 
 
 def test_navigator_push_intent_raises_when_unregistered() -> None:
-    nav = Navigator(Route(builder=_FlagWidget))
+    nav = Navigator(_FlagWidget())
 
     with pytest.raises(RuntimeError, match=r"No route is registered for intent"):
         nav.push(_PushIntent(label="x"))

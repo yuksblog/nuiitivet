@@ -17,7 +17,7 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.for_each import ForEach
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.observable import Observable
 from nuiitivet.observable.value import _ObservableValue
 from nuiitivet.testing import AppHarness
@@ -133,7 +133,7 @@ def test_deck_over_a_for_each_keeps_its_sizing_and_painting(mounted_app) -> None
 
 def test_navigator_tab_visits_only_the_top_route(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
-    navigator = Navigator(Route(builder=lambda: Column([home])))
+    navigator = Navigator(Column([home]))
     app = mounted_app(Column([navigator]))
     navigator.rebuild()
 
@@ -145,7 +145,7 @@ def test_navigator_tab_visits_only_the_top_route(mounted_app) -> None:
 
 def test_pushing_a_route_releases_the_focus_the_covered_one_held(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
-    navigator = Navigator(Route(builder=lambda: Column([home])))
+    navigator = Navigator(Column([home]))
     app = mounted_app(Column([navigator]))
     navigator.rebuild()
 
@@ -159,7 +159,7 @@ def test_pushing_a_route_releases_the_focus_the_covered_one_held(mounted_app) ->
 
 async def test_popping_a_route_makes_the_uncovered_one_traversable_again(mounted_app) -> None:
     home, pushed = Clickable(), Clickable()
-    navigator = Navigator(Route(builder=lambda: Column([home])))
+    navigator = Navigator(Column([home]))
     app = mounted_app(Column([navigator]))
     navigator.rebuild()
     navigator.push(Column([pushed]))

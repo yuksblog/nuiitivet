@@ -22,10 +22,10 @@ from nuiitivet.navigation.navigator import Navigator as CoreNavigator
 from nuiitivet.overlay.overlay import Overlay as CoreOverlay
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.result import OverlayDismissReason, OverlayResult
-from nuiitivet.navigation.route import Route
 from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.runtime.app import App as CoreApp
 from nuiitivet.runtime.window import Window as CoreWindow
+from nuiitivet.transition.spec import TransitionSpec
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -114,7 +114,7 @@ def test_concrete_classes_expose_every_protocol_member() -> None:
 
 
 class DetailsIntent:
-    """A navigation intent -- plain data, resolved to a Route by the View layer."""
+    """A navigation intent -- plain data, resolved to a screen by the View layer."""
 
     def __init__(self, item_id: int) -> None:
         self.item_id = item_id
@@ -131,8 +131,8 @@ class FakeNavigator:
         self.pushed: list[Any] = []
         self.pop_count = 0
 
-    def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
-        self.pushed.append(route_or_widget_or_intent)
+    def push(self, screen: Widget | Any, *, transition: TransitionSpec | None = None) -> None:
+        self.pushed.append(screen)
 
     def pop(self) -> None:
         self.pop_count += 1
@@ -217,7 +217,7 @@ class FakeOverlay:
         self.sheets.append(sheet)
         return self._handle(sheet)
 
-    def close(self, value: Any = None, target: Widget | Route | None = None) -> None:
+    def close(self, value: Any = None, target: Widget | None = None) -> None:
         self.closed.append(value)
 
 

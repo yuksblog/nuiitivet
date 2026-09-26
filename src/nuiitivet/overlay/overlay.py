@@ -163,11 +163,11 @@ class _OverlayLayer:
         self,
         entry: OverlayEntry,
         *,
-        transition_spec: TransitionSpec | None = None,
+        transition: TransitionSpec | None = None,
     ) -> None:
         # The entry itself, not its builder: open_entries names each layer's entry from this stack.
         self.entry: OverlayEntry = entry
-        self.transition_spec: TransitionSpec = transition_spec or Transitions.empty()
+        self.transition_spec: TransitionSpec = transition or Transitions.empty()
         self.transition_state: TransitionState = TransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
         self._widget: Widget | None = None
@@ -526,7 +526,7 @@ class Overlay(ComposableWidget):
         backdrop: bool = False,
         timeout: float | None = None,
         position: OverlayPosition | None = None,
-        transition_spec: TransitionSpec | None = None,
+        transition: TransitionSpec | None = None,
     ) -> OverlayHandle[Any]:
         """Show content as an overlay entry.
 
@@ -544,7 +544,7 @@ class Overlay(ComposableWidget):
                 only; ``passthrough`` decides input.
             timeout: Seconds after which the entry auto-dismisses, or ``None``.
             position: Where to place the content. Defaults to centered.
-            transition_spec: Enter/exit animation for the entry. Defaults to
+            transition: Enter/exit animation for the entry. Defaults to
                 none: the entry appears and disappears at once.
 
         Returns:
@@ -634,7 +634,7 @@ class Overlay(ComposableWidget):
             return widget
 
         entry = OverlayEntry(builder=build_entry_widget, on_dispose=on_dispose)
-        layer = _OverlayLayer(entry, transition_spec=transition_spec)
+        layer = _OverlayLayer(entry, transition=transition)
         layer_holder["layer"] = layer
         layer._content_widget = content_widget
         layer._passthrough = passthrough

@@ -78,9 +78,7 @@ class MainScreen(nv.ComposableWidget):
                 nv.Container(
                     width="wt",
                     height="wt",
-                    child=nv.Navigator(
-                        routes=[nv.Route(builder=lambda: NestedHome())]
-                    ),
+                    child=nv.Navigator(NestedHome()),
                 ),
             ],
         )

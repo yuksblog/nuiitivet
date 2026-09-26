@@ -2,7 +2,7 @@
 
 `MaterialNavigator` is a Material Design 3-flavored subclass of `Navigator`. It is automatically configured by `App`.
 
-The only difference from the base `Navigator` is the default transition: when you push a plain `Widget`, `MaterialNavigator` wraps it in a `Route` pre-configured with the MD3 page transition. Pushing an explicit `Route` bypasses this default and uses whatever `transition_spec` you provide.
+The only difference from the base `Navigator` is the default transition: a screen pushed without `transition=` moves with the MD3 page transition. `push(screen, transition=...)` overrides it for that screen.
 
 !!! note "Import convention"
     `App` and `Navigator` are the public names exported from `nuiitivet.material` for these classes.
@@ -42,7 +42,7 @@ Neither can be resolved from a widget's `__init__`. Resolve one in the event han
 | Topic | Guide |
 | ----- | ----- |
 | push / pop basics | [Navigation Overview](../navigation/index.md) |
-| Custom transitions | [Route and Animations](../navigation/route.md) |
+| Custom transitions | [Navigation Overview](../navigation/index.md#transitions) |
 | Intent-based routing | [Intent-Based Navigation](../navigation/intent.md) |
 | Nested navigation | [Nested Navigation](../navigation/nested.md) |
 

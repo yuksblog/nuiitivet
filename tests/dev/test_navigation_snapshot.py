@@ -27,7 +27,7 @@ class _GoIntent:
 
 def _intent_navigator() -> Navigator:
     return Navigator.intents(
-        initial_route=_GoIntent("home"),
+        initial=_GoIntent("home"),
         routes={_GoIntent: lambda _i: _FlagWidget()},
     )
 

@@ -72,7 +72,7 @@ def test_app_with_intents_navigator_becomes_the_app_navigator() -> None:
     app = App(
         Window(
             content=Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
+                initial=_HomeIntent(label="home"),
                 routes={
                     _HomeIntent: lambda i: _FlagWidget(label=i.label),
                 },
@@ -170,7 +170,7 @@ def test_app_with_intents_navigator_resizable_default_true() -> None:
     app = App(
         Window(
             content=Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
+                initial=_HomeIntent(label="home"),
                 routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
             ),
         ),
@@ -183,7 +183,7 @@ def test_app_with_intents_navigator_resizable_explicit_false() -> None:
     app = App(
         Window(
             content=Navigator.intents(
-                initial_route=_HomeIntent(label="home"),
+                initial=_HomeIntent(label="home"),
                 routes={_HomeIntent: lambda i: _FlagWidget(label=i.label)},
             ),
             resizable=False,

@@ -16,7 +16,6 @@ from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.deck import Deck
 from nuiitivet.modifiers.key_shortcut import key_shortcut
-from nuiitivet.navigation import Route
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
@@ -175,7 +174,7 @@ def test_foreground_does_not_fire_on_a_covered_route() -> None:
     assert _press_accel_s(app) is True
     assert saved == ["home"]
 
-    app.navigator.push(Route(builder=_box))
+    app.navigator.push(_box())
     assert _press_accel_s(app) is False
     assert saved == ["home"]
 
@@ -352,7 +351,7 @@ def test_mount_scope_survives_navigation() -> None:
 
     assert app._dispatch_key_press("q", accel_mask()) is True
 
-    app.navigator.push(Route(builder=_box))
+    app.navigator.push(_box())
     assert app._dispatch_key_press("q", accel_mask()) is True
     assert quit_calls == ["quit", "quit"]
 

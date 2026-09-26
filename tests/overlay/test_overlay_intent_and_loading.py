@@ -66,7 +66,7 @@ def test_material_overlay_default_loading_has_no_transition() -> None:
 def test_overlay_show_transition_does_not_carry_to_next_show() -> None:
     overlay = MaterialOverlay(intents={})
 
-    overlay.show(BasicDialog(title="First"), transition_spec=MaterialTransitions.dialog())
+    overlay.show(BasicDialog(title="First"), transition=MaterialTransitions.dialog())
     overlay.show(BasicDialog(title="Second"))
 
     first, second = overlay._entry_to_layer.values()

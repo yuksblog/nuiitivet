@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -47,7 +47,7 @@ def _make_other_intent_cls() -> type:
 def test_snapshot_logs_declarative_pushes() -> None:
     Intent = _make_go_intent_cls()
     nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
 
@@ -62,13 +62,13 @@ def test_snapshot_logs_declarative_pushes() -> None:
 def test_snapshot_records_instance_push_as_opaque() -> None:
     Intent = _make_go_intent_cls()
     nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
 
     nav.push(Intent("a"))
     nav.push(_FlagWidget())  # imperative instance push
-    nav.push(Route(builder=_FlagWidget))  # imperative route push
+    nav.push(_FlagWidget())  # imperative route push
 
     snap = nav.snapshot_stack()
     assert len(snap) == 3
@@ -81,7 +81,7 @@ def test_snapshot_records_instance_push_as_opaque() -> None:
 async def test_snapshot_reflects_pops() -> None:
     Intent = _make_go_intent_cls()
     nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
     nav.push(Intent("a"))
@@ -99,7 +99,7 @@ async def test_snapshot_reflects_pops() -> None:
 def test_restore_replays_intents_across_class_swap() -> None:
     OldIntent = _make_go_intent_cls()
     old_nav = Navigator.intents(
-        initial_route=OldIntent("home"),
+        initial=OldIntent("home"),
         routes={OldIntent: lambda _i: _FlagWidget()},
     )
     old_nav.push(OldIntent("a"))
@@ -117,7 +117,7 @@ def test_restore_replays_intents_across_class_swap() -> None:
         return _FlagWidget()
 
     new_nav = Navigator.intents(
-        initial_route=NewIntent("home"),
+        initial=NewIntent("home"),
         routes={NewIntent: _record},
     )
     seen.clear()  # drop the initial-route resolution; keep only replayed pushes
@@ -133,7 +133,7 @@ def test_restore_replays_intents_across_class_swap() -> None:
 def test_restore_stops_at_opaque_push() -> None:
     Intent = _make_go_intent_cls()
     old_nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
     old_nav.push(Intent("a"))
@@ -142,7 +142,7 @@ def test_restore_stops_at_opaque_push() -> None:
     snap = old_nav.snapshot_stack()
 
     new_nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
 
@@ -155,7 +155,7 @@ def test_restore_stops_at_opaque_push() -> None:
 def test_restore_stops_when_intent_not_registered() -> None:
     Intent = _make_go_intent_cls()
     old_nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
     old_nav.push(Intent("a"))
@@ -163,7 +163,7 @@ def test_restore_stops_when_intent_not_registered() -> None:
 
     Other = _make_other_intent_cls()
     new_nav = Navigator.intents(
-        initial_route=Other("home"),
+        initial=Other("home"),
         routes={Other: lambda _i: _FlagWidget()},
     )
 
@@ -176,7 +176,7 @@ def test_restore_stops_when_intent_not_registered() -> None:
 def test_restore_empty_snapshot_is_noop() -> None:
     Intent = _make_go_intent_cls()
     nav = Navigator.intents(
-        initial_route=Intent("home"),
+        initial=Intent("home"),
         routes={Intent: lambda _i: _FlagWidget()},
     )
 

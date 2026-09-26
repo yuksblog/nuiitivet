@@ -1,6 +1,6 @@
 # Navigation Overview
 
-Nuiitivet provides a robust navigation system for managing screen transitions and routing within your application. The navigation system is built around the `Navigator` widget, which manages a stack of `Route` objects.
+Nuiitivet provides a robust navigation system for managing screen transitions and routing within your application. The navigation system is built around the `Navigator` widget, which manages a stack of screens.
 
 ## The Navigator
 
@@ -16,7 +16,7 @@ The most common navigation operations are `push` and `pop`.
 
 ### Pushing a New Screen
 
-To navigate to a new screen, you use the `push()` method. This adds a new route to the top of the navigator's stack, making it the currently visible screen.
+To navigate to a new screen, you use the `push()` method. This adds the screen to the top of the navigator's stack, making it the currently visible screen.
 
 ```python
 import nuiitivet.material as nv
@@ -40,7 +40,7 @@ class HomeScreen(nv.ComposableWidget):
 
 ### Popping the Current Screen
 
-To return to the previous screen, you use the `pop()` method. This removes the top route from the navigator's stack, revealing the route beneath it. Let's look at the `DetailsScreen` that we pushed in the previous example.
+To return to the previous screen, you use the `pop()` method. This removes the top screen from the navigator's stack, revealing the screen beneath it. Let's look at the `DetailsScreen` that we pushed in the previous example.
 
 ```python
 import nuiitivet.material as nv
@@ -66,7 +66,7 @@ class DetailsScreen(nv.ComposableWidget):
 
 ## The Stack Structure
 
-The `Navigator` maintains a stack of routes. When you call `push()`, the new screen is placed on top of the stack. If you call `push()` multiple times, the screens are stacked on top of each other.
+The `Navigator` maintains a stack of screens. When you call `push()`, the new screen is placed on top of the stack. If you call `push()` multiple times, the screens are stacked on top of each other.
 
 For example, if you are on Screen A and push Screen B, the stack becomes `[Screen A, Screen B]`. If you then push Screen C, the stack becomes `[Screen A, Screen B, Screen C]`.
 
@@ -74,8 +74,51 @@ Calling `pop()` removes the top screen. In the previous example, calling `pop()`
 
 This stack-based approach makes it easy to manage complex navigation flows and ensures that users can always navigate back to where they came from.
 
+## Transitions
+
+Pass `transition=` to `push()` to choose how the screen moves.
+
+![Navigation Transitions](../../assets/navigation_transition.png)
+
+```python
+import nuiitivet.material as nv
+
+
+class HomeScreen(nv.ComposableWidget):
+    def build(self):
+        def navigate_with_custom_animation() -> None:
+            # Slide up and fade in on enter; slide down and fade out on exit.
+            custom_transition = nv.MaterialTransitions.page(
+                enter=nv.FadeIn() | nv.SlideInVertically(initial_offset_y=50.0),
+                exit_=nv.FadeOut() | nv.SlideOutVertically(target_offset_y=50.0),
+            )
+            nv.Navigator.of(self).push(DetailsScreen(), transition=custom_transition)
+
+        def navigate_instantly() -> None:
+            nv.Navigator.of(self).push(DetailsScreen(), transition=nv.Transitions.empty())
+
+        return nv.Column(
+            padding=16,
+            gap=12,
+            children=[
+                nv.Text("Home Screen"),
+                nv.Button(
+                    "Go to Details (Custom Animation)",
+                    on_click=navigate_with_custom_animation,
+                    style=nv.ButtonStyle.filled(),
+                ),
+                nv.Button("Go to Details (Instant)", on_click=navigate_instantly, style=nv.ButtonStyle.filled()),
+            ],
+        )
+```
+
+The screen keeps its transition while it is on the stack. Its `exit_` plays when another screen covers it, and the back variants play when it is popped.
+
+Without `transition=`, a screen moves with the navigator's default: the Material page transition under `App`. `nv.Transitions.empty()` switches the animation off.
+
+Effects such as `FadeIn`, `FadeOut`, `ScaleIn`, `ScaleOut`, `SlideInVertically` and `SlideOutVertically` combine with `|`.
+
 ## Next Steps
 
-- Learn how to customize transitions using [Route](route.md).
 - Discover how to decouple navigation logic using [Intents](intent.md).
 - Explore advanced navigation patterns with [MaterialNavigator](nested.md).

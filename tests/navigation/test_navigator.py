@@ -1,7 +1,7 @@
 """Tests for Navigator (Phase 3 MVP)."""
 
 from nuiitivet.layout.container import Container
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
@@ -45,7 +45,7 @@ def test_navigator_push_sets_built_child() -> None:
 
 
 async def test_navigator_pop_disposes_route_widget(nuiitivet_mount) -> None:
-    nav = Navigator(Route(builder=_FlagWidget))
+    nav = Navigator(_FlagWidget())
     host = nuiitivet_mount(nav)
     host.layout(200, 100)
 
@@ -59,7 +59,7 @@ async def test_navigator_pop_disposes_route_widget(nuiitivet_mount) -> None:
 
 
 async def test_navigator_pop_noop_when_single_route(nuiitivet_mount) -> None:
-    nav = Navigator(Route(builder=_FlagWidget))
+    nav = Navigator(_FlagWidget())
     host = nuiitivet_mount(nav)
     host.layout(200, 100)
     nav.rebuild()

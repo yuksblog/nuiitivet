@@ -98,7 +98,7 @@ def build_root() -> nv.Widget:
     # route table reconstructs each Screen from its ScreenIntent, which is what
     # makes the pushed stack replayable after a reload.
     return nv.Navigator.intents(
-        initial_route=ScreenIntent(depth=0),
+        initial=ScreenIntent(depth=0),
         routes={ScreenIntent: lambda intent: Screen(depth=intent.depth)},
     )
 

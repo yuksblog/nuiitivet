@@ -68,7 +68,7 @@ class DetailsScreen(nv.ComposableWidget):
 
 def build_root() -> nv.Widget:
     return nv.Navigator.intents(
-        initial_route=HomeIntent(),
+        initial=HomeIntent(),
         routes={
             HomeIntent: lambda _: HomeScreen(),
             DetailsIntent: lambda intent: DetailsScreen(intent),
@@ -93,7 +93,7 @@ Once configured, you can navigate by pushing an Intent object to the `Navigator`
 import nuiitivet.material as nv
 
 def go_to_details():
-    # Push an Intent instead of a Widget or Route
+    # Push an Intent instead of a Widget
     nv.Navigator.of(self).push(DetailsIntent(item_id=42))
 
 nv.Button(
@@ -101,6 +101,24 @@ nv.Button(
     on_click=go_to_details,
  style=nv.ButtonStyle.filled())
 ```
+
+## Giving a Screen Its Own Transition
+
+A factory can return a `(widget, transition)` pair instead of a widget. That screen then moves with its own transition.
+
+```python
+import nuiitivet.material as nv
+
+nv.Navigator.intents(
+    initial=HomeIntent(),
+    routes={
+        HomeIntent: lambda _: HomeScreen(),
+        DetailsIntent: lambda intent: (DetailsScreen(intent), nv.Transitions.empty()),
+    },
+)
+```
+
+`push(intent, transition=...)` raises `TypeError`. The transition belongs to the factory, so a hot reload that replays the intent restores it too.
 
 ## Why Use Intents?
 
@@ -147,8 +165,8 @@ class FakeNavigator:
     def __init__(self):
         self.pushed = []
 
-    def push(self, route_or_widget_or_intent):
-        self.pushed.append(route_or_widget_or_intent)
+    def push(self, screen, transition=None):
+        self.pushed.append(screen)
 
     def pop(self):
         if self.pushed:

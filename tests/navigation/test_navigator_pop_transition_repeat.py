@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -37,7 +37,7 @@ class _Handle:
 
 
 async def test_pop_finishes_when_pop_transition_running(nuiitivet_mount) -> None:
-    nav = Navigator.routes([Route(builder=_FlagWidget), Route(builder=_FlagWidget)])
+    nav = Navigator.routes([_FlagWidget(), _FlagWidget()])
     host = nuiitivet_mount(nav)
     host.layout(200, 100)
 

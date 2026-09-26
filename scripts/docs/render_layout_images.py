@@ -93,7 +93,7 @@ SAMPLES = [
     ("samples/modifiers/popup/tooltip_basic.py", "modifier_popup_tooltip.png"),
     # Navigation
     ("samples/navigation/basic.py", "navigation_basic.png"),
-    ("samples/navigation/route.py", "navigation_route.png"),
+    ("samples/navigation/transition.py", "navigation_transition.png"),
     ("samples/navigation/intent.py", "navigation_intent.png"),
     ("samples/navigation/nested.py", "navigation_sub.png"),
     # The intuitive grammar
