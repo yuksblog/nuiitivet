@@ -97,7 +97,7 @@ nv.App(nv.Window(content=HomeScreen), theme=nv.ThemeFactory.dark("#00639B")).run
 
 See [Material Theme](material_theme.md) for detailed usage.
 
-## Overlay Routes
+## Overlay Intents
 
 Register custom overlay intents that can be dispatched from anywhere in the widget tree:
 
@@ -107,7 +107,7 @@ import nuiitivet.material as nv
 nv.App(
     nv.Window(
         content=HomeScreen,
-        overlay_routes={
+        overlay_intents={
             MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
         },
     ),

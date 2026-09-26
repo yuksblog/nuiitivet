@@ -9,10 +9,14 @@ from nuiitivet.widgeting.widget import Widget
 
 @dataclass(slots=True)
 class Route:
-    """A unit of navigation.
+    """One screen on a Navigator's stack.
 
-    Notes:
-        This is intentionally minimal for Phase 3.
+    The route builds its widget on first display and keeps it while the route
+    stays on the stack, so going back to it shows the same widget.
+
+    Attributes:
+        builder: Builds the route's widget.
+        transition_spec: Enter and exit animation. Defaults to none.
     """
 
     builder: Callable[[], Widget]

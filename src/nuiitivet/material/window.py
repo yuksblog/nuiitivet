@@ -9,7 +9,6 @@ from nuiitivet.material.navigator import MaterialNavigator
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.navigation.navigator import Navigator
-from nuiitivet.navigation.route import Route
 from nuiitivet.runtime.window import RootFactory, Window, _UNSET
 from nuiitivet.runtime.window_sizing import WindowPositionLike, WindowSizingLike
 from nuiitivet.theme.types import ColorSpec
@@ -45,7 +44,7 @@ class MaterialWindow(Window):
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
-        overlay_routes: Mapping[type[Any], Callable[[Any], Route | Widget]] | None = None,
+        overlay_intents: Mapping[type[Any], Callable[[Any], Widget]] | None = None,
         background: ColorSpec = ColorRole.SURFACE,
         title: "str | None | ObservableBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
@@ -65,8 +64,8 @@ class MaterialWindow(Window):
                 factory; see :class:`~nuiitivet.runtime.window.Window`.
             width: Window width specification.
             height: Window height specification.
-            overlay_routes: Optional mapping of Intent types to overlay
-                builder functions (mutually exclusive with
+            overlay_intents: Optional mapping of intent types to functions
+                that build the widget to show (mutually exclusive with
                 ``overlay_factory``).
             background: Window background color. Defaults to Material Surface.
             title: OS window title.
@@ -90,10 +89,10 @@ class MaterialWindow(Window):
         if overlay_factory is None:
 
             def overlay_factory() -> MaterialOverlay:
-                return MaterialOverlay(intents=overlay_routes)
+                return MaterialOverlay(intents=overlay_intents)
 
-        elif overlay_routes is not None:
-            raise ValueError("Specify only one of overlay_routes or overlay_factory")
+        elif overlay_intents is not None:
+            raise ValueError("Specify only one of overlay_intents or overlay_factory")
 
         super().__init__(
             content=content,

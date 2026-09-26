@@ -29,7 +29,7 @@ class LoadingIntent:
     """Intent for showing a loading indicator via MaterialOverlay.
 
     This is a marker intent with no parameters.
-    Visual properties should be configured via overlay_routes in MaterialApp.
+    Visual properties should be configured via ``overlay_intents`` on MaterialWindow.
     """
 
     pass

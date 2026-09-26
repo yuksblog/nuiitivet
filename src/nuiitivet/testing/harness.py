@@ -79,7 +79,7 @@ class AppHarness(_HarnessBase):
                 that a callback the framework contained fails the test, scoped
                 and overridden the same way.
             **app_kwargs: Passed through to the main window's constructor
-                (``overlay_routes``, ``background``, ...).
+                (``overlay_intents``, ``background``, ...).
         """
         # Defaulting to the Material App is what keeps the harness standing in
         # for the app rather than for a stripped-down cousin of it: the overlay,

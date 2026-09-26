@@ -21,7 +21,7 @@ class CustomDialogContent(nv.ComposableWidget):
         self.counter.value += 1
 
     def _close(self):
-        # An overlay route is mounted inside the overlay showing it, so the
+        # The dialog is mounted inside the overlay showing it, so the
         # nearest ancestor Overlay is exactly the one to close.
         nv.Overlay.of(self).close(self.counter.value)
 
@@ -109,7 +109,7 @@ def main(png_path: str = "") -> None:
     app = nv.App(
         nv.Window(
             content=CustomIntentDemo,
-            overlay_routes={CounterIntent: create_counter_dialog},
+            overlay_intents={CounterIntent: create_counter_dialog},
             width=400,
             height=300,
         )
