@@ -111,7 +111,7 @@ overlay.snackbar(nv.Snackbar("Upload complete"))
 
 ## Side Sheet
 
-Displays a modal sheet that slides in from a side edge. The slide-in edge is a placement concern owned by `side_sheet()`: the `side` argument drives three things at once — the slide direction of the transition, the screen-edge alignment, and which (inner, away-from-edge) corners are rounded. The corner rounding is applied by `side_sheet()` via the `corner_radius` modifier, so the `SideSheet` widget itself renders a square container and no longer takes a `side` parameter.
+Displays a modal sheet that slides in from a side edge. The slide-in edge is a placement concern owned by `side_sheet()`: the `side` argument drives three things at once — the slide direction of the transition, the screen-edge alignment, and which (inner, away-from-edge) corners are rounded. The corner rounding is applied by `side_sheet()` via the `corner_radius` modifier, so the `SideSheet` widget itself renders a square container.
 
 ```python
 import nuiitivet.material as nv
@@ -127,7 +127,7 @@ overlay.side_sheet(
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `sheet` | `SideSheet` | required | Side sheet widget |
+| `sheet` | `SideSheet \| Any` | required | Side sheet widget, or an intent resolved by the overlay |
 | `side` | `"right" \| "left"` | `"right"` | Edge the sheet slides in from |
 | `dismiss_on_outside_tap` | `bool` | `True` | Dismiss when tapping the scrim |
 
@@ -135,7 +135,7 @@ overlay.side_sheet(
 
 ## Bottom Sheet
 
-Displays a modal sheet that slides up from the bottom edge. The same principle as `side_sheet()` applies: the transition direction (slide from bottom), screen-edge position (bottom-center), and corner radii (top two corners rounded, bottom edge flush) must all stay consistent. Because all three are determined solely by the fact that it is a bottom sheet, `bottom_sheet()` accepts only a `BottomSheet` widget.
+Displays a modal sheet that slides up from the bottom edge. The same principle as `side_sheet()` applies: the transition direction (slide from bottom), screen-edge position (bottom-center), and corner radii (top two corners rounded, bottom edge flush) must all stay consistent. Because all three are determined solely by the fact that it is a bottom sheet, `bottom_sheet()` accepts only a `BottomSheet` widget, or an intent that resolves to one.
 
 ```python
 import nuiitivet.material as nv
@@ -150,7 +150,7 @@ overlay.bottom_sheet(
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `sheet` | `BottomSheet` | required | Bottom sheet widget |
+| `sheet` | `BottomSheet \| Any` | required | Bottom sheet widget, or an intent resolved by the overlay |
 | `dismiss_on_outside_tap` | `bool` | `True` | Dismiss when tapping the scrim |
 
 ![Bottom Sheet](../../assets/material_overlay_bottom_sheet.png)
@@ -197,7 +197,7 @@ Each shortcut applies a pre-configured MD3 transition automatically. All transit
 | `side_sheet` | Slide in from side edge | Slide out to side edge | Fades with content |
 | `loading` | Instant | Instant | None |
 
-These shortcuts accept only their typed arguments — a `Widget` (or intent) for `dialog()`/`loading()`, `str`/`Snackbar` for `snackbar()`, and the corresponding sheet widget for `bottom_sheet()`/`side_sheet()`. None of them takes a transition or a position: each shortcut owns the MD3 transition, screen-edge position, and (for sheets) corner radii, so they stay consistent. `bottom_sheet()` derives everything from the fact that it is a bottom sheet; `side_sheet()` derives it from its `side` argument.
+These shortcuts accept only their typed arguments — a `Widget` or an intent for `dialog()`, `loading()`, `bottom_sheet()` and `side_sheet()`, and `str`/`Snackbar` for `snackbar()`. None of them takes a transition or a position: each shortcut owns the MD3 transition, screen-edge position, and (for sheets) corner radii, so they stay consistent. `bottom_sheet()` derives everything from the fact that it is a bottom sheet; `side_sheet()` derives it from its `side` argument.
 
 To display fully custom overlay content with a non-standard transition or backdrop, call `show()` directly.
 
@@ -258,6 +258,41 @@ async def on_submit(self) -> None:
     result = await handle
     if result.value is True:
         self.submit()
+```
+
+A sheet shortcut takes an intent the same way. The factory returns the sheet widget, and the shortcut keeps its placement arguments:
+
+```python
+from dataclasses import dataclass
+import nuiitivet.material as nv
+
+
+@dataclass(frozen=True)
+class SettingsIntent:
+    title: str
+
+
+def build_settings_sheet(intent: SettingsIntent) -> nv.Widget:
+    return nv.SideSheet(
+        nv.Box(
+            nv.Column(
+                children=[nv.Text("Setting 1"), nv.Text("Setting 2")],
+                gap=12,
+                cross_alignment="start",
+            ),
+            padding=24,
+        ),
+        headline=intent.title,
+    )
+
+
+def build_overlay() -> nv.Overlay:
+    return nv.Overlay(intents={SettingsIntent: build_settings_sheet})
+
+
+class SheetIntentDemo(nv.ComposableWidget):
+    def open_settings(self) -> None:
+        nv.Overlay.of(self).side_sheet(SettingsIntent(title="Settings"), side="left")
 ```
 
 For more on intents in the context of MVVM architecture, see [Dialogs — Architecting Dialogs in MVVM](../overlay/dialogs.md#architecting-dialogs-in-mvvm).

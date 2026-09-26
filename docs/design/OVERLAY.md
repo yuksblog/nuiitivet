@@ -221,10 +221,11 @@ Scenario-specific APIs are moved to subclasses.
 
 #### Intent Resolution
 
-- `MaterialOverlay.dialog(...)` accepts `Widget | Any`.
+- `MaterialOverlay.dialog()`, `side_sheet()`, `bottom_sheet()` and `loading()` accept `Widget | Any`.
   - A `Widget` is displayed as-is.
   - Everything else is resolved to a `Widget` via `IntentResolver.resolve(intent)`.
-  - Either way, `dialog()` supplies the MD3 dialog transition. An intent factory returns content only, so a registered intent cannot change how its dialog enters.
+  - Either way, the method supplies the MD3 transition and position. An intent factory returns content only, so a registered intent cannot change how its entry enters.
+  - Sheet placement (`side`, `dismiss_on_outside_tap`) stays on the method. Carrying it on the intent was rejected: it is how the sheet is presented, not what it shows.
 - `MaterialOverlay` allows for `IntentResolver` injection.
   - Alternatively, pass `intents: Mapping[type[Any], Callable[[Any], Widget]]` (internally builds a mapping resolver).
 - Register standard intents by default:

@@ -237,71 +237,91 @@ class MaterialOverlay(Overlay):
 
     def side_sheet(
         self,
-        sheet: Widget,
+        sheet: Widget | Any,
         *,
         side: Literal["right", "left"] = "right",
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
         """Display a modal side sheet.
 
-        The slide-in edge is a placement concern owned by this method: ``side``
-        controls the sheet's alignment, transition direction, and which (inner,
-        away-from-edge) corners are rounded.  The corner rounding is applied here
-        via the :func:`corner_radius` modifier, using the radius from
-        ``SideSheet.style``; the :class:`SideSheet` widget itself renders a
-        square container.
+        ``side`` sets the edge the sheet slides in from, its alignment, and
+        which corners are rounded. The rounding uses ``SideSheet.style``.
 
         Args:
-            sheet: SideSheet widget (or a wrapper such as one produced by
-                ``.modifier(will_pop(...))``) that defines content, headline,
-                and styling.
+            sheet: A widget containing a :class:`SideSheet`, possibly wrapped
+                by modifiers, or an intent resolved by the overlay's intent
+                resolver.
             side: Edge the sheet slides in from (``"right"`` or ``"left"``).
                 Defaults to ``"right"``.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
+
+        Returns:
+            An :class:`OverlayHandle` for manual dismissal. A sheet shown from an
+            intent stays open across a hot reload, and the handle follows it.
+
+        Raises:
+            TypeError: If the widget, or the one an intent resolves to, contains
+                no :class:`SideSheet`.
         """
-        inner = _find_descendant(sheet, SideSheet)
+        widget = self._resolve(sheet)
+        inner = _find_descendant(widget, SideSheet)
         if inner is None:
             raise TypeError("side_sheet() requires a SideSheet widget (possibly wrapped by modifiers)")
 
         cr = float(inner.style.corner_radius)
         # Round only the inner (away-from-edge) corners: (tl, tr, br, bl).
         radius = (cr, 0.0, 0.0, cr) if side == "right" else (0.0, cr, cr, 0.0)
-        presented = sheet.modifier(corner_radius(radius))
         alignment = "top-right" if side == "right" else "top-left"
 
-        return self.show(
-            presented,
+        handle = self.show(
+            widget.modifier(corner_radius(radius)),
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned(alignment),
             transition=MaterialTransitions.side_sheet(side=side),
         )
+        if not isinstance(sheet, Widget):
+            replay = partial(MaterialOverlay.side_sheet, side=side, dismiss_on_outside_tap=dismiss_on_outside_tap)
+            self._record_for_restore(handle, sheet, replay)
+        return handle
 
     def bottom_sheet(
         self,
-        sheet: Widget,
+        sheet: Widget | Any,
         *,
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
         """Display a modal bottom sheet sliding up from the bottom edge.
 
-        Visual styling (background, size, corner radius) is fully owned by the
-        :class:`BottomSheet` widget.
+        The :class:`BottomSheet` widget owns the background, size and corner radius.
 
         Args:
-            sheet: BottomSheet widget (or a wrapper such as one produced by
-                ``.modifier(will_pop(...))``) that defines content, headline,
-                and styling.
+            sheet: A widget containing a :class:`BottomSheet`, possibly wrapped
+                by modifiers, or an intent resolved by the overlay's intent
+                resolver.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the sheet.
                 Defaults to ``True``.
+
+        Returns:
+            An :class:`OverlayHandle` for manual dismissal. A sheet shown from an
+            intent stays open across a hot reload, and the handle follows it.
+
+        Raises:
+            TypeError: If the widget, or the one an intent resolves to, contains
+                no :class:`BottomSheet`.
         """
-        if _find_descendant(sheet, BottomSheet) is None:
+        widget = self._resolve(sheet)
+        if _find_descendant(widget, BottomSheet) is None:
             raise TypeError("bottom_sheet() requires a BottomSheet widget (possibly wrapped by modifiers)")
-        return self.show(
-            sheet,
+        handle = self.show(
+            widget,
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned("bottom-center"),
             transition=MaterialTransitions.bottom_sheet(),
         )
+        if not isinstance(sheet, Widget):
+            replay = partial(MaterialOverlay.bottom_sheet, dismiss_on_outside_tap=dismiss_on_outside_tap)
+            self._record_for_restore(handle, sheet, replay)
+        return handle
