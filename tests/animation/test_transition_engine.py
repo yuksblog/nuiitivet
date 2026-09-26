@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nuiitivet.navigation.transition_engine import TransitionEngine, TransitionMotions
+from nuiitivet.transition.engine import TransitionEngine, TransitionMotions
 
 
 def test_transition_engine_immediate_completion_calls_apply_and_on_complete() -> None:

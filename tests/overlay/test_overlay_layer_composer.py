@@ -23,7 +23,7 @@ def test_overlay_delegates_layer_composition_to_injected_composer() -> None:
     dialog = BasicDialog(title="Title", message="Body")
     overlay.show(dialog, passthrough=True)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     # A pass-through entry needs no blocking layer, so the composer's output is
@@ -39,7 +39,7 @@ def test_overlay_stacks_its_blocking_layer_under_the_composed_content() -> None:
 
     overlay.show(BasicDialog(title="Title"), dismiss_on_outside_tap=True)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     built = entry.build_widget()
 
     assert isinstance(built, Stack)
@@ -57,7 +57,7 @@ def test_overlay_makes_the_composed_backdrop_click_through() -> None:
 
     overlay.show(BasicDialog(title="Title"), backdrop=True, dismiss_on_outside_tap=True)
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
     layers = entry.build_widget().children_snapshot()
 
     # backdrop (click-through) -> blocker -> content

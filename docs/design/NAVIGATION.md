@@ -4,36 +4,25 @@
 
 ### 1.1 Relationship Between Overlay and Navigator
 
-#### Policy: Physical Separation + Shared Internal Implementation
+`Navigator.push()` changes the screen. `Overlay.show()` puts a layer on top of it. The window stacks the two side by side, overlay above, and neither imports the other.
 
-The user-facing API should be intuitive and reflect the physical structure, while internal route/stack management is shared.
-
-- `Navigator.push()` to "transition screens"
-- `Overlay.show()` to "display on the topmost layer"
-
-Internally, the `Navigator` acts as a stack managing `Route` objects, while the `Overlay` maintains an internal `_modal_navigator` that treats Dialogs and Snackbars as routes.
-
-```text
-┌─────────────────────────────────────┐
-│ App                                  │
-│                                      │
-│  ┌───────────────────────────────┐  │
-│  │ Overlay (Physical Layer)       │  │ ← Always on top
-│  │  Internal: _modal_navigator   │  │
-│  │    ├─ Route (dialog)          │  │
-│  │    └─ Route (snackbar)        │  │
-│  └───────────────────────────────┘  │
-│                                      │
-│  ┌───────────────────────────────┐  │
-│  │ Content                       │  │
-│  │  ┌──────────────────┐         │  │
-│  │  │ Navigator (Part) │         │  │ ← Placed by user
-│  │  │  ├─ Route         │         │  │
-│  │  │  └─ Route         │         │  │
-│  │  └──────────────────┘         │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Window
+        direction LR
+        Navigator["Navigator<br/>StackRuntime[Route]"]
+        Overlay["Overlay<br/>StackRuntime[overlay layer]"]
+    end
+    Kernel["nuiitivet.transition<br/>StackRuntime, TransitionEngine,<br/>TransitionSpec, TransitionState"]
+    Navigator --> Kernel
+    Overlay --> Kernel
 ```
+
+Both stacks come from `nuiitivet.transition`. The kernel tracks when an element enters, stays and exits, drives the progress, and says how it moves. It knows nothing of screens or layers: the stack holds any element with a `dispose()`.
+
+The two stacks differ in what the top means. A navigator paints only its top route; the routes beneath stay mounted, unpainted. An overlay paints every layer, newest on top.
+
+Building the overlay on a `Navigator` was rejected. Overlay layers pile up instead of replacing each other, and they must never enter the app's back stack.
 
 ### 1.2 Root Navigator Design
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
+from nuiitivet.transition.state import TransitionState
 from nuiitivet.widgeting.widget import Widget
-
-from .transition_state import OverlayTransitionState
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,14 +19,14 @@ class OverlayLayerCompositionContext:
     visual facts only.
 
     Attributes:
-        content: Route content widget for the current overlay entry.
+        content: Content widget of the current overlay entry.
         transition_state: Transition lifecycle observables and transition spec token for this entry.
         backdrop: Whether a backdrop should be painted behind the content.
         position_content: Function to place content according to overlay position.
     """
 
     content: Widget
-    transition_state: OverlayTransitionState
+    transition_state: TransitionState
     backdrop: bool
     position_content: Callable[[Widget], Widget]
 

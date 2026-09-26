@@ -14,7 +14,7 @@ from __future__ import annotations
 from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.material.transition_visual_spec import resolve_material_transition_visual_spec
 from nuiitivet.navigation.layer_composer import NavigationTransitionKind
-from nuiitivet.navigation.transition_spec import TransitionPhase
+from nuiitivet.transition.spec import TransitionPhase
 
 
 def _translate_x(spec, *, phase: TransitionPhase, progress: float, kind: NavigationTransitionKind) -> float:

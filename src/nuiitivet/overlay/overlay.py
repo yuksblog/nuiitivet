@@ -19,16 +19,16 @@ from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.modifiers.passthrough_pointer import passthrough_pointer
 from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
-from nuiitivet.navigation import Route
-from nuiitivet.navigation.stack_runtime import RouteStackRuntime
-from nuiitivet.navigation.transition_engine import TransitionEngine
-from nuiitivet.navigation.transition_spec import (
+from nuiitivet.transition.engine import TransitionEngine
+from nuiitivet.transition.spec import (
     EmptyTransitionSpec,
     TransitionPhase,
     TransitionSpec,
     Transitions,
     resolve_phase_motion,
 )
+from nuiitivet.transition.stack import StackRuntime
+from nuiitivet.transition.state import TransitionState
 from nuiitivet.common.logging_once import exception_once
 from .overlay_aware import OverlayAware
 from .overlay_entry import OverlayEntry
@@ -36,7 +36,6 @@ from .overlay_handle import OverlayHandle
 from .overlay_position import OverlayPosition
 from .result import OverlayDismissReason, OverlayResult
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext, OverlayLayerPaint
-from .transition_state import OverlayTransitionState
 
 logger = logging.getLogger(__name__)
 
@@ -61,144 +60,118 @@ def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
     return None
 
 
-class _ModalNavigator(ComposableWidget):
-    """Private navigator for overlay layers.
+class _LayerStack(ComposableWidget):
+    """Private stack of overlay layers.
 
-    This is intentionally separate from `navigation.Navigator`:
-    - It can stack multiple routes as layers.
-    - It avoids affecting the app's navigation stack.
+    Separate from ``Navigator`` on purpose: layers pile up on top of each other
+    rather than replacing one another, and the app's navigation stack never
+    sees them.
     """
 
-    def __init__(self, *, base_route: Route) -> None:
+    def __init__(self) -> None:
         super().__init__(width="wt", height="wt")
-        self._base_route = base_route
-        self._stack = RouteStackRuntime(initial_routes=[base_route], pinned_routes=[base_route])
+        self._stack: StackRuntime[_OverlayLayer] = StackRuntime()
         self._pending_dispose: dict[int, Callable[[], None]] = {}
         # One Stack for the life of the overlay, synced one layer at a time: a
         # rebuild per push or exit would remount every live entry.
         self._layers = Stack(children=[], alignment="center", width="wt", height="wt")
-        self._layer_by_route: dict[int, Widget] = {}
+        self._widget_by_layer: dict[int, Widget] = {}
 
     @property
-    def _routes(self) -> list[Route]:
-        return self._stack.routes
+    def layers(self) -> list[_OverlayLayer]:
+        return self._stack.elements
 
     def can_pop(self) -> bool:
-        return self._stack.can_pop(min_routes=1)
+        return self._stack.can_pop(min_elements=0)
 
-    def push(self, route: _OverlayEntryRoute) -> None:
-        self._stack.push(route)
-        if self._should_animate_route(route):
-            route.start_enter(
+    def push(self, layer: _OverlayLayer) -> None:
+        self._stack.push(layer)
+        if self._should_animate(layer):
+            layer.start_enter(
                 on_update=lambda: self.invalidate(),
-                on_complete=lambda: self._mark_active(route),
+                on_complete=lambda: self._mark_active(layer),
             )
         else:
-            self._stack.mark_active(route)
-        self._add_layer(route)
+            self._stack.mark_active(layer)
+        self._add_layer_widget(layer)
 
-    def remove_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
-        if route is self._base_route:
-            return
-        if route not in self._stack.routes:
+    def remove(self, layer: _OverlayLayer, *, on_disposed: Callable[[], None] | None = None) -> None:
+        if layer not in self._stack.elements:
             if on_disposed is not None:
                 on_disposed()
             return
-        if not self._stack.mark_exiting(route):
+        if not self._stack.mark_exiting(layer):
             if on_disposed is not None:
                 on_disposed()
             return
         if on_disposed is not None:
-            self._pending_dispose[id(route)] = on_disposed
+            self._pending_dispose[id(layer)] = on_disposed
 
-        if self._should_animate_route(route):
-            route.start_exit(
+        if self._should_animate(layer):
+            layer.start_exit(
                 on_update=lambda: self.invalidate(),
-                on_complete=lambda: self._finalize_route_exit(route),
+                on_complete=lambda: self._finalize_exit(layer),
             )
             return
 
-        self._finalize_route_exit(route)
+        self._finalize_exit(layer)
 
-    def _finalize_route_exit(self, route: _OverlayEntryRoute) -> None:
+    def _finalize_exit(self, layer: _OverlayLayer) -> None:
         try:
-            self._stack.complete_exit(route)
+            self._stack.complete_exit(layer)
         except Exception:
-            exception_once(
-                logger,
-                f"overlay_modal_route_dispose_exc:{type(route).__name__}",
-                "Overlay modal route dispose raised (route=%s)",
-                type(route).__name__,
-            )
-        callback = self._pending_dispose.pop(id(route), None)
+            exception_once(logger, "overlay_layer_dispose_exc", "Overlay layer dispose raised")
+        callback = self._pending_dispose.pop(id(layer), None)
         if callback is not None:
             try:
                 callback()
             except Exception:
-                exception_once(
-                    logger,
-                    f"overlay_modal_route_on_disposed_exc:{type(route).__name__}",
-                    "Overlay modal route on_disposed raised (route=%s)",
-                    type(route).__name__,
-                )
-        self._remove_layer(route)
+                exception_once(logger, "overlay_layer_on_disposed_exc", "Overlay layer on_disposed raised")
+        self._remove_layer_widget(layer)
 
     def pop(self) -> None:
         if not self.can_pop():
             return
-        route = self._stack.begin_pop()
-        if route is None:
+        layer = self._stack.begin_pop()
+        if layer is None:
             return
-        if not isinstance(route, _OverlayEntryRoute):
-            self._finalize_route_exit(self._coerce_route(route))
-            return
-        self.remove_route(route)
+        self.remove(layer)
 
-    def _coerce_route(self, route: Route) -> _OverlayEntryRoute:
-        if isinstance(route, _OverlayEntryRoute):
-            return route
-        raise RuntimeError(f"Overlay modal runtime requires _OverlayEntryRoute, got: {type(route).__name__}")
-
-    def _mark_active(self, route: Route) -> None:
-        self._stack.mark_active(route)
+    def _mark_active(self, layer: _OverlayLayer) -> None:
+        self._stack.mark_active(layer)
         self.invalidate()
 
-    def _should_animate_route(self, route: Route) -> bool:
-        if isinstance(route.transition_spec, EmptyTransitionSpec):
+    def _should_animate(self, layer: _OverlayLayer) -> bool:
+        if isinstance(layer.transition_spec, EmptyTransitionSpec):
             return False
         return getattr(self, "_app", None) is not None
 
-    def _add_layer(self, route: _OverlayEntryRoute) -> None:
+    def _add_layer_widget(self, layer: _OverlayLayer) -> None:
         try:
-            layer = route.build_widget()
+            widget = layer.build_widget()
         except Exception:
-            exception_once(
-                logger,
-                f"overlay_modal_route_build_widget_exc:{type(route).__name__}",
-                "Overlay modal route build_widget raised (route=%s)",
-                type(route).__name__,
-            )
+            exception_once(logger, "overlay_layer_build_widget_exc", "Overlay layer build_widget raised")
             return
-        self._layer_by_route[id(route)] = layer
-        self._layers.add_child(layer)
+        self._widget_by_layer[id(layer)] = widget
+        self._layers.add_child(widget)
 
-    def _remove_layer(self, route: _OverlayEntryRoute) -> None:
-        layer = self._layer_by_route.pop(id(route), None)
-        if layer is not None:
-            self._layers.remove_child(layer)
+    def _remove_layer_widget(self, layer: _OverlayLayer) -> None:
+        widget = self._widget_by_layer.pop(id(layer), None)
+        if widget is not None:
+            self._layers.remove_child(widget)
 
     def build(self) -> Widget:
         return self._layers
 
-    # No hit_test override needed: the navigator and its transparent Stack both
+    # No hit_test override needed: this widget and its transparent Stack both
     # defer under the ``auto`` default, so input passes through whenever no
     # actual overlay layer is hit.
 
 
-class _OverlayEntryRoute(Route):
-    """Route wrapper for OverlayEntry.
+class _OverlayLayer:
+    """One overlay entry on the layer stack, with its transition.
 
-    OverlayEntry owns widget unmounting. This route must not unmount to avoid
+    OverlayEntry owns widget unmounting. The layer must not unmount to avoid
     double-dispose when the entry is removed.
     """
 
@@ -208,30 +181,38 @@ class _OverlayEntryRoute(Route):
         *,
         transition_spec: TransitionSpec | None = None,
     ) -> None:
-        super().__init__(builder=entry.build_widget, transition_spec=transition_spec or Transitions.empty())
-        # The route keeps the entry, not just its builder: the route stack is
+        # The layer keeps the entry, not just its builder: the layer stack is
         # what ``Overlay.open_entries`` reports (it is the book that survives an
         # exit animation), so the stack has to be able to name the entry each
         # layer belongs to.
         self.entry: OverlayEntry = entry
-        self.transition_state: OverlayTransitionState = OverlayTransitionState.create(self.transition_spec)
+        self.transition_spec: TransitionSpec = transition_spec or Transitions.empty()
+        self.transition_state: TransitionState = TransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
+        self._widget: Widget | None = None
         # Whether input reaches the content behind this entry. Pass-through
         # entries (toasts, banners, tooltips) do not occlude; blocking entries
         # do. Set by ``Overlay.show``.
         #
         # This is deliberately *not* a barrier setting: the pointer half of
         # ``passthrough`` is applied in ``show`` (the blocking layer), while the
-        # keyboard half is read straight off this route by
+        # keyboard half is read straight off this layer by
         # ``occluding_content_widget()``, which drives the modal focus trap and
         # FOREGROUND shortcut scoping.
         self._passthrough: bool = True
+
+    def build_widget(self) -> Widget:
+        if self._widget is not None and getattr(self._widget, "_unmounted", False):
+            self._widget = None
+        if self._widget is None:
+            self._widget = self.entry.build_widget()
+        return self._widget
 
     @property
     def _content_widget(self) -> Widget | None:
         """The entry's content, stored once on the entry rather than twice.
 
-        The route is the object the input and focus paths hold, the entry is the
+        The layer is the object the input and focus paths hold, the entry is the
         object ``open_entries`` hands out, and both want the same widget. One
         storage location, read from either side.
         """
@@ -398,11 +379,8 @@ class Overlay(ComposableWidget):
     def __init__(self, *, layer_composer: OverlayLayerComposer | None = None, key: str | None = None) -> None:
         super().__init__(width="wt", height="wt", key=key)
 
-        # Overlay entries are implemented as routes on a private modal navigator.
-        # A base route keeps the navigator mounted even when empty.
-        self._base_route: Route = Route(builder=lambda: Container(), transition_spec=Transitions.empty())
-        self._modal_navigator: _ModalNavigator = _ModalNavigator(base_route=self._base_route)
-        self._entry_to_route: Dict[OverlayEntry, _OverlayEntryRoute] = {}
+        self._layer_stack: _LayerStack = _LayerStack()
+        self._entry_to_layer: Dict[OverlayEntry, _OverlayLayer] = {}
         self._entry_to_future: Dict[OverlayEntry, asyncio.Future[OverlayResult[Any]]] = {}
         self._entry_to_pending_result: Dict[OverlayEntry, OverlayResult[Any]] = {}
         self._entry_to_timeout_cb: Dict[OverlayEntry, Callable[[float], None]] = {}
@@ -474,22 +452,18 @@ class Overlay(ComposableWidget):
         self.remove_entry(entry)
 
     def _entry_content_widget(self, entry: OverlayEntry) -> Widget | None:
-        route = self._entry_to_route.get(entry)
-        if route is None:
+        layer = self._entry_to_layer.get(entry)
+        if layer is None:
             return None
-        return getattr(route, "_content_widget", None)
+        return layer._content_widget
 
     def _top_entry(self) -> OverlayEntry | None:
-        routes = getattr(self._modal_navigator, "_routes", None)
-        if not isinstance(routes, list) or len(routes) <= 1:
+        """The topmost entry still open, or ``None`` while the top is exiting."""
+        layers = self._layer_stack.layers
+        if not layers:
             return None
-        top = routes[-1]
-        if top is self._base_route:
-            return None
-        for entry, route in reversed(list(self._entry_to_route.items())):
-            if route is top:
-                return entry
-        return None
+        top = layers[-1]
+        return top.entry if self._entry_to_layer.get(top.entry) is top else None
 
     def occluding_content_widget(self) -> Widget | None:
         """Return the content of the topmost entry that blocks input, if any.
@@ -503,15 +477,10 @@ class Overlay(ComposableWidget):
         This is the keyboard half of ``passthrough``; the pointer half is the
         blocking layer built in :meth:`show`.
         """
-        routes = getattr(self._modal_navigator, "_routes", None)
-        if not isinstance(routes, list):
-            return None
-        for route in reversed(routes):
-            if route is self._base_route:
-                break
-            if getattr(route, "_passthrough", True):
+        for layer in reversed(self._layer_stack.layers):
+            if layer._passthrough:
                 continue
-            return getattr(route, "_content_widget", None) or getattr(route, "_widget", None)
+            return layer._content_widget or layer._widget
         return None
 
     async def _consult_will_pop(self, widget: Widget | None) -> bool:
@@ -697,10 +666,10 @@ class Overlay(ComposableWidget):
         def on_dispose() -> None:
             self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
 
-        def build_layer(route: _OverlayEntryRoute) -> Widget:
+        def build_layer(layer: _OverlayLayer) -> Widget:
             context = OverlayLayerCompositionContext(
                 content=content_widget,
-                transition_state=route.transition_state,
+                transition_state=layer.transition_state,
                 backdrop=backdrop,
                 position_content=position_content,
             )
@@ -759,24 +728,24 @@ class Overlay(ComposableWidget):
                 return layers[0]
             return Stack(children=layers, alignment="top-left", width="wt", height="wt")
 
-        route_holder: dict[str, _OverlayEntryRoute] = {}
-        layer_holder: dict[str, Widget] = {}
+        layer_holder: dict[str, _OverlayLayer] = {}
+        widget_holder: dict[str, Widget] = {}
 
         def build_entry_widget() -> Widget:
-            route = route_holder.get("route")
-            if route is None:
-                return Container()
             layer = layer_holder.get("layer")
             if layer is None:
-                layer = build_layer(route)
-                layer_holder["layer"] = layer
-            return layer
+                return Container()
+            widget = widget_holder.get("widget")
+            if widget is None:
+                widget = build_layer(layer)
+                widget_holder["widget"] = widget
+            return widget
 
         entry = OverlayEntry(builder=build_entry_widget, on_dispose=on_dispose)
-        modal_route = _OverlayEntryRoute(entry, transition_spec=transition_spec)
-        route_holder["route"] = modal_route
-        modal_route._content_widget = content_widget
-        modal_route._passthrough = passthrough
+        layer = _OverlayLayer(entry, transition_spec=transition_spec)
+        layer_holder["layer"] = layer
+        layer._content_widget = content_widget
+        layer._passthrough = passthrough
 
         # Construct the handle first so OverlayAware widgets receive it
         # before the entry is inserted (i.e. before first build / mount).
@@ -785,7 +754,7 @@ class Overlay(ComposableWidget):
         if aware is not None:
             aware._set_overlay_handle(handle)
 
-        self._insert_entry_with_route(entry, modal_route)
+        self._insert_entry_layer(entry, layer)
 
         if timeout is not None:
 
@@ -820,18 +789,18 @@ class Overlay(ComposableWidget):
         return not self.has_entries()
 
     def build(self) -> Widget:
-        return self._modal_navigator
+        return self._layer_stack
 
     def insert_entry(self, entry: OverlayEntry) -> None:
-        self._insert_entry_with_route(entry, _OverlayEntryRoute(entry))
+        self._insert_entry_layer(entry, _OverlayLayer(entry))
 
-    def _insert_entry_with_route(self, entry: OverlayEntry, route: _OverlayEntryRoute) -> None:
-        self._entry_to_route[entry] = route
-        self._modal_navigator.push(route)
+    def _insert_entry_layer(self, entry: OverlayEntry, layer: _OverlayLayer) -> None:
+        self._entry_to_layer[entry] = layer
+        self._layer_stack.push(layer)
 
     def remove_entry(self, entry: OverlayEntry) -> None:
-        route = self._entry_to_route.pop(entry, None)
-        if route is None:
+        layer = self._entry_to_layer.pop(entry, None)
+        if layer is None:
             return
 
         self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
@@ -844,10 +813,7 @@ class Overlay(ComposableWidget):
             except Exception:
                 self._entry_to_pending_result[entry] = OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED)
 
-        self._remove_modal_route(route, on_disposed=entry.dispose)
-
-    def _remove_modal_route(self, route: _OverlayEntryRoute, *, on_disposed: Callable[[], None] | None = None) -> None:
-        self._modal_navigator.remove_route(route, on_disposed=on_disposed)
+        self._layer_stack.remove(layer, on_disposed=entry.dispose)
 
     @property
     def open_entries(self) -> tuple[OverlayEntry, ...]:
@@ -863,24 +829,17 @@ class Overlay(ComposableWidget):
             await app.wait_for(lambda: not overlay.open_entries)
 
         Reading this never builds a widget. Asking what is open must not change
-        what is on screen, so the answer comes from the route stack and the
+        what is on screen, so the answer comes from the layer stack and the
         entries on it, never from ``build_widget()``.
         """
-        try:
-            routes = self._modal_navigator._stack.routes
-        except Exception:
-            exception_once(logger, "overlay_open_entries_exc", "Overlay.open_entries raised")
-            return ()
-        # routes[0] is the pinned base route -- the empty layer the modal
-        # navigator always stands on, not an entry anyone showed.
-        return tuple(route.entry for route in routes[1:] if isinstance(route, _OverlayEntryRoute))
+        return tuple(layer.entry for layer in self._layer_stack.layers)
 
     def has_entries(self) -> bool:
         """Whether any entry is open. See :attr:`open_entries` for when one is."""
         return bool(self.open_entries)
 
     def clear(self) -> None:
-        for entry in list(self._entry_to_route.keys()):
+        for entry in list(self._entry_to_layer.keys()):
             self.remove_entry(entry)
         self.invalidate()
 
@@ -889,14 +848,12 @@ class Overlay(ComposableWidget):
 
     def close(self, value: Any = None, target: Widget | None = None) -> None:
         if target is not None:
-            # Map route widgets to their entries for quick lookup
-            route_widget_to_entry = {
-                route._widget: entry
-                for entry, route in self._entry_to_route.items()
-                if getattr(route, "_widget", None) is not None
+            # Map layer widgets to their entries for quick lookup
+            layer_widget_to_entry = {
+                layer._widget: entry for entry, layer in self._entry_to_layer.items() if layer._widget is not None
             }
 
-            # Walk up the widget tree from target to find the owning route widget
+            # Walk up the widget tree from target to find the owning layer widget
             current: Widget | None = target  # type: ignore
             visited = set()
 
@@ -905,8 +862,8 @@ class Overlay(ComposableWidget):
                     break
                 visited.add(id(current))
 
-                if current in route_widget_to_entry:
-                    entry = route_widget_to_entry[current]
+                if current in layer_widget_to_entry:
+                    entry = layer_widget_to_entry[current]
                     self._complete_entry_future(entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED))
                     self.remove_entry(entry)
                     return
@@ -918,22 +875,19 @@ class Overlay(ComposableWidget):
             )
             return
 
-        routes = getattr(self._modal_navigator, "_routes", None)
-        if not isinstance(routes, list) or len(routes) <= 1:
+        layers = self._layer_stack.layers
+        if not layers:
             return
 
-        top_route = routes[-1]
-        if top_route is self._base_route:
-            return
-
-        for entry, route in reversed(list(self._entry_to_route.items())):
-            if route is top_route:
+        top_layer = layers[-1]
+        for entry, layer in reversed(list(self._entry_to_layer.items())):
+            if layer is top_layer:
                 self._complete_entry_future(entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED))
                 self.remove_entry(entry)
                 return
 
         try:
-            self._modal_navigator.pop()
+            self._layer_stack.pop()
         except Exception:
             exception_once(logger, "overlay_close_fallback_pop_exc", "Overlay close fallback pop raised")
 

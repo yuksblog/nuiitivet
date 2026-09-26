@@ -95,7 +95,7 @@ def test_overlay_toast_method():
     overlay.snackbar("Test snackbar")
 
     # Should have one entry
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
     assert overlay.has_entries()
 
 
@@ -107,13 +107,13 @@ def test_overlay_toast_auto_removal(mock_clock):
     overlay.snackbar("Test snackbar", duration=0.1)
 
     # Should have one entry initially
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     # Advance time past the duration
     mock_clock.tick(0.15)
 
     # Snackbar should be removed
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
     assert not overlay.has_entries()
 
 
@@ -127,7 +127,7 @@ def test_overlay_multiple_toasts():
     overlay.snackbar("Third snackbar")
 
     # Should have three entries
-    assert len(overlay._entry_to_route) == 3
+    assert len(overlay._entry_to_layer) == 3
 
 
 def test_overlay_toast_custom_duration(mock_clock):
@@ -137,19 +137,19 @@ def test_overlay_toast_custom_duration(mock_clock):
     # Show toast with longer duration
     overlay.snackbar("Long snackbar", duration=5.0)
 
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     # Advance time by 0.1 seconds
     mock_clock.tick(0.1)
 
     # Should still be visible
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
 
     # Advance time past the full duration
     mock_clock.tick(5.0)
 
     # Should be removed
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
 
 
 def test_toast_widget_properties():
@@ -170,7 +170,7 @@ def test_overlay_toast_creates_entry():
 
     overlay.snackbar("Entry test")
 
-    entry = next(iter(overlay._entry_to_route.keys()))
+    entry = next(iter(overlay._entry_to_layer.keys()))
 
     # Build the widget from the entry
     built = entry.build_widget()
@@ -194,4 +194,4 @@ def test_overlay_app_toast():
 
     MaterialOverlay.of(content).snackbar("App toast")
 
-    assert len(app.overlay._entry_to_route) == 1
+    assert len(app.overlay._entry_to_layer) == 1

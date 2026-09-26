@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from nuiitivet.navigation.layer_composer import NavigationTransitionKind
-from nuiitivet.navigation.transition_spec import (
+from nuiitivet.transition.spec import (
     EmptyTransitionSpec,
     TransitionPhase,
     TransitionSpec,

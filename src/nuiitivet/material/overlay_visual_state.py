@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import opacity, scale, translate
 from nuiitivet.modifiers.background import background
-from nuiitivet.navigation.transition_state import TransitionLifecycle
 from nuiitivet.observable import combine
 from nuiitivet.overlay.layer_composer import (
     OverlayLayerComposer,
     OverlayLayerCompositionContext,
     OverlayLayerPaint,
 )
+from nuiitivet.transition.state import TransitionLifecycle
 from nuiitivet.widgeting.widget import Widget
 
 from .theme.color_role import ColorRole

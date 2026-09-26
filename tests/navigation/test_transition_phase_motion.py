@@ -6,7 +6,7 @@ from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import FadePattern
 from nuiitivet.animation.motion import BezierMotion
 from nuiitivet.material.transition_spec import MaterialTransitionSpec, MaterialTransitions
-from nuiitivet.navigation.transition_spec import TransitionPhase, resolve_phase_motion
+from nuiitivet.transition.spec import TransitionPhase, resolve_phase_motion
 
 
 def _definition(duration: float) -> TransitionDefinition:

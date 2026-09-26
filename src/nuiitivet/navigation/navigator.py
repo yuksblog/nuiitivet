@@ -11,11 +11,12 @@ from nuiitivet.widgeting.callbacks import spawn_task
 from nuiitivet.widgeting.context_lookup import find_provider, find_window, raise_if_premature_lookup
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
+from nuiitivet.transition.engine import TransitionEngine, TransitionHandle
+from nuiitivet.transition.spec import EmptyTransitionSpec, TransitionPhase, resolve_phase_motion
+from nuiitivet.transition.stack import StackRuntime
+
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
 from .route import Route
-from .stack_runtime import RouteStackRuntime
-from .transition_engine import TransitionEngine, TransitionHandle
-from .transition_spec import EmptyTransitionSpec, TransitionPhase, resolve_phase_motion
 
 _logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class Navigator(ComposableWidget):
         initial_routes: list[Route] = []
         if screen is not None:
             initial_routes.append(self._to_initial_route(screen))
-        self._stack = RouteStackRuntime(initial_routes=initial_routes)
+        self._stack: StackRuntime[Route] = StackRuntime(initial=initial_routes)
 
     def _to_initial_route(self, value: Route | Widget) -> Route:
         """Convert a ``Route`` or ``Widget`` into a ``Route`` for initial stack construction."""
@@ -160,7 +161,7 @@ class Navigator(ComposableWidget):
             raise ValueError("Navigator.routes(...) requires at least one screen")
         instance = cls(layer_composer=layer_composer)
         initial_routes = [instance._to_initial_route(s) for s in screens]
-        instance._stack = RouteStackRuntime(initial_routes=initial_routes)
+        instance._stack = StackRuntime(initial=initial_routes)
         return instance
 
     @classmethod
@@ -182,7 +183,7 @@ class Navigator(ComposableWidget):
         instance = cls(layer_composer=layer_composer)
         instance._intent_routes = dict(routes)
         initial = instance._resolve_intent_to_route(initial_route)
-        instance._stack = RouteStackRuntime(initial_routes=[initial])
+        instance._stack = StackRuntime(initial=[initial])
         return instance
 
     @classmethod
@@ -223,7 +224,7 @@ class Navigator(ComposableWidget):
         return window_navigator
 
     def can_pop(self) -> bool:
-        return self._stack.can_pop(min_routes=1)
+        return self._stack.can_pop(min_elements=1)
 
     def build(self) -> Widget:
         return self
@@ -403,7 +404,7 @@ class Navigator(ComposableWidget):
         Not to be confused with :meth:`snapshot_stack`, which is the hot-reload
         restore log.
         """
-        return tuple(self._stack.routes)
+        return tuple(self._stack.elements)
 
     @property
     def in_transition(self) -> bool:
@@ -589,7 +590,7 @@ class Navigator(ComposableWidget):
 
         self._cancel_transition()
 
-        routes = self._stack.routes
+        routes = self._stack.elements
         outgoing = routes[-1]
         incoming = routes[-2]
         outgoing_widget = self._route_widget(outgoing)
@@ -682,7 +683,7 @@ class Navigator(ComposableWidget):
         another one sits on top of it — and only the top one is painted. The Tab
         sequence has to stop at the same boundary.
         """
-        routes = self._stack.routes
+        routes = self._stack.elements
         if not routes:
             return []
         try:
@@ -696,7 +697,7 @@ class Navigator(ComposableWidget):
         self.set_layout_rect(0, 0, width, height)
 
         # Layout all cached route widgets so hit_test coordinate translation works.
-        for route in self._stack.routes:
+        for route in self._stack.elements:
             widget = route.build_widget() if route._widget is not None else None
             if widget is None:
                 continue
@@ -709,7 +710,7 @@ class Navigator(ComposableWidget):
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
-        routes = self._stack.routes
+        routes = self._stack.elements
         if not routes:
             return
 
@@ -748,7 +749,7 @@ class Navigator(ComposableWidget):
     def hit_test(self, x: int, y: int):
         transition = self._transition
         if transition is None:
-            routes = self._stack.routes
+            routes = self._stack.elements
             if not routes:
                 return None
             return self._route_widget(routes[-1]).hit_test(x, y)

@@ -16,7 +16,7 @@ from nuiitivet.widgeting.widget import Widget
 if TYPE_CHECKING:
     from typing import Any
 
-    from nuiitivet.navigation.transition_spec import TransitionSpec
+    from nuiitivet.transition.spec import TransitionSpec
     from nuiitivet.observable.value import Observable
     from nuiitivet.overlay.overlay_handle import OverlayHandle
 

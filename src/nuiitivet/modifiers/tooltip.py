@@ -21,7 +21,7 @@ from nuiitivet.widgets.interaction import (
 )
 
 if TYPE_CHECKING:
-    from nuiitivet.navigation.transition_spec import TransitionSpec
+    from nuiitivet.transition.spec import TransitionSpec
 
 
 class TooltipBox(PopupBox):

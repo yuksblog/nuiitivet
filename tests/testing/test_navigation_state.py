@@ -398,7 +398,7 @@ def test_a_nested_navigator_is_reached_through_its_own_stack() -> None:
         assert Navigator.of(nested) is app.window.navigator
 
 
-def test_overlay_open_entries_skips_the_pinned_base_route() -> None:
+def test_overlay_open_entries_starts_empty_and_lists_the_shown_entry() -> None:
     with AppHarness(ListScreen(), size=SIZE) as app:
         overlay = app.window.overlay
         assert overlay.open_entries == ()

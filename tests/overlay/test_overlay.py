@@ -2,7 +2,7 @@
 
 import pytest
 from nuiitivet.overlay import Overlay, OverlayEntry
-from nuiitivet.overlay.overlay import _OverlayEntryRoute
+from nuiitivet.overlay.overlay import _OverlayLayer
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
@@ -34,9 +34,9 @@ def test_overlay_insert_entry():
 
     overlay.insert_entry(entry)
 
-    assert len(overlay._entry_to_route) == 1
+    assert len(overlay._entry_to_layer) == 1
     assert overlay.has_entries()
-    assert isinstance(next(iter(overlay._entry_to_route.values())), _OverlayEntryRoute)
+    assert isinstance(next(iter(overlay._entry_to_layer.values())), _OverlayLayer)
 
 
 def test_overlay_remove_entry():
@@ -49,7 +49,7 @@ def test_overlay_remove_entry():
 
     overlay.remove_entry(entry)
 
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
     assert not overlay.has_entries()
 
 
@@ -64,7 +64,7 @@ def test_overlay_multiple_entries():
     overlay.insert_entry(entry2)
     overlay.insert_entry(entry3)
 
-    assert len(overlay._entry_to_route) == 3
+    assert len(overlay._entry_to_layer) == 3
     assert overlay.has_entries()
 
 
@@ -95,7 +95,7 @@ def test_overlay_clear():
 
     overlay.clear()
 
-    assert len(overlay._entry_to_route) == 0
+    assert len(overlay._entry_to_layer) == 0
     assert not overlay.has_entries()
 
 
