@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Callable
 
 from nuiitivet.material.navigation_visual_state import MaterialNavigationLayerComposer
 from nuiitivet.material.navigator import MaterialNavigator
@@ -38,17 +38,19 @@ class MaterialWindow(Window):
             layer_composer=MaterialNavigationLayerComposer(),
         )
 
+    def _build_default_overlay(self) -> "Overlay":
+        return MaterialOverlay()
+
     def __init__(
         self,
         content: "Widget | RootFactory",
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
-        overlay_intents: Mapping[type[Any], Callable[[Any], Widget]] | None = None,
         background: ColorSpec = ColorRole.SURFACE,
         title: "str | None | ObservableBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
-        overlay_factory: Callable[[], "Overlay"] | None = None,
+        overlay: "Overlay | Callable[[], Overlay] | None" = None,
         window_position: WindowPositionLike | None = None,
         resizable: bool = True,
         accepts_first_mouse: bool = True,
@@ -64,14 +66,14 @@ class MaterialWindow(Window):
                 factory; see :class:`~nuiitivet.runtime.window.Window`.
             width: Window width specification.
             height: Window height specification.
-            overlay_intents: Optional mapping of intent types to functions
-                that build the widget to show (mutually exclusive with
-                ``overlay_factory``).
             background: Window background color. Defaults to Material Surface.
             title: OS window title.
             chrome: Window decoration; omitting defaults to ``OSChrome()``.
-            overlay_factory: Optional overlay factory overriding the Material
-                default.
+            overlay: The window's overlay: an ``Overlay`` instance or a
+                zero-argument factory returning one; see
+                :class:`~nuiitivet.runtime.window.Window`. Defaults to
+                ``MaterialOverlay``. For custom intents, pass
+                ``lambda: MaterialOverlay(intents={...})``.
             window_position: Initial window position — an alignment string or
                 a :class:`~nuiitivet.runtime.window_sizing.WindowPosition`;
                 see :class:`~nuiitivet.runtime.window.Window`.
@@ -86,14 +88,6 @@ class MaterialWindow(Window):
             close_action: What the OS close button does — ``"close"`` (default)
                 or ``"hide"``; see :class:`~nuiitivet.runtime.window.Window`.
         """
-        if overlay_factory is None:
-
-            def overlay_factory() -> MaterialOverlay:
-                return MaterialOverlay(intents=overlay_intents)
-
-        elif overlay_intents is not None:
-            raise ValueError("Specify only one of overlay_intents or overlay_factory")
-
         super().__init__(
             content=content,
             width=width,
@@ -101,7 +95,7 @@ class MaterialWindow(Window):
             title=title,
             chrome=chrome,
             background=background,
-            overlay_factory=overlay_factory,
+            overlay=overlay,
             window_position=window_position,
             resizable=resizable,
             accepts_first_mouse=accepts_first_mouse,

@@ -99,19 +99,21 @@ See [Material Theme](material_theme.md) for detailed usage.
 
 ## Overlay Intents
 
-Register custom overlay intents that can be dispatched from anywhere in the widget tree:
+Register custom overlay intents on the window's overlay. They can be dispatched from anywhere in the widget tree:
 
 ```python
 import nuiitivet.material as nv
 
-nv.App(
-    nv.Window(
-        content=HomeScreen,
-        overlay_intents={
+
+def build_overlay() -> nv.Overlay:
+    return nv.Overlay(
+        intents={
             MyIntent: lambda intent: nv.BasicDialog(title=intent.title, message=intent.message),
         },
-    ),
-).run()
+    )
+
+
+nv.App(nv.Window(content=HomeScreen, overlay=build_overlay)).run()
 ```
 
 See [Material Overlay](material_overlay.md) for detailed usage.

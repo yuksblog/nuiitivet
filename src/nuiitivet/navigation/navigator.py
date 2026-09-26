@@ -198,7 +198,7 @@ class Navigator(ComposableWidget):
         if not isinstance(window_navigator, cls):
             raise RuntimeError(
                 f"The Window's navigator is a {type(window_navigator).__name__}, not a {cls.__name__}. "
-                f"Pass a {cls.__name__} as the window's content, or nest one in the subtree."
+                f"Pass one as the Window's content=, or nest one in the subtree."
             )
         return window_navigator
 

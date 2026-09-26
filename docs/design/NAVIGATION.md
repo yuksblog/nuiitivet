@@ -22,6 +22,10 @@ Both stacks come from `nuiitivet.transition`. The kernel tracks when an element 
 
 The two stacks differ in what the top means. A navigator paints only its top screen; the screens beneath stay mounted, unpainted. An overlay paints every layer, newest on top.
 
+A window scope owns one navigator and one overlay, side by side. A navigator also nests inside the content, because it keeps a history. An overlay does not nest, because modality has one scope. A region that needs its own modality nests the scope itself; the window is the only scope today.
+
+The window takes its navigator through `content`, which may return a `Navigator`. A `navigator=` keyword was rejected: a navigator is built with its first screen, so the keyword would give the initial screen two routes into the window.
+
 Building the overlay on a `Navigator` was rejected. Overlay layers pile up instead of replacing each other, and they must never enter the app's back stack.
 
 ### 1.2 Root Navigator Design

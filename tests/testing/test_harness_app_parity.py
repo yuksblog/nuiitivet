@@ -34,7 +34,7 @@ class Screen(ComposableWidget):
 
 
 def test_a_screen_reaches_the_material_overlay_with_no_setup() -> None:
-    """The failure this issue is about: no ``overlay_factory`` anywhere."""
+    """The failure this issue is about: no ``overlay`` anywhere."""
     screen = Screen()
     with AppHarness(screen, size=SIZE) as app:
         screen.confirm()
@@ -62,11 +62,11 @@ def test_app_selects_the_class_to_build() -> None:
 
 
 def test_app_kwargs_reach_the_selected_class() -> None:
-    """``overlay_factory`` belongs to core ``App`` and still passes through."""
+    """``overlay`` belongs to the core ``Window`` and still passes through."""
     with AppHarness(
         Screen(),
         size=SIZE,
         app=App,
-        overlay_factory=lambda: MaterialOverlay(intents={}),
+        overlay=lambda: MaterialOverlay(intents={}),
     ) as app:
         assert isinstance(app.window.overlay, MaterialOverlay)

@@ -313,7 +313,7 @@ class Window:
     def _build_root_navigation_stack(
         *,
         navigator: "Navigator",
-        overlay_factory: Callable[[], "Overlay"] | None,
+        overlay_factory: Callable[[], "Overlay"],
     ) -> _ContentRoot:
         """Assemble the Navigator/Overlay layer stack for a content root.
 
@@ -326,10 +326,9 @@ class Window:
         from nuiitivet.overlay import Overlay
         from nuiitivet.rendering.sizing import Sizing
 
-        resolved_overlay_factory = overlay_factory or Overlay
-        overlay = resolved_overlay_factory()
+        overlay = overlay_factory()
         if not isinstance(overlay, Overlay):
-            raise TypeError("overlay_factory must return an Overlay instance")
+            raise TypeError("'overlay' factory must return an Overlay instance.")
 
         if not isinstance(navigator, _Navigator):
             raise TypeError("navigator must be a Navigator instance")
@@ -440,7 +439,7 @@ class Window:
         title: "str | None | ObservableBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         background: ColorSpec = PlainColorRole.SURFACE,
-        overlay_factory: Callable[[], "Overlay"] | None = None,
+        overlay: "Overlay | Callable[[], Overlay] | None" = None,
         window_position: WindowPositionLike | None = None,
         resizable: bool = True,
         accepts_first_mouse: bool = True,
@@ -471,7 +470,9 @@ class Window:
                 for a bare borderless window. Omitting this parameter (the
                 default) is equivalent to ``OSChrome()``.
             background: Window background color.
-            overlay_factory: Optional overlay factory.
+            overlay: The window's overlay: an ``Overlay`` instance or a
+                zero-argument factory returning one, under the same hot-reload
+                rule as ``content``. ``None`` gives the class default.
             window_position: Initial window position. Accepts a 9-point
                 alignment string (e.g. ``"center"``, ``"top-right"``) or a
                 :class:`WindowPosition` for offsets and screen selection.
@@ -504,21 +505,34 @@ class Window:
         # the single source of truth the reload path re-invokes.
         if callable(content) and not isinstance(content, Widget):
             self._root_factory: RootFactory = content
-            self._hot_reload_inert = False
+            content_inert = False
         elif isinstance(content, Widget):
             instance = content
             self._root_factory = lambda: instance
             # The wrapping lambda can never be re-fetched from a reloaded
             # module, so every rebuild returns this same object: hot reload
             # can never change this window's tree.
-            self._hot_reload_inert = True
+            content_inert = True
         else:
             raise TypeError(
                 "'content' must be a Widget instance or a callable returning a Widget."
             )
-        # Overlay factory is retained so the reload path can rebuild the
-        # Navigator/Overlay stack identically. See :meth:`_rebuild_content_root`.
-        self._overlay_factory = overlay_factory
+
+        from nuiitivet.overlay import Overlay
+
+        # ``overlay`` follows the ``content`` rule; the reload path re-invokes the factory.
+        overlay_inert = False
+        if overlay is None:
+            self._overlay_factory: Callable[[], "Overlay"] = self._build_default_overlay
+        elif isinstance(overlay, Overlay):
+            overlay_instance = overlay
+            self._overlay_factory = lambda: overlay_instance
+            overlay_inert = True
+        elif callable(overlay):
+            self._overlay_factory = overlay
+        else:
+            raise TypeError("'overlay' must be an Overlay instance or a callable returning an Overlay.")
+        self._hot_reload_inert = content_inert or overlay_inert
 
         if parent is not None and not isinstance(parent, Window):
             raise TypeError("'parent' must be a Window instance or None.")
@@ -533,7 +547,7 @@ class Window:
 
         # Warn once, at the moment the app shape can still be fixed. Only under
         # the dev runner: in production there is no hot reload to be inert for.
-        if self._hot_reload_inert and _under_dev_session():
+        if content_inert and _under_dev_session():
             root_name = type(content).__name__
             logger.warning(
                 "Window id=%d content is a widget instance (%s); hot reload "
@@ -543,6 +557,16 @@ class Window:
                 root_name,
                 root_name,
                 root_name,
+            )
+        if overlay_inert and _under_dev_session():
+            overlay_name = type(overlay).__name__
+            logger.warning(
+                "Window id=%d overlay is an instance (%s); hot reload keeps it "
+                "and its intents table. Pass a factory instead: "
+                "Window(overlay=lambda: %s(...)).",
+                self.id,
+                overlay_name,
+                overlay_name,
             )
 
         if not isinstance(close_action, ObservableBase) and close_action not in ("close", "hide"):
@@ -793,6 +817,12 @@ class Window:
         from nuiitivet.navigation import Navigator
 
         return Navigator(content)
+
+    def _build_default_overlay(self) -> "Overlay":
+        """Return the overlay a window gets when ``overlay`` is not given."""
+        from nuiitivet.overlay import Overlay
+
+        return Overlay()
 
     # --- Lifecycle -----------------------------------------------------
 

@@ -14,10 +14,11 @@ The `Overlay` core provides only `show()`. Scenario-specific APIs (dialogs, snac
 
 ### 2.1 API Consistency with Navigator
 
-- `App` owns an Overlay, reached through the same context lookup as a nested one.
-  - `Overlay.of(context)`: the nearest ancestor Overlay, falling back to the App's. Use this in the common case.
-  - `Overlay.of(context, root=True)`: always the App's. Use this to show above everything from inside a nested Overlay.
-  - The App composes its Overlay as a *sibling* of the Navigator, not as an ancestor of the content, so an ancestor walk alone would never reach it. The fallback resolves it through the `AppScope` instead — per App, never a process-global.
+- Each window owns one Overlay, reached through the same context lookup as its navigator.
+  - `Overlay.of(context)`: the window's overlay. The ancestor search runs first, as the hook for a nested scope; the window is the only scope today.
+  - `Overlay.of(context, root=True)`: skips the ancestor search.
+  - The window composes its Overlay as a *sibling* of the Navigator, not as an ancestor of the content, so an ancestor walk alone would never reach it. The fallback resolves it through the window scope instead — per window, never a process-global.
+- `Overlay` has no `child` and does not nest. The unit that blocks input is the window scope, as with Qt Quick's `Overlay.overlay` and the browser's top layer. Local layering is `Stack`.
 - Protocols are provided to ensure ViewModels do not depend on implementation details.
   Core `OverlayProtocol` (`nuiitivet.overlay.protocols`) covers `close()` only, since the
   presentation helpers live on `MaterialOverlay`; `MaterialOverlayProtocol`
@@ -248,34 +249,13 @@ Scenario-specific APIs are moved to subclasses.
 - `MaterialOverlay.while_loading(indicator=None)` → context manager
   - Displays `LoadingIntent` and ensures it closes upon exiting the block (sync or async).
 
-### 2.7 Swapping the Root Overlay: `overlay_factory`
+### 2.7 Supplying the Window's Overlay
 
-To allow Material apps to use `MaterialOverlay` as the root overlay, `Window` allows for overlay injection.
+`Window` takes its overlay the way it takes its content: an `Overlay` instance or a zero-argument factory. A hot reload re-invokes the factory, because an intents table references user classes that a reload replaces. An instance keeps the window hot-reload inert.
 
-- `Window` accepts `overlay_factory: Callable[[], Overlay]`.
-- If omitted, `Window` defaults to creating a standard `Overlay`.
+Omitted, the overlay is the window class's default: `Overlay` for `Window`, `MaterialOverlay` for `MaterialWindow`. The navigator default is a separate hook, so replacing the overlay alone keeps `MaterialNavigator`.
 
-Example:
-
-```python
-app = App(
-    Window(
-        content=Home,
-        overlay_factory=lambda: Overlay(),
-    ),
-)
-```
-
-```python
-app = MaterialApp(
-    MaterialWindow(
-        content=Home,
-        overlay_factory=lambda: MaterialOverlay(),
-    ),
-)
-```
-
-In the Material implementation, `MaterialWindow` sets `overlay_factory` internally and passes `overlay_intents` to `MaterialOverlay(intents=...)` as needed.
+A custom intents table is an argument of the overlay, not of the window. A window-level intents keyword was rejected: it was a second path to the same overlay, exclusive with the factory.
 
 ### 2.8 Note: Scope of core APIs
 
@@ -348,9 +328,7 @@ The following items are not finalized in this specification (or require implemen
 
 ### Rendering / Overlay
 
-- Scoped Overlay
-  - Rendering order (below or above the App Overlay?).
-  - Order control between Scoped Overlays.
+- Nested scope: a region that owns its own navigator and overlay, for a modality narrower than the window.
 - Design for introducing Z-index in the future.
 - Maintaining compatibility (existing code continues to work).
 - Rendering optimizations for large numbers of Overlays.

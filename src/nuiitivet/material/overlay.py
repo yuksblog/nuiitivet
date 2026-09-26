@@ -202,8 +202,8 @@ class MaterialOverlay(Overlay):
         Args:
             indicator: Widget or intent to display as the loading indicator.
                 Defaults to the built-in :class:`LoadingIndicator`, resolved
-                through the :class:`LoadingIntent` (overridable via the app's
-                ``overlay_intents``).
+                through the :class:`LoadingIntent` (overridable via the
+                overlay's ``intents``).
 
         Returns:
             An :class:`OverlayHandle` that can be closed via ``handle.close(None)``.
