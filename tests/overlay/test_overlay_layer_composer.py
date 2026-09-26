@@ -4,7 +4,7 @@ from nuiitivet.layout.stack import Stack
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.overlay import MaterialOverlay
 from nuiitivet.material.overlay_visual_state import MaterialOverlayLayerComposer
-from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
+from nuiitivet.widgeting.hit_participation import HitParticipationBox
 from nuiitivet.overlay import Overlay
 from nuiitivet.widgeting.widget import Widget
 from tests.helpers.layer_composer import RecordingOverlayComposer, assert_overlay_single_composition_context
@@ -62,7 +62,7 @@ def test_overlay_makes_the_composed_backdrop_click_through() -> None:
 
     # backdrop (click-through) -> blocker -> content
     assert len(layers) == 3
-    assert isinstance(layers[0], PassthroughPointerBox)
+    assert isinstance(layers[0], HitParticipationBox) and layers[0].is_inert
     assert layers[0].children_snapshot()[0] is backdrop
     assert layers[-1] is sentinel
 

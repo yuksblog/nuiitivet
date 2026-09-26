@@ -94,9 +94,9 @@ ignoring the flag.
 | --- | --- | --- |
 | Paint (backdrop colour, opacity animation) | design system | `OverlayLayerComposer.compose` |
 | Z-order / stacking | core | `Overlay.show` |
-| Block pointer input | core | `Overlay.show` — a `block_pointer()` layer |
-| Dismiss on outside tap | core | `Overlay.show` — `clickable(any_button=True)` on that layer |
-| Keep the backdrop out of input | core | `Overlay.show` — `passthrough_pointer()` on it |
+| Block pointer input | core | `Overlay.show` — a `HitParticipationBox` that descends and catches |
+| Dismiss on outside tap | core | `Overlay.show` — an interaction region with `any_button=True` around that box |
+| Keep the backdrop out of input | core | `Overlay.show` — a `HitParticipationBox` that neither descends nor catches |
 | Block keyboard / focus | core | `occluding_content_widget()` |
 
 A composer paints two things and stacks neither. `compose()` returns an
@@ -105,9 +105,9 @@ than pre-stacked — and the core assembles them:
 
 ```text
 Stack(children=[
-    backdrop.modifier(passthrough_pointer()),   # decoration; never catches
-    blocker,                                    # block_pointer() [| clickable()]
-    content,                                    # tested first (children reversed)
+    HitParticipationBox(backdrop, descend=False, opaque=False),  # decoration; never catches
+    blocker,             # HitParticipationBox(descend=True, opaque=True) [in an interaction region]
+    content,             # tested first (children reversed)
 ])
 ```
 
@@ -134,7 +134,7 @@ Two consequences are worth stating explicitly:
   surface is a hit target in this framework ("painted = clickable",
   `Box._hit_self_opaque`), so a backdrop left alone would win the hit test over
   the blocking layer beneath it. Returning it as a separate layer is what lets
-  the core apply `passthrough_pointer()` itself. Enforcement therefore does not
+  the core make it click-through itself. Enforcement therefore does not
   depend on a composer remembering anything: a third-party composer cannot break
   blocking or dismissal by omission.
 

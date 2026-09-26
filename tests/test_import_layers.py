@@ -3,6 +3,9 @@
 Navigator and Overlay are siblings over the transition kernel. An import from
 one into the other would make one depend on the other again, and an import from
 the kernel into either would put the kernel on top of what it serves.
+
+Modifiers sit above the overlay: popup, tooltip and context_menu are its
+clients, so an overlay import of a modifier closes a cycle.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ FORBIDDEN: list[tuple[str, str]] = [
     ("navigation", "overlay"),
     ("transition", "navigation"),
     ("transition", "overlay"),
+    ("overlay", "modifiers"),
 ]
 
 

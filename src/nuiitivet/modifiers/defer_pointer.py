@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
 
-from ._hit_participation import HitConditionLike, HitParticipationBox
+from nuiitivet.widgeting.hit_participation import HitConditionLike, HitParticipationBox
 
 DeferPointerConditionLike = HitConditionLike
 

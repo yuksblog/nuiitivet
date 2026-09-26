@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple
 from nuiitivet.layout.alignment import AlignmentLike
 from nuiitivet.layout.measure import preferred_size as _measure_preferred_size
 from nuiitivet.observable import runtime
+from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
@@ -169,8 +170,6 @@ class PopupBox(Widget):
             return False
         if self._handle is not None:
             return True
-
-        from nuiitivet.overlay.overlay import Overlay
 
         position = OverlayPosition.anchored(
             self._rect_provider,

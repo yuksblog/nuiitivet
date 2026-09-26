@@ -10,6 +10,10 @@ import logging
 from typing import Optional
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.overlay import Overlay
+from nuiitivet.widgeting.hit_participation import HitParticipationBox
+from nuiitivet.widgets.interaction import FocusTraversalBlocker
+
 from ..widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
@@ -49,8 +53,6 @@ def is_foreground(widget: Widget) -> bool:
 
 
 def _is_occluded_by_overlay(widget: Widget) -> bool:
-    from nuiitivet.overlay import Overlay
-
     try:
         overlay = Overlay.of(widget, root=True)
     except RuntimeError:
@@ -65,9 +67,6 @@ def _is_occluded_by_overlay(widget: Widget) -> bool:
 
 def _is_displayed(widget: Widget) -> bool:
     """Walk to the root, rejecting any ancestor that hides ``widget``."""
-    from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
-    from nuiitivet.widgets.interaction import FocusTraversalBlocker
-
     parent: Optional[Widget] = getattr(widget, "_parent", None)
     while parent is not None:
         # A blocking ancestor is closed, disabled, or otherwise inert — the same
@@ -77,7 +76,7 @@ def _is_displayed(widget: Widget) -> bool:
         # An inert subtree is not on the interactable layer. This is also how
         # visible(False) presents itself: it composes to opacity(0) +
         # passthrough_pointer(True).
-        if isinstance(parent, PassthroughPointerBox) and parent._active:
+        if isinstance(parent, HitParticipationBox) and parent.is_inert:
             return False
         if _covers(parent, widget):
             return False

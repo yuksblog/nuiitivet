@@ -9,14 +9,12 @@ from typing import Any, Callable, Dict, TypeVar
 
 from nuiitivet.widgeting.callbacks import spawn_task
 from nuiitivet.widgeting.context_lookup import find_provider, find_window, raise_if_premature_lookup
-from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.container import Container
-from nuiitivet.modifiers.background import background
-from nuiitivet.modifiers.block_pointer import block_pointer
-from nuiitivet.modifiers.clickable import clickable
-from nuiitivet.modifiers.passthrough_pointer import passthrough_pointer
+from nuiitivet.widgeting.hit_participation import HitParticipationBox
+from nuiitivet.widgets.box import Box
+from nuiitivet.widgets.interaction import ensure_interaction_region
 from nuiitivet.observable import Observable
 from nuiitivet.observable import runtime
 from nuiitivet.transition.engine import TransitionEngine
@@ -39,17 +37,12 @@ from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext
 
 logger = logging.getLogger(__name__)
 
-# Lets ``of()`` keep the concrete subclass type, so that
-# ``MaterialOverlay.of(...)`` is a ``MaterialOverlay`` and not an ``Overlay``.
+# Lets ``MaterialOverlay.of(...)`` return a ``MaterialOverlay``, not an ``Overlay``.
 OverlayT = TypeVar("OverlayT", bound="Overlay")
 
 
 def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
-    """Walk the widget subtree to find the first OverlayAware widget.
-
-    Wrappers added by modifiers (e.g. WillPopScope) sit above the user widget,
-    so the search needs to descend into their children.
-    """
+    """Return the first OverlayAware widget in the subtree, looking through modifier wrappers."""
     if isinstance(widget, OverlayAware):
         return widget
     for child in widget.children:
@@ -61,19 +54,13 @@ def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
 
 
 class _LayerStack(ComposableWidget):
-    """Private stack of overlay layers.
-
-    Separate from ``Navigator`` on purpose: layers pile up on top of each other
-    rather than replacing one another, and the app's navigation stack never
-    sees them.
-    """
+    """Private stack of overlay layers, newest painted on top."""
 
     def __init__(self) -> None:
         super().__init__(width="wt", height="wt")
         self._stack: StackRuntime[_OverlayLayer] = StackRuntime()
         self._pending_dispose: dict[int, Callable[[], None]] = {}
-        # One Stack for the life of the overlay, synced one layer at a time: a
-        # rebuild per push or exit would remount every live entry.
+        # Synced one layer at a time: a rebuild per push would remount every live entry.
         self._layers = Stack(children=[], alignment="center", width="wt", height="wt")
         self._widget_by_layer: dict[int, Widget] = {}
 
@@ -163,16 +150,13 @@ class _LayerStack(ComposableWidget):
     def build(self) -> Widget:
         return self._layers
 
-    # No hit_test override needed: this widget and its transparent Stack both
-    # defer under the ``auto`` default, so input passes through whenever no
-    # actual overlay layer is hit.
+    # No hit_test override: a miss on every layer passes through under the auto default.
 
 
 class _OverlayLayer:
     """One overlay entry on the layer stack, with its transition.
 
-    OverlayEntry owns widget unmounting. The layer must not unmount to avoid
-    double-dispose when the entry is removed.
+    The entry owns unmounting; the layer never unmounts, or the widget would be disposed twice.
     """
 
     def __init__(
@@ -181,24 +165,13 @@ class _OverlayLayer:
         *,
         transition_spec: TransitionSpec | None = None,
     ) -> None:
-        # The layer keeps the entry, not just its builder: the layer stack is
-        # what ``Overlay.open_entries`` reports (it is the book that survives an
-        # exit animation), so the stack has to be able to name the entry each
-        # layer belongs to.
+        # The entry itself, not its builder: open_entries names each layer's entry from this stack.
         self.entry: OverlayEntry = entry
         self.transition_spec: TransitionSpec = transition_spec or Transitions.empty()
         self.transition_state: TransitionState = TransitionState.create(self.transition_spec)
         self._transition_engine = TransitionEngine()
         self._widget: Widget | None = None
-        # Whether input reaches the content behind this entry. Pass-through
-        # entries (toasts, banners, tooltips) do not occlude; blocking entries
-        # do. Set by ``Overlay.show``.
-        #
-        # This is deliberately *not* a barrier setting: the pointer half of
-        # ``passthrough`` is applied in ``show`` (the blocking layer), while the
-        # keyboard half is read straight off this layer by
-        # ``occluding_content_widget()``, which drives the modal focus trap and
-        # FOREGROUND shortcut scoping.
+        # The keyboard half of show(passthrough=...), read by occluding_content_widget().
         self._passthrough: bool = True
 
     def build_widget(self) -> Widget:
@@ -210,12 +183,7 @@ class _OverlayLayer:
 
     @property
     def _content_widget(self) -> Widget | None:
-        """The entry's content, stored once on the entry rather than twice.
-
-        The layer is the object the input and focus paths hold, the entry is the
-        object ``open_entries`` hands out, and both want the same widget. One
-        storage location, read from either side.
-        """
+        """The entry's content, stored on the entry so the layer and the entry never disagree."""
         return self.entry._content
 
     @_content_widget.setter
@@ -262,9 +230,7 @@ class _OverlayLayer:
         return resolve_phase_motion(self.transition_spec, phase)
 
     def _apply_progress(self, value: float, *, on_update: Callable[[], None]) -> None:
-        # Values above 1.0 are kept: expressive spatial motions overshoot their
-        # target and settle, and the visual resolver extrapolates spatial
-        # patterns through that settle. Only the lower bound is pinned.
+        # Only the lower bound is pinned: spatial motions overshoot 1.0 and settle.
         self.transition_progress_obs.value = max(0.0, float(value))
         on_update()
 
@@ -282,16 +248,9 @@ class _OverlayLayer:
 class _PassthroughRectBox(Widget):
     """Wraps the blocking layer and exempts one rect from it.
 
-    A hit inside the rect is declined outright — neither blocked nor counted
-    as an outside tap — so the pointer walk falls through to whatever the
-    entry covers there. The rect comes from a provider because it can move
-    every frame (an anchor animating its margin).
-
-    The provider's rect is in window coordinates (a painted rect), so the
-    local point is translated by this box's own painted origin before the
-    comparison. An entry's layers span the window at the origin, making the
-    translation a no-op in practice — it is kept for correctness, with the
-    unpainted case (origin unknown) treated as the origin.
+    A hit inside the rect is neither blocked nor an outside tap; it falls
+    through to the content behind. The rect is in window coordinates and is
+    re-read on every hit, so it can follow a moving anchor.
     """
 
     def __init__(
@@ -334,21 +293,16 @@ class _PassthroughRectBox(Widget):
 
 
 class _DefaultOverlayLayerComposer:
-    """Fallback core composer with minimal, design-agnostic rendering.
+    """Fallback composer: a neutral backdrop and the positioned content, nothing else."""
 
-    Painting only. Stacking, input blocking and outside-tap dismissal are
-    applied by :meth:`Overlay.show` around whatever this returns.
-    """
-
-    # Neutral fallback backdrop. Private on purpose: a design system supplies its
-    # own composer, so this colour never crosses the composition boundary.
+    # Private: a design system brings its own composer and colour.
     _BACKDROP_COLOR = (0, 0, 0, 128)
 
     def compose(self, context: OverlayLayerCompositionContext) -> OverlayLayerPaint:
         return OverlayLayerPaint(
             content=context.position_content(context.content),
             backdrop=(
-                Container(width="wt", height="wt").modifier(background(self._BACKDROP_COLOR))
+                Box(width="wt", height="wt", background_color=self._BACKDROP_COLOR)
                 if context.backdrop
                 else None
             ),
@@ -356,24 +310,10 @@ class _DefaultOverlayLayerComposer:
 
 
 class Overlay(ComposableWidget):
-    """Manages overlay entries displayed on top of content.
+    """Layers shown on top of the window content, newest on top.
 
-    The Overlay widget maintains a stack of OverlayEntry objects and renders them
-    using a Stack widget. Entries are displayed in insertion order (newer on top).
-
-    Example:
-        # Create an overlay
-        overlay = Overlay()
-
-        # Show a dialog
-        def build_dialog():
-            return BasicDialog(...)
-
-        entry = OverlayEntry(builder=build_dialog)
-        overlay.insert_entry(entry)
-
-        # Remove the dialog
-        overlay.remove_entry(entry)
+    Show a layer with :meth:`show`; it returns a handle that closes the layer
+    and can be awaited for its result.
     """
 
     def __init__(self, *, layer_composer: OverlayLayerComposer | None = None, key: str | None = None) -> None:
@@ -466,16 +406,10 @@ class Overlay(ComposableWidget):
         return top.entry if self._entry_to_layer.get(top.entry) is top else None
 
     def occluding_content_widget(self) -> Widget | None:
-        """Return the content of the topmost entry that blocks input, if any.
+        """Return the content of the topmost entry shown with ``passthrough=False``.
 
-        A ``passthrough=False`` entry swallows interaction with everything below
-        it; a pass-through entry (toast, banner, tooltip) does not. Callers that
-        must know "can the user still act on the content behind the overlay"
-        — keyboard-shortcut dispatch, for one — ask this. ``None`` means nothing
-        is blocking and the content below is still reachable.
-
-        This is the keyboard half of ``passthrough``; the pointer half is the
-        blocking layer built in :meth:`show`.
+        ``None`` means nothing blocks, and the content behind the overlay is
+        still reachable from the keyboard.
         """
         for layer in reversed(self._layer_stack.layers):
             if layer._passthrough:
@@ -500,11 +434,7 @@ class Overlay(ComposableWidget):
             return True
 
     def _will_pop_proceed_sync(self, widget: Widget | None) -> bool | None:
-        """Try to evaluate will_pop synchronously.
-
-        Returns True/False if determined synchronously, or None if the handler
-        is async and must be awaited.
-        """
+        """Evaluate will_pop synchronously; ``None`` means the handler is async and must be awaited."""
         if widget is None:
             return True
         handler = getattr(widget, "handle_back_event", None)
@@ -516,8 +446,7 @@ class Overlay(ComposableWidget):
             exception_once(logger, "overlay_consult_will_pop_sync_exc", "handle_back_event raised")
             return True
         if inspect.isawaitable(result):
-            # Caller must re-invoke and await; close this throwaway coroutine
-            # so Python does not emit a "never awaited" warning.
+            # The caller re-invokes and awaits; close this one to avoid a "never awaited" warning.
             close = getattr(result, "close", None)
             if callable(close):
                 close()
@@ -549,10 +478,9 @@ class Overlay(ComposableWidget):
         value: Any = None,
         reason: OverlayDismissReason,
     ) -> None:
-        """Dismiss an entry after consulting handle_back_event on its content widget.
+        """Dismiss an entry unless its content's will_pop handler refuses.
 
-        Sync path when the handler is synchronous; otherwise schedule an async task
-        and fall back to immediate dismissal if no event loop is running.
+        With an async handler and no running event loop, the entry is dismissed at once.
         """
         content = self._entry_content_widget(entry)
         sync = self._will_pop_proceed_sync(content)
@@ -561,11 +489,9 @@ class Overlay(ComposableWidget):
             return
         if sync is False:
             return
-        # Async handler: schedule resolution.
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            # No event loop; cannot await will_pop. Fall back to immediate dismiss.
             self._dismiss_entry_with_value(entry, value=value, reason=reason)
             return
 
@@ -573,10 +499,7 @@ class Overlay(ComposableWidget):
             if await self._consult_will_pop(content):
                 self._dismiss_entry_with_value(entry, value=value, reason=reason)
 
-        # Through spawn_task, not loop.create_task, so a test harness can wait
-        # for the dismissal. The no-loop case is handled above rather than by
-        # spawn_task: dropping the dismissal is the wrong degradation here, and
-        # falling back to an immediate one is what this method already promises.
+        # spawn_task, so a test harness can wait for the dismissal.
         spawn_task(_go(), owner_name=f"{type(self).__name__}.dismiss")
 
     def _dismiss_entry_with_value(
@@ -607,11 +530,6 @@ class Overlay(ComposableWidget):
     ) -> OverlayHandle[Any]:
         """Show content as an overlay entry.
 
-        The presentation is described by three orthogonal axes rather than by a
-        scenario name. Two of them are about input and are enforced here, in the
-        core; only ``backdrop`` is about appearance and crosses into the design
-        system's layer composer.
-
         Args:
             content: Widget to present.
             passthrough: Whether input reaches the content behind this entry.
@@ -619,14 +537,11 @@ class Overlay(ComposableWidget):
                 occludes everything below, for both pointer and keyboard.
             dismiss_on_outside_tap: Whether tapping outside the content dismisses
                 the entry. Requires ``passthrough=False``.
-            passthrough_rect: A window-coordinate rect the blocking layer leaves
-                alone: a tap inside it is neither blocked nor an outside tap —
-                it falls through to the content behind, which also keeps it from
-                dismissing the entry. A provider rather than a rect so it can
-                track a moving anchor. Inert with ``passthrough=True``, where
-                nothing is blocked to begin with.
-            backdrop: Whether the layer composer paints a backdrop behind the
-                content. Purely visual — input blocking is ``passthrough``'s job.
+            passthrough_rect: Returns a window-coordinate rect the blocking layer
+                leaves alone. A tap inside it reaches the content behind and does
+                not dismiss. Read on every hit, so it can follow a moving anchor.
+            backdrop: Whether a backdrop is painted behind the content. Visual
+                only; ``passthrough`` decides input.
             timeout: Seconds after which the entry auto-dismisses, or ``None``.
             position: Where to place the content. Defaults to centered.
             transition_spec: Enter/exit animation for the entry. Defaults to
@@ -637,8 +552,7 @@ class Overlay(ComposableWidget):
 
         Raises:
             ValueError: If ``timeout`` is negative, or if ``passthrough=True`` is
-                combined with ``dismiss_on_outside_tap=True`` — observing a tap
-                without consuming it needs multi-target dispatch.
+                combined with ``dismiss_on_outside_tap=True``.
 
         Notes:
             - `await handle` returns an OverlayResult.
@@ -678,50 +592,28 @@ class Overlay(ComposableWidget):
             layers: list[Widget] = []
 
             if paint.backdrop is not None:
-                # A backdrop is decoration. Left alone it would catch pointer
-                # events, because a painted surface is a hit target in this
-                # framework ("painted = clickable", Box._hit_self_opaque) — and
-                # it would then swallow the very outside tap the blocking layer
-                # below exists to receive. Whether a layer participates in input
-                # is the core's call, so the core makes it click-through rather
-                # than leaving every composer to remember.
-                layers.append(paint.backdrop.modifier(passthrough_pointer()))
+                # A painted backdrop is a hit target; unwrapped, it would swallow the outside tap.
+                layers.append(HitParticipationBox(paint.backdrop, descend_children=False, self_opaque=False))
 
             if not passthrough:
 
                 def on_outside_tap() -> None:
                     self._request_dismiss_entry(entry, reason=OverlayDismissReason.OUTSIDE_TAP)
 
-                # Input blocking lives here, not in the composer: a composer
-                # paints. ``block_pointer()`` is (descend_children=True,
-                # self_opaque=True) — let the content's own hits through, catch
-                # everything else. Because the S axis decouples hit-catching from
-                # painted-ness, this layer is hittable while being fully
-                # invisible; no transparent background() trick is needed.
-                blocker_modifier: Modifier | ModifierElement = block_pointer()
+                # Invisible, yet catches every hit that reaches it.
+                blocker: Widget = HitParticipationBox(
+                    Container(width="wt", height="wt"), descend_children=True, self_opaque=True
+                )
                 if dismiss_on_outside_tap:
-                    # ORDER IS LOAD-BEARING: block_pointer() must come *before*
-                    # clickable() in the chain. Modifier.apply runs left to right,
-                    # so the leftmost element ends up innermost. clickable() does
-                    # not wrap — it returns ensure_interaction_region(widget) — so
-                    # it has to sit *outside* the HitParticipationBox: the box is
-                    # the hit target and pointer bubbling walks parents only, so
-                    # the region must be an ancestor of it. Reversed, the region
-                    # would be the box's child and would never see the event.
-                    #
-                    # any_button=True: an outside tap dismisses whichever button
-                    # produced it, not just the primary one.
-                    blocker_modifier = blocker_modifier | clickable(on_click=on_outside_tap, any_button=True)
-                blocker: Widget = Container(width="wt", height="wt").modifier(blocker_modifier)
+                    # The region wraps the box: pointer bubbling walks parents only.
+                    region = ensure_interaction_region(blocker)
+                    region.enable_click(on_click=on_outside_tap, any_button=True)
+                    blocker = region
                 if passthrough_rect is not None:
                     blocker = _PassthroughRectBox(blocker, rect_provider=passthrough_rect)
                 layers.append(blocker)
 
-            # ORDER IS LOAD-BEARING: the content must be *last* in children.
-            # _hit_test_children walks reversed(children), so the content is
-            # tested first and the blocker only catches what the content
-            # declined. Reversed, the blocker would swallow every hit including
-            # those meant for the overlay content itself.
+            # Last, because children are hit-tested in reverse: the content before the blocker.
             layers.append(paint.content)
 
             if len(layers) == 1:
@@ -747,8 +639,7 @@ class Overlay(ComposableWidget):
         layer._content_widget = content_widget
         layer._passthrough = passthrough
 
-        # Construct the handle first so OverlayAware widgets receive it
-        # before the entry is inserted (i.e. before first build / mount).
+        # Before insertion, so OverlayAware content has its handle by first build.
         handle: OverlayHandle[Any] = OverlayHandle(overlay=self, entry=entry)
         aware = _find_overlay_aware(content_widget)
         if aware is not None:
@@ -767,24 +658,15 @@ class Overlay(ComposableWidget):
         return handle
 
     def hit_test(self, x: int, y: int):
-        """Hit test that passes through if no entry is hit.
-
-        With no entries the overlay is fully transparent and short-circuits.
-        Otherwise it delegates to the composed subtree, which passes input
-        through under the ``auto`` default whenever no overlay layer is hit.
-        """
+        """Hit test that passes through wherever no entry is hit."""
         if not self.has_entries():
             return None
         return super().hit_test(x, y)
 
     def is_visually_empty(self) -> bool:
-        """Whether the overlay is drawing nothing right now.
+        """Whether the overlay draws nothing right now.
 
-        The declarative counterpart to :meth:`hit_test`'s short-circuit: with no
-        entries the overlay is fully transparent, but its scaffolding stays
-        mounted at full window size. ``hit_test`` answers that for input; this
-        answers it for anything reading the tree geometrically, which cannot tell
-        an empty layer from an opaque one by its rect.
+        With no entries it still spans the window, so its rect cannot tell empty from opaque.
         """
         return not self.has_entries()
 
@@ -819,18 +701,13 @@ class Overlay(ComposableWidget):
     def open_entries(self) -> tuple[OverlayEntry, ...]:
         """The open entries, bottom to top.
 
-        An entry is open from the moment it is shown until its exit animation
-        has finalized -- **not** until it is dismissed. Those differ by the width
-        of the animation, during which the layer is still mounted, still laid out
-        and still painted, so reporting it as closed would be a lie a caller acts
-        on. To wait one out, wait for this to shrink::
+        An entry stays open until its exit animation finishes, not until it is
+        dismissed. To wait one out, wait for this to shrink::
 
             overlay.close()
             await app.wait_for(lambda: not overlay.open_entries)
 
-        Reading this never builds a widget. Asking what is open must not change
-        what is on screen, so the answer comes from the layer stack and the
-        entries on it, never from ``build_widget()``.
+        Reading this never builds a widget.
         """
         return tuple(layer.entry for layer in self._layer_stack.layers)
 
@@ -848,12 +725,10 @@ class Overlay(ComposableWidget):
 
     def close(self, value: Any = None, target: Widget | None = None) -> None:
         if target is not None:
-            # Map layer widgets to their entries for quick lookup
             layer_widget_to_entry = {
                 layer._widget: entry for entry, layer in self._entry_to_layer.items() if layer._widget is not None
             }
 
-            # Walk up the widget tree from target to find the owning layer widget
             current: Widget | None = target  # type: ignore
             visited = set()
 
@@ -895,15 +770,12 @@ class Overlay(ComposableWidget):
     def of(cls: type[OverlayT], context: Widget, root: bool = False) -> OverlayT:
         """Return the ``Overlay`` that should host a layer shown from ``context``.
 
-        The nearest ancestor ``Overlay`` wins, so an intentionally nested one
-        captures the layers shown from inside it. With no such ancestor the
-        answer is the App's own overlay — which is *not* reachable by an ancestor
-        walk, because the App composes it as a sibling layer of the ``Navigator``
-        rather than as a wrapper around the content.
+        The nearest ancestor ``Overlay`` wins, so a nested one captures the layers
+        shown from inside it. With no such ancestor, the window's own overlay answers.
 
         Args:
             context: A widget in the subtree from which to resolve.
-            root: Skip the ancestor search and return the App's overlay, to show
+            root: Skip the ancestor search and return the window's overlay, to show
                 a layer above everything from inside a nested overlay.
 
         Raises:

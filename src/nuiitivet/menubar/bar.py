@@ -27,6 +27,7 @@ from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.modifiers.key_shortcut import KeyShortcutModifier
 from nuiitivet.observable import ComputedObservable, ObservableBase
+from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.theme import Theme
@@ -178,8 +179,6 @@ class MenuBarWidget(ComposableWidget):
             return
 
         self.close_menu()
-
-        from nuiitivet.overlay.overlay import Overlay
 
         try:
             overlay = Overlay.of(self, root=True)
