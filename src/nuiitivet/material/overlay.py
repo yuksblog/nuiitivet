@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from functools import partial
 from typing import Any, Callable, Literal, Mapping, Protocol, TypeVar
 
 from nuiitivet.material.loading_indicator import LoadingIndicator
@@ -11,7 +12,7 @@ from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.overlay import Overlay
-from nuiitivet.overlay.intent_resolver import IntentResolver
+from nuiitivet.overlay.intent_resolver import IntentResolver, MappingIntentResolver
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.modifiers.corner_radius import corner_radius
@@ -37,17 +38,6 @@ def _find_descendant(widget: Widget, target: type[_T]) -> _T | None:
             if found is not None:
                 return found
     return None
-
-
-class _MappingIntentResolver(IntentResolver):
-    def __init__(self, factories: Mapping[type[Any], Callable[[Any], Widget]]) -> None:
-        self._factories = dict(factories)
-
-    def resolve(self, intent: Any) -> Widget:
-        factory = self._factories.get(type(intent))
-        if factory is None:
-            raise RuntimeError(f"No overlay intent is registered: {type(intent).__name__}")
-        return factory(intent)
 
 
 class _LoadingHost(Protocol):
@@ -134,7 +124,7 @@ class MaterialOverlay(Overlay):
             }
             if intents:
                 defaults.update(intents)
-            intent_resolver = _MappingIntentResolver(defaults)
+            intent_resolver = MappingIntentResolver(defaults)
 
         self._intent_resolver = intent_resolver
 
@@ -155,14 +145,19 @@ class MaterialOverlay(Overlay):
                 dialog. Defaults to ``True``.
 
         Returns:
-            An :class:`OverlayHandle` for manual dismissal.
+            An :class:`OverlayHandle` for manual dismissal. A dialog shown from an
+            intent stays open across a hot reload, and the handle follows it.
         """
-        return self.show(
+        handle = self.show(
             self._resolve(dialog),
             backdrop=True,
             dismiss_on_outside_tap=dismiss_on_outside_tap,
             transition=MaterialTransitions.dialog(),
         )
+        if not isinstance(dialog, Widget):
+            replay = partial(MaterialOverlay.dialog, dismiss_on_outside_tap=dismiss_on_outside_tap)
+            self._record_for_restore(handle, dialog, replay)
+        return handle
 
     def _resolve(self, content: Widget | Any) -> Widget:
         if isinstance(content, Widget):

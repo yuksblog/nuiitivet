@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
+from dataclasses import dataclass
 import inspect
 import logging
 from typing import Any, Callable, Dict, TypeVar
@@ -39,6 +41,19 @@ logger = logging.getLogger(__name__)
 
 # Lets ``MaterialOverlay.of(...)`` return a ``MaterialOverlay``, not an ``Overlay``.
 OverlayT = TypeVar("OverlayT", bound="Overlay")
+
+
+@dataclass(slots=True)
+class _ShowRecord:
+    """An entry shown from an intent, kept so a hot reload can show it again.
+
+    ``replay`` is framework code, which a reload does not replace; the intent is
+    resolved again by the rebuilt overlay.
+    """
+
+    intent: Any
+    replay: Callable[[Any, Any], OverlayHandle[Any]]
+    handle: OverlayHandle[Any]
 
 
 def _find_overlay_aware(widget: Widget) -> OverlayAware[Any] | None:
@@ -115,6 +130,15 @@ class _LayerStack(ComposableWidget):
             except Exception:
                 exception_once(logger, "overlay_layer_on_disposed_exc", "Overlay layer on_disposed raised")
         self._remove_layer_widget(layer)
+
+    def dispose_all(self) -> None:
+        """Drop every layer at once, without exit transitions."""
+        for layer in list(self._stack.elements):
+            callback = self._pending_dispose.pop(id(layer), None)
+            if callback is not None:
+                callback()
+            self._stack.complete_exit(layer)
+            self._remove_layer_widget(layer)
 
     def pop(self) -> None:
         if not self.can_pop():
@@ -325,6 +349,9 @@ class Overlay(ComposableWidget):
         self._entry_to_pending_result: Dict[OverlayEntry, OverlayResult[Any]] = {}
         self._entry_to_timeout_cb: Dict[OverlayEntry, Callable[[float], None]] = {}
         self._layer_composer: OverlayLayerComposer = layer_composer or _DefaultOverlayLayerComposer()
+        self._entry_to_record: Dict[OverlayEntry, _ShowRecord] = {}
+        # Entries handed to a rebuilt overlay; disposing them here must not complete their futures.
+        self._carried_entries: set[OverlayEntry] = set()
 
     def _get_future_for_entry(self, entry: OverlayEntry) -> asyncio.Future[OverlayResult[Any]] | None:
         return self._entry_to_future.get(entry)
@@ -372,6 +399,8 @@ class Overlay(ComposableWidget):
 
     def _complete_entry_future(self, entry: OverlayEntry, result: OverlayResult[Any]) -> None:
         if entry in self._entry_to_pending_result:
+            return
+        if entry in self._carried_entries and result.reason is OverlayDismissReason.DISPOSED:
             return
 
         future = self._entry_to_future.get(entry)
@@ -684,6 +713,7 @@ class Overlay(ComposableWidget):
         layer = self._entry_to_layer.pop(entry, None)
         if layer is None:
             return
+        self._entry_to_record.pop(entry, None)
 
         self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
         self._cancel_timeout_if_any(entry)
@@ -710,6 +740,82 @@ class Overlay(ComposableWidget):
         Reading this never builds a widget.
         """
         return tuple(layer.entry for layer in self._layer_stack.layers)
+
+    def _record_for_restore(
+        self,
+        handle: OverlayHandle[Any],
+        intent: Any,
+        replay: Callable[[Any, Any], OverlayHandle[Any]],
+    ) -> None:
+        """Mark the entry behind ``handle`` as restorable by calling ``replay(overlay, intent)``."""
+        self._entry_to_record[handle._entry] = _ShowRecord(intent=intent, replay=replay, handle=handle)
+
+    def snapshot_stack(self) -> list[_ShowRecord]:
+        """Return the open entries shown from an intent, bottom to top, for :meth:`restore_stack`.
+
+        Entries shown from a widget are left out. From this call on, disposing
+        a returned entry leaves its handle pending, so the rebuilt overlay can
+        finish it.
+        """
+        records = [
+            self._entry_to_record[entry]
+            for entry in self.open_entries
+            if entry in self._entry_to_record and entry in self._entry_to_layer
+        ]
+        self._carried_entries = {record.handle._entry for record in records}
+        return records
+
+    def restore_stack(self, records: Sequence[_ShowRecord]) -> int:
+        """Show the entries of a snapshot again on a freshly built overlay.
+
+        Each entry takes over the handle the old one returned: an ``await``
+        started before the reload receives the value chosen after it. An entry
+        whose intent no longer resolves is dropped, and its handle completes
+        with ``DISPOSED``.
+
+        Args:
+            records: What :meth:`snapshot_stack` returned before the reload.
+
+        Returns:
+            The number of entries shown again.
+        """
+        restored = 0
+        for record in records:
+            old_handle = record.handle
+            old_overlay, old_entry = old_handle._overlay, old_handle._entry
+            if not isinstance(old_overlay, Overlay):
+                continue
+            try:
+                new_handle = record.replay(self, record.intent)
+            except Exception:
+                exception_once(logger, "overlay_restore_replay_exc", "Overlay entry could not be shown again")
+                old_overlay._carried_entries.discard(old_entry)
+                old_overlay._complete_entry_future(
+                    old_entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED)
+                )
+                continue
+            new_entry = new_handle._entry
+            old_overlay._carried_entries.discard(old_entry)
+            future = old_overlay._entry_to_future.pop(old_entry, None)
+            if future is not None:
+                self._entry_to_future[new_entry] = future
+            old_handle._overlay = self
+            old_handle._entry = new_entry
+            new_record = self._entry_to_record.get(new_entry)
+            if new_record is not None:
+                new_record.handle = old_handle
+            restored += 1
+        return restored
+
+    def on_unmount(self) -> None:
+        # Leaving the tree drops every entry, so no ``await`` on a handle is left pending.
+        for entry in list(self._entry_to_layer):
+            self._entry_to_layer.pop(entry, None)
+            self._entry_to_record.pop(entry, None)
+            self._cancel_timeout_if_any(entry)
+            entry.dispose()
+        self._layer_stack.dispose_all()
+        super().on_unmount()
 
     def has_entries(self) -> bool:
         """Whether any entry is open. See :attr:`open_entries` for when one is."""
