@@ -336,19 +336,14 @@ class AppHarness(_HarnessBase):
 
     # -- navigation / overlay ----------------------------------------------
     #
-    # Widgets, not routes or entries: the screen class is the identity a test
-    # already has a vocabulary for -- `isinstance`, `is`, `len`. A `Route` has a
-    # builder and no name, so handing one out would promise an identity it does
-    # not carry.
+    # Widgets, not stack elements or entries: the screen class is the identity a
+    # test already has a vocabulary for -- `isinstance`, `is`, `len`.
     #
-    # None of these builds a widget. `Route.build_widget()` and
-    # `OverlayEntry.build_widget()` construct on demand and cache, so mapping a
-    # stack to widgets through them would make *asking* about navigation change
-    # what is on screen -- an observation with a side effect. A route nobody has
-    # displayed yet is therefore reported as None rather than built.
+    # None of these builds a widget: `OverlayEntry.build_widget()` constructs on
+    # demand, so reading through it would change what is on screen.
 
     @property
-    def route_stack(self) -> Tuple[Optional[Any], ...]:
+    def route_stack(self) -> Tuple[Any, ...]:
         """The screens on the root navigator's stack, bottom to top.
 
         A screen being animated out is still here, so a pop is something to wait
@@ -357,15 +352,11 @@ class AppHarness(_HarnessBase):
             app.click(key="back")
             await app.wait_for(lambda: len(app.route_stack) == 1)
 
-        ``None`` marks a route that has never been built -- an ``AppHarness``
-        started several screens deep displays only the top, and reading the stack
-        must not build the rest.
-
         There is no ``route_depth``: ``len(app.route_stack)`` is not something
         anyone writes wrong, and one vocabulary is the point.
         """
         self._require_open()
-        return tuple(getattr(route, "_widget", None) for route in self._navigator.stack)
+        return tuple(self._navigator.stack)
 
     @property
     def current_screen(self) -> Optional[Any]:

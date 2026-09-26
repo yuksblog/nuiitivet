@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from nuiitivet.modifiers import will_pop
-from nuiitivet.navigation import Navigator, Route
+from nuiitivet.navigation import Navigator
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -53,8 +53,8 @@ async def test_navigator_pop_respects_will_pop_cancel(nuiitivet_mount) -> None:
 
     nav = Navigator.routes(
         [
-            Route(builder=lambda: _FlagWidget(label="root")),
-            Route(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
+            _FlagWidget(label="root"),
+            outgoing.modifier(will_pop(on_will_pop)),
         ]
     )
 
@@ -78,8 +78,8 @@ async def test_navigator_pop_respects_will_pop_allow(nuiitivet_mount) -> None:
 
     nav = Navigator.routes(
         [
-            Route(builder=lambda: _FlagWidget(label="root")),
-            Route(builder=lambda: outgoing.modifier(will_pop(on_will_pop))),
+            _FlagWidget(label="root"),
+            outgoing.modifier(will_pop(on_will_pop)),
         ]
     )
 
@@ -117,8 +117,8 @@ async def test_navigator_pop_calls_will_pop_inside_build(nuiitivet_mount) -> Non
     outgoing = Outgoing()
     nav = Navigator.routes(
         [
-            Route(builder=lambda: _FlagWidget(label="root")),
-            Route(builder=lambda: outgoing),
+            _FlagWidget(label="root"),
+            outgoing,
         ]
     )
 
@@ -215,8 +215,8 @@ async def test_normal_pop_allowed_works_after_previous_cancel(nuiitivet_mount) -
 
     nav = Navigator.routes(
         [
-            Route(builder=lambda: _FlagWidget(label="root")),
-            Route(builder=lambda: _FlagWidget(label="outgoing").modifier(will_pop(on_will_pop))),
+            _FlagWidget(label="root"),
+            _FlagWidget(label="outgoing").modifier(will_pop(on_will_pop)),
         ]
     )
     host = nuiitivet_mount(nav)

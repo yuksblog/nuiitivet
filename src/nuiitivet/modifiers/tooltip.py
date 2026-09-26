@@ -37,7 +37,7 @@ class TooltipBox(PopupBox):
         target_anchor: AlignmentLike = "top-center",
         content_anchor: AlignmentLike = "bottom-center",
         offset: Tuple[float, float] = (0.0, -4.0),
-        transition_spec: Optional["TransitionSpec"] = None,
+        transition: Optional["TransitionSpec"] = None,
         width: SizingLike = None,
         height: SizingLike = None,
     ) -> None:
@@ -51,7 +51,7 @@ class TooltipBox(PopupBox):
             target_anchor: Reference point on the anchor widget.
             content_anchor: Reference point on the tooltip content.
             offset: Additional ``(dx, dy)`` offset in pixels.
-            transition_spec: Optional overlay transition.
+            transition: Optional overlay transition.
             width: Width sizing for this wrapper.
             height: Height sizing for this wrapper.
         """
@@ -65,7 +65,7 @@ class TooltipBox(PopupBox):
             target_anchor=target_anchor,
             content_anchor=content_anchor,
             offset=offset,
-            transition_spec=transition_spec,
+            transition=transition,
             width=width,
             height=height,
         )
@@ -255,7 +255,7 @@ class TooltipModifier(ModifierElement):
     target_anchor: AlignmentLike = "top-center"
     content_anchor: AlignmentLike = "bottom-center"
     offset: Tuple[float, float] = (0.0, -4.0)
-    transition_spec: Optional["TransitionSpec"] = None
+    transition: Optional["TransitionSpec"] = None
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap widget in TooltipBox and wire transient interaction behavior."""
@@ -272,7 +272,7 @@ class TooltipModifier(ModifierElement):
             target_anchor=self.target_anchor,
             content_anchor=self.content_anchor,
             offset=self.offset,
-            transition_spec=self.transition_spec,
+            transition=self.transition,
             width=anchor_widget.width_sizing,
             height=anchor_widget.height_sizing,
         )
@@ -286,7 +286,7 @@ def tooltip(
     target_anchor: AlignmentLike = "top-center",
     content_anchor: AlignmentLike = "bottom-center",
     offset: tuple[float, float] = (0.0, -4.0),
-    transition_spec: Optional["TransitionSpec"] = None,
+    transition: Optional["TransitionSpec"] = None,
 ) -> TooltipModifier:
     """Attach a transient tooltip behavior to any widget.
 
@@ -302,7 +302,7 @@ def tooltip(
         target_anchor: Reference point on the anchor widget.
         content_anchor: Reference point on the tooltip content.
         offset: Additional ``(dx, dy)`` offset in pixels.
-        transition_spec: Optional overlay transition.
+        transition: Optional overlay transition.
 
     Returns:
         A ``TooltipModifier`` suitable for :meth:`Widget.modifier`.
@@ -314,7 +314,7 @@ def tooltip(
         target_anchor=target_anchor,
         content_anchor=content_anchor,
         offset=offset,
-        transition_spec=transition_spec,
+        transition=transition,
     )
 
 

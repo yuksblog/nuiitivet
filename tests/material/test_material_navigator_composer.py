@@ -49,7 +49,7 @@ class _DummyApp:
 
 def _material_intents_nav() -> MaterialNavigator:
     nav = nv.Navigator.intents(
-        initial_route=_ScreenIntent(depth=0),
+        initial=_ScreenIntent(depth=0),
         routes={_ScreenIntent: lambda intent: _Screen(depth=intent.depth)},
     )
     assert isinstance(nav, MaterialNavigator)

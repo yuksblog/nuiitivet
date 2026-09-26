@@ -272,7 +272,7 @@ snapshotted and replayed, mirroring the `Observable` restore above:
   A declarative push — `push(SomeIntent(...))` against a
   `Navigator.intents(...)` / `Navigator.routes(...)` route table — records the
   intent *value* plus its type's fully-qualified name. An imperative push of a
-  raw `Route`/`Widget` instance records an **opaque** marker: it was built from
+  widget instance records an **opaque** marker: it was built from
   the old code with no factory to rebuild it, so it is not restorable (the same
   instance-vs-factory constraint as the root, §7.3). The log tracks only pushed
   routes; the initial construction stack is rebuilt by the factory.

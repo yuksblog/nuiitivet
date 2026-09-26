@@ -57,7 +57,7 @@ def _shown_dialog_env() -> _Env:
     root.mount(_DummyApp())
     root.layout(800, 600)
 
-    overlay.show(BasicDialog(title="Exit motion"), backdrop=True, transition_spec=MaterialTransitions.dialog())
+    overlay.show(BasicDialog(title="Exit motion"), backdrop=True, transition=MaterialTransitions.dialog())
     return _Env(clock=clock, overlay=overlay)
 
 

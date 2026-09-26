@@ -1,39 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass
 
-from nuiitivet.transition.spec import TransitionSpec, Transitions
+from nuiitivet.transition.spec import TransitionSpec
 from nuiitivet.widgeting.widget import Widget
 
 
 @dataclass(slots=True)
 class Route:
-    """One screen on a Navigator's stack.
+    """One screen on a Navigator's stack: its widget and the transition it moves with.
 
-    The route builds its widget on first display and keeps it while the route
-    stays on the stack, so going back to it shows the same widget.
+    Internal to ``navigation``; callers push a widget and an optional transition.
 
     Attributes:
-        builder: Builds the route's widget.
-        transition_spec: Enter and exit animation. Defaults to none.
+        widget: The screen.
+        transition: Enter and exit animation for this screen, kept until it is disposed.
     """
 
-    builder: Callable[[], Widget]
-    transition_spec: TransitionSpec = field(default_factory=lambda: Transitions.empty())
-
-    _widget: Widget | None = None
-
-    def build_widget(self) -> Widget:
-        if self._widget is not None and getattr(self._widget, "_unmounted", False):
-            self._widget = None
-        if self._widget is None:
-            self._widget = self.builder()
-        return self._widget
+    widget: Widget
+    transition: TransitionSpec
 
     def dispose(self) -> None:
-        if self._widget is None:
-            return
-
-        self._widget.unmount()
-        self._widget = None
+        self.widget.unmount()

@@ -10,7 +10,7 @@
 flowchart TB
     subgraph Window
         direction LR
-        Navigator["Navigator<br/>StackRuntime[Route]"]
+        Navigator["Navigator<br/>StackRuntime[screen]"]
         Overlay["Overlay<br/>StackRuntime[overlay layer]"]
     end
     Kernel["nuiitivet.transition<br/>StackRuntime, TransitionEngine,<br/>TransitionSpec, TransitionState"]
@@ -20,7 +20,7 @@ flowchart TB
 
 Both stacks come from `nuiitivet.transition`. The kernel tracks when an element enters, stays and exits, drives the progress, and says how it moves. It knows nothing of screens or layers: the stack holds any element with a `dispose()`.
 
-The two stacks differ in what the top means. A navigator paints only its top route; the routes beneath stay mounted, unpainted. An overlay paints every layer, newest on top.
+The two stacks differ in what the top means. A navigator paints only its top screen; the screens beneath stay mounted, unpainted. An overlay paints every layer, newest on top.
 
 Building the overlay on a `Navigator` was rejected. Overlay layers pile up instead of replacing each other, and they must never enter the app's back stack.
 
@@ -84,12 +84,12 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from nuiitivet.navigation.route import Route
+from nuiitivet.transition.spec import TransitionSpec
 from nuiitivet.widgeting.widget import Widget
 
 
 class NavigatorProtocol(Protocol):
-    def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
+    def push(self, screen: Widget | Any, *, transition: TransitionSpec | None = None) -> None:
         ...
 
     def pop(self) -> None:
@@ -106,7 +106,7 @@ The protocol is deliberately narrow — it covers what a ViewModel calls, not th
 
 ### 2.0 What is the Intent System?
 
-The Intent System is a mechanism for declaring screen transitions not just by passing Widgets/Routes directly, but as data representing an "intent," which the framework resolves to a Route for execution.
+The Intent System declares a screen change as data, an "intent", rather than as a widget. The framework resolves the intent to a screen.
 
 ```python
 # Caller side (Intent)
@@ -114,7 +114,7 @@ Navigator.of(self).push(ProductDetailIntent(product_id=123))
 
 # Framework side (Resolution)
 # - Look up the factory from routes using type(intent) as the key
-# - Generate a Route using factory(intent)
+# - Build the screen with factory(intent)
 ```
 
 ### 2.1 Intent Type System
@@ -135,39 +135,36 @@ class ProductDetailIntent:
     product_id: int
 ```
 
-### 2.2 Route Mapping (routes)
+### 2.2 Routing Table (routes)
 
-`routes` is treated as a dictionary that maps `Intent instance -> Route`.
+`routes` maps an intent type to a factory. The factory returns the screen, or a `(screen, transition)` pair.
 
 ```python
-routes: dict[type, callable[[object], "Route"]] = {
-    HomeIntent: lambda intent: Route(builder=lambda: HomeScreen()),
-    ProductDetailIntent: lambda intent: Route(
-        builder=lambda: ProductDetailScreen(intent.product_id)
-    ),
+routes = {
+    HomeIntent: lambda intent: HomeScreen(),
+    ProductDetailIntent: lambda intent: (ProductDetailScreen(intent.product_id), Transitions.empty()),
 }
 
 Navigator.of(self).push(ProductDetailIntent(product_id=123))
 ```
 
-### 2.3 `push` Overload Design
+### 2.3 `push` and Transitions
 
-`Navigator.push()` accepts the following three patterns:
-
-- Widget
-- Route
-- Intent
+`Navigator.push()` takes a widget or an intent. A widget may bring its transition:
 
 ```python
-# Pattern 1: Widget
 Navigator.of(self).push(SettingsScreen())
-
-# Pattern 2: Route
-Navigator.of(self).push(Route(builder=lambda: SettingsScreen()))
-
-# Pattern 3: Intent
+Navigator.of(self).push(SettingsScreen(), transition=Transitions.empty())
 Navigator.of(self).push(SettingsIntent())
 ```
+
+A transition belongs to the screen, not to the push. A spec carries `enter`, `exit_`, `enter_back` and `exit_back`, and the layer composer maps each screen through its own spec. A screen's `enter` runs when it is pushed, its `exit_` when another screen covers it, its `exit_back` when it pops, and its `enter_back` when the screen above it pops. So the transition given at push travels with the screen until the screen is disposed.
+
+A screen given no transition gets the navigator's default: none for core `Navigator`, `MaterialTransitions.page()` for `MaterialNavigator`. The default is a subclass hook, not a constructor parameter. `Overlay` fixes its defaults the same way, per presenter method, and a screen that needs another motion passes `transition=`.
+
+`transition=` with an intent raises `TypeError`. An intent is a restorable description, and a hot reload replays its factory; a per-call keyword would be lost on restore. The factory gives the transition instead.
+
+The screen and its transition travel as a plain pair, not a class of their own. Naming the pair would pay off with a declarative back stack whose list elements need an identity for diffing; there is none. Internally the navigator wraps the pair in a `Route`, its stack element, which also unmounts the screen on disposal. `pop(transition=...)` is not offered: the motion of a pop is fixed by the specs of the two screens involved.
 
 ### 2.4 Handling Missing Intents
 
@@ -187,11 +184,11 @@ To enable ViewModels to request screen transitions based on Intents without depe
 App(
     Window(
         content=Navigator.intents(
-            initial_route=HomeIntent(),
+            initial=HomeIntent(),
             routes={
-                HomeIntent: lambda intent: Route(builder=...),
-                DetailIntent: lambda intent: Route(builder=...),
-                SettingsIntent: lambda intent: Route(builder=...),
+                HomeIntent: lambda intent: HomeScreen(),
+                DetailIntent: lambda intent: DetailScreen(intent.item_id),
+                SettingsIntent: lambda intent: SettingsScreen(),
             },
         ),
         title="My App",

@@ -179,9 +179,8 @@ async def test_idle_times_out_on_work_that_never_stops(nuiitivet_app) -> None:
 async def test_idle_awaits_a_navigator_pop(nuiitivet_app) -> None:
     """``Navigator.pop()`` spawns its own task; ``idle()`` covers it."""
     from nuiitivet.navigation.navigator import Navigator
-    from nuiitivet.navigation.route import Route
 
-    nav = Navigator(Route(builder=lambda: _text("first", "first")))
+    nav = Navigator(_text("first", "first"))
     app = nuiitivet_app(nav, size=SIZE)
     nav.push(_text("second", "second"))
     await app.idle()
@@ -327,9 +326,8 @@ def test_unschedulable_handler_leaves_no_unawaited_coroutine(recwarn) -> None:
 def test_navigator_pop_without_a_loop_does_not_crash() -> None:
     """It used to raise RuntimeError from asyncio.create_task."""
     from nuiitivet.navigation.navigator import Navigator
-    from nuiitivet.navigation.route import Route
 
-    nav = Navigator(Route(builder=lambda: _text("first", "first")))
+    nav = Navigator(_text("first", "first"))
     nav.push(_text("second", "second"))
 
     nav.pop()  # no loop, no harness observing: logged and dropped

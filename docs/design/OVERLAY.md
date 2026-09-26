@@ -29,7 +29,6 @@ The `Overlay` core provides only `show()`. Scenario-specific APIs (dialogs, snac
 
 - `Overlay` provides only the generic `show()` and no scenario-specific APIs like `dialog`, `snackbar`, or `sheet`.
 - It presents widgets only. The widget is the content; how it is presented, the transition included, is the keyword arguments.
-- Accepting a `Route` in `show()` was rejected. The overlay builds its content at once, so a route's lazy build and cache never take effect there. Its one remaining field, the transition, would be a second way to say what `transition_spec=` already says, and the two can disagree.
 - Intent resolution (`Intent -> Widget`) is not performed by `Overlay`.
 - Intent resolution is provided by subclasses (e.g., `MaterialOverlay`) using an `IntentResolver`.
 

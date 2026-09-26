@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from nuiitivet.navigation.route import Route
+from nuiitivet.transition.spec import TransitionSpec
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -27,14 +27,19 @@ class NavigatorProtocol(Protocol):
     no widget tree and no ``App``.
     """
 
-    def push(self, route_or_widget_or_intent: Route | Widget | Any) -> None:
-        """Push a route, a widget, or an intent onto the navigation stack."""
+    def push(self, screen: Widget | Any, *, transition: TransitionSpec | None = None) -> None:
+        """Push a widget, or an intent, onto the navigation stack.
+
+        Args:
+            screen: A widget, or an intent resolved through the navigator's routes.
+            transition: The transition the widget moves with; widgets only.
+        """
         ...
 
     def pop(self) -> None:
-        """Pop the topmost route."""
+        """Pop the topmost screen."""
         ...
 
     def can_pop(self) -> bool:
-        """Return whether a route below the topmost one exists."""
+        """Return whether a screen below the topmost one exists."""
         ...

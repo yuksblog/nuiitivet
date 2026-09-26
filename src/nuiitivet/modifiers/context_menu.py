@@ -40,7 +40,7 @@ class ContextMenuBox(PopupBox):
         *,
         content_anchor: AlignmentLike = "top-left",
         offset: Tuple[float, float] = (0.0, 0.0),
-        transition_spec: Optional["TransitionSpec"] = None,
+        transition: Optional["TransitionSpec"] = None,
         width: SizingLike = None,
         height: SizingLike = None,
     ) -> None:
@@ -51,7 +51,7 @@ class ContextMenuBox(PopupBox):
             content: Menu widget shown at the pointer.
             content_anchor: Reference point on the menu placed at the click point.
             offset: Additional ``(dx, dy)`` offset in screen pixels.
-            transition_spec: Optional overlay transition.
+            transition: Optional overlay transition.
             width: Width sizing for this wrapper.
             height: Height sizing for this wrapper.
         """
@@ -64,7 +64,7 @@ class ContextMenuBox(PopupBox):
             target_anchor="top-left",
             content_anchor=content_anchor,
             offset=offset,
-            transition_spec=transition_spec,
+            transition=transition,
             # A menu blocks the UI behind it and closes on an outside tap.
             passthrough=False,
             dismiss_on_outside_tap=True,
@@ -134,7 +134,7 @@ class ContextMenuModifier(ModifierElement):
     content: Widget
     content_anchor: AlignmentLike = "top-left"
     offset: Tuple[float, float] = (0.0, 0.0)
-    transition_spec: Optional["TransitionSpec"] = None
+    transition: Optional["TransitionSpec"] = None
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap *widget* in a :class:`ContextMenuBox`.
@@ -155,7 +155,7 @@ class ContextMenuModifier(ModifierElement):
             self.content,
             content_anchor=self.content_anchor,
             offset=self.offset,
-            transition_spec=self.transition_spec,
+            transition=self.transition,
             width=host.width_sizing,
             height=host.height_sizing,
         )
@@ -166,7 +166,7 @@ def context_menu(
     *,
     content_anchor: AlignmentLike = "top-left",
     offset: Tuple[float, float] = (0.0, 0.0),
-    transition_spec: Optional["TransitionSpec"] = None,
+    transition: Optional["TransitionSpec"] = None,
 ) -> ContextMenuModifier:
     """Open *content* at the pointer when the widget is secondary-clicked.
 
@@ -182,7 +182,7 @@ def context_menu(
         content_anchor: Reference point on the menu that lands on the click point
             (default ``"top-left"``, so the menu hangs down-right of the cursor).
         offset: Additional ``(dx, dy)`` offset in screen pixels.
-        transition_spec: Passed to :meth:`Overlay.show` for
+        transition: Passed to :meth:`Overlay.show` for
             enter/exit animation.
 
     Returns:
@@ -209,7 +209,7 @@ def context_menu(
         content=content,
         content_anchor=content_anchor,
         offset=offset,
-        transition_spec=transition_spec,
+        transition=transition,
     )
 
 

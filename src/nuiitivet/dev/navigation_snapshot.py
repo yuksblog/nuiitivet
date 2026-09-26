@@ -6,9 +6,9 @@ the navigation analogue of the ``Observable`` restore in :mod:`.snapshot`:
 capture the *descriptors* of routes the author pushed declaratively (intents /
 route-table keys) before the swap, then replay them onto the rebuilt navigator.
 
-Only the App's own navigator is handled. Routes pushed as raw ``Route``/``Widget``
-instances are opaque — they cannot be rebuilt against the new code — and stop the
-replay, leaving the rest collapsed. Open overlays/dialogs are explicitly out of
+Only the App's own navigator is handled. A screen pushed as a widget instance is
+opaque — it cannot be rebuilt against the new code — and stops the replay,
+leaving the rest collapsed. Open overlays/dialogs are explicitly out of
 scope and keep resetting.
 """
 

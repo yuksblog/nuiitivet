@@ -69,7 +69,7 @@ class PopupBox(Widget):
         offset: Tuple[float, float] = (0.0, 0.0),
         flip: bool = True,
         shift: bool = True,
-        transition_spec: Optional["TransitionSpec"] = None,
+        transition: Optional["TransitionSpec"] = None,
         width: SizingLike = None,
         height: SizingLike = None,
     ) -> None:
@@ -92,7 +92,7 @@ class PopupBox(Widget):
                 opposite edge when it does not fit against the anchored one.
             shift: Whether the content may slide along the cross axis to stay
                 inside the viewport.
-            transition_spec: Optional transition passed to ``Overlay.show``.
+            transition: Optional transition passed to ``Overlay.show``.
             width: Width sizing for this wrapper.
             height: Height sizing for this wrapper.
         """
@@ -103,7 +103,7 @@ class PopupBox(Widget):
         self._offset = offset
         self._flip = bool(flip)
         self._shift = bool(shift)
-        self._transition_spec = transition_spec
+        self._transition = transition
         self._passthrough = bool(passthrough)
         self._dismiss_on_outside_tap = _resolve_dismiss_on_outside_tap(self._passthrough, dismiss_on_outside_tap)
         self._anchor_passthrough = bool(anchor_passthrough)
@@ -190,7 +190,7 @@ class PopupBox(Widget):
             dismiss_on_outside_tap=self._dismiss_on_outside_tap,
             passthrough_rect=self._rect_provider if self._anchor_passthrough else None,
             position=position,
-            transition_spec=self._transition_spec,
+            transition=self._transition,
         )
         self._cancel_open_retry()
         self._ensure_handle_monitor()
@@ -323,7 +323,7 @@ class PopupModifier(ModifierElement):
     offset: Tuple[float, float] = (0.0, 0.0)
     flip: bool = True
     shift: bool = True
-    transition_spec: Optional["TransitionSpec"] = None
+    transition: Optional["TransitionSpec"] = None
 
     def apply(self, widget: Widget) -> Widget:
         """Wrap *widget* in a :class:`PopupBox`.
@@ -346,7 +346,7 @@ class PopupModifier(ModifierElement):
             offset=self.offset,
             flip=self.flip,
             shift=self.shift,
-            transition_spec=self.transition_spec,
+            transition=self.transition,
             width=widget.width_sizing,
             height=widget.height_sizing,
         )
@@ -364,7 +364,7 @@ def popup(
     offset: Tuple[float, float] = (0.0, 0.0),
     flip: bool = True,
     shift: bool = True,
-    transition_spec: Optional["TransitionSpec"] = None,
+    transition: Optional["TransitionSpec"] = None,
 ) -> PopupModifier:
     """Return an anchored popup overlay modifier for the modified widget.
 
@@ -412,7 +412,7 @@ def popup(
         shift: Slide the content along the *cross* axis to keep it inside the
             viewport. The content is never moved along the placement axis, so it
             cannot end up covering the anchor.
-        transition_spec: Passed directly to :meth:`Overlay.show` for enter/exit
+        transition: Passed directly to :meth:`Overlay.show` for enter/exit
             animation.
 
     Returns:
@@ -436,7 +436,7 @@ def popup(
                 target_anchor="bottom-left",
                 content_anchor="top-left",
                 offset=(0.0, 4.0),
-                transition_spec=MaterialTransitions.menu(),
+                transition=MaterialTransitions.menu(),
             )
         )
     """
@@ -453,5 +453,5 @@ def popup(
         offset=offset,
         flip=flip,
         shift=shift,
-        transition_spec=transition_spec,
+        transition=transition,
     )
