@@ -285,7 +285,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
        initial_value: int = 0
    ```
 
-2. **Map Intent to Dialog**: Register the connection between the Intent data and its Widget in `App`.
+2. **Map Intent to Dialog**: Register the connection between the Intent data and its Widget on the window's overlay.
 
    ```python
    def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
@@ -295,12 +295,13 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
        # calls nv.Overlay.of(self) when it wants to close.
        return CustomDialogContent(initial=intent.initial_value)
 
+   def build_overlay() -> nv.Overlay:
+       return nv.Overlay(intents={CounterIntent: create_counter_dialog})
+
    app = nv.App(
        nv.Window(
            content=HomeView,
-           overlay_intents={
-               CounterIntent: create_counter_dialog
-           },
+           overlay=build_overlay,
        ),
    )
    ```

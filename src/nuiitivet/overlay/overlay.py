@@ -770,13 +770,13 @@ class Overlay(ComposableWidget):
     def of(cls: type[OverlayT], context: Widget, root: bool = False) -> OverlayT:
         """Return the ``Overlay`` that should host a layer shown from ``context``.
 
-        The nearest ancestor ``Overlay`` wins, so a nested one captures the layers
-        shown from inside it. With no such ancestor, the window's own overlay answers.
+        The answer is the overlay of the window ``context`` belongs to. The
+        ancestor search runs first, as the hook for a nested scope; the window is
+        the only scope today.
 
         Args:
             context: A widget in the subtree from which to resolve.
-            root: Skip the ancestor search and return the window's overlay, to show
-                a layer above everything from inside a nested overlay.
+            root: Skip the ancestor search and return the window's overlay.
 
         Raises:
             RuntimeError: If called before ``context`` is mounted (typically from
@@ -798,6 +798,6 @@ class Overlay(ComposableWidget):
         if not isinstance(window_overlay, cls):
             raise RuntimeError(
                 f"The Window's overlay is a {type(window_overlay).__name__}, not a {cls.__name__}. "
-                f"Pass overlay_factory={cls.__name__} to the Window (or App), or wrap the subtree in one."
+                f"Pass overlay={cls.__name__} to the Window."
             )
         return window_overlay

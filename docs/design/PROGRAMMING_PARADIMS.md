@@ -59,7 +59,7 @@ The `Overlay` is defined as a layer independent of the root content and is passe
 The framework provides standard dialog Widgets (e.g., `BasicDialog`) and makes standard Dialog Intents available by default.
 
 A ViewModel does not create Widgets directly but issues Intents to an abstract interface, `nv.OverlayProtocol`.
-The actual Widget creation is delegated to the View layer (via the `overlay_intents` registration), allowing for the reuse of dialogs with a standard look and feel.
+The actual Widget creation is delegated to the View layer (via the overlay's `intents` registration), allowing for the reuse of dialogs with a standard look and feel.
 
 ```python
 import nuiitivet.material as nv
@@ -74,7 +74,7 @@ class MyViewModel:
 
 ##### 2. Using Custom Dialogs
 
-To display a dialog with a unique layout, define a custom Intent and register it on the `Window`.
+To display a dialog with a unique layout, define a custom Intent and register it on the window's overlay.
 
 ```python
 # 1. Custom Intent (Data class)
@@ -87,9 +87,11 @@ class ConfirmIntent:
 app = App(
     Window(
         content=HomeScreen,
-        overlay_intents={
-            ConfirmIntent: lambda intent: ConfirmDialog(intent.title, intent.message),
-        },
+        overlay=lambda: Overlay(
+            intents={
+                ConfirmIntent: lambda intent: ConfirmDialog(intent.title, intent.message),
+            },
+        ),
     ),
 )
 

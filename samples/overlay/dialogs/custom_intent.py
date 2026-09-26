@@ -98,6 +98,11 @@ class CustomIntentDemo(nv.ComposableWidget):
         )
 
 
+# 3. Register the mapping on the window's overlay
+def build_overlay() -> nv.Overlay:
+    return nv.Overlay(intents={CounterIntent: create_counter_dialog})
+
+
 def main(png_path: str = "") -> None:
     if png_path:
         content = CustomDialogContent(initial=5)
@@ -105,11 +110,10 @@ def main(png_path: str = "") -> None:
         app.render_to_png(png_path)
         return
 
-    # 3. Register the Mapping in App
     app = nv.App(
         nv.Window(
             content=CustomIntentDemo,
-            overlay_intents={CounterIntent: create_counter_dialog},
+            overlay=build_overlay,
             width=400,
             height=300,
         )

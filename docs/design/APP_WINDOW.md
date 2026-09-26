@@ -104,7 +104,7 @@ palette = nv.Window(
     resizable=True,
     accepts_first_mouse=True,       # macOS: first click into an inactive window acts
     window_position=None,
-    overlay_factory=None,
+    overlay=None,                   # Overlay | factory, same rule as content
     menu=None,                      # MenuBar model (Section 8.4)
     parent=None,                    # Window | None
     modal=False,                    # requires parent
@@ -115,7 +115,7 @@ Construction builds a model only: no OS window, no mounted tree, no
 registration. Every window-flavored keyword formerly on `App` moves here
 with unchanged meaning; `content` keeps the App contract (a `Widget`
 instance or a root factory; the factory form is what enables hot reload,
-Section 9.1). `modal=True` without `parent` raises at construction.
+Section 9.1), and `overlay` takes the same two forms under the same rule. `modal=True` without `parent` raises at construction.
 
 `accepts_first_mouse` is macOS-only: by default the click that activates
 an inactive window is also delivered to the app (a Cocoa
@@ -298,8 +298,7 @@ silently cross windows. The `on_mount` timing rule is unchanged.
 ### 8.2 Overlay and Navigator
 
 One overlay stack and one root navigator per window, built by
-`Window.open()` exactly as `App.__init__` builds them today
-(`overlay_factory` moves along). Dialogs, menus, and tooltips are
+`Window.open()` exactly as `App.__init__` builds them today. Dialogs, menus, and tooltips are
 confined to their window, as before — that confinement is precisely why
 secondary windows exist.
 

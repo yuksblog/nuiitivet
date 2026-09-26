@@ -203,7 +203,7 @@ To display fully custom overlay content with a non-standard transition or backdr
 
 ## Intent System
 
-Intents let view models request overlays without importing widget classes. Pass a plain data object to a shortcut; `Overlay` resolves it to the correct widget via the window's `overlay_intents`.
+Intents let view models request overlays without importing widget classes. Pass a plain data object to a shortcut; `Overlay` resolves it to the correct widget through its `intents`.
 
 ### Built-in Intents
 
@@ -220,7 +220,7 @@ overlay.dialog(nv.BasicDialogIntent(title="Error", message="Something went wrong
 
 ### Custom Intents
 
-Register a mapping from intent type to widget factory on the `Window`:
+Pass a mapping from intent type to widget factory as the overlay's `intents`, and the overlay factory to the `Window`:
 
 ```python
 from dataclasses import dataclass
@@ -232,10 +232,9 @@ class ConfirmIntent:
     message: str
 
 
-nv.App(
-    nv.Window(
-        content=HomeScreen,
-        overlay_intents={
+def build_overlay() -> nv.Overlay:
+    return nv.Overlay(
+        intents={
             ConfirmIntent: lambda intent: nv.BasicDialog(
                 title="Confirm",
                 message=intent.message,
@@ -245,8 +244,10 @@ nv.App(
                 ],
             ),
         },
-    ),
-).run()
+    )
+
+
+nv.App(nv.Window(content=HomeScreen, overlay=build_overlay)).run()
 ```
 
 Dispatch from anywhere in the widget tree:
