@@ -103,7 +103,7 @@ save made while stopped at a breakpoint is queued and applied when you resume.
 | A keyless widget holding an `Observable`, when widgets before it are added, removed or reordered | The `Observable` resets to its initial value | Give the widget a `key` |
 | An `Observable` at module top level, or work done in `main()` | The reload re-initialises the module; `main()` does not run again | Create it inside the root factory |
 | A widget pushed with `Navigator.push(widget)` | It closes, with every widget pushed above it | Push an intent: `Navigator.push(intent)` |
-| A widget shown on the Overlay: `Overlay.dialog(widget)`, `Overlay.side_sheet(widget)`, `Overlay.bottom_sheet(widget)` | It closes | For a dialog, show an intent: `Overlay.dialog(intent)` |
+| A widget shown on the Overlay: `Overlay.dialog(widget)`, `Overlay.side_sheet(widget)`, `Overlay.bottom_sheet(widget)` | It closes | Show an intent: `Overlay.dialog(intent)`, `Overlay.side_sheet(intent)`, `Overlay.bottom_sheet(intent)` |
 | `await Overlay.dialog(intent)` still waiting at the save | The dialog stays open, but the result it returns after the save does not appear on screen | Close the dialog and open it again after the save |
 
 ## Errors don't kill the app

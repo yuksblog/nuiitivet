@@ -205,7 +205,7 @@ class FakeOverlay:
 
     def side_sheet(
         self,
-        sheet: Widget,
+        sheet: Widget | Any,
         *,
         side: Literal["right", "left"] = "right",
         dismiss_on_outside_tap: bool = True,
@@ -213,7 +213,7 @@ class FakeOverlay:
         self.sheets.append(sheet)
         return self._handle(sheet)
 
-    def bottom_sheet(self, sheet: Widget, *, dismiss_on_outside_tap: bool = True) -> OverlayHandle[Any]:
+    def bottom_sheet(self, sheet: Widget | Any, *, dismiss_on_outside_tap: bool = True) -> OverlayHandle[Any]:
         self.sheets.append(sheet)
         return self._handle(sheet)
 

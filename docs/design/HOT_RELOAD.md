@@ -304,9 +304,10 @@ entry shown from an intent is shown again instead:
 
 - The overlay records each entry a presenter shows from an intent: the intent
   value, a replay function, and the handle the presenter returned. The replay is
-  framework code, which a reload does not replace. `MaterialOverlay.dialog()`
-  records its intent-shown dialogs. An entry shown from a widget is not
-  recorded and closes.
+  framework code, which a reload does not replace. `MaterialOverlay.dialog()`,
+  `side_sheet()` and `bottom_sheet()` record their intent-shown entries; the
+  replay binds the placement arguments, so a sheet keeps its side. An entry
+  shown from a widget is not recorded and closes.
 - The record lives in core `Overlay`, so another design system only records its
   presenters. Keeping it in `MaterialOverlay` was rejected: each design system
   would rebuild the handover.
@@ -315,7 +316,7 @@ entry shown from an intent is shown again instead:
   taken before the rebuild would leave the handle pending forever when the
   rebuild fails.
 - After the commit, `restore_overlay()` calls each replay on the new overlay,
-  bottom to top, before the `Observable` restore, so a re-shown dialog gets its
+  bottom to top, before the `Observable` restore, so a re-shown entry gets its
   state back. The intent resolves by qualified name, as in §7.5.
 - The new entry takes over the old entry's future, and the old handle points at
   the new entry. An `await` started before the reload receives the value chosen
@@ -371,15 +372,15 @@ successful reload.
   `key=` constructor parameter every widget accepts — anchors its state
   across structural changes (reorder, sibling insertion). Keyless widgets still
   lose state when their position changes — add a `key` to opt into durable state.
-- **Declarative navigation and intent-shown dialogs are restored; widget
-  instances reset.** A reload replays the **declarative** navigation stack —
+- **Declarative navigation and intent-shown overlay entries are restored;
+  widget instances reset.** A reload replays the **declarative** navigation stack —
   routes pushed as intents against a route table — onto the rebuilt navigator
   (§7.5). Imperative
   instance-based `push(Screen())` is fundamentally unrestorable (same
   instance-vs-factory constraint as the root); it is recorded as opaque and
-  stops the replay, leaving routes above it collapsed. Dialogs shown from an
-  intent are shown again (§7.6); a dialog shown from a widget closes. Only
-  `dialog()` records its entries: sheets, snackbars and loading indicators close.
+  stops the replay, leaving routes above it collapsed. Dialogs and sheets shown
+  from an intent are shown again (§7.6); one shown from a widget closes.
+  Snackbars and loading indicators close.
 - **Module-level state is not restored** (§7.4).
 
 ## 12. Implementation map

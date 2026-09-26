@@ -26,10 +26,9 @@ class MaterialOverlayProtocol(OverlayProtocol, Protocol):
             async def delete(self) -> None:
                 await self._overlay.dialog(BasicDialogIntent(title="Delete?"))
 
-    Prefer passing intents rather than widgets: ``dialog`` and ``loading``
-    resolve them through the overlay's intent resolver, keeping widget
-    construction in the View layer. The sheet methods still require a widget --
-    intent support for them is not implemented yet.
+    Prefer passing intents rather than widgets: ``dialog``, ``loading`` and
+    the sheet methods resolve them through the overlay's intent resolver,
+    keeping widget construction in the View layer.
     """
 
     def dialog(
@@ -66,19 +65,19 @@ class MaterialOverlayProtocol(OverlayProtocol, Protocol):
 
     def side_sheet(
         self,
-        sheet: Widget,
+        sheet: Widget | Any,
         *,
         side: Literal["right", "left"] = "right",
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
-        """Display a modal side sheet."""
+        """Display a modal side sheet from a widget or an intent."""
         ...
 
     def bottom_sheet(
         self,
-        sheet: Widget,
+        sheet: Widget | Any,
         *,
         dismiss_on_outside_tap: bool = True,
     ) -> OverlayHandle[Any]:
-        """Display a modal bottom sheet."""
+        """Display a modal bottom sheet from a widget or an intent."""
         ...
