@@ -1,13 +1,11 @@
 # Hot Reload
 
-Edit a widget, save, and see the UI update — while the window, your debugger
-session, and your app's `Observable` state all survive. Every padding tweak no
-longer costs a full restart.
+Edit a widget, save, and see the UI update without a restart.
 
-Hot reload runs **in-process**: it reloads your changed modules and rebuilds the
-widget tree without recreating the pyglet window or the GL context. Because it is
-ordinary Python, it works under the standard VSCode **F5** debugger with no
-custom adapter and no extension — breakpoints keep firing in the reloaded code.
+Hot reload watches the modules under your app's directory. On a save it reloads
+them and rebuilds the widget tree in the window that is already open. It works
+under the standard VSCode **F5** debugger with no extension, and breakpoints keep
+firing in the reloaded code.
 
 ## Quick start
 
@@ -98,28 +96,15 @@ Add this to `.vscode/launch.json`:
 Press **F5**. Set breakpoints as usual; save a file to reload the UI in place. A
 save made while stopped at a breakpoint is queued and applied when you resume.
 
-## What survives a reload
+## What a reload does not restore
 
-- **The window, GL context, and debug session** — never recreated.
-- **`Observable` state** whose position in the tree is unchanged. State is
-  snapshotted by structural path and restored into the rebuilt tree. If you
-  add, remove, or reorder widgets, the affected state falls back to its initial
-  value — unless you give the widget a stable `key` (via the `key=`
-  constructor parameter every widget accepts), which anchors its state
-  across a reorder or sibling insertion.
-- **Breakpoints** — keyed by file and line, so they fire in reloaded code.
-
-## What is *not* reloaded
-
-`nuiitivet`, `skia`, and `pyglet` are never reloaded (they wrap C extensions).
-Only your project's modules — those living under the launched app's directory —
-are reloaded, in dependency order so cross-module edits are picked up
-consistently.
-
-Module-level state (an `Observable` defined at module top level, work done in an
-`if __name__ == "__main__"` guard, or side effects in `main()`) is **not**
-restored: `main()` runs once at startup and never again on reload. Put
-per-tree initialization inside the factory, not in `main()`.
+| Pattern | After the save | What to do |
+| --- | --- | --- |
+| A keyless widget holding an `Observable`, when widgets before it are added, removed or reordered | The `Observable` resets to its initial value | Give the widget a `key` |
+| An `Observable` at module top level, or work done in `main()` | The reload re-initialises the module; `main()` does not run again | Create it inside the root factory |
+| A widget pushed with `Navigator.push(widget)` | It closes, with every widget pushed above it | Push an intent: `Navigator.push(intent)` |
+| A widget shown on the Overlay: `Overlay.dialog(widget)`, `Overlay.side_sheet(widget)`, `Overlay.bottom_sheet(widget)` | It closes | For a dialog, show an intent: `Overlay.dialog(intent)` |
+| `await Overlay.dialog(intent)` still waiting at the save | The dialog stays open, but the result it returns after the save does not appear on screen | Close the dialog and open it again after the save |
 
 ## Errors don't kill the app
 

@@ -182,8 +182,7 @@ Only the user's content tree is rebuilt on reload; the App shell — window,
 chrome, theme — is preserved. `App` exposes two primitives:
 
 - **`_rebuild_content_root(new_factory=None)`** re-invokes the factory, rebuilds
-  the Navigator/Overlay stack (which resets the process-global `Navigator` and
-  `Overlay` roots to the new instances), and re-wraps it with the preserved
+  the window's Navigator/Overlay stack, and re-wraps it with the preserved
   chrome shell and `AppScope`. It returns the new root without mounting it, so
   the reload orchestrator can snapshot old state and restore it before mount.
 - **`_commit_content_root(new_root)`** unmounts the old tree, clears App-held
@@ -199,11 +198,12 @@ On a save detected by the file watcher, the runner (on the UI thread):
    structural path (§7.4), and the declarative navigation stack (§7.5).
 2. **Reload** the user's modules in dependency order (§7.1–7.2) and re-fetch the
    factory (§7.3).
-3. **Rebuild** the content root (`_rebuild_content_root`), which also resets the
-   global Navigator/Overlay roots.
-4. **Restore** snapshot values into the matching observables of the new tree and
-   replay the navigation stack onto the rebuilt navigator (§7.5).
-5. **Commit** the new root (`_commit_content_root`) and repaint.
+3. **Rebuild** the content root (`_rebuild_content_root`).
+4. **Hand over** the overlay's intent-shown entries (§7.6).
+5. **Commit** the new root (`_commit_content_root`).
+6. **Restore**: show the overlay entries again (§7.6), write the snapshot values
+   into the matching observables of the new tree, and replay the navigation
+   stack onto the rebuilt navigator (§7.5). Then repaint.
 
 `main()` is never called in this sequence. Every widget and `Observable` is
 recreated by the factory; "preserving state" means copying `Observable` *values*
@@ -285,9 +285,7 @@ snapshotted and replayed, mirroring the `Observable` restore above:
 - Replay **stops at the first non-restorable entry** — an opaque push, or an
   intent whose route is no longer registered — leaving the rest collapsed. This
   is the documented degradation, analogous to unmatched `Observable` paths.
-- Open overlays/dialogs are out of scope and keep resetting (§11): they are
-  transient UI bound to an in-flight awaited coroutine, and dropping that
-  continuation is the safe default (Flutter behaves the same).
+- Open overlay entries are restored separately (§7.6).
 
 When the tree structure is unchanged (the common "tweak a padding" case) every
 path matches and state is fully restored. A widget given a `key` — the same
@@ -298,6 +296,37 @@ too. When keyless widgets are added, removed, or reordered, unmatched paths keep
 the new tree's initial value — a deliberate, documented degradation. Only in-tree
 observables are handled; module-level observables are re-initialised by
 `importlib.reload` and are out of scope.
+
+### 7.6 Overlay entry restore
+
+The rebuilt window starts a fresh overlay, so every open entry would close. An
+entry shown from an intent is shown again instead:
+
+- The overlay records each entry a presenter shows from an intent: the intent
+  value, a replay function, and the handle the presenter returned. The replay is
+  framework code, which a reload does not replace. `MaterialOverlay.dialog()`
+  records its intent-shown dialogs. An entry shown from a widget is not
+  recorded and closes.
+- The record lives in core `Overlay`, so another design system only records its
+  presenters. Keeping it in `MaterialOverlay` was rejected: each design system
+  would rebuild the handover.
+- `snapshot_overlay()` runs after a successful rebuild and before the commit.
+  From then on, disposing a recorded entry leaves its handle pending. A snapshot
+  taken before the rebuild would leave the handle pending forever when the
+  rebuild fails.
+- After the commit, `restore_overlay()` calls each replay on the new overlay,
+  bottom to top, before the `Observable` restore, so a re-shown dialog gets its
+  state back. The intent resolves by qualified name, as in §7.5.
+- The new entry takes over the old entry's future, and the old handle points at
+  the new entry. An `await` started before the reload receives the value chosen
+  after it. That coroutine still runs the pre-reload code on the pre-reload
+  objects, so a value it writes into a ViewModel the old tree created does not
+  reach the screen. Carrying the coroutine's objects over is not possible: they
+  are live Python objects of the replaced classes.
+- An entry whose intent no longer resolves is dropped, and its handle completes
+  with `DISPOSED`. The entries above it are still restored: overlay entries are
+  independent layers, unlike a navigation stack.
+- A re-shown entry plays its enter transition again.
 
 ## 8. Module loading and launch-target resolution
 
@@ -342,15 +371,15 @@ successful reload.
   `key=` constructor parameter every widget accepts — anchors its state
   across structural changes (reorder, sibling insertion). Keyless widgets still
   lose state when their position changes — add a `key` to opt into durable state.
-- **Declarative navigation stack is restored; imperative pushes and open
-  overlays reset.** A reload replays the **declarative** navigation stack —
+- **Declarative navigation and intent-shown dialogs are restored; widget
+  instances reset.** A reload replays the **declarative** navigation stack —
   routes pushed as intents against a route table — onto the rebuilt navigator
   (§7.5). Imperative
   instance-based `push(Screen())` is fundamentally unrestorable (same
   instance-vs-factory constraint as the root); it is recorded as opaque and
-  stops the replay, leaving routes above it collapsed. A fresh `Overlay` is
-  rebuilt too, so open dialogs are dropped — they are transient and bound to an
-  in-flight awaited coroutine, so resetting them is the intended, safe default.
+  stops the replay, leaving routes above it collapsed. Dialogs shown from an
+  intent are shown again (§7.6); a dialog shown from a widget closes. Only
+  `dialog()` records its entries: sheets, snackbars and loading indicators close.
 - **Module-level state is not restored** (§7.4).
 
 ## 12. Implementation map
@@ -364,6 +393,7 @@ successful reload.
 | user-module identification | `dev/reloader.py` (`identify_user_modules`) |
 | dependency-ordered reload + `.pyc` invalidation | `dev/reloader.py` (`_topological_order`, `reload_user_modules`) |
 | state snapshot / restore | `dev/snapshot.py` |
+| navigation stack / overlay entry restore | `dev/navigation_snapshot.py`, `dev/overlay_snapshot.py` |
 | file watching (background thread → UI thread) | `dev/watcher.py` + `dev/controller.py` |
 | error resilience | `dev/error_overlay.py` |
 | CLI entry / startup flow | `dev/__main__.py` |

@@ -8,8 +8,7 @@ route-table keys) before the swap, then replay them onto the rebuilt navigator.
 
 Only the App's own navigator is handled. A screen pushed as a widget instance is
 opaque — it cannot be rebuilt against the new code — and stops the replay,
-leaving the rest collapsed. Open overlays/dialogs are explicitly out of
-scope and keep resetting.
+leaving the rest collapsed. Overlay entries are handled by :mod:`.overlay_snapshot`.
 """
 
 from __future__ import annotations

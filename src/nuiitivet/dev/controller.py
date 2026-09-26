@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
 from .navigation_snapshot import restore_navigation, snapshot_navigation
+from .overlay_snapshot import restore_overlay, snapshot_overlay
 from .comments import Comments
 from .reloader import identify_user_modules, reload_user_modules
 from .snapshot import restore_observables, snapshot_observables
@@ -144,8 +145,12 @@ class HotReloadController:
             self._edit_failed(tb)
             return
 
+        # Taken only once the rebuild succeeded: from here the old overlay hands its entries over.
+        overlay_snapshot = snapshot_overlay(app)
         try:
             app._commit_content_root(new_content)
+            # Before the Observable restore, so a re-shown dialog gets its state back too.
+            restored_entries = restore_overlay(app, overlay_snapshot)
             restored = restore_observables(app.root, snapshot)
             restored_routes = restore_navigation(app, nav_snapshot)
             if self._comments is not None:
@@ -171,7 +176,7 @@ class HotReloadController:
             )
         print(
             f"[nuiitivet.dev] reloaded {len(result.reloaded)} module(s), "
-            f"restored {restored} value(s), {restored_routes} route(s).",
+            f"restored {restored} value(s), {restored_routes} route(s), {restored_entries} overlay layer(s).",
             file=sys.stderr,
             flush=True,
         )

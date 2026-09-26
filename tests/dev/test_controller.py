@@ -163,6 +163,34 @@ def test_successful_reload_replays_navigation_snapshot() -> None:
     restore.assert_called_once_with(controller._app, sentinel)
 
 
+def test_successful_reload_replays_overlay_snapshot() -> None:
+    """The overlay entries captured before the commit are shown again after it."""
+    controller = _make_controller(None)
+    sentinel = [object()]
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(_patched_reload(reload=ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)))
+        stack.enter_context(mock.patch.object(controller_mod, "snapshot_overlay", return_value=sentinel))
+        restore = stack.enter_context(mock.patch.object(controller_mod, "restore_overlay", return_value=1))
+
+        controller._do_reload()
+
+    restore.assert_called_once_with(controller._app, sentinel)
+
+
+def test_failed_rebuild_takes_no_overlay_snapshot() -> None:
+    """A snapshot hands the entries over, so a rebuild that failed must not take one."""
+    controller = _make_controller(None)
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(_patched_reload(reload_side_effect=ValueError("bad import")))
+        snapshot = stack.enter_context(mock.patch.object(controller_mod, "snapshot_overlay", return_value=[]))
+
+        controller._do_reload()
+
+    snapshot.assert_not_called()
+
+
 def test_failed_reload_records_error_traceback() -> None:
     journal = ReloadJournal()
     controller = _make_controller(journal)

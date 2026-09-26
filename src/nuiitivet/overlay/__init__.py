@@ -1,6 +1,6 @@
 """Overlay system for transient layers."""
 
-from .intent_resolver import IntentResolver
+from .intent_resolver import IntentResolver, MappingIntentResolver
 from .overlay_aware import OverlayAware
 from .overlay_handle import OverlayHandle
 from .overlay import Overlay
@@ -16,6 +16,7 @@ from .intents import PlainDialogIntent, LoadingDialogIntent
 __all__ = [
     "PlainDialogIntent",
     "IntentResolver",
+    "MappingIntentResolver",
     "LoadingDialogIntent",
     "Overlay",
     "OverlayLayerComposer",

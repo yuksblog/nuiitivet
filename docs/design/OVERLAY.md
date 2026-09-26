@@ -268,6 +268,8 @@ A custom intents table is an argument of the overlay, not of the window. A windo
 - Details on the execution foundation (async runtime) and event loop integration are centralized in [ASYNCIO_INTEGRATION.md](ASYNCIO_INTEGRATION.md).
 - The Overlay's responsibility is to ensure that `await handle` never hangs.
   - If an entry is removed without being explicitly closed, it completes with `OverlayDismissReason.DISPOSED`.
+  - Unmounting the overlay, as a closed window or a hot reload does, removes every open entry at once, without exit transitions.
+  - A hot reload is the exception: an entry shown from an intent hands its handle to the rebuilt overlay and completes there ([HOT_RELOAD.md](HOT_RELOAD.md#76-overlay-entry-restore)).
   - The caller can branch based on `OverlayResult.reason`.
 
 ## 4. Layer Stack
